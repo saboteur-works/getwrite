@@ -354,7 +354,7 @@ export default function ResourceTree({
                                     x: Math.round(rect.left + 8),
                                     y: Math.round(rect.top + 24),
                                     resourceId: node.resource.id,
-                                    resourceTitle: node.resource.title,
+                                    resourceTitle: node.resource.name,
                                 });
                                 e.preventDefault();
                             } else if (e.key === "ArrowUp") {
@@ -400,11 +400,7 @@ export default function ResourceTree({
                             )}
                         </span>
                         <span className="flex items-center gap-2">
-                            {node.resource.type === "folder" ? (
-                                <FolderIcon />
-                            ) : (
-                                <FileIcon />
-                            )}
+                            {hasChildren ? <FolderIcon /> : <FileIcon />}
                         </span>
                         <span
                             onClick={() => onSelect?.(node.resource.id)}
