@@ -87,6 +87,12 @@ export interface Folder {
 
 export type ResourceType = "text" | "image" | "audio";
 
+/**
+ * UI view names used by the WorkArea view switcher and related components.
+ * Added to canonical models to provide a single source-of-truth for small UI unions.
+ */
+export type ViewName = "edit" | "organizer" | "data" | "diff" | "timeline";
+
 /** Base attributes common to all resource types (text/image/audio). */
 export interface ResourceBase {
     /** Resource UUID (immutable identity independent of path). */
