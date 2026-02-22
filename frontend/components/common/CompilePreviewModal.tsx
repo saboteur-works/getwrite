@@ -28,7 +28,13 @@ export default function CompilePreviewModal(
     const [scope, setScope] = useState<"project" | "folder" | "resource">(
         "project",
     );
-    const folderOptions = resources.filter((r) => r.type === "folder");
+    // Determine folder-like resources by checking which resources act as parents
+    const parentIds = new Set<string>();
+    resources.forEach((r) => {
+        const parent = (r as any).parentId ?? r.folderId;
+        if (parent) parentIds.add(parent);
+    });
+    const folderOptions = resources.filter((r) => parentIds.has(r.id));
     const [selectedFolder, setSelectedFolder] = useState<string | "">("");
     const [selectedResource, setSelectedResource] = useState<string | "">("");
     const [selectedIds, setSelectedIds] = useState<string[]>(
@@ -115,11 +121,6 @@ export default function CompilePreviewModal(
     // Legacy compatibility: accept a single `resource` prop and an `onConfirm`
     // callback. If `resource` is provided, auto-select it and generate
     // preview so older tests/components keep working.
-    // We don't add `resource` to props interface formally above to avoid
-    // changing current callers, but support it via `any`-style access.
-    // However TypeScript callers can still pass it; ensure runtime handling.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const maybeResource = undefined as any as Resource | undefined;
 
     if (!isOpen) return null;
 
@@ -169,7 +170,7 @@ export default function CompilePreviewModal(
                                 <option value="">(select folder)</option>
                                 {folderOptions.map((f) => (
                                     <option key={f.id} value={f.id}>
-                                        {f.title}
+                                        {(f as any).title ?? f.name}
                                     </option>
                                 ))}
                             </select>
@@ -192,7 +193,7 @@ export default function CompilePreviewModal(
                                 <option value="">(select resource)</option>
                                 {resources.map((r) => (
                                     <option key={r.id} value={r.id}>
-                                        {r.title}
+                                        {(r as any).title ?? r.name}
                                     </option>
                                 ))}
                             </select>
