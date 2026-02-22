@@ -2,7 +2,7 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import AppShell from "../components/Layout/AppShell";
 import { sampleProjects } from "../lib/placeholders";
-import type { Project } from "../lib/types";
+import type { Project } from "../src/lib/models/types";
 
 const meta: Meta<typeof AppShell> = {
     title: "AppShell",
@@ -15,7 +15,7 @@ type Story = StoryObj<typeof AppShell>;
 
 export const Default: Story = {
     render: () => {
-        const projects: Project[] = sampleProjects(3);
+        const projects: Project[] = sampleProjects(3).map((p) => p.project);
 
         return (
             <AppShell>
