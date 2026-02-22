@@ -145,6 +145,20 @@ export const selectSelectedProjectId = (state: any): string | null => {
  */
 export function normalizeStoredProject(p: StoredProject): StoredProject {
     if (!p) return p;
+    // If resources are already full canonical resource objects (contain `name`),
+    // assume they're migrated and return as-is to preserve display fields.
+    if (Array.isArray(p.resources) && p.resources.length > 0) {
+        const first = p.resources[0] as any;
+        if (first && typeof first.name === "string") {
+            return {
+                ...p,
+                folders: Array.isArray(p.folders)
+                    ? p.folders
+                    : (p.folders ?? []),
+            };
+        }
+    }
+
     const resources = Array.isArray(p.resources)
         ? p.resources.map((r) => ({ id: r.id, metadata: r.metadata ?? {} }))
         : p.resources;
