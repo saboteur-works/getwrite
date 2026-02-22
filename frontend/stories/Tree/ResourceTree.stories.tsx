@@ -1,10 +1,11 @@
 import React from "react";
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import ResourceTree from "../../components/Tree/ResourceTree";
 import ClientProvider from "../../src/store/ClientProvider";
 import store from "../../src/store/store";
 import { setProject } from "../../src/store/projectsSlice";
 import { createProject, createResource } from "../../lib/placeholders";
+import type { AnyResource } from "../../src/lib/models/types";
 
 const {
     project,
@@ -16,7 +17,7 @@ const folder = createResource("Characters", "folder", project.id);
 const char1 = createResource("Protagonist", "note", project.id, folder.id);
 const char2 = createResource("Antagonist", "note", project.id, folder.id);
 // merge resources into an array including folder and top-level items
-const resources = [folder, ...projResources, char1, char2];
+const resources: AnyResource[] = [folder, ...projResources, char1, char2];
 
 const meta: Meta<typeof ResourceTree> = {
     title: "Tree/ResourceTree",
@@ -28,7 +29,7 @@ export default meta;
 type Story = StoryObj<typeof ResourceTree>;
 
 export const Default: Story = {
-    render: (args) => {
+    render: (args: any) => {
         store.dispatch(
             setProject({ id: project.id, name: project.name, resources }),
         );
@@ -44,7 +45,7 @@ export const Default: Story = {
 };
 
 export const Reorderable: Story = {
-    render: (args) => {
+    render: (args: any) => {
         store.dispatch(
             setProject({ id: project.id, name: project.name, resources }),
         );
