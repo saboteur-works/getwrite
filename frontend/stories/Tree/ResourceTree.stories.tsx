@@ -6,13 +6,17 @@ import store from "../../src/store/store";
 import { setProject } from "../../src/store/projectsSlice";
 import { createProject, createResource } from "../../lib/placeholders";
 
-const project = createProject("Storybook Project");
-// create a folder and nested resources for the story
+const {
+    project,
+    resources: projResources,
+    folders,
+} = createProject("Storybook Project");
+// create a folder and nested resources for the story (use project id)
 const folder = createResource("Characters", "folder", project.id);
 const char1 = createResource("Protagonist", "note", project.id, folder.id);
 const char2 = createResource("Antagonist", "note", project.id, folder.id);
 // merge resources into an array including folder and top-level items
-const resources = [folder, ...project.resources, char1, char2];
+const resources = [folder, ...projResources, char1, char2];
 
 const meta: Meta<typeof ResourceTree> = {
     title: "Tree/ResourceTree",
