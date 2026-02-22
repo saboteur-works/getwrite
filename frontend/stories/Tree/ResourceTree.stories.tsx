@@ -1,6 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import ResourceTree from "../../components/Tree/ResourceTree";
+import type { ResourceTreeProps } from "../../components/Tree/ResourceTree";
 import ClientProvider from "../../src/store/ClientProvider";
 import store from "../../src/store/store";
 import { setProject } from "../../src/store/projectsSlice";
@@ -29,7 +30,7 @@ export default meta;
 type Story = StoryObj<typeof ResourceTree>;
 
 export const Default: Story = {
-    render: (args: any) => {
+    render: (args: Partial<ResourceTreeProps>) => {
         store.dispatch(
             setProject({ id: project.id, name: project.name, resources }),
         );
@@ -45,7 +46,7 @@ export const Default: Story = {
 };
 
 export const Reorderable: Story = {
-    render: (args: any) => {
+    render: (args: Partial<ResourceTreeProps>) => {
         store.dispatch(
             setProject({ id: project.id, name: project.name, resources }),
         );
