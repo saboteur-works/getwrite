@@ -1,4 +1,10 @@
-import type { Project, Resource, ResourceType, Metadata } from "./types";
+import adapter from "../src/lib/adapters/placeholderAdapter";
+import type {
+    Project as CanonicalProject,
+    AnyResource,
+    Folder,
+} from "../src/lib/models/types";
+import type { ResourceType } from "./types";
 
 /** Create a short, random id with an optional prefix for placeholder data. */
 function genId(prefix = "id"): string {
@@ -24,7 +30,7 @@ export function createResource(
     projectId?: string,
     parentId?: string,
     resourceIndex?: number,
-): Resource {
+): AnyResource {
     let id: string;
     if (projectId && typeof resourceIndex === "number") {
         const slug = title
@@ -37,7 +43,7 @@ export function createResource(
     }
     const pid = projectId ?? genId("proj");
     const createdAt = nowIso();
-    const metadata: Metadata = {
+    const metadata: Record<string, unknown> = {
         status: "draft",
         characters: [],
         locations: [],
@@ -47,7 +53,7 @@ export function createResource(
         notes: "",
     };
 
-    return {
+    const legacy = {
         id,
         projectId: pid,
         parentId,
@@ -58,6 +64,7 @@ export function createResource(
         updatedAt: createdAt,
         metadata,
     };
+    return adapter.migrateResource(legacy);
 }
 
 /**
@@ -66,44 +73,100 @@ export function createResource(
  * @param name Friendly name for the project.
  * @returns `Project` with createdAt/updatedAt and `resources` array.
  */
-export function createProject(name = "Untitled Project", id?: string): Project {
+export function createProject(
+    name = "Untitled Project",
+    id?: string,
+): { project: CanonicalProject; resources: AnyResource[]; folders: Folder[] } {
     const pid = id ?? genId("proj");
     const createdAt = nowIso();
-    // Build a small, realistic project tree:
-    // - root folder named after the project
-    //   - Workspace (folder)
-    //     - Chapter 1 (folder)
-    //       - Scene A (scene)
-    //   - Notes (note)
-    const root = createResource(name, "folder", pid, undefined, 1);
-    const workspace = createResource("Workspace", "folder", pid, root.id, 2);
-    const chapter1 = createResource(
-        "Chapter 1",
-        "folder",
-        pid,
-        workspace.id,
-        3,
-    );
-    const sceneA = createResource("Scene A", "scene", pid, chapter1.id, 4);
-    const notes = createResource("Notes", "note", pid, root.id, 5);
 
-    const resources: Resource[] = [root, workspace, chapter1, sceneA, notes];
-    return {
+    // Build legacy-shaped resources (plain objects) so the adapter can migrate them
+    const rootLegacy = {
+        id: genId("res"),
+        projectId: pid,
+        parentId: undefined,
+        title: name,
+        type: "folder",
+        content: null,
+        createdAt,
+        updatedAt: createdAt,
+        metadata: {},
+    };
+    const workspaceLegacy = {
+        id: genId("res"),
+        projectId: pid,
+        parentId: rootLegacy.id,
+        title: "Workspace",
+        type: "folder",
+        content: null,
+        createdAt,
+        updatedAt: createdAt,
+        metadata: {},
+    };
+    const chapter1Legacy = {
+        id: genId("res"),
+        projectId: pid,
+        parentId: workspaceLegacy.id,
+        title: "Chapter 1",
+        type: "folder",
+        content: null,
+        createdAt,
+        updatedAt: createdAt,
+        metadata: {},
+    };
+    const sceneALegacy = {
+        id: genId("res"),
+        projectId: pid,
+        parentId: chapter1Legacy.id,
+        title: "Scene A",
+        type: "scene",
+        content: `Placeholder content for Scene A`,
+        createdAt,
+        updatedAt: createdAt,
+        metadata: {},
+    };
+    const notesLegacy = {
+        id: genId("res"),
+        projectId: pid,
+        parentId: rootLegacy.id,
+        title: "Notes",
+        type: "note",
+        content: `Notes for ${name}`,
+        createdAt,
+        updatedAt: createdAt,
+        metadata: {},
+    };
+
+    const legacyProject = {
         id: pid,
-        name,
+        title: name,
         description: "Placeholder project created for UI development",
         createdAt,
         updatedAt: createdAt,
-        resources,
+        resources: [
+            rootLegacy,
+            workspaceLegacy,
+            chapter1Legacy,
+            sceneALegacy,
+            notesLegacy,
+        ],
+        folders: [],
     };
+
+    const migrated = adapter.migrateProject(legacyProject);
+    return migrated;
 }
 
 /**
  * Produce an array of placeholder `Project`s for list views.
  * @param count Number of sample projects to produce.
  */
-export function sampleProjects(count = 2): Project[] {
-    const out: Project[] = [];
+export function sampleProjects(count = 2) {
+    const out: Array<{
+        project: CanonicalProject;
+        resources: AnyResource[];
+        folders: Folder[];
+    }> = [];
     for (let i = 1; i <= count; i += 1) {
         out.push(createProject(`Sample Project ${i}`, `proj_${i}`));
     }
@@ -115,8 +178,14 @@ export function sampleProjects(count = 2): Project[] {
  * Returns `undefined` when not found; UI callers should handle that case.
  */
 export function findProjectById(
-    projects: Project[],
+    projects: Array<{
+        project: CanonicalProject;
+        resources: AnyResource[];
+        folders: Folder[];
+    }>,
     id: string,
-): Project | undefined {
-    return projects.find((p) => p.id === id);
+):
+    | { project: CanonicalProject; resources: AnyResource[]; folders: Folder[] }
+    | undefined {
+    return projects.find((p) => p.project.id === id);
 }

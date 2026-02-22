@@ -127,9 +127,27 @@ export const selectProject = (
     state: any,
     projectId: string,
 ): StoredProject | null => {
-    return state?.projects?.projects?.[projectId] ?? null;
+    const raw = state?.projects?.projects?.[projectId] ?? null;
+    if (!raw) return null;
+    return normalizeStoredProject(raw);
 };
 
 export const selectSelectedProjectId = (state: any): string | null => {
     return state?.projects?.selectedProjectId ?? null;
 };
+
+/**
+ * Normalizes legacy persisted project shapes to the runtime StoredProject shape
+ * used by the UI. This accepts the historical `{ resources?: ResourceMeta[] }`
+ * shape and ensures `resources` items have a `metadata` object and folders
+ * are present as an array. Keep this small and conservative so it is safe to
+ * remove once the app no longer persists the legacy shape.
+ */
+export function normalizeStoredProject(p: StoredProject): StoredProject {
+    if (!p) return p;
+    const resources = Array.isArray(p.resources)
+        ? p.resources.map((r) => ({ id: r.id, metadata: r.metadata ?? {} }))
+        : p.resources;
+    const folders = Array.isArray(p.folders) ? p.folders : (p.folders ?? []);
+    return { ...p, resources, folders };
+}

@@ -1,5 +1,9 @@
 import React, { useState } from "react";
-import type { Project } from "../../lib/types";
+import type {
+    Project as CanonicalProject,
+    AnyResource,
+    Folder,
+} from "../../src/lib/models/types";
 import { sampleProjects, createProject } from "../../lib/placeholders";
 import { buildProjectView } from "../../src/lib/models/project-view";
 import CreateProjectModal, {
@@ -8,7 +12,11 @@ import CreateProjectModal, {
 import ManageProjectMenu from "./ManageProjectMenu";
 
 export interface StartPageProps {
-    projects?: Project[];
+    projects?: Array<{
+        project: CanonicalProject;
+        resources: AnyResource[];
+        folders: Folder[];
+    }>;
     onCreate?: (name: string) => void;
     onOpen?: (projectId: string) => void;
 }
@@ -19,15 +27,22 @@ export default function StartPage({
     onCreate,
     onOpen,
 }: StartPageProps): JSX.Element {
-    const [localProjects, setLocalProjects] = useState<Project[]>(projects);
+    const [localProjects, setLocalProjects] =
+        useState<
+            Array<{
+                project: CanonicalProject;
+                resources: AnyResource[];
+                folders: Folder[];
+            }>
+        >(projects);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
     const projectViews = React.useMemo(() => {
         return localProjects.map((p) =>
             buildProjectView({
-                project: p as any,
-                folders: (p as any).folders ?? [],
-                resources: (p as any).resources ?? [],
+                project: p.project as any,
+                folders: p.folders ?? [],
+                resources: p.resources ?? [],
             }),
         );
     }, [localProjects]);
@@ -37,11 +52,11 @@ export default function StartPage({
     };
 
     const handleModalCreate = (payload: CreateProjectPayload): void => {
-        const newProject: Project = createProject(payload.name);
+        const newProject = createProject(payload.name);
         // instrumentation: log local project creation (UI path)
         // eslint-disable-next-line no-console
         console.debug("[INST] StartPage.handleModalCreate - newProject", {
-            id: newProject.id,
+            id: newProject.project.id,
             name: payload.name,
             payload,
         });
@@ -88,24 +103,24 @@ export default function StartPage({
                     const resourceList = view
                         ? view.resources.filter((r) => r.type !== "folder")
                         : p.resources;
-                    const projName = view?.project?.name ?? p.name;
+                    const projName = view?.project?.name ?? p.project.name;
 
                     return (
                         <article
-                            key={p.id}
+                            key={p.project.id}
                             className="rounded bg-white p-4 shadow-card border flex items-start justify-between"
-                            aria-labelledby={`proj-${p.id}-title`}
+                            aria-labelledby={`proj-${p.project.id}-title`}
                         >
                             <div>
                                 <h2
-                                    id={`proj-${p.id}-title`}
+                                    id={`proj-${p.project.id}-title`}
                                     className="font-medium"
                                 >
                                     {projName}
                                 </h2>
-                                {p.description ? (
+                                {p.project.description ? (
                                     <p className="text-sm text-slate-600 mt-1 truncate-2">
-                                        {p.description}
+                                        {p.project.description}
                                     </p>
                                 ) : null}
                                 <div className="text-xs text-slate-500 mt-2">
@@ -115,13 +130,19 @@ export default function StartPage({
 
                             <div className="flex items-center gap-3">
                                 <ManageProjectMenu
-                                    projectId={p.id}
+                                    projectId={p.project.id}
                                     projectName={projName}
                                     onRename={(id, newName) => {
                                         setLocalProjects((prev) =>
                                             prev.map((proj) =>
-                                                proj.id === id
-                                                    ? { ...proj, name: newName }
+                                                proj.project.id === id
+                                                    ? {
+                                                          ...proj,
+                                                          project: {
+                                                              ...proj.project,
+                                                              name: newName,
+                                                          },
+                                                      }
                                                     : proj,
                                             ),
                                         );
@@ -129,20 +150,21 @@ export default function StartPage({
                                     onDelete={(id) => {
                                         setLocalProjects((prev) =>
                                             prev.filter(
-                                                (proj) => proj.id !== id,
+                                                (proj) =>
+                                                    proj.project.id !== id,
                                             ),
                                         );
                                     }}
                                     onPackage={(id, selectedIds) => {
                                         // UI-only placeholder action — show selected ids if provided
                                         const proj = localProjects.find(
-                                            (x) => x.id === id,
+                                            (x) => x.project.id === id,
                                         );
                                         const selText = selectedIds
                                             ? `\nSelected: ${selectedIds.join(", ")}`
                                             : "";
                                         window.alert(
-                                            `Package placeholder for ${proj?.name ?? id}${selText}`,
+                                            `Package placeholder for ${proj?.project.name ?? id}${selText}`,
                                         );
                                     }}
                                     resources={resourceList as any}
@@ -150,7 +172,7 @@ export default function StartPage({
 
                                 <button
                                     type="button"
-                                    onClick={() => handleOpen(p.id)}
+                                    onClick={() => handleOpen(p.project.id)}
                                     className="px-3 py-1 rounded border text-sm bg-slate-50 hover:bg-slate-100"
                                 >
                                     Open

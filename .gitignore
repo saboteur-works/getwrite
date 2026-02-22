@@ -15,3 +15,7 @@ Thumbs.db
 *.swp
 /frontend/storybook-static/
 projects
+
+# TypeScript incremental buildinfo
+*.tsbuildinfo
+tsconfig.tsbuildinfo
