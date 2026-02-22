@@ -38,6 +38,7 @@ export default function ResourceContextMenu({
     x = 0,
     y = 0,
     resourceId,
+    resourceName,
     resourceTitle,
     onClose,
     onAction,
