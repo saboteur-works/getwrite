@@ -1,0 +1,15 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "skipLibCheck": true,
+        "types": ["node"]
+    },
+    "include": [
+        "stories/**/*.ts",
+        "stories/**/*.tsx",
+        "e2e/**/*.ts",
+        "e2e/**/*.tsx"
+    ],
+    "exclude": ["node_modules"]
+}
