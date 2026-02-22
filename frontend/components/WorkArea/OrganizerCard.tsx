@@ -15,7 +15,7 @@ export default function OrganizerCard({
     showBody = true,
 }: OrganizerCardProps): JSX.Element {
     const title = (resource as any).title ?? resource.name ?? "Untitled";
-    const body = (resource as any).content ?? resource.plainText ?? "";
+    const body = (resource as any).content ?? (resource as any).plainText ?? "";
     const updated = resource.updatedAt ?? resource.createdAt ?? "";
 
     return (
@@ -45,9 +45,9 @@ export default function OrganizerCard({
             )}
 
             <footer className="text-xs text-slate-500 flex items-center justify-between gap-4">
-                <div>Words: {resource.metadata?.wordCount ?? 0}</div>
+                <div>Words: {(resource.metadata as any)?.wordCount ?? 0}</div>
                 <div className="ml-auto">
-                    Status: {resource.metadata?.status ?? "unknown"}
+                    Status: {(resource.metadata as any)?.status ?? "unknown"}
                 </div>
             </footer>
         </article>
