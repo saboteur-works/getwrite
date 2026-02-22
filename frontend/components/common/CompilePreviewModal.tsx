@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import type { Resource } from "../../lib/types";
+import type { AnyResource } from "../../src/lib/models/types";
 
 export interface CompilePreviewModalProps {
     isOpen: boolean;
     projectId: string;
-    resources?: Resource[];
+    resources?: AnyResource[];
     onClose?: () => void;
     /** Called with selected resource ids to include in the package. */
     onConfirmCompile?: (selectedIds: string[]) => void;
@@ -12,7 +12,7 @@ export interface CompilePreviewModalProps {
 
 export default function CompilePreviewModal(
     props: CompilePreviewModalProps & {
-        resource?: Resource;
+        resource?: AnyResource;
         onConfirm?: () => void;
     },
 ): JSX.Element | null {
@@ -55,7 +55,9 @@ export default function CompilePreviewModal(
             setScope("resource");
             setSelectedResource(resource.id);
             setSelectedIds([resource.id]);
-            const text = `Compiled package for project ${projectId}\n\nIncluded resources:\n- ${resource.title} (${resource.type})`;
+            const rtitle =
+                (resource as any).title ?? resource.name ?? "Untitled";
+            const text = `Compiled package for project ${projectId}\n\nIncluded resources:\n- ${rtitle} (${resource.type})`;
             setPreview(text);
         }
     }, [isOpen, resource, projectId]);
@@ -64,10 +66,11 @@ export default function CompilePreviewModal(
     const childrenMap = useMemo(() => {
         const map = new Map<string, string[]>();
         resources.forEach((r) => {
-            if (r.parentId) {
-                const arr = map.get(r.parentId) ?? [];
+            const parent = (r as any).parentId ?? r.folderId;
+            if (parent) {
+                const arr = map.get(parent) ?? [];
                 arr.push(r.id);
-                map.set(r.parentId, arr);
+                map.set(parent, arr);
             }
         });
         return map;
@@ -100,7 +103,10 @@ export default function CompilePreviewModal(
 
         const included = resources.filter((r) => ids.includes(r.id));
         const text = `Compiled package for project ${projectId}\n\nIncluded resources:\n${included
-            .map((r) => `- ${r.title} (${r.type})`)
+            .map((r) => {
+                const rtitle = (r as any).title ?? r.name ?? "Untitled";
+                return `- ${rtitle} (${r.type})`;
+            })
             .join("\n")}`;
         setSelectedIds(ids);
         setPreview(text);
