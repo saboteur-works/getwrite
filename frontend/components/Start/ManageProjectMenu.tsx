@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import ConfirmDialog from "../common/ConfirmDialog";
 import RenameProjectModal from "./RenameProjectModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
-import type { Resource } from "../../lib/types";
+import type { AnyResource } from "../../src/lib/models/types";
 
 export interface ManageProjectMenuProps {
     projectId: string;
@@ -11,7 +11,7 @@ export interface ManageProjectMenuProps {
     onDelete?: (projectId: string) => void;
     /** Called when the project packaging flow completes. Receives projectId and optional selected resource ids. */
     onPackage?: (projectId: string, selectedIds?: string[]) => void;
-    resources?: Resource[];
+    resources?: AnyResource[];
 }
 
 /**
