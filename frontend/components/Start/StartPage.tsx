@@ -27,14 +27,13 @@ export default function StartPage({
     onCreate,
     onOpen,
 }: StartPageProps): JSX.Element {
-    const [localProjects, setLocalProjects] =
-        useState<
-            Array<{
-                project: CanonicalProject;
-                resources: AnyResource[];
-                folders: Folder[];
-            }>
-        >(projects);
+    const [localProjects, setLocalProjects] = useState<
+        Array<{
+            project: CanonicalProject;
+            resources: AnyResource[];
+            folders: Folder[];
+        }>
+    >(projects);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
     const projectViews = React.useMemo(() => {
@@ -118,11 +117,6 @@ export default function StartPage({
                                 >
                                     {projName}
                                 </h2>
-                                {p.project.description ? (
-                                    <p className="text-sm text-slate-600 mt-1 truncate-2">
-                                        {p.project.description}
-                                    </p>
-                                ) : null}
                                 <div className="text-xs text-slate-500 mt-2">
                                     {resourceList.length} resources
                                 </div>

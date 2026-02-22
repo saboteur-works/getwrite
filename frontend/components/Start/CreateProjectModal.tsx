@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import type { ResourceType, Project } from "../../lib/types";
+import type { Project as CanonicalProject } from "../../src/lib/models/types";
 
 export interface CreateProjectPayload {
     name: string;
@@ -10,7 +10,10 @@ export interface CreateProjectModalProps {
     isOpen: boolean;
     onClose: () => void;
     // onCreate receives the form payload and, when available, the persisted `Project` returned by the server
-    onCreate: (payload: CreateProjectPayload, createdProject?: Project) => void;
+    onCreate: (
+        payload: CreateProjectPayload,
+        createdProject?: CanonicalProject,
+    ) => void;
     defaultName?: string;
     defaultType?: CreateProjectPayload["projectType"];
 }
@@ -144,7 +147,7 @@ export default function CreateProjectModal({
                 throw new Error(body?.error || `Status ${res.status}`);
             }
             const body = await res.json().catch(() => null);
-            const createdProject: Project | undefined = body?.project;
+            const createdProject: CanonicalProject | undefined = body?.project;
             // instrumentation: surface created project info to help trace
             // eslint-disable-next-line no-console
             console.debug("[INST] CreateProjectModal.onCreate", {
