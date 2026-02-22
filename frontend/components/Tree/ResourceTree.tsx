@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import type { Resource } from "../../lib/types";
+import type { AnyResource } from "../../src/lib/models/types";
 import { useAppSelector } from "../../src/store/hooks";
 import { selectProject } from "../../src/store/projectsSlice";
 import ResourceContextMenu, {
@@ -23,7 +23,7 @@ export interface ResourceTreeProps {
 
 /** Internal tree node used to build parent/child relationships for rendering. */
 type TreeNode = {
-    resource: Resource;
+    resource: AnyResource;
     children: TreeNode[];
 };
 
@@ -116,8 +116,8 @@ export default function ResourceTree({
 }: ResourceTreeProps) {
     // Read canonical project from Redux; enforce Redux-only source of truth.
     const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
-    const resourcesList: Resource[] =
-        (projectFromStore?.resources as unknown as Resource[]) ?? [];
+    const resourcesList: AnyResource[] =
+        (projectFromStore?.resources as unknown as AnyResource[]) ?? [];
 
     const [localOrder, setLocalOrder] = useState<string[]>(() =>
         resourcesList.map((r) => r.id),
@@ -155,7 +155,8 @@ export default function ResourceTree({
         orderedIds.forEach((id) => {
             const node = map.get(id);
             if (!node) return;
-            const parentId = node.resource.parentId;
+            const parentId =
+                (node.resource as any).parentId ?? node.resource.folderId;
             if (parentId && map.has(parentId)) {
                 map.get(parentId)!.children.push(node);
             } else {
@@ -274,7 +275,7 @@ export default function ResourceTree({
                             x: rectX,
                             y: rectY,
                             resourceId: node.resource.id,
-                            resourceTitle: node.resource.title,
+                            resourceTitle: node.resource.name,
                         });
                     }}
                 >
@@ -409,7 +410,7 @@ export default function ResourceTree({
                             onClick={() => onSelect?.(node.resource.id)}
                             className={`ml-1 truncate max-w-[200px] ${isSelected ? "font-semibold" : ""}`}
                         >
-                            {node.resource.title}
+                            {node.resource.name}
                         </span>
                     </button>
                 </div>
@@ -466,7 +467,7 @@ export default function ResourceTree({
                             Selected:{" "}
                             <span className="font-medium">
                                 {selectedResource
-                                    ? selectedResource.title
+                                    ? selectedResource.name
                                     : "None"}
                             </span>
                         </div>
