@@ -13,7 +13,7 @@ describe("OrganizerCard", () => {
         render(<OrganizerCard resource={res} showBody={true} />);
 
         expect(screen.getByText("Test Resource")).toBeTruthy();
-        expect(screen.getByText(/document/i)).toBeTruthy();
+        expect(screen.getByText(/text/i)).toBeTruthy();
         expect(screen.getByText(/Words:/i)).toHaveTextContent("42");
         expect(screen.getByText(/Status:/i)).toHaveTextContent("draft");
         // body/content should be visible

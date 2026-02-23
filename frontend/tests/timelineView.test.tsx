@@ -16,7 +16,7 @@ describe("TimelineView", () => {
 
         // Resource titles should appear
         project.resources.forEach((r) => {
-            expect(screen.getAllByText(r.title).length).toBeGreaterThanOrEqual(
+            expect(screen.getAllByText(r.name).length).toBeGreaterThanOrEqual(
                 1,
             );
         });

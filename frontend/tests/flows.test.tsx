@@ -13,19 +13,21 @@ import { sampleProjects } from "../lib/placeholders";
 describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
     it("navigates from Start to Edit view and shows word count for selected resource", async () => {
         const projects = sampleProjects(1);
-        const project = projects[0];
+        const wrapper = projects[0];
+        const project = wrapper.project;
+        const resources = wrapper.resources;
 
         // Test harness component that renders StartPage then ResourceTree+EditView
         function TestApp() {
             const [currentProject, setCurrentProject] = React.useState<
-                typeof project | null
+                typeof wrapper | null
             >(null);
             const [currentResourceId, setCurrentResourceId] = React.useState<
                 string | null
             >(null);
 
             const handleOpen = (id: string) => {
-                const p = projects.find((x) => x.id === id) ?? null;
+                const p = projects.find((x) => x.project.id === id) ?? null;
                 setCurrentProject(p);
                 setCurrentResourceId(null);
             };
@@ -43,8 +45,8 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                 if (currentProject) {
                     store.dispatch(
                         setProject({
-                            id: currentProject.id,
-                            name: currentProject.name,
+                            id: currentProject.project.id,
+                            name: currentProject.project.name,
                             resources: currentProject.resources,
                         }),
                     );
@@ -98,13 +100,13 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
         });
 
         // Click the first resource title
-        const firstResource = project.resources[0];
-        const resTitle = screen.getByText(firstResource.title);
+        const firstResource = resources[0];
+        const resTitle = screen.getByText(firstResource.name);
         fireEvent.click(resTitle);
 
         // The editor area should show word count matching the resource content
         // Compute expected word count using same logic as EditView
-        const text = firstResource.content
+        const text = (firstResource.plainText ?? firstResource.content ?? "")
             .replace(/<[^>]+>/g, " ")
             .replace(/\s+/g, " ")
             .trim();
