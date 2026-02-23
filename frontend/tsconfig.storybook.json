@@ -3,7 +3,11 @@
     "compilerOptions": {
         "noEmit": true,
         "skipLibCheck": true,
-        "types": ["node", "react"]
+        "types": ["node", "react"],
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["./*"]
+        }
     },
     "include": [
         "stories/**/*.ts",

@@ -2,18 +2,18 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import CreateResourceModal from "../components/Tree/CreateResourceModal";
-import type { Resource } from "../lib/types";
+import type { AnyResource } from "../src/lib/models/types";
 
 describe("CreateResourceModal", () => {
     it("calls onCreate with entered title and type", () => {
         const onCreate = vi.fn();
         const onClose = vi.fn();
 
-        const parents: Resource[] = [
+        const parents: AnyResource[] = [
             {
                 id: "parent_1",
-                projectId: "p",
-                parentId: undefined,
+                name: "Folder A",
+                // legacy helpers sometimes expect `title`; include for compatibility
                 title: "Folder A",
                 type: "folder",
                 createdAt: "",
@@ -22,8 +22,7 @@ describe("CreateResourceModal", () => {
             },
             {
                 id: "parent_2",
-                projectId: "p",
-                parentId: undefined,
+                name: "Folder B",
                 title: "Folder B",
                 type: "folder",
                 createdAt: "",

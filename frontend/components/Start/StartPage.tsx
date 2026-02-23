@@ -3,6 +3,7 @@ import type {
     Project as CanonicalProject,
     AnyResource,
     Folder,
+    TextResource,
 } from "../../src/lib/models/types";
 import { sampleProjects, createProject } from "../../lib/placeholders";
 import { buildProjectView } from "../../src/lib/models/project-view";
@@ -41,7 +42,9 @@ export default function StartPage({
             buildProjectView({
                 project: p.project as any,
                 folders: p.folders ?? [],
-                resources: p.resources ?? [],
+                resources: (p.resources ?? []).filter(
+                    (r): r is TextResource => r.type === "text",
+                ),
             }),
         );
     }, [localProjects]);

@@ -5,27 +5,28 @@ import ResourceTree from "../components/Tree/ResourceTree";
 import ClientProvider from "../src/store/ClientProvider";
 import { setProject } from "../src/store/projectsSlice";
 import store from "../src/store/store";
-import type { Resource } from "../lib/types";
+import type { AnyResource } from "../src/lib/models/types";
 
 describe("ResourceTree context menu", () => {
     it("forwards context menu actions to onResourceAction", async () => {
         const now = new Date().toISOString();
-        const resources: Resource[] = [
+        const resources: AnyResource[] = [
             {
                 id: "root",
-                projectId: "proj_1",
+                name: "Root",
                 title: "Root",
-                type: "folder",
+                type: "text",
                 createdAt: now,
                 updatedAt: now,
                 metadata: {},
             },
             {
                 id: "scene_a",
-                projectId: "proj_1",
-                parentId: "root",
+                name: "Scene A",
                 title: "Scene A",
-                type: "scene",
+                parentId: "root",
+                type: "text",
+                plainText: "Hello",
                 content: "Hello",
                 createdAt: now,
                 updatedAt: now,
@@ -34,7 +35,9 @@ describe("ResourceTree context menu", () => {
         ];
 
         const onResourceAction = vi.fn();
-        store.dispatch(setProject({ id: "proj_1", name: "proj_1", resources }));
+        store.dispatch(
+            setProject({ id: "proj_1", name: "proj_1", resources } as any),
+        );
         render(
             <ClientProvider>
                 <ResourceTree

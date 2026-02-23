@@ -32,7 +32,10 @@ export default function TipTapEditor({
         if (!editor) return;
         const current = editor.getHTML();
         if (value !== current) {
-            editor.commands.setContent(value || "", false);
+            // Use a minimal, explicit cast to satisfy the Tiptap typing
+            // while preserving the previous behaviour (no-emitted update).
+            // TODO: refine to the precise options type when migrating tiptap types.
+            editor.commands.setContent(value || "", false as any);
         }
     }, [value, editor]);
 

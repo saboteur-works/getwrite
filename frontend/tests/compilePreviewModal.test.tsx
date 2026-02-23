@@ -2,18 +2,19 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import CompilePreviewModal from "../components/common/CompilePreviewModal";
-import type { Resource } from "../lib/types";
+import type { AnyResource } from "../src/lib/models/types";
 
 describe("CompilePreviewModal", () => {
     it("renders preview and calls onConfirm", () => {
         const onConfirm = vi.fn();
         const onClose = vi.fn();
 
-        const resource: Resource = {
+        const resource: AnyResource = {
             id: "r1",
-            projectId: "p1",
+            name: "Test Doc",
             title: "Test Doc",
-            type: "document",
+            type: "text",
+            plainText: "",
             createdAt: "",
             updatedAt: "",
             metadata: {},

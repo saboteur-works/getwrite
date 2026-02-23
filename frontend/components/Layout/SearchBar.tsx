@@ -106,7 +106,7 @@ export default function SearchBar({
         } else if (e.key === "Enter") {
             const r = results[highlight];
             if (r) {
-                onSelect?.(r.id);
+                onSelect?.(r.resource.id);
                 setOpen(false);
                 setQuery("");
             }

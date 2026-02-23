@@ -29,7 +29,9 @@ export const Default: Story = {
                             >
                                 <div className="font-medium">{p.name}</div>
                                 <div className="text-xs text-slate-600 mt-1">
-                                    {p.description}
+                                    {typeof p.metadata?.description === "string"
+                                        ? p.metadata?.description
+                                        : ""}
                                 </div>
                             </div>
                         ))}

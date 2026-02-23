@@ -39,7 +39,7 @@ export const Open: Story = {
 };
 
 export const Interactive: Story = {
-    render: (args) => {
+    render: (args: React.ComponentProps<typeof ResourceContextMenu>) => {
         const Wrapper = () => {
             const [open, setOpen] = React.useState(true);
             const [lastAction, setLastAction] = React.useState<string | null>(
@@ -54,9 +54,7 @@ export const Interactive: Story = {
                         {...args}
                         open={open}
                         onClose={() => setOpen(false)}
-                        onAction={(action: any) =>
-                            setLastAction(String(action))
-                        }
+                        onAction={(action: string) => setLastAction(action)}
                     />
                     {/* test probe: expose last action to story DOM only */}
                     <div
@@ -72,8 +70,8 @@ export const Interactive: Story = {
 
         return <Wrapper />;
     },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
+    play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+        const canvas = within(canvasElement as HTMLElement);
         const menu = await canvas.getByRole("menu");
         expect(menu).toBeTruthy();
 

@@ -27,7 +27,8 @@ export default function DataView({
     className = "",
 }: DataViewProps): JSX.Element {
     const effectiveProject = React.useMemo(
-        () => view?.project ?? project ?? createProject("Sample Project"),
+        () =>
+            view?.project ?? project ?? createProject("Sample Project").project,
         [view, project],
     );
 
@@ -35,8 +36,10 @@ export default function DataView({
         if (resources) return resources;
         if (view && view.resources) return view.resources;
         if (projects && projects.length > 0)
-            return projects.flatMap((p) => p.resources as AnyResource[]);
-        return effectiveProject.resources;
+            return projects.flatMap(
+                (p) => (p as any).resources as AnyResource[],
+            );
+        return (effectiveProject as any).resources ?? [];
     }, [resources, view, projects, effectiveProject]);
 
     const totalResources = flatResources.length;

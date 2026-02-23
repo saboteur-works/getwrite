@@ -211,7 +211,7 @@ export default function CreateProjectModal({
                         disabled={
                             creating ||
                             loadingTypes ||
-                            (types && types.length === 0)
+                            (Array.isArray(types) && types.length === 0)
                         }
                     >
                         {loadingTypes ? (

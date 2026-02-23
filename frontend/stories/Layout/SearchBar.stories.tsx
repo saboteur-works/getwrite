@@ -2,9 +2,9 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import SearchBar from "../../components/Layout/SearchBar";
 import { sampleProjects } from "../../lib/placeholders";
-import type { Resource } from "../../lib/types";
+import type { AnyResource } from "../../src/lib/models/types";
 
-const resources: Resource[] = sampleProjects(1)[0].resources;
+const resources: AnyResource[] = sampleProjects(1)[0].resources;
 
 const meta: Meta<typeof SearchBar> = {
     title: "Layout/SearchBar",
@@ -34,7 +34,7 @@ export const WithResults: Story = {
 };
 
 export const Interactive: Story = {
-    render: (args) => {
+    render: (args: React.ComponentProps<typeof SearchBar>) => {
         const Wrapper = () => {
             const [selected, setSelected] = React.useState<string | null>(null);
             return (

@@ -19,7 +19,7 @@ export const Default: Story = {
     args: {
         resources: sample,
         showBody: true,
-        onToggleBody: (s) => console.log("toggle body", s),
+        onToggleBody: (s: boolean) => console.log("toggle body", s),
     },
 };
 
