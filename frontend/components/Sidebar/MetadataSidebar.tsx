@@ -1,12 +1,12 @@
 import React from "react";
-import type { Resource } from "../../lib/types";
+import type { AnyResource } from "../../src/lib/models/types";
 import NotesInput from "./controls/NotesInput";
 import StatusSelector from "./controls/StatusSelector";
 import MultiSelectList from "./controls/MultiSelectList";
 import POVAutocomplete from "./controls/POVAutocomplete";
 
 export interface MetadataSidebarProps {
-    resource?: Resource;
+    resource?: AnyResource;
     onChangeNotes?: (text: string) => void;
     onChangeStatus?: (status: string) => void;
     onChangeCharacters?: (chars: string[]) => void;
@@ -26,30 +26,32 @@ export default function MetadataSidebar({
     onChangePOV,
     className = "",
 }: MetadataSidebarProps): JSX.Element {
-    const [notes, setNotes] = React.useState(resource?.metadata?.notes ?? "");
-    const [status, setStatus] = React.useState(
-        (resource?.metadata?.status as string) ?? "draft",
+    const [notes, setNotes] = React.useState<string>(
+        (resource?.metadata?.notes as any) ?? "",
+    );
+    const [status, setStatus] = React.useState<string>(
+        (resource?.metadata?.status as any) ?? "draft",
     );
     const [characters, setCharacters] = React.useState<string[]>(
-        resource?.metadata?.characters ?? [],
+        (resource?.metadata?.characters as any) ?? [],
     );
     const [locations, setLocations] = React.useState<string[]>(
-        resource?.metadata?.locations ?? [],
+        (resource?.metadata?.locations as any) ?? [],
     );
     const [items, setItems] = React.useState<string[]>(
-        resource?.metadata?.items ?? [],
+        (resource?.metadata?.items as any) ?? [],
     );
     const [pov, setPOV] = React.useState<string | null>(
-        resource?.metadata?.pov ?? null,
+        (resource?.metadata?.pov as any) ?? null,
     );
 
     React.useEffect(() => {
-        setNotes(resource?.metadata?.notes ?? "");
-        setStatus((resource?.metadata?.status as string) ?? "draft");
-        setCharacters(resource?.metadata?.characters ?? []);
-        setLocations(resource?.metadata?.locations ?? []);
-        setItems(resource?.metadata?.items ?? []);
-        setPOV(resource?.metadata?.pov ?? null);
+        setNotes((resource?.metadata?.notes as any) ?? "");
+        setStatus((resource?.metadata?.status as any) ?? "draft");
+        setCharacters((resource?.metadata?.characters as any) ?? []);
+        setLocations((resource?.metadata?.locations as any) ?? []);
+        setItems((resource?.metadata?.items as any) ?? []);
+        setPOV((resource?.metadata?.pov as any) ?? null);
     }, [resource]);
 
     // Fallback sample lists when metadata arrays are empty

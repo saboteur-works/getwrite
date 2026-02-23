@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { Resource } from "../../lib/types";
+import type { AnyResource } from "../../src/lib/models/types";
 
 export interface SearchBarProps {
-    resources?: Resource[];
+    resources?: AnyResource[];
     placeholder?: string;
     onSelect?: (id: string) => void;
 }
@@ -61,11 +61,12 @@ export default function SearchBar({
     const results = query
         ? (resources
               .map((r) => {
-                  const match = fuzzyMatch(query, r.title);
+                  const title = (r as any).name ?? (r as any).title ?? "";
+                  const match = fuzzyMatch(query, title);
                   return match ? { resource: r, match } : null;
               })
               .filter(Boolean) as {
-              resource: Resource;
+              resource: AnyResource;
               match: { score: number; indices: number[] };
           }[])
         : [];
@@ -74,7 +75,9 @@ export default function SearchBar({
     results.sort((a, b) => {
         if (b.match.score !== a.match.score)
             return b.match.score - a.match.score;
-        return a.resource.title.localeCompare(b.resource.title);
+        const ta = (a.resource as any).name ?? (a.resource as any).title ?? "";
+        const tb = (b.resource as any).name ?? (b.resource as any).title ?? "";
+        return ta.localeCompare(tb);
     });
 
     useEffect(() => {
@@ -168,7 +171,9 @@ export default function SearchBar({
                                 className={`w-full text-left px-3 py-2 hover:bg-slate-100 ${i === highlight ? "bg-slate-100" : ""}`}
                             >
                                 {renderHighlighted(
-                                    resource.title,
+                                    (resource as any).name ??
+                                        (resource as any).title ??
+                                        resource.id,
                                     match.indices,
                                 )}
                             </button>
