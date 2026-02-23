@@ -129,8 +129,28 @@ export const selectProject = (
 ): StoredProject | null => {
     const raw = state?.projects?.projects?.[projectId] ?? null;
     if (!raw) return null;
-    return normalizeStoredProject(raw);
+    // Memoize normalized results per projectId to avoid allocating a new
+    // normalized object on every selector call which can trigger
+    // unnecessary re-renders and effect loops in components consuming
+    // the selector (e.g., ResourceTree). Use the raw stored project
+    // reference as the cache key so cached results are reused until the
+    // stored project reference changes.
+    // NOTE: keep this cache conservative and per-process; it does not
+    // attempt to detect deep equality — replacing the stored project in
+    // the Redux state (the common case when mutating) will update the
+    // raw reference and refresh the cache entry.
+    const existing = selectProjectCache.get(projectId);
+    if (existing && existing.raw === raw) return existing.result;
+    const result = normalizeStoredProject(raw);
+    selectProjectCache.set(projectId, { raw, result });
+    return result;
 };
+
+// Simple per-project cache to avoid repeated normalization allocations.
+const selectProjectCache: Map<
+    string,
+    { raw: any; result: StoredProject | null }
+> = new Map();
 
 export const selectSelectedProjectId = (state: any): string | null => {
     return state?.projects?.selectedProjectId ?? null;

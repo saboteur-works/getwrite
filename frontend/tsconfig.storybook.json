@@ -8,6 +8,8 @@
     "include": [
         "stories/**/*.ts",
         "stories/**/*.tsx",
+        "components/**/*.ts",
+        "components/**/*.tsx",
         "src/types/**/*.d.ts",
         "e2e/**/*.ts",
         "e2e/**/*.tsx"

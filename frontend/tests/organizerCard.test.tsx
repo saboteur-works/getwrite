@@ -7,8 +7,8 @@ import { createResource } from "../lib/placeholders";
 describe("OrganizerCard", () => {
     it("renders title, type, date, body and metadata when showBody is true", () => {
         const res = createResource("Test Resource", "document");
-        res.metadata.wordCount = 42;
-        res.metadata.status = "draft";
+        (res.metadata as any).wordCount = 42;
+        (res.metadata as any).status = "draft";
 
         render(<OrganizerCard resource={res} showBody={true} />);
 

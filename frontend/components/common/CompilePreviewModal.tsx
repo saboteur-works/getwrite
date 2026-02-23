@@ -3,8 +3,9 @@ import type { AnyResource } from "../../src/lib/models/types";
 
 export interface CompilePreviewModalProps {
     isOpen: boolean;
-    projectId: string;
+    projectId?: string;
     resources?: AnyResource[];
+    preview?: string;
     onClose?: () => void;
     /** Called with selected resource ids to include in the package. */
     onConfirmCompile?: (selectedIds: string[]) => void;
@@ -42,6 +43,15 @@ export default function CompilePreviewModal(
     );
     const [preview, setPreview] = useState<string>("");
 
+    // If a preview prop is supplied (from callers like AppShell), use it
+    // as the initial/controlled preview state so older callers that pass
+    // a generated preview string render correctly.
+    useEffect(() => {
+        if (typeof props.preview === "string") {
+            setPreview(props.preview);
+        }
+    }, [props.preview]);
+
     // Backwards compatible: if a single `resource` prop was provided by older
     // callers, pre-select it and generate a preview automatically.
     useEffect(() => {
@@ -63,7 +73,7 @@ export default function CompilePreviewModal(
             setSelectedIds([resource.id]);
             const rtitle =
                 (resource as any).title ?? resource.name ?? "Untitled";
-            const text = `Compiled package for project ${projectId}\n\nIncluded resources:\n- ${rtitle} (${resource.type})`;
+            const text = `Compiled package for project ${projectId ?? "(unknown project)"}\n\nIncluded resources:\n- ${rtitle} (${resource.type})`;
             setPreview(text);
         }
     }, [isOpen, resource, projectId]);
@@ -108,7 +118,7 @@ export default function CompilePreviewModal(
         }
 
         const included = resources.filter((r) => ids.includes(r.id));
-        const text = `Compiled package for project ${projectId}\n\nIncluded resources:\n${included
+        const text = `Compiled package for project ${projectId ?? "(unknown project)"}\n\nIncluded resources:\n${included
             .map((r) => {
                 const rtitle = (r as any).title ?? r.name ?? "Untitled";
                 return `- ${rtitle} (${r.type})`;

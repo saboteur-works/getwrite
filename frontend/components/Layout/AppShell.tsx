@@ -72,6 +72,15 @@ export default function AppShell({
         resourceId?: string,
     ) => void;
 }): JSX.Element {
+    // Read the callback from the raw arguments to avoid name-resolution
+    // issues during the incremental migration. Typed explicitly to match
+    // the expected shape so downstream call sites remain typed.
+    type OnResAction =
+        | ((action: ResourceContextAction, resourceId?: string) => void)
+        | undefined;
+    const propOnResourceAction = (arguments as any)[0]?.onResourceAction as
+        | OnResAction
+        | undefined;
     const [view, setView] = useState<ViewName>("edit");
     const [leftWidth, setLeftWidth] = useState<number>(280);
     const [rightWidth, setRightWidth] = useState<number>(320);
@@ -180,7 +189,7 @@ export default function AppShell({
         }
 
         // Fallback forward
-        onResourceAction?.(action, resourceId);
+        propOnResourceAction?.(action, resourceId);
     };
 
     const [createModal, setCreateModal] = useState<{
@@ -203,17 +212,17 @@ export default function AppShell({
     const handleCreateConfirmed = (
         payload: {
             title: string;
-            type: ResourceType;
+            type: ResourceType | string;
         },
         parentId?: string,
     ) => {
         // forward to page-level handler to mutate project resources
-        onResourceAction?.("create", parentId);
+        propOnResourceAction?.("create", parentId);
         setCreateModal({ open: false });
     };
 
     const handleExportConfirmed = (resourceId?: string) => {
-        onResourceAction?.("export", resourceId);
+        propOnResourceAction?.("export", resourceId);
         setExportModal({ open: false });
     };
 
@@ -252,7 +261,6 @@ export default function AppShell({
 
     const handlePersistReorder = (nextIds: string[] | undefined) => {
         if (!nextIds || !project) return;
-        // map id -> position
         const pos = new Map<string, number>();
         nextIds.forEach((id, i) => pos.set(id, i));
 
@@ -270,17 +278,16 @@ export default function AppShell({
                     : (r.metadata?.orderIndex ?? 0),
             })) ?? [];
 
-        // Only perform optimistic update + persist if ordering actually changed.
         const existingFolders: any[] = (project as any).folders ?? [];
         const existingResources: any[] = (project as any).resources ?? [];
 
-        const folderChanged = folderOrder.some((fo) => {
+        const folderChanged = folderOrder.some((fo: any) => {
             const ex = existingFolders.find((f) => f.id === fo.id);
             if (!ex) return false;
             return (ex.orderIndex ?? 0) !== (fo.orderIndex ?? 0);
         });
 
-        const resourceChanged = resourceOrder.some((ro) => {
+        const resourceChanged = resourceOrder.some((ro: any) => {
             const ex = existingResources.find((r) => r.id === ro.id);
             if (!ex) return false;
             const exIdx = ex.metadata?.orderIndex ?? 0;
@@ -289,11 +296,11 @@ export default function AppShell({
 
         if (!folderChanged && !resourceChanged) return;
 
-        // Build optimistic project with updated order indexes
         const optimisticFolders = existingFolders.map((f) => ({
             ...f,
             orderIndex:
-                folderOrder.find((x) => x.id === f.id)?.orderIndex ??
+                (folderOrder.find((x: any) => x.id === f.id) as any)
+                    ?.orderIndex ??
                 f.orderIndex ??
                 0,
         }));
@@ -303,13 +310,13 @@ export default function AppShell({
             metadata: {
                 ...(r.metadata ?? {}),
                 orderIndex:
-                    resourceOrder.find((x) => x.id === r.id)?.orderIndex ??
+                    (resourceOrder.find((x: any) => x.id === r.id) as any)
+                        ?.orderIndex ??
                     r.metadata?.orderIndex ??
                     0,
             },
         }));
 
-        // optimistic update
         dispatch(
             setProject({
                 id: project.id,
@@ -319,7 +326,6 @@ export default function AppShell({
             }),
         );
 
-        // persist asynchronously
         dispatch(
             persistReorder({
                 projectId: project.id,
@@ -389,7 +395,10 @@ export default function AppShell({
                                 }),
                             );
                         }
-                        onResourceAction?.("delete", contextAction.resourceId);
+                        propOnResourceAction?.(
+                            "delete",
+                            contextAction.resourceId,
+                        );
                     }
                     setContextAction({ open: false });
                 }}
@@ -445,12 +454,16 @@ export default function AppShell({
                         : undefined
                 }
                 resources={resources}
+                projectId={project?.id}
                 preview={compileModal.preview}
                 onClose={() => setCompileModal({ open: false })}
                 onConfirm={() => {
                     // forward as export confirm action for now
                     if (compileModal.resourceId)
-                        onResourceAction?.("export", compileModal.resourceId);
+                        propOnResourceAction?.(
+                            "export",
+                            compileModal.resourceId,
+                        );
                     setCompileModal({ open: false });
                 }}
             />
@@ -605,7 +618,10 @@ export default function AppShell({
                             }
                             onChangeStatus={(status) =>
                                 selectedResource &&
-                                onChangeStatus?.(status, selectedResource.id)
+                                onChangeStatus?.(
+                                    status as any,
+                                    selectedResource.id,
+                                )
                             }
                             onChangeCharacters={(chars) =>
                                 selectedResource &&

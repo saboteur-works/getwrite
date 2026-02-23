@@ -17,7 +17,6 @@ export interface EditViewProps {
  */
 export default function EditView({
     initialContent = "",
-    apiKey,
     onChange,
 }: EditViewProps): JSX.Element {
     const [content, setContent] = React.useState<string>(initialContent);
