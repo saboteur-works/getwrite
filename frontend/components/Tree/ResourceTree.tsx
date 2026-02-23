@@ -275,7 +275,9 @@ export default function ResourceTree({
                             x: rectX,
                             y: rectY,
                             resourceId: node.resource.id,
-                            resourceTitle: node.resource.name,
+                            resourceTitle:
+                                node.resource.name ??
+                                (node.resource as any).title,
                         });
                     }}
                 >
@@ -406,7 +408,7 @@ export default function ResourceTree({
                             onClick={() => onSelect?.(node.resource.id)}
                             className={`ml-1 truncate max-w-[200px] ${isSelected ? "font-semibold" : ""}`}
                         >
-                            {node.resource.name}
+                            {node.resource.name ?? (node.resource as any).title}
                         </span>
                     </button>
                 </div>
@@ -463,7 +465,8 @@ export default function ResourceTree({
                             Selected:{" "}
                             <span className="font-medium">
                                 {selectedResource
-                                    ? selectedResource.name
+                                    ? (selectedResource.name ??
+                                      (selectedResource as any).title)
                                     : "None"}
                             </span>
                         </div>

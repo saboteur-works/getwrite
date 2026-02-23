@@ -1,6 +1,9 @@
 import React from "react";
-import type { Project, Resource } from "../../lib/types";
-import { createProject } from "../../lib/placeholders";
+import type {
+    Project as CanonicalProject,
+    AnyResource,
+} from "../../src/lib/models/types";
+import { createProject as createPlaceholderProject } from "../../lib/placeholders";
 
 export interface TimelineViewProps {
     /** Single project to scope timeline (required) */
@@ -10,7 +13,7 @@ export interface TimelineViewProps {
     className?: string;
 }
 
-function groupByDate(resources: Resource[]) {
+function groupByDate(resources: AnyResource[]) {
     const dated: Record<string, Resource[]> = {};
     const undated: Resource[] = [];
     resources.forEach((r) => {
@@ -32,14 +35,23 @@ export default function TimelineView({
     view,
     className = "",
 }: TimelineViewProps) {
-    const effectiveProject = React.useMemo(
-        () => view?.project ?? project ?? createProject("Sample Project"),
-        [view, project],
-    );
-    const resources = React.useMemo(
-        () => view?.resources ?? effectiveProject.resources,
-        [view, effectiveProject],
-    );
+    // `project` may be either a canonical `Project` or a placeholder wrapper
+    // `{ project, resources, folders }`. Normalise to a canonical `project` and
+    // a resource list that uses canonical fields.
+    const effectiveProjectCanonical = React.useMemo<CanonicalProject>(() => {
+        const p =
+            (view as any)?.project ??
+            project ??
+            createPlaceholderProject("Sample Project");
+        return p.project ? p.project : p;
+    }, [view, project]);
+
+    const resources = React.useMemo<AnyResource[]>(() => {
+        if (view && (view as any).resources) return (view as any).resources;
+        if (project && (project as any).resources)
+            return (project as any).resources;
+        return effectiveProjectCanonical.resources ?? [];
+    }, [view, project, effectiveProjectCanonical]);
 
     const { dates, dated, undated } = React.useMemo(
         () => groupByDate(resources),
@@ -65,7 +77,7 @@ export default function TimelineView({
                                     className="p-2 rounded hover:bg-slate-50"
                                 >
                                     <div className="font-medium text-sm">
-                                        {r.title}
+                                        {r.name ?? (r as any).title}
                                     </div>
                                     <div className="text-xs text-slate-500">
                                         {r.type}
@@ -86,7 +98,7 @@ export default function TimelineView({
                                     className="p-2 rounded hover:bg-slate-50"
                                 >
                                     <div className="font-medium text-sm">
-                                        {r.title}
+                                        {r.name ?? (r as any).title}
                                     </div>
                                     <div className="text-xs text-slate-500">
                                         {r.type}
