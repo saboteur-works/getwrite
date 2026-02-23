@@ -1,7 +1,11 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
-import type { Resource, ViewName } from "../../lib/types";
-import type { Project as CanonicalProject } from "../../src/lib/models/types";
+import type {
+    AnyResource,
+    ViewName,
+    Project as CanonicalProject,
+    ResourceType,
+} from "../../src/lib/models/types";
 import { buildProjectView } from "../../src/lib/models/project-view";
 import { useDispatch } from "react-redux";
 import {
@@ -50,7 +54,7 @@ export default function AppShell({
 }: {
     children?: React.ReactNode;
     showSidebars?: boolean;
-    resources?: Resource[];
+    resources?: AnyResource[];
     project?: CanonicalProject | null;
     onResourceSelect?: (id: string) => void;
     selectedResourceId?: string | null;
@@ -121,6 +125,12 @@ export default function AppShell({
         selectedResourceId && resources
             ? resources.find((r) => r.id === selectedResourceId)
             : undefined;
+
+    const getResourceName = (r: AnyResource | any) =>
+        (r && ((r as any).name ?? (r as any).title ?? "")) || "";
+
+    const getResourceContent = (r: AnyResource | any) =>
+        (r && ((r as any).plainText ?? (r as any).content ?? "")) || "";
 
     const [contextAction, setContextAction] = useState<{
         open: boolean;
@@ -193,7 +203,7 @@ export default function AppShell({
     const handleCreateConfirmed = (
         payload: {
             title: string;
-            type: import("../../lib/types").ResourceType;
+            type: ResourceType;
         },
         parentId?: string,
     ) => {
@@ -413,7 +423,7 @@ export default function AppShell({
                           )
                         : undefined;
                     const preview = r
-                        ? `Compiled package for ${r.title}\n\n` +
+                        ? `Compiled package for ${getResourceName(r)}\n\n` +
                           JSON.stringify(r, null, 2)
                         : `Compiled project bundle\n\n` +
                           JSON.stringify(resources ?? [], null, 2);
@@ -508,18 +518,18 @@ export default function AppShell({
                                       case "edit":
                                           return (
                                               <EditView
-                                                  initialContent={
-                                                      selected.content
-                                                  }
+                                                  initialContent={getResourceContent(
+                                                      selected,
+                                                  )}
                                               />
                                           );
                                       case "diff":
                                           return (
                                               <DiffView
                                                   leftContent=""
-                                                  rightContent={
-                                                      selected.content
-                                                  }
+                                                  rightContent={getResourceContent(
+                                                      selected,
+                                                  )}
                                               />
                                           );
                                       case "organizer":

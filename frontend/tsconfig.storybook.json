@@ -3,11 +3,12 @@
     "compilerOptions": {
         "noEmit": true,
         "skipLibCheck": true,
-        "types": ["node"]
+        "types": ["node", "react"]
     },
     "include": [
         "stories/**/*.ts",
         "stories/**/*.tsx",
+        "src/types/**/*.d.ts",
         "e2e/**/*.ts",
         "e2e/**/*.tsx"
     ],

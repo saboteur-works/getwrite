@@ -1,10 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import ConfirmDialog from "../common/ConfirmDialog";
-import type { ResourceType, Resource } from "../../lib/types";
+import type {
+    AnyResource,
+    ResourceType as CanonicalResourceType,
+} from "../../src/lib/models/types";
+
+type ResourceType = CanonicalResourceType | string;
 
 export interface CreateResourcePayload {
     title: string;
-    type: ResourceType;
+    type: CanonicalResourceType | string;
 }
 
 export interface CreateResourceModalProps {
@@ -13,7 +18,7 @@ export interface CreateResourceModalProps {
     initialType?: ResourceType;
     parentId?: string;
     /** Available parent folders to place the new resource under (optional) */
-    parents?: Resource[];
+    parents?: AnyResource[];
     onClose?: () => void;
     onCreate?: (payload: CreateResourcePayload, parentId?: string) => void;
 }
@@ -24,14 +29,14 @@ export interface CreateResourceModalProps {
 export default function CreateResourceModal({
     isOpen,
     initialTitle = "",
-    initialType = "document",
+    initialType = "",
     parentId,
     parents = [],
     onClose,
     onCreate,
 }: CreateResourceModalProps): JSX.Element | null {
     const [title, setTitle] = useState<string>(initialTitle);
-    const [type, setType] = useState<ResourceType>(initialType);
+    const [type, setType] = useState<ResourceType>(initialType as ResourceType);
     const [selectedParent, setSelectedParent] = useState<string | undefined>(
         parentId,
     );
@@ -113,10 +118,12 @@ export default function CreateResourceModal({
                     >
                         <option value="">(root)</option>
                         {parents
-                            .filter((p) => p.type === "folder")
-                            .map((p) => (
+                            .filter((p: any) => (p as any).type === "folder")
+                            .map((p: any) => (
                                 <option key={p.id} value={p.id}>
-                                    {p.title}
+                                    {(p as any).name ??
+                                        (p as any).title ??
+                                        p.id}
                                 </option>
                             ))}
                     </select>
