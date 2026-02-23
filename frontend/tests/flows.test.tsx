@@ -59,12 +59,12 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                         <StartPage projects={projects} onOpen={handleOpen} />
                     ) : (
                         <div>
-                            <h2>Project: {currentProject.name}</h2>
+                            <h2>Project: {currentProject.project.name}</h2>
                             {/* register project in store and render ResourceTree via projectId */}
                             {/* project registered in store via effect above */}
                             <ClientProvider>
                                 <ResourceTree
-                                    projectId={currentProject.id}
+                                    projectId={currentProject.project.id}
                                     onSelect={handleSelect}
                                 />
                             </ClientProvider>
@@ -73,7 +73,9 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                                 {currentResource ? (
                                     <EditView
                                         initialContent={
-                                            currentResource.content ?? ""
+                                            (currentResource.plainText ??
+                                                currentResource.content ??
+                                                "") as string
                                         }
                                     />
                                 ) : null}

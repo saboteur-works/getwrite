@@ -62,7 +62,7 @@ export default function TimelineView({
         <div className={`p-4 ${className}`}>
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">
-                    Timeline — {effectiveProject.name}
+                    Timeline — {effectiveProjectCanonical.name}
                 </h2>
             </div>
 

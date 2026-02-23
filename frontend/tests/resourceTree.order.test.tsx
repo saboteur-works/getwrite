@@ -53,7 +53,7 @@ describe("ResourceTree ordering and defaults", () => {
         );
 
         // The scaffolder creates top-level folders (e.g. "Workspace"); expand the first folder
-        const rootNode = screen.getByText(project.resources[0].name);
+        const rootNode = screen.getByText(project.resources[0].title);
         const rootBtn = rootNode.closest("button");
         expect(rootBtn).toBeTruthy();
         fireEvent.click(rootBtn as HTMLElement);
@@ -78,6 +78,6 @@ describe("ResourceTree ordering and defaults", () => {
         // The very first visible treeitem should correspond to the first resource
         const first = treeItems[0];
         expect(first.tabIndex).toBe(0);
-        expect(first.textContent).toContain(project.resources[0].name);
+        expect(first.textContent).toContain(project.resources[0].title);
     });
 });
