@@ -238,12 +238,6 @@ export default function AppShell({
     const _prevProjectId = React.useRef<string | undefined | null>(undefined);
     useEffect(() => {
         if (_prevProjectId.current !== project?.id) {
-            // eslint-disable-next-line no-console
-            console.debug("[INST] AppShell project changed", {
-                from: _prevProjectId.current,
-                to: project?.id,
-                at: new Date().toISOString(),
-            });
             _prevProjectId.current = project?.id;
         }
     }, [project?.id]);

@@ -130,7 +130,6 @@ export default function ResourceTree({
         combined.map((r) => r.id),
     );
 
-    console.log("ResourceTree combined test", combined);
     const [contextMenu, setContextMenu] = useState<{
         open: boolean;
         x: number;

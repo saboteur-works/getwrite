@@ -66,7 +66,6 @@ export default function StartPage({
         },
     ): void => {
         const newProject = createProject(payload.name);
-        console.log(projectFiles);
         setLocalProjects((prev) => [newProject, ...prev]);
         if (onCreate) {
             onCreate(projectFiles);
