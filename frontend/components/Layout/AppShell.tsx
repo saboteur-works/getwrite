@@ -5,6 +5,7 @@ import type {
     ViewName,
     Project as CanonicalProject,
     ResourceType,
+    Folder,
 } from "../../src/lib/models/types";
 import { buildProjectView } from "../../src/lib/models/project-view";
 import { useDispatch } from "react-redux";
@@ -42,6 +43,7 @@ export default function AppShell({
     children,
     showSidebars = true,
     resources,
+    folders,
     onResourceSelect,
     selectedResourceId,
     onChangeNotes,
@@ -55,7 +57,9 @@ export default function AppShell({
     children?: React.ReactNode;
     showSidebars?: boolean;
     resources?: AnyResource[];
+    folders?: Folder[];
     project?: CanonicalProject | null;
+
     onResourceSelect?: (id: string) => void;
     selectedResourceId?: string | null;
     onChangeNotes?: (text: string, resourceId: string) => void;
@@ -90,6 +94,9 @@ export default function AppShell({
         startX: number;
         startWidth: number;
     }>(null);
+    const combined = React.useMemo(() => {
+        return [...(resources ?? []), ...(folders ?? [])];
+    }, [resources, folders]);
 
     useEffect(() => {
         const onMouseMove = (e: MouseEvent) => {
@@ -341,15 +348,7 @@ export default function AppShell({
                             />
                         ) : (
                             <div className="space-y-2">
-                                <div className="px-3 py-2 rounded-md hover:bg-slate-100">
-                                    Project A
-                                </div>
-                                <div className="px-3 py-2 rounded-md hover:bg-slate-100">
-                                    Project B
-                                </div>
-                                <div className="px-3 py-2 rounded-md hover:bg-slate-100">
-                                    Project C
-                                </div>
+                                <p>Loading Resource Tree</p>
                             </div>
                         )}
                     </div>
@@ -475,28 +474,43 @@ export default function AppShell({
 
             <main className="flex-1 p-4 md:p-6">
                 {resources ? (
-                    <div className="w-full mb-4 flex items-center justify-between gap-4">
-                        <ViewSwitcher
-                            view={view}
-                            onChange={setView}
-                            disabledViews={
-                                selectedResourceId ? [] : ["edit", "diff"]
-                            }
-                        />
-                        <div style={{ width: 320 }}>
-                            <SearchBar
-                                resources={resources}
-                                onSelect={(id) => onResourceSelect?.(id)}
+                    <div className="w-full">
+                        <div className="w-full mb-4 flex items-center justify-between gap-4">
+                            <ViewSwitcher
+                                view={view}
+                                onChange={setView}
+                                disabledViews={
+                                    selectedResourceId ? [] : ["edit", "diff"]
+                                }
                             />
+                            <div style={{ width: 320 }}>
+                                <SearchBar
+                                    resources={resources}
+                                    onSelect={(id) => onResourceSelect?.(id)}
+                                />
+                            </div>
                         </div>
+                        {(() => {
+                            const selected = combined.find(
+                                (r) => r.id === selectedResourceId,
+                            );
+
+                            if (selected) {
+                                return (
+                                    <div className="text-lg font-bold">
+                                        {selected.name}
+                                    </div>
+                                );
+                            }
+                        })()}
                     </div>
                 ) : null}
                 <div className="max-w-7xl mx-auto">
                     <div className="bg-white rounded-xl shadow-sm p-6 min-h-[400px]">
                         {/* If a resource is selected, render the chosen view; otherwise render children (StartPage or prompt) */}
-                        {selectedResourceId && resources
+                        {selectedResourceId && combined
                             ? (() => {
-                                  const selected = resources.find(
+                                  const selected = combined.find(
                                       (r) => r.id === selectedResourceId,
                                   );
                                   if (!selected)

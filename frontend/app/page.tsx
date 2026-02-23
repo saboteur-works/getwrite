@@ -310,11 +310,11 @@ export default function Home(): JSX.Element {
             return;
         }
     };
-
     return (
         <AppShell
             showSidebars={Boolean(selectedProject)}
             resources={selectedProject?.resources}
+            folders={selectedProject?.folders}
             project={selectedProject as any}
             onResourceSelect={handleResourceSelect}
             onResourceAction={handleResourceAction}
