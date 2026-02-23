@@ -235,16 +235,6 @@ export default function AppShell({
             resources: (project as any).resources ?? [],
         });
     }, [project]);
-    // Instrumentation: track render counts and project changes to help diagnose
-    // unexpected render loops. Logged to console so dev can inspect call sites.
-    const _renderCount = React.useRef(0);
-    _renderCount.current += 1;
-    // lightweight per-render log (useful in dev only)
-    // eslint-disable-next-line no-console
-    console.debug(`[INST] AppShell render #${_renderCount.current}`, {
-        projectId: project?.id,
-    });
-
     const _prevProjectId = React.useRef<string | undefined | null>(undefined);
     useEffect(() => {
         if (_prevProjectId.current !== project?.id) {

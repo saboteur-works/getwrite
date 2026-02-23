@@ -1,7 +1,12 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 type Folder = { id: string; slug?: string; name?: string; orderIndex?: number };
-type ResourceMeta = { id: string; metadata?: Record<string, unknown> };
+type ResourceMeta = {
+    id: string;
+    name: string;
+    folderId?: string | null;
+    metadata?: Record<string, unknown>;
+};
 
 export interface StoredProject {
     id: string;
@@ -172,16 +177,20 @@ export function normalizeStoredProject(p: StoredProject): StoredProject {
         if (first && typeof first.name === "string") {
             return {
                 ...p,
-                folders: Array.isArray(p.folders)
-                    ? p.folders
-                    : (p.folders ?? []),
+                folders: p.folders ?? [],
             };
         }
     }
+    console.log("Normalizing stored project", p);
 
     const resources = Array.isArray(p.resources)
         ? p.resources.map((r) => ({ id: r.id, metadata: r.metadata ?? {} }))
         : p.resources;
-    const folders = Array.isArray(p.folders) ? p.folders : (p.folders ?? []);
+    const folders = p.folders ?? [];
+    console.log("Normalized resources and folders", resources, {
+        ...p,
+        resources,
+        folders,
+    });
     return { ...p, resources, folders };
 }

@@ -83,6 +83,8 @@ export interface Folder {
     createdAt: string;
     /** Last-modified timestamp (ISO 8601). */
     updatedAt?: string;
+    /** Owning folder UUID or null for root. */
+    folderId?: UUID | null;
 }
 
 export type ResourceType = "text" | "image" | "audio";

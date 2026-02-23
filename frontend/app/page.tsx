@@ -17,6 +17,7 @@ import {
 } from "../lib/placeholders";
 import type { Project as DEPRECATEDProject, Resource } from "../lib/types";
 import type { Project } from "@/src/lib/models";
+import { ResourceBase } from "../src/lib/models";
 
 /** Root page: render the application's start page inside the main shell. */
 export default function Home(): JSX.Element {
@@ -32,35 +33,32 @@ export default function Home(): JSX.Element {
 
     const dispatch = useAppDispatch();
 
-    const handleCreate = (name: string) => {
-        const p = createProject(name);
-        // instrumentation: log creation/open events
-        // eslint-disable-next-line no-console
-        console.debug("[INST] Home.handleCreate - creating project", {
-            id: p.id,
-            name,
-        });
-        setProjects((prev) => [p, ...prev]);
+    const handleCreate = (projectFiles: {
+        project: Project;
+        folders: any[];
+        resources: any[];
+    }) => {
+        setProjects((prev) => [projectFiles.project, ...prev]);
         // persist project in redux store and mark selected
         dispatch(
             setProject({
-                id: p.id,
-                name: p.name,
-                folders: (p as any).folders ?? [],
-                resources: (p as any).resources
-                    ? (p as any).resources.map((r: any) => ({
-                          id: r.id,
-                          metadata: r.metadata ?? {},
-                      }))
+                id: projectFiles.project.id,
+                name: projectFiles.project.name,
+                folders: (projectFiles as any).folders ?? [],
+                resources: (projectFiles as any).resources
+                    ? (projectFiles as any).resources.map(
+                          (r: ResourceBase) => ({
+                              id: r.id,
+                              name: r.name,
+                              metadata: r.metadata ?? {},
+                              folderId: r.folderId ?? null,
+                          }),
+                      )
                     : [],
             }),
         );
-        dispatch(setSelectedProjectId(p.id));
-        // eslint-disable-next-line no-console
-        console.debug("[INST] Home.handleCreate - setSelectedProject", {
-            id: p.id,
-        });
-        setSelectedProject(p);
+        dispatch(setSelectedProjectId(projectFiles.project.id));
+        setSelectedProject(projectFiles.project);
     };
 
     const handleOpen = (id: string) => {

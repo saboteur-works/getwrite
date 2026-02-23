@@ -18,7 +18,11 @@ export interface StartPageProps {
         resources: AnyResource[];
         folders: Folder[];
     }>;
-    onCreate?: (name: string) => void;
+    onCreate?: (projectFiles: {
+        project: CanonicalProject;
+        folders: any[];
+        resources: any[];
+    }) => void;
     onOpen?: (projectId: string) => void;
 }
 
@@ -53,23 +57,19 @@ export default function StartPage({
         if (onOpen) onOpen(id);
     };
 
-    const handleModalCreate = (payload: CreateProjectPayload): void => {
+    const handleModalCreate = (
+        payload: CreateProjectPayload,
+        projectFiles: {
+            project: CanonicalProject;
+            folders: any[];
+            resources: any[];
+        },
+    ): void => {
         const newProject = createProject(payload.name);
-        // instrumentation: log local project creation (UI path)
-        // eslint-disable-next-line no-console
-        console.debug("[INST] StartPage.handleModalCreate - newProject", {
-            id: newProject.project.id,
-            name: payload.name,
-            payload,
-        });
+        console.log(projectFiles);
         setLocalProjects((prev) => [newProject, ...prev]);
         if (onCreate) {
-            // eslint-disable-next-line no-console
-            console.debug(
-                "[INST] StartPage.handleModalCreate - invoking onCreate",
-                { name: payload.name },
-            );
-            onCreate(payload.name);
+            onCreate(projectFiles);
         }
         setIsModalOpen(false);
     };

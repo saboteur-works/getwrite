@@ -12,7 +12,11 @@ export interface CreateProjectModalProps {
     // onCreate receives the form payload and, when available, the persisted `Project` returned by the server
     onCreate: (
         payload: CreateProjectPayload,
-        createdProject?: CanonicalProject,
+        createdProject?: {
+            project: CanonicalProject;
+            folders: any[];
+            resources: any[];
+        },
     ) => void;
     defaultName?: string;
     defaultType?: CreateProjectPayload["projectType"];
@@ -147,14 +151,14 @@ export default function CreateProjectModal({
                 throw new Error(body?.error || `Status ${res.status}`);
             }
             const body = await res.json().catch(() => null);
-            const createdProject: CanonicalProject | undefined = body?.project;
-            // instrumentation: surface created project info to help trace
-            // eslint-disable-next-line no-console
-            console.debug("[INST] CreateProjectModal.onCreate", {
-                payload,
-                createdProjectId: createdProject?.id,
+            const createdProject: CanonicalProject = body?.project;
+            const createdFolders = body?.folders || [];
+            const createdResources = body?.resources || [];
+            onCreate(payload, {
+                project: createdProject,
+                folders: createdFolders,
+                resources: createdResources,
             });
-            onCreate(payload, createdProject);
             onClose();
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));

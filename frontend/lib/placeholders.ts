@@ -6,18 +6,25 @@ import type {
 } from "../src/lib/models/types";
 import type { ResourceType } from "./types";
 
-/** Create a short, random id with an optional prefix for placeholder data. */
+/**
+ * Create a short, random id with an optional prefix for placeholder data.
+ * @deprecated
+ * */
 function genId(prefix = "id"): string {
     return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-/** Return the current time as an ISO string for createdAt/updatedAt fields. */
+/**
+ * Return the current time as an ISO string for createdAt/updatedAt fields.
+ * @deprecated
+ * */
 function nowIso(): string {
     return new Date().toISOString();
 }
 
 /**
  * Create a placeholder `Resource` object for UI development.
+ * @deprecated
  * @param title Human readable title shown in lists.
  * @param type ResourceType controlling icon/behavior.
  * @param projectId Optional project id — generated if omitted.
@@ -70,6 +77,7 @@ export function createResource(
 /**
  * Create a lightweight placeholder `Project` containing a few sample `Resource`s.
  * Used to populate lists in StartPage and Storybook.
+ * @deprecated
  * @param name Friendly name for the project.
  * @returns `Project` with createdAt/updatedAt and `resources` array.
  */
@@ -159,6 +167,7 @@ export function createProject(
 
 /**
  * Produce an array of placeholder `Project`s for list views.
+ * @deprecated
  * @param count Number of sample projects to produce.
  */
 export function sampleProjects(count = 2) {
@@ -176,6 +185,7 @@ export function sampleProjects(count = 2) {
 /**
  * Utility to locate a project by id from an in-memory array.
  * Returns `undefined` when not found; UI callers should handle that case.
+ * @deprecated
  */
 export function findProjectById(
     projects: Array<{

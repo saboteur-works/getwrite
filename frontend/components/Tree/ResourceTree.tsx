@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import type { AnyResource } from "../../src/lib/models/types";
+import type { AnyResource, Folder } from "../../src/lib/models/types";
 import { useAppSelector } from "../../src/store/hooks";
 import { selectProject } from "../../src/store/projectsSlice";
 import ResourceContextMenu, {
@@ -23,7 +23,7 @@ export interface ResourceTreeProps {
 
 /** Internal tree node used to build parent/child relationships for rendering. */
 type TreeNode = {
-    resource: AnyResource;
+    resource: AnyResource | Folder;
     children: TreeNode[];
 };
 
@@ -119,9 +119,18 @@ export default function ResourceTree({
     const resourcesList: AnyResource[] =
         (projectFromStore?.resources as unknown as AnyResource[]) ?? [];
 
+    const foldersList: Folder[] =
+        (projectFromStore?.folders as unknown as Folder[]) ?? [];
+
+    const combined: (AnyResource | Folder)[] = [
+        ...resourcesList,
+        ...foldersList,
+    ];
     const [localOrder, setLocalOrder] = useState<string[]>(() =>
-        resourcesList.map((r) => r.id),
+        combined.map((r) => r.id),
     );
+
+    console.log("ResourceTree combined test", combined);
     const [contextMenu, setContextMenu] = useState<{
         open: boolean;
         x: number;
@@ -131,7 +140,7 @@ export default function ResourceTree({
     }>({ open: false, x: 0, y: 0 });
 
     useEffect(() => {
-        const ids = resourcesList.map((r) => r.id);
+        const ids = combined.map((r) => r.id);
         setLocalOrder((prev) => {
             if (
                 prev.length === ids.length &&
@@ -141,17 +150,13 @@ export default function ResourceTree({
             }
             return ids;
         });
-    }, [resourcesList]);
+    }, [combined]);
 
     const nodes = useMemo(() => {
         const map = new Map<string, TreeNode>();
-        resourcesList.forEach((r) =>
-            map.set(r.id, { resource: r, children: [] }),
-        );
+        combined.forEach((r) => map.set(r.id, { resource: r, children: [] }));
         const roots: TreeNode[] = [];
-        const orderedIds = reorderable
-            ? localOrder
-            : resourcesList.map((r) => r.id);
+        const orderedIds = reorderable ? localOrder : combined.map((r) => r.id);
         orderedIds.forEach((id) => {
             const node = map.get(id);
             if (!node) return;
@@ -169,7 +174,7 @@ export default function ResourceTree({
         }
         sortRec(roots);
         return roots;
-    }, [resourcesList, localOrder, reorderable]);
+    }, [resourcesList, foldersList, localOrder, reorderable]);
 
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
