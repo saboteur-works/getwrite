@@ -1,13 +1,13 @@
 import React, { useEffect } from "react";
 import { useEditor, EditorContent, EditorContext } from "@tiptap/react";
-
+import StarterKit from "@tiptap/starter-kit";
 export interface TipTapEditorProps {
     value?: string;
     onChange?: (content: string) => void;
     id?: string;
     readonly?: boolean;
 }
-
+const extensions = [StarterKit];
 export default function TipTapEditor({
     value = "",
     onChange,
@@ -27,7 +27,7 @@ export default function TipTapEditor({
     const editor = inTestEnv
         ? null
         : useEditor({
-              extensions: [],
+              extensions,
               content: value || "",
               editable: !readonly,
               onUpdate: ({ editor }) => {

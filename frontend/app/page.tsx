@@ -58,7 +58,11 @@ export default function Home(): JSX.Element {
             }),
         );
         dispatch(setSelectedProjectId(projectFiles.project.id));
-        setSelectedProject(projectFiles.project);
+        setSelectedProject({
+            ...projectFiles.project,
+            folders: (projectFiles as any).folders ?? [],
+            resources: (projectFiles as any).resources ?? [],
+        });
     };
 
     const handleOpen = (id: string) => {
@@ -79,10 +83,6 @@ export default function Home(): JSX.Element {
                 }),
             );
             dispatch(setSelectedProjectId(p.id));
-            // eslint-disable-next-line no-console
-            console.debug("[INST] Home.handleOpen - setSelectedProject", {
-                id,
-            });
             setSelectedProject(p);
         }
     };
