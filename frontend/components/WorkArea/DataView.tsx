@@ -1,5 +1,5 @@
 import React from "react";
-import type { Project, Resource } from "../../lib/types";
+import type { Project, AnyResource } from "../../src/lib/models/types";
 import { createProject } from "../../lib/placeholders";
 
 export interface DataViewProps {
@@ -8,9 +8,9 @@ export interface DataViewProps {
     /** The single project to display statistics for (used when `projects` is not provided) */
     project?: Project;
     /** Optional adapter view from `buildProjectView` (canonical models). */
-    view?: { project: any; folders: any[]; resources: any[] };
+    view?: { project: any; folders: any[]; resources: AnyResource[] };
     /** Optional override flat list of resources to render (uses project(s).resources by default) */
-    resources?: Resource[];
+    resources?: AnyResource[];
     className?: string;
 }
 
@@ -35,13 +35,14 @@ export default function DataView({
         if (resources) return resources;
         if (view && view.resources) return view.resources;
         if (projects && projects.length > 0)
-            return projects.flatMap((p) => p.resources);
+            return projects.flatMap((p) => p.resources as AnyResource[]);
         return effectiveProject.resources;
     }, [resources, view, projects, effectiveProject]);
 
     const totalResources = flatResources.length;
     const totalWords = flatResources.reduce(
-        (acc, r) => acc + (r.metadata?.wordCount ?? 0),
+        (acc: number, r: AnyResource) =>
+            acc + ((r as any).metadata?.wordCount ?? (r as any).wordCount ?? 0),
         0,
     );
 
@@ -71,21 +72,26 @@ export default function DataView({
             <section>
                 <h3 className="text-sm font-medium mb-2">Resources</h3>
                 <ul className="space-y-2">
-                    {flatResources.map((r) => (
+                    {flatResources.map((r: AnyResource) => (
                         <li
                             key={r.id}
                             className="p-3 bg-white rounded-md border flex items-center justify-between"
                         >
                             <div>
                                 <div className="text-sm font-medium">
-                                    {r.title}
+                                    {(r as any).name ??
+                                        (r as any).title ??
+                                        r.id}
                                 </div>
                                 <div className="text-xs text-slate-500">
                                     {r.type}
                                 </div>
                             </div>
                             <div className="text-xs text-slate-500">
-                                {r.metadata?.wordCount ?? 0} words
+                                {(r as any).metadata?.wordCount ??
+                                    (r as any).wordCount ??
+                                    0}{" "}
+                                words
                             </div>
                         </li>
                     ))}
