@@ -243,15 +243,6 @@ export default function AppShell({
         setExportModal({ open: false });
     };
 
-    // build an adapter view when a canonical project with folders/resources is provided
-    const adapterView = React.useMemo(() => {
-        if (!project) return undefined;
-        return buildProjectView({
-            project: project as any,
-            folders: (project as any).folders ?? [],
-            resources: (project as any).resources ?? [],
-        });
-    }, [project]);
     const _prevProjectId = React.useRef<string | undefined | null>(undefined);
     useEffect(() => {
         if (_prevProjectId.current !== project?.id) {
