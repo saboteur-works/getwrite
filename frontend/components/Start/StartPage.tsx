@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type {
     Project as CanonicalProject,
     AnyResource,
@@ -75,6 +75,37 @@ export default function StartPage({
     const handleCreateClick = (): void => {
         setIsModalOpen(true);
     };
+
+    useEffect(() => {
+        async function fetchProjects() {
+            const res = await fetch("/api/projects", {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => null);
+                throw new Error(body?.error || `Status ${res.status}`);
+            }
+            const body = await res.json().catch(() => null);
+            const views = body.map((p: any) => {
+                return buildProjectView({
+                    project: p,
+                    folders: [],
+                    resources: [],
+                });
+            });
+            return views;
+        }
+        fetchProjects()
+            .then((data) => {
+                if (Array.isArray(data)) {
+                    setLocalProjects(data);
+                }
+            })
+            .catch((err) => {
+                console.error("Error fetching projects:", err);
+            });
+    }, []);
 
     return (
         <section aria-labelledby="start-projects" className="p-6">
@@ -167,7 +198,9 @@ export default function StartPage({
 
                                 <button
                                     type="button"
-                                    onClick={() => handleOpen(p.project.id)}
+                                    onClick={() =>
+                                        handleOpen(p.project.rootPath)
+                                    }
                                     className="px-3 py-1 rounded border text-sm bg-slate-50 hover:bg-slate-100"
                                 >
                                     Open

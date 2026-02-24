@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAppDispatch } from "../src/store/hooks";
 import {
     setProject,
@@ -13,6 +13,7 @@ import { findProjectById, createResource } from "../lib/placeholders";
 import type { Resource } from "../lib/types";
 import type { Project } from "@/src/lib/models";
 import { ResourceBase } from "../src/lib/models";
+import { buildProjectView } from "../src/lib/models/project-view";
 
 /** Root page: render the application's start page inside the main shell. */
 export default function Home(): JSX.Element {
@@ -25,6 +26,38 @@ export default function Home(): JSX.Element {
     );
 
     const dispatch = useAppDispatch();
+    useEffect(() => {
+        async function fetchProjects() {
+            const res = await fetch("/api/projects", {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => null);
+                throw new Error(body?.error || `Status ${res.status}`);
+            }
+            const body = await res.json().catch(() => null);
+            const views = body.map((p: any) => {
+                const buildView = buildProjectView({
+                    project: p,
+                    folders: [],
+                    resources: [],
+                });
+
+                return buildView;
+            });
+            return views;
+        }
+        fetchProjects()
+            .then((data) => {
+                if (Array.isArray(data)) {
+                    setProjects(data);
+                }
+            })
+            .catch((err) => {
+                console.error("Error fetching projects:", err);
+            });
+    }, []);
 
     const handleCreate = (projectFiles: {
         project: Project;
@@ -58,8 +91,22 @@ export default function Home(): JSX.Element {
         });
     };
 
-    const handleOpen = (id: string) => {
-        const p = findProjectById(projects, id);
+    const handleOpen = async (id: string) => {
+        const res = await fetch(`/api/project`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                projectPath: id,
+            }),
+        });
+
+        if (!res.ok) {
+            const body = await res.json().catch(() => null);
+            throw new Error(body?.error || `Status ${res.status}`);
+        }
+
+        const body = await res.json().catch(() => null);
+        const p = body;
         if (p) {
             // ensure project exists in redux and mark selected
             dispatch(
@@ -70,6 +117,8 @@ export default function Home(): JSX.Element {
                     resources: (p as any).resources
                         ? (p as any).resources.map((r: any) => ({
                               id: r.id,
+                              name: r.name,
+                              folderId: r.folderId ?? null,
                               metadata: r.metadata ?? {},
                           }))
                         : [],

@@ -168,6 +168,8 @@ export async function createProjectFromType(options: {
                 type: res.type,
                 createdAt: res.createdAt,
                 orderIndex: j,
+                folderId: folder.id,
+                slug: res.slug || null,
             };
             await writeSidecar(projectRoot, res.id, meta);
         }

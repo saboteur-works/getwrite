@@ -154,6 +154,11 @@ export default function CreateProjectModal({
             const createdProject: CanonicalProject = body?.project;
             const createdFolders = body?.folders || [];
             const createdResources = body?.resources || [];
+            console.log("Created project:", {
+                project: createdProject,
+                folders: createdFolders,
+                resources: createdResources,
+            });
             onCreate(payload, {
                 project: createdProject,
                 folders: createdFolders,
