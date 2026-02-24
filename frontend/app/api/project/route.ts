@@ -5,6 +5,9 @@ import fsSync from "node:fs";
 import { Project } from "../../../src/lib/models";
 import { readSidecar } from "../../../src/lib/models/sidecar";
 
+/**
+ * Retrieve a project and its folders and resources from disk.
+ */
 export async function POST(req: NextRequest) {
     const body = await req.json();
     const { projectPath } = body as { projectPath: string };
@@ -57,6 +60,7 @@ export async function POST(req: NextRequest) {
     const f = {
         id: project.id,
         name: project.name,
+        rootPath: projectPath,
         folders: folderArr,
         resources: resolvedResourceArr,
     };

@@ -70,6 +70,7 @@ export default function Home(): JSX.Element {
             setProject({
                 id: projectFiles.project.id,
                 name: projectFiles.project.name,
+                rootPath: projectFiles.project.rootPath,
                 folders: (projectFiles as any).folders ?? [],
                 resources: (projectFiles as any).resources
                     ? (projectFiles as any).resources.map(
@@ -113,6 +114,7 @@ export default function Home(): JSX.Element {
                 setProject({
                     id: p.id,
                     name: p.name,
+                    rootPath: p.rootPath,
                     folders: (p as any).folders ?? [],
                     resources: (p as any).resources
                         ? (p as any).resources.map((r: any) => ({
@@ -120,6 +122,7 @@ export default function Home(): JSX.Element {
                               name: r.name,
                               folderId: r.folderId ?? null,
                               metadata: r.metadata ?? {},
+                              plaintext: r.plaintext,
                           }))
                         : [],
                 }),
@@ -208,7 +211,7 @@ export default function Home(): JSX.Element {
         }));
     };
 
-    const handleResourceAction = (
+    const handleResourceAction = async (
         action: "create" | "copy" | "duplicate" | "delete" | "export",
         resourceId?: string,
         opts?: {
@@ -223,13 +226,26 @@ export default function Home(): JSX.Element {
 
         if (action === "create") {
             const title = opts?.title ?? "New Resource";
-            const res: AnyResource = {
+            const resData = {
                 name: title,
-                createdAt: new Date().toISOString(),
-                id: uuid.generateUUID(),
-                type: "text",
                 folderId: opts?.folderId ?? null,
+                type: "text",
+                text: {
+                    plainText: "",
+                    tiptap: undefined,
+                },
             };
+
+            const result = await fetch("/api/resource", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    resourceData: resData,
+                    projectPath: selectedProject.rootPath,
+                }),
+            });
+            const resBody = await result.json();
+            const res: AnyResource = resBody.resource;
 
             // insert at end
             setProjects((prev) =>

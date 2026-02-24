@@ -76,7 +76,7 @@ export default function AppShell({
         action: ResourceContextAction,
         resourceId?: string,
         opts?: { [key: string]: any },
-    ) => void;
+    ) => Promise<void>;
 }): JSX.Element {
     // Read the callback from the raw arguments to avoid name-resolution
     // issues during the incremental migration. Typed explicitly to match
@@ -86,7 +86,7 @@ export default function AppShell({
               action: ResourceContextAction,
               resourceId?: string,
               opts?: { [key: string]: any },
-          ) => void)
+          ) => Promise<void>)
         | undefined;
     const propOnResourceAction = (arguments as any)[0]?.onResourceAction as
         | OnResAction
@@ -103,6 +103,7 @@ export default function AppShell({
     const combined = React.useMemo(() => {
         return [...(resources ?? []), ...(folders ?? [])];
     }, [resources, folders]);
+    console.log({ combined });
 
     useEffect(() => {
         const onMouseMove = (e: MouseEvent) => {
@@ -151,8 +152,10 @@ export default function AppShell({
     const getResourceName = (r: AnyResource | any) =>
         (r && ((r as any).name ?? (r as any).title ?? "")) || "";
 
-    const getResourceContent = (r: AnyResource | any) =>
-        (r && ((r as any).plainText ?? (r as any).content ?? "")) || "";
+    const getResourceContent = (r: AnyResource | any) => r.plaintext;
+    // const getResourceContent = (r: AnyResource | any) => {
+    //     console.log(r);
+    // };
 
     const [contextAction, setContextAction] = useState<{
         open: boolean;
@@ -161,7 +164,7 @@ export default function AppShell({
         resourceTitle?: string;
     }>({ open: false });
 
-    const handleResourceAction = (
+    const handleResourceAction = async (
         action: ResourceContextAction,
         resourceId?: string,
         resourceTitle?: string,
@@ -202,7 +205,7 @@ export default function AppShell({
         }
 
         // Fallback forward
-        propOnResourceAction?.(action, resourceId);
+        await propOnResourceAction?.(action, resourceId);
     };
 
     const [createModal, setCreateModal] = useState<{
@@ -222,7 +225,7 @@ export default function AppShell({
         preview?: string;
     }>({ open: false });
 
-    const handleCreateConfirmed = (
+    const handleCreateConfirmed = async (
         payload: {
             title: string;
             type: ResourceType | string;
@@ -231,12 +234,12 @@ export default function AppShell({
         parentId?: string,
     ) => {
         // forward to page-level handler to mutate project resources
-        propOnResourceAction?.("create", parentId, payload);
+        await propOnResourceAction?.("create", parentId, payload);
         setCreateModal({ open: false });
     };
 
-    const handleExportConfirmed = (resourceId?: string) => {
-        propOnResourceAction?.("export", resourceId);
+    const handleExportConfirmed = async (resourceId?: string) => {
+        await propOnResourceAction?.("export", resourceId);
         setExportModal({ open: false });
     };
 
@@ -374,7 +377,7 @@ export default function AppShell({
                 }
                 confirmLabel="Delete"
                 cancelLabel="Cancel"
-                onConfirm={() => {
+                onConfirm={async () => {
                     if (contextAction.resourceId) {
                         // dispatch removeResource optimistically in store
                         if (project) {
@@ -385,7 +388,7 @@ export default function AppShell({
                                 }),
                             );
                         }
-                        propOnResourceAction?.(
+                        await propOnResourceAction?.(
                             "delete",
                             contextAction.resourceId,
                         );
@@ -520,6 +523,7 @@ export default function AppShell({
                                   const selected = combined.find(
                                       (r) => r.id === selectedResourceId,
                                   );
+                                  console.log(selected);
                                   if (!selected)
                                       return (
                                           <div>

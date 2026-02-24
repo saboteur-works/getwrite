@@ -11,6 +11,7 @@ type ResourceMeta = {
 export interface StoredProject {
     id: string;
     name?: string;
+    rootPath: string;
     folders?: Folder[];
     resources?: ResourceMeta[];
 }
