@@ -52,6 +52,7 @@ export default function AppShell({
     onChangeLocations,
     onChangeItems,
     onChangePOV,
+    onResourceAction,
     project,
 }: {
     children?: React.ReactNode;
@@ -74,13 +75,18 @@ export default function AppShell({
     onResourceAction?: (
         action: ResourceContextAction,
         resourceId?: string,
+        opts?: { [key: string]: any },
     ) => void;
 }): JSX.Element {
     // Read the callback from the raw arguments to avoid name-resolution
     // issues during the incremental migration. Typed explicitly to match
     // the expected shape so downstream call sites remain typed.
     type OnResAction =
-        | ((action: ResourceContextAction, resourceId?: string) => void)
+        | ((
+              action: ResourceContextAction,
+              resourceId?: string,
+              opts?: { [key: string]: any },
+          ) => void)
         | undefined;
     const propOnResourceAction = (arguments as any)[0]?.onResourceAction as
         | OnResAction
@@ -220,11 +226,12 @@ export default function AppShell({
         payload: {
             title: string;
             type: ResourceType | string;
+            folderId?: string;
         },
         parentId?: string,
     ) => {
         // forward to page-level handler to mutate project resources
-        propOnResourceAction?.("create", parentId);
+        propOnResourceAction?.("create", parentId, payload);
         setCreateModal({ open: false });
     };
 
@@ -393,10 +400,10 @@ export default function AppShell({
                 initialTitle={createModal.initialTitle}
                 parentId={createModal.parentId}
                 onClose={() => setCreateModal({ open: false })}
-                onCreate={(payload, parentId) =>
-                    handleCreateConfirmed(payload, parentId)
+                onCreate={(payload, parentId, opts) =>
+                    handleCreateConfirmed(payload, parentId, opts)
                 }
-                parents={resources ?? []}
+                parents={folders ?? []}
             />
 
             <ExportPreviewModal

@@ -9,11 +9,11 @@ import {
 } from "../src/store/projectsSlice";
 import AppShell from "../components/Layout/AppShell";
 import StartPage from "../components/Start/StartPage";
-import { findProjectById, createResource } from "../lib/placeholders";
 import type { Resource } from "../lib/types";
 import type { Project } from "@/src/lib/models";
-import { ResourceBase } from "../src/lib/models";
+import { AnyResource, ResourceBase } from "../src/lib/models";
 import { buildProjectView } from "../src/lib/models/project-view";
+import uuid from "../src/lib/models/uuid";
 
 /** Root page: render the application's start page inside the main shell. */
 export default function Home(): JSX.Element {
@@ -211,17 +211,26 @@ export default function Home(): JSX.Element {
     const handleResourceAction = (
         action: "create" | "copy" | "duplicate" | "delete" | "export",
         resourceId?: string,
+        opts?: {
+            type?: string;
+            title?: string;
+            folderId?: string;
+        },
     ) => {
         if (!selectedProject) return;
 
+        console.log("opts", opts);
+
         if (action === "create") {
-            const title = "New Resource";
-            const res = createResource(
-                title,
-                "document",
-                selectedProject.id,
-                resourceId,
-            );
+            const title = opts?.title ?? "New Resource";
+            const res: AnyResource = {
+                name: title,
+                createdAt: new Date().toISOString(),
+                id: uuid.generateUUID(),
+                type: "text",
+                folderId: opts?.folderId ?? null,
+            };
+
             // insert at end
             setProjects((prev) =>
                 prev.map((p) =>
@@ -251,7 +260,8 @@ export default function Home(): JSX.Element {
                     resource: {
                         id: res.id,
                         metadata: res.metadata,
-                        name: res.title,
+                        name: res.name,
+                        folderId: res.folderId ?? null,
                     } as any,
                 }),
             );
@@ -265,12 +275,7 @@ export default function Home(): JSX.Element {
             );
             if (!src) return;
             const newTitle = `${src.title} (copy)`;
-            const copy = createResource(
-                newTitle,
-                src.type,
-                selectedProject.id,
-                src.parentId,
-            );
+            const copy = {};
             copy.content = src.content;
             copy.metadata = { ...src.metadata };
             setProjects((prev) =>

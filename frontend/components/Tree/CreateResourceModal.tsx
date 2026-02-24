@@ -3,6 +3,7 @@ import ConfirmDialog from "../common/ConfirmDialog";
 import type {
     AnyResource,
     ResourceType as CanonicalResourceType,
+    Folder,
 } from "../../src/lib/models/types";
 
 type ResourceType = CanonicalResourceType | string;
@@ -10,6 +11,7 @@ type ResourceType = CanonicalResourceType | string;
 export interface CreateResourcePayload {
     title: string;
     type: CanonicalResourceType | string;
+    folderId?: string;
 }
 
 export interface CreateResourceModalProps {
@@ -18,9 +20,13 @@ export interface CreateResourceModalProps {
     initialType?: ResourceType;
     parentId?: string;
     /** Available parent folders to place the new resource under (optional) */
-    parents?: AnyResource[];
+    parents?: Folder[];
     onClose?: () => void;
-    onCreate?: (payload: CreateResourcePayload, parentId?: string) => void;
+    onCreate?: (
+        payload: CreateResourcePayload,
+        parentId?: string,
+        opts?: { [key: string]: any },
+    ) => void;
 }
 
 /**
@@ -55,7 +61,13 @@ export default function CreateResourceModal({
     const handleCreate = () => {
         const trimmed = title.trim();
         if (!trimmed) return;
-        onCreate?.({ title: trimmed, type }, selectedParent);
+        onCreate?.(
+            { title: trimmed, type, folderId: selectedParent },
+            selectedParent,
+            {
+                title: trimmed,
+            },
+        );
         onClose?.();
     };
 
@@ -95,7 +107,7 @@ export default function CreateResourceModal({
                         className="w-full border rounded px-2 py-1 mt-1"
                         aria-label="resource-type"
                     >
-                        <option value="document">Document</option>
+                        <option value="text">Document</option>
                         <option value="scene">Scene</option>
                         <option value="note">Note</option>
                         <option value="folder">Folder</option>
@@ -117,15 +129,11 @@ export default function CreateResourceModal({
                         aria-label="resource-parent"
                     >
                         <option value="">(root)</option>
-                        {parents
-                            .filter((p: any) => (p as any).type === "folder")
-                            .map((p: any) => (
-                                <option key={p.id} value={p.id}>
-                                    {(p as any).name ??
-                                        (p as any).title ??
-                                        p.id}
-                                </option>
-                            ))}
+                        {parents.map((p: Folder) => (
+                            <option key={p.id} value={p.id}>
+                                {p.name}
+                            </option>
+                        ))}
                     </select>
                 </div>
 

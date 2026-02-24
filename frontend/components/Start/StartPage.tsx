@@ -5,7 +5,6 @@ import type {
     Folder,
     TextResource,
 } from "../../src/lib/models/types";
-import { sampleProjects, createProject } from "../../lib/placeholders";
 import { buildProjectView } from "../../src/lib/models/project-view";
 import CreateProjectModal, {
     type CreateProjectPayload,
