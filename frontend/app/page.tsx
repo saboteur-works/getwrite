@@ -9,21 +9,14 @@ import {
 } from "../src/store/projectsSlice";
 import AppShell from "../components/Layout/AppShell";
 import StartPage from "../components/Start/StartPage";
-import {
-    sampleProjects,
-    createProject,
-    findProjectById,
-    createResource,
-} from "../lib/placeholders";
-import type { Project as DEPRECATEDProject, Resource } from "../lib/types";
+import { findProjectById, createResource } from "../lib/placeholders";
+import type { Resource } from "../lib/types";
 import type { Project } from "@/src/lib/models";
 import { ResourceBase } from "../src/lib/models";
 
 /** Root page: render the application's start page inside the main shell. */
 export default function Home(): JSX.Element {
-    const [projects, setProjects] = useState<DEPRECATEDProject[]>(() =>
-        sampleProjects(3),
-    );
+    const [projects, setProjects] = useState<Project[]>([]);
     const [selectedProject, setSelectedProject] = useState<Project | null>(
         null,
     );

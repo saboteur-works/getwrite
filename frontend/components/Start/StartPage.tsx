@@ -28,7 +28,7 @@ export interface StartPageProps {
 
 /** Optional `projects` prop for server-driven lists; callbacks `onCreate` and `onOpen` used by parent wiring. */
 export default function StartPage({
-    projects = sampleProjects(3),
+    projects = [],
     onCreate,
     onOpen,
 }: StartPageProps): JSX.Element {
@@ -65,8 +65,7 @@ export default function StartPage({
             resources: any[];
         },
     ): void => {
-        const newProject = createProject(payload.name);
-        setLocalProjects((prev) => [newProject, ...prev]);
+        setLocalProjects((prev) => [projectFiles, ...prev]);
         if (onCreate) {
             onCreate(projectFiles);
         }
