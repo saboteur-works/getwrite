@@ -133,15 +133,24 @@ export function writeResourceToFile(
     projectPath: string,
     resource: AnyResource,
 ): AnyResource {
-    // Create the file for the resource
-    const fileName = `${slugify(resource.name)}-${resource.id}.txt`;
-    console.log(`Saving resource to ${fileName}`);
-    const filePath = path.join(projectPath, "resources", fileName);
-    fs.writeFileSync(
-        filePath,
-        (resource as TextResource).plainText ?? "",
-        "utf-8",
-    );
+    // Set up base path for resource
+    const base = path.join(projectPath, "resources", resource.id);
+    if (resource.type === "text") {
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(base)) {
+            fs.mkdirSync(base, { recursive: true });
+        }
+
+        // Write both TipTap JSON and plain text forms
+        const tiptapPath = `${base}/content.tiptap.json`;
+        const plainPath = `${base}/content.txt`;
+        fs.writeFileSync(
+            tiptapPath,
+            JSON.stringify(resource.tiptap ?? {}, null, 2),
+            "utf8",
+        );
+        fs.writeFileSync(plainPath, resource.plainText ?? "", "utf8");
+    }
 
     // Create the metadata for the resource
     const meta: Record<string, MetadataValue> = {

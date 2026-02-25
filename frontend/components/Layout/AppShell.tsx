@@ -331,18 +331,18 @@ export default function AppShell({
         if (!project || !selectedResourceId) return;
         if (!project.rootPath) return;
         console.log("Persisting content for", selectedResourceId);
-        fetch(`/api/resource/${selectedResourceId}/content`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                projectPath: project.rootPath,
-                doc,
-            }),
-        }).catch((err) => {
-            console.error("Failed to persist content:", err);
-        });
+        // fetch(`/api/resource/${selectedResourceId}/content`, {
+        //     method: "POST",
+        //     headers: {
+        //         "Content-Type": "application/json",
+        //     },
+        //     body: JSON.stringify({
+        //         projectPath: project.rootPath,
+        //         doc,
+        //     }),
+        // }).catch((err) => {
+        //     console.error("Failed to persist content:", err);
+        // });
     };
 
     const debouncedPersistContent = React.useMemo(

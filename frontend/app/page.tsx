@@ -244,8 +244,6 @@ export default function Home(): JSX.Element {
     ) => {
         if (!selectedProject) return;
 
-        console.log("opts", opts);
-
         if (action === "create") {
             const title = opts?.title ?? "New Resource";
             const resData = {

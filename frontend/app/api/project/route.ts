@@ -28,7 +28,6 @@ export async function POST(req: NextRequest) {
             const data = fsSync.readFileSync(folderPath, { encoding: "utf-8" });
             return JSON.parse(data);
         });
-    // console.log("Folders:", folderArr);
     const metadata = await fs.readdir(metadataDir);
     const resourceArr = metadata
         .filter((metadataName) => metadataName.includes("."))
@@ -37,9 +36,9 @@ export async function POST(req: NextRequest) {
                 projectPath,
                 metadataName.replace("resource-", "").replace(".meta.json", ""),
             );
-            const resourceName = `${sidecar?.slug}-${sidecar?.id}.txt`;
+            const resourceName = `content.txt`;
             const resourcePlaintext = fsSync.readFileSync(
-                path.join(resourcesDir, resourceName),
+                path.join(resourcesDir, sidecar?.id, resourceName),
                 { encoding: "utf-8" },
             );
             const resource = {

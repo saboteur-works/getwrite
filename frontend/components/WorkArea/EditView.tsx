@@ -52,7 +52,12 @@ export default function EditView({
     useEffect(() => {
         if (resourceId) {
             fetchResourceContent().then((res) => {
-                if (res.resourceContent.tipTapContent) {
+                // When loading TipTap content, we need to make sure the shape is valid before
+                // we set it.
+                if (
+                    res.resourceContent.tipTapContent &&
+                    Object.keys(res.resourceContent.tipTapContent).length > 0
+                ) {
                     setTipTapDoc(res.resourceContent.tipTapContent);
                 }
 
