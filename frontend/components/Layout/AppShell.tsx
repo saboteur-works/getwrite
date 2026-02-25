@@ -105,7 +105,6 @@ export default function AppShell({
     const combined = React.useMemo(() => {
         return [...(resources ?? []), ...(folders ?? [])];
     }, [resources, folders]);
-    console.log({ combined });
 
     useEffect(() => {
         const onMouseMove = (e: MouseEvent) => {
@@ -347,32 +346,12 @@ export default function AppShell({
         // persistResourceContent(project.rootPath, selectedResourceId, doc);
     };
 
-    const debouncedPersistContent = React.useRef(
-        debounce(persistContent, 5000),
-    ).current;
+    const debouncedPersistContent = React.useMemo(
+        () => debounce(persistContent, 5000),
+        [persistContent],
+    );
     const handlerEditorChange = (content: string, doc: TipTapDocument) => {
         debouncedPersistContent(content, doc);
-        // console.log("Editor content changed:", content);
-        // if (!project || !selectedResourceId) return;
-        // if (!project.rootPath) return;
-        // const persist = () => {
-        //     console.log("Persisting content for", selectedResourceId);
-        //     fetch(`/api/resource/${selectedResourceId}/content`, {
-        //         method: "POST",
-        //         headers: {
-        //             "Content-Type": "application/json",
-        //         },
-        //         body: JSON.stringify({
-        //             projectPath: project.rootPath,
-        //             doc,
-        //         }),
-        //     }).catch((err) => {
-        //         console.error("Failed to persist content:", err);
-        //     });
-        //     // persistResourceContent(project.rootPath, selectedResourceId, doc);
-        // };
-        // const debouncedPersist = debounce(persist, 5000);
-        // debouncedPersist();
     };
     useEffect(() => {
         return () => {
