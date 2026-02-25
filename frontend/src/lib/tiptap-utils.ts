@@ -1,16 +1,5 @@
 import { readFile, writeFile, mkdir } from "./models/io";
-import { DocumentType, Node } from "@tiptap/react";
 import { TipTapDocument, TipTapNode } from "./models";
-// export type TipTapNode = {
-//     type: string;
-//     text?: string;
-//     content?: Node[];
-// };
-
-// export type TipTapDocument = {
-//     type: "doc";
-//     content: TipTapNode[];
-// };
 
 function extractTextFromNode(node: TipTapNode): string {
     let out = "";
