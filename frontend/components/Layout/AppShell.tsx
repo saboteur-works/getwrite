@@ -563,6 +563,19 @@ export default function AppShell({
 
                                   switch (view) {
                                       case "edit":
+                                          if (selected.type !== "text") {
+                                              return (
+                                                  <div>
+                                                      <h2 className="text-2xl font-semibold">
+                                                          Work Area
+                                                      </h2>
+                                                      <p className="mt-2 text-sm text-slate-600">
+                                                          Selected resource is
+                                                          not a text resource.
+                                                      </p>
+                                                  </div>
+                                              );
+                                          }
                                           return (
                                               <EditView
                                                   onChange={handlerEditorChange}

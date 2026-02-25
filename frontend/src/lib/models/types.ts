@@ -85,6 +85,7 @@ export interface Folder {
     updatedAt?: string;
     /** Owning folder UUID or null for root. */
     folderId?: UUID | null;
+    type: "folder";
 }
 
 export type ResourceType = "text" | "image" | "audio";
