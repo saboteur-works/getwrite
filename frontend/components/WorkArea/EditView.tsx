@@ -1,12 +1,15 @@
-import React from "react";
+import React, { useEffect } from "react";
 import TipTapEditor from "../TipTapEditor";
 import { TipTapDocument } from "../../src/lib/models";
+import useAppSelector from "../../src/store/hooks";
 
 export interface EditViewProps {
     /** Initial editor content (HTML or plain text) */
     initialContent?: string;
     /** Called when content changes */
     onChange?: (content: string, doc: TipTapDocument) => void;
+    /** ID of the resource being edited, used to fetch content from the backend */
+    resourceId?: string;
 }
 
 /**
@@ -19,8 +22,40 @@ export interface EditViewProps {
 export default function EditView({
     initialContent = "",
     onChange,
+    resourceId,
 }: EditViewProps): JSX.Element {
     const [content, setContent] = React.useState<string>(initialContent);
+    const [tipTapDoc, setTipTapDoc] = React.useState<TipTapDocument | null>(
+        null,
+    );
+    const projectId = useAppSelector(
+        (state) => state.projects.selectedProjectId,
+    );
+    const project = useAppSelector((state) =>
+        projectId ? state.projects.projects[projectId] : null,
+    );
+
+    const fetchResourceContent = async () => {
+        const response = await fetch("/api/project-resources", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                projectPath: project?.rootPath,
+                resourceId: resourceId,
+            }),
+        });
+        const data = await response.json();
+        return data;
+    };
+
+    // On mount, fetch the resource content if a resource ID is provided
+    useEffect(() => {
+        if (resourceId) {
+            fetchResourceContent().then((res) => {
+                setTipTapDoc(res.resource);
+            });
+        }
+    }, [resourceId]);
 
     const handleChange = (next: string, doc: TipTapDocument) => {
         setContent(next);
@@ -44,7 +79,7 @@ export default function EditView({
             <div className="flex-1 overflow-auto p-4">
                 <TipTapEditor
                     id="editview-editor"
-                    value={content}
+                    value={tipTapDoc ?? content} // prefer loaded doc, fallback to initial/plain content
                     onChange={handleChange}
                     readonly={false}
                 />
