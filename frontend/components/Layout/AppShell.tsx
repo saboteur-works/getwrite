@@ -58,6 +58,7 @@ export default function AppShell({
 }: {
     children?: React.ReactNode;
     showSidebars?: boolean;
+    /** List of all project resources, loaded from the selected project */
     resources?: AnyResource[];
     folders?: Folder[];
     project?: CanonicalProject | null;
@@ -543,7 +544,11 @@ export default function AppShell({
                                   const selected = combined.find(
                                       (r) => r.id === selectedResourceId,
                                   );
-                                  console.log(selected);
+                                  console.log(
+                                      "[INST] AppShell::selcted",
+                                      selected,
+                                  );
+
                                   if (!selected)
                                       return (
                                           <div>

@@ -10,22 +10,38 @@ import {
 import AppShell from "../components/Layout/AppShell";
 import StartPage from "../components/Start/StartPage";
 import type { Resource } from "../lib/types";
-import type { Project } from "@/src/lib/models";
-import { AnyResource, ResourceBase } from "../src/lib/models";
+import type {
+    Folder,
+    Project,
+    AnyResource,
+    ResourceBase,
+} from "../src/lib/models";
 import { buildProjectView } from "../src/lib/models/project-view";
-import uuid from "../src/lib/models/uuid";
 
-/** Root page: render the application's start page inside the main shell. */
+/**
+ * Root page component. Manages high-level state for projects and resources,
+ * handles project creation/opening, and renders the main `AppShell`.
+ **/
 export default function Home(): JSX.Element {
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [selectedProject, setSelectedProject] = useState<Project | null>(
-        null,
-    );
+    const [projects, setProjects] = useState<
+        {
+            project: Project;
+            folders: Folder[];
+            resources: AnyResource[];
+        }[]
+    >([]);
+    const [selectedProject, setSelectedProject] = useState<{
+        project: Project;
+        folders: Folder[];
+        resources: AnyResource[];
+    } | null>(null);
     const [selectedResourceId, setSelectedResourceId] = useState<string | null>(
         null,
     );
 
     const dispatch = useAppDispatch();
+
+    // Fetch existing projects on mount
     useEffect(() => {
         async function fetchProjects() {
             const res = await fetch("/api/projects", {
@@ -92,7 +108,13 @@ export default function Home(): JSX.Element {
         });
     };
 
-    const handleOpen = async (id: string) => {
+    /**
+     * Handles the opening of a project by its projectPath
+     */
+    const handleOpen = async (
+        /** The project's root path */
+        id: string,
+    ) => {
         const res = await fetch(`/api/project`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
