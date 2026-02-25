@@ -31,7 +31,9 @@ export default function Home(): JSX.Element {
         }[]
     >([]);
     const [selectedProject, setSelectedProject] = useState<{
-        project: Project;
+        id: string;
+        name: string;
+        rootPath: string;
         folders: Folder[];
         resources: AnyResource[];
     } | null>(null);
@@ -86,7 +88,7 @@ export default function Home(): JSX.Element {
             setProject({
                 id: projectFiles.project.id,
                 name: projectFiles.project.name,
-                rootPath: projectFiles.project.rootPath,
+                rootPath: projectFiles.project.rootPath ?? "",
                 folders: (projectFiles as any).folders ?? [],
                 resources: (projectFiles as any).resources
                     ? (projectFiles as any).resources.map(
@@ -102,7 +104,9 @@ export default function Home(): JSX.Element {
         );
         dispatch(setSelectedProjectId(projectFiles.project.id));
         setSelectedProject({
-            ...projectFiles.project,
+            id: projectFiles.project.id,
+            name: projectFiles.project.name,
+            rootPath: projectFiles.project.rootPath ?? "",
             folders: (projectFiles as any).folders ?? [],
             resources: (projectFiles as any).resources ?? [],
         });
@@ -115,7 +119,7 @@ export default function Home(): JSX.Element {
         /** The project's root path */
         id: string,
     ) => {
-        const res = await fetch(`/api/project`, {
+        const res = await fetch("/api/project", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -134,9 +138,9 @@ export default function Home(): JSX.Element {
             // ensure project exists in redux and mark selected
             dispatch(
                 setProject({
-                    id: p.id,
-                    name: p.name,
-                    rootPath: p.rootPath,
+                    id: p.project.id,
+                    name: p.project.name,
+                    rootPath: p.project.rootPath ?? "",
                     folders: (p as any).folders ?? [],
                     resources: (p as any).resources
                         ? (p as any).resources.map((r: any) => ({
@@ -149,8 +153,15 @@ export default function Home(): JSX.Element {
                         : [],
                 }),
             );
-            dispatch(setSelectedProjectId(p.id));
-            setSelectedProject(p);
+
+            dispatch(setSelectedProjectId(p.project.id));
+            setSelectedProject({
+                id: p.project.id,
+                name: p.project.name,
+                rootPath: p.project.rootPath ?? "",
+                folders: p.folders,
+                resources: p.resources,
+            });
         }
     };
 
@@ -270,7 +281,7 @@ export default function Home(): JSX.Element {
             // insert at end
             setProjects((prev) =>
                 prev.map((p) =>
-                    p.id === selectedProject.id
+                    p.project.id === selectedProject.id
                         ? {
                               ...p,
                               resources: [...p.resources, res],

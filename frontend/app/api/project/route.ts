@@ -65,5 +65,9 @@ export async function POST(req: NextRequest) {
     };
     console.log(f);
 
-    return NextResponse.json(f);
+    return NextResponse.json({
+        project,
+        folders: folderArr,
+        resources: resolvedResourceArr,
+    });
 }
