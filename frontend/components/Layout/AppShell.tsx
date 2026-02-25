@@ -8,7 +8,6 @@ import type {
     Folder,
     TipTapDocument,
 } from "../../src/lib/models/types";
-import { buildProjectView } from "../../src/lib/models/project-view";
 import { useDispatch } from "react-redux";
 import {
     persistReorder,
@@ -343,7 +342,6 @@ export default function AppShell({
         }).catch((err) => {
             console.error("Failed to persist content:", err);
         });
-        // persistResourceContent(project.rootPath, selectedResourceId, doc);
     };
 
     const debouncedPersistContent = React.useMemo(
