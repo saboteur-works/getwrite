@@ -6,6 +6,7 @@ import type {
     Project as CanonicalProject,
     ResourceType,
     Folder,
+    TipTapDocument,
 } from "../../src/lib/models/types";
 import { buildProjectView } from "../../src/lib/models/project-view";
 import { useDispatch } from "react-redux";
@@ -30,6 +31,7 @@ import DataView from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/TimelineView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "./SearchBar";
+import debounce from "lodash/debounce";
 
 /**
  * Simple three-column shell used in the app and Storybook:
@@ -326,7 +328,57 @@ export default function AppShell({
             }),
         );
     };
+    const persistContent = (content: string, doc: TipTapDocument) => {
+        if (!project || !selectedResourceId) return;
+        if (!project.rootPath) return;
+        console.log("Persisting content for", selectedResourceId);
+        fetch(`/api/resource/${selectedResourceId}/content`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                projectPath: project.rootPath,
+                doc,
+            }),
+        }).catch((err) => {
+            console.error("Failed to persist content:", err);
+        });
+        // persistResourceContent(project.rootPath, selectedResourceId, doc);
+    };
 
+    const debouncedPersistContent = React.useRef(
+        debounce(persistContent, 5000),
+    ).current;
+    const handlerEditorChange = (content: string, doc: TipTapDocument) => {
+        debouncedPersistContent(content, doc);
+        // console.log("Editor content changed:", content);
+        // if (!project || !selectedResourceId) return;
+        // if (!project.rootPath) return;
+        // const persist = () => {
+        //     console.log("Persisting content for", selectedResourceId);
+        //     fetch(`/api/resource/${selectedResourceId}/content`, {
+        //         method: "POST",
+        //         headers: {
+        //             "Content-Type": "application/json",
+        //         },
+        //         body: JSON.stringify({
+        //             projectPath: project.rootPath,
+        //             doc,
+        //         }),
+        //     }).catch((err) => {
+        //         console.error("Failed to persist content:", err);
+        //     });
+        //     // persistResourceContent(project.rootPath, selectedResourceId, doc);
+        // };
+        // const debouncedPersist = debounce(persist, 5000);
+        // debouncedPersist();
+    };
+    useEffect(() => {
+        return () => {
+            debouncedPersistContent.cancel(); // Cancel any pending debounced calls
+        };
+    }, [debouncedPersistContent]);
     return (
         <div className="min-h-screen flex bg-slate-50 text-slate-900">
             {showSidebars ? (
@@ -531,6 +583,7 @@ export default function AppShell({
                                       case "edit":
                                           return (
                                               <EditView
+                                                  onChange={handlerEditorChange}
                                                   initialContent={getResourceContent(
                                                       selected,
                                                   )}

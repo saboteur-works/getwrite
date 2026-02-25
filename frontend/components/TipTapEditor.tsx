@@ -1,9 +1,10 @@
 import React, { useEffect } from "react";
 import { useEditor, EditorContent, EditorContext } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { TipTapDocument } from "../src/lib/models";
 export interface TipTapEditorProps {
     value?: string;
-    onChange?: (content: string) => void;
+    onChange?: (content: string, doc: TipTapDocument) => void;
     id?: string;
     readonly?: boolean;
 }
@@ -31,7 +32,11 @@ export default function TipTapEditor({
               content: value || "",
               editable: !readonly,
               onUpdate: ({ editor }) => {
-                  if (onChange) onChange(editor.getHTML());
+                  if (onChange)
+                      onChange(
+                          editor.getHTML(),
+                          editor.getJSON() as TipTapDocument,
+                      );
               },
               // avoid SSR hydration mismatches by explicitly opting out of
               // immediate render on the server

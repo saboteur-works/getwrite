@@ -1,11 +1,12 @@
 import React from "react";
 import TipTapEditor from "../TipTapEditor";
+import { TipTapDocument } from "../../src/lib/models";
 
 export interface EditViewProps {
     /** Initial editor content (HTML or plain text) */
     initialContent?: string;
     /** Called when content changes */
-    onChange?: (content: string) => void;
+    onChange?: (content: string, doc: TipTapDocument) => void;
 }
 
 /**
@@ -21,9 +22,9 @@ export default function EditView({
 }: EditViewProps): JSX.Element {
     const [content, setContent] = React.useState<string>(initialContent);
 
-    const handleChange = (next: string) => {
+    const handleChange = (next: string, doc: TipTapDocument) => {
         setContent(next);
-        if (onChange) onChange(next);
+        if (onChange) onChange(next, doc);
     };
 
     const wordCount = React.useMemo(() => {
