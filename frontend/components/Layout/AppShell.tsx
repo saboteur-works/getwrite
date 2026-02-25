@@ -569,6 +569,7 @@ export default function AppShell({
                                                   initialContent={getResourceContent(
                                                       selected,
                                                   )}
+                                                  resourceId={selected.id}
                                               />
                                           );
                                       case "diff":
