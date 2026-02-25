@@ -510,9 +510,16 @@ export default function AppShell({
                             <ViewSwitcher
                                 view={view}
                                 onChange={setView}
-                                disabledViews={
-                                    selectedResourceId ? [] : ["edit", "diff"]
-                                }
+                                disabledViews={(() => {
+                                    const disabled: ViewName[] = [];
+                                    if (!selectedResourceId) {
+                                        disabled.push("edit", "diff");
+                                    }
+                                    if (selectedResource?.type !== "text") {
+                                        disabled.push("edit", "diff");
+                                    }
+                                    return Array.from(new Set(disabled));
+                                })()}
                             />
                             <div style={{ width: 320 }}>
                                 <SearchBar

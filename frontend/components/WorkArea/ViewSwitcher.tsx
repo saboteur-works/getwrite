@@ -9,7 +9,7 @@ export interface ViewSwitcherProps {
     /** Optional className to allow styling from parent */
     className?: string;
     /** Views which should be rendered disabled */
-    disabledViews?: ViewName[];
+    disabledViews?: ViewName[] | (() => ViewName[]);
 }
 
 const VIEW_OPTIONS: { key: ViewName; label: string }[] = [
