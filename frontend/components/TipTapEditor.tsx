@@ -1,9 +1,14 @@
 import React, { useEffect } from "react";
-import { useEditor, EditorContent, EditorContext } from "@tiptap/react";
+import {
+    useEditor,
+    EditorContent,
+    EditorContext,
+    Content,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TipTapDocument } from "../src/lib/models";
 export interface TipTapEditorProps {
-    value?: string;
+    value?: Content;
     onChange?: (content: string, doc: TipTapDocument) => void;
     id?: string;
     readonly?: boolean;
