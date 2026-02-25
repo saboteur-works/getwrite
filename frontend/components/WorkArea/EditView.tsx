@@ -52,7 +52,18 @@ export default function EditView({
     useEffect(() => {
         if (resourceId) {
             fetchResourceContent().then((res) => {
-                setTipTapDoc(res.resource);
+                if (res.resourceContent.tipTapContent) {
+                    setTipTapDoc(res.resourceContent.tipTapContent);
+                }
+
+                // If plaintext content is also available, use it as a fallback. This allows
+                // us to support resources that may not have been saved in TipTap format yet.
+                if (
+                    res.resourceContent.plaintextContent &&
+                    res.resourceContent.plaintextContent !== ""
+                ) {
+                    setContent(res.resourceContent.plaintextContent);
+                }
             });
         }
     }, [resourceId]);
