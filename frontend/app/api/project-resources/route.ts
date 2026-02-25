@@ -1,20 +1,39 @@
 import { NextResponse } from "next/server";
 import path from "node:path";
 import fs from "node:fs";
-const getProjectResource = (projectPath: string, resourceId: string) => {
+import { ResourceType, TipTapDocument } from "../../../src/lib/models";
+const getProjectResource = (
+    projectPath: string,
+    resourceId: string,
+    resourceType: ResourceType,
+) => {
     const resourcePath = path.join(projectPath, "resources", resourceId);
-
     // Read the content at the resource path
     // If it contains a content.tiptap.json file, it is a text resource
-    const tiptapContentPath = path.join(resourcePath, "content.tiptap.json");
-    if (fs.existsSync(tiptapContentPath)) {
-        const content = fs.readFileSync(tiptapContentPath, "utf-8");
-        return JSON.parse(content);
-    }
+    if (resourceType === "text") {
+        const tiptapContentPath = path.join(
+            resourcePath,
+            "content.tiptap.json",
+        );
+        let tipTapContent: TipTapDocument | null = null;
+        if (fs.existsSync(tiptapContentPath)) {
+            const content = fs.readFileSync(tiptapContentPath, "utf-8");
+            tipTapContent = JSON.parse(content) as TipTapDocument;
+        }
+        let plaintextContent: string | null = null;
+        const plaintextContentPath = path.join(resourcePath, "content.txt");
+        if (fs.existsSync(plaintextContentPath)) {
+            plaintextContent = fs.readFileSync(plaintextContentPath, "utf-8");
+        }
 
+        return {
+            tipTapContent,
+            plaintextContent,
+        };
+    }
     // If no valid content is found, throw an error
     throw new Error(
-        `TipTap document was not found for Resource with ID ${resourceId} in project at path ${tiptapContentPath}`,
+        `No valid content found for resource ${resourceId} at path ${resourcePath}`,
     );
 };
 
@@ -28,10 +47,16 @@ export async function POST(req: Request) {
     };
     // Get the project resources from the filesystem based on the provided project path and resource ID
     try {
-        const resource = getProjectResource(projectPath, resourceId);
+        // For now, we assume all resources are text resources and fetch accordingly.
+        // In the future, we can extend this to handle different resource types based on additional parameters in the request body.
+        const resourceContent = getProjectResource(
+            projectPath,
+            resourceId,
+            "text",
+        );
         return NextResponse.json({
             message: "Project resources endpoint",
-            resource,
+            resourceContent,
         });
     } catch (err) {
         console.error("Error fetching project resource:", err);
