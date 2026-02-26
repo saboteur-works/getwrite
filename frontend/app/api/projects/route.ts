@@ -4,6 +4,7 @@ import { getProjectType } from "../../../src/lib/projectTypes";
 import { createProjectFromType } from "../../../src/lib/models/project-creator";
 import { generateUUID } from "../../../src/lib/models/uuid";
 import fs from "node:fs/promises";
+import { getLocalResources } from "../../../src/lib/models";
 
 const getProject = async (id: string) => {
     const projectDirPath = path.join(process.cwd(), "..", "projects", id);
@@ -12,6 +13,9 @@ const getProject = async (id: string) => {
     return NextResponse.json(projectDirectory);
 };
 
+/**
+ * Get all projects from the local filesystem. Each project includes its metadata, folders, and resources.
+ */
 export async function GET(req: Request) {
     // get all projects from local
     const projectsDir = path.join(process.cwd(), "..", "projects");
@@ -20,7 +24,35 @@ export async function GET(req: Request) {
         projectIds.map(async (id) => {
             const projectPath = path.join(projectsDir, id, "project.json");
             const projectData = await fs.readFile(projectPath, "utf-8");
-            return JSON.parse(projectData);
+            const project = JSON.parse(projectData);
+
+            const foldersPath = path.join(projectsDir, id, "folders");
+            const folderNames = await fs.readdir(foldersPath);
+            let folders: any[] = [];
+            try {
+                for (const folderName of folderNames) {
+                    const folderMetaPath = path.join(
+                        foldersPath,
+                        folderName,
+                        "folder.json",
+                    );
+                    const folderData = await fs.readFile(
+                        folderMetaPath,
+                        "utf-8",
+                    );
+                    folders.push(JSON.parse(folderData));
+                }
+            } catch (err) {
+                // if no folders file, just use empty array
+                console.warn(err);
+            }
+
+            const resources = getLocalResources(path.join(projectsDir, id));
+            return {
+                project,
+                resources,
+                folders,
+            };
         }),
     );
 

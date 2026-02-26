@@ -4,6 +4,64 @@ info:
     version: 0.1.0
 
 paths:
+    /project:
+        get:
+            summary: Retrieve a project and its folders and resources from disk
+            parameters:
+                - in: query
+                  name: projectPath
+                  schema:
+                      type: string
+                  required: true
+                  description: The path to the project on disk
+            responses:
+                "200":
+                    description: Project retrieved
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    project:
+                                        $ref: "#/components/schemas/Project"
+                                    folders:
+                                        type: array
+                                        items:
+                                            $ref: "#/components/schemas/Folder"
+                                    resources:
+                                        type: array
+                                        items:
+                                            $ref: "#/components/schemas/Resource"
+        post:
+            summary: Retrieve a project and its folders and resources from disk
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                projectPath:
+                                    type: string
+                            required: [projectPath]
+            responses:
+                "200":
+                    description: Project retrieved
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    project:
+                                        $ref: "#/components/schemas/Project"
+                                    folders:
+                                        type: array
+                                        items:
+                                            $ref: "#/components/schemas/Folder"
+                                    resources:
+                                        type: array
+                                        items:
+                                            $ref: "#/components/schemas/Resource"
     /projects:
         post:
             summary: Create a new project from a Project Type

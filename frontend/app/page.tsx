@@ -25,7 +25,9 @@ import { buildProjectView } from "../src/lib/models/project-view";
 export default function Home(): JSX.Element {
     const [projects, setProjects] = useState<
         {
-            project: Project;
+            id: string;
+            name: string;
+            rootPath: string;
             folders: Folder[];
             resources: AnyResource[];
         }[]
@@ -57,9 +59,9 @@ export default function Home(): JSX.Element {
             const body = await res.json().catch(() => null);
             const views = body.map((p: any) => {
                 const buildView = buildProjectView({
-                    project: p,
-                    folders: [],
-                    resources: [],
+                    project: p.project,
+                    folders: p.folders,
+                    resources: p.resources,
                 });
 
                 return buildView;

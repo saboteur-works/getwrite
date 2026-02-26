@@ -225,6 +225,26 @@ export const createResourceOfType = (
     }
 };
 
+export const getLocalResources = (projectPath: string) => {
+    const metaDir = path.join(projectPath, "meta");
+    if (!fs.existsSync(metaDir)) {
+        return [];
+    }
+
+    const metaFiles = fs.readdirSync(metaDir);
+    const resources: AnyResource[] = [];
+    for (const metaFile of metaFiles) {
+        if (!metaFile.endsWith(".json")) {
+            continue;
+        }
+        const metaPath = path.join(metaDir, metaFile);
+        console.log(metaPath);
+        const metaData = JSON.parse(fs.readFileSync(metaPath, "utf-8"));
+        resources.push(validateResource(metaData));
+    }
+    return resources;
+};
+
 export default {
     createTextResource,
     createImageResource,

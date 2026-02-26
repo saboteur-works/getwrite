@@ -40,18 +40,6 @@ export default function StartPage({
     >(projects);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
-    const projectViews = React.useMemo(() => {
-        return localProjects.map((p) =>
-            buildProjectView({
-                project: p.project as any,
-                folders: p.folders ?? [],
-                resources: (p.resources ?? []).filter(
-                    (r): r is TextResource => r.type === "text",
-                ),
-            }),
-        );
-    }, [localProjects]);
-
     const handleOpen = (id: string): void => {
         if (onOpen) onOpen(id);
     };
@@ -76,35 +64,8 @@ export default function StartPage({
     };
 
     useEffect(() => {
-        async function fetchProjects() {
-            const res = await fetch("/api/projects", {
-                method: "GET",
-                headers: { "Content-Type": "application/json" },
-            });
-            if (!res.ok) {
-                const body = await res.json().catch(() => null);
-                throw new Error(body?.error || `Status ${res.status}`);
-            }
-            const body = await res.json().catch(() => null);
-            const views = body.map((p: any) => {
-                return buildProjectView({
-                    project: p,
-                    folders: [],
-                    resources: [],
-                });
-            });
-            return views;
-        }
-        fetchProjects()
-            .then((data) => {
-                if (Array.isArray(data)) {
-                    setLocalProjects(data);
-                }
-            })
-            .catch((err) => {
-                console.error("Error fetching projects:", err);
-            });
-    }, []);
+        setLocalProjects(projects);
+    }, [projects]);
 
     return (
         <section aria-labelledby="start-projects" className="p-6">
@@ -129,11 +90,12 @@ export default function StartPage({
 
             <div className="mt-6 grid gap-4">
                 {localProjects.map((p, idx) => {
-                    const view = projectViews[idx];
-                    const resourceList = view
-                        ? view.resources.filter((r) => r.type !== "folder")
+                    // const view = projectViews[idx];
+                    console.log("Rendering project:", p);
+                    const resourceList = p
+                        ? p.resources.filter((r) => r.type !== "folder")
                         : p.resources;
-                    const projName = view?.project?.name ?? p.project.name;
+                    const projName = p?.project?.name ?? p.project.name;
 
                     return (
                         <article
