@@ -2,15 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createProject } from "./project";
 import { generateUUID } from "./uuid";
-import { writeSidecar } from "./sidecar";
 import { validateProjectTypeFile, validateProjectType } from "./schemas";
-import type {
-    Project as ProjectType,
-    Folder as FolderType,
-    TextResource,
-    ResourceType,
-    MetadataValue,
-} from "./types";
+import type { Project, Folder, TextResource, ResourceType } from "./types";
 import { createResourceOfType, writeResourceToFile } from "./resource";
 
 /** Minimal spec types for project-type JSON files. */
@@ -19,6 +12,7 @@ export interface ProjectTypeSpecFolder {
     special?: boolean;
 }
 
+/** Minimal spec type for resources in project-type JSON files. */
 export interface ProjectTypeSpecResource {
     folder: string;
     name: string;
@@ -26,6 +20,7 @@ export interface ProjectTypeSpecResource {
     template?: string;
 }
 
+/** Minimal spec type for project-type JSON files. */
 export interface ProjectTypeSpec {
     id: string;
     name: string;
@@ -34,6 +29,7 @@ export interface ProjectTypeSpec {
     defaultResources?: ProjectTypeSpecResource[];
 }
 
+/** Slugify a string for use in file and folder names. */
 function slugify(s: string): string {
     return s
         .trim()
@@ -44,17 +40,21 @@ function slugify(s: string): string {
 
 /** Create a new project on disk from a project-type spec object or JSON file path. */
 export async function createProjectFromType(options: {
+    /** Root path where the project will be created. */
     projectRoot: string;
-    spec: ProjectTypeSpec | string; // object or path to JSON
+    /** Project-type specification, either as an object or a path to a JSON file. */
+    spec: ProjectTypeSpec | string;
+    /** Optional name for the project; if not provided, will use the name from the spec. */
     name?: string;
 }): Promise<{
-    project: ProjectType;
-    folders: FolderType[];
+    project: Project;
+    folders: Folder[];
     resources: TextResource[];
 }> {
     const { projectRoot, spec, name } = options;
-    console.log("createProjectFromType: options:", options);
+
     // Load and validate spec (file path or object)
+    /** The spec for this project */
     let specObj: ProjectTypeSpec;
     if (typeof spec === "string") {
         const res = await validateProjectTypeFile(spec);
@@ -91,7 +91,7 @@ export async function createProjectFromType(options: {
     // Create folders (directories) and folder model objects
     const foldersDir = path.join(projectRoot, "folders");
     await fs.mkdir(foldersDir, { recursive: true });
-    const folders: FolderType[] = [];
+    const folders: Folder[] = [];
 
     for (let i = 0; i < specObj.folders.length; i += 1) {
         const f = specObj.folders[i];
@@ -100,7 +100,7 @@ export async function createProjectFromType(options: {
         const dir = path.join(foldersDir, slug);
         await fs.mkdir(dir, { recursive: true });
         const now = new Date().toISOString();
-        const folderObj: FolderType = {
+        const folderObj: Folder = {
             id,
             slug,
             name: f.name,
@@ -130,25 +130,9 @@ export async function createProjectFromType(options: {
             : folders[0].slug;
         const folder =
             folders.find((ff) => ff.slug === folderSlug) ?? folders[0];
-        const id = generateUUID();
-        const now = new Date().toISOString();
 
         // For MVP, only support text resource templates
         if (r.type === "text") {
-            const filename = `${slugify(String(r.name))}-${id}.txt`;
-            const filePath = path.join(resourcesDir, filename);
-            // await fs.writeFile(filePath, r.template ?? "", "utf8");
-
-            const res: TextResource = {
-                id,
-                name: r.name,
-                slug: slugify(String(r.name)),
-                type: "text",
-                folderId: folder.id,
-                createdAt: now,
-                plainText: r.template ?? "",
-                metadata: { orderIndex: j } as Record<string, MetadataValue>,
-            };
             const typedResource = createResourceOfType("text", {
                 name: r.name,
                 type: "text",
@@ -160,7 +144,6 @@ export async function createProjectFromType(options: {
                 metadata: { orderIndex: j },
             });
             resources.push(typedResource as TextResource);
-            // await writeSidecar(projectRoot, res.id, meta);
             await writeResourceToFile(projectRoot, typedResource);
         }
     }
