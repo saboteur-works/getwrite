@@ -34,6 +34,7 @@ export function createTextResource(params: {
     tiptap?: TipTapDocument;
     slug?: string;
     metadata?: Record<string, MetadataValue>;
+    orderIndex?: number;
 }): TextResource {
     const now = new Date().toISOString();
     const id = generateUUID();
@@ -57,6 +58,7 @@ export function createTextResource(params: {
         charCount,
         paragraphCount,
         metadata: params.metadata,
+        orderIndex: params.orderIndex,
     };
 
     // Runtime validation - will throw on invalid shapes
@@ -153,7 +155,7 @@ export function writeResourceToFile(
     }
 
     // Create the metadata for the resource
-    const meta: Record<string, MetadataValue> = {
+    const sidecarData: Record<string, MetadataValue> = {
         id: resource.id,
         name: resource.name,
         type: resource.type,
@@ -161,9 +163,10 @@ export function writeResourceToFile(
         orderIndex: resource.metadata?.orderIndex || 0,
         folderId: resource.folderId || null,
         slug: resource.slug || null,
+        metadata: resource.metadata || {},
     };
 
-    writeSidecar(projectPath, resource.id, meta);
+    writeSidecar(projectPath, resource.id, sidecarData);
     return resource;
 }
 /** Options for creating a resource of a specific type. */
@@ -171,6 +174,7 @@ export interface CreateResourceOpts {
     name: string;
     type: ResourceType;
     folderId?: UUID | null;
+    orderIndex?: number;
     metadata?: Record<string, MetadataValue>;
     // Text-specific
     text?: {
