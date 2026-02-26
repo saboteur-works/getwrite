@@ -88,7 +88,7 @@ export interface Folder {
     type: "folder";
 }
 
-export type ResourceType = "text" | "image" | "audio";
+export type ResourceType = "text" | "image" | "audio" | "folder";
 
 /**
  * UI view names used by the WorkArea view switcher and related components.

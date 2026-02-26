@@ -4,7 +4,7 @@ import type {
     AnyResource,
     Folder,
 } from "../src/lib/models/types";
-import type { ResourceType } from "./types";
+import type { ResourceType } from "../src/lib/models/types";
 
 /**
  * Create a short, random id with an optional prefix for placeholder data.

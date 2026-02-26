@@ -1,5 +1,5 @@
 import React from "react";
-import { ViewName } from "../../lib/types";
+import { ViewName } from "../../src/lib/models/types";
 
 export interface ViewSwitcherProps {
     /** Currently selected view */
