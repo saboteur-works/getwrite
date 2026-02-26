@@ -16,6 +16,10 @@ import type {
     ResourceBase,
 } from "../src/lib/models";
 import { buildProjectView } from "../src/lib/models/project-view";
+import {
+    setResources,
+    setSelectedResourceId as setResourceId,
+} from "../src/store/resourcesSlice";
 
 /**
  * Root page component. Manages high-level state for projects and resources,
@@ -104,6 +108,9 @@ export default function Home(): JSX.Element {
             }),
         );
         dispatch(setSelectedProjectId(projectFiles.project.id));
+        dispatch(
+            setResources([...projectFiles.resources, ...projectFiles.folders]),
+        );
         setSelectedProject({
             id: projectFiles.project.id,
             name: projectFiles.project.name,
@@ -156,6 +163,9 @@ export default function Home(): JSX.Element {
             );
 
             dispatch(setSelectedProjectId(p.project.id));
+
+            // Add Resources to redux store
+            dispatch(setResources([...p.resources, ...p.folders]));
             setSelectedProject({
                 id: p.project.id,
                 name: p.project.name,
@@ -167,6 +177,7 @@ export default function Home(): JSX.Element {
     };
 
     const handleResourceSelect = (id: string) => {
+        dispatch(setResourceId(id));
         setSelectedResourceId(id);
     };
 
@@ -180,13 +191,26 @@ export default function Home(): JSX.Element {
         updater: (r: AnyResource) => AnyResource,
     ): void => {
         if (!selectedProject) return;
+        const resource = selectedProject.resources.find(
+            (r) => r.id === resourceId,
+        );
+        fetch(`/api/resource/${resourceId}/sidecar`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                projectRoot: selectedProject.rootPath,
+                updatedResource: updater(resource!),
+            }),
+        }).catch((err) => {
+            console.error("Error updating resource metadata:", err);
+        });
         setProjects((prev) =>
             prev.map((p) => {
                 if (p.id !== selectedProject.id) return p;
+
                 const resources = p.resources.map((r) =>
                     r.id === resourceId ? updater(r) : r,
                 );
-
                 return {
                     id: p.id,
                     name: p.name,
@@ -219,6 +243,7 @@ export default function Home(): JSX.Element {
         status: "draft" | "in-review" | "published",
         resourceId: string,
     ) => {
+        console.log("Updating status to", status, "for resource", resourceId);
         updateResource(resourceId, (r) => ({
             ...r,
             metadata: { ...r.metadata, status },

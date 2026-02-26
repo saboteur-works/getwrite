@@ -112,6 +112,8 @@ export interface ResourceBase {
     sizeBytes?: number;
     /** User-editable notes. */
     notes?: string;
+    /** Ordering index used for tree ordering within a parent. */
+    orderIndex?: number;
     /** Status tags (project-scoped values). */
     statuses?: string[];
     /** Type-agnostic metadata stored in sidecar. */
