@@ -202,6 +202,7 @@ export const createResourceOfType = (
         name: opts.name,
         folderId: opts.folderId,
         metadata: opts.metadata,
+        orderIndex: opts.orderIndex,
     };
 
     switch (resourceType) {
