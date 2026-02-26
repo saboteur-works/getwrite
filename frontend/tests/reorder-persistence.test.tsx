@@ -2,8 +2,8 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import AppShell from "../components/Layout/AppShell";
-import ClientProvider from "../src/store/ClientProvider";
-import store from "../src/store/store";
+import { makeStore } from "../src/store/store";
+import { Provider } from "react-redux";
 import { setProject } from "../src/store/projectsSlice";
 import { createProjectFromType } from "../src/lib/models/project-creator";
 import fs from "node:fs/promises";
@@ -102,9 +102,10 @@ describe("Reorder persistence integration", () => {
             return { ok: true, status: 200 } as any;
         });
 
-        console.log("[test] seeding store and rendering AppShell");
-        // seed the Redux store with the created project and render AppShell
-        store.dispatch(
+        console.log("[test] seeding test-local store and rendering AppShell");
+        // create a test-local Redux store, seed it, and render AppShell
+        const testStore = makeStore();
+        testStore.dispatch(
             setProject({
                 id: projectForUI.id,
                 name: projectForUI.name,
@@ -114,13 +115,13 @@ describe("Reorder persistence integration", () => {
         );
 
         render(
-            <ClientProvider>
+            <Provider store={testStore}>
                 <AppShell
                     showSidebars={true}
                     project={projectForUI}
                     resources={projectForUI.resources}
                 />
-            </ClientProvider>,
+            </Provider>,
         );
 
         console.log("[test] AppShell rendered");

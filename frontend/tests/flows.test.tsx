@@ -3,8 +3,8 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import StartPage from "../components/Start/StartPage";
 import ResourceTree from "../components/Tree/ResourceTree";
-import ClientProvider from "../src/store/ClientProvider";
-import store from "../src/store/store";
+import { makeStore } from "../src/store/store";
+import { Provider } from "react-redux";
 import { setProject } from "../src/store/projectsSlice";
 import EditView from "../components/WorkArea/EditView";
 import { sampleProjects } from "../lib/placeholders";
@@ -17,7 +17,9 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
         const project = wrapper.project;
         const resources = wrapper.resources;
 
-        // Test harness component that renders StartPage then ResourceTree+EditView
+        // create a test-local Redux store and TestApp harness that renders StartPage then ResourceTree+EditView
+        const testStore = makeStore();
+
         function TestApp() {
             const [currentProject, setCurrentProject] = React.useState<
                 typeof wrapper | null
@@ -26,8 +28,12 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                 string | null
             >(null);
 
-            const handleOpen = (id: string) => {
-                const p = projects.find((x) => x.project.id === id) ?? null;
+            const handleOpen = (id?: string | null) => {
+                // StartPage passes `project.rootPath` for Open; fall back to first project when undefined.
+                const p =
+                    projects.find(
+                        (x) => x.project.id === id || x.project.rootPath === id,
+                    ) ?? (id == null ? projects[0] : null);
                 setCurrentProject(p);
                 setCurrentResourceId(null);
             };
@@ -43,12 +49,12 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
 
             React.useEffect(() => {
                 if (currentProject) {
-                    store.dispatch(
+                    testStore.dispatch(
                         setProject({
                             id: currentProject.project.id,
                             name: currentProject.project.name,
                             resources: currentProject.resources,
-                        }),
+                        } as any),
                     );
                 }
             }, [currentProject]);
@@ -62,12 +68,10 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                             <h2>Project: {currentProject.project.name}</h2>
                             {/* register project in store and render ResourceTree via projectId */}
                             {/* project registered in store via effect above */}
-                            <ClientProvider>
-                                <ResourceTree
-                                    projectId={currentProject.project.id}
-                                    onSelect={handleSelect}
-                                />
-                            </ClientProvider>
+                            <ResourceTree
+                                projectId={currentProject.project.id}
+                                onSelect={handleSelect}
+                            />
 
                             <div data-testid="editor-area">
                                 {currentResource ? (
@@ -86,7 +90,11 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
             );
         }
 
-        render(<TestApp />);
+        render(
+            <Provider store={testStore}>
+                <TestApp />
+            </Provider>,
+        );
 
         // Start page should show the project title
         expect(screen.getByText(project.name)).toBeTruthy();

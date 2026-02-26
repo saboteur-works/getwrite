@@ -13,6 +13,8 @@ The following documents define mandatory behavioral constraints:
 - `/docs/standards/typescript-implementation.md`
 - `/docs/standards/package-selection.md`
 - `/docs/standards/template-integrity.md`
+- `/docs/standards/code-documentation.md`
+- `/docs/standards/testing.md`
 - `/docs/standards/storybook-implementation.md`
 
 These documents are authoritative when their activation conditions apply.

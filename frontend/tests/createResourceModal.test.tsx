@@ -58,8 +58,13 @@ describe("CreateResourceModal", () => {
 
         expect(onCreate).toHaveBeenCalledTimes(1);
         expect(onCreate).toHaveBeenCalledWith(
-            { title: "New Test", type: "note" },
+            expect.objectContaining({
+                title: "New Test",
+                type: "note",
+                folderId: "parent_1",
+            }),
             "parent_1",
+            expect.any(Object),
         );
     });
 });
