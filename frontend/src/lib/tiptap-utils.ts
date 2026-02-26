@@ -3,7 +3,7 @@ import { TipTapDocument, TipTapNode } from "./models";
 
 function extractTextFromNode(node: TipTapNode): string {
     let out = "";
-    // if (node.text) out += node.text;
+    if ((node as any).text) out += (node as any).text;
     if (node.content) {
         for (const c of node.content) out += extractTextFromNode(c);
     }
