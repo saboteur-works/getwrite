@@ -131,10 +131,10 @@ export function validateResource(input: unknown) {
  * Save a resource to the filesystem (MVP: text only).
  * This function should only be called from backend contexts.
  * */
-export function writeResourceToFile(
+export async function writeResourceToFile(
     projectPath: string,
     resource: AnyResource,
-): AnyResource {
+): Promise<AnyResource> {
     // Set up base path for resource
     const base = path.join(projectPath, "resources", resource.id);
     if (resource.type === "text") {
@@ -166,7 +166,7 @@ export function writeResourceToFile(
         metadata: resource.metadata || {},
     };
 
-    writeSidecar(projectPath, resource.id, sidecarData);
+    await writeSidecar(projectPath, resource.id, sidecarData);
     return resource;
 }
 /** Options for creating a resource of a specific type. */
