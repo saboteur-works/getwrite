@@ -41,19 +41,11 @@ export async function POST(req: NextRequest) {
                 path.join(resourcesDir, sidecar?.id, resourceName),
                 { encoding: "utf-8" },
             );
-            const resource = {
-                id: sidecar?.id,
-                name: sidecar?.name,
-                slug: sidecar?.slug,
-                type: sidecar?.type,
-                folderId: sidecar?.folderId,
-                createdAt: sidecar?.createdAt,
+
+            return {
+                ...sidecar,
                 plaintext: resourcePlaintext,
-                metadata: {
-                    orderIndex: sidecar?.orderIndex,
-                },
             };
-            return resource;
         });
     const resolvedResourceArr = await Promise.all(resourceArr);
     const f = {

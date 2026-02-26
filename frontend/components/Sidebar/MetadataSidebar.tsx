@@ -4,6 +4,7 @@ import NotesInput from "./controls/NotesInput";
 import StatusSelector from "./controls/StatusSelector";
 import MultiSelectList from "./controls/MultiSelectList";
 import POVAutocomplete from "./controls/POVAutocomplete";
+import useAppSelector from "../../src/store/hooks";
 
 export interface MetadataSidebarProps {
     resource?: AnyResource;
@@ -26,6 +27,45 @@ export default function MetadataSidebar({
     onChangePOV,
     className = "",
 }: MetadataSidebarProps): JSX.Element {
+    // get the character folder id from the project folders
+    const characterList = useAppSelector((state) => {
+        if (state.projects.selectedProjectId === null) return null;
+        const characterFolderId = state.projects.projects[
+            state.projects.selectedProjectId
+        ].folders?.find((f) => f.name?.toLowerCase() === "characters")?.id;
+        return state.resources.resources.reduce((acc: string[], r) => {
+            if (r.folderId === characterFolderId && r.name) {
+                acc.push(r.name);
+            }
+            return acc;
+        }, []);
+    });
+
+    const locationList = useAppSelector((state) => {
+        if (state.projects.selectedProjectId === null) return null;
+        const locationFolderId = state.projects.projects[
+            state.projects.selectedProjectId
+        ].folders?.find((f) => f.name?.toLowerCase() === "locations")?.id;
+        return state.resources.resources.reduce((acc: string[], r) => {
+            if (r.folderId === locationFolderId && r.name) {
+                acc.push(r.name);
+            }
+            return acc;
+        }, []);
+    });
+
+    const itemList = useAppSelector((state) => {
+        if (state.projects.selectedProjectId === null) return null;
+        const itemFolderId = state.projects.projects[
+            state.projects.selectedProjectId
+        ].folders?.find((f) => f.name?.toLowerCase() === "items")?.id;
+        return state.resources.resources.reduce((acc: string[], r) => {
+            if (r.folderId === itemFolderId && r.name) {
+                acc.push(r.name);
+            }
+            return acc;
+        }, []);
+    });
     const [notes, setNotes] = React.useState<string>(
         (resource?.metadata?.notes as any) ?? "",
     );
@@ -56,8 +96,6 @@ export default function MetadataSidebar({
 
     // Fallback sample lists when metadata arrays are empty
     const sampleCharacters = characters.length ? characters : ["Alice", "Bob"];
-    const sampleLocations = locations.length ? locations : ["Town", "Forest"];
-    const sampleItems = items.length ? items : ["Key", "Map"];
 
     return (
         <aside
@@ -86,70 +124,79 @@ export default function MetadataSidebar({
                     ariaLabel="status"
                     value={status}
                     onChange={(s) => {
+                        const updated = {
+                            ...resource,
+                            metadata: {
+                                ...resource?.metadata,
+                                status: s,
+                            },
+                        };
                         setStatus(s);
                         onChangeStatus && onChangeStatus(s);
                     }}
                 />
             </div>
 
-            <div className="mb-6">
-                <h4 className="text-xs font-semibold text-slate-600 mb-2">
-                    Characters
-                </h4>
-                <MultiSelectList
-                    label="Characters"
-                    items={sampleCharacters}
-                    selected={characters}
-                    onChange={(next) => {
-                        setCharacters(next);
-                        onChangeCharacters && onChangeCharacters(next);
-                    }}
-                />
-            </div>
+            {resource?.type === "text" && (
+                <React.Fragment>
+                    <div className="mb-6">
+                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                            Characters
+                        </h4>
+                        <MultiSelectList
+                            label="Characters"
+                            items={characterList || []}
+                            selected={characters}
+                            onChange={(next) => {
+                                setCharacters(next);
+                                onChangeCharacters && onChangeCharacters(next);
+                            }}
+                        />
+                    </div>
 
-            <div className="mb-6">
-                <h4 className="text-xs font-semibold text-slate-600 mb-2">
-                    Locations
-                </h4>
-                <MultiSelectList
-                    label="Locations"
-                    items={sampleLocations}
-                    selected={locations}
-                    onChange={(next) => {
-                        setLocations(next);
-                        onChangeLocations && onChangeLocations(next);
-                    }}
-                />
-            </div>
-
-            <div className="mb-6">
-                <h4 className="text-xs font-semibold text-slate-600 mb-2">
-                    Items
-                </h4>
-                <MultiSelectList
-                    label="Items"
-                    items={sampleItems}
-                    selected={items}
-                    onChange={(next) => {
-                        setItems(next);
-                        onChangeItems && onChangeItems(next);
-                    }}
-                />
-            </div>
-
-            <div>
-                <h4 className="text-xs font-semibold text-slate-600 mb-2">
-                    POV
-                </h4>
-                <POVAutocomplete
-                    options={sampleCharacters}
-                    value={pov ?? ""}
-                    onChange={(v) => {
-                        setPOV(v);
-                        onChangePOV && onChangePOV(v);
-                    }}
-                />
-            </div>
+                    <div className="mb-6">
+                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                            Locations
+                        </h4>
+                        <MultiSelectList
+                            label="Locations"
+                            items={locationList || []}
+                            selected={locations}
+                            onChange={(next) => {
+                                setLocations(next);
+                                onChangeLocations && onChangeLocations(next);
+                            }}
+                        />
+                    </div>
+                    <div className="mb-6">
+                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                            Items
+                        </h4>
+                        <MultiSelectList
+                            label="Items"
+                            items={itemList || []}
+                            selected={items}
+                            onChange={(next) => {
+                                setItems(next);
+                                onChangeItems && onChangeItems(next);
+                            }}
+                        />
+                    </div>
+                    <div>
+                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                            POV
+                        </h4>
+                        <POVAutocomplete
+                            options={characterList || []}
+                            value={pov ?? ""}
+                            onChange={(v) => {
+                                setPOV(v);
+                                onChangePOV && onChangePOV(v);
+                            }}
+                        />
+                    </div>
+                </React.Fragment>
+            )}
         </aside>
     );
 }
