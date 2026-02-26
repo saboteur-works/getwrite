@@ -1,5 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import projectsReducer from "./projectsSlice";
+import resourcesReducer from "./resourcesSlice";
 
 /**
  * @deprecated This is a temporary store instance for development and testing. In production, use makeStore to create a new store instance for each client.
@@ -14,6 +15,7 @@ export const makeStore = () => {
     return configureStore({
         reducer: {
             projects: projectsReducer,
+            resources: resourcesReducer,
         },
     });
 };
