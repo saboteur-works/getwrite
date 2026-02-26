@@ -2,13 +2,15 @@ import React from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import OrganizerCard from "../components/WorkArea/OrganizerCard";
-import { createResource } from "../lib/placeholders";
+import { createTextResource } from "../src/lib/models/resource";
 
 describe("OrganizerCard", () => {
     it("renders title, type, date, body and metadata when showBody is true", () => {
-        const res = createResource("Test Resource", "document");
-        (res.metadata as any).wordCount = 42;
-        (res.metadata as any).status = "draft";
+        const res = createTextResource({
+            name: "Test Resource",
+            plainText: "Placeholder content for Test Resource",
+            metadata: { wordCount: 42, status: "draft" },
+        } as any);
 
         render(<OrganizerCard resource={res} showBody={true} />);
 
@@ -23,7 +25,11 @@ describe("OrganizerCard", () => {
     });
 
     it("hides the body when showBody is false", () => {
-        const res = createResource("Hidden Body", "note");
+        const res = createTextResource({
+            name: "Hidden Body",
+            plainText: "Placeholder content for Hidden Body",
+            metadata: {},
+        } as any);
         render(<OrganizerCard resource={res} showBody={false} />);
 
         expect(screen.getByText("Hidden Body")).toBeTruthy();
