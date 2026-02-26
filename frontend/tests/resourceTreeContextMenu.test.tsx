@@ -6,6 +6,7 @@ import { Provider } from "react-redux";
 import { setProject } from "../src/store/projectsSlice";
 import { makeStore } from "../src/store/store";
 import type { AnyResource } from "../src/lib/models/types";
+import { generateUUID } from "../src/lib/models/uuid";
 import { createTextResource } from "../src/lib/models/resource";
 import { createProject } from "../src/lib/models/project";
 
@@ -14,8 +15,9 @@ describe("ResourceTree context menu", () => {
         const now = new Date().toISOString();
         const project = createProject({ name: "proj_1" });
 
+        const rootId = generateUUID();
         const root: AnyResource = {
-            id: "root",
+            id: rootId,
             name: "Root",
             title: "Root",
             type: "folder",
@@ -26,7 +28,7 @@ describe("ResourceTree context menu", () => {
 
         const scene = createTextResource({
             name: "Scene A",
-            folderId: "root",
+            folderId: rootId,
             plainText: "Hello",
         });
 
@@ -69,6 +71,6 @@ describe("ResourceTree context menu", () => {
         fireEvent.click(copyBtn);
 
         expect(onResourceAction).toHaveBeenCalledTimes(1);
-        expect(onResourceAction).toHaveBeenCalledWith("copy", "scene_a");
+        expect(onResourceAction).toHaveBeenCalledWith("copy", scene.id);
     });
 });
