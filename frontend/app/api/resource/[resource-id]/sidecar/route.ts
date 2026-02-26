@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AnyResource } from "../../../../../src/lib/models";
 import { writeSidecar } from "../../../../../src/lib/models/sidecar";
 
 // Updates to resource metadata (notes, status, characters, locations, items, pov)
@@ -11,7 +10,7 @@ export async function POST(
     const body = await req.json();
     const { projectRoot, updatedResource } = body as {
         projectRoot: string;
-        updatedResource: AnyResource;
+        updatedResource: any;
     };
     console.log(
         "Received metadata update for resource",
@@ -20,5 +19,6 @@ export async function POST(
         body,
     );
 
+    await writeSidecar(projectRoot, resourceId, updatedResource);
     return NextResponse.json({ message: "Hello from sidecar!" });
 }
