@@ -20,6 +20,7 @@ import {
     setResources,
     setSelectedResourceId as setResourceId,
     updateResource as updateResourceInStore,
+    addResource as addResourceInStore,
 } from "../src/store/resourcesSlice";
 
 /**
@@ -316,7 +317,7 @@ export default function Home(): JSX.Element {
             });
             const resBody = await result.json();
             const res: AnyResource = resBody.resource;
-
+            dispatch(addResourceInStore(res));
             // insert at end
             setProjects((prev) =>
                 prev.map((p) =>

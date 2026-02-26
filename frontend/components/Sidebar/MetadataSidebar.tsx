@@ -5,6 +5,7 @@ import StatusSelector from "./controls/StatusSelector";
 import MultiSelectList from "./controls/MultiSelectList";
 import POVAutocomplete from "./controls/POVAutocomplete";
 import useAppSelector from "../../src/store/hooks";
+import { shallowEqual } from "react-redux";
 
 export interface MetadataSidebarProps {
     resource?: AnyResource;
@@ -30,16 +31,18 @@ export default function MetadataSidebar({
     // get the character folder id from the project folders
     const characterList = useAppSelector((state) => {
         if (state.projects.selectedProjectId === null) return null;
+
         const characterFolderId = state.projects.projects[
             state.projects.selectedProjectId
         ].folders?.find((f) => f.name?.toLowerCase() === "characters")?.id;
+
         return state.resources.resources.reduce((acc: string[], r) => {
             if (r.folderId === characterFolderId && r.name) {
                 acc.push(r.name);
             }
             return acc;
         }, []);
-    });
+    }, shallowEqual);
 
     const locationList = useAppSelector((state) => {
         if (state.projects.selectedProjectId === null) return null;

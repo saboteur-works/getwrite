@@ -17,9 +17,15 @@ const resourcesSlice = createSlice({
     reducers: {
         setResources(state, action: PayloadAction<AnyResource[]>) {
             state.resources = action.payload;
+            return state;
         },
         setSelectedResourceId(state, action: PayloadAction<string | null>) {
             state.selectedResourceId = action.payload;
+            return state;
+        },
+        addResource(state, action: PayloadAction<AnyResource>) {
+            state.resources.push(action.payload);
+            return state;
         },
         updateResource(state, action: PayloadAction<AnyResource>) {
             const index = state.resources.findIndex(
@@ -28,12 +34,17 @@ const resourcesSlice = createSlice({
             if (index !== -1) {
                 state.resources[index] = action.payload;
             }
+            return state;
         },
     },
 });
 
-export const { setResources, setSelectedResourceId, updateResource } =
-    resourcesSlice.actions;
+export const {
+    setResources,
+    setSelectedResourceId,
+    updateResource,
+    addResource,
+} = resourcesSlice.actions;
 export default resourcesSlice.reducer;
 
 export const selectedResource = (state: ResourcesState) => {
