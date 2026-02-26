@@ -102,43 +102,42 @@ export default function MetadataSidebar({
             className={`p-4 bg-white ${className}`}
             aria-label="metadata-sidebar"
         >
-            <div className="mb-6">
-                <h4 className="text-xs font-semibold text-slate-600 mb-2">
-                    Notes
-                </h4>
-                <NotesInput
-                    ariaLabel="notes"
-                    value={notes}
-                    onChange={(v) => {
-                        setNotes(v);
-                        onChangeNotes && onChangeNotes(v);
-                    }}
-                />
-            </div>
-
-            <div className="mb-6">
-                <h4 className="text-xs font-semibold text-slate-600 mb-2">
-                    Status
-                </h4>
-                <StatusSelector
-                    ariaLabel="status"
-                    value={status}
-                    onChange={(s) => {
-                        const updated = {
-                            ...resource,
-                            metadata: {
-                                ...resource?.metadata,
-                                status: s,
-                            },
-                        };
-                        setStatus(s);
-                        onChangeStatus && onChangeStatus(s);
-                    }}
-                />
-            </div>
-
-            {resource?.type === "text" && (
+            {resource?.type === "text" ? (
                 <React.Fragment>
+                    <div className="mb-6">
+                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                            Notes
+                        </h4>
+                        <NotesInput
+                            ariaLabel="notes"
+                            value={notes}
+                            onChange={(v) => {
+                                setNotes(v);
+                                onChangeNotes && onChangeNotes(v);
+                            }}
+                        />
+                    </div>
+
+                    <div className="mb-6">
+                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                            Status
+                        </h4>
+                        <StatusSelector
+                            ariaLabel="status"
+                            value={status}
+                            onChange={(s) => {
+                                const updated = {
+                                    ...resource,
+                                    metadata: {
+                                        ...resource?.metadata,
+                                        status: s,
+                                    },
+                                };
+                                setStatus(s);
+                                onChangeStatus && onChangeStatus(s);
+                            }}
+                        />
+                    </div>
                     <div className="mb-6">
                         <h4 className="text-xs font-semibold text-slate-600 mb-2">
                             Characters
@@ -196,6 +195,12 @@ export default function MetadataSidebar({
                         />
                     </div>
                 </React.Fragment>
+            ) : (
+                <div className="text-sm text-slate-500">
+                    <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                        Select a text resource to view and edit its metadata.
+                    </h4>
+                </div>
             )}
         </aside>
     );

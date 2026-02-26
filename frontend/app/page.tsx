@@ -19,6 +19,7 @@ import { buildProjectView } from "../src/lib/models/project-view";
 import {
     setResources,
     setSelectedResourceId as setResourceId,
+    updateResource as updateResourceInStore,
 } from "../src/store/resourcesSlice";
 
 /**
@@ -194,6 +195,7 @@ export default function Home(): JSX.Element {
         const resource = selectedProject.resources.find(
             (r) => r.id === resourceId,
         );
+
         fetch(`/api/resource/${resourceId}/sidecar`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -204,6 +206,9 @@ export default function Home(): JSX.Element {
         }).catch((err) => {
             console.error("Error updating resource metadata:", err);
         });
+
+        dispatch(updateResourceInStore(updater(resource!)));
+
         setProjects((prev) =>
             prev.map((p) => {
                 if (p.id !== selectedProject.id) return p;
