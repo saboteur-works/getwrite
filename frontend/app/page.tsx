@@ -9,7 +9,6 @@ import {
 } from "../src/store/projectsSlice";
 import AppShell from "../components/Layout/AppShell";
 import StartPage from "../components/Start/StartPage";
-import type { Resource } from "../lib/types";
 import type {
     Folder,
     Project,
@@ -178,7 +177,7 @@ export default function Home(): JSX.Element {
      */
     const updateResource = (
         resourceId: string,
-        updater: (r: Resource) => Resource,
+        updater: (r: AnyResource) => AnyResource,
     ): void => {
         if (!selectedProject) return;
         setProjects((prev) =>
@@ -187,7 +186,15 @@ export default function Home(): JSX.Element {
                 const resources = p.resources.map((r) =>
                     r.id === resourceId ? updater(r) : r,
                 );
-                return { ...p, resources, updatedAt: new Date().toISOString() };
+
+                return {
+                    id: p.id,
+                    name: p.name,
+                    rootPath: p.rootPath ?? "",
+                    folders: p.folders ?? [],
+                    resources,
+                    updatedAt: new Date().toISOString(),
+                };
             }),
         );
 
