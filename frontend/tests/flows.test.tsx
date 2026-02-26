@@ -7,18 +7,47 @@ import { makeStore } from "../src/store/store";
 import { Provider } from "react-redux";
 import { setProject } from "../src/store/projectsSlice";
 import EditView from "../components/WorkArea/EditView";
-import { sampleProjects } from "../lib/placeholders";
+// Use a small, canonical test-local fixture instead of legacy `sampleProjects` placeholder.
 
 // Integration-style flow test: Start -> Open Project -> Open Resource -> Edit
 describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
     it("navigates from Start to Edit view and shows word count for selected resource", async () => {
-        const projects = sampleProjects(1);
+        const now = new Date().toISOString();
+        const projectId = "proj_test_1";
+        const projects = [
+            {
+                project: {
+                    id: projectId,
+                    name: "Sample Project 1",
+                    createdAt: now,
+                    updatedAt: now,
+                    rootPath: null,
+                },
+                resources: [
+                    {
+                        id: "res_ogbqoiv",
+                        name: "Scene A",
+                        content: "Placeholder content for Scene A",
+                        plainText: "Placeholder content for Scene A",
+                        folderId: null,
+                    },
+                    {
+                        id: "res_klxinf5",
+                        name: "Notes",
+                        content: "Notes for Sample Project 1",
+                        plainText: "Notes for Sample Project 1",
+                        folderId: null,
+                    },
+                ],
+                folders: [],
+            },
+        ];
+
         const wrapper = projects[0];
         const project = wrapper.project;
         const resources = wrapper.resources;
 
-        // create a test-local Redux store and TestApp harness that renders StartPage then ResourceTree+EditView
-        const testStore = makeStore();
+        // create a test-local Redux store and TestApp harness that renders StartPage then ResourceTreeconst testStore = makeStore();
 
         function TestApp() {
             const [currentProject, setCurrentProject] = React.useState<
@@ -36,6 +65,18 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                     ) ?? (id == null ? projects[0] : null);
                 setCurrentProject(p);
                 setCurrentResourceId(null);
+
+                // Register the project in the store immediately so ResourceTree can select it synchronously.
+                if (p) {
+                    testStore.dispatch(
+                        setProject({
+                            id: p.project.id,
+                            name: p.project.name,
+                            resources: p.resources,
+                            folders: (p as any).folders ?? [],
+                        } as any),
+                    );
+                }
             };
 
             const handleSelect = (id: string) => {
@@ -109,10 +150,18 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
             expect(screen.getByLabelText("Resource tree")).toBeTruthy();
         });
 
-        // Click the first resource title
+        // Click the first resource title (fall back to first treeitem button when name is missing)
         const firstResource = resources[0];
-        const resTitle = screen.getByText(firstResource.name);
-        fireEvent.click(resTitle);
+        if (firstResource.name) {
+            const resTitle = screen.getByText(firstResource.name);
+            fireEvent.click(resTitle);
+        } else {
+            const treeitems = screen.getAllByRole("treeitem");
+            expect(treeitems.length).toBeGreaterThan(0);
+            const btn = treeitems[0].querySelector("button");
+            if (btn) fireEvent.click(btn);
+            else fireEvent.click(treeitems[0]);
+        }
 
         // The editor area should show word count matching the resource content
         // Compute expected word count using same logic as EditView
