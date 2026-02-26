@@ -360,7 +360,35 @@ export async function duplicateResource(
         const ext = path.extname(foundName);
         const base = foundName.replace(resourceId, newId);
         const dest = path.join(resourcesDir, base);
-        await fs.copyFile(src, dest);
+        try {
+            const st = await fs.stat(src);
+            if (st.isDirectory()) {
+                // Resource stored as a directory (newer layout); copy recursively
+                // `fs.cp` supports recursive copy on Node >=16.7
+                // Use the promises API's cp if available
+                // @ts-ignore - cp exists on Node 16+
+                if (typeof (fs as any).cp === "function") {
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-ignore
+                    await (fs as any).cp(src, dest, { recursive: true });
+                } else {
+                    // Fallback: create dest dir and copy individual entries
+                    await fs.mkdir(dest, { recursive: true });
+                    const entries = await fs.readdir(src);
+                    for (const e of entries) {
+                        await fs.copyFile(
+                            path.join(src, e),
+                            path.join(dest, e),
+                        );
+                    }
+                }
+            } else {
+                await fs.copyFile(src, dest);
+            }
+        } catch (err) {
+            // propagate error to caller for visibility in tests
+            throw err;
+        }
     }
 
     return { newId };
