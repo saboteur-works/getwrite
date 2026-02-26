@@ -1,7 +1,6 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import AppShell from "../components/Layout/AppShell";
-import { sampleProjects } from "../lib/placeholders";
 import type { Project } from "../src/lib/models/types";
 
 const meta: Meta<typeof AppShell> = {
@@ -15,7 +14,27 @@ type Story = StoryObj<typeof AppShell>;
 
 export const Default: Story = {
     render: () => {
-        const projects: Project[] = sampleProjects(3).map((p) => p.project);
+        const now = new Date().toISOString();
+        const projects: Project[] = [
+            {
+                id: "proj_1",
+                name: "Project One",
+                createdAt: now,
+                updatedAt: now,
+            },
+            {
+                id: "proj_2",
+                name: "Project Two",
+                createdAt: now,
+                updatedAt: now,
+            },
+            {
+                id: "proj_3",
+                name: "Project Three",
+                createdAt: now,
+                updatedAt: now,
+            },
+        ];
 
         return (
             <AppShell>

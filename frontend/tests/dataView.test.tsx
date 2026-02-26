@@ -2,11 +2,46 @@ import React from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import DataView from "../components/WorkArea/DataView";
-import { sampleProjects } from "../lib/placeholders";
+import { createTextResource } from "../src/lib/models/resource";
 
 describe("DataView", () => {
     it("shows project/resource counts and lists resources", () => {
-        const projects = sampleProjects(2);
+        const now = new Date().toISOString();
+        const projects = [
+            {
+                project: {
+                    id: "proj_a",
+                    name: "Project A",
+                    createdAt: now,
+                    updatedAt: now,
+                },
+                resources: [
+                    createTextResource({
+                        name: "A1",
+                        plainText: "Content A1",
+                        folderId: null,
+                    } as any),
+                ],
+                folders: [],
+            },
+            {
+                project: {
+                    id: "proj_b",
+                    name: "Project B",
+                    createdAt: now,
+                    updatedAt: now,
+                },
+                resources: [
+                    createTextResource({
+                        name: "B1",
+                        plainText: "Content B1",
+                        folderId: null,
+                    } as any),
+                ],
+                folders: [],
+            },
+        ];
+
         render(<DataView projects={projects} />);
 
         // Explicit stat checks
@@ -38,7 +73,25 @@ describe("DataView", () => {
     });
 });
 it("shows project/resource counts and lists resources for a single project", () => {
-    const projects = sampleProjects(1);
+    const now = new Date().toISOString();
+    const projects = [
+        {
+            project: {
+                id: "proj_single",
+                name: "Single Project",
+                createdAt: now,
+                updatedAt: now,
+            },
+            resources: [
+                createTextResource({
+                    name: "S1",
+                    plainText: "Single content",
+                    folderId: null,
+                } as any),
+            ],
+            folders: [],
+        },
+    ];
     const project = projects[0];
     render(<DataView project={project} />);
 

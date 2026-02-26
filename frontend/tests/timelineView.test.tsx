@@ -2,11 +2,31 @@ import React from "react";
 import { describe, test, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import TimelineView from "../components/WorkArea/TimelineView";
-import { sampleProjects } from "../lib/placeholders";
+import { createTextResource } from "../src/lib/models/resource";
 
 describe("TimelineView", () => {
     test("renders dated sections and undated section", () => {
-        const projects = sampleProjects(1);
+        const now = new Date().toISOString();
+        const projectId = "proj_timeline_1";
+        const projects = [
+            {
+                project: {
+                    id: projectId,
+                    name: "Timeline Project",
+                    createdAt: now,
+                    updatedAt: now,
+                },
+                resources: [
+                    createTextResource({
+                        name: "Entry A",
+                        plainText: "Entry A body",
+                        folderId: null,
+                    } as any),
+                ],
+                folders: [],
+            },
+        ];
+
         const project = projects[0];
         render(<TimelineView project={project} />);
 
