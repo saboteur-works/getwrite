@@ -67,27 +67,6 @@ export interface Project {
     metadata?: Record<string, MetadataValue>;
 }
 
-/** Logical container within a project used to group resources. */
-export interface Folder {
-    /** Stable UUID identifier for the folder. */
-    id: UUID;
-    /** Optional human-readable slug for UI and exports. */
-    slug?: string;
-    /** Folder display name. */
-    name: string;
-    /** Parent folder UUID; null or undefined for top-level. */
-    parentId?: UUID | null;
-    /** Ordering index used for tree ordering within a parent. */
-    orderIndex?: number;
-    /** Creation timestamp (ISO 8601). */
-    createdAt: string;
-    /** Last-modified timestamp (ISO 8601). */
-    updatedAt?: string;
-    /** Owning folder UUID or null for root. */
-    folderId?: UUID | null;
-    type: "folder";
-}
-
 export type ResourceType = "text" | "image" | "audio" | "folder";
 
 /**
@@ -122,6 +101,12 @@ export interface ResourceBase {
     createdAt: string;
     /** Last-modified timestamp (ISO 8601). */
     updatedAt?: string;
+}
+
+/** Logical container within a project used to group resources. */
+export interface Folder extends ResourceBase {
+    /** Parent folder UUID; null or undefined for top-level. */
+    parentId?: UUID | null;
 }
 
 // Minimal TipTap AST-safe types used for editor persistence.
@@ -196,4 +181,4 @@ export interface Revision {
     metadata?: Record<string, unknown>;
 }
 
-export type AnyResource = TextResource | ImageResource | AudioResource;
+export type AnyResource = TextResource | ImageResource | AudioResource | Folder;

@@ -5,20 +5,45 @@ import type { ResourceTreeProps } from "../../components/Tree/ResourceTree";
 import ClientProvider from "../../src/store/ClientProvider";
 import store from "../../src/store/store";
 import { setProject } from "../../src/store/projectsSlice";
-import { createProject, createResource } from "../../lib/placeholders";
-import type { AnyResource } from "../../src/lib/models/types";
+import type { AnyResource, Folder, Project } from "../../src/lib/models/types";
+import { useAppDispatch } from "../../src/store/hooks";
 
-const {
-    project,
-    resources: projResources,
-    folders,
-} = createProject("Storybook Project");
 // create a folder and nested resources for the story (use project id)
-const folder = createResource("Characters", "folder", project.id);
-const char1 = createResource("Protagonist", "note", project.id, folder.id);
-const char2 = createResource("Antagonist", "note", project.id, folder.id);
 // merge resources into an array including folder and top-level items
-const resources: AnyResource[] = [folder, ...projResources, char1, char2];
+const project: Project = {
+    id: "abcd-1234-proj",
+    name: "Example Project",
+    createdAt: new Date().toISOString(),
+};
+
+const resources: AnyResource[] = [
+    {
+        id: "folder-1",
+        name: "Folder 1",
+        type: "folder",
+        createdAt: new Date().toISOString(),
+    },
+    {
+        id: "res-1",
+        name: "Resource 1",
+        type: "text",
+        folderId: "folder-1",
+        createdAt: new Date().toISOString(),
+    },
+    {
+        id: "res-2",
+        name: "Resource 2",
+        type: "image",
+        folderId: "folder-1",
+        createdAt: new Date().toISOString(),
+    },
+    {
+        id: "res-3",
+        name: "Resource 3",
+        type: "audio",
+        createdAt: new Date().toISOString(),
+    },
+];
 
 const meta: Meta<typeof ResourceTree> = {
     title: "Tree/ResourceTree",
@@ -31,9 +56,16 @@ type Story = StoryObj<typeof ResourceTree>;
 
 export const Default: Story = {
     render: (args: Partial<ResourceTreeProps>) => {
-        store.dispatch(
-            setProject({ id: project.id, name: project.name, resources }),
+        const dispatch = useAppDispatch();
+        dispatch(
+            setProject({
+                id: project.id,
+                name: project.name,
+                resources: resources as AnyResource[],
+                rootPath: "/path/to/project",
+            }),
         );
+
         return (
             <ClientProvider>
                 <ResourceTree projectId={project.id} onSelect={args.onSelect} />
@@ -47,8 +79,14 @@ export const Default: Story = {
 
 export const Reorderable: Story = {
     render: (args: Partial<ResourceTreeProps>) => {
-        store.dispatch(
-            setProject({ id: project.id, name: project.name, resources }),
+        const dispatch = useAppDispatch();
+        dispatch(
+            setProject({
+                id: project.id,
+                name: project.name,
+                resources: resources as AnyResource[],
+                rootPath: "/path/to/project",
+            }),
         );
         return (
             <ClientProvider>
