@@ -47,7 +47,8 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
         const project = wrapper.project;
         const resources = wrapper.resources;
 
-        // create a test-local Redux store and TestApp harness that renders StartPage then ResourceTreeconst testStore = makeStore();
+        // create a test-local Redux store and TestApp harness that renders StartPage then ResourceTree
+        const testStore = makeStore();
 
         function TestApp() {
             const [currentProject, setCurrentProject] = React.useState<
