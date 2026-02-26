@@ -156,20 +156,10 @@ export async function createProjectFromType(options: {
                 text: {
                     plainText: r.template ?? "",
                 },
+                orderIndex: j,
                 metadata: { orderIndex: j },
             });
             resources.push(typedResource as TextResource);
-
-            // write sidecar metadata for resource (include orderIndex)
-            const meta: Record<string, MetadataValue> = {
-                id: typedResource.id,
-                name: typedResource.name,
-                type: typedResource.type,
-                createdAt: typedResource.createdAt,
-                orderIndex: j,
-                folderId: folder.id,
-                slug: typedResource.slug || null,
-            };
             // await writeSidecar(projectRoot, res.id, meta);
             await writeResourceToFile(projectRoot, typedResource);
         }
