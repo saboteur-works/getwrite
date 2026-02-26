@@ -1,7 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import OrganizerCard from "../../components/WorkArea/OrganizerCard";
-import { createResource } from "../../lib/placeholders";
+import { createTextResource } from "../../src/lib/models/resource";
 
 const meta: Meta<typeof OrganizerCard> = {
     title: "WorkArea/OrganizerCard",
@@ -11,7 +11,7 @@ const meta: Meta<typeof OrganizerCard> = {
 export default meta;
 type Story = StoryObj<typeof OrganizerCard>;
 
-const sample = createResource("Sample Card");
+const sample = createTextResource({ name: "Sample Card", plainText: "" });
 
 export const Default: Story = {
     args: {
