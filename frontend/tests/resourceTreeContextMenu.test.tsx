@@ -2,49 +2,53 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ResourceTree from "../components/Tree/ResourceTree";
-import ClientProvider from "../src/store/ClientProvider";
+import { Provider } from "react-redux";
 import { setProject } from "../src/store/projectsSlice";
-import store from "../src/store/store";
+import { makeStore } from "../src/store/store";
 import type { AnyResource } from "../src/lib/models/types";
+import { createTextResource } from "../src/lib/models/resource";
+import { createProject } from "../src/lib/models/project";
 
 describe("ResourceTree context menu", () => {
     it("forwards context menu actions to onResourceAction", async () => {
         const now = new Date().toISOString();
-        const resources: AnyResource[] = [
-            {
-                id: "root",
-                name: "Root",
-                title: "Root",
-                type: "text",
-                createdAt: now,
-                updatedAt: now,
-                metadata: {},
-            },
-            {
-                id: "scene_a",
-                name: "Scene A",
-                title: "Scene A",
-                parentId: "root",
-                type: "text",
-                plainText: "Hello",
-                content: "Hello",
-                createdAt: now,
-                updatedAt: now,
-                metadata: {},
-            },
-        ];
+        const project = createProject({ name: "proj_1" });
+
+        const root: AnyResource = {
+            id: "root",
+            name: "Root",
+            title: "Root",
+            type: "folder",
+            createdAt: now,
+            updatedAt: now,
+            metadata: {},
+        } as any;
+
+        const scene = createTextResource({
+            name: "Scene A",
+            folderId: "root",
+            plainText: "Hello",
+        });
+
+        const resources: AnyResource[] = [root, scene];
 
         const onResourceAction = vi.fn();
-        store.dispatch(
-            setProject({ id: "proj_1", name: "proj_1", resources } as any),
+        const testStore = makeStore();
+        testStore.dispatch(
+            setProject({
+                id: project.id,
+                name: project.name,
+                resources,
+            } as any),
         );
+
         render(
-            <ClientProvider>
+            <Provider store={testStore}>
                 <ResourceTree
-                    projectId="proj_1"
+                    projectId={project.id}
                     onResourceAction={onResourceAction}
                 />
-            </ClientProvider>,
+            </Provider>,
         );
 
         // Expand the root so child nodes are rendered, then right-click the resource title to open the context menu
