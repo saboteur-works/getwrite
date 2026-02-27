@@ -1,11 +1,8 @@
 import React from "react";
-import type { Project, AnyResource } from "../../src/lib/models/types";
+import type { AnyResource } from "../../src/lib/models/types";
+import useAppSelector from "../../src/store/hooks";
 
 export interface TimelineViewProps {
-    /** Single project to scope timeline (required) */
-    project?: Project;
-    /** Optional adapter view from `buildProjectView` (canonical models). */
-    view?: { project: any; folders: any[]; resources: any[] };
     className?: string;
 }
 
@@ -26,36 +23,25 @@ function groupByDate(resources: AnyResource[]) {
     return { dates, dated, undated };
 }
 
-export default function TimelineView({
-    project,
-    view,
-    className = "",
-}: TimelineViewProps) {
-    // `project` may be either a canonical `Project` or a placeholder wrapper
-    // `{ project, resources, folders }`. Normalise to a canonical `project` and
-    // a resource list that uses canonical fields.
-    const effectiveProjectCanonical = React.useMemo<Project>(() => {
-        const p = (view as any)?.project ?? project;
-        return p.project ? p.project : p;
-    }, [view, project]);
-
-    const resources = React.useMemo<AnyResource[]>(() => {
-        if (view && (view as any).resources) return (view as any).resources;
-        if (project && (project as any).resources)
-            return (project as any).resources;
-        return effectiveProjectCanonical.resources ?? [];
-    }, [view, project, effectiveProjectCanonical]);
+export default function TimelineView({ className = "" }: TimelineViewProps) {
+    const projectFromStore = useAppSelector(
+        (state) =>
+            state.projects.projects[state.projects.selectedProjectId ?? ""],
+    );
+    const resourcesFromStore = useAppSelector(
+        (state) => state.resources.resources,
+    );
 
     const { dates, dated, undated } = React.useMemo(
-        () => groupByDate(resources),
-        [resources],
+        () => groupByDate(resourcesFromStore),
+        [resourcesFromStore],
     );
 
     return (
         <div className={`p-4 ${className}`}>
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">
-                    Timeline — {effectiveProjectCanonical.name}
+                    Timeline — {projectFromStore?.name}
                 </h2>
             </div>
 
