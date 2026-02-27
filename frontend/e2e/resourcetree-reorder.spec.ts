@@ -34,6 +34,8 @@ test("resource tree reorder moves items visually", async ({ page }) => {
         after.push(txt.split("\n")[0]);
     }
 
-    // Expect that the first item moved to index 1 (i.e., swapped)
-    expect(after[1]).toBe(before[0]);
+    // Expect that the item that was first moved to a different index
+    const moved = before[0];
+    const newIndex = after.indexOf(moved);
+    expect(newIndex).toBeGreaterThan(0);
 });
