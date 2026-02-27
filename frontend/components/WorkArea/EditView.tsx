@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import TipTapEditor from "../TipTapEditor";
 import { TipTapDocument } from "../../src/lib/models";
 import useAppSelector from "../../src/store/hooks";
+import { shallowEqual } from "react-redux";
 
 export interface EditViewProps {
     /** Initial editor content (HTML or plain text) */
@@ -30,9 +31,11 @@ export default function EditView({
     );
     const projectId = useAppSelector(
         (state) => state.projects.selectedProjectId,
+        shallowEqual,
     );
-    const project = useAppSelector((state) =>
-        projectId ? state.projects.projects[projectId] : null,
+    const project = useAppSelector(
+        (state) => (projectId ? state.projects.projects[projectId] : null),
+        shallowEqual,
     );
 
     const fetchResourceContent = async () => {
@@ -50,6 +53,9 @@ export default function EditView({
 
     // On mount, fetch the resource content if a resource ID is provided
     useEffect(() => {
+        console.log("fetching resource content for", resourceId);
+        setContent("");
+        setTipTapDoc(null);
         if (resourceId) {
             fetchResourceContent().then((res) => {
                 // When loading TipTap content, we need to make sure the shape is valid before

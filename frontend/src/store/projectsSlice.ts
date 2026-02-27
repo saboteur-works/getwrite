@@ -53,9 +53,11 @@ const projectsSlice = createSlice({
     reducers: {
         setProject(state, action: PayloadAction<StoredProject>) {
             state.projects[action.payload.id] = action.payload;
+            return state;
         },
         setSelectedProjectId(state, action: PayloadAction<string | null>) {
             state.selectedProjectId = action.payload;
+            return state;
         },
         addResource(
             state,
@@ -74,6 +76,7 @@ const projectsSlice = createSlice({
                 ? [...proj.resources, resource]
                 : [resource];
             state.projects[projectId] = proj;
+            return state;
         },
         removeResource(
             state,
@@ -84,6 +87,7 @@ const projectsSlice = createSlice({
             if (!proj || !proj.resources) return;
             proj.resources = proj.resources.filter((r) => r.id !== resourceId);
             state.projects[projectId] = proj;
+            return state;
         },
     },
     extraReducers: (builder) => {
