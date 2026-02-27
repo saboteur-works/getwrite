@@ -35,22 +35,43 @@ test("resource tree reorder moves items visually", async ({ page }) => {
             const src = items[srcIndex];
             const tgt = items[tgtIndex];
             if (!src || !tgt) return;
-            const dataTransfer: any = { data: {} };
-            dataTransfer.setData = (k: string, v: string) =>
-                (dataTransfer.data[k] = v);
-            dataTransfer.getData = (k: string) => dataTransfer.data[k];
 
-            const fire = (el: HTMLElement, type: string) => {
-                const evt: any = document.createEvent("Event");
-                evt.initEvent(type, true, true);
-                evt.dataTransfer = dataTransfer;
-                el.dispatchEvent(evt);
-            };
+            const dt = new DataTransfer();
+            // try to set an id payload if present on the src item
+            const idAttr =
+                src.getAttribute("data-id") ||
+                src
+                    .querySelector('[data-testid="drag-handle"]')
+                    ?.getAttribute("data-id");
+            if (idAttr) dt.setData("text/plain", idAttr);
 
-            fire(src, "dragstart");
-            fire(tgt, "dragover");
-            fire(tgt, "drop");
-            fire(src, "dragend");
+            const dragstart = new DragEvent("dragstart", {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer: dt,
+            });
+            src.dispatchEvent(dragstart);
+
+            const dragover = new DragEvent("dragover", {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer: dt,
+            });
+            tgt.dispatchEvent(dragover);
+
+            const drop = new DragEvent("drop", {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer: dt,
+            });
+            tgt.dispatchEvent(drop);
+
+            const dragend = new DragEvent("dragend", {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer: dt,
+            });
+            src.dispatchEvent(dragend);
         },
         { srcIndex: 0, tgtIndex: 1 },
     );
