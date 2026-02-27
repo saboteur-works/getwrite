@@ -51,6 +51,10 @@ export const Reorderable: Story = {
                 }
             };
 
+            // expose simulate for e2e tests
+            // @ts-ignore
+            (window as any).__simulateReorder = simulateReorder;
+
             return (
                 <div>
                     <ResourceTree
@@ -62,9 +66,6 @@ export const Reorderable: Story = {
                         data-testid="reorder-simulate"
                         onClick={simulateReorder}
                         style={{ display: "none" }}
-                            // expose simulate for e2e tests
-                            // @ts-ignore
-                            window.__simulateReorder = simulateReorder;
                     >
                         simulate
                     </button>
