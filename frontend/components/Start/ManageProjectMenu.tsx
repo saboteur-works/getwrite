@@ -3,6 +3,8 @@ import ConfirmDialog from "../common/ConfirmDialog";
 import RenameProjectModal from "./RenameProjectModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import type { AnyResource } from "../../src/lib/models/types";
+import { selectProject } from "../../src/store/projectsSlice";
+import useAppSelector from "../../src/store/hooks";
 
 export interface ManageProjectMenuProps {
     projectId: string;
@@ -25,6 +27,8 @@ export default function ManageProjectMenu({
     onPackage,
     resources = [],
 }: ManageProjectMenuProps): JSX.Element {
+    const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
+    console.log(projectId);
     const [open, setOpen] = useState<boolean>(false);
     const [editing, setEditing] = useState<boolean>(false);
     const [name, setName] = useState<string>(projectName);
@@ -67,6 +71,13 @@ export default function ManageProjectMenu({
 
     const handleDeleteConfirm = (): void => {
         if (onDelete) onDelete(projectId);
+        fetch(`/api/project/delete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ projectPath: projectFromStore?.rootPath }),
+        }).catch((err) => {
+            console.error("Failed to delete project:", err);
+        });
         setConfirmDeleteOpen(false);
         setOpen(false);
     };

@@ -6,6 +6,7 @@ import {
     setSelectedProjectId,
     addResource,
     removeResource,
+    setProjects as setProjectsInStore,
 } from "../src/store/projectsSlice";
 import AppShell from "../components/Layout/AppShell";
 import StartPage from "../components/Start/StartPage";
@@ -76,6 +77,16 @@ export default function Home(): JSX.Element {
         fetchProjects()
             .then((data) => {
                 if (Array.isArray(data)) {
+                    // const projectsForState = data.map((view) => {
+                    //     return {
+                    //         id: view.project.id,
+                    //         name: view.project.name,
+                    //         rootPath: view.project.rootPath,
+                    //         folders: view.folders,
+                    //         resources: view.resources,
+                    //     };
+                    // });
+                    dispatch(setProjectsInStore(data));
                     setProjects(data);
                 }
             })

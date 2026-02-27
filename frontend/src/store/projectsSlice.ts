@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { Project } from "../lib/models";
 
 type Folder = { id: string; slug?: string; name?: string; orderIndex?: number };
 type ResourceMeta = {
@@ -53,6 +54,27 @@ const projectsSlice = createSlice({
     reducers: {
         setProject(state, action: PayloadAction<StoredProject>) {
             state.projects[action.payload.id] = action.payload;
+            return state;
+        },
+        setProjects(
+            state,
+            action: PayloadAction<
+                {
+                    project: Project;
+                    folders: Folder[];
+                    resources: ResourceMeta[];
+                }[]
+            >,
+        ) {
+            action.payload.forEach((p) => {
+                state.projects[p.project.id] = {
+                    id: p.project.id,
+                    name: p.project.name,
+                    rootPath: p.project.rootPath ?? "",
+                    folders: p.folders,
+                    resources: p.resources,
+                };
+            });
             return state;
         },
         setSelectedProjectId(state, action: PayloadAction<string | null>) {
@@ -128,8 +150,13 @@ const projectsSlice = createSlice({
     },
 });
 
-export const { setProject, setSelectedProjectId, addResource, removeResource } =
-    projectsSlice.actions;
+export const {
+    setProject,
+    setProjects,
+    setSelectedProjectId,
+    addResource,
+    removeResource,
+} = projectsSlice.actions;
 export default projectsSlice.reducer;
 
 // Selectors (simple helpers; avoid importing RootState here to prevent circular imports)
