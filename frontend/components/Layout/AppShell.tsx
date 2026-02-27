@@ -613,11 +613,7 @@ export default function AppShell({
                                               <DataView resources={resources} />
                                           );
                                       case "timeline":
-                                          return (
-                                              <TimelineView
-                                                  project={undefined}
-                                              />
-                                          );
+                                          return <TimelineView />;
                                       default:
                                           return (
                                               <div>
