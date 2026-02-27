@@ -37,10 +37,15 @@ describe("Reorder persistence integration", () => {
             resources: created.resources,
         });
 
+        // Use canonical `created.resources` (not the adapter's flat `view.resources`)
+        // to avoid duplicating folder entries in the UI tree (folder entries are
+        // represented separately via `folders`). Passing the adapter's `view.resources`
+        // would include folder placeholder entries and cause duplicate React keys
+        // when combined with `folders`.
         const projectForUI = {
             ...created.project,
             folders: created.folders,
-            resources: view.resources,
+            resources: created.resources,
         } as any;
 
         console.log("[test] stubbing global fetch");

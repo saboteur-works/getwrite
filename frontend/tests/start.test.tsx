@@ -2,6 +2,8 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import StartPage from "../components/Start/StartPage";
+import { Provider } from "react-redux";
+import { makeStore } from "../src/store/store";
 import { createTextResource } from "../src/lib/models/resource";
 
 test("StartPage renders projects and opens CreateProjectModal", async () => {
@@ -43,7 +45,12 @@ test("StartPage renders projects and opens CreateProjectModal", async () => {
             folders: [],
         },
     ];
-    render(<StartPage projects={projects} />);
+    const store = makeStore();
+    render(
+        <Provider store={store}>
+            <StartPage projects={projects} />
+        </Provider>,
+    );
 
     // heading
     expect(

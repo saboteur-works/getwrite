@@ -32,6 +32,9 @@ export default function DataView({
             return projects.flatMap(
                 (p) => (p as any).resources as AnyResource[],
             );
+        if (project && (project as any).resources)
+            return (project as any).resources as AnyResource[];
+        return [] as AnyResource[];
     }, [resources, view, projects]);
 
     const totalResources = flatResources.length;

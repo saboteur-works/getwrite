@@ -51,10 +51,12 @@ export default function EditView({
         return data;
     };
 
-    // On mount, fetch the resource content if a resource ID is provided
+    // On mount or when resourceId / initialContent changes, fetch the resource
+    // content if a resource ID is provided. If no resourceId is provided, keep
+    // the `initialContent` prop so tests and consumers can render initial text.
     useEffect(() => {
         console.log("fetching resource content for", resourceId);
-        setContent("");
+        setContent(initialContent);
         setTipTapDoc(null);
         if (resourceId) {
             fetchResourceContent().then((res) => {
@@ -77,7 +79,7 @@ export default function EditView({
                 }
             });
         }
-    }, [resourceId]);
+    }, [resourceId, initialContent]);
 
     const handleChange = (next: string, doc: TipTapDocument) => {
         setContent(next);

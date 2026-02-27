@@ -35,7 +35,7 @@ describe("CreateResourceModal", () => {
             <CreateResourceModal
                 isOpen={true}
                 initialTitle={""}
-                initialType={"document"}
+                initialType={"text"}
                 parentId={"parent_1"}
                 parents={parents}
                 onCreate={onCreate}
@@ -51,7 +51,7 @@ describe("CreateResourceModal", () => {
         const typeSelect = screen.getByLabelText(
             "resource-type",
         ) as HTMLSelectElement;
-        fireEvent.change(typeSelect, { target: { value: "note" } });
+        fireEvent.change(typeSelect, { target: { value: "text" } });
 
         const createBtn = screen.getByText("Create");
         fireEvent.click(createBtn);
@@ -60,7 +60,7 @@ describe("CreateResourceModal", () => {
         expect(onCreate).toHaveBeenCalledWith(
             expect.objectContaining({
                 title: "New Test",
-                type: "note",
+                type: "text",
                 folderId: "parent_1",
             }),
             "parent_1",
