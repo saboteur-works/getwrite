@@ -347,7 +347,7 @@ export default function AppShell({
     };
 
     const debouncedPersistContent = React.useMemo(
-        () => debounce(persistContent, 5000),
+        () => debounce(persistContent, 2500),
         [persistContent],
     );
     const handlerEditorChange = (content: string, doc: TipTapDocument) => {
