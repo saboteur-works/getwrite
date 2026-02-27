@@ -24,8 +24,14 @@ test("resource tree reorder moves items visually", async ({ page }) => {
 
     // instead of fragile DnD, use the story's simulate button to trigger reorder
     const sim = page.locator('button[data-testid="reorder-simulate"]');
-    await expect(sim).toBeVisible();
-    await sim.click();
+    await expect(sim).toHaveCount(1);
+    // click the hidden simulate button via page.evaluate to avoid visibility restrictions
+    await page.evaluate(() => {
+        const b = document.querySelector(
+            'button[data-testid="reorder-simulate"]',
+        ) as HTMLButtonElement | null;
+        if (b) b.click();
+    });
 
     // probe should contain comma-separated ids after simulation
     const probe = page.locator('[data-testid="reorder-probe"]');

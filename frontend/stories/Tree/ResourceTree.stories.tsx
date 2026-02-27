@@ -62,6 +62,9 @@ export const Reorderable: Story = {
                         data-testid="reorder-simulate"
                         onClick={simulateReorder}
                         style={{ display: "none" }}
+                            // expose simulate for e2e tests
+                            // @ts-ignore
+                            window.__simulateReorder = simulateReorder;
                     >
                         simulate
                     </button>
