@@ -412,6 +412,13 @@ export default function Home(): JSX.Element {
 
         if (action === "delete") {
             if (!resourceId) return;
+            await fetch(`/api/resource/${resourceId}/delete`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    projectRoot: selectedProject.rootPath,
+                }),
+            });
             setProjects((prev) =>
                 prev.map((p) =>
                     p.id === selectedProject.id
