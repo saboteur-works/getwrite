@@ -108,8 +108,6 @@ export default function CreateResourceModal({
                         aria-label="resource-type"
                     >
                         <option value="text">Document</option>
-                        <option value="scene">Scene</option>
-                        <option value="note">Note</option>
                         <option value="folder">Folder</option>
                     </select>
 

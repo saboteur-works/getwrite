@@ -181,8 +181,16 @@ export default function ManageProjectMenu({
                 isOpen={renameOpen}
                 initialName={name}
                 onClose={() => setRenameOpen(false)}
-                onConfirm={(newName) => {
+                onConfirm={async (newName) => {
                     if (onRename) onRename(projectId, newName);
+                    await fetch(`/api/project/rename`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            projectPath: projectFromStore?.rootPath,
+                            newName,
+                        }),
+                    });
                     setName(newName);
                     setRenameOpen(false);
                     setOpen(false);
