@@ -376,6 +376,15 @@ export default function Home(): JSX.Element {
             const copy = {};
             copy.content = src.content;
             copy.metadata = { ...src.metadata };
+
+            await fetch(`/api/resource/${resourceId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "copy",
+                    projectRoot: selectedProject.rootPath,
+                }),
+            });
             setProjects((prev) =>
                 prev.map((p) =>
                     p.id === selectedProject.id
@@ -412,10 +421,11 @@ export default function Home(): JSX.Element {
 
         if (action === "delete") {
             if (!resourceId) return;
-            await fetch(`/api/resource/${resourceId}/delete`, {
+            await fetch(`/api/resource/${resourceId}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    action: "delete",
                     projectRoot: selectedProject.rootPath,
                 }),
             });

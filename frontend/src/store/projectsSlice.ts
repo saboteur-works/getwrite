@@ -35,16 +35,17 @@ export const persistReorder = createAsyncThunk(
     "projects/persistReorder",
     async (payload: {
         projectId: string;
+        projectRoot: string;
         folderOrder: Array<{ id: string; orderIndex: number }>;
         resourceOrder: Array<{ id: string; orderIndex: number }>;
     }) => {
-        const { projectId, folderOrder, resourceOrder } = payload;
+        const { projectRoot, folderOrder, resourceOrder, projectId } = payload;
         await fetch(`/api/projects/${projectId}/reorder`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ folderOrder, resourceOrder }),
         });
-        return { projectId, folderOrder, resourceOrder };
+        return { projectRoot, folderOrder, resourceOrder };
     },
 );
 

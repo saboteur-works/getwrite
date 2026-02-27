@@ -1,8 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { NextRequest } from "next/server";
-import { readSidecar, writeSidecar } from "@/src/lib/models/sidecar";
-import { withMetaLock } from "@/src/lib/models/meta-locks";
+import {
+    readSidecar,
+    writeSidecar,
+} from "../../../../../src/lib/models/sidecar";
+import { withMetaLock } from "../../../../../src/lib/models/meta-locks";
 
 async function findProjectRoot(projectsDir: string, projectId: string) {
     try {
@@ -29,16 +32,16 @@ export async function POST(
     req: NextRequest,
     { params }: { params: { projectId: string } },
 ) {
-    const projectId = params.projectId;
+    const projectId = (await params)["projectId"];
     const body = await req.json().catch(() => ({}));
     const folderOrder: Array<{ id: string; orderIndex: number }> =
         body.folderOrder ?? [];
     const resourceOrder: Array<{ id: string; orderIndex: number }> =
         body.resourceOrder ?? [];
-
     // locate projects directory (assume repo layout: frontend/ -> ../projects)
     const projectsDir = path.resolve(process.cwd(), "..", "projects");
-    const projectRoot = await findProjectRoot(projectsDir, projectId);
+    const projectRoot =
+        body.projectRoot ?? (await findProjectRoot(projectsDir, projectId));
     if (!projectRoot) {
         return new Response(JSON.stringify({ error: "project not found" }), {
             status: 404,

@@ -322,6 +322,7 @@ export default function AppShell({
         dispatch(
             persistReorder({
                 projectId: project.id,
+                projectRoot: project.rootPath ?? "",
                 folderOrder,
                 resourceOrder,
             }),
