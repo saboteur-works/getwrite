@@ -1,6 +1,5 @@
 import React from "react";
 import type { Project, AnyResource } from "../../src/lib/models/types";
-import { createProject } from "../../lib/placeholders";
 
 export interface DataViewProps {
     /** Optional list of projects to show aggregate statistics for */
@@ -26,12 +25,6 @@ export default function DataView({
     resources,
     className = "",
 }: DataViewProps): JSX.Element {
-    const effectiveProject = React.useMemo(
-        () =>
-            view?.project ?? project ?? createProject("Sample Project").project,
-        [view, project],
-    );
-
     const flatResources = React.useMemo(() => {
         if (resources) return resources;
         if (view && view.resources) return view.resources;
@@ -39,8 +32,7 @@ export default function DataView({
             return projects.flatMap(
                 (p) => (p as any).resources as AnyResource[],
             );
-        return (effectiveProject as any).resources ?? [];
-    }, [resources, view, projects, effectiveProject]);
+    }, [resources, view, projects]);
 
     const totalResources = flatResources.length;
     const totalWords = flatResources.reduce(
@@ -54,7 +46,7 @@ export default function DataView({
     return (
         <div className={`p-4 ${className}`}>
             <h2 className="text-lg font-semibold mb-4">
-                Data — {effectiveProject.name}
+                Data — {project?.name ?? "No Project"}
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

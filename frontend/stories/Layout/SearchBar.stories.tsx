@@ -1,10 +1,30 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import SearchBar from "../../components/Layout/SearchBar";
-import { sampleProjects } from "../../lib/placeholders";
 import type { AnyResource } from "../../src/lib/models/types";
 
-const resources: AnyResource[] = sampleProjects(1)[0].resources;
+const resources: AnyResource[] = [
+    {
+        id: "res-1",
+        name: "Resource 1",
+        type: "text",
+        folderId: "folder-1",
+        createdAt: new Date().toISOString(),
+    },
+    {
+        id: "res-2",
+        name: "Resource 2",
+        type: "image",
+        folderId: "folder-1",
+        createdAt: new Date().toISOString(),
+    },
+    {
+        id: "res-3",
+        name: "Resource 3",
+        type: "audio",
+        createdAt: new Date().toISOString(),
+    },
+];
 
 const meta: Meta<typeof SearchBar> = {
     title: "Layout/SearchBar",

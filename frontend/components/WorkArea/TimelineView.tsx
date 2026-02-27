@@ -1,9 +1,5 @@
 import React from "react";
-import type {
-    Project as CanonicalProject,
-    AnyResource,
-} from "../../src/lib/models/types";
-import { createProject as createPlaceholderProject } from "../../lib/placeholders";
+import type { Project, AnyResource } from "../../src/lib/models/types";
 
 export interface TimelineViewProps {
     /** Single project to scope timeline (required) */
@@ -14,8 +10,8 @@ export interface TimelineViewProps {
 }
 
 function groupByDate(resources: AnyResource[]) {
-    const dated: Record<string, Resource[]> = {};
-    const undated: Resource[] = [];
+    const dated: Record<string, AnyResource[]> = {};
+    const undated: AnyResource[] = [];
     resources.forEach((r) => {
         const date = r.createdAt ? r.createdAt.split("T")[0] : null;
         if (date) {
@@ -38,11 +34,8 @@ export default function TimelineView({
     // `project` may be either a canonical `Project` or a placeholder wrapper
     // `{ project, resources, folders }`. Normalise to a canonical `project` and
     // a resource list that uses canonical fields.
-    const effectiveProjectCanonical = React.useMemo<CanonicalProject>(() => {
-        const p =
-            (view as any)?.project ??
-            project ??
-            createPlaceholderProject("Sample Project");
+    const effectiveProjectCanonical = React.useMemo<Project>(() => {
+        const p = (view as any)?.project ?? project;
         return p.project ? p.project : p;
     }, [view, project]);
 
