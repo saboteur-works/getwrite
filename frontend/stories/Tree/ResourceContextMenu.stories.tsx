@@ -20,7 +20,7 @@ export const Default: Story = {
         x: 100,
         y: 100,
         resourceId: "res_123",
-        resourceTitle: "Sample Resource",
+        resourceName: "Sample Resource",
         onClose: () => undefined,
         onAction: (action: string) => console.log("action", action),
     },
@@ -32,14 +32,14 @@ export const Open: Story = {
         x: 120,
         y: 80,
         resourceId: "res_123",
-        resourceTitle: "Sample Resource",
+        resourceName: "Sample Resource",
         onClose: () => console.log("closed"),
         onAction: (action: string) => console.log("action", action),
     },
 };
 
 export const Interactive: Story = {
-    render: (args) => {
+    render: (args: React.ComponentProps<typeof ResourceContextMenu>) => {
         const Wrapper = () => {
             const [open, setOpen] = React.useState(true);
             const [lastAction, setLastAction] = React.useState<string | null>(
@@ -54,9 +54,7 @@ export const Interactive: Story = {
                         {...args}
                         open={open}
                         onClose={() => setOpen(false)}
-                        onAction={(action: any) =>
-                            setLastAction(String(action))
-                        }
+                        onAction={(action: string) => setLastAction(action)}
                     />
                     {/* test probe: expose last action to story DOM only */}
                     <div
@@ -72,8 +70,8 @@ export const Interactive: Story = {
 
         return <Wrapper />;
     },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
+    play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+        const canvas = within(canvasElement as HTMLElement);
         const menu = await canvas.getByRole("menu");
         expect(menu).toBeTruthy();
 
@@ -89,7 +87,7 @@ export const Interactive: Story = {
         x: 140,
         y: 60,
         resourceId: "res_123",
-        resourceTitle: "Sample Resource",
+        resourceName: "Sample Resource",
         onAction: (action: string) => console.log("action", action),
     },
 };

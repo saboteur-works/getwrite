@@ -23,10 +23,17 @@ vi.mock("../components/TipTapEditor", () => {
 });
 
 import EditView from "../components/WorkArea/EditView";
+import { makeStore } from "../src/store/store";
+import { Provider } from "react-redux";
 
 describe("EditView", () => {
     it("shows initial content word count and updates on change", async () => {
-        render(<EditView initialContent="Hello world from test" />);
+        const store = makeStore();
+        render(
+            <Provider store={store}>
+                <EditView initialContent="Hello world from test" />
+            </Provider>,
+        );
 
         // words: 4
         expect(screen.getByText(/Words:/)).toHaveTextContent("Words: 4");

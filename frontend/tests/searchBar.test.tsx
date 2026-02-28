@@ -2,35 +2,38 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import SearchBar from "../components/Layout/SearchBar";
-import type { Resource } from "../lib/types";
+import type { AnyResource } from "../src/lib/models/types";
 
 describe("SearchBar", () => {
     it("shows matches and calls onSelect when clicked", () => {
         const now = new Date().toISOString();
-        const resources: Resource[] = [
+        const resources: AnyResource[] = [
             {
                 id: "r1",
-                projectId: "p",
+                name: "Alpha",
                 title: "Alpha",
-                type: "document",
+                type: "text",
+                plainText: "",
                 createdAt: now,
                 updatedAt: now,
                 metadata: {},
             },
             {
                 id: "r2",
-                projectId: "p",
+                name: "Beta",
                 title: "Beta",
-                type: "note",
+                type: "text",
+                plainText: "",
                 createdAt: now,
                 updatedAt: now,
                 metadata: {},
             },
             {
                 id: "r3",
-                projectId: "p",
+                name: "Gamma",
                 title: "Gamma",
-                type: "scene",
+                type: "text",
+                plainText: "",
                 createdAt: now,
                 updatedAt: now,
                 metadata: {},

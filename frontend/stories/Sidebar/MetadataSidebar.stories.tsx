@@ -1,7 +1,8 @@
 import React from "react";
 import { Meta, StoryObj } from "@storybook/react";
 import MetadataSidebar from "../../components/Sidebar/MetadataSidebar";
-import { createResource } from "../../lib/placeholders";
+
+import { createTextResource } from "../../src/lib/models";
 
 const meta: Meta<typeof MetadataSidebar> = {
     title: "Sidebar/MetadataSidebar",
@@ -14,6 +15,8 @@ type Story = StoryObj<typeof MetadataSidebar>;
 
 export const Default: Story = {
     args: {
-        resource: createResource("Chapter 1", "document"),
+        resource: createTextResource({
+            name: "Example Text Resource",
+        }),
     },
 };

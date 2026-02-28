@@ -1,36 +1,85 @@
 import React from "react";
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import ResourceTree from "../../components/Tree/ResourceTree";
-import { createProject, createResource } from "../../lib/placeholders";
 
-const project = createProject("Storybook Project");
-// create a folder and nested resources for the story
-const folder = createResource("Characters", "folder", project.id);
-const char1 = createResource("Protagonist", "note", project.id, folder.id);
-const char2 = createResource("Antagonist", "note", project.id, folder.id);
-// merge resources into an array including folder and top-level items
-const resources = [folder, ...project.resources, char1, char2];
-
-const meta: Meta<typeof ResourceTree> = {
+const meta = {
     title: "Tree/ResourceTree",
     component: ResourceTree,
-};
+} satisfies Meta<typeof ResourceTree>;
 
 export default meta;
 
-type Story = StoryObj<typeof ResourceTree>;
+type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
     args: {
-        resources,
+        projectId: "test-proj-1",
         onSelect: (id: string) => console.log("selected", id),
     },
-};
+} satisfies Story;
 
 export const Reorderable: Story = {
+    render: (args) => {
+        const Wrapper = () => {
+            const handleReorder = (ids: string[]) => {
+                const probe = document.querySelector(
+                    '[data-testid="reorder-probe"]',
+                );
+                if (probe) probe.textContent = ids.join(",");
+                // also expose on window for debugging
+                // @ts-ignore
+                window.__lastReorder = ids;
+            };
+
+            const simulateReorder = () => {
+                const nav = document.querySelector(
+                    'nav[aria-label="Resource tree"]',
+                );
+                if (!nav) return;
+                const items = Array.from(
+                    nav.querySelectorAll('[role="tree"] > li'),
+                ) as HTMLElement[];
+                const ids = items.map(
+                    (it) =>
+                        it.querySelector("button")?.textContent?.trim() || "",
+                );
+                if (ids.length >= 2) {
+                    const next = [...ids];
+                    const first = next.shift();
+                    if (first) next.splice(1, 0, first);
+                    handleReorder(next as string[]);
+                }
+            };
+
+            // expose simulate for e2e tests
+            // @ts-ignore
+            (window as any).__simulateReorder = simulateReorder;
+
+            return (
+                <div>
+                    <ResourceTree
+                        {...args}
+                        reorderable
+                        onReorder={handleReorder}
+                    />
+                    <button
+                        data-testid="reorder-simulate"
+                        onClick={simulateReorder}
+                        style={{ display: "none" }}
+                    >
+                        simulate
+                    </button>
+                    <div
+                        data-testid="reorder-probe"
+                        style={{ display: "none" }}
+                    />
+                </div>
+            );
+        };
+
+        return <Wrapper />;
+    },
     args: {
-        resources,
-        reorderable: true,
-        onReorder: (ids: string[]) => console.log("reordered", ids),
+        projectId: "test-proj-1",
     },
 };

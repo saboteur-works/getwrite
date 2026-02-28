@@ -1,21 +1,30 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { Provider } from "react-redux";
 import MetadataSidebar from "../components/Sidebar/MetadataSidebar";
-import { createResource } from "../lib/placeholders";
+import { createTextResource } from "../src/lib/models/resource";
+import { makeStore } from "../src/store/store";
 
 describe("MetadataSidebar", () => {
     it("renders notes and status and invokes callbacks", () => {
-        const res = createResource("Notes", "note");
+        const res = createTextResource({
+            name: "Notes",
+            plainText: "",
+            metadata: { notes: "", status: "draft" },
+        });
         const onNotes = vi.fn();
         const onStatus = vi.fn();
 
+        const testStore = makeStore();
         render(
-            <MetadataSidebar
-                resource={res}
-                onChangeNotes={onNotes}
-                onChangeStatus={onStatus}
-            />,
+            <Provider store={testStore}>
+                <MetadataSidebar
+                    resource={res}
+                    onChangeNotes={onNotes}
+                    onChangeStatus={onStatus}
+                />
+            </Provider>,
         );
 
         const notes = screen.getByLabelText("notes") as HTMLTextAreaElement;

@@ -6,8 +6,8 @@ test("data view shows resources and counts are correct", async ({ page }) => {
     const header = page.getByRole("heading", { name: /Data/i });
     await expect(header).toBeVisible();
 
-    // list should contain 'Scene A' from placeholder resources
-    const item = page.getByText("Scene A");
+    // list should contain a placeholder resource from the story
+    const item = page.getByText("Resource 1");
     await expect(item).toBeVisible();
 
     // resources card should show a numeric count in the sibling div

@@ -2,11 +2,23 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import OrganizerView from "../components/WorkArea/OrganizerView";
-import { createProject } from "../lib/placeholders";
+import { createTextResource } from "../src/lib/models/resource";
 
 describe("OrganizerView", () => {
     it("renders header, toggle and a card per resource", () => {
-        const resources = createProject("P").resources;
+        const now = new Date().toISOString();
+        const resources = [
+            createTextResource({
+                name: "R1",
+                plainText: "Body R1",
+                folderId: null,
+            } as any),
+            createTextResource({
+                name: "R2",
+                plainText: "Body R2",
+                folderId: null,
+            } as any),
+        ];
         render(<OrganizerView resources={resources} showBody={true} />);
 
         expect(screen.getByText(/Organizer/i)).toBeTruthy();
@@ -16,7 +28,18 @@ describe("OrganizerView", () => {
     });
 
     it("calls onToggleBody when toggle button is clicked", () => {
-        const resources = createProject("P").resources;
+        const resources = [
+            createTextResource({
+                name: "R1",
+                plainText: "Body R1",
+                folderId: null,
+            } as any),
+            createTextResource({
+                name: "R2",
+                plainText: "Body R2",
+                folderId: null,
+            } as any),
+        ];
         const onToggle = vi.fn();
         render(
             <OrganizerView

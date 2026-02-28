@@ -1,0 +1,124 @@
+[
+    {
+        "file": "frontend/components/common/CompilePreviewModal.tsx",
+        "line": 2,
+        "text": "import type { Resource } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/components/Layout/SearchBar.tsx",
+        "line": 2,
+        "text": "import type { Resource } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/components/Start/ManageProjectMenu.tsx",
+        "line": 5,
+        "text": "import type { Resource } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/components/Tree/CreateResourceModal.tsx",
+        "line": 3,
+        "text": "import type { ResourceType, Resource } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/components/Tree/ResourceTree.tsx",
+        "line": 2,
+        "text": "import type { Resource } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/components/WorkArea/DataView.tsx",
+        "line": 2,
+        "text": "import type { Project, Resource } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/components/WorkArea/OrganizerCard.tsx",
+        "line": 2,
+        "text": "import type { Resource } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/components/WorkArea/OrganizerView.tsx",
+        "line": 2,
+        "text": "import type { Resource } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/components/WorkArea/TimelineView.tsx",
+        "line": 2,
+        "text": "import type { Project, Resource } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/components/Start/CreateProjectModal.tsx",
+        "line": 2,
+        "text": "import type { ResourceType, Project } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/components/Start/StartPage.tsx",
+        "line": 2,
+        "text": "import type { Project } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/stories/CompilePreviewModal.stories.tsx",
+        "line": 4,
+        "text": "import type { Resource } from \"../lib/types\";"
+    },
+    {
+        "file": "frontend/stories/AppShell.stories.tsx",
+        "line": 5,
+        "text": "import type { Project } from \"../lib/types\";"
+    },
+    {
+        "file": "frontend/stories/Layout/SearchBar.stories.tsx",
+        "line": 5,
+        "text": "import type { Resource } from \"../../lib/types\";"
+    },
+    {
+        "file": "frontend/tests/searchBar.test.tsx",
+        "line": 5,
+        "text": "import type { Resource } from \"../lib/types\";"
+    },
+    {
+        "file": "frontend/tests/resourceTreeContextMenu.test.tsx",
+        "line": 8,
+        "text": "import type { Resource } from \"../lib/types\";"
+    },
+    {
+        "file": "frontend/tests/createResourceModal.test.tsx",
+        "line": 5,
+        "text": "import type { Resource } from \"../lib/types\";"
+    },
+    {
+        "file": "frontend/tests/compilePreviewModal.test.tsx",
+        "line": 5,
+        "text": "import type { Resource } from \"../lib/types\";"
+    },
+
+    {
+        "file": "frontend/components/Layout/AppShell.tsx",
+        "line": 196,
+        "text": "type: import(\"../../lib/types\").ResourceType;"
+    },
+
+    {
+        "file": "frontend/stories/WorkArea/DataView.stories.tsx",
+        "line": 26,
+        "text": "resources: project.resources,"
+    },
+    {
+        "file": "frontend/app/page.tsx",
+        "line": 223,
+        "text": "const src = selectedProject.resources.find("
+    },
+    {
+        "file": "frontend/app/page.tsx",
+        "line": 306,
+        "text": "const r = selectedProject.resources.find("
+    },
+    {
+        "file": "frontend/tests/timelineView.test.tsx",
+        "line": 18,
+        "text": "project.resources.forEach((r) => {"
+    },
+    {
+        "file": "frontend/tests/dataView.test.tsx",
+        "line": 59,
+        "text": "expect(getStatValue(\"Resources\")).toBe(String(project.resources.length));"
+    }
+]

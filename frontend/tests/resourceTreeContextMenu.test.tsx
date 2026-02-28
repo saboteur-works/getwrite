@@ -2,41 +2,55 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ResourceTree from "../components/Tree/ResourceTree";
-import type { Resource } from "../lib/types";
+import { Provider } from "react-redux";
+import { setProject } from "../src/store/projectsSlice";
+import { makeStore } from "../src/store/store";
+import type { AnyResource } from "../src/lib/models/types";
+import { generateUUID } from "../src/lib/models/uuid";
+import { createTextResource } from "../src/lib/models/resource";
+import { createProject } from "../src/lib/models/project";
 
 describe("ResourceTree context menu", () => {
     it("forwards context menu actions to onResourceAction", async () => {
         const now = new Date().toISOString();
-        const resources: Resource[] = [
-            {
-                id: "root",
-                projectId: "proj_1",
-                title: "Root",
-                type: "folder",
-                createdAt: now,
-                updatedAt: now,
-                metadata: {},
-            },
-            {
-                id: "scene_a",
-                projectId: "proj_1",
-                parentId: "root",
-                title: "Scene A",
-                type: "scene",
-                content: "Hello",
-                createdAt: now,
-                updatedAt: now,
-                metadata: {},
-            },
-        ];
+        const project = createProject({ name: "proj_1" });
+
+        const rootId = generateUUID();
+        const root: AnyResource = {
+            id: rootId,
+            name: "Root",
+            title: "Root",
+            type: "folder",
+            createdAt: now,
+            updatedAt: now,
+            metadata: {},
+        } as any;
+
+        const scene = createTextResource({
+            name: "Scene A",
+            folderId: rootId,
+            plainText: "Hello",
+        });
+
+        const resources: AnyResource[] = [root, scene];
 
         const onResourceAction = vi.fn();
+        const testStore = makeStore();
+        testStore.dispatch(
+            setProject({
+                id: project.id,
+                name: project.name,
+                resources,
+            } as any),
+        );
 
         render(
-            <ResourceTree
-                resources={resources}
-                onResourceAction={onResourceAction}
-            />,
+            <Provider store={testStore}>
+                <ResourceTree
+                    projectId={project.id}
+                    onResourceAction={onResourceAction}
+                />
+            </Provider>,
         );
 
         // Expand the root so child nodes are rendered, then right-click the resource title to open the context menu
@@ -57,6 +71,6 @@ describe("ResourceTree context menu", () => {
         fireEvent.click(copyBtn);
 
         expect(onResourceAction).toHaveBeenCalledTimes(1);
-        expect(onResourceAction).toHaveBeenCalledWith("copy", "scene_a");
+        expect(onResourceAction).toHaveBeenCalledWith("copy", scene.id);
     });
 });

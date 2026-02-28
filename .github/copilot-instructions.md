@@ -2,6 +2,10 @@
 
 This file defines how Copilot interprets project authority.
 
+## Authority Confirmation
+
+When processes a user prompt, Copilot **MUST** begin by stating which standards it is adhering to at the be beginning of the response.
+
 ## Standards Authority
 
 The following documents define mandatory behavioral constraints:
@@ -9,6 +13,8 @@ The following documents define mandatory behavioral constraints:
 - `/docs/standards/typescript-implementation.md`
 - `/docs/standards/package-selection.md`
 - `/docs/standards/template-integrity.md`
+- `/docs/standards/code-documentation.md`
+- `/docs/standards/testing.md`
 - `/docs/standards/storybook-implementation.md`
 
 These documents are authoritative when their activation conditions apply.

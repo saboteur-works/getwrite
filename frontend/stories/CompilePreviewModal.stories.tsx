@@ -1,9 +1,10 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import CompilePreviewModal from "../components/common/CompilePreviewModal";
-import type { Resource } from "../lib/types";
+import adapter from "../src/lib/adapters/placeholderAdapter";
+import type { AnyResource } from "../src/lib/models/types";
 
-const sampleResources: Resource[] = [
+const legacyResources = [
     {
         id: "f1",
         projectId: "proj-1",
@@ -34,6 +35,10 @@ const sampleResources: Resource[] = [
         metadata: {},
     },
 ];
+
+const sampleResources: AnyResource[] = legacyResources.map((r) =>
+    adapter.migrateResource(r),
+);
 
 const meta: Meta<typeof CompilePreviewModal> = {
     title: "Common/CompilePreviewModal",

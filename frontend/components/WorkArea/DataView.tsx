@@ -1,14 +1,15 @@
 import React from "react";
-import type { Project, Resource } from "../../lib/types";
-import { createProject } from "../../lib/placeholders";
+import type { Project, AnyResource } from "../../src/lib/models/types";
 
 export interface DataViewProps {
     /** Optional list of projects to show aggregate statistics for */
     projects?: Project[];
     /** The single project to display statistics for (used when `projects` is not provided) */
     project?: Project;
+    /** Optional adapter view from `buildProjectView` (canonical models). */
+    view?: { project: any; folders: any[]; resources: AnyResource[] };
     /** Optional override flat list of resources to render (uses project(s).resources by default) */
-    resources?: Resource[];
+    resources?: AnyResource[];
     className?: string;
 }
 
@@ -20,24 +21,26 @@ export interface DataViewProps {
 export default function DataView({
     projects,
     project,
+    view,
     resources,
     className = "",
 }: DataViewProps): JSX.Element {
-    const effectiveProject = React.useMemo(
-        () => project ?? createProject("Sample Project"),
-        [project],
-    );
-
     const flatResources = React.useMemo(() => {
         if (resources) return resources;
+        if (view && view.resources) return view.resources;
         if (projects && projects.length > 0)
-            return projects.flatMap((p) => p.resources);
-        return effectiveProject.resources;
-    }, [resources, projects, effectiveProject]);
+            return projects.flatMap(
+                (p) => (p as any).resources as AnyResource[],
+            );
+        if (project && (project as any).resources)
+            return (project as any).resources as AnyResource[];
+        return [] as AnyResource[];
+    }, [resources, view, projects]);
 
     const totalResources = flatResources.length;
     const totalWords = flatResources.reduce(
-        (acc, r) => acc + (r.metadata?.wordCount ?? 0),
+        (acc: number, r: AnyResource) =>
+            acc + ((r as any).metadata?.wordCount ?? (r as any).wordCount ?? 0),
         0,
     );
 
@@ -46,7 +49,7 @@ export default function DataView({
     return (
         <div className={`p-4 ${className}`}>
             <h2 className="text-lg font-semibold mb-4">
-                Data — {effectiveProject.name}
+                Data — {project?.name ?? "No Project"}
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -67,21 +70,26 @@ export default function DataView({
             <section>
                 <h3 className="text-sm font-medium mb-2">Resources</h3>
                 <ul className="space-y-2">
-                    {flatResources.map((r) => (
+                    {flatResources.map((r: AnyResource) => (
                         <li
                             key={r.id}
                             className="p-3 bg-white rounded-md border flex items-center justify-between"
                         >
                             <div>
                                 <div className="text-sm font-medium">
-                                    {r.title}
+                                    {(r as any).name ??
+                                        (r as any).title ??
+                                        r.id}
                                 </div>
                                 <div className="text-xs text-slate-500">
                                     {r.type}
                                 </div>
                             </div>
                             <div className="text-xs text-slate-500">
-                                {r.metadata?.wordCount ?? 0} words
+                                {(r as any).metadata?.wordCount ??
+                                    (r as any).wordCount ??
+                                    0}{" "}
+                                words
                             </div>
                         </li>
                     ))}

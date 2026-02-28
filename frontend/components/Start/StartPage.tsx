@@ -1,40 +1,71 @@
-import React, { useState } from "react";
-import type { Project } from "../../lib/types";
-import { sampleProjects, createProject } from "../../lib/placeholders";
+import React, { useEffect, useState } from "react";
+import type {
+    Project as CanonicalProject,
+    AnyResource,
+    Folder,
+    TextResource,
+} from "../../src/lib/models/types";
+import { buildProjectView } from "../../src/lib/models/project-view";
 import CreateProjectModal, {
     type CreateProjectPayload,
 } from "./CreateProjectModal";
 import ManageProjectMenu from "./ManageProjectMenu";
 
 export interface StartPageProps {
-    projects?: Project[];
-    onCreate?: (name: string) => void;
+    projects?: Array<{
+        project: CanonicalProject;
+        resources: AnyResource[];
+        folders: Folder[];
+    }>;
+    onCreate?: (projectFiles: {
+        project: CanonicalProject;
+        folders: any[];
+        resources: any[];
+    }) => void;
     onOpen?: (projectId: string) => void;
 }
 
 /** Optional `projects` prop for server-driven lists; callbacks `onCreate` and `onOpen` used by parent wiring. */
 export default function StartPage({
-    projects = sampleProjects(3),
+    projects = [],
     onCreate,
     onOpen,
 }: StartPageProps): JSX.Element {
-    const [localProjects, setLocalProjects] = useState<Project[]>(projects);
+    const [localProjects, setLocalProjects] = useState<
+        Array<{
+            project: CanonicalProject;
+            resources: AnyResource[];
+            folders: Folder[];
+        }>
+    >(projects);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
     const handleOpen = (id: string): void => {
         if (onOpen) onOpen(id);
     };
 
-    const handleModalCreate = (payload: CreateProjectPayload): void => {
-        const newProject: Project = createProject(payload.name);
-        setLocalProjects((prev) => [newProject, ...prev]);
-        if (onCreate) onCreate(payload.name);
+    const handleModalCreate = (
+        payload: CreateProjectPayload,
+        projectFiles: {
+            project: CanonicalProject;
+            folders: any[];
+            resources: any[];
+        },
+    ): void => {
+        setLocalProjects((prev) => [projectFiles, ...prev]);
+        if (onCreate) {
+            onCreate(projectFiles);
+        }
         setIsModalOpen(false);
     };
 
     const handleCreateClick = (): void => {
         setIsModalOpen(true);
     };
+
+    useEffect(() => {
+        setLocalProjects(projects);
+    }, [projects]);
 
     return (
         <section aria-labelledby="start-projects" className="p-6">
@@ -58,72 +89,87 @@ export default function StartPage({
             </div>
 
             <div className="mt-6 grid gap-4">
-                {localProjects.map((p) => (
-                    <article
-                        key={p.id}
-                        className="rounded bg-white p-4 shadow-card border flex items-start justify-between"
-                        aria-labelledby={`proj-${p.id}-title`}
-                    >
-                        <div>
-                            <h2
-                                id={`proj-${p.id}-title`}
-                                className="font-medium"
-                            >
-                                {p.name}
-                            </h2>
-                            {p.description ? (
-                                <p className="text-sm text-slate-600 mt-1 truncate-2">
-                                    {p.description}
-                                </p>
-                            ) : null}
-                            <div className="text-xs text-slate-500 mt-2">
-                                {p.resources.length} resources
+                {localProjects.map((p, idx) => {
+                    // const view = projectViews[idx];
+                    console.log("Rendering project:", p);
+                    const resourceList = p
+                        ? p.resources.filter((r) => r.type !== "folder")
+                        : p.resources;
+                    const projName = p?.project?.name ?? p.project.name;
+
+                    return (
+                        <article
+                            key={p.project.id}
+                            className="rounded bg-white p-4 shadow-card border flex items-start justify-between"
+                            aria-labelledby={`proj-${p.project.id}-title`}
+                        >
+                            <div>
+                                <h2
+                                    id={`proj-${p.project.id}-title`}
+                                    className="font-medium"
+                                >
+                                    {projName}
+                                </h2>
+                                <div className="text-xs text-slate-500 mt-2">
+                                    {resourceList.length} resources
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="flex items-center gap-3">
-                            <ManageProjectMenu
-                                projectId={p.id}
-                                projectName={p.name}
-                                onRename={(id, newName) => {
-                                    setLocalProjects((prev) =>
-                                        prev.map((proj) =>
-                                            proj.id === id
-                                                ? { ...proj, name: newName }
-                                                : proj,
-                                        ),
-                                    );
-                                }}
-                                onDelete={(id) => {
-                                    setLocalProjects((prev) =>
-                                        prev.filter((proj) => proj.id !== id),
-                                    );
-                                }}
-                                onPackage={(id, selectedIds) => {
-                                    // UI-only placeholder action — show selected ids if provided
-                                    const proj = localProjects.find(
-                                        (x) => x.id === id,
-                                    );
-                                    const selText = selectedIds
-                                        ? `\nSelected: ${selectedIds.join(", ")}`
-                                        : "";
-                                    window.alert(
-                                        `Package placeholder for ${proj?.name ?? id}${selText}`,
-                                    );
-                                }}
-                                resources={p.resources}
-                            />
+                            <div className="flex items-center gap-3">
+                                <ManageProjectMenu
+                                    projectId={p.project.id}
+                                    projectName={projName}
+                                    onRename={(id, newName) => {
+                                        setLocalProjects((prev) =>
+                                            prev.map((proj) =>
+                                                proj.project.id === id
+                                                    ? {
+                                                          ...proj,
+                                                          project: {
+                                                              ...proj.project,
+                                                              name: newName,
+                                                          },
+                                                      }
+                                                    : proj,
+                                            ),
+                                        );
+                                    }}
+                                    onDelete={(id) => {
+                                        setLocalProjects((prev) =>
+                                            prev.filter(
+                                                (proj) =>
+                                                    proj.project.id !== id,
+                                            ),
+                                        );
+                                    }}
+                                    onPackage={(id, selectedIds) => {
+                                        // UI-only placeholder action — show selected ids if provided
+                                        const proj = localProjects.find(
+                                            (x) => x.project.id === id,
+                                        );
+                                        const selText = selectedIds
+                                            ? `\nSelected: ${selectedIds.join(", ")}`
+                                            : "";
+                                        window.alert(
+                                            `Package placeholder for ${proj?.project.name ?? id}${selText}`,
+                                        );
+                                    }}
+                                    resources={resourceList as any}
+                                />
 
-                            <button
-                                type="button"
-                                onClick={() => handleOpen(p.id)}
-                                className="px-3 py-1 rounded border text-sm bg-slate-50 hover:bg-slate-100"
-                            >
-                                Open
-                            </button>
-                        </div>
-                    </article>
-                ))}
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        handleOpen(p.project.rootPath)
+                                    }
+                                    className="px-3 py-1 rounded border text-sm bg-slate-50 hover:bg-slate-100"
+                                >
+                                    Open
+                                </button>
+                            </div>
+                        </article>
+                    );
+                })}
             </div>
         </section>
     );

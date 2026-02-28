@@ -1,5 +1,5 @@
 import React from "react";
-import { ViewName } from "../../lib/types";
+import { ViewName } from "../../src/lib/models/types";
 
 export interface ViewSwitcherProps {
     /** Currently selected view */
@@ -9,7 +9,7 @@ export interface ViewSwitcherProps {
     /** Optional className to allow styling from parent */
     className?: string;
     /** Views which should be rendered disabled */
-    disabledViews?: ViewName[];
+    disabledViews?: ViewName[] | (() => ViewName[]);
 }
 
 const VIEW_OPTIONS: { key: ViewName; label: string }[] = [

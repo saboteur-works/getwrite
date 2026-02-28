@@ -1,6 +1,21 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
-import type { Resource, ViewName } from "../../lib/types";
+import type {
+    AnyResource,
+    ViewName,
+    Project as CanonicalProject,
+    ResourceType,
+    Folder,
+    TipTapDocument,
+} from "../../src/lib/models/types";
+import { useDispatch } from "react-redux";
+import {
+    persistReorder,
+    setProject,
+    addResource,
+    removeResource,
+} from "../../src/store/projectsSlice";
+import type { AppDispatch } from "../../src/store/store";
 import ResourceTree from "../Tree/ResourceTree";
 import ConfirmDialog from "../common/ConfirmDialog";
 import CreateResourceModal from "../Tree/CreateResourceModal";
@@ -15,6 +30,7 @@ import DataView from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/TimelineView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "./SearchBar";
+import debounce from "lodash/debounce";
 
 /**
  * Simple three-column shell used in the app and Storybook:
@@ -28,6 +44,7 @@ export default function AppShell({
     children,
     showSidebars = true,
     resources,
+    folders,
     onResourceSelect,
     selectedResourceId,
     onChangeNotes,
@@ -36,10 +53,16 @@ export default function AppShell({
     onChangeLocations,
     onChangeItems,
     onChangePOV,
+    onResourceAction,
+    project,
 }: {
     children?: React.ReactNode;
     showSidebars?: boolean;
-    resources?: Resource[];
+    /** List of all project resources, loaded from the selected project */
+    resources?: AnyResource[];
+    folders?: Folder[];
+    project?: CanonicalProject | null;
+
     onResourceSelect?: (id: string) => void;
     selectedResourceId?: string | null;
     onChangeNotes?: (text: string, resourceId: string) => void;
@@ -54,8 +77,22 @@ export default function AppShell({
     onResourceAction?: (
         action: ResourceContextAction,
         resourceId?: string,
-    ) => void;
+        opts?: { [key: string]: any },
+    ) => Promise<void>;
 }): JSX.Element {
+    // Read the callback from the raw arguments to avoid name-resolution
+    // issues during the incremental migration. Typed explicitly to match
+    // the expected shape so downstream call sites remain typed.
+    type OnResAction =
+        | ((
+              action: ResourceContextAction,
+              resourceId?: string,
+              opts?: { [key: string]: any },
+          ) => Promise<void>)
+        | undefined;
+    const propOnResourceAction = (arguments as any)[0]?.onResourceAction as
+        | OnResAction
+        | undefined;
     const [view, setView] = useState<ViewName>("edit");
     const [leftWidth, setLeftWidth] = useState<number>(280);
     const [rightWidth, setRightWidth] = useState<number>(320);
@@ -65,6 +102,9 @@ export default function AppShell({
         startX: number;
         startWidth: number;
     }>(null);
+    const combined = React.useMemo(() => {
+        return [...(resources ?? []), ...(folders ?? [])];
+    }, [resources, folders]);
 
     useEffect(() => {
         const onMouseMove = (e: MouseEvent) => {
@@ -110,6 +150,14 @@ export default function AppShell({
             ? resources.find((r) => r.id === selectedResourceId)
             : undefined;
 
+    const getResourceName = (r: AnyResource | any) =>
+        (r && ((r as any).name ?? (r as any).title ?? "")) || "";
+
+    const getResourceContent = (r: AnyResource | any) => r.plaintext;
+    // const getResourceContent = (r: AnyResource | any) => {
+    //     console.log(r);
+    // };
+
     const [contextAction, setContextAction] = useState<{
         open: boolean;
         action?: ResourceContextAction;
@@ -117,7 +165,7 @@ export default function AppShell({
         resourceTitle?: string;
     }>({ open: false });
 
-    const handleResourceAction = (
+    const handleResourceAction = async (
         action: ResourceContextAction,
         resourceId?: string,
         resourceTitle?: string,
@@ -158,7 +206,7 @@ export default function AppShell({
         }
 
         // Fallback forward
-        onResourceAction?.(action, resourceId);
+        await propOnResourceAction?.(action, resourceId);
     };
 
     const [createModal, setCreateModal] = useState<{
@@ -178,23 +226,138 @@ export default function AppShell({
         preview?: string;
     }>({ open: false });
 
-    const handleCreateConfirmed = (
+    const handleCreateConfirmed = async (
         payload: {
             title: string;
-            type: import("../../lib/types").ResourceType;
+            type: ResourceType | string;
+            folderId?: string;
         },
         parentId?: string,
     ) => {
         // forward to page-level handler to mutate project resources
-        onResourceAction?.("create", parentId);
+        await propOnResourceAction?.("create", parentId, payload);
         setCreateModal({ open: false });
     };
 
-    const handleExportConfirmed = (resourceId?: string) => {
-        onResourceAction?.("export", resourceId);
+    const handleExportConfirmed = async (resourceId?: string) => {
+        await propOnResourceAction?.("export", resourceId);
         setExportModal({ open: false });
     };
 
+    const _prevProjectId = React.useRef<string | undefined | null>(undefined);
+    useEffect(() => {
+        if (_prevProjectId.current !== project?.id) {
+            _prevProjectId.current = project?.id;
+        }
+    }, [project?.id]);
+    const dispatch = useDispatch<AppDispatch>();
+
+    const handlePersistReorder = (nextIds: string[] | undefined) => {
+        if (!nextIds || !project) return;
+        const pos = new Map<string, number>();
+        nextIds.forEach((id, i) => pos.set(id, i));
+
+        const folderOrder =
+            (project as any).folders?.map((f: any) => ({
+                id: f.id,
+                orderIndex: pos.has(f.id) ? pos.get(f.id) : (f.orderIndex ?? 0),
+            })) ?? [];
+
+        const resourceOrder =
+            (project as any).resources?.map((r: any) => ({
+                id: r.id,
+                orderIndex: pos.has(r.id)
+                    ? pos.get(r.id)
+                    : (r.metadata?.orderIndex ?? 0),
+            })) ?? [];
+
+        const existingFolders: any[] = (project as any).folders ?? [];
+        const existingResources: any[] = (project as any).resources ?? [];
+
+        const folderChanged = folderOrder.some((fo: any) => {
+            const ex = existingFolders.find((f) => f.id === fo.id);
+            if (!ex) return false;
+            return (ex.orderIndex ?? 0) !== (fo.orderIndex ?? 0);
+        });
+
+        const resourceChanged = resourceOrder.some((ro: any) => {
+            const ex = existingResources.find((r) => r.id === ro.id);
+            if (!ex) return false;
+            const exIdx = ex.metadata?.orderIndex ?? 0;
+            return exIdx !== (ro.orderIndex ?? 0);
+        });
+
+        if (!folderChanged && !resourceChanged) return;
+
+        const optimisticFolders = existingFolders.map((f) => ({
+            ...f,
+            orderIndex:
+                (folderOrder.find((x: any) => x.id === f.id) as any)
+                    ?.orderIndex ??
+                f.orderIndex ??
+                0,
+        }));
+
+        const optimisticResources = existingResources.map((r) => ({
+            ...r,
+            metadata: {
+                ...(r.metadata ?? {}),
+                orderIndex:
+                    (resourceOrder.find((x: any) => x.id === r.id) as any)
+                        ?.orderIndex ??
+                    r.metadata?.orderIndex ??
+                    0,
+            },
+        }));
+
+        dispatch(
+            setProject({
+                id: project.id,
+                name: project.name,
+                folders: optimisticFolders,
+                resources: optimisticResources,
+            }),
+        );
+
+        dispatch(
+            persistReorder({
+                projectId: project.id,
+                projectRoot: project.rootPath ?? "",
+                folderOrder,
+                resourceOrder,
+            }),
+        );
+    };
+    const persistContent = (content: string, doc: TipTapDocument) => {
+        if (!project || !selectedResourceId) return;
+        if (!project.rootPath) return;
+        console.log("Persisting content for", selectedResourceId);
+        fetch(`/api/resource/${selectedResourceId}/content`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                projectPath: project.rootPath,
+                doc,
+            }),
+        }).catch((err) => {
+            console.error("Failed to persist content:", err);
+        });
+    };
+
+    const debouncedPersistContent = React.useMemo(
+        () => debounce(persistContent, 2500),
+        [persistContent],
+    );
+    const handlerEditorChange = (content: string, doc: TipTapDocument) => {
+        debouncedPersistContent(content, doc);
+    };
+    useEffect(() => {
+        return () => {
+            debouncedPersistContent.cancel(); // Cancel any pending debounced calls
+        };
+    }, [debouncedPersistContent]);
     return (
         <div className="min-h-screen flex bg-slate-50 text-slate-900">
             {showSidebars ? (
@@ -203,24 +366,21 @@ export default function AppShell({
                     style={{ width: leftWidth }}
                 >
                     <div className="mt-0">
-                        {resources ? (
+                        {project ? (
                             <ResourceTree
-                                resources={resources}
+                                projectId={project.id}
                                 selectedId={selectedResourceId ?? undefined}
                                 onSelect={onResourceSelect}
                                 onResourceAction={handleResourceAction}
+                                reorderable={true}
+                                onReorder={(ids) => {
+                                    // persist ordering when adapter view is present
+                                    handlePersistReorder(ids);
+                                }}
                             />
                         ) : (
                             <div className="space-y-2">
-                                <div className="px-3 py-2 rounded-md hover:bg-slate-100">
-                                    Project A
-                                </div>
-                                <div className="px-3 py-2 rounded-md hover:bg-slate-100">
-                                    Project B
-                                </div>
-                                <div className="px-3 py-2 rounded-md hover:bg-slate-100">
-                                    Project C
-                                </div>
+                                <p>Loading Resource Tree</p>
                             </div>
                         )}
                     </div>
@@ -239,9 +399,21 @@ export default function AppShell({
                 }
                 confirmLabel="Delete"
                 cancelLabel="Cancel"
-                onConfirm={() => {
+                onConfirm={async () => {
                     if (contextAction.resourceId) {
-                        onResourceAction?.("delete", contextAction.resourceId);
+                        // dispatch removeResource optimistically in store
+                        if (project) {
+                            dispatch(
+                                removeResource({
+                                    projectId: project.id,
+                                    resourceId: contextAction.resourceId,
+                                }),
+                            );
+                        }
+                        await propOnResourceAction?.(
+                            "delete",
+                            contextAction.resourceId,
+                        );
                     }
                     setContextAction({ open: false });
                 }}
@@ -253,10 +425,10 @@ export default function AppShell({
                 initialTitle={createModal.initialTitle}
                 parentId={createModal.parentId}
                 onClose={() => setCreateModal({ open: false })}
-                onCreate={(payload, parentId) =>
-                    handleCreateConfirmed(payload, parentId)
+                onCreate={(payload, parentId, opts) =>
+                    handleCreateConfirmed(payload, parentId, opts)
                 }
-                parents={resources ?? []}
+                parents={folders ?? []}
             />
 
             <ExportPreviewModal
@@ -275,7 +447,7 @@ export default function AppShell({
                           )
                         : undefined;
                     const preview = r
-                        ? `Compiled package for ${r.title}\n\n` +
+                        ? `Compiled package for ${getResourceName(r)}\n\n` +
                           JSON.stringify(r, null, 2)
                         : `Compiled project bundle\n\n` +
                           JSON.stringify(resources ?? [], null, 2);
@@ -297,12 +469,16 @@ export default function AppShell({
                         : undefined
                 }
                 resources={resources}
+                projectId={project?.id}
                 preview={compileModal.preview}
                 onClose={() => setCompileModal({ open: false })}
                 onConfirm={() => {
                     // forward as export confirm action for now
                     if (compileModal.resourceId)
-                        onResourceAction?.("export", compileModal.resourceId);
+                        propOnResourceAction?.(
+                            "export",
+                            compileModal.resourceId,
+                        );
                     setCompileModal({ open: false });
                 }}
             />
@@ -330,30 +506,57 @@ export default function AppShell({
 
             <main className="flex-1 p-4 md:p-6">
                 {resources ? (
-                    <div className="w-full mb-4 flex items-center justify-between gap-4">
-                        <ViewSwitcher
-                            view={view}
-                            onChange={setView}
-                            disabledViews={
-                                selectedResourceId ? [] : ["edit", "diff"]
-                            }
-                        />
-                        <div style={{ width: 320 }}>
-                            <SearchBar
-                                resources={resources}
-                                onSelect={(id) => onResourceSelect?.(id)}
+                    <div className="w-full">
+                        <div className="w-full mb-4 flex items-center justify-between gap-4">
+                            <ViewSwitcher
+                                view={view}
+                                onChange={setView}
+                                disabledViews={(() => {
+                                    const disabled: ViewName[] = [];
+                                    if (!selectedResourceId) {
+                                        disabled.push("edit", "diff");
+                                    }
+                                    if (selectedResource?.type !== "text") {
+                                        disabled.push("edit", "diff");
+                                    }
+                                    return Array.from(new Set(disabled));
+                                })()}
                             />
+                            <div style={{ width: 320 }}>
+                                <SearchBar
+                                    resources={resources}
+                                    onSelect={(id) => onResourceSelect?.(id)}
+                                />
+                            </div>
                         </div>
+                        {(() => {
+                            const selected = combined.find(
+                                (r) => r.id === selectedResourceId,
+                            );
+
+                            if (selected) {
+                                return (
+                                    <div className="text-lg font-bold">
+                                        {selected.name}
+                                    </div>
+                                );
+                            }
+                        })()}
                     </div>
                 ) : null}
                 <div className="max-w-7xl mx-auto">
                     <div className="bg-white rounded-xl shadow-sm p-6 min-h-[400px]">
                         {/* If a resource is selected, render the chosen view; otherwise render children (StartPage or prompt) */}
-                        {selectedResourceId && resources
+                        {selectedResourceId && combined
                             ? (() => {
-                                  const selected = resources.find(
+                                  const selected = combined.find(
                                       (r) => r.id === selectedResourceId,
                                   );
+                                  console.log(
+                                      "[INST] AppShell::selcted",
+                                      selected,
+                                  );
+
                                   if (!selected)
                                       return (
                                           <div>
@@ -368,20 +571,35 @@ export default function AppShell({
 
                                   switch (view) {
                                       case "edit":
+                                          if (selected.type !== "text") {
+                                              return (
+                                                  <div>
+                                                      <h2 className="text-2xl font-semibold">
+                                                          Work Area
+                                                      </h2>
+                                                      <p className="mt-2 text-sm text-slate-600">
+                                                          Selected resource is
+                                                          not a text resource.
+                                                      </p>
+                                                  </div>
+                                              );
+                                          }
                                           return (
                                               <EditView
-                                                  initialContent={
-                                                      selected.content
-                                                  }
+                                                  onChange={handlerEditorChange}
+                                                  initialContent={getResourceContent(
+                                                      selected,
+                                                  )}
+                                                  resourceId={selected.id}
                                               />
                                           );
                                       case "diff":
                                           return (
                                               <DiffView
                                                   leftContent=""
-                                                  rightContent={
-                                                      selected.content
-                                                  }
+                                                  rightContent={getResourceContent(
+                                                      selected,
+                                                  )}
                                               />
                                           );
                                       case "organizer":
@@ -395,11 +613,7 @@ export default function AppShell({
                                               <DataView resources={resources} />
                                           );
                                       case "timeline":
-                                          return (
-                                              <TimelineView
-                                                  project={undefined}
-                                              />
-                                          );
+                                          return <TimelineView />;
                                       default:
                                           return (
                                               <div>
@@ -457,7 +671,10 @@ export default function AppShell({
                             }
                             onChangeStatus={(status) =>
                                 selectedResource &&
-                                onChangeStatus?.(status, selectedResource.id)
+                                onChangeStatus?.(
+                                    status as any,
+                                    selectedResource.id,
+                                )
                             }
                             onChangeCharacters={(chars) =>
                                 selectedResource &&

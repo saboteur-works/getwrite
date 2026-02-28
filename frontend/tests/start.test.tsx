@@ -2,11 +2,55 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import StartPage from "../components/Start/StartPage";
-import { sampleProjects } from "../lib/placeholders";
+import { Provider } from "react-redux";
+import { makeStore } from "../src/store/store";
+import { createTextResource } from "../src/lib/models/resource";
 
 test("StartPage renders projects and opens CreateProjectModal", async () => {
     const user = userEvent.setup();
-    render(<StartPage projects={sampleProjects(2)} />);
+    const now = new Date().toISOString();
+    const projects = [
+        {
+            project: {
+                id: "proj_start_1",
+                name: "Start Project 1",
+                createdAt: now,
+                updatedAt: now,
+                rootPath: null,
+            },
+            resources: [
+                createTextResource({
+                    name: "Doc 1",
+                    plainText: "Doc 1",
+                    folderId: null,
+                } as any),
+            ],
+            folders: [],
+        },
+        {
+            project: {
+                id: "proj_start_2",
+                name: "Start Project 2",
+                createdAt: now,
+                updatedAt: now,
+                rootPath: null,
+            },
+            resources: [
+                createTextResource({
+                    name: "Doc 2",
+                    plainText: "Doc 2",
+                    folderId: null,
+                } as any),
+            ],
+            folders: [],
+        },
+    ];
+    const store = makeStore();
+    render(
+        <Provider store={store}>
+            <StartPage projects={projects} />
+        </Provider>,
+    );
 
     // heading
     expect(

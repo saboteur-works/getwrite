@@ -2,22 +2,45 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import ResourceTree from "../components/Tree/ResourceTree";
-import { createProject, createResource } from "../lib/placeholders";
+import { Provider } from "react-redux";
+import { setProject } from "../src/store/projectsSlice";
+import { makeStore } from "../src/store/store";
+import { createProject } from "../src/lib/models/project";
+import { createTextResource } from "../src/lib/models/resource";
+import { generateUUID } from "../src/lib/models/uuid";
 
 describe("ResourceTree", () => {
     it("renders and expands folder nodes and calls onSelect", () => {
-        const project = createProject("Test Project");
-        const folder = createResource("Folder A", "folder", project.id);
-        const item = createResource(
-            "Child Item",
-            "document",
-            project.id,
-            folder.id,
-        );
-        const resources = [folder, ...project.resources, item];
+        const project = createProject({ name: "Test Project" });
+        const now = new Date().toISOString();
+        const folderId = generateUUID();
+        const folder = {
+            id: folderId,
+            name: "Folder A",
+            type: "folder",
+            createdAt: now,
+            metadata: {},
+        };
+
+        const item = createTextResource({
+            name: "Child Item",
+            folderId: folderId,
+            plainText: "Child content",
+        });
+
+        const resources = [folder, item];
 
         const onSelect = vi.fn();
-        render(<ResourceTree resources={resources} onSelect={onSelect} />);
+        // create isolated store for this test and register project
+        const testStore = makeStore();
+        testStore.dispatch(
+            setProject({ id: project.id, name: project.name, resources }),
+        );
+        render(
+            <Provider store={testStore}>
+                <ResourceTree projectId={project.id} onSelect={onSelect} />
+            </Provider>,
+        );
 
         // folder title should be in the document
         const folderNode = screen.getByText("Folder A");

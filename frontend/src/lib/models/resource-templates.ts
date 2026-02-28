@@ -1,3 +1,19 @@
+/**
+ * @module frontend/lib/models/resource-templates
+ *
+ * Utilities for managing resource templates within a project.
+ *
+ * Responsibilities:
+ * - Persist and load resource templates under `meta/templates/`.
+ * - Create resources from templates (dry-run and real creation).
+ * - Duplicate existing resources (clone metadata and files).
+ * - Export/import simple template packages (.zip wrapper).
+ * - Maintain a compact change log per template.
+ *
+ * This module prefers explicit, filesystem-backed operations and documents
+ * thrown errors for filesystem failures. When possible callers should run
+ * template creation operations in a temporary project root during tests.
+ */
 import fs from "node:fs/promises";
 import path from "node:path";
 import { generateUUID } from "./uuid";
@@ -23,6 +39,20 @@ const TEMPLATES_DIR = (projectRoot: string) =>
 const RESOURCES_DIR = (projectRoot: string) =>
     path.join(projectRoot, "resources");
 
+/**
+ * A saved resource template.
+ *
+ * Templates capture a minimal resource shape that can be instantiated via
+ * `createResourceFromTemplate`. They intentionally avoid embedding volatile
+ * fields such as `createdAt` or concrete filesystem ids.
+ *
+ * @property id - stable identifier for the template
+ * @property name - human-friendly name (may include placeholders like {{TITLE}})
+ * @property type - runtime `ResourceType` ("text" | "image" | "audio")
+ * @property folderId - optional folder target; may be `null` to use default
+ * @property metadata - optional metadata object used when instantiating resources
+ * @property plainText - optional text blob used for text templates
+ */
 export interface ResourceTemplate {
     id: string;
     name: string;
@@ -32,11 +62,28 @@ export interface ResourceTemplate {
     plainText?: string; // for text templates
 }
 
+/**
+ * Ensure a directory exists (creates parent directories recursively).
+ *
+ * @param dir - directory path to ensure exists
+ */
 async function ensureDir(dir: string): Promise<void> {
     await fs.mkdir(dir, { recursive: true });
 }
 
 /** Persist a resource template under project meta/templates. */
+/**
+ * Persist a `ResourceTemplate` to disk under `meta/templates/<id>.json`.
+ *
+ * This operation obtains the project meta lock to serialize concurrent
+ * updates and will append a compact change entry for auditing.
+ *
+ * @param projectRoot - absolute path to the project root
+ * @param template - template object to persist
+ * @throws {Error} filesystem errors when writing files
+ * @example
+ * await saveResourceTemplate('/tmp/proj', { id: 'tpl1', name: 'Chapter', type: 'text' });
+ */
 export async function saveResourceTemplate(
     projectRoot: string,
     template: ResourceTemplate,
@@ -68,7 +115,14 @@ export async function saveResourceTemplate(
     });
 }
 
-/** Load a resource template by id. */
+/**
+ * Load a saved `ResourceTemplate` by id.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @returns parsed template
+ * @throws {Error} when the template file is missing or invalid JSON
+ */
 export async function loadResourceTemplate(
     projectRoot: string,
     templateId: string,
@@ -79,7 +133,11 @@ export async function loadResourceTemplate(
 }
 
 /**
- * List saved templates with optional query filter against id/name/type.
+ * List saved templates optionally filtered by a simple query against id, name or type.
+ *
+ * @param projectRoot - project root path
+ * @param query - optional case-insensitive substring query
+ * @returns array of lightweight template descriptors
  */
 export async function listResourceTemplates(
     projectRoot: string,
@@ -117,7 +175,15 @@ export async function listResourceTemplates(
 }
 
 /**
- * Inspect a saved template and extract simple info: placeholders and metadata keys.
+ * Inspect a saved template and extract metadata such as placeholder variables
+ * (e.g. `{{TITLE}}`) and declared metadata keys.
+ *
+ * Useful for building UI forms that prompt for variable values prior to
+ * instantiation.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @returns inspection result including placeholders and metadata keys
  */
 export async function inspectResourceTemplate(
     projectRoot: string,
@@ -152,7 +218,24 @@ export async function inspectResourceTemplate(
     };
 }
 
-/** Create a resource on disk from a saved template. Returns the created resource. */
+/**
+ * Instantiate a resource from a saved template.
+ *
+ * Supports `dryRun` mode which returns planned filesystem writes without
+ * performing them. When performing a real creation this function writes
+ * resource files and its sidecar and returns the created resource model.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @param opts - optional creation parameters
+ * @param opts.name - override the template name for the created resource
+ * @param opts.vars - object or JSON string of placeholder variables
+ * @param opts.dryRun - when true, return planned write operations instead of performing them
+ * @returns created resource (or plannedWrites + preview for dryRun)
+ * @throws {Error} on filesystem write failures or invalid template
+ * @example
+ * const res = await createResourceFromTemplate('/tmp/p', 'tpl1', { vars: { TITLE: 'Intro' } });
+ */
 export async function createResourceFromTemplate(
     projectRoot: string,
     templateId: string,
@@ -319,7 +402,19 @@ export async function createResourceFromTemplate(
     return res;
 }
 
-/** Duplicate an existing resource within the project, cloning metadata and initial file. */
+/**
+ * Duplicate an existing resource within a project.
+ *
+ * This clones the resource sidecar (with a new id) and duplicates the
+ * underlying file or directory that stores the resource content. The
+ * returned `newId` is the id of the duplicated resource's sidecar.
+ *
+ * @param projectRoot - project root path
+ * @param resourceId - id of resource to duplicate
+ * @returns object containing `newId` for the duplicated resource
+ * @throws {Error} when the original resource sidecar is missing or when
+ * filesystem copy operations fail
+ */
 export async function duplicateResource(
     projectRoot: string,
     resourceId: UUID,
@@ -360,7 +455,35 @@ export async function duplicateResource(
         const ext = path.extname(foundName);
         const base = foundName.replace(resourceId, newId);
         const dest = path.join(resourcesDir, base);
-        await fs.copyFile(src, dest);
+        try {
+            const st = await fs.stat(src);
+            if (st.isDirectory()) {
+                // Resource stored as a directory (newer layout); copy recursively
+                // `fs.cp` supports recursive copy on Node >=16.7
+                // Use the promises API's cp if available
+                // @ts-ignore - cp exists on Node 16+
+                if (typeof (fs as any).cp === "function") {
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-ignore
+                    await (fs as any).cp(src, dest, { recursive: true });
+                } else {
+                    // Fallback: create dest dir and copy individual entries
+                    await fs.mkdir(dest, { recursive: true });
+                    const entries = await fs.readdir(src);
+                    for (const e of entries) {
+                        await fs.copyFile(
+                            path.join(src, e),
+                            path.join(dest, e),
+                        );
+                    }
+                }
+            } else {
+                await fs.copyFile(src, dest);
+            }
+        } catch (err) {
+            // propagate error to caller for visibility in tests
+            throw err;
+        }
     }
 
     return { newId };
@@ -374,8 +497,12 @@ export default {
 };
 
 /**
- * Export a template (and optional sample data) as a simple .zip package.
- * Currently packages only the template JSON as <templateId>.json.
+ * Export a single template into a minimal .zip package containing the
+ * template JSON as `<templateId>.json`.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @param outPath - output path for the generated zip file
  */
 export async function exportResourceTemplate(
     projectRoot: string,
@@ -391,9 +518,13 @@ export async function exportResourceTemplate(
 }
 
 /**
- * Import templates from a simple .zip package produced by `exportResourceTemplate`.
- * Extracts .json entries and writes them into meta/templates/.
- * Returns list of imported template ids.
+ * Import templates from a simple package produced by `exportResourceTemplate`.
+ *
+ * Only `.json` entries are imported into `meta/templates/`.
+ *
+ * @param projectRoot - project root path
+ * @param packPath - path to the zip package to import
+ * @returns list of imported template ids
  */
 export async function importResourceTemplates(
     projectRoot: string,
@@ -419,7 +550,13 @@ export async function importResourceTemplates(
     return imported;
 }
 
-/** Validate a saved template against the runtime schema. Returns validation result. */
+/**
+ * Validate a saved template against the runtime schema.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @returns validation result or list of schema errors
+ */
 export async function validateResourceTemplate(
     projectRoot: string,
     templateId: string,
@@ -434,7 +571,17 @@ export async function validateResourceTemplate(
     return { valid: false, errors };
 }
 
-/** Create multiple resources from a template, generating sequential names. */
+/**
+ * Create multiple resources from a template, generating sequential names.
+ *
+ * Returns the list of created resource ids. Useful for bulk scaffold
+ * operations from a single template.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @param count - number of resources to create
+ * @returns array of resource ids created
+ */
 export async function scaffoldResourcesFromTemplate(
     projectRoot: string,
     templateId: string,
@@ -460,8 +607,16 @@ export async function scaffoldResourcesFromTemplate(
     return created;
 }
 
-/** Apply multiple variable sets to create multiple resources from a template.
- * Accepts a JSON array file or a simple CSV file (first row headers).
+/**
+ * Apply multiple variable sets to create many resources from a template.
+ *
+ * The `inputPath` may point to a JSON array file (preferred) or a simple
+ * CSV file (first row headers). Returns the created resource ids.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @param inputPath - path to JSON array or CSV file containing variable sets
+ * @returns created resource ids
  */
 export async function applyMultipleFromTemplate(
     projectRoot: string,
@@ -504,7 +659,13 @@ export async function applyMultipleFromTemplate(
     return created;
 }
 
-/** Create a version snapshot for a template: writes <templateId>.v<N>.json */
+/**
+ * Create a version snapshot for a template by writing `<templateId>.v<N>.json`.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @returns path to the created version file
+ */
 export async function saveTemplateVersion(
     projectRoot: string,
     templateId: string,
@@ -528,6 +689,13 @@ export async function saveTemplateVersion(
     return verFile;
 }
 
+/**
+ * List available saved versions for a template ordered by version number.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @returns array of version descriptors with absolute file paths
+ */
 export async function listTemplateVersions(
     projectRoot: string,
     templateId: string,
@@ -552,6 +720,14 @@ export async function listTemplateVersions(
     }
 }
 
+/**
+ * Roll back a template to a previously saved version by copying the
+ * version file over the main `<templateId>.json` file.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @param version - numeric version to restore
+ */
 export async function rollbackTemplateVersion(
     projectRoot: string,
     templateId: string,
@@ -566,7 +742,16 @@ export async function rollbackTemplateVersion(
     });
 }
 
-/** Record a compact change entry for a template. Stored as JSONL at <template>.changes.jsonl */
+/**
+ * Record a compact change entry for a template stored as JSONL in
+ * `<templateId>.changes.jsonl`. Each entry contains a timestamp, action
+ * (create|edit) and list of keys changed.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @param prev - previous template object or null when creating
+ * @param next - next template object
+ */
 export async function recordTemplateChange(
     projectRoot: string,
     templateId: string,
@@ -594,6 +779,15 @@ export async function recordTemplateChange(
     await fs.appendFile(changesFile, JSON.stringify(entry) + "\n", "utf8");
 }
 
+/**
+ * Read the change log for a template and return entries optionally
+ * filtered by a starting `since` date.
+ *
+ * @param projectRoot - project root path
+ * @param templateId - template identifier
+ * @param since - optional lower bound timestamp to filter entries
+ * @returns list of change log entries
+ */
 export async function getTemplateChanges(
     projectRoot: string,
     templateId: string,

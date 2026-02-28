@@ -2,7 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import ConfirmDialog from "../common/ConfirmDialog";
 import RenameProjectModal from "./RenameProjectModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
-import type { Resource } from "../../lib/types";
+import type { AnyResource } from "../../src/lib/models/types";
+import { selectProject } from "../../src/store/projectsSlice";
+import useAppSelector from "../../src/store/hooks";
 
 export interface ManageProjectMenuProps {
     projectId: string;
@@ -11,7 +13,7 @@ export interface ManageProjectMenuProps {
     onDelete?: (projectId: string) => void;
     /** Called when the project packaging flow completes. Receives projectId and optional selected resource ids. */
     onPackage?: (projectId: string, selectedIds?: string[]) => void;
-    resources?: Resource[];
+    resources?: AnyResource[];
 }
 
 /**
@@ -25,6 +27,8 @@ export default function ManageProjectMenu({
     onPackage,
     resources = [],
 }: ManageProjectMenuProps): JSX.Element {
+    const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
+    console.log(projectId);
     const [open, setOpen] = useState<boolean>(false);
     const [editing, setEditing] = useState<boolean>(false);
     const [name, setName] = useState<string>(projectName);
@@ -67,6 +71,13 @@ export default function ManageProjectMenu({
 
     const handleDeleteConfirm = (): void => {
         if (onDelete) onDelete(projectId);
+        fetch(`/api/project/delete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ projectPath: projectFromStore?.rootPath }),
+        }).catch((err) => {
+            console.error("Failed to delete project:", err);
+        });
         setConfirmDeleteOpen(false);
         setOpen(false);
     };
@@ -170,8 +181,16 @@ export default function ManageProjectMenu({
                 isOpen={renameOpen}
                 initialName={name}
                 onClose={() => setRenameOpen(false)}
-                onConfirm={(newName) => {
+                onConfirm={async (newName) => {
                     if (onRename) onRename(projectId, newName);
+                    await fetch(`/api/project/rename`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            projectPath: projectFromStore?.rootPath,
+                            newName,
+                        }),
+                    });
                     setName(newName);
                     setRenameOpen(false);
                     setOpen(false);

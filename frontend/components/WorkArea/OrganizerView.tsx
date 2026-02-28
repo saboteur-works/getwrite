@@ -1,10 +1,10 @@
 import React from "react";
-import type { Resource } from "../../lib/types";
+import type { AnyResource } from "../../src/lib/models/types";
 import OrganizerCard from "./OrganizerCard";
 
 export interface OrganizerViewProps {
     /** Resources to display as cards */
-    resources: Resource[];
+    resources: AnyResource[];
     /** Whether to show the body/content of each resource */
     showBody?: boolean;
     /** Callback when the user toggles body visibility */

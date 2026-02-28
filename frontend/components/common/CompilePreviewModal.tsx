@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import type { Resource } from "../../lib/types";
+import type { AnyResource } from "../../src/lib/models/types";
 
 export interface CompilePreviewModalProps {
     isOpen: boolean;
-    projectId: string;
-    resources?: Resource[];
+    projectId?: string;
+    resources?: AnyResource[];
+    preview?: string;
     onClose?: () => void;
     /** Called with selected resource ids to include in the package. */
     onConfirmCompile?: (selectedIds: string[]) => void;
@@ -12,7 +13,7 @@ export interface CompilePreviewModalProps {
 
 export default function CompilePreviewModal(
     props: CompilePreviewModalProps & {
-        resource?: Resource;
+        resource?: AnyResource;
         onConfirm?: () => void;
     },
 ): JSX.Element | null {
@@ -28,13 +29,28 @@ export default function CompilePreviewModal(
     const [scope, setScope] = useState<"project" | "folder" | "resource">(
         "project",
     );
-    const folderOptions = resources.filter((r) => r.type === "folder");
+    // Determine folder-like resources by checking which resources act as parents
+    const parentIds = new Set<string>();
+    resources.forEach((r) => {
+        const parent = (r as any).parentId ?? r.folderId;
+        if (parent) parentIds.add(parent);
+    });
+    const folderOptions = resources.filter((r) => parentIds.has(r.id));
     const [selectedFolder, setSelectedFolder] = useState<string | "">("");
     const [selectedResource, setSelectedResource] = useState<string | "">("");
     const [selectedIds, setSelectedIds] = useState<string[]>(
         resources.map((r) => r.id),
     );
     const [preview, setPreview] = useState<string>("");
+
+    // If a preview prop is supplied (from callers like AppShell), use it
+    // as the initial/controlled preview state so older callers that pass
+    // a generated preview string render correctly.
+    useEffect(() => {
+        if (typeof props.preview === "string") {
+            setPreview(props.preview);
+        }
+    }, [props.preview]);
 
     // Backwards compatible: if a single `resource` prop was provided by older
     // callers, pre-select it and generate a preview automatically.
@@ -55,7 +71,9 @@ export default function CompilePreviewModal(
             setScope("resource");
             setSelectedResource(resource.id);
             setSelectedIds([resource.id]);
-            const text = `Compiled package for project ${projectId}\n\nIncluded resources:\n- ${resource.title} (${resource.type})`;
+            const rtitle =
+                (resource as any).title ?? resource.name ?? "Untitled";
+            const text = `Compiled package for project ${projectId ?? "(unknown project)"}\n\nIncluded resources:\n- ${rtitle} (${resource.type})`;
             setPreview(text);
         }
     }, [isOpen, resource, projectId]);
@@ -64,10 +82,11 @@ export default function CompilePreviewModal(
     const childrenMap = useMemo(() => {
         const map = new Map<string, string[]>();
         resources.forEach((r) => {
-            if (r.parentId) {
-                const arr = map.get(r.parentId) ?? [];
+            const parent = (r as any).parentId ?? r.folderId;
+            if (parent) {
+                const arr = map.get(parent) ?? [];
                 arr.push(r.id);
-                map.set(r.parentId, arr);
+                map.set(parent, arr);
             }
         });
         return map;
@@ -99,8 +118,11 @@ export default function CompilePreviewModal(
         }
 
         const included = resources.filter((r) => ids.includes(r.id));
-        const text = `Compiled package for project ${projectId}\n\nIncluded resources:\n${included
-            .map((r) => `- ${r.title} (${r.type})`)
+        const text = `Compiled package for project ${projectId ?? "(unknown project)"}\n\nIncluded resources:\n${included
+            .map((r) => {
+                const rtitle = (r as any).title ?? r.name ?? "Untitled";
+                return `- ${rtitle} (${r.type})`;
+            })
             .join("\n")}`;
         setSelectedIds(ids);
         setPreview(text);
@@ -109,11 +131,6 @@ export default function CompilePreviewModal(
     // Legacy compatibility: accept a single `resource` prop and an `onConfirm`
     // callback. If `resource` is provided, auto-select it and generate
     // preview so older tests/components keep working.
-    // We don't add `resource` to props interface formally above to avoid
-    // changing current callers, but support it via `any`-style access.
-    // However TypeScript callers can still pass it; ensure runtime handling.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const maybeResource = undefined as any as Resource | undefined;
 
     if (!isOpen) return null;
 
@@ -163,7 +180,7 @@ export default function CompilePreviewModal(
                                 <option value="">(select folder)</option>
                                 {folderOptions.map((f) => (
                                     <option key={f.id} value={f.id}>
-                                        {f.title}
+                                        {(f as any).title ?? f.name}
                                     </option>
                                 ))}
                             </select>
@@ -186,7 +203,7 @@ export default function CompilePreviewModal(
                                 <option value="">(select resource)</option>
                                 {resources.map((r) => (
                                     <option key={r.id} value={r.id}>
-                                        {r.title}
+                                        {(r as any).title ?? r.name}
                                     </option>
                                 ))}
                             </select>

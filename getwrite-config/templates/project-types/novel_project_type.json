@@ -1,13 +1,13 @@
 {
-    "$schema": "./project-type.schema.json",
     "id": "novel",
     "name": "Novel",
     "description": "Project type optimized for long-form fiction. Includes drafts, research, and assets.",
     "folders": [
         { "name": "Workspace", "special": true },
-        { "name": "Drafts" },
-        { "name": "Research" },
-        { "name": "Assets" }
+        { "name": "Characters", "special": true },
+        { "name": "Items", "special": true },
+        { "name": "Locations", "special": true },
+        { "name": "Research" }
     ],
     "defaultResources": [
         {

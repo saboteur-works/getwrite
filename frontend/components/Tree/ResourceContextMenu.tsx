@@ -17,6 +17,8 @@ export interface ResourceContextMenuProps {
     x?: number;
     y?: number;
     resourceId?: string;
+    /** Prefer `resourceName` (canonical). `resourceTitle` kept for backwards compatibility. */
+    resourceName?: string;
     resourceTitle?: string;
     onClose?: () => void;
     onAction?: (action: ResourceContextAction, resourceId?: string) => void;
@@ -36,6 +38,7 @@ export default function ResourceContextMenu({
     x = 0,
     y = 0,
     resourceId,
+    resourceName,
     resourceTitle,
     onClose,
     onAction,
@@ -109,7 +112,9 @@ export default function ResourceContextMenu({
         <div
             role="menu"
             aria-label={
-                resourceTitle ? `${resourceTitle} options` : "Resource options"
+                (resourceName ?? resourceTitle)
+                    ? `${(resourceName ?? resourceTitle) as string} options`
+                    : "Resource options"
             }
             ref={containerRef}
             className={`absolute z-50 min-w-[160px] rounded-md bg-white dark:bg-surface-800 shadow-md ring-1 ring-black/5 ${className}`}

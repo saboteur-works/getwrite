@@ -1,10 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 import ConfirmDialog from "../common/ConfirmDialog";
-import type { ResourceType, Resource } from "../../lib/types";
+import type {
+    AnyResource,
+    ResourceType as CanonicalResourceType,
+    Folder,
+} from "../../src/lib/models/types";
+
+type ResourceType = CanonicalResourceType | string;
 
 export interface CreateResourcePayload {
     title: string;
-    type: ResourceType;
+    type: CanonicalResourceType | string;
+    folderId?: string;
 }
 
 export interface CreateResourceModalProps {
@@ -13,9 +20,13 @@ export interface CreateResourceModalProps {
     initialType?: ResourceType;
     parentId?: string;
     /** Available parent folders to place the new resource under (optional) */
-    parents?: Resource[];
+    parents?: Folder[];
     onClose?: () => void;
-    onCreate?: (payload: CreateResourcePayload, parentId?: string) => void;
+    onCreate?: (
+        payload: CreateResourcePayload,
+        parentId?: string,
+        opts?: { [key: string]: any },
+    ) => void;
 }
 
 /**
@@ -24,14 +35,14 @@ export interface CreateResourceModalProps {
 export default function CreateResourceModal({
     isOpen,
     initialTitle = "",
-    initialType = "document",
+    initialType = "",
     parentId,
     parents = [],
     onClose,
     onCreate,
 }: CreateResourceModalProps): JSX.Element | null {
     const [title, setTitle] = useState<string>(initialTitle);
-    const [type, setType] = useState<ResourceType>(initialType);
+    const [type, setType] = useState<ResourceType>(initialType as ResourceType);
     const [selectedParent, setSelectedParent] = useState<string | undefined>(
         parentId,
     );
@@ -50,7 +61,13 @@ export default function CreateResourceModal({
     const handleCreate = () => {
         const trimmed = title.trim();
         if (!trimmed) return;
-        onCreate?.({ title: trimmed, type }, selectedParent);
+        onCreate?.(
+            { title: trimmed, type, folderId: selectedParent },
+            selectedParent,
+            {
+                title: trimmed,
+            },
+        );
         onClose?.();
     };
 
@@ -90,9 +107,7 @@ export default function CreateResourceModal({
                         className="w-full border rounded px-2 py-1 mt-1"
                         aria-label="resource-type"
                     >
-                        <option value="document">Document</option>
-                        <option value="scene">Scene</option>
-                        <option value="note">Note</option>
+                        <option value="text">Document</option>
                         <option value="folder">Folder</option>
                     </select>
 
@@ -112,13 +127,11 @@ export default function CreateResourceModal({
                         aria-label="resource-parent"
                     >
                         <option value="">(root)</option>
-                        {parents
-                            .filter((p) => p.type === "folder")
-                            .map((p) => (
-                                <option key={p.id} value={p.id}>
-                                    {p.title}
-                                </option>
-                            ))}
+                        {parents.map((p: Folder) => (
+                            <option key={p.id} value={p.id}>
+                                {p.name}
+                            </option>
+                        ))}
                     </select>
                 </div>
 

@@ -67,25 +67,13 @@ export interface Project {
     metadata?: Record<string, MetadataValue>;
 }
 
-/** Logical container within a project used to group resources. */
-export interface Folder {
-    /** Stable UUID identifier for the folder. */
-    id: UUID;
-    /** Optional human-readable slug for UI and exports. */
-    slug?: string;
-    /** Folder display name. */
-    name: string;
-    /** Parent folder UUID; null or undefined for top-level. */
-    parentId?: UUID | null;
-    /** Ordering index used for tree ordering within a parent. */
-    orderIndex?: number;
-    /** Creation timestamp (ISO 8601). */
-    createdAt: string;
-    /** Last-modified timestamp (ISO 8601). */
-    updatedAt?: string;
-}
+export type ResourceType = "text" | "image" | "audio" | "folder";
 
-export type ResourceType = "text" | "image" | "audio";
+/**
+ * UI view names used by the WorkArea view switcher and related components.
+ * Added to canonical models to provide a single source-of-truth for small UI unions.
+ */
+export type ViewName = "edit" | "organizer" | "data" | "diff" | "timeline";
 
 /** Base attributes common to all resource types (text/image/audio). */
 export interface ResourceBase {
@@ -103,6 +91,8 @@ export interface ResourceBase {
     sizeBytes?: number;
     /** User-editable notes. */
     notes?: string;
+    /** Ordering index used for tree ordering within a parent. */
+    orderIndex?: number;
     /** Status tags (project-scoped values). */
     statuses?: string[];
     /** Type-agnostic metadata stored in sidecar. */
@@ -111,6 +101,12 @@ export interface ResourceBase {
     createdAt: string;
     /** Last-modified timestamp (ISO 8601). */
     updatedAt?: string;
+}
+
+/** Logical container within a project used to group resources. */
+export interface Folder extends ResourceBase {
+    /** Parent folder UUID; null or undefined for top-level. */
+    parentId?: UUID | null;
 }
 
 // Minimal TipTap AST-safe types used for editor persistence.
@@ -185,4 +181,4 @@ export interface Revision {
     metadata?: Record<string, unknown>;
 }
 
-export type AnyResource = TextResource | ImageResource | AudioResource;
+export type AnyResource = TextResource | ImageResource | AudioResource | Folder;

@@ -1,11 +1,16 @@
-import React from "react";
+import React, { useEffect } from "react";
 import TipTapEditor from "../TipTapEditor";
+import { TipTapDocument } from "../../src/lib/models";
+import useAppSelector from "../../src/store/hooks";
+import { shallowEqual } from "react-redux";
 
 export interface EditViewProps {
     /** Initial editor content (HTML or plain text) */
     initialContent?: string;
     /** Called when content changes */
-    onChange?: (content: string) => void;
+    onChange?: (content: string, doc: TipTapDocument) => void;
+    /** ID of the resource being edited, used to fetch content from the backend */
+    resourceId?: string;
 }
 
 /**
@@ -17,14 +22,68 @@ export interface EditViewProps {
  */
 export default function EditView({
     initialContent = "",
-    apiKey,
     onChange,
+    resourceId,
 }: EditViewProps): JSX.Element {
     const [content, setContent] = React.useState<string>(initialContent);
+    const [tipTapDoc, setTipTapDoc] = React.useState<TipTapDocument | null>(
+        null,
+    );
+    const projectId = useAppSelector(
+        (state) => state.projects.selectedProjectId,
+        shallowEqual,
+    );
+    const project = useAppSelector(
+        (state) => (projectId ? state.projects.projects[projectId] : null),
+        shallowEqual,
+    );
 
-    const handleChange = (next: string) => {
+    const fetchResourceContent = async () => {
+        const response = await fetch("/api/project-resources", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                projectPath: project?.rootPath,
+                resourceId: resourceId,
+            }),
+        });
+        const data = await response.json();
+        return data;
+    };
+
+    // On mount or when resourceId / initialContent changes, fetch the resource
+    // content if a resource ID is provided. If no resourceId is provided, keep
+    // the `initialContent` prop so tests and consumers can render initial text.
+    useEffect(() => {
+        console.log("fetching resource content for", resourceId);
+        setContent(initialContent);
+        setTipTapDoc(null);
+        if (resourceId) {
+            fetchResourceContent().then((res) => {
+                // When loading TipTap content, we need to make sure the shape is valid before
+                // we set it.
+                if (
+                    res.resourceContent.tipTapContent &&
+                    Object.keys(res.resourceContent.tipTapContent).length > 0
+                ) {
+                    setTipTapDoc(res.resourceContent.tipTapContent);
+                }
+
+                // If plaintext content is also available, use it as a fallback. This allows
+                // us to support resources that may not have been saved in TipTap format yet.
+                if (
+                    res.resourceContent.plaintextContent &&
+                    res.resourceContent.plaintextContent !== ""
+                ) {
+                    setContent(res.resourceContent.plaintextContent);
+                }
+            });
+        }
+    }, [resourceId, initialContent]);
+
+    const handleChange = (next: string, doc: TipTapDocument) => {
         setContent(next);
-        if (onChange) onChange(next);
+        if (onChange) onChange(next, doc);
     };
 
     const wordCount = React.useMemo(() => {
@@ -44,7 +103,7 @@ export default function EditView({
             <div className="flex-1 overflow-auto p-4">
                 <TipTapEditor
                     id="editview-editor"
-                    value={content}
+                    value={tipTapDoc ?? content} // prefer loaded doc, fallback to initial/plain content
                     onChange={handleChange}
                     readonly={false}
                 />

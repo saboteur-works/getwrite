@@ -1,11 +1,14 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import type { Resource } from "../../lib/types";
+import type { AnyResource, Folder } from "../../src/lib/models/types";
+import { useAppSelector } from "../../src/store/hooks";
+import { selectProject } from "../../src/store/projectsSlice";
 import ResourceContextMenu, {
     type ResourceContextAction,
 } from "./ResourceContextMenu";
 
 export interface ResourceTreeProps {
-    resources: Resource[];
+    /** Drive the tree from Redux by `projectId`. */
+    projectId: string;
     selectedId?: string | null;
     onSelect?: (id: string) => void;
     className?: string;
@@ -20,7 +23,7 @@ export interface ResourceTreeProps {
 
 /** Internal tree node used to build parent/child relationships for rendering. */
 type TreeNode = {
-    resource: Resource;
+    resource: AnyResource | Folder;
     children: TreeNode[];
 };
 
@@ -103,7 +106,7 @@ function ChevronDown({ className = "w-3 h-3" }: { className?: string }) {
  * - Keyboard navigation is currently minimal; add arrow-key support in T030.
  */
 export default function ResourceTree({
-    resources,
+    projectId,
     selectedId,
     onSelect,
     className = "",
@@ -111,9 +114,22 @@ export default function ResourceTree({
     onReorder,
     onResourceAction,
 }: ResourceTreeProps) {
+    // Read canonical project from Redux; enforce Redux-only source of truth.
+    const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
+    const resourcesList: AnyResource[] =
+        (projectFromStore?.resources as unknown as AnyResource[]) ?? [];
+
+    const foldersList: Folder[] =
+        (projectFromStore?.folders as unknown as Folder[]) ?? [];
+
+    const combined: (AnyResource | Folder)[] = [
+        ...resourcesList,
+        ...foldersList,
+    ];
     const [localOrder, setLocalOrder] = useState<string[]>(() =>
-        resources.map((r) => r.id),
+        combined.map((r) => r.id),
     );
+
     const [contextMenu, setContextMenu] = useState<{
         open: boolean;
         x: number;
@@ -123,20 +139,28 @@ export default function ResourceTree({
     }>({ open: false, x: 0, y: 0 });
 
     useEffect(() => {
-        setLocalOrder(resources.map((r) => r.id));
-    }, [resources]);
+        const ids = combined.map((r) => r.id);
+        setLocalOrder((prev) => {
+            if (
+                prev.length === ids.length &&
+                prev.every((v, i) => v === ids[i])
+            ) {
+                return prev;
+            }
+            return ids;
+        });
+    }, [combined]);
 
     const nodes = useMemo(() => {
         const map = new Map<string, TreeNode>();
-        resources.forEach((r) => map.set(r.id, { resource: r, children: [] }));
+        combined.forEach((r) => map.set(r.id, { resource: r, children: [] }));
         const roots: TreeNode[] = [];
-        const orderedIds = reorderable
-            ? localOrder
-            : resources.map((r) => r.id);
+        const orderedIds = reorderable ? localOrder : combined.map((r) => r.id);
         orderedIds.forEach((id) => {
             const node = map.get(id);
             if (!node) return;
-            const parentId = node.resource.parentId;
+            const parentId =
+                (node.resource as any).parentId ?? node.resource.folderId;
             if (parentId && map.has(parentId)) {
                 map.get(parentId)!.children.push(node);
             } else {
@@ -149,7 +173,7 @@ export default function ResourceTree({
         }
         sortRec(roots);
         return roots;
-    }, [resources, localOrder, reorderable]);
+    }, [resourcesList, foldersList, localOrder, reorderable]);
 
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -255,7 +279,9 @@ export default function ResourceTree({
                             x: rectX,
                             y: rectY,
                             resourceId: node.resource.id,
-                            resourceTitle: node.resource.title,
+                            resourceTitle:
+                                node.resource.name ??
+                                (node.resource as any).title,
                         });
                     }}
                 >
@@ -334,7 +360,7 @@ export default function ResourceTree({
                                     x: Math.round(rect.left + 8),
                                     y: Math.round(rect.top + 24),
                                     resourceId: node.resource.id,
-                                    resourceTitle: node.resource.title,
+                                    resourceTitle: node.resource.name,
                                 });
                                 e.preventDefault();
                             } else if (e.key === "ArrowUp") {
@@ -380,17 +406,13 @@ export default function ResourceTree({
                             )}
                         </span>
                         <span className="flex items-center gap-2">
-                            {node.resource.type === "folder" ? (
-                                <FolderIcon />
-                            ) : (
-                                <FileIcon />
-                            )}
+                            {hasChildren ? <FolderIcon /> : <FileIcon />}
                         </span>
                         <span
                             onClick={() => onSelect?.(node.resource.id)}
                             className={`ml-1 truncate max-w-[200px] ${isSelected ? "font-semibold" : ""}`}
                         >
-                            {node.resource.title}
+                            {node.resource.name ?? (node.resource as any).title}
                         </span>
                     </button>
                 </div>
@@ -432,7 +454,7 @@ export default function ResourceTree({
             {/* Fixed footer aligned to tree nav rect so it sits at the bottom of the viewport */}
             {(() => {
                 const selectedResource = selectedId
-                    ? resources.find((r) => r.id === selectedId)
+                    ? resourcesList.find((r) => r.id === selectedId)
                     : undefined;
                 const style: React.CSSProperties = {
                     position: "fixed",
@@ -447,7 +469,8 @@ export default function ResourceTree({
                             Selected:{" "}
                             <span className="font-medium">
                                 {selectedResource
-                                    ? selectedResource.title
+                                    ? (selectedResource.name ??
+                                      (selectedResource as any).title)
                                     : "None"}
                             </span>
                         </div>

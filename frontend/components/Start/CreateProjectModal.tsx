@@ -1,15 +1,24 @@
-import React, { useEffect, useRef, useState } from "react";
-import type { ResourceType } from "../../lib/types";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { toast } from "react-hot-toast";
+import type { Project as CanonicalProject } from "../../src/lib/models/types";
 
 export interface CreateProjectPayload {
     name: string;
-    projectType: "novel" | "short" | "collection";
+    projectType: string;
 }
 
 export interface CreateProjectModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onCreate: (payload: CreateProjectPayload) => void;
+    // onCreate receives the form payload and, when available, the persisted `Project` returned by the server
+    onCreate: (
+        payload: CreateProjectPayload,
+        createdProject?: {
+            project: CanonicalProject;
+            folders: any[];
+            resources: any[];
+        },
+    ) => void;
     defaultName?: string;
     defaultType?: CreateProjectPayload["projectType"];
 }
@@ -32,14 +41,79 @@ export default function CreateProjectModal({
     const [name, setName] = useState<string>(defaultName);
     const [projectType, setProjectType] =
         useState<CreateProjectPayload["projectType"]>(defaultType);
+    const [types, setTypes] = useState<
+        | {
+              id: string;
+              name: string;
+              description?: string;
+              // client-side validation error for this template (friendly message)
+              validationError?: string | null;
+          }[]
+        | null
+    >(null);
+    const [loadingTypes, setLoadingTypes] = useState(false);
+    const [filter, setFilter] = useState<string>("");
+    const [typesError, setTypesError] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [creating, setCreating] = useState(false);
     const nameRef = useRef<HTMLInputElement | null>(null);
+
+    const loadTypes = useCallback(async () => {
+        setLoadingTypes(true);
+        setTypesError(null);
+        try {
+            const res = await fetch("/api/project-types");
+            if (!res.ok) {
+                const body = await res.text();
+                throw new Error(body || `Status ${res.status}`);
+            }
+            const list: any[] = await res.json();
+            // Lightweight client-side validation to surface common template issues
+            const processed = list.map((t) => {
+                const id = t.id ?? (t.spec && t.spec.id) ?? "";
+                const name =
+                    t.name ?? (t.spec && t.spec.name) ?? id ?? "Unnamed";
+                const description =
+                    t.description ?? (t.spec && t.spec.description);
+                const spec = t.spec ?? t;
+                const errors: string[] = [];
+                if (!id) errors.push("Template missing required field: id.");
+                if (!spec || !Array.isArray(spec.folders))
+                    errors.push("Template missing required field: folders.");
+                else if (spec.folders.length === 0)
+                    errors.push("Template must include at least one folder.");
+                return {
+                    id,
+                    name,
+                    description,
+                    validationError:
+                        errors.length > 0 ? errors.join(" ") : null,
+                };
+            });
+            setTypes(processed);
+            if (!defaultType && list.length > 0)
+                setProjectType(processed[0].id);
+        } catch (err) {
+            setTypes([]);
+            const msg = err instanceof Error ? err.message : String(err);
+            setTypesError(msg);
+            try {
+                toast.error(`Failed to load project types: ${msg}`);
+            } catch (_) {
+                // swallow if toast lib not available in some test environments
+            }
+        } finally {
+            setLoadingTypes(false);
+        }
+    }, [defaultType]);
 
     useEffect(() => {
         if (isOpen) {
             setName(defaultName);
             setProjectType(defaultType);
             setError(null);
+            // load project types when modal opens via API
+            void loadTypes();
             // focus the name input when opening
             setTimeout(() => nameRef.current?.focus(), 50);
             // basic focus trap: keep focus inside the form while modal is open
@@ -79,7 +153,8 @@ export default function CreateProjectModal({
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e?: React.FormEvent) => {
+    const handleSubmit = async (e?: React.FormEvent) => {
+        if (creating) return; // ignore duplicate submits while creating
         e?.preventDefault();
         if (!name.trim()) {
             setError("Please enter a project name.");
@@ -91,8 +166,46 @@ export default function CreateProjectModal({
             name: name.trim(),
             projectType,
         };
-        onCreate(payload);
-        onClose();
+
+        setCreating(true);
+        setError(null);
+        try {
+            const res = await fetch("/api/projects", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: payload.name,
+                    projectType: payload.projectType,
+                }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => null);
+                throw new Error(body?.error || `Status ${res.status}`);
+            }
+            const body = await res.json().catch(() => null);
+            const createdProject: CanonicalProject = body?.project;
+            const createdFolders = body?.folders || [];
+            const createdResources = body?.resources || [];
+            console.log("Created project:", {
+                project: createdProject,
+                folders: createdFolders,
+                resources: createdResources,
+            });
+            onCreate(payload, {
+                project: createdProject,
+                folders: createdFolders,
+                resources: createdResources,
+            });
+            onClose();
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            setError(msg);
+            try {
+                toast.error(`Failed to create project: ${msg}`);
+            } catch (_) {}
+        } finally {
+            setCreating(false);
+        }
     };
 
     return (
@@ -114,6 +227,7 @@ export default function CreateProjectModal({
                 onKeyDown={(ev) => {
                     if (ev.key === "Escape") onClose();
                 }}
+                aria-busy={creating}
             >
                 <h2 id="create-project-title" className="text-lg font-medium">
                     Create Project
@@ -127,25 +241,100 @@ export default function CreateProjectModal({
                         onChange={(e) => setName(e.target.value)}
                         className="mt-1 block w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-300"
                         aria-required
+                        disabled={creating}
                     />
                 </label>
 
                 <label className="block mt-4">
                     <div className="text-sm text-slate-700">Project Type</div>
-                    <select
-                        value={projectType}
-                        onChange={(e) =>
-                            setProjectType(
-                                e.target
-                                    .value as CreateProjectPayload["projectType"],
-                            )
-                        }
-                        className="mt-1 block w-full border rounded px-3 py-2"
-                    >
-                        <option value="novel">Novel</option>
-                        <option value="short">Short Story</option>
-                        <option value="collection">Collection</option>
-                    </select>
+                    <div className="mt-1">
+                        <input
+                            type="search"
+                            aria-label="Filter project types"
+                            placeholder="Search project types..."
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            className="mb-2 block w-full border rounded px-3 py-2"
+                            disabled={creating || loadingTypes}
+                        />
+                        <select
+                            value={projectType}
+                            onChange={(e) =>
+                                setProjectType(e.target.value as string)
+                            }
+                            className="block w-full border rounded px-3 py-2"
+                            disabled={
+                                creating ||
+                                loadingTypes ||
+                                (Array.isArray(types) && types.length === 0)
+                            }
+                        >
+                            {loadingTypes ? (
+                                <option>Loading...</option>
+                            ) : types && types.length > 0 ? (
+                                // filter by id, name, or description
+                                types
+                                    .filter((t) => {
+                                        if (!filter) return true;
+                                        const q = filter.toLowerCase();
+                                        return (
+                                            t.id.toLowerCase().includes(q) ||
+                                            t.name.toLowerCase().includes(q) ||
+                                            (t.description || "")
+                                                .toLowerCase()
+                                                .includes(q)
+                                        );
+                                    })
+                                    .map((t) => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.name}
+                                            {t.description
+                                                ? ` — ${t.description}`
+                                                : ""}
+                                        </option>
+                                    ))
+                            ) : (
+                                <option value="">
+                                    No project types available
+                                </option>
+                            )}
+                        </select>
+                    </div>
+                    {types && types.length > 0 && (
+                        <div className="text-xs text-slate-500 mt-1">
+                            {
+                                types.find((t) => t.id === projectType)
+                                    ?.description
+                            }
+                        </div>
+                    )}
+                    {/* Show validation error for selected template (friendly messages) */}
+                    {types &&
+                        projectType &&
+                        (() => {
+                            const sel = types.find((t) => t.id === projectType);
+                            if (!sel) return null;
+                            if (sel.validationError)
+                                return (
+                                    <div className="text-sm text-red-600 mt-3">
+                                        Template validation:{" "}
+                                        {sel.validationError}
+                                    </div>
+                                );
+                            return null;
+                        })()}
+                    {typesError && (
+                        <div className="text-sm text-red-600 mt-3">
+                            Failed to load project types: {typesError}
+                            <button
+                                type="button"
+                                onClick={() => void loadTypes()}
+                                className="ml-3 underline"
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    )}
                 </label>
 
                 {error ? (
@@ -157,14 +346,25 @@ export default function CreateProjectModal({
                         type="button"
                         onClick={onClose}
                         className="px-3 py-1 rounded border"
+                        disabled={creating}
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
                         className="px-3 py-1 rounded bg-brand-500 text-white"
+                        disabled={
+                            creating ||
+                            (!!types &&
+                                !!projectType &&
+                                !!types.find(
+                                    (t) =>
+                                        t.id === projectType &&
+                                        t.validationError,
+                                ))
+                        }
                     >
-                        Create
+                        {creating ? "Creating…" : "Create"}
                     </button>
                 </div>
             </form>
