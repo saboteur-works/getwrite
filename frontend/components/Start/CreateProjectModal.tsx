@@ -51,6 +51,7 @@ export default function CreateProjectModal({
         | null
     >(null);
     const [loadingTypes, setLoadingTypes] = useState(false);
+    const [filter, setFilter] = useState<string>("");
     const [typesError, setTypesError] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
@@ -84,7 +85,8 @@ export default function CreateProjectModal({
                 };
             });
             setTypes(processed);
-            if (!defaultType && list.length > 0) setProjectType(list[0].id);
+            if (!defaultType && list.length > 0)
+                setProjectType(processed[0].id);
         } catch (err) {
             setTypes([]);
             setTypesError(err instanceof Error ? err.message : String(err));
@@ -229,31 +231,59 @@ export default function CreateProjectModal({
 
                 <label className="block mt-4">
                     <div className="text-sm text-slate-700">Project Type</div>
-                    <select
-                        value={projectType}
-                        onChange={(e) =>
-                            setProjectType(e.target.value as string)
-                        }
-                        className="mt-1 block w-full border rounded px-3 py-2"
-                        disabled={
-                            creating ||
-                            loadingTypes ||
-                            (Array.isArray(types) && types.length === 0)
-                        }
-                    >
-                        {loadingTypes ? (
-                            <option>Loading...</option>
-                        ) : types && types.length > 0 ? (
-                            types.map((t) => (
-                                <option key={t.id} value={t.id}>
-                                    {t.name}
-                                    {/* {t.description ? ` — ${t.description}` : ""} */}
+                    <div className="mt-1">
+                        <input
+                            type="search"
+                            aria-label="Filter project types"
+                            placeholder="Search project types..."
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            className="mb-2 block w-full border rounded px-3 py-2"
+                            disabled={creating || loadingTypes}
+                        />
+                        <select
+                            value={projectType}
+                            onChange={(e) =>
+                                setProjectType(e.target.value as string)
+                            }
+                            className="block w-full border rounded px-3 py-2"
+                            disabled={
+                                creating ||
+                                loadingTypes ||
+                                (Array.isArray(types) && types.length === 0)
+                            }
+                        >
+                            {loadingTypes ? (
+                                <option>Loading...</option>
+                            ) : types && types.length > 0 ? (
+                                // filter by id, name, or description
+                                types
+                                    .filter((t) => {
+                                        if (!filter) return true;
+                                        const q = filter.toLowerCase();
+                                        return (
+                                            t.id.toLowerCase().includes(q) ||
+                                            t.name.toLowerCase().includes(q) ||
+                                            (t.description || "")
+                                                .toLowerCase()
+                                                .includes(q)
+                                        );
+                                    })
+                                    .map((t) => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.name}
+                                            {t.description
+                                                ? ` — ${t.description}`
+                                                : ""}
+                                        </option>
+                                    ))
+                            ) : (
+                                <option value="">
+                                    No project types available
                                 </option>
-                            ))
-                        ) : (
-                            <option value="">No project types available</option>
-                        )}
-                    </select>
+                            )}
+                        </select>
+                    </div>
                     {types && types.length > 0 && (
                         <div className="text-xs text-slate-500 mt-1">
                             {
