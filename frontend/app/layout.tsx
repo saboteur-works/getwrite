@@ -1,6 +1,7 @@
 import "./globals.css";
 import React from "react";
 import ClientProvider from "../src/store/ClientProvider";
+import AppToaster from "../components/notifications/Toaster";
 
 /** Page metadata for Next.js layout — basic title for dev/storybook. */
 export const metadata = {
@@ -19,6 +20,7 @@ export default function RootLayout({
                 <ClientProvider>
                     <div className="min-h-screen bg-gray-50 text-slate-900">
                         {children}
+                        <AppToaster />
                     </div>
                 </ClientProvider>
             </body>
