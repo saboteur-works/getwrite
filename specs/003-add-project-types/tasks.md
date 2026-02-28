@@ -36,11 +36,11 @@ User Story 3 - Project Type selection UX & validation (Priority: P2)
 
 - [x] T014 [US3] Surface template validation errors in the modal; show user-friendly messages for missing `id` (UI in `frontend/components/Start/CreateProjectModal.tsx`)
 - [x] T015 [P] [US3] Improve dropdown UX: add client-side search/filter and show `description` as secondary text in `frontend/components/Start/CreateProjectModal.tsx`
-- [ ] T016 [US3] Add unit tests for invalid/malformed templates `frontend/tests/unit/project-type-validation.spec.ts`
+- [x] T016 [US3] Add unit tests for invalid/malformed templates `frontend/tests/unit/project-type-validation.spec.ts`
 
 Cross-cutting / Polish
 
-- [ ] T017 [P] Add developer docs `specs/003-add-project-types/README.md` describing the JSON template format and examples
+- [x] T017 [P] Add developer docs `specs/003-add-project-types/README.md` describing the JSON template format and examples
 - [ ] T018 [P] Add accessibility tests for modal/dropdown (keyboard navigation) `frontend/tests/a11y/create-project-modal.a11y.ts`
 - [ ] T019 Add error handling UX: toast/modal for IO or creation failures (`frontend/components/notifications/*` or `frontend/components/Start/CreateProjectModal.tsx`)
 - [ ] T020 Create PR, request review, and address feedback (CI: run `pnpm exec vitest run` and Playwright tests where applicable)
