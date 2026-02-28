@@ -42,7 +42,7 @@ Cross-cutting / Polish
 
 - [x] T017 [P] Add developer docs `specs/003-add-project-types/README.md` describing the JSON template format and examples
 - [ ] T018 [P] Add accessibility tests for modal/dropdown (keyboard navigation) `frontend/tests/a11y/create-project-modal.a11y.ts`
-- [ ] T019 Add error handling UX: toast/modal for IO or creation failures (`frontend/components/notifications/*` or `frontend/components/Start/CreateProjectModal.tsx`)
+- [x] T019 Add error handling UX: toast for IO or creation failures (`frontend/components/notifications/*` or `frontend/components/Start/CreateProjectModal.tsx`)
 - [ ] T020 Create PR, request review, and address feedback (CI: run `pnpm exec vitest run` and Playwright tests where applicable)
 
 Dependencies

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { toast } from "react-hot-toast";
 import type { Project as CanonicalProject } from "../../src/lib/models/types";
 
 export interface CreateProjectPayload {
@@ -94,7 +95,13 @@ export default function CreateProjectModal({
                 setProjectType(processed[0].id);
         } catch (err) {
             setTypes([]);
-            setTypesError(err instanceof Error ? err.message : String(err));
+            const msg = err instanceof Error ? err.message : String(err);
+            setTypesError(msg);
+            try {
+                toast.error(`Failed to load project types: ${msg}`);
+            } catch (_) {
+                // swallow if toast lib not available in some test environments
+            }
         } finally {
             setLoadingTypes(false);
         }
@@ -191,7 +198,11 @@ export default function CreateProjectModal({
             });
             onClose();
         } catch (err) {
-            setError(err instanceof Error ? err.message : String(err));
+            const msg = err instanceof Error ? err.message : String(err);
+            setError(msg);
+            try {
+                toast.error(`Failed to create project: ${msg}`);
+            } catch (_) {}
         } finally {
             setCreating(false);
         }
