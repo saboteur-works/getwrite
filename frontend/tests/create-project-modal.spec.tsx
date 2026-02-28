@@ -30,7 +30,15 @@ describe("Create project flow (integration) - modal calls API and adds project",
                 if (url.endsWith("/api/project-types")) {
                     return Promise.resolve({
                         ok: true,
-                        json: async () => [{ id: "novel", name: "Novel" }],
+                        json: async () => [
+                            {
+                                id: "novel",
+                                name: "Novel",
+                                folders: [
+                                    { name: "Workspace", defaultResources: [] },
+                                ],
+                            },
+                        ],
                     });
                 }
                 if (

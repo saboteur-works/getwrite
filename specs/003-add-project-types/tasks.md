@@ -34,7 +34,7 @@ User Story 2 - Resource Tree shows generated resources (Priority: P1)
 
 User Story 3 - Project Type selection UX & validation (Priority: P2)
 
-- [ ] T014 [US3] Surface template validation errors in the modal; show user-friendly messages for missing `id` or `folders` (UI in `frontend/components/Start/CreateProjectModal.tsx`)
+- [x] T014 [US3] Surface template validation errors in the modal; show user-friendly messages for missing `id` or `folders` (UI in `frontend/components/Start/CreateProjectModal.tsx`)
 - [ ] T015 [P] [US3] Improve dropdown UX: add client-side search/filter and show `description` as secondary text in `frontend/components/Start/CreateProjectModal.tsx`
 - [ ] T016 [US3] Add unit tests for invalid/malformed templates `frontend/tests/unit/project-type-validation.spec.ts`
 
