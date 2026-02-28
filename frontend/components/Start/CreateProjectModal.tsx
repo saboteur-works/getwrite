@@ -45,10 +45,13 @@ export default function CreateProjectModal({
               id: string;
               name: string;
               description?: string;
+              // client-side validation error for this template (friendly message)
+              validationError?: string | null;
           }[]
         | null
     >(null);
     const [loadingTypes, setLoadingTypes] = useState(false);
+    const [filter, setFilter] = useState<string>("");
     const [typesError, setTypesError] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
@@ -63,10 +66,32 @@ export default function CreateProjectModal({
                 const body = await res.text();
                 throw new Error(body || `Status ${res.status}`);
             }
-            const list: { id: string; name: string; description?: string }[] =
-                await res.json();
-            setTypes(list);
-            if (!defaultType && list.length > 0) setProjectType(list[0].id);
+            const list: any[] = await res.json();
+            // Lightweight client-side validation to surface common template issues
+            const processed = list.map((t) => {
+                const id = t.id ?? (t.spec && t.spec.id) ?? "";
+                const name =
+                    t.name ?? (t.spec && t.spec.name) ?? id ?? "Unnamed";
+                const description =
+                    t.description ?? (t.spec && t.spec.description);
+                const spec = t.spec ?? t;
+                const errors: string[] = [];
+                if (!id) errors.push("Template missing required field: id.");
+                if (!spec || !Array.isArray(spec.folders))
+                    errors.push("Template missing required field: folders.");
+                else if (spec.folders.length === 0)
+                    errors.push("Template must include at least one folder.");
+                return {
+                    id,
+                    name,
+                    description,
+                    validationError:
+                        errors.length > 0 ? errors.join(" ") : null,
+                };
+            });
+            setTypes(processed);
+            if (!defaultType && list.length > 0)
+                setProjectType(processed[0].id);
         } catch (err) {
             setTypes([]);
             setTypesError(err instanceof Error ? err.message : String(err));
@@ -211,31 +236,59 @@ export default function CreateProjectModal({
 
                 <label className="block mt-4">
                     <div className="text-sm text-slate-700">Project Type</div>
-                    <select
-                        value={projectType}
-                        onChange={(e) =>
-                            setProjectType(e.target.value as string)
-                        }
-                        className="mt-1 block w-full border rounded px-3 py-2"
-                        disabled={
-                            creating ||
-                            loadingTypes ||
-                            (Array.isArray(types) && types.length === 0)
-                        }
-                    >
-                        {loadingTypes ? (
-                            <option>Loading...</option>
-                        ) : types && types.length > 0 ? (
-                            types.map((t) => (
-                                <option key={t.id} value={t.id}>
-                                    {t.name}
-                                    {/* {t.description ? ` — ${t.description}` : ""} */}
+                    <div className="mt-1">
+                        <input
+                            type="search"
+                            aria-label="Filter project types"
+                            placeholder="Search project types..."
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            className="mb-2 block w-full border rounded px-3 py-2"
+                            disabled={creating || loadingTypes}
+                        />
+                        <select
+                            value={projectType}
+                            onChange={(e) =>
+                                setProjectType(e.target.value as string)
+                            }
+                            className="block w-full border rounded px-3 py-2"
+                            disabled={
+                                creating ||
+                                loadingTypes ||
+                                (Array.isArray(types) && types.length === 0)
+                            }
+                        >
+                            {loadingTypes ? (
+                                <option>Loading...</option>
+                            ) : types && types.length > 0 ? (
+                                // filter by id, name, or description
+                                types
+                                    .filter((t) => {
+                                        if (!filter) return true;
+                                        const q = filter.toLowerCase();
+                                        return (
+                                            t.id.toLowerCase().includes(q) ||
+                                            t.name.toLowerCase().includes(q) ||
+                                            (t.description || "")
+                                                .toLowerCase()
+                                                .includes(q)
+                                        );
+                                    })
+                                    .map((t) => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.name}
+                                            {t.description
+                                                ? ` — ${t.description}`
+                                                : ""}
+                                        </option>
+                                    ))
+                            ) : (
+                                <option value="">
+                                    No project types available
                                 </option>
-                            ))
-                        ) : (
-                            <option value="">No project types available</option>
-                        )}
-                    </select>
+                            )}
+                        </select>
+                    </div>
                     {types && types.length > 0 && (
                         <div className="text-xs text-slate-500 mt-1">
                             {
@@ -244,6 +297,21 @@ export default function CreateProjectModal({
                             }
                         </div>
                     )}
+                    {/* Show validation error for selected template (friendly messages) */}
+                    {types &&
+                        projectType &&
+                        (() => {
+                            const sel = types.find((t) => t.id === projectType);
+                            if (!sel) return null;
+                            if (sel.validationError)
+                                return (
+                                    <div className="text-sm text-red-600 mt-3">
+                                        Template validation:{" "}
+                                        {sel.validationError}
+                                    </div>
+                                );
+                            return null;
+                        })()}
                     {typesError && (
                         <div className="text-sm text-red-600 mt-3">
                             Failed to load project types: {typesError}
@@ -274,7 +342,16 @@ export default function CreateProjectModal({
                     <button
                         type="submit"
                         className="px-3 py-1 rounded bg-brand-500 text-white"
-                        disabled={creating}
+                        disabled={
+                            creating ||
+                            (!!types &&
+                                !!projectType &&
+                                !!types.find(
+                                    (t) =>
+                                        t.id === projectType &&
+                                        t.validationError,
+                                ))
+                        }
                     >
                         {creating ? "Creating…" : "Create"}
                     </button>
