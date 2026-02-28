@@ -73,13 +73,8 @@ export default function CreateProjectModal({
                     t.name ?? (t.spec && t.spec.name) ?? id ?? "Unnamed";
                 const description =
                     t.description ?? (t.spec && t.spec.description);
-                const spec = t.spec ?? t;
                 const errors: string[] = [];
                 if (!id) errors.push("Template missing required field: id.");
-                if (!spec || !Array.isArray(spec.folders))
-                    errors.push("Template missing required field: folders.");
-                else if (spec.folders.length === 0)
-                    errors.push("Template must include at least one folder.");
                 return {
                     id,
                     name,
