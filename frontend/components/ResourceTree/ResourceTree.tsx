@@ -9,7 +9,10 @@ import { AnyResource } from "../../src/lib/models";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectProject } from "../../src/store/projectsSlice";
 import { setSelectedResourceId } from "../../src/store/resourcesSlice";
-
+import ResourceContextMenu, {
+    type ResourceContextAction,
+} from "../Tree/ResourceContextMenu";
+import { useState } from "react";
 interface ResourceItemData {
     /** The name of the resource */
     name: string;
@@ -162,6 +165,14 @@ export default function ResourceTree({
         allResources as AnyResource[],
     );
 
+    const [contextMenu, setContextMenu] = useState<{
+        open: boolean;
+        x: number;
+        y: number;
+        resourceId?: string;
+        resourceTitle?: string;
+    }>({ open: false, x: 0, y: 0 });
+
     const tree = useTree<ResourceItemData>({
         rootItemId: "root",
         getItemName: (item) => {
@@ -191,7 +202,22 @@ export default function ResourceTree({
             className="flex flex-col items-start"
         >
             {tree.getItems().map((item) => (
-                <div key={item.getId()}>
+                <div
+                    key={item.getId()}
+                    onContextMenu={(e) => {
+                        e.preventDefault();
+                        // open context menu at mouse position for this resource
+                        const rectX = e.clientX;
+                        const rectY = e.clientY;
+                        setContextMenu({
+                            open: true,
+                            x: rectX,
+                            y: rectY,
+                            resourceId: item.getId(),
+                            resourceTitle: item.getItemName(),
+                        });
+                    }}
+                >
                     {item.isFolder() && (
                         <button
                             onClick={
@@ -213,8 +239,10 @@ export default function ResourceTree({
                         }}
                         onClick={(e) => {
                             // Call the custom click behavior defined in the feature implementation
-                            item.getProps().onClick?.(e);
+                            // item.getProps().onClick?.(e);
                             // Handle dispatch
+                            item.setFocused();
+                            tree.setSelectedItems([item.getItemMeta().itemId]);
                             dispatch(setSelectedResourceId(item.getId()));
                         }}
                     >
@@ -234,6 +262,23 @@ export default function ResourceTree({
                     </button>
                 </div>
             ))}
+            <ResourceContextMenu
+                open={contextMenu.open}
+                x={contextMenu.x}
+                y={contextMenu.y}
+                resourceId={contextMenu.resourceId}
+                resourceTitle={contextMenu.resourceTitle}
+                onClose={() => setContextMenu((s) => ({ ...s, open: false }))}
+                onAction={(action, resourceId) => {
+                    console.log(
+                        "Context menu action:",
+                        action,
+                        "on resource:",
+                        resourceId,
+                    );
+                    // onResourceAction?.(action, resourceId);
+                }}
+            />
         </div>
     );
 }
