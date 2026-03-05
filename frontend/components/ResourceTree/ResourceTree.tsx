@@ -6,8 +6,9 @@ import {
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
 import { AnyResource } from "../../src/lib/models";
-import useAppSelector from "../../src/store/hooks";
+import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectProject } from "../../src/store/projectsSlice";
+import { setSelectedResourceId } from "../../src/store/resourcesSlice";
 
 interface ResourceItemData {
     /** The name of the resource */
@@ -153,6 +154,7 @@ export default function ResourceTree({
     debug?: boolean;
 }) {
     const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
+    const dispatch = useAppDispatch();
     const projectFolders = projectFromStore?.folders || [];
     const projectFiles = projectFromStore?.resources || [];
     const allResources = [...projectFolders, ...projectFiles];
@@ -212,7 +214,8 @@ export default function ResourceTree({
                         onClick={(e) => {
                             // Call the custom click behavior defined in the feature implementation
                             item.getProps().onClick?.(e);
-                            // Do further handling if needed
+                            // Handle dispatch
+                            dispatch(setSelectedResourceId(item.getId()));
                         }}
                     >
                         <div className="flex items-center gap-2">
