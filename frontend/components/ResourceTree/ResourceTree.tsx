@@ -17,6 +17,41 @@ interface ResourceItemData {
     isFolder: boolean;
 }
 
+function FileIcon({ className = "w-4 h-4" }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+            <path
+                d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M14 3v6h6"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
+function FolderIcon({ className = "w-4 h-4" }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+            <path
+                d="M3 7.5A2.5 2.5 0 015.5 5h3l1.5 2h7A2 2 0 0120 9v8a2 2 0 01-2 2H6a2 2 0 01-2-2V7.5z"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
 function transformResourcesToTreeData(
     resources: AnyResource[],
 ): Record<string, ResourceItemData> {
@@ -83,11 +118,17 @@ export default function ResourceTree({ projectId }: { projectId: string }) {
                 return dataObject[itemId].children;
             },
         },
+        onPrimaryAction: (item) => {
+            console.log("Primary action on item:", item.getItemData().name);
+        },
         features: [syncDataLoaderFeature, selectionFeature, hotkeysCoreFeature],
     });
 
     return (
-        <div {...tree.getContainerProps()} className="flex flex-col gap-1">
+        <div
+            {...tree.getContainerProps()}
+            className="flex flex-col items-start"
+        >
             {tree.getItems().map((item) => (
                 <button
                     {...item.getProps()}
@@ -96,7 +137,10 @@ export default function ResourceTree({ projectId }: { projectId: string }) {
                         paddingLeft: `${item.getItemMeta().level * 20}px`,
                     }}
                 >
-                    <div className={""}>{item.getItemName()}</div>
+                    <div className="flex items-center gap-2">
+                        {item.isFolder() ? <FolderIcon /> : <FileIcon />}
+                        <div className={""}>{item.getItemName()}</div>
+                    </div>
                 </button>
             ))}
         </div>
