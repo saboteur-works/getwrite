@@ -1,12 +1,12 @@
 import {
-    dragAndDropFeature,
     hotkeysCoreFeature,
     selectionFeature,
     syncDataLoaderFeature,
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
 import { AnyResource } from "../../src/lib/models";
-import { useState } from "react";
+import useAppSelector from "../../src/store/hooks";
+import { selectProject } from "../../src/store/projectsSlice";
 
 interface ResourceItemData {
     /** The name of the resource */
@@ -58,54 +58,19 @@ function transformResourcesToTreeData(
     }
 
     resources.forEach((res) => addResourceToDataObject(res));
-    console.log("Transformed data object:", dataObject);
     return dataObject;
 }
 
-const initialDataObject = transformResourcesToTreeData([
-    {
-        id: "folder-1",
-        name: "Folder A",
-        type: "folder",
-        folderId: null,
-        createdAt: "",
-        updatedAt: "",
-    },
-    {
-        id: "file-1",
-        name: "File A1",
-        type: "text",
-        folderId: "folder-1",
-        createdAt: "",
-        updatedAt: "",
-    },
-    {
-        id: "file-2",
-        name: "File A2",
-        type: "text",
-        folderId: "folder-1",
-        createdAt: "",
-        updatedAt: "",
-    },
-    {
-        id: "folder-2",
-        name: "Folder B",
-        type: "folder",
-        folderId: null,
-        createdAt: "",
-        updatedAt: "",
-    },
-    {
-        id: "file-3",
-        name: "File B1",
-        type: "text",
-        folderId: "folder-2",
-        createdAt: "",
-        updatedAt: "",
-    },
-]);
+export default function ResourceTree({ projectId }: { projectId: string }) {
+    const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
+    const projectFolders = projectFromStore?.folders || [];
+    const projectFiles = projectFromStore?.resources || [];
+    const allResources = [...projectFolders, ...projectFiles];
+    const dataObject = transformResourcesToTreeData(
+        allResources as AnyResource[],
+    );
+    console.log("Transformed data object from store:", dataObject);
 
-export default function ResourceTree() {
     const tree = useTree<ResourceItemData>({
         rootItemId: "root",
         getItemName: (item) => {
@@ -113,9 +78,9 @@ export default function ResourceTree() {
         },
         isItemFolder: (item) => item.getItemData().isFolder,
         dataLoader: {
-            getItem: (itemId) => initialDataObject[itemId],
+            getItem: (itemId) => dataObject[itemId],
             getChildren: (itemId) => {
-                return initialDataObject[itemId].children;
+                return dataObject[itemId].children;
             },
         },
         features: [syncDataLoaderFeature, selectionFeature, hotkeysCoreFeature],
