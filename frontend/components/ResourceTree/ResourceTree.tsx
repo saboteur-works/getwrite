@@ -2,6 +2,7 @@ import {
     hotkeysCoreFeature,
     selectionFeature,
     syncDataLoaderFeature,
+    FeatureImplementation,
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
 import { AnyResource } from "../../src/lib/models";
@@ -15,6 +16,54 @@ interface ResourceItemData {
     children: string[];
     /** Whether the resource is a folder */
     isFolder: boolean;
+}
+
+const customClickBehavior: FeatureImplementation = {
+    itemInstance: {
+        getProps: ({ tree, item, prev }) => ({
+            ...prev?.(),
+            onClick: (e: MouseEvent) => {
+                if (e.shiftKey) {
+                    item.selectUpTo(e.ctrlKey || e.metaKey);
+                } else if (e.ctrlKey || e.metaKey) {
+                    item.toggleSelect();
+                } else {
+                    tree.setSelectedItems([item.getItemMeta().itemId]);
+                }
+
+                item.setFocused();
+                prev?.()?.onClick?.(e);
+            },
+        }),
+    },
+};
+
+function ChevronDown({ className = "w-3 h-3" }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+            <path
+                d="M6 9l6 6 6-6"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
+function ChevronRight({ className = "w-3 h-3" }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+            <path
+                d="M9 6l6 6-6 6"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
 }
 
 function FileIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -96,7 +145,13 @@ function transformResourcesToTreeData(
     return dataObject;
 }
 
-export default function ResourceTree({ projectId }: { projectId: string }) {
+export default function ResourceTree({
+    projectId,
+    debug,
+}: {
+    projectId: string;
+    debug?: boolean;
+}) {
     const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
     const projectFolders = projectFromStore?.folders || [];
     const projectFiles = projectFromStore?.resources || [];
@@ -104,7 +159,6 @@ export default function ResourceTree({ projectId }: { projectId: string }) {
     const dataObject = transformResourcesToTreeData(
         allResources as AnyResource[],
     );
-    console.log("Transformed data object from store:", dataObject);
 
     const tree = useTree<ResourceItemData>({
         rootItemId: "root",
@@ -121,7 +175,12 @@ export default function ResourceTree({ projectId }: { projectId: string }) {
         onPrimaryAction: (item) => {
             console.log("Primary action on item:", item.getItemData().name);
         },
-        features: [syncDataLoaderFeature, selectionFeature, hotkeysCoreFeature],
+        features: [
+            syncDataLoaderFeature,
+            selectionFeature,
+            hotkeysCoreFeature,
+            customClickBehavior,
+        ],
     });
 
     return (
@@ -130,18 +189,47 @@ export default function ResourceTree({ projectId }: { projectId: string }) {
             className="flex flex-col items-start"
         >
             {tree.getItems().map((item) => (
-                <button
-                    {...item.getProps()}
-                    key={item.getId()}
-                    style={{
-                        paddingLeft: `${item.getItemMeta().level * 20}px`,
-                    }}
-                >
-                    <div className="flex items-center gap-2">
-                        {item.isFolder() ? <FolderIcon /> : <FileIcon />}
-                        <div className={""}>{item.getItemName()}</div>
-                    </div>
-                </button>
+                <div key={item.getId()}>
+                    {item.isFolder() && (
+                        <button
+                            onClick={
+                                item.isExpanded() ? item.collapse : item.expand
+                            }
+                        >
+                            {item.isExpanded() ? (
+                                <ChevronDown />
+                            ) : (
+                                <ChevronRight />
+                            )}
+                        </button>
+                    )}
+                    <button
+                        {...item.getProps()}
+                        key={item.getId()}
+                        style={{
+                            paddingLeft: `${item.getItemMeta().level * 20}px`,
+                        }}
+                        onClick={(e) => {
+                            // Call the custom click behavior defined in the feature implementation
+                            item.getProps().onClick?.(e);
+                            // Do further handling if needed
+                        }}
+                    >
+                        <div className="flex items-center gap-2">
+                            {item.isFolder() ? <FolderIcon /> : <FileIcon />}
+                            <div
+                                className={`${item.isSelected() ? "font-bold" : ""}`}
+                            >
+                                {item.getItemName()}
+                            </div>
+                            {item.isSelected() && (
+                                <div className="text-xs text-gray-500">
+                                    (selected)
+                                </div>
+                            )}
+                        </div>
+                    </button>
+                </div>
             ))}
         </div>
     );

@@ -21,5 +21,6 @@ export const Default: Story = {
 export const Reorderable: Story = {
     args: {
         projectId: "test-proj-1",
+        debug: true,
     },
 };
