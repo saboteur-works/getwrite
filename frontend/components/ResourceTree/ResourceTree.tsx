@@ -223,6 +223,7 @@ export default function ResourceTree({
                 return resourceData[itemId].children;
             },
         },
+        indent: 20,
         onPrimaryAction: (item) => {
             console.log("Primary action on item:", item.getItemData().name);
         },
@@ -354,6 +355,9 @@ export default function ResourceTree({
             {tree.getItems().map((item) => (
                 <div
                     key={item.getId()}
+                    style={{
+                        paddingLeft: `${item.getItemMeta().level * 20}px`,
+                    }}
                     onContextMenu={(e) => {
                         e.preventDefault();
                         // open context menu at mouse position for this resource
@@ -384,9 +388,6 @@ export default function ResourceTree({
                     <button
                         {...item.getProps()}
                         key={item.getId()}
-                        style={{
-                            paddingLeft: `${item.getItemMeta().level * 20}px`,
-                        }}
                         onMouseDown={() => {
                             clickedNode.current = item.getId();
                         }}
