@@ -7,12 +7,13 @@ import {
     isOrderedDragTarget,
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
-import { AnyResource } from "../../src/lib/models";
+import { AnyResource, Folder } from "../../src/lib/models";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectProject } from "../../src/store/projectsSlice";
 import {
     selectFoldersAndResources,
     setSelectedResourceId,
+    updateFolder,
     updateResource,
 } from "../../src/store/resourcesSlice";
 import ResourceContextMenu, {
@@ -44,6 +45,10 @@ const customClickBehavior: FeatureImplementation = {
 
                 item.setFocused();
                 prev?.()?.onClick?.(e);
+                return {
+                    selectedItems: tree.getSelectedItems(),
+                    focusedItem: item.getItemMeta().itemId,
+                };
             },
         }),
     },
@@ -140,6 +145,19 @@ function transformResourcesToTreeData(
             parentId,
         };
 
+        // Check if the parent resource is already in the data object; if not, add a placeholder for it (this can happen if a child resource is processed before its parent)
+        if (!dataObject[parentId]) {
+            console.log(
+                `Parent resource with ID ${parentId} not found for resource with ID ${id}. Adding placeholder for parent.`,
+            );
+            dataObject[parentId] = {
+                name: "Placeholder",
+                children: [],
+                isFolder: true,
+                parentId: null,
+            };
+        }
+
         // Add the resource's ID to its parent's children array
         // When we add a child, we need to check if it's already there to avoid duplicates (in case of multiple resources with the same folderId)
         if (!dataObject[parentId].children.includes(id)) {
@@ -209,10 +227,10 @@ export default function ResourceTree({
             console.log("Primary action on item:", item.getItemData().name);
         },
         onDrop: (items, target) => {
+            const newParent = target;
             if (items.length === 1) {
                 const droppedItem = items[0];
                 const originalParent = droppedItem.getParent();
-                const newParent = target;
                 let newIndex: number | null = null;
                 if (isOrderedDragTarget(target)) {
                     newIndex = target.childIndex;
@@ -227,15 +245,29 @@ export default function ResourceTree({
                         0,
                         droppedItem.getId(),
                     );
-                dispatch(
-                    updateResource({
-                        id: droppedItem.getId(),
-                        folderId:
-                            newParent.item.getId() === "root"
-                                ? null
-                                : newParent.item.getId(),
-                    } as AnyResource),
-                );
+                if (droppedItem.isFolder()) {
+                    const newFolderId =
+                        newParent.item.getId() === "root"
+                            ? null
+                            : newParent.item.getId();
+                    dispatch(
+                        updateFolder({
+                            id: droppedItem.getId(),
+                            folderId: newFolderId,
+                            parentId: newFolderId,
+                        } as Folder),
+                    );
+                } else {
+                    dispatch(
+                        updateResource({
+                            id: droppedItem.getId(),
+                            folderId:
+                                newParent.item.getId() === "root"
+                                    ? null
+                                    : newParent.item.getId(),
+                        } as AnyResource),
+                    );
+                }
 
                 // Remove the dropped item from its original parent's children
                 originalParent
@@ -246,6 +278,61 @@ export default function ResourceTree({
                             .children.indexOf(droppedItem.getId()),
                         1,
                     );
+            } else {
+                let newIndex: number | null = null;
+                if (isOrderedDragTarget(target)) {
+                    newIndex = target.childIndex;
+                }
+                // This assumes that all dragged items have the same original parent, which should be the case with the current implementation of multi-drag in headless-tree
+                const originalParent = items[0].getParent();
+
+                // Add the dropped items to the new parent's children
+                newParent.item
+                    .getItemData()
+                    .children.splice(
+                        newIndex ??
+                            newParent.item.getItemData().children.length,
+                        0,
+                        ...items.map((i) => i.getId()),
+                    );
+
+                items.forEach((item) => {
+                    if (item.isFolder()) {
+                        const newFolderId =
+                            newParent.item.getId() === "root"
+                                ? null
+                                : newParent.item.getId();
+                        dispatch(
+                            updateFolder({
+                                id: item.getId(),
+                                folderId: newFolderId,
+                                parentId: newFolderId,
+                            } as Folder),
+                        );
+                    } else {
+                        dispatch(
+                            updateResource({
+                                id: item.getId(),
+                                folderId:
+                                    newParent.item.getId() === "root"
+                                        ? null
+                                        : newParent.item.getId(),
+                            } as AnyResource),
+                        );
+                    }
+                });
+
+                // Remove the dropped items from their original parent's children
+                items.forEach((item) => {
+                    originalParent
+                        ?.getItemData()
+                        .children.splice(
+                            originalParent
+                                .getItemData()
+                                .children.indexOf(item.getId()),
+                            1,
+                        );
+                });
             }
             tree.rebuildTree();
         },
@@ -304,12 +391,29 @@ export default function ResourceTree({
                             clickedNode.current = item.getId();
                         }}
                         onClick={(e) => {
-                            // Call the custom click behavior defined in the feature implementation
-                            // item.getProps().onClick?.(e);
                             // Handle dispatch
                             item.setFocused();
-                            tree.setSelectedItems([item.getItemMeta().itemId]);
-                            dispatch(setSelectedResourceId(item.getId()));
+
+                            // Call the custom click behavior defined in the feature implementation
+                            const modificationData = item
+                                .getProps()
+                                .onClick?.(e);
+                            if (modificationData.selectedItems.length === 1) {
+                                tree.setSelectedItems([
+                                    item.getItemMeta().itemId,
+                                ]);
+                                dispatch(setSelectedResourceId(item.getId()));
+                            } else {
+                                tree.setSelectedItems(
+                                    modificationData.selectedItems,
+                                );
+                                item.selectUpTo(e.ctrlKey || e.metaKey);
+                                dispatch(
+                                    setSelectedResourceId(
+                                        modificationData.focusedItem,
+                                    ),
+                                );
+                            }
                         }}
                     >
                         <div

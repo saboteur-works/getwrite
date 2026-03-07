@@ -48,6 +48,21 @@ const resourcesSlice = createSlice({
             }
             return state;
         },
+        updateFolder(
+            state,
+            action: PayloadAction<Partial<Folder> & { id: string }>,
+        ) {
+            const index = state.folders.findIndex(
+                (r) => r.id === action.payload.id,
+            );
+            if (index !== -1) {
+                state.folders[index] = {
+                    ...state.folders[index],
+                    ...action.payload,
+                };
+            }
+            return state;
+        },
     },
 });
 
@@ -55,6 +70,7 @@ export const {
     setResources,
     setSelectedResourceId,
     updateResource,
+    updateFolder,
     addResource,
     setFolders,
 } = resourcesSlice.actions;

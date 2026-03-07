@@ -22,6 +22,14 @@ const folders: Folder[] = [
         createdAt: new Date().toISOString(),
         parentId: null,
     },
+    {
+        id: "folder-2",
+        name: "Folder 2",
+        orderIndex: 1,
+        type: "folder",
+        createdAt: new Date().toISOString(),
+        parentId: null,
+    },
 ];
 
 const resources: AnyResource[] = [
@@ -43,6 +51,14 @@ const resources: AnyResource[] = [
         id: "res-3",
         name: "Resource 3",
         type: "audio",
+        folderId: null,
+        createdAt: new Date().toISOString(),
+    },
+    {
+        id: "res-4",
+        name: "Resource 4",
+        type: "text",
+        folderId: "folder-2",
         createdAt: new Date().toISOString(),
     },
 ];
