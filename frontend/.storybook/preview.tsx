@@ -68,6 +68,7 @@ const mockStore = configureStore({
         resources: {
             selectedResourceId: null,
             resources,
+            folders,
         },
     },
 });

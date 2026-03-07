@@ -2,17 +2,23 @@ import {
     hotkeysCoreFeature,
     selectionFeature,
     syncDataLoaderFeature,
+    dragAndDropFeature,
     FeatureImplementation,
+    isOrderedDragTarget,
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
 import { AnyResource } from "../../src/lib/models";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectProject } from "../../src/store/projectsSlice";
-import { setSelectedResourceId } from "../../src/store/resourcesSlice";
+import {
+    selectFoldersAndResources,
+    setSelectedResourceId,
+    updateResource,
+} from "../../src/store/resourcesSlice";
 import ResourceContextMenu, {
     type ResourceContextAction,
 } from "../Tree/ResourceContextMenu";
-import { useState } from "react";
+import { useState, useRef } from "react";
 interface ResourceItemData {
     /** The name of the resource */
     name: string;
@@ -20,6 +26,7 @@ interface ResourceItemData {
     children: string[];
     /** Whether the resource is a folder */
     isFolder: boolean;
+    parentId: string | null;
 }
 
 const customClickBehavior: FeatureImplementation = {
@@ -105,6 +112,9 @@ function FolderIcon({ className = "w-4 h-4" }: { className?: string }) {
     );
 }
 
+/**
+ * Transforms a flat list of resources into a nested tree structure suitable for `@headless-tree`s data loader.
+ */
 function transformResourcesToTreeData(
     resources: AnyResource[],
 ): Record<string, ResourceItemData> {
@@ -115,6 +125,7 @@ function transformResourcesToTreeData(
             name: "Root",
             children: [],
             isFolder: true,
+            parentId: null,
         },
     };
 
@@ -126,6 +137,7 @@ function transformResourcesToTreeData(
             name: currentResource.name,
             children: [],
             isFolder: currentResource.type === "folder",
+            parentId,
         };
 
         // Add the resource's ID to its parent's children array
@@ -149,6 +161,14 @@ function transformResourcesToTreeData(
     return dataObject;
 }
 
+function transformTreeDataToResources(
+    treeData: Record<string, ResourceItemData>,
+    resources: AnyResource[],
+): AnyResource[] {
+    Object.entries(treeData).forEach(([id, itemData]) => {});
+
+    return resources;
+}
 export default function ResourceTree({
     projectId,
     debug,
@@ -156,13 +176,13 @@ export default function ResourceTree({
     projectId: string;
     debug?: boolean;
 }) {
-    const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
+    const foldersAndResources = useAppSelector((s) =>
+        selectFoldersAndResources(s.resources),
+    );
     const dispatch = useAppDispatch();
-    const projectFolders = projectFromStore?.folders || [];
-    const projectFiles = projectFromStore?.resources || [];
-    const allResources = [...projectFolders, ...projectFiles];
-    const dataObject = transformResourcesToTreeData(
-        allResources as AnyResource[],
+    const clickedNode = useRef<string | null>(null);
+    const [resourceData, setResourceData] = useState(
+        transformResourcesToTreeData(foldersAndResources),
     );
 
     const [contextMenu, setContextMenu] = useState<{
@@ -180,19 +200,62 @@ export default function ResourceTree({
         },
         isItemFolder: (item) => item.getItemData().isFolder,
         dataLoader: {
-            getItem: (itemId) => dataObject[itemId],
+            getItem: (itemId) => resourceData[itemId],
             getChildren: (itemId) => {
-                return dataObject[itemId].children;
+                return resourceData[itemId].children;
             },
         },
         onPrimaryAction: (item) => {
             console.log("Primary action on item:", item.getItemData().name);
         },
+        onDrop: (items, target) => {
+            if (items.length === 1) {
+                const droppedItem = items[0];
+                const originalParent = droppedItem.getParent();
+                const newParent = target;
+                let newIndex: number | null = null;
+                if (isOrderedDragTarget(target)) {
+                    newIndex = target.childIndex;
+                }
+
+                // Add the dropped item to the new parent's children
+                newParent.item
+                    .getItemData()
+                    .children.splice(
+                        newIndex ??
+                            newParent.item.getItemData().children.length,
+                        0,
+                        droppedItem.getId(),
+                    );
+                dispatch(
+                    updateResource({
+                        id: droppedItem.getId(),
+                        folderId:
+                            newParent.item.getId() === "root"
+                                ? null
+                                : newParent.item.getId(),
+                    } as AnyResource),
+                );
+
+                // Remove the dropped item from its original parent's children
+                originalParent
+                    ?.getItemData()
+                    .children.splice(
+                        originalParent
+                            .getItemData()
+                            .children.indexOf(droppedItem.getId()),
+                        1,
+                    );
+            }
+            tree.rebuildTree();
+        },
+        canReorder: true,
         features: [
             syncDataLoaderFeature,
             selectionFeature,
             hotkeysCoreFeature,
             customClickBehavior,
+            dragAndDropFeature,
         ],
     });
 
@@ -237,6 +300,9 @@ export default function ResourceTree({
                         style={{
                             paddingLeft: `${item.getItemMeta().level * 20}px`,
                         }}
+                        onMouseDown={() => {
+                            clickedNode.current = item.getId();
+                        }}
                         onClick={(e) => {
                             // Call the custom click behavior defined in the feature implementation
                             // item.getProps().onClick?.(e);
@@ -246,7 +312,9 @@ export default function ResourceTree({
                             dispatch(setSelectedResourceId(item.getId()));
                         }}
                     >
-                        <div className="flex items-center gap-2">
+                        <div
+                            className={`flex items-center gap-2 ${item.isDragTarget() ? "bg-amber-950" : ""}`}
+                        >
                             {item.isFolder() ? <FolderIcon /> : <FileIcon />}
                             <div
                                 className={`${item.isSelected() ? "font-bold" : ""}`}
@@ -262,6 +330,7 @@ export default function ResourceTree({
                     </button>
                 </div>
             ))}
+            <div style={tree.getDragLineStyle()} className="dragline" />
             <ResourceContextMenu
                 open={contextMenu.open}
                 x={contextMenu.x}
