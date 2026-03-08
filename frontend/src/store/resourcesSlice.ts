@@ -111,3 +111,12 @@ export const selectFoldersAndResources = createSelector(
 export const selectResourceById = (state: ResourcesState, id: string) => {
     return state.resources.find((resource) => resource.id === id) || null;
 };
+
+export const selectFolderById = (state: ResourcesState, id: string) => {
+    return state.folders.find((folder) => folder.id === id) || null;
+};
+
+export const selectItemById = createSelector(
+    [selectFoldersAndResources, (state: ResourcesState, id: string) => id],
+    (items, id) => items.find((item) => item.id === id) || null,
+);

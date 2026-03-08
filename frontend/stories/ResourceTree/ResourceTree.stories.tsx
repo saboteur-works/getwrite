@@ -16,7 +16,7 @@ export const Default: Story = {
         projectId: "test-proj-1",
         onSelect: (id: string) => console.log("selected", id),
     },
-} satisfies Story;
+};
 
 export const Reorderable: Story = {
     args: {

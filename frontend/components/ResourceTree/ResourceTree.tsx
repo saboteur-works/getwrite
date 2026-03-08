@@ -9,16 +9,13 @@ import {
 import { useTree } from "@headless-tree/react";
 import { AnyResource, Folder } from "../../src/lib/models";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
-import { selectProject } from "../../src/store/projectsSlice";
 import {
     selectFoldersAndResources,
     setSelectedResourceId,
     updateFolder,
     updateResource,
 } from "../../src/store/resourcesSlice";
-import ResourceContextMenu, {
-    type ResourceContextAction,
-} from "../Tree/ResourceContextMenu";
+import ResourceContextMenu from "../Tree/ResourceContextMenu";
 import { useState, useRef } from "react";
 interface ResourceItemData {
     /** The name of the resource */
@@ -230,9 +227,13 @@ export default function ResourceTree({
         onDrop: (items, target) => {
             const newParent = target;
             if (items.length === 1) {
+                // Get the dropped item and its original parent
                 const droppedItem = items[0];
                 const originalParent = droppedItem.getParent();
-                let newIndex: number | null = null;
+
+                // Determine the new index for the dropped item in its new parent's children array
+                let newIndex: number =
+                    newParent.item.getItemData().children.length;
                 if (isOrderedDragTarget(target)) {
                     newIndex = target.childIndex;
                 }
@@ -246,18 +247,58 @@ export default function ResourceTree({
                         0,
                         droppedItem.getId(),
                     );
+
                 if (droppedItem.isFolder()) {
-                    const newFolderId =
+                    /** Updated parent folderId for the dropped item */
+                    const newParentFolderId =
                         newParent.item.getId() === "root"
                             ? null
                             : newParent.item.getId();
-                    dispatch(
-                        updateFolder({
-                            id: droppedItem.getId(),
-                            folderId: newFolderId,
-                            parentId: newFolderId,
-                        } as Folder),
-                    );
+
+                    // Establish the folder's new orderIndex
+                    // Find all items current in the folder and determine what if the other items in the folder should have their orderIndex updated as a result of this move
+                    // For simplicity, we'll just set the moved folder's orderIndex to be the same as its new position in the children array, and then update all other siblings' orderIndexes to match their position in the array as well
+
+                    const updatedChildOrderIndex = newParent.item
+                        .getItemData()
+                        .children.map((childId, idx) => {
+                            console.log(
+                                "Updating orderIndex of child",
+                                childId,
+                                "to",
+                                idx,
+                            );
+                            return [childId, idx];
+                        });
+
+                    const updatedDroppedItemData = {
+                        id: droppedItem.getId(),
+                        folderId: newParentFolderId,
+                        parentId: newParentFolderId,
+                        orderIndex: newIndex ?? 0,
+                    } as Partial<Folder> & { id: string };
+
+                    const updatedSiblingsData = updatedChildOrderIndex
+                        .filter(([id]) => id !== droppedItem.getId())
+                        .map(([id, orderIndex]) => ({
+                            id,
+                            orderIndex,
+                        })) as Partial<Folder> & { id: string }[];
+
+                    dispatch(updateFolder(updatedDroppedItemData));
+                    updatedSiblingsData.forEach((siblingData) => {
+                        if (resourceData[siblingData.id].isFolder) {
+                            dispatch(updateFolder(siblingData));
+                        } else {
+                            dispatch(
+                                updateResource(
+                                    siblingData as Partial<AnyResource> & {
+                                        id: string;
+                                    },
+                                ),
+                            );
+                        }
+                    });
                 } else {
                     dispatch(
                         updateResource({
@@ -266,6 +307,7 @@ export default function ResourceTree({
                                 newParent.item.getId() === "root"
                                     ? null
                                     : newParent.item.getId(),
+                            orderIndex: newIndex ?? 0,
                         } as AnyResource),
                     );
                 }
@@ -297,7 +339,7 @@ export default function ResourceTree({
                         ...items.map((i) => i.getId()),
                     );
 
-                items.forEach((item) => {
+                items.forEach((item, idx) => {
                     if (item.isFolder()) {
                         const newFolderId =
                             newParent.item.getId() === "root"
@@ -308,6 +350,7 @@ export default function ResourceTree({
                                 id: item.getId(),
                                 folderId: newFolderId,
                                 parentId: newFolderId,
+                                orderIndex: idx,
                             } as Folder),
                         );
                     } else {
@@ -318,6 +361,7 @@ export default function ResourceTree({
                                     newParent.item.getId() === "root"
                                         ? null
                                         : newParent.item.getId(),
+                                orderIndex: idx,
                             } as AnyResource),
                         );
                     }
@@ -335,6 +379,7 @@ export default function ResourceTree({
                         );
                 });
             }
+
             tree.rebuildTree();
         },
         canReorder: true,
