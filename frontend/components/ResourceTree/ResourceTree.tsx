@@ -184,13 +184,7 @@ function transformTreeDataToResources(
 
     return resources;
 }
-export default function ResourceTree({
-    projectId,
-    debug,
-}: {
-    projectId: string;
-    debug?: boolean;
-}) {
+export default function ResourceTree({ debug }: { debug?: boolean }) {
     const foldersAndResources = useAppSelector((s) =>
         selectFoldersAndResources(s.resources),
     );
