@@ -22,6 +22,7 @@ import {
     setSelectedResourceId as setResourceId,
     updateResource as updateResourceInStore,
     addResource as addResourceInStore,
+    setFolders,
 } from "../src/store/resourcesSlice";
 
 /**
@@ -178,7 +179,8 @@ export default function Home(): JSX.Element {
             dispatch(setSelectedProjectId(p.project.id));
 
             // Add Resources to redux store
-            dispatch(setResources([...p.resources, ...p.folders]));
+            dispatch(setResources(p.resources));
+            dispatch(setFolders(p.folders));
             setSelectedProject({
                 id: p.project.id,
                 name: p.project.name,
