@@ -16,7 +16,7 @@ import {
     removeResource,
 } from "../../src/store/projectsSlice";
 import type { AppDispatch } from "../../src/store/store";
-import ResourceTree from "../Tree/ResourceTree";
+import ResourceTree from "../ResourceTree/ResourceTree";
 import ConfirmDialog from "../common/ConfirmDialog";
 import CreateResourceModal from "../Tree/CreateResourceModal";
 import ExportPreviewModal from "../common/ExportPreviewModal";
@@ -367,17 +367,7 @@ export default function AppShell({
                 >
                     <div className="mt-0">
                         {project ? (
-                            <ResourceTree
-                                projectId={project.id}
-                                selectedId={selectedResourceId ?? undefined}
-                                onSelect={onResourceSelect}
-                                onResourceAction={handleResourceAction}
-                                reorderable={true}
-                                onReorder={(ids) => {
-                                    // persist ordering when adapter view is present
-                                    handlePersistReorder(ids);
-                                }}
-                            />
+                            <ResourceTree debug={false} />
                         ) : (
                             <div className="space-y-2">
                                 <p>Loading Resource Tree</p>
@@ -552,10 +542,6 @@ export default function AppShell({
                                   const selected = combined.find(
                                       (r) => r.id === selectedResourceId,
                                   );
-                                  console.log(
-                                      "[INST] AppShell::selcted",
-                                      selected,
-                                  );
 
                                   if (!selected)
                                       return (
@@ -664,7 +650,6 @@ export default function AppShell({
                         style={{ width: rightWidth }}
                     >
                         <MetadataSidebar
-                            resource={selectedResource}
                             onChangeNotes={(text) =>
                                 selectedResource &&
                                 onChangeNotes?.(text, selectedResource.id)

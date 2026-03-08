@@ -76,7 +76,7 @@ export const {
 } = resourcesSlice.actions;
 export default resourcesSlice.reducer;
 
-export const selectedResource = (state: ResourcesState) => {
+export const selectResource = (state: ResourcesState) => {
     return (
         state.resources.find(
             (resource) => resource.id === state.selectedResourceId,
