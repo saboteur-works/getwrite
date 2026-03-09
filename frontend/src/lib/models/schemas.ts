@@ -64,6 +64,7 @@ export const FolderSchema = z.object({
     orderIndex: z.number().optional(),
     createdAt: IsoDateString,
     updatedAt: IsoDateString.optional(),
+    special: z.boolean().optional(),
 });
 
 export const ResourceTypeSchema = z.enum(["text", "image", "audio"]);
