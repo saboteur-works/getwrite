@@ -5,6 +5,8 @@ import {
     dragAndDropFeature,
     FeatureImplementation,
     isOrderedDragTarget,
+    ItemInstance,
+    DragTarget,
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
 import { AnyResource, Folder } from "../../src/lib/models";
@@ -21,6 +23,15 @@ import ResourceContextMenu, {
 } from "../Tree/ResourceContextMenu";
 import { useState, useRef, useMemo } from "react";
 import { shallowEqual } from "react-redux";
+import {
+    ChevronDown,
+    ChevronRight,
+    FileIcon,
+    FolderIcon,
+} from "./ResourceTreeIcons";
+
+const INDENTATION_WIDTH = 20;
+const ROOT_ITEM_ID = "root";
 
 interface ResourceItemData {
     /** The name of the resource */
@@ -58,69 +69,6 @@ const customClickBehavior: FeatureImplementation = {
         }),
     },
 };
-
-function ChevronDown({ className = "w-3 h-3" }: { className?: string }) {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-            <path
-                d="M6 9l6 6 6-6"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
-}
-
-function ChevronRight({ className = "w-3 h-3" }: { className?: string }) {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-            <path
-                d="M9 6l6 6-6 6"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
-}
-
-function FileIcon({ className = "w-4 h-4" }: { className?: string }) {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-            <path
-                d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-            <path
-                d="M14 3v6h6"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
-}
-
-function FolderIcon({ className = "w-4 h-4" }: { className?: string }) {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-            <path
-                d="M3 7.5A2.5 2.5 0 015.5 5h3l1.5 2h7A2 2 0 0120 9v8a2 2 0 01-2 2H6a2 2 0 01-2-2V7.5z"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
-}
 
 /**
  * Transforms a flat list of resources into a nested tree structure suitable for `@headless-tree`s data loader.
@@ -216,10 +164,6 @@ export default function ResourceTree({
         [rawResources],
     );
 
-    const [resourceData, setResourceData] = useState(
-        transformResourcesToTreeData(rawResources),
-    );
-
     const [contextMenu, setContextMenu] = useState<{
         open: boolean;
         x: number;
@@ -228,8 +172,291 @@ export default function ResourceTree({
         resourceTitle?: string;
     }>({ open: false, x: 0, y: 0 });
 
+    const handleClick = (
+        e: React.MouseEvent,
+        item: ItemInstance<ResourceItemData>,
+    ) => {
+        item.setFocused();
+
+        const modificationData = item.getProps().onClick?.(e);
+
+        if (modificationData.selectedItems.length === 1) {
+            tree.setSelectedItems([item.getItemMeta().itemId]);
+            dispatch(setSelectedResourceId(item.getId()));
+        } else {
+            tree.setSelectedItems(modificationData.selectedItems);
+            item.selectUpTo(e.ctrlKey || e.metaKey);
+            dispatch(setSelectedResourceId(modificationData.focusedItem));
+        }
+    };
+
+    const handleContextMenu = (
+        e: React.MouseEvent,
+        item: ItemInstance<ResourceItemData>,
+    ) => {
+        e.preventDefault();
+        // open context menu at mouse position for this resource
+        const rectX = e.clientX;
+        const rectY = e.clientY;
+        setContextMenu({
+            open: true,
+            x: rectX,
+            y: rectY,
+            resourceId: item.getId(),
+            resourceTitle: item.getItemName(),
+        });
+    };
+
+    const handleDrop = (
+        items: ItemInstance<ResourceItemData>[],
+        target: DragTarget<ResourceItemData>,
+    ) => {
+        function getDragTargetChildren(target: DragTarget<ResourceItemData>) {
+            return target.item.getItemData().children;
+        }
+
+        const targetItemData = target.item.getItemData();
+
+        if (items.length === 1) {
+            const droppedItem = items[0];
+            if (droppedItem.getItemData().special) {
+                console.warn(
+                    "Cannot move special resource:",
+                    droppedItem.getItemData().name,
+                );
+                return;
+            }
+
+            const droppedItemInitialParent = droppedItem.getParent();
+
+            // Default to adding the dropped item at the end of the new parent's children
+            let newIndex: number = getDragTargetChildren(target).length;
+
+            // If the drop target is an ordered position (between two items), use the provided index instead
+            if (isOrderedDragTarget(target)) {
+                newIndex = target.childIndex;
+            }
+
+            // Add the dropped item to the new parent's children
+            targetItemData.children.splice(
+                newIndex ?? getDragTargetChildren(target).length,
+                0,
+                droppedItem.getId(),
+            );
+
+            /** An array of tuples containing each of the target item's children ids and their new orderIndexes */
+            const updatedChildOrderIndex = getDragTargetChildren(target).map(
+                (childId, idx) => {
+                    return [childId, idx];
+                },
+            );
+
+            /** Updated parent folderId for the dropped item */
+            const targetFolderId =
+                target.item.getId() === ROOT_ITEM_ID
+                    ? null
+                    : target.item.getId();
+
+            /** Update data for the dropped item */
+            const updatedDroppedItemData = {
+                id: droppedItem.getId(),
+                // update both folderId and parentId for compatibility
+                // parentId will be deprecated in favor of folderId
+                folderId: targetFolderId,
+                parentId: targetFolderId,
+                orderIndex: newIndex ?? 0,
+            } as Partial<Folder> & { id: string };
+
+            /** An array of update data for the dropped item's siblings */
+            const updatedSiblingsData = updatedChildOrderIndex
+                .filter(([id]) => id !== droppedItem.getId())
+                .map(([id, orderIndex]) => ({
+                    id,
+                    orderIndex,
+                })) as Partial<Folder> & { id: string; orderIndex: number }[];
+
+            const updatedSiblingFoldersData = updatedSiblingsData
+                .filter((s) => transformedResourceData[s.id].isFolder)
+                .map((s) => ({
+                    id: s.id,
+                    orderIndex: s.orderIndex,
+                    folderId: targetFolderId,
+                })) as Partial<Folder> & { id: string; orderIndex: number }[];
+
+            const updatedSiblingResourcesData = updatedSiblingsData.filter(
+                (s) => !transformedResourceData[s.id].isFolder,
+            );
+
+            if (droppedItem.isFolder()) {
+                dispatch(updateFolder(updatedDroppedItemData));
+                dispatch(
+                    persistReorder({
+                        projectId: currentProject.id,
+                        projectRoot: currentProject.rootPath,
+                        folderOrder: [
+                            ...updatedSiblingFoldersData,
+                            {
+                                id: droppedItem.getId(),
+                                orderIndex: updatedDroppedItemData.orderIndex!,
+                                folderId:
+                                    updatedDroppedItemData.folderId ??
+                                    undefined,
+                            },
+                        ],
+                        resourceOrder: [...updatedSiblingResourcesData],
+                    }),
+                );
+                updatedSiblingsData.forEach((siblingData) => {
+                    if (transformedResourceData[siblingData.id].isFolder) {
+                        dispatch(updateFolder(siblingData));
+                    } else {
+                        dispatch(
+                            updateResource(
+                                siblingData as Partial<AnyResource> & {
+                                    id: string;
+                                },
+                            ),
+                        );
+                    }
+                });
+            } else {
+                dispatch(
+                    updateResource({
+                        id: droppedItem.getId(),
+                        folderId: targetFolderId,
+                        orderIndex: newIndex ?? 0,
+                    } as AnyResource),
+                );
+                dispatch(
+                    persistReorder({
+                        projectId: currentProject.id,
+                        projectRoot: currentProject.rootPath,
+                        folderOrder: [],
+                        resourceOrder: [
+                            {
+                                id: droppedItem.getId(),
+                                orderIndex: newIndex ?? 0,
+                                folderId: targetFolderId,
+                            },
+                        ],
+                    }),
+                );
+            }
+
+            // Remove the dropped item from its original parent's children
+            droppedItemInitialParent
+                ?.getItemData()
+                .children.splice(
+                    droppedItemInitialParent
+                        .getItemData()
+                        .children.indexOf(droppedItem.getId()),
+                    1,
+                );
+        } else {
+            let newIndex: number = targetItemData.children.length;
+            if (isOrderedDragTarget(target)) {
+                newIndex = target.childIndex;
+            }
+
+            // This assumes that all dragged items have the same original parent
+            // Dragging items from multiple parents at once will cause an error
+            // and is not currently supported at this time, but could be implemented in the future if needed
+            const originalParent = items[0].getParent();
+
+            // Add the dropped items to the new parent's children
+            getDragTargetChildren(target).splice(
+                newIndex ?? getDragTargetChildren(target).length,
+                0,
+                ...items.map((i) => i.getId()),
+            );
+
+            items.forEach((item, idx) => {
+                if (item.isFolder()) {
+                    const newFolderId =
+                        target.item.getId() === "root"
+                            ? null
+                            : target.item.getId();
+                    dispatch(
+                        updateFolder({
+                            id: item.getId(),
+                            folderId: newFolderId,
+                            parentId: newFolderId,
+                            orderIndex: idx,
+                        } as Folder),
+                    );
+                    dispatch(
+                        persistReorder({
+                            projectId: currentProject.id,
+                            projectRoot: currentProject.rootPath,
+                            folderOrder: [],
+                            resourceOrder: [
+                                {
+                                    id: item.getId(),
+                                    orderIndex: idx ?? 0,
+                                    folderId: newFolderId,
+                                },
+                            ],
+                        }),
+                    );
+                } else {
+                    dispatch(
+                        updateResource({
+                            id: item.getId(),
+                            folderId:
+                                target.item.getId() === "root"
+                                    ? null
+                                    : target.item.getId(),
+                            orderIndex: idx,
+                        } as AnyResource),
+                    );
+                    dispatch(
+                        persistReorder({
+                            projectId: currentProject.id,
+                            projectRoot: currentProject.rootPath,
+                            folderOrder: [],
+                            resourceOrder: [
+                                {
+                                    id: item.getId(),
+                                    orderIndex: idx ?? 0,
+                                    folderId:
+                                        target.item.getId() === "root"
+                                            ? null
+                                            : target.item.getId(),
+                                },
+                            ],
+                        }),
+                    );
+                }
+            });
+
+            // Remove the dropped items from their original parent's children
+            items.forEach((item) => {
+                originalParent
+                    ?.getItemData()
+                    .children.splice(
+                        originalParent
+                            .getItemData()
+                            .children.indexOf(item.getId()),
+                        1,
+                    );
+            });
+        }
+
+        tree.rebuildTree();
+    };
+
+    const renderResourceIcon = (item: ItemInstance<ResourceItemData>) => {
+        return item.isFolder() ? <FolderIcon /> : <FileIcon />;
+    };
+
+    const renderExpandableStateIcon = (
+        item: ItemInstance<ResourceItemData>,
+    ) => {
+        return item.isExpanded() ? <ChevronDown /> : <ChevronRight />;
+    };
+
     const tree = useTree<ResourceItemData>({
-        rootItemId: "root",
+        rootItemId: ROOT_ITEM_ID,
         getItemName: (item) => {
             return item.getItemData().name;
         },
@@ -240,257 +467,12 @@ export default function ResourceTree({
                 return transformedResourceData[itemId].children;
             },
         },
-        indent: 20,
+        indent: INDENTATION_WIDTH,
         onPrimaryAction: (item) => {
-            console.log("Primary action on item:", item.getItemData().name);
             dispatch(setSelectedResourceId(item.getId()));
         },
         onDrop: (items, target) => {
-            const newParent = target;
-
-            if (items.length === 1) {
-                // Get the dropped item and its original parent
-                const droppedItem = items[0];
-                if (droppedItem.getItemData().special) {
-                    console.warn(
-                        "Cannot move special resource:",
-                        droppedItem.getItemData().name,
-                    );
-                    return;
-                }
-                const originalParent = droppedItem.getParent();
-
-                // Determine the new index for the dropped item in its new parent's children array
-                let newIndex: number =
-                    newParent.item.getItemData().children.length;
-                if (isOrderedDragTarget(target)) {
-                    newIndex = target.childIndex;
-                }
-
-                // Add the dropped item to the new parent's children
-                newParent.item
-                    .getItemData()
-                    .children.splice(
-                        newIndex ??
-                            newParent.item.getItemData().children.length,
-                        0,
-                        droppedItem.getId(),
-                    );
-
-                if (droppedItem.isFolder()) {
-                    /** Updated parent folderId for the dropped item */
-                    const newParentFolderId =
-                        newParent.item.getId() === "root"
-                            ? null
-                            : newParent.item.getId();
-
-                    const updatedChildOrderIndex = newParent.item
-                        .getItemData()
-                        .children.map((childId, idx) => {
-                            console.log(
-                                "Updating orderIndex of child",
-                                childId,
-                                "to",
-                                idx,
-                            );
-                            return [childId, idx];
-                        });
-
-                    const updatedDroppedItemData = {
-                        id: droppedItem.getId(),
-                        folderId: newParentFolderId,
-                        parentId: newParentFolderId,
-                        orderIndex: newIndex ?? 0,
-                    } as Partial<Folder> & { id: string };
-
-                    const updatedSiblingsData = updatedChildOrderIndex
-                        .filter(([id]) => id !== droppedItem.getId())
-                        .map(([id, orderIndex]) => ({
-                            id,
-                            orderIndex,
-                        })) as Partial<Folder> &
-                        { id: string; orderIndex: number }[];
-
-                    const updatedSiblingFoldersData = updatedSiblingsData
-                        .filter((s) => resourceData[s.id].isFolder)
-                        .map((s) => ({
-                            id: s.id,
-                            orderIndex: s.orderIndex,
-                            folderId:
-                                newParent.item.getId() === "root"
-                                    ? null
-                                    : newParent.item.getId(),
-                        })) as Partial<Folder> &
-                        { id: string; orderIndex: number }[];
-
-                    const updatedSiblingResourcesData =
-                        updatedSiblingsData.filter(
-                            (s) => !resourceData[s.id].isFolder,
-                        );
-
-                    dispatch(updateFolder(updatedDroppedItemData));
-                    dispatch(
-                        persistReorder({
-                            projectId: currentProject.id,
-                            projectRoot: currentProject.rootPath,
-                            folderOrder: [
-                                ...updatedSiblingFoldersData,
-                                {
-                                    id: droppedItem.getId(),
-                                    orderIndex:
-                                        updatedDroppedItemData.orderIndex!,
-                                    folderId:
-                                        updatedDroppedItemData.folderId ??
-                                        undefined,
-                                },
-                            ],
-                            resourceOrder: [...updatedSiblingResourcesData],
-                        }),
-                    );
-                    updatedSiblingsData.forEach((siblingData) => {
-                        if (resourceData[siblingData.id].isFolder) {
-                            dispatch(updateFolder(siblingData));
-                        } else {
-                            dispatch(
-                                updateResource(
-                                    siblingData as Partial<AnyResource> & {
-                                        id: string;
-                                    },
-                                ),
-                            );
-                        }
-                    });
-                } else {
-                    dispatch(
-                        updateResource({
-                            id: droppedItem.getId(),
-                            folderId:
-                                newParent.item.getId() === "root"
-                                    ? null
-                                    : newParent.item.getId(),
-                            orderIndex: newIndex ?? 0,
-                        } as AnyResource),
-                    );
-                    dispatch(
-                        persistReorder({
-                            projectId: currentProject.id,
-                            projectRoot: currentProject.rootPath,
-                            folderOrder: [],
-                            resourceOrder: [
-                                {
-                                    id: droppedItem.getId(),
-                                    orderIndex: newIndex ?? 0,
-                                    folderId:
-                                        newParent.item.getId() === "root"
-                                            ? null
-                                            : newParent.item.getId(),
-                                },
-                            ],
-                        }),
-                    );
-                }
-
-                // Remove the dropped item from its original parent's children
-                originalParent
-                    ?.getItemData()
-                    .children.splice(
-                        originalParent
-                            .getItemData()
-                            .children.indexOf(droppedItem.getId()),
-                        1,
-                    );
-            } else {
-                let newIndex: number | null = null;
-                if (isOrderedDragTarget(target)) {
-                    newIndex = target.childIndex;
-                }
-                // This assumes that all dragged items have the same original parent, which should be the
-                // case with the current implementation of multi-drag in headless-tree
-                const originalParent = items[0].getParent();
-
-                // Add the dropped items to the new parent's children
-                newParent.item
-                    .getItemData()
-                    .children.splice(
-                        newIndex ??
-                            newParent.item.getItemData().children.length,
-                        0,
-                        ...items.map((i) => i.getId()),
-                    );
-
-                items.forEach((item, idx) => {
-                    if (item.isFolder()) {
-                        const newFolderId =
-                            newParent.item.getId() === "root"
-                                ? null
-                                : newParent.item.getId();
-                        dispatch(
-                            updateFolder({
-                                id: item.getId(),
-                                folderId: newFolderId,
-                                parentId: newFolderId,
-                                orderIndex: idx,
-                            } as Folder),
-                        );
-                        dispatch(
-                            persistReorder({
-                                projectId: currentProject.id,
-                                projectRoot: currentProject.rootPath,
-                                folderOrder: [],
-                                resourceOrder: [
-                                    {
-                                        id: item.getId(),
-                                        orderIndex: idx ?? 0,
-                                        folderId: newFolderId,
-                                    },
-                                ],
-                            }),
-                        );
-                    } else {
-                        dispatch(
-                            updateResource({
-                                id: item.getId(),
-                                folderId:
-                                    newParent.item.getId() === "root"
-                                        ? null
-                                        : newParent.item.getId(),
-                                orderIndex: idx,
-                            } as AnyResource),
-                        );
-                        dispatch(
-                            persistReorder({
-                                projectId: currentProject.id,
-                                projectRoot: currentProject.rootPath,
-                                folderOrder: [],
-                                resourceOrder: [
-                                    {
-                                        id: item.getId(),
-                                        orderIndex: idx ?? 0,
-                                        folderId:
-                                            newParent.item.getId() === "root"
-                                                ? null
-                                                : newParent.item.getId(),
-                                    },
-                                ],
-                            }),
-                        );
-                    }
-                });
-
-                // Remove the dropped items from their original parent's children
-                items.forEach((item) => {
-                    originalParent
-                        ?.getItemData()
-                        .children.splice(
-                            originalParent
-                                .getItemData()
-                                .children.indexOf(item.getId()),
-                            1,
-                        );
-                });
-            }
-
-            tree.rebuildTree();
+            handleDrop(items, target);
         },
         canReorder: true,
         features: [
@@ -505,7 +487,7 @@ export default function ResourceTree({
     return (
         <div
             {...tree.getContainerProps()}
-            className="flex flex-col items-start"
+            className="flex flex-col items-start mb-8"
         >
             {tree.getItems().map((item) => (
                 <div
@@ -514,17 +496,7 @@ export default function ResourceTree({
                         paddingLeft: `${item.getItemMeta().level * 20}px`,
                     }}
                     onContextMenu={(e) => {
-                        e.preventDefault();
-                        // open context menu at mouse position for this resource
-                        const rectX = e.clientX;
-                        const rectY = e.clientY;
-                        setContextMenu({
-                            open: true,
-                            x: rectX,
-                            y: rectY,
-                            resourceId: item.getId(),
-                            resourceTitle: item.getItemName(),
-                        });
+                        handleContextMenu(e, item);
                     }}
                 >
                     {item.isFolder() && (
@@ -533,56 +505,25 @@ export default function ResourceTree({
                                 item.isExpanded() ? item.collapse : item.expand
                             }
                         >
-                            {item.isExpanded() ? (
-                                <ChevronDown />
-                            ) : (
-                                <ChevronRight />
-                            )}
+                            {renderExpandableStateIcon(item)}
                         </button>
                     )}
                     <button
                         {...item.getProps()}
                         key={item.getId()}
                         onClick={(e) => {
-                            // Handle dispatch
-                            item.setFocused();
-
-                            // Call the custom click behavior defined in the feature implementation
-                            const modificationData = item
-                                .getProps()
-                                .onClick?.(e);
-                            if (modificationData.selectedItems.length === 1) {
-                                tree.setSelectedItems([
-                                    item.getItemMeta().itemId,
-                                ]);
-                                dispatch(setSelectedResourceId(item.getId()));
-                            } else {
-                                tree.setSelectedItems(
-                                    modificationData.selectedItems,
-                                );
-                                item.selectUpTo(e.ctrlKey || e.metaKey);
-                                dispatch(
-                                    setSelectedResourceId(
-                                        modificationData.focusedItem,
-                                    ),
-                                );
-                            }
+                            handleClick(e, item);
                         }}
                     >
                         <div
-                            className={`flex items-center gap-2 ${item.isDragTarget() ? "bg-amber-950" : ""}`}
+                            className={`flex items-center gap-2 ${item.isDragTarget() ? "bg-gray-400 rounded-md" : ""}`}
                         >
-                            {item.isFolder() ? <FolderIcon /> : <FileIcon />}
+                            {renderResourceIcon(item)}
                             <div
                                 className={`${item.isSelected() ? "font-bold" : ""}`}
                             >
                                 {item.getItemName()}
                             </div>
-                            {item.isSelected() && (
-                                <div className="text-xs text-gray-500">
-                                    (selected)
-                                </div>
-                            )}
                         </div>
                     </button>
                 </div>
@@ -596,12 +537,6 @@ export default function ResourceTree({
                 resourceTitle={contextMenu.resourceTitle}
                 onClose={() => setContextMenu((s) => ({ ...s, open: false }))}
                 onAction={(action, resourceId) => {
-                    console.log(
-                        "Context menu action:",
-                        action,
-                        "on resource:",
-                        resourceId,
-                    );
                     onResourceAction?.(action, resourceId);
                 }}
             />
