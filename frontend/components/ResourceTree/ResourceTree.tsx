@@ -21,6 +21,7 @@ import ResourceContextMenu, {
 } from "../Tree/ResourceContextMenu";
 import { useState, useRef, useMemo } from "react";
 import { shallowEqual } from "react-redux";
+
 interface ResourceItemData {
     /** The name of the resource */
     name: string;
@@ -28,7 +29,9 @@ interface ResourceItemData {
     children: string[];
     /** Whether the resource is a folder */
     isFolder: boolean;
+    /** The ID of the resource's parent folder */
     parentId: string | null;
+    /** Whether the resource can be moved into a new folder */
     special?: boolean;
 }
 
@@ -197,22 +200,24 @@ export default function ResourceTree({
     ) => void;
     debug?: boolean;
 }) {
+    const dispatch = useAppDispatch();
+
     const currentProject = useAppSelector(
         (s) => s.projects.projects[s.projects.selectedProjectId ?? ""] ?? null,
     );
-    const foldersAndResources = useAppSelector(
+
+    const rawResources = useAppSelector(
         (s) => selectFoldersAndResources(s.resources),
         shallowEqual,
     );
-    const dispatch = useAppDispatch();
-    const clickedNode = useRef<string | null>(null);
-    const [resourceData, setResourceData] = useState(
-        transformResourcesToTreeData(foldersAndResources),
-    );
 
     const transformedResourceData = useMemo(
-        () => transformResourcesToTreeData(foldersAndResources),
-        [foldersAndResources],
+        () => transformResourcesToTreeData(rawResources),
+        [rawResources],
+    );
+
+    const [resourceData, setResourceData] = useState(
+        transformResourcesToTreeData(rawResources),
     );
 
     const [contextMenu, setContextMenu] = useState<{
@@ -538,9 +543,6 @@ export default function ResourceTree({
                     <button
                         {...item.getProps()}
                         key={item.getId()}
-                        onMouseDown={() => {
-                            clickedNode.current = item.getId();
-                        }}
                         onClick={(e) => {
                             // Handle dispatch
                             item.setFocused();
