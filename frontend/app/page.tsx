@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useAppDispatch } from "../src/store/hooks";
+import useAppSelector, { useAppDispatch } from "../src/store/hooks";
 import {
     setProject,
     setSelectedProjectId,
@@ -23,7 +23,9 @@ import {
     updateResource as updateResourceInStore,
     addResource as addResourceInStore,
     setFolders,
+    selectResource,
 } from "../src/store/resourcesSlice";
+import { shallowEqual } from "react-redux";
 
 /**
  * Root page component. Manages high-level state for projects and resources,
@@ -48,6 +50,10 @@ export default function Home(): JSX.Element {
     } | null>(null);
     const [selectedResourceId, setSelectedResourceId] = useState<string | null>(
         null,
+    );
+    const selectedResource = useAppSelector(
+        (state) => selectResource(state.resources),
+        shallowEqual,
     );
 
     const dispatch = useAppDispatch();
@@ -310,61 +316,50 @@ export default function Home(): JSX.Element {
 
         if (action === "create") {
             const title = opts?.title ?? "New Resource";
-            const resData = {
+            let payload = {
                 name: title,
                 folderId: opts?.folderId ?? null,
-                type: "text",
-                text: {
+                type: opts?.type ?? "text",
+            };
+
+            if (opts?.type === "text" || !opts?.type) {
+                payload.text = {
                     plainText: "",
                     tiptap: undefined,
-                },
-            };
+                };
+            }
 
             const result = await fetch("/api/resource", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    resourceData: resData,
+                    resourceData: payload,
                     projectPath: selectedProject.rootPath,
                 }),
             });
             const resBody = await result.json();
             const res: AnyResource = resBody.resource;
             dispatch(addResourceInStore(res));
-            // insert at end
-            setProjects((prev) =>
-                prev.map((p) =>
-                    p.project.id === selectedProject.id
-                        ? {
-                              ...p,
-                              resources: [...p.resources, res],
-                              updatedAt: new Date().toISOString(),
-                          }
-                        : p,
-                ),
-            );
-            setSelectedProject((prev) =>
-                prev
-                    ? {
-                          ...prev,
-                          resources: [...prev.resources, res],
-                          updatedAt: new Date().toISOString(),
-                      }
-                    : prev,
-            );
+            if (opts?.type === "folder") {
+                console.log(res);
+            } else {
+                // update redux store
+                dispatch(
+                    // This addResource is deprecated
+                    addResource({
+                        projectId: selectedProject.id,
+                        resource: {
+                            id: res.id,
+                            metadata: res.metadata,
+                            name: res.name,
+                            folderId: res.folderId ?? null,
+                        } as any,
+                    }),
+                );
+            }
+
             setSelectedResourceId(res.id);
-            // update redux store
-            dispatch(
-                addResource({
-                    projectId: selectedProject.id,
-                    resource: {
-                        id: res.id,
-                        metadata: res.metadata,
-                        name: res.name,
-                        folderId: res.folderId ?? null,
-                    } as any,
-                }),
-            );
+
             return;
         }
 
@@ -455,7 +450,6 @@ export default function Home(): JSX.Element {
                       }
                     : prev,
             );
-            if (selectedResourceId === resourceId) setSelectedResourceId(null);
             // update redux store
             dispatch(
                 removeResource({ projectId: selectedProject.id, resourceId }),
@@ -482,7 +476,7 @@ export default function Home(): JSX.Element {
             project={selectedProject as any}
             onResourceSelect={handleResourceSelect}
             onResourceAction={handleResourceAction}
-            selectedResourceId={selectedResourceId}
+            selectedResourceId={selectedResource?.id ?? null}
             onChangeNotes={handleChangeNotes}
             onChangeStatus={handleChangeStatus}
             onChangeCharacters={handleChangeCharacters}
