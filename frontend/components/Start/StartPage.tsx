@@ -3,9 +3,7 @@ import type {
     Project as CanonicalProject,
     AnyResource,
     Folder,
-    TextResource,
 } from "../../src/lib/models/types";
-import { buildProjectView } from "../../src/lib/models/project-view";
 import CreateProjectModal, {
     type CreateProjectPayload,
 } from "./CreateProjectModal";
@@ -90,8 +88,6 @@ export default function StartPage({
 
             <div className="mt-6 grid gap-4">
                 {localProjects.map((p, idx) => {
-                    // const view = projectViews[idx];
-                    console.log("Rendering project:", p);
                     const resourceList = p
                         ? p.resources.filter((r) => r.type !== "folder")
                         : p.resources;
