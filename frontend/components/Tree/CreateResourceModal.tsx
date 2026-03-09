@@ -34,8 +34,8 @@ export interface CreateResourceModalProps {
  */
 export default function CreateResourceModal({
     isOpen,
-    initialTitle = "",
-    initialType = "",
+    initialTitle = "New Resource",
+    initialType = "text",
     parentId,
     parents = [],
     onClose,
