@@ -15,8 +15,11 @@ import {
     updateFolder,
     updateResource,
 } from "../../src/store/resourcesSlice";
-import ResourceContextMenu from "../Tree/ResourceContextMenu";
+import ResourceContextMenu, {
+    ResourceContextAction,
+} from "../Tree/ResourceContextMenu";
 import { useState, useRef } from "react";
+import { shallowEqual } from "react-redux";
 interface ResourceItemData {
     /** The name of the resource */
     name: string;
@@ -176,17 +179,19 @@ function transformResourcesToTreeData(
     return dataObject;
 }
 
-function transformTreeDataToResources(
-    treeData: Record<string, ResourceItemData>,
-    resources: AnyResource[],
-): AnyResource[] {
-    Object.entries(treeData).forEach(([id, itemData]) => {});
-
-    return resources;
-}
-export default function ResourceTree({ debug }: { debug?: boolean }) {
-    const foldersAndResources = useAppSelector((s) =>
-        selectFoldersAndResources(s.resources),
+export default function ResourceTree({
+    onResourceAction,
+    debug,
+}: {
+    onResourceAction?: (
+        action: ResourceContextAction,
+        resourceId?: string,
+    ) => void;
+    debug?: boolean;
+}) {
+    const foldersAndResources = useAppSelector(
+        (s) => selectFoldersAndResources(s.resources),
+        shallowEqual,
     );
     const dispatch = useAppDispatch();
     const clickedNode = useRef<string | null>(null);
@@ -490,7 +495,7 @@ export default function ResourceTree({ debug }: { debug?: boolean }) {
                         "on resource:",
                         resourceId,
                     );
-                    // onResourceAction?.(action, resourceId);
+                    onResourceAction?.(action, resourceId);
                 }}
             />
         </div>

@@ -369,7 +369,10 @@ export default function AppShell({
                 >
                     <div className="mt-0">
                         {project ? (
-                            <ResourceTree debug={false} />
+                            <ResourceTree
+                                debug={false}
+                                onResourceAction={handleResourceAction}
+                            />
                         ) : (
                             <div className="space-y-2">
                                 <p>Loading Resource Tree</p>
