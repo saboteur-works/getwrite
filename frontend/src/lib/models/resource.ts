@@ -8,12 +8,14 @@ import type {
     TipTapDocument,
     AnyResource,
     ResourceType,
+    Folder,
 } from "./types";
 import {
     TextResourceSchema,
     ImageResourceSchema,
     AudioResourceSchema,
     AnyResourceSchema,
+    FolderSchema,
 } from "./schemas";
 
 import fs from "node:fs";
@@ -127,6 +129,32 @@ export function validateResource(input: unknown) {
     return AnyResourceSchema.parse(input);
 }
 
+export function createFolderResource(params: {
+    name: string;
+    parentFolderId?: UUID | null;
+    slug?: string;
+    metadata?: Record<string, MetadataValue>;
+    orderIndex?: number;
+    special?: boolean;
+}) {
+    const now = new Date().toISOString();
+    const id = generateUUID();
+    const res: Folder = {
+        id,
+        name: params.name,
+        slug: params.slug ?? slugify(params.name),
+        type: "folder",
+        folderId: params.parentFolderId,
+        createdAt: now,
+        metadata: params.metadata,
+        orderIndex: params.orderIndex,
+        special: params.special ?? false,
+    };
+
+    FolderSchema.parse(res);
+    return res;
+}
+
 /**
  * Save a resource to the filesystem (MVP: text only).
  * This function should only be called from backend contexts.
@@ -136,7 +164,30 @@ export async function writeResourceToFile(
     resource: AnyResource,
 ): Promise<AnyResource> {
     // Set up base path for resource
-    const base = path.join(projectPath, "resources", resource.id);
+    const base = path.join(
+        projectPath,
+        resource.type === "folder" ? "folders" : "resources",
+        resource.id,
+    );
+
+    if (resource.type === "folder") {
+        const dir = path.join(
+            projectPath,
+            "folders",
+            resource.slug ?? resource.id,
+        );
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        await fs.writeFile(
+            path.join(dir, "folder.json"),
+            JSON.stringify(resource, null, 2),
+            "utf8",
+            () => {},
+        );
+        return resource;
+    }
+
     if (resource.type === "text") {
         // Create directory if it doesn't exist
         if (!fs.existsSync(base)) {
@@ -166,7 +217,9 @@ export async function writeResourceToFile(
         metadata: resource.metadata || {},
     };
 
-    await writeSidecar(projectPath, resource.id, sidecarData);
+    if (resource.type !== "folder") {
+        await writeSidecar(projectPath, resource.id, sidecarData);
+    }
     return resource;
 }
 /** Options for creating a resource of a specific type. */
@@ -206,6 +259,11 @@ export const createResourceOfType = (
     };
 
     switch (resourceType) {
+        case "folder":
+            return createFolderResource({
+                ...baseParams,
+                parentFolderId: opts.folderId,
+            });
         case "text":
             return createTextResource({
                 ...baseParams,

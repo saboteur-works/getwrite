@@ -222,6 +222,7 @@ export async function createProjectFromType(options: {
             orderIndex: i,
             createdAt: now,
             type: "folder",
+            special: f.special,
         };
         folders.push(folderObj);
         // write a small folder descriptor file so the structure is discoverable
