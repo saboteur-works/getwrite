@@ -1,4 +1,9 @@
-import { createSelector, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import {
+    createAsyncThunk,
+    createSelector,
+    createSlice,
+    PayloadAction,
+} from "@reduxjs/toolkit";
 import { AnyResource, Folder } from "../lib/models";
 
 interface ResourcesState {
@@ -12,6 +17,32 @@ const initialState: ResourcesState = {
     resources: [],
     folders: [],
 };
+
+export const persistReorder = createAsyncThunk(
+    "projects/persistReorder",
+    async (payload: {
+        projectId: string;
+        projectRoot: string;
+        folderOrder: Array<{
+            id: string;
+            orderIndex: number;
+            folderId?: string | null;
+        }>;
+        resourceOrder: Array<{
+            id: string;
+            orderIndex: number;
+            folderId?: string | null;
+        }>;
+    }) => {
+        const { projectRoot, folderOrder, resourceOrder, projectId } = payload;
+        await fetch(`/api/projects/${projectId}/reorder`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ folderOrder, resourceOrder }),
+        });
+        return { projectRoot, folderOrder, resourceOrder };
+    },
+);
 
 const resourcesSlice = createSlice({
     name: "resources",
@@ -30,6 +61,10 @@ const resourcesSlice = createSlice({
             return state;
         },
         addResource(state, action: PayloadAction<AnyResource>) {
+            if (action.payload.type === "folder") {
+                state.folders.push(action.payload as Folder);
+                return state;
+            }
             state.resources.push(action.payload);
             return state;
         },
