@@ -217,6 +217,7 @@ export default function ResourceTree({ debug }: { debug?: boolean }) {
         indent: 20,
         onPrimaryAction: (item) => {
             console.log("Primary action on item:", item.getItemData().name);
+            dispatch(setSelectedResourceId(item.getId()));
         },
         onDrop: (items, target) => {
             const newParent = target;
