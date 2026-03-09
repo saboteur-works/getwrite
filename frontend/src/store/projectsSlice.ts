@@ -82,6 +82,9 @@ const projectsSlice = createSlice({
             state.selectedProjectId = action.payload;
             return state;
         },
+        /**
+         * @deprecated
+         */
         addResource(
             state,
             action: PayloadAction<{
@@ -214,16 +217,11 @@ export function normalizeStoredProject(p: StoredProject): StoredProject {
             };
         }
     }
-    console.log("Normalizing stored project", p);
 
     const resources = Array.isArray(p.resources)
         ? p.resources.map((r) => ({ id: r.id, metadata: r.metadata ?? {} }))
         : p.resources;
     const folders = p.folders ?? [];
-    console.log("Normalized resources and folders", resources, {
-        ...p,
-        resources,
-        folders,
-    });
+
     return { ...p, resources, folders };
 }
