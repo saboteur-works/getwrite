@@ -305,10 +305,19 @@ export default function ResourceTree({
                             orderIndex,
                         })) as Partial<Folder> &
                         { id: string; orderIndex: number }[];
-                    const updatedSiblingFoldersData =
-                        updatedSiblingsData.filter(
-                            (s) => resourceData[s.id].isFolder,
-                        );
+
+                    const updatedSiblingFoldersData = updatedSiblingsData
+                        .filter((s) => resourceData[s.id].isFolder)
+                        .map((s) => ({
+                            id: s.id,
+                            orderIndex: s.orderIndex,
+                            folderId:
+                                newParent.item.getId() === "root"
+                                    ? null
+                                    : newParent.item.getId(),
+                        })) as Partial<Folder> &
+                        { id: string; orderIndex: number }[];
+
                     const updatedSiblingResourcesData =
                         updatedSiblingsData.filter(
                             (s) => !resourceData[s.id].isFolder,
