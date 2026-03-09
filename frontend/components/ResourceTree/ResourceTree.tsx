@@ -10,6 +10,7 @@ import { useTree } from "@headless-tree/react";
 import { AnyResource, Folder } from "../../src/lib/models";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
+    persistReorder,
     selectFoldersAndResources,
     setSelectedResourceId,
     updateFolder,
@@ -18,7 +19,7 @@ import {
 import ResourceContextMenu, {
     ResourceContextAction,
 } from "../Tree/ResourceContextMenu";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { shallowEqual } from "react-redux";
 interface ResourceItemData {
     /** The name of the resource */
@@ -28,6 +29,7 @@ interface ResourceItemData {
     /** Whether the resource is a folder */
     isFolder: boolean;
     parentId: string | null;
+    special?: boolean;
 }
 
 const customClickBehavior: FeatureImplementation = {
@@ -143,11 +145,16 @@ function transformResourcesToTreeData(
             children: [],
             isFolder: currentResource.type === "folder",
             parentId,
+            special:
+                currentResource.type === "folder" &&
+                "special" in currentResource
+                    ? currentResource.special
+                    : undefined,
         };
 
         // Check if the parent resource is already in the data object; if not, add a placeholder for it (this can happen if a child resource is processed before its parent)
         if (!dataObject[parentId]) {
-            console.log(
+            console.warn(
                 `Parent resource with ID ${parentId} not found for resource with ID ${id}. Adding placeholder for parent.`,
             );
             dataObject[parentId] = {
@@ -155,6 +162,7 @@ function transformResourcesToTreeData(
                 children: [],
                 isFolder: true,
                 parentId: null,
+                special: undefined,
             };
         }
 
@@ -189,6 +197,9 @@ export default function ResourceTree({
     ) => void;
     debug?: boolean;
 }) {
+    const currentProject = useAppSelector(
+        (s) => s.projects.projects[s.projects.selectedProjectId ?? ""] ?? null,
+    );
     const foldersAndResources = useAppSelector(
         (s) => selectFoldersAndResources(s.resources),
         shallowEqual,
@@ -197,6 +208,11 @@ export default function ResourceTree({
     const clickedNode = useRef<string | null>(null);
     const [resourceData, setResourceData] = useState(
         transformResourcesToTreeData(foldersAndResources),
+    );
+
+    const transformedResourceData = useMemo(
+        () => transformResourcesToTreeData(foldersAndResources),
+        [foldersAndResources],
     );
 
     const [contextMenu, setContextMenu] = useState<{
@@ -214,9 +230,9 @@ export default function ResourceTree({
         },
         isItemFolder: (item) => item.getItemData().isFolder,
         dataLoader: {
-            getItem: (itemId) => resourceData[itemId],
+            getItem: (itemId) => transformedResourceData[itemId],
             getChildren: (itemId) => {
-                return resourceData[itemId].children;
+                return transformedResourceData[itemId].children;
             },
         },
         indent: 20,
@@ -226,9 +242,17 @@ export default function ResourceTree({
         },
         onDrop: (items, target) => {
             const newParent = target;
+
             if (items.length === 1) {
                 // Get the dropped item and its original parent
                 const droppedItem = items[0];
+                if (droppedItem.getItemData().special) {
+                    console.warn(
+                        "Cannot move special resource:",
+                        droppedItem.getItemData().name,
+                    );
+                    return;
+                }
                 const originalParent = droppedItem.getParent();
 
                 // Determine the new index for the dropped item in its new parent's children array
@@ -255,10 +279,6 @@ export default function ResourceTree({
                             ? null
                             : newParent.item.getId();
 
-                    // Establish the folder's new orderIndex
-                    // Find all items current in the folder and determine what if the other items in the folder should have their orderIndex updated as a result of this move
-                    // For simplicity, we'll just set the moved folder's orderIndex to be the same as its new position in the children array, and then update all other siblings' orderIndexes to match their position in the array as well
-
                     const updatedChildOrderIndex = newParent.item
                         .getItemData()
                         .children.map((childId, idx) => {
@@ -283,9 +303,36 @@ export default function ResourceTree({
                         .map(([id, orderIndex]) => ({
                             id,
                             orderIndex,
-                        })) as Partial<Folder> & { id: string }[];
+                        })) as Partial<Folder> &
+                        { id: string; orderIndex: number }[];
+                    const updatedSiblingFoldersData =
+                        updatedSiblingsData.filter(
+                            (s) => resourceData[s.id].isFolder,
+                        );
+                    const updatedSiblingResourcesData =
+                        updatedSiblingsData.filter(
+                            (s) => !resourceData[s.id].isFolder,
+                        );
 
                     dispatch(updateFolder(updatedDroppedItemData));
+                    dispatch(
+                        persistReorder({
+                            projectId: currentProject.id,
+                            projectRoot: currentProject.rootPath,
+                            folderOrder: [
+                                ...updatedSiblingFoldersData,
+                                {
+                                    id: droppedItem.getId(),
+                                    orderIndex:
+                                        updatedDroppedItemData.orderIndex!,
+                                    folderId:
+                                        updatedDroppedItemData.folderId ??
+                                        undefined,
+                                },
+                            ],
+                            resourceOrder: [...updatedSiblingResourcesData],
+                        }),
+                    );
                     updatedSiblingsData.forEach((siblingData) => {
                         if (resourceData[siblingData.id].isFolder) {
                             dispatch(updateFolder(siblingData));
@@ -310,6 +357,23 @@ export default function ResourceTree({
                             orderIndex: newIndex ?? 0,
                         } as AnyResource),
                     );
+                    dispatch(
+                        persistReorder({
+                            projectId: currentProject.id,
+                            projectRoot: currentProject.rootPath,
+                            folderOrder: [],
+                            resourceOrder: [
+                                {
+                                    id: droppedItem.getId(),
+                                    orderIndex: newIndex ?? 0,
+                                    folderId:
+                                        newParent.item.getId() === "root"
+                                            ? null
+                                            : newParent.item.getId(),
+                                },
+                            ],
+                        }),
+                    );
                 }
 
                 // Remove the dropped item from its original parent's children
@@ -326,7 +390,8 @@ export default function ResourceTree({
                 if (isOrderedDragTarget(target)) {
                     newIndex = target.childIndex;
                 }
-                // This assumes that all dragged items have the same original parent, which should be the case with the current implementation of multi-drag in headless-tree
+                // This assumes that all dragged items have the same original parent, which should be the
+                // case with the current implementation of multi-drag in headless-tree
                 const originalParent = items[0].getParent();
 
                 // Add the dropped items to the new parent's children
@@ -353,6 +418,20 @@ export default function ResourceTree({
                                 orderIndex: idx,
                             } as Folder),
                         );
+                        dispatch(
+                            persistReorder({
+                                projectId: currentProject.id,
+                                projectRoot: currentProject.rootPath,
+                                folderOrder: [],
+                                resourceOrder: [
+                                    {
+                                        id: item.getId(),
+                                        orderIndex: idx ?? 0,
+                                        folderId: newFolderId,
+                                    },
+                                ],
+                            }),
+                        );
                     } else {
                         dispatch(
                             updateResource({
@@ -363,6 +442,23 @@ export default function ResourceTree({
                                         : newParent.item.getId(),
                                 orderIndex: idx,
                             } as AnyResource),
+                        );
+                        dispatch(
+                            persistReorder({
+                                projectId: currentProject.id,
+                                projectRoot: currentProject.rootPath,
+                                folderOrder: [],
+                                resourceOrder: [
+                                    {
+                                        id: item.getId(),
+                                        orderIndex: idx ?? 0,
+                                        folderId:
+                                            newParent.item.getId() === "root"
+                                                ? null
+                                                : newParent.item.getId(),
+                                    },
+                                ],
+                            }),
                         );
                     }
                 });
