@@ -28,6 +28,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Icon="undo"
                     disabled={!editorState.canUndo}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Undo"
                 />
 
                 <EditorMenuIcon
@@ -35,6 +36,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Icon="redo"
                     disabled={!editorState.canRedo}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Redo"
                 />
             </EditorMenuIconGroup>
 
@@ -48,6 +50,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     disabled={!editorState.canBold}
                     active={editorState.isBold}
                     onClick={() => editor.chain().focus().toggleBold().run()}
+                    tooltipContent="Bold"
                 />
                 <EditorMenuIcon
                     Icon="italic"
@@ -55,6 +58,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     disabled={!editorState.canItalic}
                     active={editorState.isItalic}
                     onClick={() => editor.chain().focus().toggleItalic().run()}
+                    tooltipContent="Italic"
                 />
                 <EditorMenuIcon
                     Icon="underline"
@@ -64,6 +68,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     onClick={() =>
                         editor.chain().focus().toggleUnderline().run()
                     }
+                    tooltipContent="Underline"
                 />
                 <EditorMenuIcon
                     Icon="strikethrough"
@@ -71,6 +76,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     disabled={!editorState.canStrike}
                     active={editorState.isStrike}
                     onClick={() => editor.chain().focus().toggleStrike().run()}
+                    tooltipContent="Strikethrough"
                 />
             </EditorMenuIconGroup>
             <EditorMenuIconGroup
@@ -83,6 +89,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     disabled={!editorState.canCode}
                     active={editorState.isCode}
                     onClick={() => editor.chain().focus().toggleCode().run()}
+                    tooltipContent="Inline code"
                 />
 
                 <EditorMenuIcon
@@ -92,6 +99,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Icon="codeSquare"
                     active={editorState.isCodeBlock}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Code block"
                 />
             </EditorMenuIconGroup>
 
@@ -114,11 +122,13 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     active={editorState.isParagraph}
                     Icon="pilcrow"
                     iconSize={ICON_SIZE}
+                    tooltipContent="Paragraph"
                 />
                 <EditorMenuIcon
                     onClick={() => editor.chain().focus().setHardBreak().run()}
                     Icon="textWrap"
                     iconSize={ICON_SIZE}
+                    tooltipContent="Hard break"
                 />
                 <EditorMenuIcon
                     onClick={() =>
@@ -127,6 +137,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Icon="heading1"
                     active={editorState.isHeading1}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Heading 1"
                 />
 
                 <EditorMenuIcon
@@ -136,6 +147,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     }
                     active={editorState.isHeading2}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Heading 2"
                 />
 
                 <EditorMenuIcon
@@ -145,6 +157,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Icon="heading3"
                     active={editorState.isHeading3}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Heading 3"
                 />
 
                 <EditorMenuIcon
@@ -154,6 +167,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     }
                     active={editorState.isHeading4}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Heading 4"
                 />
 
                 <EditorMenuIcon
@@ -163,6 +177,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Icon="heading5"
                     active={editorState.isHeading5}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Heading 5"
                 />
 
                 <EditorMenuIcon
@@ -172,6 +187,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Icon="heading6"
                     active={editorState.isHeading6}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Heading 6"
                 />
             </EditorMenuIconGroup>
 
@@ -186,6 +202,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Icon="list"
                     active={editorState.isBulletList}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Bullet list"
                 />
 
                 <EditorMenuIcon
@@ -195,6 +212,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Icon="listOrdered"
                     active={editorState.isOrderedList}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Ordered list"
                 />
             </EditorMenuIconGroup>
             <EditorMenuIconGroup
@@ -208,6 +226,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Icon="quote"
                     active={editorState.isBlockquote}
                     iconSize={ICON_SIZE}
+                    tooltipContent="Blockquote"
                 />
 
                 <EditorMenuIcon
@@ -216,6 +235,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     }
                     Icon="minus"
                     iconSize={ICON_SIZE}
+                    tooltipContent="Horizontal rule"
                 />
             </EditorMenuIconGroup>
         </div>

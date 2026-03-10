@@ -20,6 +20,7 @@ import {
     Redo,
     Underline,
 } from "lucide-react";
+import { Tooltip } from "react-tooltip";
 
 const IconTypes = {
     bold: Bold,
@@ -50,6 +51,7 @@ interface EditorMenuIconProps {
     onClick?: () => void;
     disabled?: boolean;
     active?: boolean;
+    tooltipContent?: string;
 }
 
 export default function EditorMenuIcon({
@@ -58,6 +60,7 @@ export default function EditorMenuIcon({
     onClick,
     disabled,
     active,
+    tooltipContent = "",
 }: EditorMenuIconProps) {
     const IconComponent = IconTypes[Icon as keyof typeof IconTypes];
 
@@ -68,12 +71,17 @@ export default function EditorMenuIcon({
         : "hover:bg-gray-200 dark:hover:bg-gray-200";
 
     return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className={`${activeClass} ${disabledClass} ${hoverClass} p-1 rounded`}
-        >
-            <IconComponent size={iconSize} />
-        </button>
+        <>
+            <button
+                data-tooltip-id="my-tooltip"
+                onClick={onClick}
+                disabled={disabled}
+                className={`${activeClass} ${disabledClass} ${hoverClass} p-1 rounded`}
+                data-tooltip-content={tooltipContent}
+            >
+                <IconComponent size={iconSize} />
+            </button>
+            <Tooltip id="my-tooltip" />
+        </>
     );
 }

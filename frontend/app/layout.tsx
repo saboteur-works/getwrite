@@ -1,4 +1,5 @@
 import "./globals.css";
+import "react-tooltip/dist/react-tooltip.css";
 import React from "react";
 import ClientProvider from "../src/store/ClientProvider";
 import AppToaster from "../components/notifications/Toaster";
