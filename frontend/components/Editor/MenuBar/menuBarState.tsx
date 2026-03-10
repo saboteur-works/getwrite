@@ -44,7 +44,8 @@ export function menuBarStateSelector(ctx: EditorStateSnapshot<Editor>) {
         canHighlight: ctx.editor.can().chain().toggleHighlight().run() ?? false,
 
         // Text style (color, background)
-        textColor: ctx.editor.getAttributes("textStyle").backgroundColor,
+        textColor: ctx.editor.getAttributes("textStyle").color,
+        backgroundColor: ctx.editor.getAttributes("textStyle").backgroundColor,
     };
 }
 

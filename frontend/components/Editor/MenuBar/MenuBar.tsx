@@ -257,11 +257,27 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     disabled={false}
                     active={false}
                     tooltipContent="Font Color"
+                    initialValue="#000000"
                     onInput={(event) =>
                         editor
                             .chain()
                             .focus()
                             .setColor(event.currentTarget.value)
+                            .run()
+                    }
+                />
+                <EditorMenuInput
+                    Icon="fontColor"
+                    onClick={() => {}}
+                    disabled={false}
+                    active={false}
+                    tooltipContent="Background Color"
+                    initialValue="#00000000"
+                    onInput={(event) =>
+                        editor
+                            .chain()
+                            .focus()
+                            .setBackgroundColor(event.currentTarget.value)
                             .run()
                     }
                 />
