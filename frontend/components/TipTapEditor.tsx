@@ -19,6 +19,7 @@ import UniqueID from "@tiptap/extension-unique-id";
 import { Placeholder, Selection } from "@tiptap/extensions";
 import Typography from "@tiptap/extension-typography";
 import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
+import TextAlign from "@tiptap/extension-text-align";
 
 export interface TipTapEditorProps {
     value?: Content;
@@ -45,6 +46,9 @@ const extensions = [
     }),
     Selection,
     Typography,
+    TextAlign.configure({
+        types: ["heading", "paragraph"],
+    }),
 ];
 
 export default function TipTapEditor({

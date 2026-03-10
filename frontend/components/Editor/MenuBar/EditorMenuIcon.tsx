@@ -1,4 +1,8 @@
 import {
+    AlignLeft,
+    AlignCenter,
+    AlignRight,
+    AlignJustify,
     Bold,
     Italic,
     Strikethrough,
@@ -25,6 +29,10 @@ import {
 import { Tooltip } from "react-tooltip";
 
 const IconTypes = {
+    alignLeft: AlignLeft,
+    alignCenter: AlignCenter,
+    alignRight: AlignRight,
+    alignJustify: AlignJustify,
     bold: Bold,
     italic: Italic,
     strikethrough: Strikethrough,

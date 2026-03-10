@@ -110,6 +110,47 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     tooltipContent="Inline code"
                 />
             </EditorMenuIconGroup>
+            <EditorMenuIconGroup
+                groupName="Alignment"
+                groupId="alignment-controls"
+            >
+                <EditorMenuIcon
+                    Icon="alignLeft"
+                    iconSize={ICON_SIZE}
+                    active={editor.isActive({ textAlign: "left" })}
+                    onClick={() =>
+                        editor.chain().focus().setTextAlign("left").run()
+                    }
+                    tooltipContent="Align Left"
+                />
+                <EditorMenuIcon
+                    Icon="alignCenter"
+                    iconSize={ICON_SIZE}
+                    active={editor.isActive({ textAlign: "center" })}
+                    onClick={() =>
+                        editor.chain().focus().setTextAlign("center").run()
+                    }
+                    tooltipContent="Align Center"
+                />
+                <EditorMenuIcon
+                    Icon="alignRight"
+                    iconSize={ICON_SIZE}
+                    active={editor.isActive({ textAlign: "right" })}
+                    onClick={() =>
+                        editor.chain().focus().setTextAlign("right").run()
+                    }
+                    tooltipContent="Align Right"
+                />
+                <EditorMenuIcon
+                    Icon="alignJustify"
+                    iconSize={ICON_SIZE}
+                    active={editor.isActive({ textAlign: "justify" })}
+                    onClick={() =>
+                        editor.chain().focus().setTextAlign("justify").run()
+                    }
+                    tooltipContent="Align Justify"
+                />
+            </EditorMenuIconGroup>
 
             {/* <button
                     onClick={() => editor.chain().focus().unsetAllMarks().run()}
@@ -294,7 +335,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     disabled={false}
                     active={false}
                     tooltipContent="Background Color"
-                    initialValue="#00000000"
+                    initialValue="#FFFFFF"
                     onInput={(event) =>
                         editor
                             .chain()
