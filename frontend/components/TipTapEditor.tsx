@@ -13,6 +13,7 @@ import Blockquote from "@tiptap/extension-blockquote";
 import { BulletList, ListItem } from "@tiptap/extension-list";
 import CodeBlock from "@tiptap/extension-code-block";
 import Highlight from "@tiptap/extension-highlight";
+import UniqueID from "@tiptap/extension-unique-id";
 
 export interface TipTapEditorProps {
     value?: Content;
@@ -30,6 +31,9 @@ const extensions = [
     Highlight,
     CodeBlock.configure({
         enableTabIndentation: true,
+    }),
+    UniqueID.configure({
+        types: ["paragraph", "heading", "blockquote", "codeBlock"],
     }),
 ];
 
