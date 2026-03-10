@@ -1,0 +1,79 @@
+import {
+    Bold,
+    Italic,
+    Strikethrough,
+    Code,
+    Pilcrow,
+    Heading1,
+    Heading2,
+    Heading3,
+    Heading4,
+    Heading5,
+    Heading6,
+    List,
+    ListOrdered,
+    CodeSquare,
+    Quote,
+    Minus,
+    TextWrap,
+    Undo,
+    Redo,
+    Underline,
+} from "lucide-react";
+
+const IconTypes = {
+    bold: Bold,
+    italic: Italic,
+    strikethrough: Strikethrough,
+    code: Code,
+    pilcrow: Pilcrow,
+    heading1: Heading1,
+    heading2: Heading2,
+    heading3: Heading3,
+    heading4: Heading4,
+    heading5: Heading5,
+    heading6: Heading6,
+    list: List,
+    listOrdered: ListOrdered,
+    codeSquare: CodeSquare,
+    quote: Quote,
+    minus: Minus,
+    textWrap: TextWrap,
+    undo: Undo,
+    redo: Redo,
+    underline: Underline,
+};
+
+interface EditorMenuIconProps {
+    iconSize?: number;
+    Icon: keyof typeof IconTypes;
+    onClick?: () => void;
+    disabled?: boolean;
+    active?: boolean;
+}
+
+export default function EditorMenuIcon({
+    iconSize = 24,
+    Icon,
+    onClick,
+    disabled,
+    active,
+}: EditorMenuIconProps) {
+    const IconComponent = IconTypes[Icon as keyof typeof IconTypes];
+
+    const activeClass = active ? "bg-gray-400 text-white" : "";
+    const disabledClass = disabled ? "opacity-50 cursor-not-allowed" : "";
+    const hoverClass = disabled
+        ? ""
+        : "hover:bg-gray-200 dark:hover:bg-gray-200";
+
+    return (
+        <button
+            onClick={onClick}
+            disabled={disabled}
+            className={`${activeClass} ${disabledClass} ${hoverClass} p-1 rounded`}
+        >
+            <IconComponent size={iconSize} />
+        </button>
+    );
+}
