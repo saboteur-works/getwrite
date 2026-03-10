@@ -4,6 +4,7 @@ import React from "react";
 import { menuBarStateSelector } from "./menuBarState";
 import EditorMenuIcon from "./EditorMenuIcon";
 import EditorMenuIconGroup from "./EditorMenuIconGroup";
+import EditorMenuInput from "./EditorMenuInput";
 
 const ICON_SIZE = 16;
 
@@ -249,6 +250,20 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Icon="highlight"
                     iconSize={ICON_SIZE}
                     tooltipContent="Highlight"
+                />
+                <EditorMenuInput
+                    Icon="fontColor"
+                    onClick={() => {}}
+                    disabled={false}
+                    active={false}
+                    tooltipContent="Font Color"
+                    onInput={(event) =>
+                        editor
+                            .chain()
+                            .focus()
+                            .setColor(event.currentTarget.value)
+                            .run()
+                    }
                 />
             </EditorMenuIconGroup>
         </div>

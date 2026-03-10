@@ -8,7 +8,7 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
-import { TextStyleKit } from "@tiptap/extension-text-style";
+import { TextStyleKit, BackgroundColor } from "@tiptap/extension-text-style";
 import Blockquote from "@tiptap/extension-blockquote";
 import { BulletList, ListItem } from "@tiptap/extension-list";
 import CodeBlock from "@tiptap/extension-code-block";
