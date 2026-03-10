@@ -1,3 +1,5 @@
+import "katex/dist/katex.min.css";
+
 import React, { useEffect } from "react";
 import {
     useEditor,
@@ -8,7 +10,7 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
-import { TextStyleKit, BackgroundColor } from "@tiptap/extension-text-style";
+import { TextStyleKit } from "@tiptap/extension-text-style";
 import Blockquote from "@tiptap/extension-blockquote";
 import { BulletList, ListItem } from "@tiptap/extension-list";
 import CodeBlock from "@tiptap/extension-code-block";
@@ -16,6 +18,7 @@ import Highlight from "@tiptap/extension-highlight";
 import UniqueID from "@tiptap/extension-unique-id";
 import { Placeholder, Selection } from "@tiptap/extensions";
 import Typography from "@tiptap/extension-typography";
+import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
 
 export interface TipTapEditorProps {
     value?: Content;
@@ -61,12 +64,52 @@ export default function TipTapEditor({
     // Return a lightweight mock rendering instead and keep EditView's local
     // state consistent via the `initialContent` prop.
     const editor = useEditor({
-        extensions,
+        shouldRerenderOnTransaction: true,
+        extensions: [
+            ...extensions,
+            Math.configure({
+                blockOptions: {
+                    onClick: (node, pos) => {
+                        const newCalculation = prompt(
+                            "Enter new calculation:",
+                            node.attrs.latex,
+                        );
+                        if (newCalculation) {
+                            editor
+                                .chain()
+                                .setNodeSelection(pos)
+                                .updateBlockMath({ latex: newCalculation })
+                                .focus()
+                                .run();
+                        }
+                    },
+                },
+                inlineOptions: {
+                    onClick: (node) => {
+                        const newCalculation = prompt(
+                            "Enter new calculation:",
+                            node.attrs.latex,
+                        );
+                        if (newCalculation) {
+                            editor
+                                .chain()
+                                .setNodeSelection(node.pos)
+                                .updateInlineMath({ latex: newCalculation })
+                                .focus()
+                                .run();
+                        }
+                    },
+                },
+            }),
+        ],
         content: value || "",
         editable: !readonly,
         onUpdate: ({ editor }) => {
             if (onChange)
                 onChange(editor.getHTML(), editor.getJSON() as TipTapDocument);
+        },
+        onCreate: ({ editor: currentEditor }) => {
+            migrateMathStrings(currentEditor);
         },
         // avoid SSR hydration mismatches by explicitly opting out of
         // immediate render on the server

@@ -20,6 +20,7 @@ import {
     Undo,
     Redo,
     Underline,
+    Radical,
 } from "lucide-react";
 import { Tooltip } from "react-tooltip";
 
@@ -45,6 +46,7 @@ const IconTypes = {
     undo: Undo,
     redo: Redo,
     underline: Underline,
+    latex: Radical,
 };
 
 interface EditorMenuIconProps {

@@ -1,6 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
-import React from "react";
+import React, { useCallback } from "react";
 import { menuBarStateSelector } from "./menuBarState";
 import EditorMenuIcon from "./EditorMenuIcon";
 import EditorMenuIconGroup from "./EditorMenuIconGroup";
@@ -17,6 +17,28 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
     if (!editor) {
         return null;
     }
+
+    const onInsertInlineMath = useCallback(() => {
+        const hasSelection = !editor.state.selection.empty;
+
+        if (hasSelection) {
+            return editor.chain().setInlineMath().focus().run();
+        }
+
+        const latex = prompt("Enter inline math expression:", "");
+        return editor.chain().insertInlineMath({ latex }).focus().run();
+    }, [editor]);
+
+    const onInsertBlockMath = useCallback(() => {
+        const hasSelection = !editor.state.selection.empty;
+
+        if (hasSelection) {
+            return editor.chain().setBlockMath().focus().run();
+        }
+
+        const latex = prompt("Enter block math expression:", "");
+        return editor.chain().insertBlockMath({ latex }).focus().run();
+    }, [editor]);
 
     return (
         <div
@@ -280,6 +302,15 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                             .setBackgroundColor(event.currentTarget.value)
                             .run()
                     }
+                />
+            </EditorMenuIconGroup>
+            <EditorMenuIconGroup groupName="Math" groupId="math-controls">
+                <EditorMenuIcon
+                    onClick={onInsertBlockMath}
+                    Icon="latex"
+                    iconSize={ICON_SIZE}
+                    tooltipContent="Coming Soon!"
+                    disabled={true}
                 />
             </EditorMenuIconGroup>
         </div>

@@ -78,4 +78,12 @@ body,
     .selection {
         @apply border;
     }
+
+    .tiptap-mathematics-render {
+        @apply hover:bg-gray-400/10 rounded cursor-pointer;
+    }
+
+    .tiptap-mathematics-render--editable {
+        @apply hover:bg-gray-400/10 rounded cursor-pointer;
+    }
 }
