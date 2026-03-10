@@ -7,13 +7,16 @@ import {
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TipTapDocument } from "../src/lib/models";
+import { MenuBar } from "./Editor/MenuBar/MenuBar";
+import { TextStyleKit } from "@tiptap/extension-text-style";
+
 export interface TipTapEditorProps {
     value?: Content;
     onChange?: (content: string, doc: TipTapDocument) => void;
     id?: string;
     readonly?: boolean;
 }
-const extensions = [StarterKit];
+const extensions = [StarterKit, TextStyleKit];
 export default function TipTapEditor({
     value = "",
     onChange,
@@ -30,23 +33,18 @@ export default function TipTapEditor({
     // full editor lifecycle and extension loading can be brittle in jsdom.
     // Return a lightweight mock rendering instead and keep EditView's local
     // state consistent via the `initialContent` prop.
-    const editor = inTestEnv
-        ? null
-        : useEditor({
-              extensions,
-              content: value || "",
-              editable: !readonly,
-              onUpdate: ({ editor }) => {
-                  if (onChange)
-                      onChange(
-                          editor.getHTML(),
-                          editor.getJSON() as TipTapDocument,
-                      );
-              },
-              // avoid SSR hydration mismatches by explicitly opting out of
-              // immediate render on the server
-              immediatelyRender: false,
-          });
+    const editor = useEditor({
+        extensions,
+        content: value || "",
+        editable: !readonly,
+        onUpdate: ({ editor }) => {
+            if (onChange)
+                onChange(editor.getHTML(), editor.getJSON() as TipTapDocument);
+        },
+        // avoid SSR hydration mismatches by explicitly opting out of
+        // immediate render on the server
+        immediatelyRender: false,
+    });
 
     useEffect(() => {
         if (!editor) return;
@@ -77,6 +75,7 @@ export default function TipTapEditor({
         <EditorContext.Provider value={{ editor }}>
             <div className="prose max-w-none">
                 <div className="flex"></div>
+                <MenuBar editor={editor} />
                 <EditorContent editor={editor} id={id} />
             </div>
         </EditorContext.Provider>

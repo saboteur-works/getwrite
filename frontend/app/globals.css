@@ -1,5 +1,5 @@
-@import '../@/styles/_variables.scss';
-@import '../@/styles/_keyframe-animations.scss';
+@import "../@/styles/_variables.scss";
+@import "../@/styles/_keyframe-animations.scss";
 
 @import "tailwindcss";
 @import "../styles/tokens.css";
@@ -11,17 +11,13 @@ body,
     height: 100%;
 }
 
-/* Minimal defaults for placeholder UI */
-body {
-    font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        "Segoe UI",
-        Roboto,
-        "Helvetica Neue",
-        Arial;
-}
-
 /* Tailwind base layer is used; tokens and custom utilities will be added to `styles/` when T007 runs */
+.tiptap {
+    p {
+        @apply my-4 first:mt-0 last:mb-0 text-base leading-relaxed;
+    }
+
+    h1 {
+        @apply text-3xl font-bold mt-8 mb-4 first:mt-0 last:mb-0;
+    }
+}
