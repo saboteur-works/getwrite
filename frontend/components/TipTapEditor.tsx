@@ -15,6 +15,7 @@ import CodeBlock from "@tiptap/extension-code-block";
 import Highlight from "@tiptap/extension-highlight";
 import UniqueID from "@tiptap/extension-unique-id";
 import { Placeholder, Selection } from "@tiptap/extensions";
+import Typography from "@tiptap/extension-typography";
 
 export interface TipTapEditorProps {
     value?: Content;
@@ -40,6 +41,7 @@ const extensions = [
         placeholder: "Start writing here...",
     }),
     Selection,
+    Typography,
 ];
 
 export default function TipTapEditor({
