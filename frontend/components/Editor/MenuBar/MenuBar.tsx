@@ -78,11 +78,6 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     onClick={() => editor.chain().focus().toggleStrike().run()}
                     tooltipContent="Strikethrough"
                 />
-            </EditorMenuIconGroup>
-            <EditorMenuIconGroup
-                groupName="Code and Blocks"
-                groupId="code-block-controls"
-            >
                 <EditorMenuIcon
                     Icon="code"
                     iconSize={ICON_SIZE}
@@ -90,16 +85,6 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     active={editorState.isCode}
                     onClick={() => editor.chain().focus().toggleCode().run()}
                     tooltipContent="Inline code"
-                />
-
-                <EditorMenuIcon
-                    onClick={() =>
-                        editor.chain().focus().toggleCodeBlock().run()
-                    }
-                    Icon="codeSquare"
-                    active={editorState.isCodeBlock}
-                    iconSize={ICON_SIZE}
-                    tooltipContent="Code block"
                 />
             </EditorMenuIconGroup>
 
@@ -114,8 +99,8 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     Clear nodes
                 </button> */}
             <EditorMenuIconGroup
-                groupName="Paragraph and Headings"
-                groupId="paragraph-heading-controls"
+                groupName="Format Type"
+                groupId="format-type-controls"
             >
                 <EditorMenuIcon
                     onClick={() => editor.chain().focus().setParagraph().run()}
@@ -124,6 +109,20 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     iconSize={ICON_SIZE}
                     tooltipContent="Paragraph"
                 />
+                <EditorMenuIcon
+                    onClick={() =>
+                        editor.chain().focus().toggleCodeBlock().run()
+                    }
+                    Icon="codeSquare"
+                    active={editorState.isCodeBlock}
+                    iconSize={ICON_SIZE}
+                    tooltipContent="Code block"
+                />
+            </EditorMenuIconGroup>
+            <EditorMenuIconGroup
+                groupName="Headings"
+                groupId="heading-controls"
+            >
                 <EditorMenuIcon
                     onClick={() => editor.chain().focus().setHardBreak().run()}
                     Icon="textWrap"

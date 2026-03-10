@@ -13,11 +13,53 @@ body,
 
 /* Tailwind base layer is used; tokens and custom utilities will be added to `styles/` when T007 runs */
 .tiptap {
+    :first-child {
+        @apply mt-0;
+    }
     p {
         @apply my-4 first:mt-0 last:mb-0 text-base leading-relaxed;
     }
 
     h1 {
-        @apply text-3xl font-bold mt-8 mb-4 first:mt-0 last:mb-0;
+        @apply text-5xl font-bold mt-8 mb-4 first:mt-0 last:mb-0;
+    }
+
+    h2 {
+        @apply text-4xl font-bold mt-6 mb-3 first:mt-0 last:mb-0;
+    }
+
+    h3 {
+        @apply text-3xl font-bold mt-4 mb-2 first:mt-0 last:mb-0;
+    }
+
+    h4 {
+        @apply text-2xl font-bold mt-3 mb-1 first:mt-0 last:mb-0;
+    }
+
+    h5 {
+        @apply text-xl font-bold mt-2 mb-1 first:mt-0 last:mb-0;
+    }
+
+    h6 {
+        @apply text-lg font-bold mt-2 mb-1 first:mt-0 last:mb-0;
+    }
+
+    blockquote {
+        @apply border-l-4 border-gray-300 pl-4 italic my-4 text-red-400;
+    }
+
+    ul {
+        @apply list-disc list-inside inline;
+
+        li p {
+            @apply inline;
+        }
+    }
+    ol {
+        @apply list-decimal list-inside inline;
+
+        li p {
+            @apply inline;
+        }
     }
 }

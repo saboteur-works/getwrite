@@ -10,6 +10,7 @@ import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import Blockquote from "@tiptap/extension-blockquote";
+import { BulletList, ListItem } from "@tiptap/extension-list";
 
 export interface TipTapEditorProps {
     value?: Content;
@@ -17,7 +18,7 @@ export interface TipTapEditorProps {
     id?: string;
     readonly?: boolean;
 }
-const extensions = [StarterKit, TextStyleKit, Blockquote];
+const extensions = [StarterKit, TextStyleKit, Blockquote, BulletList, ListItem];
 export default function TipTapEditor({
     value = "",
     onChange,
