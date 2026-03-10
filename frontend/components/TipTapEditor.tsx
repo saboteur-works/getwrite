@@ -44,6 +44,14 @@ export default function TipTapEditor({
         // avoid SSR hydration mismatches by explicitly opting out of
         // immediate render on the server
         immediatelyRender: false,
+        editorProps: {
+            attributes: {
+                // Use focus:outline-none to remove the default browser outline
+                // and optionally focus:ring-0 to remove the ring added by
+                // the Tailwind CSS forms plugin (if used)
+                class: "focus:outline-none focus:ring-0 mx-4",
+            },
+        },
     });
 
     useEffect(() => {
@@ -73,10 +81,13 @@ export default function TipTapEditor({
 
     return (
         <EditorContext.Provider value={{ editor }}>
-            <div className="prose max-w-none">
-                <div className="flex"></div>
+            <div className="prose max-w-none border">
                 <MenuBar editor={editor} />
-                <EditorContent editor={editor} id={id} />
+                <EditorContent
+                    editor={editor}
+                    id={id}
+                    className="h-[calc(100vh-20rem)] overflow-auto"
+                />
             </div>
         </EditorContext.Provider>
     );

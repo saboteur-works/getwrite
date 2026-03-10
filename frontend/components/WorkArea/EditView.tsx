@@ -103,7 +103,7 @@ export default function EditView({
     const lastSaved = React.useMemo(() => new Date().toLocaleString(), []);
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col">
             <div className="flex-1 overflow-auto p-4">
                 <TipTapEditor
                     id="editview-editor"
