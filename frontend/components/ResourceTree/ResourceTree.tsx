@@ -370,12 +370,48 @@ export default function ResourceTree({
                 ...items.map((i) => i.getId()),
             );
 
-            items.forEach((item, idx) => {
-                if (item.isFolder()) {
+            const updatedFolderOrder = items
+                .filter((item) => item.isFolder())
+                .map((item, idx) => {
                     const newFolderId =
                         target.item.getId() === "root"
                             ? null
                             : target.item.getId();
+                    return {
+                        id: item.getId(),
+                        orderIndex: newIndex! + idx,
+                        folderId: newFolderId,
+                    } as Partial<Folder> & { id: string; orderIndex: number };
+                });
+            const updatedResourceOrder = items
+                .filter((item) => !item.isFolder())
+                .map((item, idx) => {
+                    return {
+                        id: item.getId(),
+                        orderIndex: newIndex! + idx,
+                        folderId:
+                            target.item.getId() === "root"
+                                ? null
+                                : target.item.getId(),
+                    } as Partial<AnyResource> & {
+                        id: string;
+                        orderIndex: number;
+                    };
+                });
+
+            dispatch(
+                persistReorder({
+                    projectId: currentProject.id,
+                    projectRoot: currentProject.rootPath,
+                    folderOrder: updatedFolderOrder,
+                    resourceOrder: updatedResourceOrder,
+                }),
+            );
+
+            const newFolderId =
+                target.item.getId() === "root" ? null : target.item.getId();
+            items.forEach((item, idx) => {
+                if (item.isFolder()) {
                     dispatch(
                         updateFolder({
                             id: item.getId(),
@@ -384,47 +420,13 @@ export default function ResourceTree({
                             orderIndex: idx,
                         } as Folder),
                     );
-                    dispatch(
-                        persistReorder({
-                            projectId: currentProject.id,
-                            projectRoot: currentProject.rootPath,
-                            folderOrder: [],
-                            resourceOrder: [
-                                {
-                                    id: item.getId(),
-                                    orderIndex: idx ?? 0,
-                                    folderId: newFolderId,
-                                },
-                            ],
-                        }),
-                    );
                 } else {
                     dispatch(
                         updateResource({
                             id: item.getId(),
-                            folderId:
-                                target.item.getId() === "root"
-                                    ? null
-                                    : target.item.getId(),
+                            folderId: newFolderId,
                             orderIndex: idx,
                         } as AnyResource),
-                    );
-                    dispatch(
-                        persistReorder({
-                            projectId: currentProject.id,
-                            projectRoot: currentProject.rootPath,
-                            folderOrder: [],
-                            resourceOrder: [
-                                {
-                                    id: item.getId(),
-                                    orderIndex: idx ?? 0,
-                                    folderId:
-                                        target.item.getId() === "root"
-                                            ? null
-                                            : target.item.getId(),
-                                },
-                            ],
-                        }),
                     );
                 }
             });
