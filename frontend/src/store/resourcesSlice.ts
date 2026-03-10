@@ -25,12 +25,12 @@ export const persistReorder = createAsyncThunk(
         projectRoot: string;
         folderOrder: Array<{
             id: string;
-            orderIndex: number;
+            orderIndex?: number;
             folderId?: string | null;
         }>;
         resourceOrder: Array<{
             id: string;
-            orderIndex: number;
+            orderIndex?: number;
             folderId?: string | null;
         }>;
     }) => {
@@ -83,6 +83,22 @@ const resourcesSlice = createSlice({
             }
             return state;
         },
+        updateResources(
+            state,
+            action: PayloadAction<Array<Partial<AnyResource> & { id: string }>>,
+        ) {
+            const resourceMap = new Map(state.resources.map((r) => [r.id, r]));
+            for (const update of action.payload) {
+                if (resourceMap.has(update.id)) {
+                    resourceMap.set(update.id, {
+                        ...resourceMap.get(update.id)!,
+                        ...update,
+                    });
+                }
+            }
+            state.resources = Array.from(resourceMap.values());
+            return state;
+        },
         updateFolder(
             state,
             action: PayloadAction<Partial<Folder> & { id: string }>,
@@ -98,6 +114,22 @@ const resourcesSlice = createSlice({
             }
             return state;
         },
+        updateFolders(
+            state,
+            action: PayloadAction<Array<Partial<Folder> & { id: string }>>,
+        ) {
+            const folderMap = new Map(state.folders.map((r) => [r.id, r]));
+            for (const update of action.payload) {
+                if (folderMap.has(update.id)) {
+                    folderMap.set(update.id, {
+                        ...folderMap.get(update.id)!,
+                        ...update,
+                    });
+                }
+            }
+            state.folders = Array.from(folderMap.values());
+            return state;
+        },
     },
 });
 
@@ -108,6 +140,8 @@ export const {
     updateFolder,
     addResource,
     setFolders,
+    updateResources,
+    updateFolders,
 } = resourcesSlice.actions;
 export default resourcesSlice.reducer;
 
