@@ -14,6 +14,7 @@ import { BulletList, ListItem } from "@tiptap/extension-list";
 import CodeBlock from "@tiptap/extension-code-block";
 import Highlight from "@tiptap/extension-highlight";
 import UniqueID from "@tiptap/extension-unique-id";
+import { Placeholder, Selection } from "@tiptap/extensions";
 
 export interface TipTapEditorProps {
     value?: Content;
@@ -35,6 +36,10 @@ const extensions = [
     UniqueID.configure({
         types: ["paragraph", "heading", "blockquote", "codeBlock"],
     }),
+    Placeholder.configure({
+        placeholder: "Start writing here...",
+    }),
+    Selection,
 ];
 
 export default function TipTapEditor({

@@ -74,4 +74,8 @@ body,
             @apply bg-inherit text-sm;
         }
     }
+
+    .selection {
+        @apply border;
+    }
 }
