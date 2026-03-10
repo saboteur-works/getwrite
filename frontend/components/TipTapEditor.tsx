@@ -11,6 +11,8 @@ import { MenuBar } from "./Editor/MenuBar/MenuBar";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import Blockquote from "@tiptap/extension-blockquote";
 import { BulletList, ListItem } from "@tiptap/extension-list";
+import CodeBlock from "@tiptap/extension-code-block";
+import Highlight from "@tiptap/extension-highlight";
 
 export interface TipTapEditorProps {
     value?: Content;
@@ -18,7 +20,19 @@ export interface TipTapEditorProps {
     id?: string;
     readonly?: boolean;
 }
-const extensions = [StarterKit, TextStyleKit, Blockquote, BulletList, ListItem];
+
+const extensions = [
+    StarterKit,
+    TextStyleKit,
+    Blockquote,
+    BulletList,
+    ListItem,
+    Highlight,
+    CodeBlock.configure({
+        enableTabIndentation: true,
+    }),
+];
+
 export default function TipTapEditor({
     value = "",
     onChange,

@@ -55,11 +55,23 @@ body,
             @apply inline;
         }
     }
+
     ol {
         @apply list-decimal list-inside inline;
 
         li p {
             @apply inline;
+        }
+    }
+    code {
+        @apply bg-gray-100 px-1 py-0.5 rounded text-sm font-mono;
+    }
+
+    pre {
+        @apply bg-gray-100 p-4 rounded overflow-x-auto my-4;
+
+        code {
+            @apply bg-inherit text-sm;
         }
     }
 }

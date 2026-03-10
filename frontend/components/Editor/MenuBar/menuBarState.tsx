@@ -38,6 +38,10 @@ export function menuBarStateSelector(ctx: EditorStateSnapshot<Editor>) {
         // History
         canUndo: ctx.editor.can().chain().undo().run() ?? false,
         canRedo: ctx.editor.can().chain().redo().run() ?? false,
+
+        // Highlight
+        isHighlight: ctx.editor.isActive("highlight") ?? false,
+        canHighlight: ctx.editor.can().chain().toggleHighlight().run() ?? false,
     };
 }
 

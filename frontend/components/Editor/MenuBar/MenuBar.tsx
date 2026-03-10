@@ -237,6 +237,20 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     tooltipContent="Horizontal rule"
                 />
             </EditorMenuIconGroup>
+            <EditorMenuIconGroup
+                groupName="Highlight"
+                groupId="highlight-controls"
+            >
+                <EditorMenuIcon
+                    onClick={() =>
+                        editor.chain().focus().toggleHighlight().run()
+                    }
+                    active={editor.isActive("highlight")}
+                    Icon="highlight"
+                    iconSize={ICON_SIZE}
+                    tooltipContent="Highlight"
+                />
+            </EditorMenuIconGroup>
         </div>
     );
 };
