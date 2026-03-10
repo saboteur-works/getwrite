@@ -9,6 +9,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
 import { TextStyleKit } from "@tiptap/extension-text-style";
+import Blockquote from "@tiptap/extension-blockquote";
 
 export interface TipTapEditorProps {
     value?: Content;
@@ -16,7 +17,7 @@ export interface TipTapEditorProps {
     id?: string;
     readonly?: boolean;
 }
-const extensions = [StarterKit, TextStyleKit];
+const extensions = [StarterKit, TextStyleKit, Blockquote];
 export default function TipTapEditor({
     value = "",
     onChange,
@@ -86,7 +87,7 @@ export default function TipTapEditor({
                 <EditorContent
                     editor={editor}
                     id={id}
-                    className="h-[calc(100vh-20rem)] overflow-auto"
+                    className="tiptap h-[calc(100vh-20rem)] overflow-auto"
                 />
             </div>
         </EditorContext.Provider>
