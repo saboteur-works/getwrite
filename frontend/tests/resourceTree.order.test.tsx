@@ -39,8 +39,7 @@ describe("ResourceTree ordering and defaults", () => {
             const orig = created.resources.find((c: any) => c.id === r.id);
             return {
                 ...r,
-                title: orig?.title ?? orig?.name,
-                name: orig?.name ?? orig?.title,
+                name: orig?.name,
             };
         });
 
