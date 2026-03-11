@@ -22,12 +22,21 @@ const folders: Folder[] = [
         createdAt: new Date().toISOString(),
         parentId: null,
     },
+    {
+        id: "folder-2",
+        name: "Folder 2",
+        orderIndex: 1,
+        type: "folder",
+        createdAt: new Date().toISOString(),
+        parentId: null,
+    },
 ];
 
 const resources: AnyResource[] = [
     {
         id: "res-1",
         name: "Resource 1",
+        orderIndex: 0,
         type: "text",
         folderId: "folder-1",
         createdAt: new Date().toISOString(),
@@ -35,6 +44,7 @@ const resources: AnyResource[] = [
     {
         id: "res-2",
         name: "Resource 2",
+        orderIndex: 1,
         type: "image",
         folderId: "folder-1",
         createdAt: new Date().toISOString(),
@@ -42,7 +52,17 @@ const resources: AnyResource[] = [
     {
         id: "res-3",
         name: "Resource 3",
-        type: "audio",
+        orderIndex: 2,
+        type: "text",
+        folderId: null,
+        createdAt: new Date().toISOString(),
+    },
+    {
+        id: "res-4",
+        name: "Resource 4",
+        orderIndex: 0,
+        type: "text",
+        folderId: "folder-2",
         createdAt: new Date().toISOString(),
     },
 ];
@@ -68,6 +88,7 @@ const mockStore = configureStore({
         resources: {
             selectedResourceId: null,
             resources,
+            folders,
         },
     },
 });

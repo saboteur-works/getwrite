@@ -28,7 +28,6 @@ export default function ManageProjectMenu({
     resources = [],
 }: ManageProjectMenuProps): JSX.Element {
     const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
-    console.log(projectId);
     const [open, setOpen] = useState<boolean>(false);
     const [editing, setEditing] = useState<boolean>(false);
     const [name, setName] = useState<string>(projectName);

@@ -3,14 +3,13 @@ import TipTapEditor from "../TipTapEditor";
 import { TipTapDocument } from "../../src/lib/models";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
+import { selectResource } from "../../src/store/resourcesSlice";
 
 export interface EditViewProps {
     /** Initial editor content (HTML or plain text) */
     initialContent?: string;
     /** Called when content changes */
     onChange?: (content: string, doc: TipTapDocument) => void;
-    /** ID of the resource being edited, used to fetch content from the backend */
-    resourceId?: string;
 }
 
 /**
@@ -23,8 +22,11 @@ export interface EditViewProps {
 export default function EditView({
     initialContent = "",
     onChange,
-    resourceId,
 }: EditViewProps): JSX.Element {
+    const selectedResource = useAppSelector(
+        (state) => selectResource(state.resources),
+        shallowEqual,
+    );
     const [content, setContent] = React.useState<string>(initialContent);
     const [tipTapDoc, setTipTapDoc] = React.useState<TipTapDocument | null>(
         null,
@@ -39,26 +41,28 @@ export default function EditView({
     );
 
     const fetchResourceContent = async () => {
-        const response = await fetch("/api/project-resources", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                projectPath: project?.rootPath,
-                resourceId: resourceId,
-            }),
-        });
-        const data = await response.json();
-        return data;
+        if (selectedResource) {
+            const response = await fetch("/api/project-resources", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    projectPath: project?.rootPath,
+                    resourceId: selectedResource.id,
+                }),
+            });
+            const data = await response.json();
+            return data;
+        }
     };
 
     // On mount or when resourceId / initialContent changes, fetch the resource
     // content if a resource ID is provided. If no resourceId is provided, keep
     // the `initialContent` prop so tests and consumers can render initial text.
     useEffect(() => {
-        console.log("fetching resource content for", resourceId);
+        console.log("fetching resource content for", selectedResource);
         setContent(initialContent);
         setTipTapDoc(null);
-        if (resourceId) {
+        if (selectedResource) {
             fetchResourceContent().then((res) => {
                 // When loading TipTap content, we need to make sure the shape is valid before
                 // we set it.
@@ -79,7 +83,7 @@ export default function EditView({
                 }
             });
         }
-    }, [resourceId, initialContent]);
+    }, [selectedResource, initialContent]);
 
     const handleChange = (next: string, doc: TipTapDocument) => {
         setContent(next);
@@ -99,8 +103,8 @@ export default function EditView({
     const lastSaved = React.useMemo(() => new Date().toLocaleString(), []);
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex-1 overflow-auto p-4">
+        <div className="flex flex-col">
+            <div className="flex overflow-x-scroll p-2 ">
                 <TipTapEditor
                     id="editview-editor"
                     value={tipTapDoc ?? content} // prefer loaded doc, fallback to initial/plain content

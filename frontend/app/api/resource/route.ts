@@ -13,14 +13,16 @@ export async function POST(req: Request) {
             projectPath: string;
             resourceData: CreateResourceOpts;
         };
-
         const resource = createResourceOfType(resourceData.type, resourceData);
-
         writeResourceToFile(projectPath, resource);
+
         return NextResponse.json({ success: true, resource });
     } catch (error) {
         return NextResponse.json(
-            { error: "Failed to save resource" },
+            {
+                error: "Failed to save resource",
+                details: (error as Error).message,
+            },
             { status: 500 },
         );
     }

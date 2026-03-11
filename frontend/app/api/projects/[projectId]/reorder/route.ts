@@ -34,10 +34,16 @@ export async function POST(
 ) {
     const projectId = (await params)["projectId"];
     const body = await req.json().catch(() => ({}));
-    const folderOrder: Array<{ id: string; orderIndex: number }> =
-        body.folderOrder ?? [];
-    const resourceOrder: Array<{ id: string; orderIndex: number }> =
-        body.resourceOrder ?? [];
+    const folderOrder: Array<{
+        id: string;
+        orderIndex: number;
+        folderId?: string | null;
+    }> = body.folderOrder ?? [];
+    const resourceOrder: Array<{
+        id: string;
+        orderIndex: number;
+        folderId?: string | null;
+    }> = body.resourceOrder ?? [];
     // locate projects directory (assume repo layout: frontend/ -> ../projects)
     const projectsDir = path.resolve(process.cwd(), "..", "projects");
     const projectRoot =
@@ -69,6 +75,7 @@ export async function POST(
                         const parsed = JSON.parse(raw) as any;
                         if (parsed && parsed.id === fo.id) {
                             parsed.orderIndex = fo.orderIndex;
+                            parsed.folderId = fo.folderId ?? null;
                             // write updated folder.json atomically
                             await fs.writeFile(
                                 folderJson,
@@ -101,7 +108,11 @@ export async function POST(
             const existing = await readSidecar(projectRoot, ro.id).catch(
                 () => null,
             );
-            const merged = { ...(existing ?? {}), orderIndex: ro.orderIndex };
+            const merged = {
+                ...(existing ?? {}),
+                orderIndex: ro.orderIndex,
+                folderId: ro.folderId ?? existing?.folderId ?? null,
+            };
             await writeSidecar(projectRoot, ro.id, merged);
         } catch (err) {
             // log and continue

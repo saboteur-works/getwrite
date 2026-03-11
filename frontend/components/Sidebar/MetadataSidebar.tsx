@@ -1,14 +1,13 @@
 import React from "react";
-import type { AnyResource } from "../../src/lib/models/types";
 import NotesInput from "./controls/NotesInput";
 import StatusSelector from "./controls/StatusSelector";
 import MultiSelectList from "./controls/MultiSelectList";
 import POVAutocomplete from "./controls/POVAutocomplete";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
+import { selectResource } from "../../src/store/resourcesSlice";
 
 export interface MetadataSidebarProps {
-    resource?: AnyResource;
     onChangeNotes?: (text: string) => void;
     onChangeStatus?: (status: string) => void;
     onChangeCharacters?: (chars: string[]) => void;
@@ -19,7 +18,6 @@ export interface MetadataSidebarProps {
 }
 
 export default function MetadataSidebar({
-    resource,
     onChangeNotes,
     onChangeStatus,
     onChangeCharacters,
@@ -28,6 +26,9 @@ export default function MetadataSidebar({
     onChangePOV,
     className = "",
 }: MetadataSidebarProps): JSX.Element {
+    const selectedResource = useAppSelector((state) =>
+        selectResource(state.resources),
+    );
     // get the character folder id from the project folders
     const characterList = useAppSelector((state) => {
         if (state.projects.selectedProjectId === null) return null;
@@ -70,32 +71,32 @@ export default function MetadataSidebar({
         }, []);
     });
     const [notes, setNotes] = React.useState<string>(
-        (resource?.metadata?.notes as any) ?? "",
+        (selectedResource?.metadata?.notes as any) ?? "",
     );
     const [status, setStatus] = React.useState<string>(
-        (resource?.metadata?.status as any) ?? "draft",
+        (selectedResource?.metadata?.status as any) ?? "draft",
     );
     const [characters, setCharacters] = React.useState<string[]>(
-        (resource?.metadata?.characters as any) ?? [],
+        (selectedResource?.metadata?.characters as any) ?? [],
     );
     const [locations, setLocations] = React.useState<string[]>(
-        (resource?.metadata?.locations as any) ?? [],
+        (selectedResource?.metadata?.locations as any) ?? [],
     );
     const [items, setItems] = React.useState<string[]>(
-        (resource?.metadata?.items as any) ?? [],
+        (selectedResource?.metadata?.items as any) ?? [],
     );
     const [pov, setPOV] = React.useState<string | null>(
-        (resource?.metadata?.pov as any) ?? null,
+        (selectedResource?.metadata?.pov as any) ?? null,
     );
 
     React.useEffect(() => {
-        setNotes((resource?.metadata?.notes as any) ?? "");
-        setStatus((resource?.metadata?.status as any) ?? "draft");
-        setCharacters((resource?.metadata?.characters as any) ?? []);
-        setLocations((resource?.metadata?.locations as any) ?? []);
-        setItems((resource?.metadata?.items as any) ?? []);
-        setPOV((resource?.metadata?.pov as any) ?? null);
-    }, [resource]);
+        setNotes((selectedResource?.metadata?.notes as any) ?? "");
+        setStatus((selectedResource?.metadata?.status as any) ?? "draft");
+        setCharacters((selectedResource?.metadata?.characters as any) ?? []);
+        setLocations((selectedResource?.metadata?.locations as any) ?? []);
+        setItems((selectedResource?.metadata?.items as any) ?? []);
+        setPOV((selectedResource?.metadata?.pov as any) ?? null);
+    }, [selectedResource]);
 
     // Fallback sample lists when metadata arrays are empty
     const sampleCharacters = characters.length ? characters : ["Alice", "Bob"];
@@ -105,8 +106,13 @@ export default function MetadataSidebar({
             className={`p-4 bg-white ${className}`}
             aria-label="metadata-sidebar"
         >
-            {resource?.type === "text" ? (
+            {selectedResource?.type === "text" ? (
                 <React.Fragment>
+                    <div className="mb-4">
+                        <h3 className="text-sm font-bold text-slate-700">
+                            {selectedResource.name}
+                        </h3>
+                    </div>
                     <div className="mb-6">
                         <h4 className="text-xs font-semibold text-slate-600 mb-2">
                             Notes
@@ -130,9 +136,9 @@ export default function MetadataSidebar({
                             value={status}
                             onChange={(s) => {
                                 const updated = {
-                                    ...resource,
+                                    ...selectedResource,
                                     metadata: {
-                                        ...resource?.metadata,
+                                        ...selectedResource?.metadata,
                                         status: s,
                                     },
                                 };

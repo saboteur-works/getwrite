@@ -107,6 +107,7 @@ export interface ResourceBase {
 export interface Folder extends ResourceBase {
     /** Parent folder UUID; null or undefined for top-level. */
     parentId?: UUID | null;
+    special?: boolean;
 }
 
 // Minimal TipTap AST-safe types used for editor persistence.

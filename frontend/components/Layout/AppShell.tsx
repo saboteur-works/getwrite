@@ -8,7 +8,7 @@ import type {
     Folder,
     TipTapDocument,
 } from "../../src/lib/models/types";
-import { useDispatch } from "react-redux";
+import { shallowEqual, useDispatch } from "react-redux";
 import {
     persistReorder,
     setProject,
@@ -16,7 +16,7 @@ import {
     removeResource,
 } from "../../src/store/projectsSlice";
 import type { AppDispatch } from "../../src/store/store";
-import ResourceTree from "../Tree/ResourceTree";
+import ResourceTree from "../ResourceTree/ResourceTree";
 import ConfirmDialog from "../common/ConfirmDialog";
 import CreateResourceModal from "../Tree/CreateResourceModal";
 import ExportPreviewModal from "../common/ExportPreviewModal";
@@ -31,6 +31,8 @@ import TimelineView from "../WorkArea/TimelineView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "./SearchBar";
 import debounce from "lodash/debounce";
+import useAppSelector from "../../src/store/hooks";
+import { selectResource } from "../../src/store/resourcesSlice";
 
 /**
  * Simple three-column shell used in the app and Storybook:
@@ -105,6 +107,10 @@ export default function AppShell({
     const combined = React.useMemo(() => {
         return [...(resources ?? []), ...(folders ?? [])];
     }, [resources, folders]);
+    const selectedResource = useAppSelector(
+        (state) => selectResource(state.resources),
+        shallowEqual,
+    );
 
     useEffect(() => {
         const onMouseMove = (e: MouseEvent) => {
@@ -145,10 +151,6 @@ export default function AppShell({
             document.body.style.cursor = "";
         };
     }, []);
-    const selectedResource =
-        selectedResourceId && resources
-            ? resources.find((r) => r.id === selectedResourceId)
-            : undefined;
 
     const getResourceName = (r: AnyResource | any) =>
         (r && ((r as any).name ?? (r as any).title ?? "")) || "";
@@ -368,15 +370,8 @@ export default function AppShell({
                     <div className="mt-0">
                         {project ? (
                             <ResourceTree
-                                projectId={project.id}
-                                selectedId={selectedResourceId ?? undefined}
-                                onSelect={onResourceSelect}
+                                debug={false}
                                 onResourceAction={handleResourceAction}
-                                reorderable={true}
-                                onReorder={(ids) => {
-                                    // persist ordering when adapter view is present
-                                    handlePersistReorder(ids);
-                                }}
                             />
                         ) : (
                             <div className="space-y-2">
@@ -513,7 +508,7 @@ export default function AppShell({
                                 onChange={setView}
                                 disabledViews={(() => {
                                     const disabled: ViewName[] = [];
-                                    if (!selectedResourceId) {
+                                    if (!selectedResource) {
                                         disabled.push("edit", "diff");
                                     }
                                     if (selectedResource?.type !== "text") {
@@ -530,9 +525,7 @@ export default function AppShell({
                             </div>
                         </div>
                         {(() => {
-                            const selected = combined.find(
-                                (r) => r.id === selectedResourceId,
-                            );
+                            const selected = selectedResource;
 
                             if (selected) {
                                 return (
@@ -544,20 +537,12 @@ export default function AppShell({
                         })()}
                     </div>
                 ) : null}
-                <div className="max-w-7xl mx-auto">
+                <div className="max-w-full mx-auto">
                     <div className="bg-white rounded-xl shadow-sm p-6 min-h-[400px]">
                         {/* If a resource is selected, render the chosen view; otherwise render children (StartPage or prompt) */}
-                        {selectedResourceId && combined
+                        {selectedResource && combined
                             ? (() => {
-                                  const selected = combined.find(
-                                      (r) => r.id === selectedResourceId,
-                                  );
-                                  console.log(
-                                      "[INST] AppShell::selcted",
-                                      selected,
-                                  );
-
-                                  if (!selected)
+                                  if (!selectedResource)
                                       return (
                                           <div>
                                               <h2 className="text-2xl font-semibold">
@@ -571,7 +556,9 @@ export default function AppShell({
 
                                   switch (view) {
                                       case "edit":
-                                          if (selected.type !== "text") {
+                                          if (
+                                              selectedResource.type !== "text"
+                                          ) {
                                               return (
                                                   <div>
                                                       <h2 className="text-2xl font-semibold">
@@ -588,9 +575,8 @@ export default function AppShell({
                                               <EditView
                                                   onChange={handlerEditorChange}
                                                   initialContent={getResourceContent(
-                                                      selected,
+                                                      selectedResource,
                                                   )}
-                                                  resourceId={selected.id}
                                               />
                                           );
                                       case "diff":
@@ -598,7 +584,7 @@ export default function AppShell({
                                               <DiffView
                                                   leftContent=""
                                                   rightContent={getResourceContent(
-                                                      selected,
+                                                      selectedResource,
                                                   )}
                                               />
                                           );
@@ -660,11 +646,10 @@ export default function AppShell({
                     </div>
 
                     <aside
-                        className="hidden lg:block bg-white border-l p-4"
+                        className="hidden lg:block lg:min-w-1/5 bg-white border-l p-4"
                         style={{ width: rightWidth }}
                     >
                         <MetadataSidebar
-                            resource={selectedResource}
                             onChangeNotes={(text) =>
                                 selectedResource &&
                                 onChangeNotes?.(text, selectedResource.id)

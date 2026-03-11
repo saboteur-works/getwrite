@@ -55,6 +55,7 @@ export async function readSidecar(
             "code" in err &&
             (err as any).code === "ENOENT"
         ) {
+            console.warn("sidecar not found for", resourceId, "at", filePath);
             return null;
         }
         throw err;
