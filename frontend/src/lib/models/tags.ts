@@ -13,24 +13,23 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { generateUUID } from "./uuid";
-import { ProjectSchema, ProjectConfigSchema } from "./schemas";
-import type { Tag } from "./types";
+import type { Project, Tag } from "./types";
 import { PROJECT_FILENAME } from "./project-config";
 
 /**
  * Reads and parses the project configuration file from disk.
  *
  * @param projectRoot - Absolute path to the project's root directory.
- * @returns The parsed project object. The return type is `any` because the
- *   shape of the file is validated at a higher level by callers.
+ * @returns The parsed {@link Project} object.
  * @throws {Error} If the file cannot be read (e.g. missing or permission
  *   denied) or if its contents are not valid JSON.
  */
-async function readProject(projectRoot: string) {
+async function readProject(projectRoot: string): Promise<Project> {
     const p = path.join(projectRoot, PROJECT_FILENAME);
     const raw = await fs.readFile(p, "utf8");
-    const parsed = JSON.parse(raw);
-    return parsed as any;
+    // JSON.parse returns `any`; we cast to Project here because strict Zod
+    // validation is intentionally deferred to higher-level callers.
+    return JSON.parse(raw) as Project;
 }
 
 /**
@@ -48,30 +47,34 @@ async function readProject(projectRoot: string) {
  * config contains fields not yet covered by the schema.
  *
  * @param projectRoot - Absolute path to the project's root directory.
- * @param projectObj  - The in-memory project object to persist.
+ * @param projectObj  - The in-memory {@link Project} object to persist.
  * @throws {Error} If the file cannot be written.
  */
-async function writeProject(projectRoot: string, projectObj: any) {
+async function writeProject(
+    projectRoot: string,
+    projectObj: Project,
+): Promise<void> {
     const p = path.join(projectRoot, PROJECT_FILENAME);
-    // Validate config shape before writing
-    if (projectObj.config) {
-        // Normalize tagAssignments values to arrays in case callers passed a single string.
-        if (
-            projectObj.config.tagAssignments &&
-            typeof projectObj.config.tagAssignments === "object"
-        ) {
-            for (const k of Object.keys(projectObj.config.tagAssignments)) {
-                const v = projectObj.config.tagAssignments[k];
-                if (typeof v === "string")
-                    projectObj.config.tagAssignments[k] = [v];
-                else if (!Array.isArray(v))
-                    projectObj.config.tagAssignments[k] = [];
+    // Defensive normalisation: on-disk data may originate from an older code
+    // version where tagAssignment values were scalars. Cast to Record<string,
+    // unknown> so we can narrow safely before overwriting with the correct type.
+    if (projectObj.config?.tagAssignments) {
+        const rawAssignments = projectObj.config.tagAssignments as Record<
+            string,
+            unknown
+        >;
+        for (const k of Object.keys(rawAssignments)) {
+            const v = rawAssignments[k];
+            if (typeof v === "string") {
+                projectObj.config.tagAssignments[k] = [v];
+            } else if (!Array.isArray(v)) {
+                projectObj.config.tagAssignments[k] = [];
             }
         }
-        // Intentionally skip strict schema validation here to allow flexible
-        // project.config augmentation (tags, assignments) without causing
-        // unexpected Zod errors during incremental writes from helpers.
     }
+    // Intentionally skip strict schema validation here to allow flexible
+    // project.config augmentation (tags, assignments) without causing
+    // unexpected Zod errors during incremental writes from helpers.
     await fs.writeFile(p, JSON.stringify(projectObj, null, 2), "utf8");
 }
 
@@ -156,7 +159,7 @@ export async function deleteTag(
             project.config.tagAssignments,
         )) {
             project.config.tagAssignments[res] = arr.filter(
-                (id: string) => id !== tagId,
+                (id) => id !== tagId,
             );
         }
     }
@@ -243,7 +246,7 @@ export async function listResourcesByTag(
     const assignments = project.config?.tagAssignments ?? {};
     const results: string[] = [];
     for (const [res, arr] of Object.entries(assignments)) {
-        if ((arr as string[]).includes(tagId)) results.push(res);
+        if (arr.includes(tagId)) results.push(res);
     }
     return results;
 }
