@@ -73,8 +73,11 @@ export interface ProjectTypeSpecFolder {
  * - `template` contains initial text content for text resources.
  */
 export interface ProjectTypeSpecResource {
-    /** Folder name (not slug) to place the resource under. */
-    folder: string;
+    /**
+     * Optional folder name (not slug) to place the resource under.
+     * When omitted, callers should default placement to the first folder.
+     */
+    folder?: string;
     /** Display name for the resource. */
     name: string;
     /** Resource type; aligns with runtime `ResourceType`. */
@@ -172,18 +175,22 @@ export async function createProjectFromType(options: {
     let specObj: ProjectTypeSpec;
     if (typeof spec === "string") {
         const res = await validateProjectTypeFile(spec);
-        if (!res.success)
+        if (!res.success || !("value" in res))
             throw new Error(
                 `Invalid project-type spec file: ${JSON.stringify(res.errors)}`,
             );
-        specObj = res.value as ProjectTypeSpec;
+        if (!res.value)
+            throw new Error("Invalid project-type spec file: missing value");
+        specObj = res.value;
     } else {
         const res = validateProjectType(spec);
-        if (!res.success)
+        if (!res.success || !("value" in res))
             throw new Error(
                 `Invalid project-type spec object: ${JSON.stringify(res.errors)}`,
             );
-        specObj = res.value as ProjectTypeSpec;
+        if (!res.value)
+            throw new Error("Invalid project-type spec object: missing value");
+        specObj = res.value;
     }
 
     // Ensure project root exists
