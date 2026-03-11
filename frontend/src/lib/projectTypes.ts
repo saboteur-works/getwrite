@@ -1,3 +1,12 @@
+/**
+ * @module projectTypes
+ *
+ * Loads, validates, caches, and queries project-type template specifications.
+ *
+ * Project-type templates are JSON files stored under
+ * `getwrite-config/templates/project-types` (with a fallback path for runtime
+ * contexts where the workspace root is offset).
+ */
 import path from "node:path";
 import { readdir, readFile } from "./models/io";
 import {
@@ -6,20 +15,32 @@ import {
     ProjectTypeSpec,
 } from "./models/schemas";
 
+/**
+ * Metadata plus parsed content for one project-type template file.
+ */
 export type ProjectTypeEntry = {
+    /** Validated project-type specification from template JSON. */
     spec: ProjectTypeSpec;
+    /** Path to the source template JSON file. */
     filePath: string;
+    /** File name (basename) of the template JSON file. */
     fileName: string;
 };
 
-// Candidate template directories. Some runtime contexts (tests vs. app) resolve
-// the workspace root differently — prefer the local `getwrite-config/...`
-// path but fall back to `../getwrite-config/...` when necessary.
+/**
+ * Primary template directory location for app/runtime contexts where the
+ * current working directory is the workspace root.
+ */
 const DEFAULT_TEMPLATES_DIR = path.join(
     "getwrite-config",
     "templates",
     "project-types",
 );
+
+/**
+ * Fallback template directory location for contexts (for example tests) where
+ * relative path resolution is offset by one directory.
+ */
 const ALT_TEMPLATES_DIR = path.join(
     "..",
     "getwrite-config",
@@ -27,6 +48,18 @@ const ALT_TEMPLATES_DIR = path.join(
     "project-types",
 );
 
+/**
+ * Resolves the first accessible project-type templates directory.
+ *
+ * Resolution order:
+ * 1. `DEFAULT_TEMPLATES_DIR`
+ * 2. `ALT_TEMPLATES_DIR`
+ *
+ * If neither directory is readable, returns `DEFAULT_TEMPLATES_DIR` so callers
+ * can handle missing-directory behavior in one place.
+ *
+ * @returns Relative path to the selected templates directory.
+ */
 async function resolveTemplatesDir(): Promise<string> {
     // Try the default first, then the alt. Use the same `readdir` helper
     // to preserve any virtual/fs semantics used in tests.
@@ -46,6 +79,23 @@ async function resolveTemplatesDir(): Promise<string> {
 
 let _cache: ProjectTypeEntry[] | null = null;
 
+/**
+ * Lists available project-type templates from disk.
+ *
+ * Behavior:
+ * - Uses an in-memory cache unless `forceRefresh` is true.
+ * - Reads template directory entries and keeps only `.json` files.
+ * - Parses each file and validates content with `validateProjectType`.
+ * - Skips invalid/unreadable JSON files.
+ * - Returns `[]` if the directory is missing or unreadable.
+ *
+ * @param forceRefresh - When true, bypasses in-memory cache and rescans disk.
+ * @returns Validated template entries.
+ *
+ * @example
+ * const templates = await listProjectTypes();
+ * const freshTemplates = await listProjectTypes(true);
+ */
 export async function listProjectTypes(
     forceRefresh = false,
 ): Promise<ProjectTypeEntry[]> {
@@ -67,7 +117,7 @@ export async function listProjectTypes(
                 const raw = await readFile(fp, "utf8");
                 const parsed = JSON.parse(raw);
                 const res = validateProjectType(parsed);
-                if (res.success) {
+                if (res.success && "value" in res && res.value) {
                     results.push({
                         spec: res.value,
                         filePath: fp,
@@ -89,6 +139,16 @@ export async function listProjectTypes(
     }
 }
 
+/**
+ * Finds a single project-type template by its `spec.id`.
+ *
+ * @param id - Project-type identifier to find.
+ * @param forceRefresh - When true, rescans templates before lookup.
+ * @returns Matching template entry, or `undefined` when not found.
+ *
+ * @example
+ * const novel = await getProjectType("novel");
+ */
 export async function getProjectType(
     id: string,
     forceRefresh = false,
@@ -97,8 +157,17 @@ export async function getProjectType(
     return list.find((l) => l.spec.id === id);
 }
 
+/**
+ * Clears the in-memory project-type template cache.
+ *
+ * Use this when templates may have changed on disk and callers need to force
+ * subsequent reads to hit filesystem state.
+ */
 export function clearProjectTypeCache() {
     _cache = null;
 }
 
+/**
+ * Convenience default export for grouped project-type helper access.
+ */
 export default { listProjectTypes, getProjectType, clearProjectTypeCache };
