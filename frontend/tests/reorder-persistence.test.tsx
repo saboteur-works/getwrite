@@ -4,13 +4,13 @@ import { describe, it, expect, vi } from "vitest";
 import AppShell from "../components/Layout/AppShell";
 import { makeStore } from "../src/store/store";
 import { Provider } from "react-redux";
-import { setProject } from "../src/store/projectsSlice";
+import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { createProjectFromType } from "../src/lib/models/project-creator";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { buildProjectView } from "../src/lib/models/project-view";
 import { readSidecar, writeSidecar } from "../src/lib/models/sidecar";
+import { setFolders, setResources } from "../src/store/resourcesSlice";
 
 describe("Reorder persistence integration", () => {
     it("persists folder.json and resource sidecar orderIndex after drag/drop", async () => {
@@ -30,13 +30,6 @@ describe("Reorder persistence integration", () => {
         });
 
         console.log("[test] created project", created.project.id);
-
-        const view = buildProjectView({
-            project: created.project,
-            folders: created.folders,
-            resources: created.resources,
-        });
-
         // Use canonical `created.resources` (not the adapter's flat `view.resources`)
         // to avoid duplicating folder entries in the UI tree (folder entries are
         // represented separately via `folders`). Passing the adapter's `view.resources`
@@ -122,10 +115,14 @@ describe("Reorder persistence integration", () => {
             setProject({
                 id: projectForUI.id,
                 name: projectForUI.name,
+                rootPath: projectForUI.rootPath ?? "",
                 folders: projectForUI.folders,
                 resources: projectForUI.resources,
             } as any),
         );
+        testStore.dispatch(setSelectedProjectId(projectForUI.id));
+        testStore.dispatch(setFolders(created.folders as any));
+        testStore.dispatch(setResources(created.resources as any));
 
         render(
             <Provider store={testStore}>
@@ -141,7 +138,9 @@ describe("Reorder persistence integration", () => {
 
         // Expand the first folder if present and locate treeitems
         console.log("[test] waiting for Resource tree");
-        const tree = await screen.findByLabelText("Resource tree");
+        const tree = await screen.findByRole("tree", {
+            name: "Resource tree",
+        });
         console.log("[test] found Resource tree");
         const treeItems = Array.from(
             tree.querySelectorAll('[role="treeitem"]'),
@@ -159,6 +158,9 @@ describe("Reorder persistence integration", () => {
             },
             getData(key: string) {
                 return this.data[key];
+            },
+            setDragImage() {
+                return undefined;
             },
         };
 

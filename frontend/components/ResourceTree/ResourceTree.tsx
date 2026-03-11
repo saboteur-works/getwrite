@@ -499,6 +499,7 @@ export default function ResourceTree({
     return (
         <div
             {...tree.getContainerProps()}
+            aria-label="Resource tree"
             className="flex flex-col items-start mb-8"
         >
             {tree.getItems().map((item) => (
