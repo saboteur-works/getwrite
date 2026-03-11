@@ -1,8 +1,11 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { Provider } from "react-redux";
 import SearchBar from "../components/SearchBar/SearchBar";
 import type { AnyResource } from "../src/lib/models/types";
+import { makeStore } from "../src/store/store";
+import { setResources } from "../src/store/resourcesSlice";
 
 describe("SearchBar", () => {
     it("shows matches and calls onSelect when clicked", () => {
@@ -38,7 +41,13 @@ describe("SearchBar", () => {
         ];
 
         const onSelect = vi.fn();
-        render(<SearchBar onSelect={onSelect} />);
+        const testStore = makeStore();
+        testStore.dispatch(setResources(resources));
+        render(
+            <Provider store={testStore}>
+                <SearchBar onSelect={onSelect} />
+            </Provider>,
+        );
 
         const input = screen.getByLabelText(
             "resource-search",
