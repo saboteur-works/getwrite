@@ -5,7 +5,7 @@ import StartPage from "../components/Start/StartPage";
 import { Provider } from "react-redux";
 import { makeStore } from "../src/store/store";
 import { createTextResource } from "../src/lib/models/resource";
-
+import { test } from "vitest";
 test("StartPage renders projects and opens CreateProjectModal", async () => {
     const user = userEvent.setup();
     const now = new Date().toISOString();
@@ -16,7 +16,7 @@ test("StartPage renders projects and opens CreateProjectModal", async () => {
                 name: "Start Project 1",
                 createdAt: now,
                 updatedAt: now,
-                rootPath: null,
+                rootPath: "/tmp/proj_start_1",
             },
             resources: [
                 createTextResource({
@@ -33,7 +33,7 @@ test("StartPage renders projects and opens CreateProjectModal", async () => {
                 name: "Start Project 2",
                 createdAt: now,
                 updatedAt: now,
-                rootPath: null,
+                rootPath: "/tmp/proj_start_2",
             },
             resources: [
                 createTextResource({
