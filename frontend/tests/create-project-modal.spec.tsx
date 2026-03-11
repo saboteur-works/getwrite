@@ -15,8 +15,17 @@ describe("Create project flow (integration) - modal calls API and adds project",
         // ordering races with StartPage initial requests.
         const fetchSpy = vi
             .spyOn(globalThis as any, "fetch")
-            .mockImplementation((input: RequestInfo, init?: RequestInit) => {
-                const url = typeof input === "string" ? input : input.url;
+            .mockImplementation((...args: unknown[]) => {
+                const [input, init] = args as [
+                    RequestInfo | URL,
+                    RequestInit | undefined,
+                ];
+                const url =
+                    typeof input === "string"
+                        ? input
+                        : input instanceof URL
+                          ? input.toString()
+                          : input.url;
                 // initial projects list on mount
                 if (
                     url.endsWith("/api/projects") &&
@@ -107,12 +116,13 @@ describe("Create project flow (integration) - modal calls API and adds project",
 
         // Assert POST called with expected payload
         const postCall = fetchSpy.mock.calls[1];
+        const postInit = postCall?.[1] as RequestInit | undefined;
         expect(postCall[0]).toBe("/api/projects");
-        expect(postCall[1]).toMatchObject({
+        expect(postInit).toMatchObject({
             method: "POST",
             headers: { "Content-Type": "application/json" },
         });
-        expect(postCall[1].body).toBe(
+        expect(postInit?.body).toBe(
             JSON.stringify({ name: "My Novel", projectType: "novel" }),
         );
 
