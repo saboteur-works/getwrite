@@ -34,7 +34,12 @@ describe("ResourceTree", () => {
         // create isolated store for this test and register project
         const testStore = makeStore();
         testStore.dispatch(
-            setProject({ id: project.id, name: project.name, resources }),
+            setProject({
+                id: project.id,
+                name: project.name,
+                rootPath: project.rootPath ?? "",
+                resources,
+            }),
         );
         render(
             <Provider store={testStore}>
