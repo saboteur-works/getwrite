@@ -1,6 +1,6 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import SearchBar from "../../components/Layout/SearchBar";
+import SearchBar from "../../components/SearchBar/SearchBar";
 import type { AnyResource } from "../../src/lib/models/types";
 
 const resources: AnyResource[] = [

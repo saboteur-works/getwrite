@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import SearchBar from "../components/Layout/SearchBar";
+import SearchBar from "../components/SearchBar/SearchBar";
 import type { AnyResource } from "../src/lib/models/types";
 
 describe("SearchBar", () => {

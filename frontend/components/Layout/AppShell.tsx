@@ -36,7 +36,7 @@ import OrganizerView from "../WorkArea/OrganizerView";
 import DataView from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/TimelineView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
-import SearchBar from "./SearchBar";
+import SearchBar from "../SearchBar/SearchBar";
 import debounce from "lodash/debounce";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
