@@ -51,61 +51,69 @@ describe("Reorder persistence integration", () => {
         console.log("[test] stubbing global fetch");
         // stub global fetch so AppShell's persistence call writes into our tmp project
         const originalFetch = globalThis.fetch;
-        globalThis.fetch = vi.fn(async (url: string, opts?: any) => {
-            // parse body
-            const body = opts && opts.body ? JSON.parse(opts.body) : {};
-            const folderOrder = body.folderOrder ?? [];
-            const resourceOrder = body.resourceOrder ?? [];
+        globalThis.fetch = vi.fn(
+            async (input: RequestInfo | URL, opts?: any) => {
+                const url =
+                    typeof input === "string"
+                        ? input
+                        : input instanceof URL
+                          ? input.toString()
+                          : input.url;
+                // parse body
+                const body = opts && opts.body ? JSON.parse(opts.body) : {};
+                const folderOrder = body.folderOrder ?? [];
+                const resourceOrder = body.resourceOrder ?? [];
 
-            // update folder.json files
-            const foldersDir = path.join(tmp, "folders");
-            const folderDirs = await fs
-                .readdir(foldersDir, { withFileTypes: true })
-                .catch(() => [] as any[]);
-            for (const fo of folderOrder) {
-                for (const d of folderDirs) {
-                    if (!d.isDirectory()) continue;
-                    const folderJson = path.join(
-                        foldersDir,
-                        d.name,
-                        "folder.json",
-                    );
-                    try {
-                        const raw = await fs.readFile(folderJson, "utf8");
-                        const parsed = JSON.parse(raw) as any;
-                        if (parsed && parsed.id === fo.id) {
-                            parsed.orderIndex = fo.orderIndex;
-                            await fs.writeFile(
-                                folderJson,
-                                JSON.stringify(parsed, null, 2),
-                                "utf8",
-                            );
-                            break;
+                // update folder.json files
+                const foldersDir = path.join(tmp, "folders");
+                const folderDirs = await fs
+                    .readdir(foldersDir, { withFileTypes: true })
+                    .catch(() => [] as any[]);
+                for (const fo of folderOrder) {
+                    for (const d of folderDirs) {
+                        if (!d.isDirectory()) continue;
+                        const folderJson = path.join(
+                            foldersDir,
+                            d.name,
+                            "folder.json",
+                        );
+                        try {
+                            const raw = await fs.readFile(folderJson, "utf8");
+                            const parsed = JSON.parse(raw) as any;
+                            if (parsed && parsed.id === fo.id) {
+                                parsed.orderIndex = fo.orderIndex;
+                                await fs.writeFile(
+                                    folderJson,
+                                    JSON.stringify(parsed, null, 2),
+                                    "utf8",
+                                );
+                                break;
+                            }
+                        } catch (_) {
+                            // ignore
                         }
-                    } catch (_) {
+                    }
+                }
+
+                // update resource sidecars by merging existing meta
+                for (const ro of resourceOrder) {
+                    try {
+                        const existing = await readSidecar(tmp, ro.id).catch(
+                            () => null,
+                        );
+                        const merged = {
+                            ...(existing ?? {}),
+                            orderIndex: ro.orderIndex,
+                        };
+                        await writeSidecar(tmp, ro.id, merged);
+                    } catch (_e) {
                         // ignore
                     }
                 }
-            }
 
-            // update resource sidecars by merging existing meta
-            for (const ro of resourceOrder) {
-                try {
-                    const existing = await readSidecar(tmp, ro.id).catch(
-                        () => null,
-                    );
-                    const merged = {
-                        ...(existing ?? {}),
-                        orderIndex: ro.orderIndex,
-                    };
-                    await writeSidecar(tmp, ro.id, merged);
-                } catch (_e) {
-                    // ignore
-                }
-            }
-
-            return { ok: true, status: 200 } as any;
-        });
+                return { ok: true, status: 200 } as any;
+            },
+        );
 
         console.log("[test] seeding test-local store and rendering AppShell");
         // create a test-local Redux store, seed it, and render AppShell
@@ -174,7 +182,7 @@ describe("Reorder persistence integration", () => {
             const folderJsonPath = path.join(
                 tmp,
                 "folders",
-                f.slug,
+                f.slug ?? f.id,
                 "folder.json",
             );
             const raw = await fs.readFile(folderJsonPath, "utf8");
