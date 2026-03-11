@@ -1,3 +1,24 @@
+// Last Updated: 2026-03-11
+
+/**
+ * @module Page
+ *
+ * Root Next.js App Router page. Owns the top-level application state:
+ * the list of known projects, the currently open project, and the selected
+ * resource ID.
+ *
+ * Responsibilities:
+ * - Fetches all existing projects from `GET /api/projects` on mount.
+ * - Delegates project creation to {@link StartPage} / `handleCreate`.
+ * - Opens a project from disk via `POST /api/project` in `handleOpen`.
+ * - Mirrors relevant state into the Redux store so downstream components
+ *   (ResourceTree, AppShell, Sidebar) can react without prop-drilling.
+ * - Bridges resource-level CRUD actions (create / copy / delete / export)
+ *   between the UI and the REST API and Redux store.
+ *
+ * Renders {@link StartPage} when no project is selected, and
+ * {@link AppShell} with the open project's data otherwise.
+ */
 "use client";
 import React, { useEffect, useState } from "react";
 import useAppSelector, { useAppDispatch } from "../src/store/hooks";
@@ -9,7 +30,10 @@ import {
     setProjects as setProjectsInStore,
 } from "../src/store/projectsSlice";
 import AppShell from "../components/Layout/AppShell";
-import StartPage from "../components/Start/StartPage";
+import StartPage, {
+    type StartPageProjectEntry,
+    type StartPageCreateResult,
+} from "../components/Start/StartPage";
 import type {
     Folder,
     Project,
@@ -28,26 +52,47 @@ import {
 import { shallowEqual } from "react-redux";
 
 /**
- * Root page component. Manages high-level state for projects and resources,
- * handles project creation/opening, and renders the main `AppShell`.
- **/
+ * Flat representation of a project that has been opened in the current session.
+ *
+ * Distinct from {@link StartPageProjectEntry} — this is populated directly
+ * from the `POST /api/project` response and contains only the fields needed
+ * for in-session resource mutations (sidecar updates, CRUD actions, etc.).
+ */
+interface SelectedProjectState {
+    /** Stable unique identifier for the project. */
+    id: string;
+    /** Human-readable project name shown in the editor header. */
+    name: string;
+    /** Absolute path to the project root directory on disk. */
+    rootPath: string;
+    /** All folder entries belonging to the project. */
+    folders: Folder[];
+    /** All resource files (text documents, etc.) belonging to the project. */
+    resources: AnyResource[];
+}
+
+/**
+ * Root application page.
+ *
+ * Manages the top-level project and resource state, coordinates API calls for
+ * project/resource lifecycle, and mirrors changes into the Redux store.
+ * Renders {@link StartPage} when no project is open, and {@link AppShell}
+ * once the user has opened a project.
+ *
+ * @returns The root application page element.
+ */
 export default function Home(): JSX.Element {
-    const [projects, setProjects] = useState<
-        {
-            id: string;
-            name: string;
-            rootPath: string;
-            folders: Folder[];
-            resources: AnyResource[];
-        }[]
-    >([]);
-    const [selectedProject, setSelectedProject] = useState<{
-        id: string;
-        name: string;
-        rootPath: string;
-        folders: Folder[];
-        resources: AnyResource[];
-    } | null>(null);
+    /** All projects known to the app, fetched from `GET /api/projects` on mount. */
+    const [projects, setProjects] = useState<StartPageProjectEntry[]>([]);
+
+    /**
+     * The project currently open in the editor, or `null` when the user is
+     * on the project-selection / start screen.
+     */
+    const [selectedProject, setSelectedProject] =
+        useState<SelectedProjectState | null>(null);
+
+    /** ID of the resource that currently has editor focus. */
     const [selectedResourceId, setSelectedResourceId] = useState<string | null>(
         null,
     );
@@ -60,6 +105,13 @@ export default function Home(): JSX.Element {
 
     // Fetch existing projects on mount
     useEffect(() => {
+        /**
+         * Loads all projects from the API and maps them into
+         * {@link StartPageProjectEntry}-compatible view objects.
+         *
+         * @returns Resolved array of project view objects.
+         * @throws {Error} When the HTTP response is not OK.
+         */
         async function fetchProjects() {
             const res = await fetch("/api/projects", {
                 method: "GET",
@@ -102,12 +154,26 @@ export default function Home(): JSX.Element {
             });
     }, []);
 
-    const handleCreate = (projectFiles: {
-        project: Project;
-        folders: any[];
-        resources: any[];
-    }) => {
-        setProjects((prev) => [projectFiles.project, ...prev]);
+    /**
+     * Called by {@link StartPage} after a new project has been successfully
+     * created on disk.
+     *
+     * Adds the new project to the local project list, upserts it in the Redux
+     * `projects` slice, sets it as the selected project, and hydrates the
+     * `resources` slice with the scaffold's initial folders and resources.
+     *
+     * @param projectFiles - Creation result containing the project record,
+     *   initial folder list, and any scaffolded resources.
+     */
+    const handleCreate = (projectFiles: StartPageCreateResult) => {
+        setProjects((prev) => [
+            {
+                project: projectFiles.project,
+                folders: projectFiles.folders,
+                resources: projectFiles.resources,
+            },
+            ...prev,
+        ]);
         // persist project in redux store and mark selected
         dispatch(
             setProject({
@@ -141,12 +207,18 @@ export default function Home(): JSX.Element {
     };
 
     /**
-     * Handles the opening of a project by its projectPath
+     * Opens an existing project by its root path.
+     *
+     * Calls `POST /api/project` with the project's root path, hydrates the
+     * Redux `projects` and `resources` slices with the response, and stores
+     * the opened project in local `selectedProject` state so the editor shell
+     * becomes visible.
+     *
+     * @param id - The root path of the project to open (used as the
+     *   `projectPath` request body field).
+     * @throws {Error} When the HTTP response is not OK.
      */
-    const handleOpen = async (
-        /** The project's root path */
-        id: string,
-    ) => {
+    const handleOpen = async (id: string) => {
         const res = await fetch("/api/project", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -197,15 +269,33 @@ export default function Home(): JSX.Element {
         }
     };
 
+    /**
+     * Marks a resource as selected in both the Redux store and local state.
+     *
+     * Dispatches `setSelectedResourceId` so that the sidebar, editor, and other
+     * resource-aware components can display the chosen resource.
+     *
+     * @param id - The ID of the resource to select.
+     */
     const handleResourceSelect = (id: string) => {
         dispatch(setResourceId(id));
         setSelectedResourceId(id);
     };
 
     /**
-     * Generic updater for a resource's metadata within the selected project.
-     * Applies `updater` to the matched resource and updates both `projects`
-     * and `selectedProject` state immutably.
+     * Applies an immutable update to a single resource within the selected
+     * project.
+     *
+     * The updated resource is:
+     * 1. Persisted to the sidecar file via `POST /api/resource/:id/sidecar`.
+     * 2. Dispatched to the Redux store via `updateResourceInStore`.
+     * 3. Applied to both the `projects` list and `selectedProject` local state
+     *    so the UI reflects the change immediately while the network call is
+     *    in flight.
+     *
+     * @param resourceId - ID of the resource to update.
+     * @param updater    - Pure function that receives the current resource and
+     *   returns the updated version.
      */
     const updateResource = (
         resourceId: string,
@@ -231,19 +321,12 @@ export default function Home(): JSX.Element {
 
         setProjects((prev) =>
             prev.map((p) => {
-                if (p.id !== selectedProject.id) return p;
+                if (p.project.id !== selectedProject.id) return p;
 
                 const resources = p.resources.map((r) =>
                     r.id === resourceId ? updater(r) : r,
                 );
-                return {
-                    id: p.id,
-                    name: p.name,
-                    rootPath: p.rootPath ?? "",
-                    folders: p.folders ?? [],
-                    resources,
-                    updatedAt: new Date().toISOString(),
-                };
+                return { ...p, resources };
             }),
         );
 
@@ -257,6 +340,12 @@ export default function Home(): JSX.Element {
         });
     };
 
+    /**
+     * Updates the free-text notes field in a resource's metadata.
+     *
+     * @param text       - New notes content.
+     * @param resourceId - ID of the target resource.
+     */
     const handleChangeNotes = (text: string, resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
@@ -264,6 +353,13 @@ export default function Home(): JSX.Element {
         }));
     };
 
+    /**
+     * Updates the publication status in a resource's metadata.
+     *
+     * @param status     - The new status value (`"draft"`, `"in-review"`, or
+     *   `"published"`).
+     * @param resourceId - ID of the target resource.
+     */
     const handleChangeStatus = (
         status: "draft" | "in-review" | "published",
         resourceId: string,
@@ -275,6 +371,12 @@ export default function Home(): JSX.Element {
         }));
     };
 
+    /**
+     * Updates the character tag list in a resource's metadata.
+     *
+     * @param chars      - New array of character name strings.
+     * @param resourceId - ID of the target resource.
+     */
     const handleChangeCharacters = (chars: string[], resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
@@ -282,6 +384,12 @@ export default function Home(): JSX.Element {
         }));
     };
 
+    /**
+     * Updates the location tag list in a resource's metadata.
+     *
+     * @param locs       - New array of location name strings.
+     * @param resourceId - ID of the target resource.
+     */
     const handleChangeLocations = (locs: string[], resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
@@ -289,6 +397,12 @@ export default function Home(): JSX.Element {
         }));
     };
 
+    /**
+     * Updates the items/props tag list in a resource's metadata.
+     *
+     * @param items      - New array of item name strings.
+     * @param resourceId - ID of the target resource.
+     */
     const handleChangeItems = (items: string[], resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
@@ -296,6 +410,12 @@ export default function Home(): JSX.Element {
         }));
     };
 
+    /**
+     * Updates the point-of-view (POV) character field in a resource's metadata.
+     *
+     * @param pov        - Name of the POV character, or `null` to clear it.
+     * @param resourceId - ID of the target resource.
+     */
     const handleChangePOV = (pov: string | null, resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
@@ -303,12 +423,34 @@ export default function Home(): JSX.Element {
         }));
     };
 
+    /**
+     * Dispatches a CRUD or utility action on a resource.
+     *
+     * Supported actions:
+     * - `"create"` — POSTs a new resource to `POST /api/resource`, adds it to
+     *   the Redux store, and marks it as selected.
+     * - `"copy"` / `"duplicate"` — Clones the resource on disk via
+     *   `POST /api/resource/:id` and appends the copy to local state.
+     * - `"delete"` — Removes the resource from disk and from local + Redux state.
+     * - `"export"` — Shows a placeholder export alert (not yet implemented).
+     *
+     * @param action     - The action to perform.
+     * @param resourceId - ID of the target resource (required for all actions
+     *   except `"create"`).
+     * @param opts       - Additional options for the `"create"` action:
+     *   - `type`     — Resource type (e.g. `"text"`, `"folder"`).
+     *   - `title`    — Initial display name for the new resource.
+     *   - `folderId` — ID of the parent folder, if any.
+     */
     const handleResourceAction = async (
         action: "create" | "copy" | "duplicate" | "delete" | "export",
         resourceId?: string,
         opts?: {
+            /** Resource type to create (e.g. `"text"` or `"folder"`). */
             type?: string;
+            /** Initial display name for the new resource. */
             title?: string;
+            /** Parent folder ID for the new resource. */
             folderId?: string;
         },
     ) => {
@@ -323,7 +465,9 @@ export default function Home(): JSX.Element {
             };
 
             if (opts?.type === "text" || !opts?.type) {
-                payload.text = {
+                // `text` is not declared on the minimal payload type; cast to
+                // pass the extended shape through to the API.
+                (payload as any).text = {
                     plainText: "",
                     tiptap: undefined,
                 };
@@ -369,10 +513,11 @@ export default function Home(): JSX.Element {
                 (r) => r.id === resourceId,
             );
             if (!src) return;
-            const newTitle = `${src.title} (copy)`;
-            const copy = {};
-            copy.content = src.content;
-            copy.metadata = { ...src.metadata };
+            const newTitle = `${src.name} (copy)`;
+            // Shallow-clone the source resource and override its name; the
+            // real duplication (new ID, disk write) is handled by the API call below.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const copy: any = { ...src, name: newTitle };
 
             await fetch(`/api/resource/${resourceId}`, {
                 method: "POST",
@@ -384,11 +529,13 @@ export default function Home(): JSX.Element {
             });
             setProjects((prev) =>
                 prev.map((p) =>
-                    p.id === selectedProject.id
+                    p.project.id === selectedProject.id
                         ? {
                               ...p,
-                              resources: [...p.resources, copy],
-                              updatedAt: new Date().toISOString(),
+                              resources: [
+                                  ...p.resources,
+                                  copy,
+                              ] as AnyResource[],
                           }
                         : p,
                 ),
@@ -397,8 +544,7 @@ export default function Home(): JSX.Element {
                 prev
                     ? {
                           ...prev,
-                          resources: [...prev.resources, copy],
-                          updatedAt: new Date().toISOString(),
+                          resources: [...prev.resources, copy] as AnyResource[],
                       }
                     : prev,
             );
@@ -428,13 +574,12 @@ export default function Home(): JSX.Element {
             });
             setProjects((prev) =>
                 prev.map((p) =>
-                    p.id === selectedProject.id
+                    p.project.id === selectedProject.id
                         ? {
                               ...p,
                               resources: p.resources.filter(
                                   (r) => r.id !== resourceId,
                               ),
-                              updatedAt: new Date().toISOString(),
                           }
                         : p,
                 ),
@@ -463,7 +608,7 @@ export default function Home(): JSX.Element {
                 (x) => x.id === resourceId,
             );
             window.alert(
-                `Export preview (placeholder) for: ${r?.title ?? resourceId}`,
+                `Export preview (placeholder) for: ${r?.name ?? resourceId}`,
             );
             return;
         }
