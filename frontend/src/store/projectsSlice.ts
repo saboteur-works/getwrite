@@ -27,28 +27,6 @@ const initialState: ProjectsState = {
     projects: {},
 };
 
-/**
- * Persist reorder by calling the backend API and, on success, update local store
- * with the new orderIndex values for folders and resources.
- */
-export const persistReorder = createAsyncThunk(
-    "projects/persistReorder",
-    async (payload: {
-        projectId: string;
-        projectRoot: string;
-        folderOrder: Array<{ id: string; orderIndex: number }>;
-        resourceOrder: Array<{ id: string; orderIndex: number }>;
-    }) => {
-        const { projectRoot, folderOrder, resourceOrder, projectId } = payload;
-        await fetch(`/api/projects/${projectId}/reorder`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ folderOrder, resourceOrder }),
-        });
-        return { projectRoot, folderOrder, resourceOrder };
-    },
-);
-
 const projectsSlice = createSlice({
     name: "projects",
     initialState,
@@ -115,42 +93,6 @@ const projectsSlice = createSlice({
             state.projects[projectId] = proj;
             return state;
         },
-    },
-    extraReducers: (builder) => {
-        builder.addCase(persistReorder.fulfilled, (state, action) => {
-            const { projectId, folderOrder, resourceOrder } = action.payload;
-            const proj = state.projects[projectId];
-            if (!proj) return;
-
-            // merge folder orderIndex
-            if (proj.folders) {
-                const map = new Map(
-                    folderOrder.map((f) => [f.id, f.orderIndex]),
-                );
-                proj.folders = proj.folders.map((f) => ({
-                    ...f,
-                    orderIndex: map.has(f.id)
-                        ? (map.get(f.id) as number)
-                        : f.orderIndex,
-                }));
-            }
-
-            // merge resource orderIndex into metadata
-            if (proj.resources) {
-                const rmap = new Map(
-                    resourceOrder.map((r) => [r.id, r.orderIndex]),
-                );
-                proj.resources = proj.resources.map((r) => ({
-                    ...r,
-                    metadata: {
-                        ...(r.metadata ?? {}),
-                        orderIndex: rmap.has(r.id)
-                            ? (rmap.get(r.id) as number)
-                            : (r.metadata?.orderIndex ?? undefined),
-                    },
-                }));
-            }
-        });
     },
 });
 

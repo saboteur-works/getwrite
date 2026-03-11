@@ -9,12 +9,7 @@ import type {
     TipTapDocument,
 } from "../../src/lib/models/types";
 import { shallowEqual, useDispatch } from "react-redux";
-import {
-    persistReorder,
-    setProject,
-    addResource,
-    removeResource,
-} from "../../src/store/projectsSlice";
+import { setProject, removeResource } from "../../src/store/projectsSlice";
 import type { AppDispatch } from "../../src/store/store";
 import ResourceTree from "../ResourceTree/ResourceTree";
 import ConfirmDialog from "../common/ConfirmDialog";
@@ -254,82 +249,6 @@ export default function AppShell({
     }, [project?.id]);
     const dispatch = useDispatch<AppDispatch>();
 
-    const handlePersistReorder = (nextIds: string[] | undefined) => {
-        if (!nextIds || !project) return;
-        const pos = new Map<string, number>();
-        nextIds.forEach((id, i) => pos.set(id, i));
-
-        const folderOrder =
-            (project as any).folders?.map((f: any) => ({
-                id: f.id,
-                orderIndex: pos.has(f.id) ? pos.get(f.id) : (f.orderIndex ?? 0),
-            })) ?? [];
-
-        const resourceOrder =
-            (project as any).resources?.map((r: any) => ({
-                id: r.id,
-                orderIndex: pos.has(r.id)
-                    ? pos.get(r.id)
-                    : (r.metadata?.orderIndex ?? 0),
-            })) ?? [];
-
-        const existingFolders: any[] = (project as any).folders ?? [];
-        const existingResources: any[] = (project as any).resources ?? [];
-
-        const folderChanged = folderOrder.some((fo: any) => {
-            const ex = existingFolders.find((f) => f.id === fo.id);
-            if (!ex) return false;
-            return (ex.orderIndex ?? 0) !== (fo.orderIndex ?? 0);
-        });
-
-        const resourceChanged = resourceOrder.some((ro: any) => {
-            const ex = existingResources.find((r) => r.id === ro.id);
-            if (!ex) return false;
-            const exIdx = ex.metadata?.orderIndex ?? 0;
-            return exIdx !== (ro.orderIndex ?? 0);
-        });
-
-        if (!folderChanged && !resourceChanged) return;
-
-        const optimisticFolders = existingFolders.map((f) => ({
-            ...f,
-            orderIndex:
-                (folderOrder.find((x: any) => x.id === f.id) as any)
-                    ?.orderIndex ??
-                f.orderIndex ??
-                0,
-        }));
-
-        const optimisticResources = existingResources.map((r) => ({
-            ...r,
-            metadata: {
-                ...(r.metadata ?? {}),
-                orderIndex:
-                    (resourceOrder.find((x: any) => x.id === r.id) as any)
-                        ?.orderIndex ??
-                    r.metadata?.orderIndex ??
-                    0,
-            },
-        }));
-
-        dispatch(
-            setProject({
-                id: project.id,
-                name: project.name,
-                folders: optimisticFolders,
-                resources: optimisticResources,
-            }),
-        );
-
-        dispatch(
-            persistReorder({
-                projectId: project.id,
-                projectRoot: project.rootPath ?? "",
-                folderOrder,
-                resourceOrder,
-            }),
-        );
-    };
     const persistContent = (content: string, doc: TipTapDocument) => {
         if (!project || !selectedResourceId) return;
         if (!project.rootPath) return;
