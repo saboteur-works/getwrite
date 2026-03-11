@@ -1,8 +1,7 @@
 import React from "react";
 import { Meta, StoryObj } from "@storybook/react";
 import TimelineView from "../../components/WorkArea/TimelineView";
-import { Project } from "playwright/test";
-import { AnyResource, Folder } from "../../src/lib/models";
+import { AnyResource, Folder, Project } from "../../src/lib/models";
 
 const meta: Meta<typeof TimelineView> = {
     title: "WorkArea/TimelineView",
@@ -56,6 +55,8 @@ const resources: AnyResource[] = [
 export const Default: Story = {
     args: {
         project: project,
+        folders: folders,
+        resources: resources,
     },
 };
 
