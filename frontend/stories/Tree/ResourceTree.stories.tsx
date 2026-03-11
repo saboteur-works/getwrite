@@ -19,7 +19,7 @@ export const Default: Story = {
 } satisfies Story;
 
 export const Reorderable: Story = {
-    render: (args) => {
+    render: (args: React.ComponentProps<typeof ResourceTree>) => {
         const Wrapper = () => {
             const handleReorder = (ids: string[]) => {
                 const probe = document.querySelector(

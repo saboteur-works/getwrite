@@ -47,6 +47,9 @@ describe("models/resource-templates (T027)", () => {
                 template.id,
                 { name: "From Template" },
             );
+            if (!("id" in created)) {
+                throw new Error("expected created resource to have an id");
+            }
 
             // sidecar exists for created resource
             const meta = await readSidecar(projectPath, created.id);

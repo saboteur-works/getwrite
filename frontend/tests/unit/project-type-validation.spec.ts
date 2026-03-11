@@ -10,7 +10,8 @@ describe("project-type validation (T016)", () => {
         };
         const res = validateProjectType(spec);
         expect(res.success).toBe(true);
-        if (res.success) expect(res.value.id).toBe("novel");
+        if (res.success && "value" in res && res.value)
+            expect(res.value.id).toBe("novel");
     });
 
     it("rejects a template missing `id`", () => {

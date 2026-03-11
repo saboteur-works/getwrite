@@ -7,6 +7,7 @@ import {
     readSidecar,
     writeSidecar,
 } from "../../../src/lib/models/sidecar";
+import type { MetadataValue } from "../../../src/lib/models/types";
 import { flushIndexer } from "../../../src/lib/models/indexer-queue";
 import { generateUUID } from "../../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
@@ -15,13 +16,12 @@ describe("models/sidecar", () => {
     it("writes and reads a sidecar file in project meta folder", async () => {
         const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-test-"));
         const resourceId = generateUUID();
-        const meta = { title: "Sample", tags: ["a", "b"] } as const;
+        const meta: Record<string, MetadataValue> = {
+            title: "Sample",
+            tags: ["a", "b"],
+        };
 
-        await writeSidecar(
-            tmp,
-            resourceId,
-            meta as unknown as Record<string, unknown>,
-        );
+        await writeSidecar(tmp, resourceId, meta);
 
         const expectedPath = path.join(
             tmp,
