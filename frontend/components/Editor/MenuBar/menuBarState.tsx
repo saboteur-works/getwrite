@@ -46,6 +46,9 @@ export function menuBarStateSelector(ctx: EditorStateSnapshot<Editor>) {
         // Text style (color, background)
         textColor: ctx.editor.getAttributes("textStyle").color,
         backgroundColor: ctx.editor.getAttributes("textStyle").backgroundColor,
+
+        fontSize: ctx.editor.getAttributes("textStyle").fontSize,
+        isDomine: ctx.editor.isActive("textStyle", { fontFamily: "Domine" }),
     };
 }
 

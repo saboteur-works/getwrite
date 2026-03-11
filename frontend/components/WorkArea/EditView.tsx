@@ -104,7 +104,7 @@ export default function EditView({
 
     return (
         <div className="flex flex-col">
-            <div className="flex-1 overflow-auto">
+            <div className="flex overflow-x-scroll p-2 ">
                 <TipTapEditor
                     id="editview-editor"
                     value={tipTapDoc ?? content} // prefer loaded doc, fallback to initial/plain content

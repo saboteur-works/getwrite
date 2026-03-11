@@ -40,11 +40,53 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
         return editor.chain().insertBlockMath({ latex }).focus().run();
     }, [editor]);
 
+    const handleFontSizeChange = useCallback(
+        (event: React.ChangeEvent<HTMLInputElement>) => {
+            const value = event.currentTarget.value;
+            if (value) {
+                editor
+                    .chain()
+                    .focus()
+                    .setFontSize(value + "px")
+                    .run();
+            }
+        },
+        [editor],
+    );
+
     return (
         <div
             id="editor-menu-bar"
-            className="flex flex-wrap divide-x justify-center border-b items-center"
+            className="flex shrink divide-x border-b items-center h-12 overflow-x-scroll"
+            style={{ scrollbarWidth: "none" }}
         >
+            <EditorMenuIconGroup
+                groupName="Typography"
+                groupId="typography-controls"
+            >
+                <EditorMenuInput
+                    onChange={handleFontSizeChange}
+                    Icon="fontSize"
+                    iconSize={ICON_SIZE}
+                    tooltipContent="Font Size"
+                    type="number"
+                    initialValue={`${editor.getAttributes("textStyle").fontSize?.replace("px", "") || 14}`}
+                />
+                <EditorMenuInput
+                    onChange={(e) =>
+                        editor
+                            .chain()
+                            .focus()
+                            .setFontFamily(e.target.value)
+                            .run()
+                    }
+                    Icon="fontStyle"
+                    iconSize={ICON_SIZE}
+                    tooltipContent="Font Style"
+                    type="select"
+                    options={["Domine", "Arial", "Times New Roman", "Georgia"]}
+                />
+            </EditorMenuIconGroup>
             <EditorMenuIconGroup groupName="History" groupId="history-controls">
                 <EditorMenuIcon
                     onClick={() => editor.chain().focus().undo().run()}
@@ -328,6 +370,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                             .setColor(event.currentTarget.value)
                             .run()
                     }
+                    type="color"
                 />
                 <EditorMenuInput
                     Icon="fontColor"
@@ -336,6 +379,7 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
                     active={false}
                     tooltipContent="Background Color"
                     initialValue="#FFFFFF"
+                    type="color"
                     onInput={(event) =>
                         editor
                             .chain()

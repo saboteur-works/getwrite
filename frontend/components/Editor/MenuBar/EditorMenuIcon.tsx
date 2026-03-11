@@ -1,4 +1,5 @@
 import {
+    ALargeSmall,
     AlignLeft,
     AlignCenter,
     AlignRight,
@@ -25,6 +26,7 @@ import {
     Redo,
     Underline,
     Radical,
+    Type,
 } from "lucide-react";
 import { Tooltip } from "react-tooltip";
 
@@ -55,6 +57,8 @@ const IconTypes = {
     redo: Redo,
     underline: Underline,
     latex: Radical,
+    fontSize: ALargeSmall,
+    fontStyle: Type,
 };
 
 interface EditorMenuIconProps {

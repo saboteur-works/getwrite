@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Domine:wght@400..700&display=swap");
 @import "../@/styles/_variables.scss";
 @import "../@/styles/_keyframe-animations.scss";
 
@@ -14,8 +15,9 @@ body,
 /* Tailwind base layer is used; tokens and custom utilities will be added to `styles/` when T007 runs */
 .tiptap {
     :first-child {
-        @apply mt-0;
+        @apply mt-0 mb-0;
     }
+
     p {
         @apply my-4 first:mt-0 last:mb-0 text-base leading-relaxed;
     }
@@ -85,5 +87,11 @@ body,
 
     .tiptap-mathematics-render--editable {
         @apply hover:bg-gray-400/10 rounded cursor-pointer;
+    }
+    .domine-400 {
+        font-family: "Domine", serif;
+        font-optical-sizing: auto;
+        font-weight: 400;
+        font-style: normal;
     }
 }

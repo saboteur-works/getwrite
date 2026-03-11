@@ -537,7 +537,7 @@ export default function AppShell({
                         })()}
                     </div>
                 ) : null}
-                <div className="max-w-7xl mx-auto">
+                <div className="max-w-full mx-auto">
                     <div className="bg-white rounded-xl shadow-sm p-6 min-h-[400px]">
                         {/* If a resource is selected, render the chosen view; otherwise render children (StartPage or prompt) */}
                         {selectedResource && combined
@@ -646,7 +646,7 @@ export default function AppShell({
                     </div>
 
                     <aside
-                        className="hidden lg:block bg-white border-l p-4"
+                        className="hidden lg:block lg:min-w-1/5 bg-white border-l p-4"
                         style={{ width: rightWidth }}
                     >
                         <MetadataSidebar

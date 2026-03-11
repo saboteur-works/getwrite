@@ -10,7 +10,11 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
-import { TextStyleKit } from "@tiptap/extension-text-style";
+import {
+    TextStyleKit,
+    FontSize,
+    FontFamily,
+} from "@tiptap/extension-text-style";
 import Blockquote from "@tiptap/extension-blockquote";
 import { BulletList, ListItem } from "@tiptap/extension-list";
 import CodeBlock from "@tiptap/extension-code-block";
@@ -31,6 +35,7 @@ export interface TipTapEditorProps {
 const extensions = [
     StarterKit,
     TextStyleKit,
+    FontSize,
     Blockquote,
     BulletList,
     ListItem,
@@ -49,6 +54,7 @@ const extensions = [
     TextAlign.configure({
         types: ["heading", "paragraph"],
     }),
+    FontFamily,
 ];
 
 export default function TipTapEditor({
@@ -123,7 +129,7 @@ export default function TipTapEditor({
                 // Use focus:outline-none to remove the default browser outline
                 // and optionally focus:ring-0 to remove the ring added by
                 // the Tailwind CSS forms plugin (if used)
-                class: "focus:outline-none focus:ring-0 mx-4",
+                class: "focus:outline-none focus:ring-0 mx-4 h-full overflow-y-scroll",
             },
         },
     });
@@ -155,12 +161,12 @@ export default function TipTapEditor({
 
     return (
         <EditorContext.Provider value={{ editor }}>
-            <div className="prose max-w-none border">
+            <div className="prose border max-w-4xl">
                 <MenuBar editor={editor} />
                 <EditorContent
                     editor={editor}
                     id={id}
-                    className="tiptap h-[calc(100vh-20rem)] overflow-auto"
+                    className="tiptap h-[calc(100vh-20rem)]"
                 />
             </div>
         </EditorContext.Provider>
