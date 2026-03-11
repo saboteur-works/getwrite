@@ -562,7 +562,6 @@ export default function AppShell({
                             />
                             <div style={{ width: 320 }}>
                                 <SearchBar
-                                    resources={resources}
                                     onSelect={(id) => onResourceSelect?.(id)}
                                 />
                             </div>

@@ -38,7 +38,7 @@ describe("SearchBar", () => {
         ];
 
         const onSelect = vi.fn();
-        render(<SearchBar resources={resources} onSelect={onSelect} />);
+        render(<SearchBar onSelect={onSelect} />);
 
         const input = screen.getByLabelText(
             "resource-search",

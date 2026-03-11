@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { AnyResource } from "../../src/lib/models/types";
-import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
+import useAppSelector from "../../src/store/hooks";
 import { selectResources } from "../../src/store/resourcesSlice";
 
 /**
