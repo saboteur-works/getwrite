@@ -117,6 +117,8 @@ export interface Folder extends ResourceBase {
 export interface TipTapNode {
     /** Node type name (e.g., 'paragraph', 'text', 'heading'). */
     type: string;
+    /** Text payload for leaf `text` nodes. */
+    text?: string;
     /** Optional attributes for the node (formatting, links, etc.). */
     attrs?: Record<string, MetadataValue>;
     /** Child nodes for nested structures. */
