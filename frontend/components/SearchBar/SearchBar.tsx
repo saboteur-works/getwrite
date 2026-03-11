@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { AnyResource } from "../../src/lib/models/types";
-import useAppSelector from "../../src/store/hooks";
-import { selectResources } from "../../src/store/resourcesSlice";
+import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
+import {
+    selectResources,
+    setSelectedResourceId,
+} from "../../src/store/resourcesSlice";
 
 /**
  * @module SearchBar
@@ -45,6 +48,7 @@ export default function SearchBar({
     placeholder = "Search resources...",
     onSelect,
 }: SearchBarProps): JSX.Element {
+    const dispatch = useAppDispatch();
     /** Resource collection sourced from Redux state. */
     const resources = useAppSelector((s) => selectResources(s.resources));
     /** Current raw query string entered by the user. */
@@ -174,6 +178,7 @@ export default function SearchBar({
         } else if (e.key === "Enter") {
             const r = results[highlight];
             if (r) {
+                dispatch(setSelectedResourceId(r.resource.id));
                 onSelect?.(r.resource.id);
                 setOpen(false);
                 setQuery("");
