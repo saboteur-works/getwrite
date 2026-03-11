@@ -1,27 +1,83 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { AnyResource } from "../../src/lib/models/types";
+import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
+import {
+    selectResources,
+    setSelectedResourceId,
+} from "../../src/store/resourcesSlice";
 
+/**
+ * @module SearchBar
+ * Provides a searchable resource input with lightweight fuzzy matching,
+ * keyboard navigation, and result highlighting.
+ */
+
+/**
+ * Props accepted by {@link SearchBar}.
+ */
 export interface SearchBarProps {
-    resources?: AnyResource[];
+    /**
+     * Optional resource list override.
+     *
+    /** Placeholder text shown in the search input when empty. */
     placeholder?: string;
+    /**
+     * Callback fired when a search result is selected.
+     *
+     * @param id - The selected resource identifier.
+     */
     onSelect?: (id: string) => void;
 }
 
+/**
+ * Renders an input that searches resources by title/name and displays
+ * ranked suggestions.
+ *
+ * @param props - Component configuration.
+ * @param props.placeholder - Input placeholder text.
+ * @param props.onSelect - Invoked with the selected resource id.
+ * @returns Search input with a keyboard-accessible suggestion list.
+ *
+ * @example
+ * <SearchBar
+ *   placeholder="Search docs..."
+ *   onSelect={(id) => console.log("Selected", id)}
+ * />
+ */
 export default function SearchBar({
-    resources = [],
     placeholder = "Search resources...",
     onSelect,
 }: SearchBarProps): JSX.Element {
+    const dispatch = useAppDispatch();
+    /** Resource collection sourced from Redux state. */
+    const resources = useAppSelector((s) => selectResources(s.resources));
+    /** Current raw query string entered by the user. */
     const [query, setQuery] = useState<string>("");
+    /** Controls visibility of the suggestion popover. */
     const [open, setOpen] = useState<boolean>(false);
+    /** Index of the currently keyboard-highlighted result row. */
     const [highlight, setHighlight] = useState<number>(0);
+    /** Ref to the search input for future focus-based interactions. */
     const inputRef = useRef<HTMLInputElement | null>(null);
+    /** Ref to the container used for outside-click detection. */
     const containerRef = useRef<HTMLDivElement | null>(null);
 
-    // Lightweight fuzzy scoring: prefer exact substring matches, then
-    // subsequence matches where characters appear in order. Returns an
-    // object with `score` (higher means better) and `indices` of matched
-    // characters in the title for highlighting.
+    /**
+     * Scores whether query text matches a candidate label.
+     *
+     * Matching strategy:
+     * 1. Exact substring match (higher score, earlier index favored)
+     * 2. Ordered subsequence match (penalized by character gaps)
+     *
+     * @param q - Query text entered by the user.
+     * @param text - Candidate text to evaluate.
+     * @returns Match metadata including score and matched character indices,
+     * or `null` if there is no match.
+     *
+     * @example
+     * const match = fuzzyMatch("rd", "Resource Doc");
+     * // => { score: 79, indices: [0, 9] } (score may vary with position/gaps)
+     */
     const fuzzyMatch = (
         q: string,
         text: string,
@@ -71,7 +127,7 @@ export default function SearchBar({
           }[])
         : [];
 
-    // Sort by descending score, then by title
+    /** Sort by descending match score, then lexicographically by title. */
     results.sort((a, b) => {
         if (b.match.score !== a.match.score)
             return b.match.score - a.match.score;
@@ -81,6 +137,11 @@ export default function SearchBar({
     });
 
     useEffect(() => {
+        /**
+         * Closes the suggestion popover when a click occurs outside container.
+         *
+         * @param e - Native mouse event from the document listener.
+         */
         function onDocClick(e: MouseEvent) {
             if (
                 containerRef.current &&
@@ -95,6 +156,17 @@ export default function SearchBar({
 
     useEffect(() => setHighlight(0), [query]);
 
+    /**
+     * Handles keyboard navigation and selection in the suggestion list.
+     *
+     * Supported keys:
+     * - ArrowDown: move highlight down
+     * - ArrowUp: move highlight up
+     * - Enter: select highlighted result
+     * - Escape: close results
+     *
+     * @param e - Keyboard event from the input element.
+     */
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (!open) return;
         if (e.key === "ArrowDown") {
@@ -106,6 +178,7 @@ export default function SearchBar({
         } else if (e.key === "Enter") {
             const r = results[highlight];
             if (r) {
+                dispatch(setSelectedResourceId(r.resource.id));
                 onSelect?.(r.resource.id);
                 setOpen(false);
                 setQuery("");
@@ -117,6 +190,16 @@ export default function SearchBar({
         }
     };
 
+    /**
+     * Wraps matched character indices in a stronger text style.
+     *
+     * @param text - Source label to render.
+     * @param indices - Character indices to emphasize.
+     * @returns React nodes with highlighted characters.
+     *
+     * @example
+     * renderHighlighted("Document", [0, 3]);
+     */
     const renderHighlighted = (text: string, indices: number[]) => {
         if (!indices || indices.length === 0) return <>{text}</>;
         const parts: React.ReactNode[] = [];
