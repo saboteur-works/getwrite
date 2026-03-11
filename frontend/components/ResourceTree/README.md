@@ -148,3 +148,7 @@ With the exception of the `root` node, all keys in this structure are the Resour
     - [x] Siblings of Folders have their `orderIndex` corrected as needed (ie, when the dropped item is placed before the last child)
 - [x] Folder children retain their proper `folderId` and `orderIndex` when Folders are dragged and dropped
 - [x] Changes are persisted on local filesystem
+
+## Known Issues
+
+- Resource tree selection does not update when resource is set via a different component (ie, SearchBar)

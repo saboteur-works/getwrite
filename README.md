@@ -106,6 +106,8 @@ See `docs/features` for more detailed docs on project types, sidecars, and data 
 - `docs/features/sidecars.md` — sidecar metadata guidance
 - `docs/features/data/data-types.md` — data type reference
 
----
+## Known Issues
 
-If you want, I can also open a PR for the docs and defensive changes made to the scaffolder.
+### Resource Tree
+
+- ResourceTree selected item does not update when resource is set from outside of the component
