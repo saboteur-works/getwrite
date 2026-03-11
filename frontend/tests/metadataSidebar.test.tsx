@@ -5,6 +5,10 @@ import { Provider } from "react-redux";
 import MetadataSidebar from "../components/Sidebar/MetadataSidebar";
 import { createTextResource } from "../src/lib/models/resource";
 import { makeStore } from "../src/store/store";
+import {
+    setResources,
+    setSelectedResourceId,
+} from "../src/store/resourcesSlice";
 
 describe("MetadataSidebar", () => {
     it("renders notes and status and invokes callbacks", () => {
@@ -17,10 +21,11 @@ describe("MetadataSidebar", () => {
         const onStatus = vi.fn();
 
         const testStore = makeStore();
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
         render(
             <Provider store={testStore}>
                 <MetadataSidebar
-                    resource={res}
                     onChangeNotes={onNotes}
                     onChangeStatus={onStatus}
                 />

@@ -1,20 +1,40 @@
+/**
+ * @module schemas
+ *
+ * Central Zod schemas for model validation and project-type specification
+ * validation.
+ *
+ * Responsibilities:
+ * - Define canonical runtime validators for persisted project/model data.
+ * - Provide schema-derived TypeScript inference helpers.
+ * - Validate project-type JSON specs from memory or file.
+ */
 import { z } from "zod";
 import fs from "node:fs/promises";
-import type {
-    MetadataValue as MetadataValueType,
-    TipTapNode as TipTapNodeType,
-    TipTapDocument as TipTapDocumentType,
-} from "./types";
 
-/** UUID schema (v4) */
+/**
+ * Canonical UUID v4 string validator used across model schemas.
+ *
+ * @example
+ * UUID.parse("550e8400-e29b-41d4-a716-446655440000");
+ */
 export const UUID = z.string().uuid();
 
-/** ISO 8601-ish date/time string validation (uses Date.parse) */
+/**
+ * Date-like ISO string validator using `Date.parse(...)` for acceptance.
+ *
+ * This is intentionally permissive and validates parseability rather than a
+ * strict RFC format.
+ */
 const IsoDateString = z.string().refine((s) => !isNaN(Date.parse(s)), {
     message: "Expected ISO 8601 date string",
 });
 
-// Recursive metadata value schema (JSON-friendly, allows nested objects/arrays)
+/**
+ * Recursive metadata value validator used for extensible user/project metadata.
+ *
+ * Supports scalar values, homogeneous primitive arrays, and nested objects.
+ */
 export const MetadataValue: z.ZodTypeAny = z.lazy(() =>
     z.union([
         z.string(),
@@ -28,6 +48,9 @@ export const MetadataValue: z.ZodTypeAny = z.lazy(() =>
     ]),
 );
 
+/**
+ * Project-level configuration schema persisted in `project.json`.
+ */
 export const ProjectConfigSchema = z.object({
     maxRevisions: z.number().int().nonnegative().optional(),
     statuses: z.array(z.string()).optional(),
@@ -41,9 +64,12 @@ export const ProjectConfigSchema = z.object({
             }),
         )
         .optional(),
-    tagAssignments: z.record(z.array(UUID)).optional(),
+    tagAssignments: z.record(z.string(), z.array(UUID)).optional(),
 });
 
+/**
+ * Full project document schema for `project.json`.
+ */
 export const ProjectSchema = z.object({
     id: UUID,
     slug: z.string().optional(),
@@ -56,10 +82,14 @@ export const ProjectSchema = z.object({
     metadata: z.record(z.string(), MetadataValue).optional(),
 });
 
+/**
+ * Folder schema used for logical project hierarchy.
+ */
 export const FolderSchema = z.object({
     id: UUID,
     slug: z.string().optional(),
     name: z.string(),
+    type: z.literal("folder"),
     parentId: UUID.nullable().optional(),
     orderIndex: z.number().optional(),
     createdAt: IsoDateString,
@@ -67,8 +97,14 @@ export const FolderSchema = z.object({
     special: z.boolean().optional(),
 });
 
+/**
+ * Allowed runtime resource categories.
+ */
 export const ResourceTypeSchema = z.enum(["text", "image", "audio"]);
 
+/**
+ * Recursive TipTap node schema representing a subset of editor AST nodes.
+ */
 export const TipTapNodeSchema: z.ZodTypeAny = z.lazy(() =>
     z.object({
         type: z.string(),
@@ -77,11 +113,17 @@ export const TipTapNodeSchema: z.ZodTypeAny = z.lazy(() =>
     }),
 );
 
+/**
+ * TipTap document root schema (`type: "doc"`).
+ */
 export const TipTapDocumentSchema: z.ZodTypeAny = z.object({
     type: z.literal("doc"),
     content: z.array(TipTapNodeSchema),
 });
 
+/**
+ * Shared base schema for resource records regardless of subtype.
+ */
 export const ResourceBaseSchema = z.object({
     id: UUID,
     slug: z.string().optional(),
@@ -96,6 +138,9 @@ export const ResourceBaseSchema = z.object({
     updatedAt: IsoDateString.optional(),
 });
 
+/**
+ * Text resource schema extending base fields with editor/text metrics.
+ */
 export const TextResourceSchema = ResourceBaseSchema.extend({
     type: z.literal("text"),
     plainText: z.string().optional(),
@@ -105,6 +150,9 @@ export const TextResourceSchema = ResourceBaseSchema.extend({
     paragraphCount: z.number().int().nonnegative().optional(),
 });
 
+/**
+ * Image resource schema extending base fields with dimensions and EXIF data.
+ */
 export const ImageResourceSchema = ResourceBaseSchema.extend({
     type: z.literal("image"),
     width: z.number().int().nonnegative().optional(),
@@ -112,18 +160,27 @@ export const ImageResourceSchema = ResourceBaseSchema.extend({
     exif: z.record(z.string(), MetadataValue).optional(),
 });
 
+/**
+ * Audio resource schema extending base fields with duration/format metadata.
+ */
 export const AudioResourceSchema = ResourceBaseSchema.extend({
     type: z.literal("audio"),
     durationSeconds: z.number().nonnegative().optional(),
     format: z.string().optional(),
 });
 
+/**
+ * Union schema for any supported resource subtype.
+ */
 export const AnyResourceSchema = z.union([
     TextResourceSchema,
     ImageResourceSchema,
     AudioResourceSchema,
 ]);
 
+/**
+ * Revision metadata schema persisted under each revision folder.
+ */
 export const RevisionSchema = z.object({
     id: UUID,
     resourceId: UUID,
@@ -135,6 +192,9 @@ export const RevisionSchema = z.object({
     isCanonical: z.boolean(),
 });
 
+/**
+ * Resource template schema used for generated/default resources.
+ */
 export const ResourceTemplateSchema = z.object({
     id: z.string(),
     name: z.string(),
@@ -144,6 +204,11 @@ export const ResourceTemplateSchema = z.object({
     plainText: z.string().optional(),
 });
 
+/**
+ * Convenience object bundling core model schemas.
+ *
+ * Prefer named imports for tree-shaking in runtime bundles.
+ */
 export const Schemas = {
     UUID,
     MetadataValue,
@@ -161,7 +226,9 @@ export const Schemas = {
     TipTapNodeSchema,
 };
 
-/** Project-type spec schemas (used to validate project-type JSON specs) */
+/**
+ * Project-type default resource schema used inside project-type specs.
+ */
 export const ProjectTypeResourceSchema = z.object({
     name: z.string(),
     type: ResourceTypeSchema,
@@ -169,12 +236,23 @@ export const ProjectTypeResourceSchema = z.object({
     metadata: z.record(z.string(), MetadataValue).optional(),
 });
 
+/**
+ * Project-type folder schema defining folder seed structure.
+ */
 export const ProjectTypeFolderSchema = z.object({
     name: z.string(),
     special: z.boolean().optional(),
     defaultResources: z.array(ProjectTypeResourceSchema).optional(),
 });
 
+/**
+ * Project-type specification schema.
+ *
+ * Constraints:
+ * - `id` must be lowercase slug-like text (`[a-z0-9-_]+`).
+ * - At least one folder is required.
+ * - A folder named `Workspace` must be present.
+ */
 export const ProjectTypeSchema = z
     .object({
         id: z.string().regex(/^[a-z0-9-_]+$/),
@@ -189,14 +267,41 @@ export const ProjectTypeSchema = z
         path: ["folders"],
     });
 
+/**
+ * Inferred TypeScript shape of a valid project-type spec.
+ */
 export type ProjectTypeSpec = z.infer<typeof ProjectTypeSchema>;
 
+/**
+ * Validates an in-memory unknown value as a project-type specification.
+ *
+ * @param spec - Unknown value to validate.
+ * @returns Success object with parsed value, or failure object with formatted
+ *   Zod errors.
+ *
+ * @example
+ * const result = validateProjectType(input);
+ * if (result.success) {
+ *   console.log(result.value.id);
+ * }
+ */
 export function validateProjectType(spec: unknown) {
     const result = ProjectTypeSchema.safeParse(spec);
     if (result.success) return { success: true, value: result.data };
     return { success: false, errors: result.error.format() };
 }
 
+/**
+ * Reads and validates a project-type JSON file from disk.
+ *
+ * @param filePath - Absolute path to a JSON file.
+ * @returns Validation result from {@link validateProjectType}, or an explicit
+ *   invalid-JSON failure payload.
+ * @throws {Error} If the file cannot be read.
+ *
+ * @example
+ * const result = await validateProjectTypeFile("/tmp/novel.project-type.json");
+ */
 export async function validateProjectTypeFile(filePath: string) {
     const raw = await fs.readFile(filePath, "utf8");
     let parsed: unknown;
@@ -211,6 +316,15 @@ export async function validateProjectTypeFile(filePath: string) {
     return validateProjectType(parsed);
 }
 
+/**
+ * Generic helper type for inferring static TypeScript types from Zod schemas.
+ *
+ * @example
+ * type Project = Infer<typeof ProjectSchema>;
+ */
 export type Infer<T extends z.ZodTypeAny> = z.infer<T>;
 
+/**
+ * Default export for compatibility with modules expecting grouped schema access.
+ */
 export default Schemas;

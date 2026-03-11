@@ -105,6 +105,8 @@ export interface ResourceBase {
 
 /** Logical container within a project used to group resources. */
 export interface Folder extends ResourceBase {
+    /** Discriminant for folder resources. */
+    type: "folder";
     /** Parent folder UUID; null or undefined for top-level. */
     parentId?: UUID | null;
     special?: boolean;
@@ -115,6 +117,8 @@ export interface Folder extends ResourceBase {
 export interface TipTapNode {
     /** Node type name (e.g., 'paragraph', 'text', 'heading'). */
     type: string;
+    /** Text payload for leaf `text` nodes. */
+    text?: string;
     /** Optional attributes for the node (formatting, links, etc.). */
     attrs?: Record<string, MetadataValue>;
     /** Child nodes for nested structures. */

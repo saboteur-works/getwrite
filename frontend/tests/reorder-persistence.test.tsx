@@ -4,13 +4,13 @@ import { describe, it, expect, vi } from "vitest";
 import AppShell from "../components/Layout/AppShell";
 import { makeStore } from "../src/store/store";
 import { Provider } from "react-redux";
-import { setProject } from "../src/store/projectsSlice";
+import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { createProjectFromType } from "../src/lib/models/project-creator";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { buildProjectView } from "../src/lib/models/project-view";
 import { readSidecar, writeSidecar } from "../src/lib/models/sidecar";
+import { setFolders, setResources } from "../src/store/resourcesSlice";
 
 describe("Reorder persistence integration", () => {
     it("persists folder.json and resource sidecar orderIndex after drag/drop", async () => {
@@ -30,13 +30,6 @@ describe("Reorder persistence integration", () => {
         });
 
         console.log("[test] created project", created.project.id);
-
-        const view = buildProjectView({
-            project: created.project,
-            folders: created.folders,
-            resources: created.resources,
-        });
-
         // Use canonical `created.resources` (not the adapter's flat `view.resources`)
         // to avoid duplicating folder entries in the UI tree (folder entries are
         // represented separately via `folders`). Passing the adapter's `view.resources`
@@ -51,61 +44,69 @@ describe("Reorder persistence integration", () => {
         console.log("[test] stubbing global fetch");
         // stub global fetch so AppShell's persistence call writes into our tmp project
         const originalFetch = globalThis.fetch;
-        globalThis.fetch = vi.fn(async (url: string, opts?: any) => {
-            // parse body
-            const body = opts && opts.body ? JSON.parse(opts.body) : {};
-            const folderOrder = body.folderOrder ?? [];
-            const resourceOrder = body.resourceOrder ?? [];
+        globalThis.fetch = vi.fn(
+            async (input: RequestInfo | URL, opts?: any) => {
+                const url =
+                    typeof input === "string"
+                        ? input
+                        : input instanceof URL
+                          ? input.toString()
+                          : input.url;
+                // parse body
+                const body = opts && opts.body ? JSON.parse(opts.body) : {};
+                const folderOrder = body.folderOrder ?? [];
+                const resourceOrder = body.resourceOrder ?? [];
 
-            // update folder.json files
-            const foldersDir = path.join(tmp, "folders");
-            const folderDirs = await fs
-                .readdir(foldersDir, { withFileTypes: true })
-                .catch(() => [] as any[]);
-            for (const fo of folderOrder) {
-                for (const d of folderDirs) {
-                    if (!d.isDirectory()) continue;
-                    const folderJson = path.join(
-                        foldersDir,
-                        d.name,
-                        "folder.json",
-                    );
-                    try {
-                        const raw = await fs.readFile(folderJson, "utf8");
-                        const parsed = JSON.parse(raw) as any;
-                        if (parsed && parsed.id === fo.id) {
-                            parsed.orderIndex = fo.orderIndex;
-                            await fs.writeFile(
-                                folderJson,
-                                JSON.stringify(parsed, null, 2),
-                                "utf8",
-                            );
-                            break;
+                // update folder.json files
+                const foldersDir = path.join(tmp, "folders");
+                const folderDirs = await fs
+                    .readdir(foldersDir, { withFileTypes: true })
+                    .catch(() => [] as any[]);
+                for (const fo of folderOrder) {
+                    for (const d of folderDirs) {
+                        if (!d.isDirectory()) continue;
+                        const folderJson = path.join(
+                            foldersDir,
+                            d.name,
+                            "folder.json",
+                        );
+                        try {
+                            const raw = await fs.readFile(folderJson, "utf8");
+                            const parsed = JSON.parse(raw) as any;
+                            if (parsed && parsed.id === fo.id) {
+                                parsed.orderIndex = fo.orderIndex;
+                                await fs.writeFile(
+                                    folderJson,
+                                    JSON.stringify(parsed, null, 2),
+                                    "utf8",
+                                );
+                                break;
+                            }
+                        } catch (_) {
+                            // ignore
                         }
-                    } catch (_) {
+                    }
+                }
+
+                // update resource sidecars by merging existing meta
+                for (const ro of resourceOrder) {
+                    try {
+                        const existing = await readSidecar(tmp, ro.id).catch(
+                            () => null,
+                        );
+                        const merged = {
+                            ...(existing ?? {}),
+                            orderIndex: ro.orderIndex,
+                        };
+                        await writeSidecar(tmp, ro.id, merged);
+                    } catch (_e) {
                         // ignore
                     }
                 }
-            }
 
-            // update resource sidecars by merging existing meta
-            for (const ro of resourceOrder) {
-                try {
-                    const existing = await readSidecar(tmp, ro.id).catch(
-                        () => null,
-                    );
-                    const merged = {
-                        ...(existing ?? {}),
-                        orderIndex: ro.orderIndex,
-                    };
-                    await writeSidecar(tmp, ro.id, merged);
-                } catch (_e) {
-                    // ignore
-                }
-            }
-
-            return { ok: true, status: 200 } as any;
-        });
+                return { ok: true, status: 200 } as any;
+            },
+        );
 
         console.log("[test] seeding test-local store and rendering AppShell");
         // create a test-local Redux store, seed it, and render AppShell
@@ -114,10 +115,14 @@ describe("Reorder persistence integration", () => {
             setProject({
                 id: projectForUI.id,
                 name: projectForUI.name,
+                rootPath: projectForUI.rootPath ?? "",
                 folders: projectForUI.folders,
                 resources: projectForUI.resources,
             } as any),
         );
+        testStore.dispatch(setSelectedProjectId(projectForUI.id));
+        testStore.dispatch(setFolders(created.folders as any));
+        testStore.dispatch(setResources(created.resources as any));
 
         render(
             <Provider store={testStore}>
@@ -133,7 +138,9 @@ describe("Reorder persistence integration", () => {
 
         // Expand the first folder if present and locate treeitems
         console.log("[test] waiting for Resource tree");
-        const tree = await screen.findByLabelText("Resource tree");
+        const tree = await screen.findByRole("tree", {
+            name: "Resource tree",
+        });
         console.log("[test] found Resource tree");
         const treeItems = Array.from(
             tree.querySelectorAll('[role="treeitem"]'),
@@ -151,6 +158,9 @@ describe("Reorder persistence integration", () => {
             },
             getData(key: string) {
                 return this.data[key];
+            },
+            setDragImage() {
+                return undefined;
             },
         };
 
@@ -174,7 +184,7 @@ describe("Reorder persistence integration", () => {
             const folderJsonPath = path.join(
                 tmp,
                 "folders",
-                f.slug,
+                f.slug ?? f.id,
                 "folder.json",
             );
             const raw = await fs.readFile(folderJsonPath, "utf8");

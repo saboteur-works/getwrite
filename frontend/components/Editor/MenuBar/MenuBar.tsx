@@ -1,3 +1,12 @@
+/**
+ * @module Editor/MenuBar/MenuBar
+ *
+ * Primary toolbar for TipTap editor actions.
+ *
+ * This component renders grouped formatting controls (history, typography,
+ * inline marks, block transforms, lists, headings, alignment, color/highlight,
+ * and math helpers) and wires each UI control to TipTap command chains.
+ */
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import React, { useCallback } from "react";
@@ -6,9 +15,33 @@ import EditorMenuIcon from "./EditorMenuIcon";
 import EditorMenuIconGroup from "./EditorMenuIconGroup";
 import EditorMenuInput from "./EditorMenuInput";
 
+/** Standard icon size (px) used by all menu controls for visual consistency. */
 const ICON_SIZE = 16;
 
-export const MenuBar = ({ editor }: { editor: Editor }) => {
+/**
+ * Props for {@link MenuBar}.
+ */
+export interface MenuBarProps {
+    /** Active TipTap editor instance used to execute toolbar commands. */
+    editor: Editor;
+}
+
+/**
+ * Renders the editor toolbar and connects controls to TipTap command chains.
+ *
+ * Behavior notes:
+ * - Reads derived command state from `useEditorState(menuBarStateSelector)` to
+ *   determine active/disabled icon states.
+ * - Uses command chaining (`editor.chain().focus()...run()`) for all actions.
+ * - Keeps the toolbar horizontally scrollable for narrow screens.
+ *
+ * @param props - {@link MenuBarProps}.
+ * @returns The editor toolbar element, or `null` when editor is unavailable.
+ *
+ * @example
+ * <MenuBar editor={editor} />
+ */
+export const MenuBar = ({ editor }: MenuBarProps) => {
     const editorState = useEditorState({
         editor,
         selector: menuBarStateSelector,
@@ -18,30 +51,38 @@ export const MenuBar = ({ editor }: { editor: Editor }) => {
         return null;
     }
 
-    const onInsertInlineMath = useCallback(() => {
-        const hasSelection = !editor.state.selection.empty;
-
-        if (hasSelection) {
-            return editor.chain().setInlineMath().focus().run();
-        }
-
-        const latex = prompt("Enter inline math expression:", "");
-        return editor.chain().insertInlineMath({ latex }).focus().run();
-    }, [editor]);
-
+    /**
+     * Inserts block math or wraps selected content as a math block.
+     *
+     * - If text is selected, converts the selection to block math.
+     * - If selection is empty, prompts for LaTeX and inserts a block math node.
+     */
     const onInsertBlockMath = useCallback(() => {
         const hasSelection = !editor.state.selection.empty;
 
         if (hasSelection) {
-            return editor.chain().setBlockMath().focus().run();
+            const { from, to } = editor.state.selection;
+            const latex = editor.state.doc.textBetween(from, to, " ");
+            return editor.chain().insertBlockMath({ latex }).focus().run();
         }
 
         const latex = prompt("Enter block math expression:", "");
+        if (latex === null) {
+            return false;
+        }
         return editor.chain().insertBlockMath({ latex }).focus().run();
     }, [editor]);
 
+    /**
+     * Handles font-size updates from numeric input control.
+     *
+     * Converts numeric string values to CSS pixel size before applying:
+     * `setFontSize("<value>px")`.
+     *
+     * @param event - Input change event from font-size control.
+     */
     const handleFontSizeChange = useCallback(
-        (event: React.ChangeEvent<HTMLInputElement>) => {
+        (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
             const value = event.currentTarget.value;
             if (value) {
                 editor

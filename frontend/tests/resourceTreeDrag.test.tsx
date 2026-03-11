@@ -32,7 +32,12 @@ describe("ResourceTree drag UI", () => {
 
         const testStore = makeStore();
         testStore.dispatch(
-            setProject({ id: project.id, name: project.name, resources }),
+            setProject({
+                id: project.id,
+                name: project.name,
+                rootPath: project.rootPath ?? "",
+                resources,
+            }),
         );
 
         render(

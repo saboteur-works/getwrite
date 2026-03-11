@@ -22,15 +22,20 @@ describe("getwrite-cli registration", () => {
 
 describe("templates:list error handling", () => {
     let errSpy: any;
+    let exitSpy: any;
 
     beforeEach(() => {
         errSpy = vi
             .spyOn(console, "error")
             .mockImplementation(() => undefined as any);
+        exitSpy = vi
+            .spyOn(process, "exit")
+            .mockImplementation(((code?: number) => undefined) as any);
     });
 
     afterEach(() => {
         errSpy.mockRestore();
+        exitSpy.mockRestore();
     });
 
     it("logs error when templates dir missing", async () => {
@@ -45,20 +50,26 @@ describe("templates:list error handling", () => {
             fakePath,
         ]);
         expect(errSpy).toHaveBeenCalled();
+        expect(exitSpy).toHaveBeenCalledWith(2);
     });
 });
 
 describe("screenshots:capture error handling", () => {
     let errSpy: any;
+    let exitSpy: any;
 
     beforeEach(() => {
         errSpy = vi
             .spyOn(console, "error")
             .mockImplementation(() => undefined as any);
+        exitSpy = vi
+            .spyOn(process, "exit")
+            .mockImplementation(((code?: number) => undefined) as any);
     });
 
     afterEach(() => {
         errSpy.mockRestore();
+        exitSpy.mockRestore();
     });
 
     it("reports fetch failures gracefully", async () => {
@@ -76,5 +87,6 @@ describe("screenshots:capture error handling", () => {
             "./tmp-screens",
         ]);
         expect(errSpy).toHaveBeenCalled();
+        expect(exitSpy).toHaveBeenCalledWith(2);
     });
 });

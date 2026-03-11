@@ -7,6 +7,7 @@ import { makeStore } from "../src/store/store";
 import { Provider } from "react-redux";
 import { setProject } from "../src/store/projectsSlice";
 import EditView from "../components/WorkArea/EditView";
+import type { TextResource } from "../src/lib/models/types";
 // Use a small, canonical test-local fixture instead of legacy `sampleProjects` placeholder.
 
 // Integration-style flow test: Start -> Open Project -> Open Resource -> Edit
@@ -21,24 +22,28 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                     name: "Sample Project 1",
                     createdAt: now,
                     updatedAt: now,
-                    rootPath: null,
+                    rootPath: "face/root/path",
                 },
                 resources: [
                     {
                         id: "res_ogbqoiv",
                         name: "Scene A",
-                        content: "Placeholder content for Scene A",
+                        type: "text",
+                        createdAt: now,
+                        updatedAt: now,
                         plainText: "Placeholder content for Scene A",
                         folderId: null,
                     },
                     {
                         id: "res_klxinf5",
                         name: "Notes",
-                        content: "Notes for Sample Project 1",
+                        type: "text",
+                        createdAt: now,
+                        updatedAt: now,
                         plainText: "Notes for Sample Project 1",
                         folderId: null,
                     },
-                ],
+                ] as TextResource[],
                 folders: [],
             },
         ];
@@ -120,7 +125,6 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                                     <EditView
                                         initialContent={
                                             (currentResource.plainText ??
-                                                currentResource.content ??
                                                 "") as string
                                         }
                                     />
@@ -166,7 +170,7 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
 
         // The editor area should show word count matching the resource content
         // Compute expected word count using same logic as EditView
-        const text = (firstResource.plainText ?? firstResource.content ?? "")
+        const text = (firstResource.plainText ?? "")
             .replace(/<[^>]+>/g, " ")
             .replace(/\s+/g, " ")
             .trim();

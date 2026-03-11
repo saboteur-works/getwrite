@@ -1,11 +1,55 @@
+/**
+ * @module revision
+ *
+ * Filesystem-backed revision lifecycle utilities.
+ *
+ * Revision data is stored at:
+ * - `revisions/<resourceId>/v-<version>/content.bin`
+ * - `revisions/<resourceId>/v-<version>/metadata.json`
+ *
+ * This module provides deterministic listing, candidate selection for pruning,
+ * atomic revision writes, and canonical revision management.
+ */
 import path from "node:path";
+import type { Dirent } from "node:fs";
 import { generateUUID } from "./uuid";
 import type { UUID, Revision } from "./types";
 import { mkdir, writeFile, readFile, readdir, stat, rm, rename } from "./io";
 
+/** Optional attributes for revision creation. */
+export interface WriteRevisionOptions {
+    /** Optional actor identifier recorded in the revision metadata. */
+    author?: string;
+    /** When true, marks the written revision as canonical. */
+    isCanonical?: boolean;
+}
+
+/** Optional behavior controls for prune operations. */
+export interface PruneRevisionsOptions {
+    /**
+     * When false, aborts pruning if the deletion target cannot be met due to
+     * canonical or preserved revisions.
+     */
+    autoPrune?: boolean;
+}
+
 /**
  * Determine which revisions should be pruned when enforcing a maximum retained
  * revisions count for a resource.
+ *
+ * Selection rules:
+ * - Excludes canonical revisions.
+ * - Excludes revisions where `metadata.preserve` is truthy.
+ * - Sorts remaining candidates by ascending `versionNumber`.
+ * - Returns the oldest `total - maxRevisions` entries.
+ *
+ * @param revisions - All known revisions for a single resource.
+ * @param maxRevisions - Maximum revisions to retain.
+ * @returns Revisions that should be deleted, ordered oldest first.
+ * @throws {RangeError} If `maxRevisions` is negative.
+ *
+ * @example
+ * const candidates = selectPruneCandidates(revisions, 25);
  */
 export function selectPruneCandidates(
     revisions: Revision[],
@@ -31,7 +75,16 @@ export function selectPruneCandidates(
     return sorted.slice(0, toRemoveCount);
 }
 
-/** Get the base revisions directory for a resource. */
+/**
+ * Returns the base directory containing all revisions for a resource.
+ *
+ * @param projectRoot - Absolute path to the project root.
+ * @param resourceId - Resource UUID.
+ * @returns Absolute path to `revisions/<resourceId>`.
+ *
+ * @example
+ * const base = revisionsBaseDir("/projects/demo", "resource-uuid");
+ */
 export function revisionsBaseDir(
     projectRoot: string,
     resourceId: UUID,
@@ -39,7 +92,17 @@ export function revisionsBaseDir(
     return path.join(projectRoot, "revisions", resourceId);
 }
 
-/** Get the folder for a specific revision version. */
+/**
+ * Returns the directory for a specific revision version.
+ *
+ * @param projectRoot - Absolute path to the project root.
+ * @param resourceId - Resource UUID.
+ * @param versionNumber - Revision version number.
+ * @returns Absolute path to `revisions/<resourceId>/v-<versionNumber>`.
+ *
+ * @example
+ * const dir = revisionDir("/projects/demo", "resource-uuid", 3);
+ */
 export function revisionDir(
     projectRoot: string,
     resourceId: UUID,
@@ -51,13 +114,36 @@ export function revisionDir(
     );
 }
 
-/** Write revision content and metadata. Returns the created Revision metadata. */
+/**
+ * Writes revision content and metadata for a given resource/version.
+ *
+ * The write uses a temporary directory and atomic rename to avoid exposing
+ * partially written revision data.
+ *
+ * @param projectRoot - Absolute path to the project root.
+ * @param resourceId - Resource UUID.
+ * @param versionNumber - Revision version to write.
+ * @param content - Content payload stored in `content.bin`.
+ * @param options - Optional author and canonical flags.
+ * @returns Created revision metadata.
+ * @throws {Error} If a revision directory for this version already exists.
+ * @throws {Error} If any filesystem operation fails.
+ *
+ * @example
+ * const revision = await writeRevision(
+ *   "/projects/demo",
+ *   "resource-uuid",
+ *   4,
+ *   "Hello",
+ *   { author: "alice" },
+ * );
+ */
 export async function writeRevision(
     projectRoot: string,
     resourceId: UUID,
     versionNumber: number,
     content: string | Buffer,
-    options?: { author?: string; isCanonical?: boolean },
+    options?: WriteRevisionOptions,
 ): Promise<Revision> {
     const finalDir = revisionDir(projectRoot, resourceId, versionNumber);
     const base = revisionsBaseDir(projectRoot, resourceId);
@@ -112,7 +198,24 @@ export async function writeRevision(
     }
 }
 
-/** List all revisions for a resource by reading revisions/<resourceId>/v-<version>/metadata.json. */
+/**
+ * Lists all revisions for a resource by scanning `v-*` revision folders and
+ * reading each `metadata.json` file.
+ *
+ * Behavior:
+ * - Returns revisions sorted by ascending `versionNumber`.
+ * - Skips malformed/unreadable metadata files.
+ * - Returns `[]` when the revisions directory does not exist.
+ *
+ * @param projectRoot - Absolute path to the project root.
+ * @param resourceId - Resource UUID.
+ * @returns Sorted revision metadata entries.
+ * @throws {Error} If the revisions directory cannot be listed for reasons
+ *   other than non-existence.
+ *
+ * @example
+ * const revisions = await listRevisions("/projects/demo", "resource-uuid");
+ */
 export async function listRevisions(
     projectRoot: string,
     resourceId: UUID,
@@ -121,8 +224,12 @@ export async function listRevisions(
     try {
         const entries = await readdir(base, { withFileTypes: true });
         const revDirs = entries
-            .filter((e) => e.isDirectory() && e.name.startsWith("v-"))
-            .map((d) => d.name);
+            .filter(
+                (entry): entry is Dirent =>
+                    typeof entry !== "string" && entry.isDirectory(),
+            )
+            .filter((entry) => entry.name.startsWith("v-"))
+            .map((dirEntry) => dirEntry.name);
         const results: Revision[] = [];
         for (const d of revDirs) {
             const metaPath = path.join(base, d, "metadata.json");
@@ -150,12 +257,29 @@ export async function listRevisions(
 /**
  * Prune revisions to enforce maxRevisions retained revisions. Deletes
  * filesystem directories for selected candidates and returns deleted metadata.
+ *
+ * If `options.autoPrune` is explicitly `false` and the required number of
+ * revisions cannot be removed (because protected revisions consume capacity),
+ * this function aborts and returns `[]` without deleting anything.
+ *
+ * @param projectRoot - Absolute path to the project root.
+ * @param resourceId - Resource UUID.
+ * @param maxRevisions - Maximum revisions to retain.
+ * @param options - Optional prune behavior flags.
+ * @returns Metadata for deleted revisions.
+ * @throws {RangeError} If `maxRevisions` is negative.
+ * @throws {Error} If listing revisions or deleting directories fails.
+ *
+ * @example
+ * const deleted = await pruneRevisions("/projects/demo", "resource-uuid", 50, {
+ *   autoPrune: true,
+ * });
  */
 export async function pruneRevisions(
     projectRoot: string,
     resourceId: UUID,
     maxRevisions: number,
-    options?: { autoPrune?: boolean },
+    options?: PruneRevisionsOptions,
 ): Promise<Revision[]> {
     const revisions = await listRevisions(projectRoot, resourceId);
     const candidates = selectPruneCandidates(revisions, maxRevisions);
@@ -175,7 +299,22 @@ export async function pruneRevisions(
     return deleted;
 }
 
-/** Mark the specified revision as canonical and unset others. */
+/**
+ * Marks one revision as canonical and unmarks every other revision for the
+ * same resource.
+ *
+ * All revision metadata files are rewritten to guarantee a single canonical
+ * source of truth.
+ *
+ * @param projectRoot - Absolute path to the project root.
+ * @param resourceId - Resource UUID.
+ * @param versionNumber - Revision version to mark canonical.
+ * @returns Updated target revision if found; otherwise `null`.
+ * @throws {Error} If revision metadata cannot be read or written.
+ *
+ * @example
+ * const canonical = await setCanonicalRevision("/projects/demo", "resource-uuid", 8);
+ */
 export async function setCanonicalRevision(
     projectRoot: string,
     resourceId: UUID,
@@ -202,7 +341,17 @@ export async function setCanonicalRevision(
     return { ...target, isCanonical: true };
 }
 
-/** Return the current canonical revision if present. */
+/**
+ * Returns the current canonical revision for a resource, if one exists.
+ *
+ * @param projectRoot - Absolute path to the project root.
+ * @param resourceId - Resource UUID.
+ * @returns Canonical revision metadata, or `null` when none is marked.
+ * @throws {Error} If revision metadata cannot be listed.
+ *
+ * @example
+ * const canonical = await getCanonicalRevision("/projects/demo", "resource-uuid");
+ */
 export async function getCanonicalRevision(
     projectRoot: string,
     resourceId: UUID,
@@ -211,6 +360,9 @@ export async function getCanonicalRevision(
     return revs.find((r) => r.isCanonical) ?? null;
 }
 
+/**
+ * Bundled revision API surface for consumers that prefer object-style imports.
+ */
 export default {
     selectPruneCandidates,
     revisionsBaseDir,

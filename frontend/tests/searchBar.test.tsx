@@ -11,7 +11,6 @@ describe("SearchBar", () => {
             {
                 id: "r1",
                 name: "Alpha",
-                title: "Alpha",
                 type: "text",
                 plainText: "",
                 createdAt: now,
@@ -21,7 +20,6 @@ describe("SearchBar", () => {
             {
                 id: "r2",
                 name: "Beta",
-                title: "Beta",
                 type: "text",
                 plainText: "",
                 createdAt: now,
@@ -31,7 +29,6 @@ describe("SearchBar", () => {
             {
                 id: "r3",
                 name: "Gamma",
-                title: "Gamma",
                 type: "text",
                 plainText: "",
                 createdAt: now,

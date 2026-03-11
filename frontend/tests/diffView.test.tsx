@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import DiffView from "../components/WorkArea/DiffView";
+import { describe, test, vi } from "vitest";
 
 describe("DiffView", () => {
     test("renders left and right panes and revisions", () => {

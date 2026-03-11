@@ -1,3 +1,14 @@
+/**
+ * @module resource
+ *
+ * Resource factory, validation, and local persistence helpers.
+ *
+ * This module is responsible for:
+ * - Constructing strongly typed resource objects (`text`, `image`, `audio`, `folder`).
+ * - Performing runtime schema validation before returning created resources.
+ * - Persisting resource payloads/metadata to local filesystem storage.
+ * - Loading resource metadata from local sidecar/meta files.
+ */
 import { generateUUID } from "./uuid";
 import type {
     UUID,
@@ -21,6 +32,23 @@ import {
 import fs from "node:fs";
 import path from "node:path";
 import { writeSidecar } from "./sidecar";
+
+/**
+ * Converts display names to URL/file-system friendly slugs.
+ *
+ * Rules:
+ * - Trim leading/trailing whitespace.
+ * - Lowercase all characters.
+ * - Replace whitespace runs with `-`.
+ * - Remove characters outside `[a-z0-9-]`.
+ *
+ * @param s - Input text to normalize.
+ * @returns Slugified string.
+ *
+ * @example
+ * slugify("Chapter One!");
+ * // => "chapter-one"
+ */
 function slugify(s: string): string {
     return s
         .trim()
@@ -28,7 +56,43 @@ function slugify(s: string): string {
         .replace(/\s+/g, "-")
         .replace(/[^a-z0-9\-]/g, "");
 }
-/** Create a `TextResource` with sensible defaults and derived metrics. */
+
+/**
+ * Type guard for folder resources.
+ */
+function isFolderResource(resource: AnyResource): resource is Folder {
+    return resource.type === "folder";
+}
+
+/**
+ * Type guard for text resources.
+ */
+function isTextResource(resource: AnyResource): resource is TextResource {
+    return resource.type === "text" && !isFolderResource(resource);
+}
+
+/**
+ * Creates a validated `TextResource` with derived text metrics.
+ *
+ * Derived metrics:
+ * - `wordCount` from whitespace-split tokens.
+ * - `charCount` from string length.
+ * - `paragraphCount` from blank-line-separated blocks.
+ *
+ * @param params - Resource creation inputs.
+ * @param params.name - Display name of the resource.
+ * @param params.folderId - Owning folder UUID, or `null` for root placement.
+ * @param params.plainText - Plain-text representation of content.
+ * @param params.tiptap - Optional TipTap AST document.
+ * @param params.slug - Optional explicit slug; defaults to `slugify(name)`.
+ * @param params.metadata - Optional arbitrary metadata persisted with resource.
+ * @param params.orderIndex - Optional sibling ordering index.
+ * @returns A schema-validated `TextResource`.
+ * @throws {import("zod").ZodError} If the constructed resource fails schema validation.
+ *
+ * @example
+ * const r = createTextResource({ name: "Scene 1", plainText: "Hello world" });
+ */
 export function createTextResource(params: {
     name: string;
     folderId?: UUID | null;
@@ -68,7 +132,23 @@ export function createTextResource(params: {
     return res;
 }
 
-/** Create an `ImageResource` with optional metadata. */
+/**
+ * Creates a validated `ImageResource`.
+ *
+ * @param params - Resource creation inputs.
+ * @param params.name - Display name of the resource.
+ * @param params.folderId - Owning folder UUID, or `null` for root placement.
+ * @param params.width - Optional pixel width.
+ * @param params.height - Optional pixel height.
+ * @param params.exif - Optional EXIF metadata map.
+ * @param params.slug - Optional explicit slug; defaults to `slugify(name)`.
+ * @param params.metadata - Optional arbitrary resource metadata.
+ * @returns A schema-validated `ImageResource`.
+ * @throws {import("zod").ZodError} If the constructed resource fails schema validation.
+ *
+ * @example
+ * const r = createImageResource({ name: "Cover", width: 1200, height: 1600 });
+ */
 export function createImageResource(params: {
     name: string;
     folderId?: UUID | null;
@@ -97,7 +177,22 @@ export function createImageResource(params: {
     return res;
 }
 
-/** Create an `AudioResource` with optional metadata. */
+/**
+ * Creates a validated `AudioResource`.
+ *
+ * @param params - Resource creation inputs.
+ * @param params.name - Display name of the resource.
+ * @param params.folderId - Owning folder UUID, or `null` for root placement.
+ * @param params.durationSeconds - Optional audio duration in seconds.
+ * @param params.format - Optional format label (for example, `"wav"`).
+ * @param params.slug - Optional explicit slug; defaults to `slugify(name)`.
+ * @param params.metadata - Optional arbitrary resource metadata.
+ * @returns A schema-validated `AudioResource`.
+ * @throws {import("zod").ZodError} If the constructed resource fails schema validation.
+ *
+ * @example
+ * const r = createAudioResource({ name: "Take 01", durationSeconds: 13.2, format: "wav" });
+ */
 export function createAudioResource(params: {
     name: string;
     folderId?: UUID | null;
@@ -124,11 +219,36 @@ export function createAudioResource(params: {
     return res;
 }
 
-/** Validate an arbitrary input as AnyResource and return the typed value. */
+/**
+ * Validates unknown input as `AnyResource` and returns typed data.
+ *
+ * @param input - Unknown value to validate.
+ * @returns Parsed and typed `AnyResource`.
+ * @throws {import("zod").ZodError} If validation fails.
+ *
+ * @example
+ * const resource = validateResource(candidate);
+ */
 export function validateResource(input: unknown) {
-    return AnyResourceSchema.parse(input);
+    return AnyResourceSchema.parse(input) as AnyResource;
 }
 
+/**
+ * Creates a validated `Folder` resource.
+ *
+ * @param params - Folder creation inputs.
+ * @param params.name - Folder display name.
+ * @param params.parentFolderId - Parent folder UUID, or `null` for root.
+ * @param params.slug - Optional explicit slug; defaults to `slugify(name)`.
+ * @param params.metadata - Optional arbitrary folder metadata.
+ * @param params.orderIndex - Optional sibling ordering index.
+ * @param params.special - Optional flag for system/special folders.
+ * @returns A schema-validated `Folder` object.
+ * @throws {import("zod").ZodError} If the constructed folder fails schema validation.
+ *
+ * @example
+ * const folder = createFolderResource({ name: "Drafts", special: true });
+ */
 export function createFolderResource(params: {
     name: string;
     parentFolderId?: UUID | null;
@@ -156,9 +276,23 @@ export function createFolderResource(params: {
 }
 
 /**
- * Save a resource to the filesystem (MVP: text only).
- * This function should only be called from backend contexts.
- * */
+ * Persists a resource to local filesystem storage.
+ *
+ * Storage behavior by type:
+ * - `folder`: writes `folders/<slug-or-id>/folder.json`.
+ * - `text`: writes `resources/<id>/content.tiptap.json` and `content.txt`.
+ * - non-folder resources: writes sidecar metadata via `writeSidecar(...)`.
+ *
+ * This function is intended for backend/server contexts only.
+ *
+ * @param projectPath - Absolute path to the project root directory.
+ * @param resource - Resource to persist.
+ * @returns The same resource after persistence completes.
+ * @throws {Error} If filesystem writes fail.
+ *
+ * @example
+ * await writeResourceToFile(projectPath, textResource);
+ */
 export async function writeResourceToFile(
     projectPath: string,
     resource: AnyResource,
@@ -170,7 +304,7 @@ export async function writeResourceToFile(
         resource.id,
     );
 
-    if (resource.type === "folder") {
+    if (isFolderResource(resource)) {
         const dir = path.join(
             projectPath,
             "folders",
@@ -188,7 +322,7 @@ export async function writeResourceToFile(
         return resource;
     }
 
-    if (resource.type === "text") {
+    if (isTextResource(resource)) {
         // Create directory if it doesn't exist
         if (!fs.existsSync(base)) {
             fs.mkdirSync(base, { recursive: true });
@@ -217,36 +351,63 @@ export async function writeResourceToFile(
         metadata: resource.metadata || {},
     };
 
-    if (resource.type !== "folder") {
-        await writeSidecar(projectPath, resource.id, sidecarData);
-    }
+    await writeSidecar(projectPath, resource.id, sidecarData);
     return resource;
 }
-/** Options for creating a resource of a specific type. */
+/**
+ * Input options for `createResourceOfType(...)`.
+ */
 export interface CreateResourceOpts {
+    /** Display name for the new resource. */
     name: string;
+    /** Target resource type to create. */
     type: ResourceType;
+    /** Owning folder UUID (or `null` for root). */
     folderId?: UUID | null;
+    /** Optional sibling ordering index. */
     orderIndex?: number;
+    /** Optional arbitrary resource metadata. */
     metadata?: Record<string, MetadataValue>;
-    // Text-specific
+    /** Text-specific creation options. */
     text?: {
+        /** Optional plain-text body. */
         plainText?: string;
+        /** Optional TipTap AST body. */
         tiptap?: TipTapDocument;
     };
-    // Image-specific
+    /** Image-specific creation options. */
     image?: {
+        /** Optional pixel width. */
         width?: number;
+        /** Optional pixel height. */
         height?: number;
+        /** Optional EXIF metadata map. */
         exif?: Record<string, MetadataValue>;
     };
-    // Audio-specific
+    /** Audio-specific creation options. */
     audio?: {
+        /** Optional duration in seconds. */
         durationSeconds?: number;
+        /** Optional format string (for example, `"mp3"`). */
         format?: string;
     };
 }
 
+/**
+ * Dispatches to the correct resource factory based on `resourceType`.
+ *
+ * @param resourceType - Resource kind to create.
+ * @param opts - Shared and type-specific creation options.
+ * @returns A newly created resource matching `resourceType`.
+ * @throws {Error} If `resourceType` is unsupported.
+ *
+ * @example
+ * const img = createResourceOfType("image", {
+ *   name: "Cover",
+ *   type: "image",
+ *   image: { width: 1200, height: 1600 },
+ * });
+ */
 export const createResourceOfType = (
     resourceType: ResourceType,
     opts: CreateResourceOpts,
@@ -288,7 +449,20 @@ export const createResourceOfType = (
     }
 };
 
-export const getLocalResources = (projectPath: string) => {
+/**
+ * Loads locally stored resources from `<projectPath>/meta/*.json`.
+ *
+ * Each metadata file is parsed and validated via {@link validateResource}.
+ * Non-JSON files are ignored.
+ *
+ * @param projectPath - Absolute path to the project root directory.
+ * @returns Array of validated resources, or `[]` if no meta directory exists.
+ * @throws {Error} If file reads or JSON parsing fails.
+ *
+ * @example
+ * const resources = getLocalResources(projectPath);
+ */
+export const getLocalResources = (projectPath: string): AnyResource[] => {
     const metaDir = path.join(projectPath, "meta");
     if (!fs.existsSync(metaDir)) {
         return [];
@@ -308,6 +482,9 @@ export const getLocalResources = (projectPath: string) => {
     return resources;
 };
 
+/**
+ * Convenience default export of core resource factory/validation helpers.
+ */
 export default {
     createTextResource,
     createImageResource,

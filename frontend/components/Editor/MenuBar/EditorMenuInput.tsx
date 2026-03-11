@@ -1,28 +1,101 @@
+/**
+ * @module Editor/MenuBar/EditorMenuInput
+ *
+ * Reusable editor menu input control that pairs an icon with one of several
+ * input variants (`color`, `range`, `number`, `select`) and optional tooltip.
+ *
+ * This component is controlled internally for display (`value` state) and
+ * forwards user updates through `onChange`/`onInput` callbacks so parent
+ * editor tooling can react to formatting changes.
+ */
 import { Baseline } from "lucide-react";
 import { Tooltip } from "react-tooltip";
 import { useState } from "react";
 import { ALargeSmall } from "lucide-react";
 
+/**
+ * Available icon components keyed by semantic menu input role.
+ */
 const IconTypes = {
+    /** Icon used for color-related controls. */
     fontColor: Baseline,
+    /** Icon used for font-size controls. */
     fontSize: ALargeSmall,
+    /** Icon used for font-style controls. */
     fontStyle: ALargeSmall,
 };
 
+/**
+ * Props for {@link EditorMenuInput}.
+ */
 interface EditorMenuInputProps {
+    /**
+     * Icon size in pixels.
+     *
+     * Defaults to `24`.
+     */
     iconSize?: number;
+    /** Icon key selecting a component from `IconTypes`. */
     Icon: keyof typeof IconTypes;
+    /** Optional click callback for the rendered input control. */
     onClick?: () => void;
+    /** Disables interaction and applies disabled styling when true. */
     disabled?: boolean;
+    /** Applies active-state styling when true. */
     active?: boolean;
+    /** Tooltip text shown via `react-tooltip`. */
     tooltipContent?: string;
+    /** Initial control value used to initialize local state. */
     initialValue?: string;
+    /**
+     * Input event handler for controls that emit `onInput`
+     * (`color` and `range` variants).
+     */
     onInput?: (event: React.FormEvent<HTMLInputElement>) => void;
+    /**
+     * Input variant to render.
+     *
+     * Supported runtime values:
+     * - `color`
+     * - `range`
+     * - `number`
+     * - `select`
+     *
+     * If omitted, internal options default to `color`.
+     */
     type?: string;
+    /** Select options used only when `type === "select"`. */
     options?: string[];
-    onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+    /** Change callback fired when the control value changes. */
+    onChange?: (
+        event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    ) => void;
 }
 
+/**
+ * Renders an icon-prefixed editor menu input with optional tooltip.
+ *
+ * Render behavior by `type`:
+ * - `color`: `<input type="color">`
+ * - `range`: `<input type="range">`
+ * - `number`: `<input type="number">`
+ * - `select`: `<select>` using `options`
+ *
+ * Styling behavior:
+ * - Applies active, disabled, and hover classes based on props.
+ * - Uses a shared tooltip id for all rendered controls.
+ *
+ * @param props - Component configuration and event callbacks.
+ * @returns Icon + input control for editor toolbar usage.
+ *
+ * @example
+ * <EditorMenuInput
+ *   Icon="fontColor"
+ *   type="color"
+ *   tooltipContent="Text color"
+ *   onChange={(e) => setColor(e.target.value)}
+ * />
+ */
 export default function EditorMenuInput({
     iconSize = 24,
     Icon,

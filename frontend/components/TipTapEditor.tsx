@@ -1,3 +1,16 @@
+/**
+ * @module TipTapEditor
+ *
+ * Rich-text editor wrapper around TipTap with project-specific extension setup,
+ * math node migration, toolbar integration, and test-environment fallbacks.
+ *
+ * Key responsibilities:
+ * - Configure a consistent extension stack (text style, lists, alignment,
+ *   placeholders, IDs, typography, math).
+ * - Emit both HTML and TipTap JSON document snapshots on updates.
+ * - Keep editor content synchronized when external `value` changes.
+ * - Provide deterministic lightweight rendering in test environments.
+ */
 import "katex/dist/katex.min.css";
 
 import React, { useEffect } from "react";
@@ -25,13 +38,32 @@ import Typography from "@tiptap/extension-typography";
 import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import TextAlign from "@tiptap/extension-text-align";
 
+/**
+ * Props accepted by {@link TipTapEditor}.
+ */
 export interface TipTapEditorProps {
+    /**
+     * Initial/controlled content provided to TipTap.
+     *
+     * Accepts any TipTap `Content` shape; when omitted, defaults to empty text.
+     */
     value?: Content;
+    /**
+     * Called whenever editor content changes.
+     *
+     * @param content - Current editor content serialized as HTML.
+     * @param doc - Current TipTap document serialized as JSON.
+     */
     onChange?: (content: string, doc: TipTapDocument) => void;
+    /** Optional DOM id applied to the `EditorContent` element. */
     id?: string;
+    /** When true, disables editing interactions. */
     readonly?: boolean;
 }
 
+/**
+ * Shared base extension list for all runtime editor instances.
+ */
 const extensions = [
     StarterKit,
     TextStyleKit,
@@ -57,14 +89,38 @@ const extensions = [
     FontFamily,
 ];
 
+/**
+ * Renders the TipTap editor with toolbar and project-specific behavior.
+ *
+ * Runtime behavior:
+ * - Client-only editor initialization.
+ * - Lightweight HTML mock in test environments.
+ * - Debounced content synchronization handled by parent consumers.
+ * - Math extension click handlers prompt for formula updates.
+ *
+ * @param props - {@link TipTapEditorProps}.
+ * @returns Editor shell, loading placeholders, or test mock depending on
+ *   environment and initialization state.
+ *
+ * @example
+ * <TipTapEditor
+ *   value={initialHtml}
+ *   onChange={(html, doc) => saveDraft(html, doc)}
+ *   readonly={false}
+ * />
+ */
 export default function TipTapEditor({
     value = "",
     onChange,
     id,
     readonly = false,
 }: TipTapEditorProps) {
+    /** True when executing in browser context (guards SSR/hydration paths). */
     const isClient = typeof window !== "undefined";
 
+    /**
+     * Test-environment guard used to bypass full ProseMirror lifecycle in jsdom.
+     */
     const inTestEnv =
         typeof process !== "undefined" &&
         (process.env?.VITEST === "true" || process.env?.NODE_ENV === "test");
@@ -79,12 +135,16 @@ export default function TipTapEditor({
             ...extensions,
             Math.configure({
                 blockOptions: {
+                    /**
+                     * Handles block-math click edits by prompting and updating
+                     * the selected node in-place.
+                     */
                     onClick: (node, pos) => {
                         const newCalculation = prompt(
                             "Enter new calculation:",
                             node.attrs.latex,
                         );
-                        if (newCalculation) {
+                        if (newCalculation && editor) {
                             editor
                                 .chain()
                                 .setNodeSelection(pos)
@@ -95,15 +155,18 @@ export default function TipTapEditor({
                     },
                 },
                 inlineOptions: {
+                    /**
+                     * Handles inline-math click edits by prompting and updating
+                     * the selected inline node.
+                     */
                     onClick: (node) => {
                         const newCalculation = prompt(
                             "Enter new calculation:",
                             node.attrs.latex,
                         );
-                        if (newCalculation) {
+                        if (newCalculation && editor) {
                             editor
                                 .chain()
-                                .setNodeSelection(node.pos)
                                 .updateInlineMath({ latex: newCalculation })
                                 .focus()
                                 .run();
@@ -114,10 +177,16 @@ export default function TipTapEditor({
         ],
         content: value || "",
         editable: !readonly,
+        /**
+         * Emits both HTML and JSON representations for parent persistence flows.
+         */
         onUpdate: ({ editor }) => {
             if (onChange)
                 onChange(editor.getHTML(), editor.getJSON() as TipTapDocument);
         },
+        /**
+         * Migrates legacy math string representations to node-based format.
+         */
         onCreate: ({ editor: currentEditor }) => {
             migrateMathStrings(currentEditor);
         },
@@ -134,6 +203,10 @@ export default function TipTapEditor({
         },
     });
 
+    /**
+     * Synchronizes externally provided `value` into TipTap when it diverges
+     * from current editor HTML.
+     */
     useEffect(() => {
         if (!editor) return;
         const current = editor.getHTML();

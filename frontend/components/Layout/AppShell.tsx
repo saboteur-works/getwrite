@@ -1,4 +1,16 @@
 "use client";
+/**
+ * @module Layout/AppShell
+ *
+ * Main three-pane application shell coordinating:
+ * - Left pane: resource tree navigation and context actions.
+ * - Center pane: active work-area view (edit/diff/organizer/data/timeline).
+ * - Right pane: metadata editing controls for the selected resource.
+ *
+ * Responsibilities include view switching, modal orchestration for
+ * create/export/compile flows, split-pane resizing, and debounced persistence
+ * of editor content.
+ */
 import React, { useState, useRef, useEffect } from "react";
 import type {
     AnyResource,
@@ -9,12 +21,7 @@ import type {
     TipTapDocument,
 } from "../../src/lib/models/types";
 import { shallowEqual, useDispatch } from "react-redux";
-import {
-    persistReorder,
-    setProject,
-    addResource,
-    removeResource,
-} from "../../src/store/projectsSlice";
+import { setProject, removeResource } from "../../src/store/projectsSlice";
 import type { AppDispatch } from "../../src/store/store";
 import ResourceTree from "../ResourceTree/ResourceTree";
 import ConfirmDialog from "../common/ConfirmDialog";
@@ -35,12 +42,105 @@ import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
 
 /**
- * Simple three-column shell used in the app and Storybook:
- * - Left: Projects/Resource tree placeholder
- * - Center: Work area for views and editor
- * - Right: Metadata sidebar placeholder
+ * Optional payload bag forwarded to `onResourceAction` callbacks.
+ */
+export interface AppShellResourceActionOptions {
+    [key: string]: any;
+}
+
+/**
+ * Local modal state for context-menu destructive actions.
+ */
+interface ContextActionState {
+    open: boolean;
+    action?: ResourceContextAction;
+    resourceId?: string;
+    resourceTitle?: string;
+}
+
+/**
+ * Local modal state for resource creation flow.
+ */
+interface CreateModalState {
+    open: boolean;
+    parentId?: string;
+    initialTitle?: string;
+}
+
+/**
+ * Local modal state for export preview flow.
+ */
+interface ExportModalState {
+    open: boolean;
+    resourceId?: string;
+    resourceTitle?: string;
+    preview?: string;
+}
+
+/**
+ * Local modal state for compile preview flow.
+ */
+interface CompileModalState {
+    open: boolean;
+    resourceId?: string;
+    preview?: string;
+}
+
+/**
+ * Props accepted by {@link AppShell}.
+ */
+export interface AppShellProps {
+    /** Optional fallback content rendered when no resource is selected. */
+    children?: React.ReactNode;
+    /** Toggles left/right sidebars and drag handles. */
+    showSidebars?: boolean;
+    /** Full resource list for the currently opened project. */
+    resources?: AnyResource[];
+    /** Folder list used by resource tree and create modal parent selector. */
+    folders?: Folder[];
+    /** Active project record backing current shell state. */
+    project?: CanonicalProject | null;
+    /** Called when a resource is selected from search/tree interactions. */
+    onResourceSelect?: (id: string) => void;
+    /** ID of currently selected resource (if any). */
+    selectedResourceId?: string | null;
+    /** Metadata callback for notes field updates. */
+    onChangeNotes?: (text: string, resourceId: string) => void;
+    /** Metadata callback for status updates. */
+    onChangeStatus?: (
+        status: "draft" | "in-review" | "published",
+        resourceId: string,
+    ) => void;
+    /** Metadata callback for character associations. */
+    onChangeCharacters?: (chars: string[], resourceId: string) => void;
+    /** Metadata callback for location associations. */
+    onChangeLocations?: (locs: string[], resourceId: string) => void;
+    /** Metadata callback for item associations. */
+    onChangeItems?: (items: string[], resourceId: string) => void;
+    /** Metadata callback for point-of-view updates. */
+    onChangePOV?: (pov: string | null, resourceId: string) => void;
+    /**
+     * General resource action handler used by tree and modal flows.
+     *
+     * Examples: create, duplicate, delete, export.
+     */
+    onResourceAction?: (
+        action: ResourceContextAction,
+        resourceId?: string,
+        opts?: AppShellResourceActionOptions,
+    ) => Promise<void>;
+}
+
+/**
+ * Three-column app shell used in the main app and Storybook.
  *
- * Designed for visual layout only; integrate `ResourceTree` and `MetadataSidebar` in later tasks.
+ * Layout:
+ * - Left pane: `ResourceTree` and tree actions.
+ * - Center pane: `ViewSwitcher`, search, and active work view.
+ * - Right pane: `MetadataSidebar` bound to selected resource.
+ *
+ * @param props - {@link AppShellProps}.
+ * @returns Top-level app shell layout.
  */
 export default function AppShell({
     children,
@@ -57,31 +157,7 @@ export default function AppShell({
     onChangePOV,
     onResourceAction,
     project,
-}: {
-    children?: React.ReactNode;
-    showSidebars?: boolean;
-    /** List of all project resources, loaded from the selected project */
-    resources?: AnyResource[];
-    folders?: Folder[];
-    project?: CanonicalProject | null;
-
-    onResourceSelect?: (id: string) => void;
-    selectedResourceId?: string | null;
-    onChangeNotes?: (text: string, resourceId: string) => void;
-    onChangeStatus?: (
-        status: "draft" | "in-review" | "published",
-        resourceId: string,
-    ) => void;
-    onChangeCharacters?: (chars: string[], resourceId: string) => void;
-    onChangeLocations?: (locs: string[], resourceId: string) => void;
-    onChangeItems?: (items: string[], resourceId: string) => void;
-    onChangePOV?: (pov: string | null, resourceId: string) => void;
-    onResourceAction?: (
-        action: ResourceContextAction,
-        resourceId?: string,
-        opts?: { [key: string]: any },
-    ) => Promise<void>;
-}): JSX.Element {
+}: AppShellProps): JSX.Element {
     // Read the callback from the raw arguments to avoid name-resolution
     // issues during the incremental migration. Typed explicitly to match
     // the expected shape so downstream call sites remain typed.
@@ -89,7 +165,7 @@ export default function AppShell({
         | ((
               action: ResourceContextAction,
               resourceId?: string,
-              opts?: { [key: string]: any },
+              opts?: AppShellResourceActionOptions,
           ) => Promise<void>)
         | undefined;
     const propOnResourceAction = (arguments as any)[0]?.onResourceAction as
@@ -152,21 +228,38 @@ export default function AppShell({
         };
     }, []);
 
+    /**
+     * Extracts a best-effort display name from resource-like objects.
+     *
+     * @param r - Resource-like object that may expose `name` or `title`.
+     * @returns Resolved display name, or empty string when unavailable.
+     */
     const getResourceName = (r: AnyResource | any) =>
         (r && ((r as any).name ?? (r as any).title ?? "")) || "";
 
+    /**
+     * Returns plain-text content used by edit/diff views.
+     *
+     * @param r - Resource-like object containing persisted plain-text content.
+     * @returns Plain-text content for view rendering.
+     */
     const getResourceContent = (r: AnyResource | any) => r.plaintext;
     // const getResourceContent = (r: AnyResource | any) => {
     //     console.log(r);
     // };
 
-    const [contextAction, setContextAction] = useState<{
-        open: boolean;
-        action?: ResourceContextAction;
-        resourceId?: string;
-        resourceTitle?: string;
-    }>({ open: false });
+    const [contextAction, setContextAction] = useState<ContextActionState>({
+        open: false,
+    });
 
+    /**
+     * Handles context-menu actions from `ResourceTree` and routes them to
+     * confirmation/modals or forwards directly to `onResourceAction`.
+     *
+     * @param action - Requested context action.
+     * @param resourceId - Target resource id for the action (when applicable).
+     * @param resourceTitle - Optional resource title used by modal labels.
+     */
     const handleResourceAction = async (
         action: ResourceContextAction,
         resourceId?: string,
@@ -211,23 +304,23 @@ export default function AppShell({
         await propOnResourceAction?.(action, resourceId);
     };
 
-    const [createModal, setCreateModal] = useState<{
-        open: boolean;
-        parentId?: string;
-        initialTitle?: string;
-    }>({ open: false });
-    const [exportModal, setExportModal] = useState<{
-        open: boolean;
-        resourceId?: string;
-        resourceTitle?: string;
-        preview?: string;
-    }>({ open: false });
-    const [compileModal, setCompileModal] = useState<{
-        open: boolean;
-        resourceId?: string;
-        preview?: string;
-    }>({ open: false });
+    const [createModal, setCreateModal] = useState<CreateModalState>({
+        open: false,
+    });
+    const [exportModal, setExportModal] = useState<ExportModalState>({
+        open: false,
+    });
+    const [compileModal, setCompileModal] = useState<CompileModalState>({
+        open: false,
+    });
 
+    /**
+     * Handles create-modal confirmation and forwards creation payload upstream.
+     *
+     * @param payload - Creation payload from `CreateResourceModal`.
+     * @param parentId - Optional parent resource/folder id for nesting.
+     * @param _opts - Optional callback options from modal (currently unused).
+     */
     const handleCreateConfirmed = async (
         payload: {
             title: string;
@@ -235,12 +328,18 @@ export default function AppShell({
             folderId?: string;
         },
         parentId?: string,
+        _opts?: AppShellResourceActionOptions,
     ) => {
         // forward to page-level handler to mutate project resources
         await propOnResourceAction?.("create", parentId, payload);
         setCreateModal({ open: false });
     };
 
+    /**
+     * Handles export preview confirmation and forwards export action upstream.
+     *
+     * @param resourceId - Optional resource id to export; when omitted exports project context.
+     */
     const handleExportConfirmed = async (resourceId?: string) => {
         await propOnResourceAction?.("export", resourceId);
         setExportModal({ open: false });
@@ -254,82 +353,15 @@ export default function AppShell({
     }, [project?.id]);
     const dispatch = useDispatch<AppDispatch>();
 
-    const handlePersistReorder = (nextIds: string[] | undefined) => {
-        if (!nextIds || !project) return;
-        const pos = new Map<string, number>();
-        nextIds.forEach((id, i) => pos.set(id, i));
-
-        const folderOrder =
-            (project as any).folders?.map((f: any) => ({
-                id: f.id,
-                orderIndex: pos.has(f.id) ? pos.get(f.id) : (f.orderIndex ?? 0),
-            })) ?? [];
-
-        const resourceOrder =
-            (project as any).resources?.map((r: any) => ({
-                id: r.id,
-                orderIndex: pos.has(r.id)
-                    ? pos.get(r.id)
-                    : (r.metadata?.orderIndex ?? 0),
-            })) ?? [];
-
-        const existingFolders: any[] = (project as any).folders ?? [];
-        const existingResources: any[] = (project as any).resources ?? [];
-
-        const folderChanged = folderOrder.some((fo: any) => {
-            const ex = existingFolders.find((f) => f.id === fo.id);
-            if (!ex) return false;
-            return (ex.orderIndex ?? 0) !== (fo.orderIndex ?? 0);
-        });
-
-        const resourceChanged = resourceOrder.some((ro: any) => {
-            const ex = existingResources.find((r) => r.id === ro.id);
-            if (!ex) return false;
-            const exIdx = ex.metadata?.orderIndex ?? 0;
-            return exIdx !== (ro.orderIndex ?? 0);
-        });
-
-        if (!folderChanged && !resourceChanged) return;
-
-        const optimisticFolders = existingFolders.map((f) => ({
-            ...f,
-            orderIndex:
-                (folderOrder.find((x: any) => x.id === f.id) as any)
-                    ?.orderIndex ??
-                f.orderIndex ??
-                0,
-        }));
-
-        const optimisticResources = existingResources.map((r) => ({
-            ...r,
-            metadata: {
-                ...(r.metadata ?? {}),
-                orderIndex:
-                    (resourceOrder.find((x: any) => x.id === r.id) as any)
-                        ?.orderIndex ??
-                    r.metadata?.orderIndex ??
-                    0,
-            },
-        }));
-
-        dispatch(
-            setProject({
-                id: project.id,
-                name: project.name,
-                folders: optimisticFolders,
-                resources: optimisticResources,
-            }),
-        );
-
-        dispatch(
-            persistReorder({
-                projectId: project.id,
-                projectRoot: project.rootPath ?? "",
-                folderOrder,
-                resourceOrder,
-            }),
-        );
-    };
+    /**
+     * Persists editor content to resource API using debounced transport.
+     *
+     * Guard clauses ensure this only runs for open projects with selected
+     * resources and known `rootPath`.
+     *
+     * @param content - Current plain-text editor content (reserved for parity/logging).
+     * @param doc - Current TipTap document snapshot to persist.
+     */
     const persistContent = (content: string, doc: TipTapDocument) => {
         if (!project || !selectedResourceId) return;
         if (!project.rootPath) return;
@@ -348,10 +380,21 @@ export default function AppShell({
         });
     };
 
+    /**
+     * Debounced content persistence function to limit API write frequency while
+     * users are typing.
+     */
     const debouncedPersistContent = React.useMemo(
         () => debounce(persistContent, 2500),
         [persistContent],
     );
+
+    /**
+     * Editor change handler that feeds updates into debounced persistence.
+     *
+     * @param content - Latest plain-text content.
+     * @param doc - Latest TipTap document snapshot.
+     */
     const handlerEditorChange = (content: string, doc: TipTapDocument) => {
         debouncedPersistContent(content, doc);
     };
@@ -591,7 +634,7 @@ export default function AppShell({
                                       case "organizer":
                                           return (
                                               <OrganizerView
-                                                  resources={resources}
+                                                  resources={resources ?? []}
                                               />
                                           );
                                       case "data":

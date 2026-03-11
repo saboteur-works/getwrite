@@ -36,8 +36,17 @@ declare module "@storybook/nextjs-vite" {
     export * from "@storybook/react";
 }
 
-// Testing-library: add waitFor signature used in some stories
+// Testing-library shims used by focused Storybook type-checking.
+// Export the common API surface imported by stories/tests so this ambient
+// module does not cause "no exported member" errors when full package types
+// are unavailable in lightweight environments.
 declare module "@testing-library/react" {
     export * from "@testing-library/dom";
+    export function render(...args: any[]): any;
+    export const fireEvent: any;
+    export function cleanup(): void;
+    export function act<T>(cb: () => T | Promise<T>): Promise<T>;
     export function waitFor(fn: any, opts?: any): Promise<any>;
+    export const screen: any;
+    export function within(...args: any[]): any;
 }

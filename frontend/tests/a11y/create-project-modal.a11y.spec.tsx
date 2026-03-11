@@ -8,9 +8,14 @@ describe("a11y: CreateProjectModal keyboard navigation (T018)", () => {
     beforeEach(() => {
         vi.restoreAllMocks();
         vi.spyOn(globalThis as any, "fetch").mockImplementation(
-            (input: RequestInfo) => {
+            (...args: unknown[]) => {
+                const [input] = args as [RequestInfo | URL, RequestInit?];
                 const url =
-                    typeof input === "string" ? input : (input as Request).url;
+                    typeof input === "string"
+                        ? input
+                        : input instanceof URL
+                          ? input.toString()
+                          : input.url;
                 if (url.endsWith("/api/project-types")) {
                     return Promise.resolve({
                         ok: true,
