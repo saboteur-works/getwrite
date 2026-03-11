@@ -1,18 +1,51 @@
+/**
+ * @module WorkArea/ViewSwitcher
+ *
+ * Renders a compact tab-style control used to switch between Work Area views.
+ *
+ * This component is intentionally controlled and stateless:
+ * - Parent components own the selected view state.
+ * - Selection changes are emitted through `onChange`.
+ * - Disabled views can be provided as either a static array or a resolver
+ *   function evaluated on each render.
+ */
 import React from "react";
 import { ViewName } from "../../src/lib/models/types";
 
+/**
+ * Props accepted by {@link ViewSwitcher}.
+ */
 export interface ViewSwitcherProps {
-    /** Currently selected view */
+    /** Currently selected Work Area view. */
     view: ViewName;
-    /** Callback when the user selects a different view */
+    /**
+     * Invoked when the user selects a new view via click or keyboard.
+     *
+     * @param view - Newly selected view key.
+     */
     onChange: (view: ViewName) => void;
-    /** Optional className to allow styling from parent */
+    /** Optional class name appended to the outer tablist container. */
     className?: string;
-    /** Views which should be rendered disabled */
+    /**
+     * Views that should render as disabled.
+     *
+     * Accepts either:
+     * - A static array of disabled view keys.
+     * - A function that returns disabled view keys for dynamic state.
+     */
     disabledViews?: ViewName[] | (() => ViewName[]);
 }
 
-const VIEW_OPTIONS: { key: ViewName; label: string }[] = [
+/** Display option metadata for each selectable Work Area view tab. */
+interface ViewOption {
+    /** Internal view key persisted in component state and callbacks. */
+    key: ViewName;
+    /** Human-readable label shown on the tab button. */
+    label: string;
+}
+
+/** Ordered view options rendered by {@link ViewSwitcher}. */
+const VIEW_OPTIONS: ViewOption[] = [
     { key: "edit", label: "Edit" },
     { key: "organizer", label: "Organizer" },
     { key: "data", label: "Data" },
@@ -21,15 +54,36 @@ const VIEW_OPTIONS: { key: ViewName; label: string }[] = [
 ];
 
 /**
- * `ViewSwitcher` renders a compact set of buttons allowing the user to switch
- * between work-area views. It is intentionally presentational and purely
- * controlled: the parent owns the selected `view` state.
+ * Renders a tablist for switching between Work Area views.
  *
- * Example:
+ * Accessibility and keyboard behavior:
+ * - Uses `role="tablist"` and `role="tab"` semantics.
+ * - ArrowRight/ArrowLeft move focus and switch selection.
+ * - Home/End jump to first/last tab and switch selection.
+ * - Enter/Space activates the currently focused tab.
  *
- * ```tsx
- * <ViewSwitcher view={view} onChange={setView} />
- * ```
+ * Disabled behavior:
+ * - Disabled tabs receive `disabled` and `aria-disabled`.
+ * - Click and keyboard activation are ignored for disabled tabs.
+ *
+ * @param props - {@link ViewSwitcherProps} values.
+ * @returns A controlled tab switcher element.
+ *
+ * @example
+ * const [view, setView] = React.useState<ViewName>("edit");
+ *
+ * <ViewSwitcher
+ *   view={view}
+ *   onChange={setView}
+ *   disabledViews={["diff"]}
+ * />
+ *
+ * @example
+ * <ViewSwitcher
+ *   view={view}
+ *   onChange={setView}
+ *   disabledViews={() => (isReadonly ? ["edit", "data"] : [])}
+ * />
  */
 export default function ViewSwitcher({
     view,
@@ -37,6 +91,9 @@ export default function ViewSwitcher({
     className = "",
     disabledViews = [],
 }: ViewSwitcherProps): JSX.Element {
+    const resolvedDisabledViews =
+        typeof disabledViews === "function" ? disabledViews() : disabledViews;
+
     return (
         <div
             className={`flex items-center gap-2 ${className}`}
@@ -45,7 +102,7 @@ export default function ViewSwitcher({
         >
             {VIEW_OPTIONS.map((opt) => {
                 const active = opt.key === view;
-                const disabled = disabledViews.includes(opt.key);
+                const disabled = resolvedDisabledViews.includes(opt.key);
                 return (
                     <button
                         key={opt.key}
