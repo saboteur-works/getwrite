@@ -89,6 +89,7 @@ export const FolderSchema = z.object({
     id: UUID,
     slug: z.string().optional(),
     name: z.string(),
+    type: z.literal("folder"),
     parentId: UUID.nullable().optional(),
     orderIndex: z.number().optional(),
     createdAt: IsoDateString,

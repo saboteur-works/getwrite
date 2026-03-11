@@ -56,6 +56,21 @@ function slugify(s: string): string {
         .replace(/\s+/g, "-")
         .replace(/[^a-z0-9\-]/g, "");
 }
+
+/**
+ * Type guard for folder resources.
+ */
+function isFolderResource(resource: AnyResource): resource is Folder {
+    return resource.type === "folder";
+}
+
+/**
+ * Type guard for text resources.
+ */
+function isTextResource(resource: AnyResource): resource is TextResource {
+    return resource.type === "text" && !isFolderResource(resource);
+}
+
 /**
  * Creates a validated `TextResource` with derived text metrics.
  *
@@ -215,7 +230,7 @@ export function createAudioResource(params: {
  * const resource = validateResource(candidate);
  */
 export function validateResource(input: unknown) {
-    return AnyResourceSchema.parse(input);
+    return AnyResourceSchema.parse(input) as AnyResource;
 }
 
 /**
@@ -289,7 +304,7 @@ export async function writeResourceToFile(
         resource.id,
     );
 
-    if (resource.type === "folder") {
+    if (isFolderResource(resource)) {
         const dir = path.join(
             projectPath,
             "folders",
@@ -307,7 +322,7 @@ export async function writeResourceToFile(
         return resource;
     }
 
-    if (resource.type === "text") {
+    if (isTextResource(resource)) {
         // Create directory if it doesn't exist
         if (!fs.existsSync(base)) {
             fs.mkdirSync(base, { recursive: true });
@@ -336,9 +351,7 @@ export async function writeResourceToFile(
         metadata: resource.metadata || {},
     };
 
-    if (resource.type !== "folder") {
-        await writeSidecar(projectPath, resource.id, sidecarData);
-    }
+    await writeSidecar(projectPath, resource.id, sidecarData);
     return resource;
 }
 /**
@@ -449,7 +462,7 @@ export const createResourceOfType = (
  * @example
  * const resources = getLocalResources(projectPath);
  */
-export const getLocalResources = (projectPath: string) => {
+export const getLocalResources = (projectPath: string): AnyResource[] => {
     const metaDir = path.join(projectPath, "meta");
     if (!fs.existsSync(metaDir)) {
         return [];

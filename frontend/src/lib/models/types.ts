@@ -105,6 +105,8 @@ export interface ResourceBase {
 
 /** Logical container within a project used to group resources. */
 export interface Folder extends ResourceBase {
+    /** Discriminant for folder resources. */
+    type: "folder";
     /** Parent folder UUID; null or undefined for top-level. */
     parentId?: UUID | null;
     special?: boolean;
