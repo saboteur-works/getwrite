@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
@@ -225,25 +226,32 @@ export default function SearchBar({
     };
 
     return (
-        <div className="relative w-full max-w-md" ref={containerRef}>
-            <input
-                ref={inputRef}
-                value={query}
-                onChange={(e) => {
-                    setQuery(e.target.value);
-                    setOpen(e.target.value.length > 0);
-                }}
-                onFocus={() => setOpen(query.length > 0)}
-                onKeyDown={handleKeyDown}
-                placeholder={placeholder}
-                aria-label="resource-search"
-                className="w-full border rounded px-2 py-1"
-            />
+        <div className="searchbar-root" ref={containerRef}>
+            <div className="searchbar-field">
+                <Search
+                    size={16}
+                    aria-hidden="true"
+                    className="searchbar-icon"
+                />
+                <input
+                    ref={inputRef}
+                    value={query}
+                    onChange={(e) => {
+                        setQuery(e.target.value);
+                        setOpen(e.target.value.length > 0);
+                    }}
+                    onFocus={() => setOpen(query.length > 0)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={placeholder}
+                    aria-label="resource-search"
+                    className="searchbar-input"
+                />
+            </div>
 
             {open && results.length > 0 ? (
-                <ul className="absolute z-50 mt-1 w-full bg-white border rounded shadow max-h-60 overflow-auto text-sm">
+                <ul className="searchbar-results">
                     {results.slice(0, 8).map(({ resource, match }, i) => (
-                        <li key={resource.id}>
+                        <li key={resource.id} className="searchbar-result-item">
                             <button
                                 type="button"
                                 onClick={() => {
@@ -251,7 +259,11 @@ export default function SearchBar({
                                     setOpen(false);
                                     setQuery("");
                                 }}
-                                className={`w-full text-left px-3 py-2 hover:bg-slate-100 ${i === highlight ? "bg-slate-100" : ""}`}
+                                className={`searchbar-result-button ${
+                                    i === highlight
+                                        ? "searchbar-result-button-active"
+                                        : ""
+                                }`}
                             >
                                 {renderHighlighted(
                                     (resource as any).name ??
