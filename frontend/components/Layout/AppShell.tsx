@@ -51,6 +51,11 @@ import {
 import { useRouter } from "next/navigation";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
+import {
+    type ColorMode,
+    resolvePreferredColorMode,
+    saveColorMode,
+} from "../../src/lib/user-preferences";
 
 /**
  * Optional payload bag forwarded to `onResourceAction` callbacks.
@@ -189,9 +194,8 @@ export default function AppShell({
     const [rightOpen, setRightOpen] = useState<boolean>(true);
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] =
         useState<boolean>(false);
-    const [colorMode, setColorMode] = useState<"light" | "dark">("light");
+    const [colorMode, setColorMode] = useState<ColorMode>("light");
     const settingsMenuRef = useRef<HTMLDivElement | null>(null);
-    const COLOR_MODE_STORAGE_KEY = "getwrite-color-mode";
 
     const MIN_SIDEBAR_WIDTH = 160;
     const COLLAPSE_THRESHOLD = 120;
@@ -456,30 +460,11 @@ export default function AppShell({
     }, []);
 
     useEffect(() => {
-        try {
-            const storedMode = window.localStorage.getItem(
-                COLOR_MODE_STORAGE_KEY,
-            );
-            if (storedMode === "dark" || storedMode === "light") {
-                setColorMode(storedMode);
-                return;
-            }
-
-            const prefersDark = window.matchMedia(
-                "(prefers-color-scheme: dark)",
-            ).matches;
-            setColorMode(prefersDark ? "dark" : "light");
-        } catch {
-            setColorMode("light");
-        }
+        setColorMode(resolvePreferredColorMode());
     }, []);
 
     useEffect(() => {
-        try {
-            window.localStorage.setItem(COLOR_MODE_STORAGE_KEY, colorMode);
-        } catch {
-            // ignore localStorage failures in constrained environments
-        }
+        saveColorMode(colorMode);
     }, [colorMode]);
 
     const isDarkMode = colorMode === "dark";
@@ -491,6 +476,11 @@ export default function AppShell({
     const handleOpenProjectTypeManager = (): void => {
         setIsSettingsMenuOpen(false);
         router.push("/project-types");
+    };
+
+    const handleOpenPreferences = (): void => {
+        setIsSettingsMenuOpen(false);
+        router.push("/preferences");
     };
 
     return (
@@ -523,6 +513,15 @@ export default function AppShell({
                             role="menu"
                             aria-label="Project settings menu"
                         >
+                            <button
+                                type="button"
+                                className="appshell-topbar-dropdown-item"
+                                role="menuitem"
+                                onClick={handleOpenPreferences}
+                            >
+                                <Settings size={14} aria-hidden="true" />
+                                User Preferences
+                            </button>
                             <button
                                 type="button"
                                 className="appshell-topbar-dropdown-item"
