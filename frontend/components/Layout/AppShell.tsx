@@ -814,15 +814,7 @@ export default function AppShell({
                                 />
                                 Project Type Manager
                             </button>
-                            <button
-                                type="button"
-                                className="appshell-topbar-dropdown-item"
-                                role="menuitem"
-                                onClick={handleOpenHelp}
-                            >
-                                <HelpCircle size={14} aria-hidden="true" />
-                                Help
-                            </button>
+                            <hr className="appshell-topbar-dropdown-separator" />
                             <button
                                 type="button"
                                 className="appshell-topbar-dropdown-item"
@@ -840,12 +832,18 @@ export default function AppShell({
                                     ? "Switch to light mode"
                                     : "Switch to dark mode"}
                             </button>
+                            <hr className="appshell-topbar-dropdown-separator" />
+                            <button
+                                type="button"
+                                className="appshell-topbar-dropdown-item"
+                                role="menuitem"
+                                onClick={handleOpenHelp}
+                            >
+                                <HelpCircle size={14} aria-hidden="true" />
+                                Help
+                            </button>
                             {project ? (
                                 <>
-                                    <div
-                                        className="appshell-topbar-dropdown-separator"
-                                        role="separator"
-                                    />
                                     <button
                                         type="button"
                                         className="appshell-topbar-dropdown-item"
