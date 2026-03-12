@@ -2427,6 +2427,43 @@
         background-color: var(--color-dark-800);
         border-color: var(--color-dark-700);
     }
+
+    .editview-doc-header {
+        border: 1px solid var(--color-neutral-200);
+        border-radius: 0.75rem;
+        background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.98) 0%,
+            rgba(248, 250, 252, 0.96) 100%
+        );
+        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+
+    .editview-doc-title {
+        color: var(--color-neutral-900);
+    }
+
+    .editview-doc-subtitle {
+        color: var(--color-neutral-500);
+    }
+
+    .appshell-shell.appshell-theme-dark .editview-doc-header {
+        border-color: var(--color-dark-700);
+        background: linear-gradient(
+            180deg,
+            rgba(30, 41, 59, 0.96) 0%,
+            rgba(15, 23, 42, 0.96) 100%
+        );
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+    }
+
+    .appshell-shell.appshell-theme-dark .editview-doc-title {
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .editview-doc-subtitle {
+        color: var(--color-dark-300);
+    }
 }
 
 /* ============================================================

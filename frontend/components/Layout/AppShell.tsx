@@ -1126,17 +1126,6 @@ export default function AppShell({
                                         />
                                     </div>
                                 </div>
-                                {(() => {
-                                    const selected = selectedResource;
-
-                                    if (selected) {
-                                        return (
-                                            <div className="text-lg font-bold mb-4">
-                                                {selected.name}
-                                            </div>
-                                        );
-                                    }
-                                })()}
                             </div>
                         ) : null}
                         <div className="max-w-full mx-auto">

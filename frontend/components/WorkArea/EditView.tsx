@@ -391,6 +391,22 @@ export default function EditView({
         return saveStatus === "saving" || saveStatus === "pending";
     }, [isReducedMotionEnabled, saveStatus]);
 
+    const documentTitle = React.useMemo(() => {
+        if (selectedResource?.name && selectedResource.name.trim().length > 0) {
+            return selectedResource.name;
+        }
+
+        return "Untitled Document";
+    }, [selectedResource?.name]);
+
+    const documentSubtitle = React.useMemo(() => {
+        if (isViewingNonCanonical) {
+            return "Viewing a previous revision";
+        }
+
+        return "Document editor";
+    }, [isViewingNonCanonical]);
+
     /**
      * Safely parses revision payloads that may be stored as TipTap JSON strings.
      *
@@ -562,6 +578,14 @@ export default function EditView({
             <RevisionControl />
             <div className="flex-1 min-h-0 w-full min-w-0 p-2">
                 <div className="mx-auto h-full w-full max-w-4xl">
+                    <header className="editview-doc-header mb-3 px-4 py-3">
+                        <h2 className="editview-doc-title text-base font-semibold truncate">
+                            {documentTitle}
+                        </h2>
+                        <p className="editview-doc-subtitle mt-1 text-xs uppercase tracking-[0.16em]">
+                            {documentSubtitle}
+                        </p>
+                    </header>
                     <TipTapEditor
                         id="editview-editor"
                         value={tipTapDoc ?? content} // prefer loaded doc, fallback to initial/plain content
