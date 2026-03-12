@@ -52,8 +52,10 @@ import { useRouter } from "next/navigation";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
 import {
+    getStoredGlobalAppearancePreferences,
     type ColorMode,
     resolvePreferredColorMode,
+    saveGlobalAppearancePreferences,
     saveGlobalColorMode,
 } from "../../src/lib/user-preferences";
 import type { MetadataValue } from "../../src/lib/models/types";
@@ -472,6 +474,11 @@ export default function AppShell({
     const persistColorModePreference = async (
         nextMode: ColorMode,
     ): Promise<void> => {
+        const appearance = getStoredGlobalAppearancePreferences();
+        saveGlobalAppearancePreferences({
+            ...appearance,
+            colorModePreference: nextMode,
+        });
         saveGlobalColorMode(nextMode);
 
         if (!project?.rootPath) {

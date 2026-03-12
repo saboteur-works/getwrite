@@ -43,6 +43,11 @@
         background: white;
     }
 
+    .gw-density-compact .appshell-topbar {
+        height: 3rem;
+        padding: 0 var(--spacing-3);
+    }
+
     .appshell-topbar-project {
         min-width: 0;
         color: var(--color-ink-900);
@@ -112,6 +117,11 @@
         text-align: left;
         padding: 0.5rem 0.625rem;
         transition: background-color 150ms ease;
+    }
+
+    .gw-density-compact .appshell-topbar-dropdown-item {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.8125rem;
     }
 
     .appshell-topbar-dropdown-item:hover {
@@ -356,6 +366,11 @@
         height: 3rem;
         padding: 0 1rem;
         border-bottom: 1px solid var(--color-neutral-200);
+    }
+
+    .gw-density-compact .appshell-sidebar-header {
+        height: 2.5rem;
+        padding: 0 0.75rem;
     }
 
     .appshell-sidebar-content {
@@ -792,6 +807,15 @@
             );
     }
 
+    .gw-density-compact .start-page-shell {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
+
+    .gw-density-compact .start-page-card {
+        border-radius: 1rem;
+    }
+
     .start-page-hero {
         position: relative;
         overflow: hidden;
@@ -987,6 +1011,15 @@
 
     .start-page-fade-in-delayed {
         animation: start-page-reveal 760ms ease both;
+    }
+
+    .gw-reduced-motion *,
+    .gw-reduced-motion *::before,
+    .gw-reduced-motion *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 
     .appshell-shell.appshell-theme-dark .start-page-shell {

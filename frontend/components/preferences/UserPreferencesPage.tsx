@@ -14,8 +14,15 @@ import {
     selectSelectedProjectId,
 } from "../../src/store/projectsSlice";
 import {
+    type AppearancePreferences,
     type ColorMode,
+    type ColorModePreference,
+    type UiDensity,
+    DEFAULT_APPEARANCE_PREFERENCES,
+    getStoredGlobalAppearancePreferences,
+    resolveColorModeFromAppearance,
     resolvePreferredColorMode,
+    saveGlobalAppearancePreferences,
     saveGlobalColorMode,
 } from "../../src/lib/user-preferences";
 import type { MetadataValue } from "../../src/lib/models/types";
@@ -27,7 +34,9 @@ import type { MetadataValue } from "../../src/lib/models/types";
  */
 export default function UserPreferencesPage(): JSX.Element {
     const router = useRouter();
-    const [colorMode, setColorMode] = useState<ColorMode>("light");
+    const [appearance, setAppearance] = useState<AppearancePreferences>(
+        DEFAULT_APPEARANCE_PREFERENCES,
+    );
     const selectedProjectId = useAppSelector((state) =>
         selectSelectedProjectId(state),
     );
@@ -43,10 +52,30 @@ export default function UserPreferencesPage(): JSX.Element {
         const metadata = selectedProject?.metadata as
             | Record<string, MetadataValue>
             | undefined;
-        setColorMode(resolvePreferredColorMode(metadata));
+        const globalAppearance = getStoredGlobalAppearancePreferences();
+        const projectMode = resolvePreferredColorMode(metadata);
+
+        setAppearance({
+            ...globalAppearance,
+            colorModePreference:
+                globalAppearance.colorModePreference === "system"
+                    ? "system"
+                    : projectMode,
+        });
     }, [selectedProject?.id, selectedProject?.metadata]);
 
-    const isDarkMode = colorMode === "dark";
+    const effectiveMode = resolveColorModeFromAppearance(appearance);
+    const isDarkMode = effectiveMode === "dark";
+
+    /**
+     * Persists app-wide appearance preferences and synchronizes local state.
+     *
+     * @param nextAppearance - Next appearance preferences.
+     */
+    const persistAppearance = (nextAppearance: AppearancePreferences): void => {
+        setAppearance(nextAppearance);
+        saveGlobalAppearancePreferences(nextAppearance);
+    };
 
     /**
      * Persists and updates color mode preference.
@@ -54,9 +83,16 @@ export default function UserPreferencesPage(): JSX.Element {
      * @param nextMode - Selected color mode.
      */
     const handleColorModeChange = async (
-        nextMode: ColorMode,
+        nextPreference: ColorModePreference,
     ): Promise<void> => {
-        setColorMode(nextMode);
+        const nextAppearance: AppearancePreferences = {
+            ...appearance,
+            colorModePreference: nextPreference,
+        };
+        persistAppearance(nextAppearance);
+
+        const nextMode: ColorMode =
+            resolveColorModeFromAppearance(nextAppearance);
         saveGlobalColorMode(nextMode);
 
         if (!selectedProject?.rootPath) {
@@ -116,19 +152,21 @@ export default function UserPreferencesPage(): JSX.Element {
                         Theme
                     </h2>
                     <p className="mt-1 text-sm text-slate-600">
-                        Choose the default UI theme.
+                        Choose the default UI appearance mode.
                     </p>
 
-                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <div className="mt-4 grid gap-2 sm:grid-cols-3">
                         <button
                             type="button"
                             onClick={() => handleColorModeChange("light")}
                             className={`rounded-md border px-3 py-2 text-sm font-medium ${
-                                colorMode === "light"
+                                appearance.colorModePreference === "light"
                                     ? "border-slate-700 bg-slate-100 text-slate-900"
                                     : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                             }`}
-                            aria-pressed={colorMode === "light"}
+                            aria-pressed={
+                                appearance.colorModePreference === "light"
+                            }
                         >
                             Light
                         </button>
@@ -136,14 +174,91 @@ export default function UserPreferencesPage(): JSX.Element {
                             type="button"
                             onClick={() => handleColorModeChange("dark")}
                             className={`rounded-md border px-3 py-2 text-sm font-medium ${
-                                colorMode === "dark"
+                                appearance.colorModePreference === "dark"
                                     ? "border-slate-700 bg-slate-100 text-slate-900"
                                     : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                             }`}
-                            aria-pressed={colorMode === "dark"}
+                            aria-pressed={
+                                appearance.colorModePreference === "dark"
+                            }
                         >
                             Dark
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => handleColorModeChange("system")}
+                            className={`rounded-md border px-3 py-2 text-sm font-medium ${
+                                appearance.colorModePreference === "system"
+                                    ? "border-slate-700 bg-slate-100 text-slate-900"
+                                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                            }`}
+                            aria-pressed={
+                                appearance.colorModePreference === "system"
+                            }
+                        >
+                            System
+                        </button>
+                    </div>
+
+                    <div className="mt-6 border-t border-slate-200 pt-5">
+                        <h3 className="text-sm font-semibold text-slate-900">
+                            Density
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Control spacing density across app layouts.
+                        </p>
+                        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                            {(
+                                [
+                                    ["comfortable", "Comfortable"],
+                                    ["compact", "Compact"],
+                                ] as Array<[UiDensity, string]>
+                            ).map(([densityValue, densityLabel]) => (
+                                <button
+                                    key={densityValue}
+                                    type="button"
+                                    onClick={() => {
+                                        persistAppearance({
+                                            ...appearance,
+                                            density: densityValue,
+                                        });
+                                    }}
+                                    className={`rounded-md border px-3 py-2 text-sm font-medium ${
+                                        appearance.density === densityValue
+                                            ? "border-slate-700 bg-slate-100 text-slate-900"
+                                            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                    }`}
+                                    aria-pressed={
+                                        appearance.density === densityValue
+                                    }
+                                >
+                                    {densityLabel}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="mt-6 border-t border-slate-200 pt-5">
+                        <h3 className="text-sm font-semibold text-slate-900">
+                            Motion
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Reduce non-essential motion and transitions.
+                        </p>
+                        <label className="mt-4 inline-flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                                type="checkbox"
+                                checked={appearance.reducedMotion}
+                                onChange={(event) => {
+                                    persistAppearance({
+                                        ...appearance,
+                                        reducedMotion: event.target.checked,
+                                    });
+                                }}
+                                className="h-4 w-4 rounded border-slate-300"
+                            />
+                            Enable reduced motion
+                        </label>
                     </div>
                 </section>
             </main>
