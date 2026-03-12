@@ -28,7 +28,6 @@ import {
     Radical,
     Type,
 } from "lucide-react";
-import { Tooltip } from "react-tooltip";
 
 const IconTypes = {
     alignLeft: AlignLeft,
@@ -80,24 +79,19 @@ export default function EditorMenuIcon({
 }: EditorMenuIconProps) {
     const IconComponent = IconTypes[Icon as keyof typeof IconTypes];
 
-    const activeClass = active ? "bg-gray-400 text-white" : "";
-    const disabledClass = disabled ? "opacity-50 cursor-not-allowed" : "";
-    const hoverClass = disabled
-        ? ""
-        : "hover:bg-gray-200 dark:hover:bg-gray-200";
+    const activeClass = active ? "editor-menu-icon-button-active" : "";
+    const disabledClass = disabled ? "editor-menu-icon-button-disabled" : "";
 
     return (
-        <>
-            <button
-                data-tooltip-id="my-tooltip"
-                onClick={onClick}
-                disabled={disabled}
-                className={`${activeClass} ${disabledClass} ${hoverClass} p-1 rounded`}
-                data-tooltip-content={tooltipContent}
-            >
-                <IconComponent size={iconSize} />
-            </button>
-            <Tooltip id="my-tooltip" />
-        </>
+        <button
+            type="button"
+            data-tooltip-id="my-tooltip"
+            onClick={onClick}
+            disabled={disabled}
+            className={`editor-menu-icon-button ${activeClass} ${disabledClass}`}
+            data-tooltip-content={tooltipContent}
+        >
+            <IconComponent size={iconSize} />
+        </button>
     );
 }

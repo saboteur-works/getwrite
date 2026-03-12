@@ -98,10 +98,15 @@ export default function OrganizerView({
                     onClick={() => toggleFolderExpansion(folder.id)}
                 >
                     {isExpanded ? (
-                        <ChevronDown className="mr-1 text-gray-600" size={16} />
+                        <ChevronDown
+                            className="mr-1"
+                            style={{ color: "var(--color-neutral-500)" }}
+                            size={16}
+                        />
                     ) : (
                         <ChevronRight
-                            className="mr-1 text-gray-600"
+                            className="mr-1"
+                            style={{ color: "var(--color-neutral-500)" }}
                             size={16}
                         />
                     )}
@@ -135,7 +140,12 @@ export default function OrganizerView({
 
                         {folderResources.length === 0 &&
                             childFolders.length === 0 && (
-                                <p className="text-xs text-gray-400 mb-2">
+                                <p
+                                    className="text-xs mb-2"
+                                    style={{
+                                        color: "var(--color-neutral-400)",
+                                    }}
+                                >
                                     No resources or subfolders
                                 </p>
                             )}
@@ -155,12 +165,22 @@ export default function OrganizerView({
                     <button
                         type="button"
                         onClick={handleToggle}
-                        className="px-3 py-1 text-sm border rounded-md bg-white hover:bg-slate-50"
+                        className="px-3 py-1 text-sm border rounded-md workarea-button"
+                        style={{
+                            backgroundColor: "white",
+                            borderColor: "var(--color-neutral-200)",
+                        }}
                     >
                         {showBodyState ? (
-                            <EyeClosed className="inline-block mr-1 text-gray-500" />
+                            <EyeClosed
+                                className="inline-block mr-1"
+                                style={{ color: "var(--color-neutral-500)" }}
+                            />
                         ) : (
-                            <Eye className="inline-block mr-1 text-gray-500" />
+                            <Eye
+                                className="inline-block mr-1"
+                                style={{ color: "var(--color-neutral-500)" }}
+                            />
                         )}{" "}
                         {showBodyState ? "Hide bodies" : "Show bodies"}
                     </button>

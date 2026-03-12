@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import ConfirmDialog from "../common/ConfirmDialog";
+import { X, FilePlus2 } from "lucide-react";
 import type {
     AnyResource,
     ResourceType as CanonicalResourceType,
@@ -74,47 +74,65 @@ export default function CreateResourceModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="project-modal-root">
             <div
-                className="fixed inset-0 bg-black/40"
+                className="project-modal-backdrop"
                 onClick={onClose}
                 aria-hidden="true"
             />
 
-            <div className="z-10 bg-white rounded-md shadow-lg max-w-lg w-full p-6">
-                <h3 className="text-lg font-medium">
+            <div className="project-modal-panel">
+                <h3 className="project-modal-title">
                     {initialTitle ? "Create resource" : "New resource"}
                 </h3>
 
-                <div className="p-2">
-                    <label className="text-sm font-medium">Title</label>
+                <div className="project-modal-field">
+                    <label
+                        className="project-modal-label"
+                        htmlFor="resource-title"
+                    >
+                        Title
+                    </label>
                     <input
+                        id="resource-title"
                         ref={inputRef}
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="w-full border rounded px-2 py-1 mt-1"
+                        className="project-modal-input"
                         aria-label="resource-title"
                     />
+                </div>
 
-                    <label className="text-sm font-medium mt-3 block">
+                <div className="project-modal-field">
+                    <label
+                        className="project-modal-label"
+                        htmlFor="resource-type"
+                    >
                         Type
                     </label>
                     <select
+                        id="resource-type"
                         value={type}
                         onChange={(e) =>
                             setType(e.target.value as ResourceType)
                         }
-                        className="w-full border rounded px-2 py-1 mt-1"
+                        className="project-modal-select"
                         aria-label="resource-type"
                     >
                         <option value="text">Document</option>
                         <option value="folder">Folder</option>
                     </select>
+                </div>
 
-                    <label className="text-sm font-medium mt-3 block">
+                <div className="project-modal-field">
+                    <label
+                        className="project-modal-label"
+                        htmlFor="resource-parent"
+                    >
                         Parent folder
                     </label>
                     <select
+                        id="resource-parent"
                         value={selectedParent ?? ""}
                         onChange={(e) =>
                             setSelectedParent(
@@ -123,7 +141,7 @@ export default function CreateResourceModal({
                                     : e.target.value,
                             )
                         }
-                        className="w-full border rounded px-2 py-1 mt-1"
+                        className="project-modal-select"
                         aria-label="resource-parent"
                     >
                         <option value="">(root)</option>
@@ -135,19 +153,21 @@ export default function CreateResourceModal({
                     </select>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-3">
+                <div className="project-modal-actions">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-3 py-1 rounded border"
+                        className="project-modal-button project-modal-button-secondary"
                     >
+                        <X size={14} aria-hidden="true" />
                         Cancel
                     </button>
                     <button
                         type="button"
                         onClick={handleCreate}
-                        className="px-3 py-1 rounded bg-brand-500 text-white"
+                        className="project-modal-button project-modal-button-primary"
                     >
+                        <FilePlus2 size={14} aria-hidden="true" />
                         Create
                     </button>
                 </div>

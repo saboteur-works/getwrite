@@ -508,13 +508,14 @@ export default function ResourceTree({
                     style={{
                         paddingLeft: `${item.getItemMeta().level * 20}px`,
                     }}
-                    className="hover:bg-gray-300 w-full flex rounded-sm"
+                    className="resource-tree-item"
                     onContextMenu={(e) => {
                         handleContextMenu(e, item);
                     }}
                 >
                     {item.isFolder() && (
                         <button
+                            className="resource-tree-icon-button"
                             onClick={
                                 item.isExpanded() ? item.collapse : item.expand
                             }
@@ -528,10 +529,10 @@ export default function ResourceTree({
                         onClick={(e) => {
                             handleClick(e, item);
                         }}
-                        className="hover:cursor-pointer hover:text-stone-600 w-full"
+                        className="resource-tree-button"
                     >
                         <div
-                            className={`flex items-center gap-2 ${item.isDragTarget() ? "bg-gray-400 rounded-md" : ""}`}
+                            className={`resource-tree-item-row ${item.isDragTarget() ? "resource-tree-item-row--drag-target" : ""}`}
                         >
                             {renderResourceIcon(item)}
                             <div
@@ -551,7 +552,7 @@ export default function ResourceTree({
                     position: "absolute",
                     left: "-9999px",
                 }}
-                className="bg-white border p-0.5 px-2 rounded-sm opacity-65"
+                className="resource-tree-drag-preview"
             >
                 {draggedItems
                     ?.slice(0, 3)

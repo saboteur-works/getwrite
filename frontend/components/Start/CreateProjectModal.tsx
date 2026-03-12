@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
+import { X, FolderPlus } from "lucide-react";
 import type { Project as CanonicalProject } from "../../src/lib/models/types";
 
 export interface CreateProjectPayload {
@@ -208,48 +209,48 @@ export default function CreateProjectModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-project-title"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="project-modal-root"
         >
             <div
-                className="fixed inset-0 bg-black/40"
+                className="project-modal-backdrop"
                 onClick={onClose}
                 aria-hidden="true"
             />
 
             <form
                 onSubmit={handleSubmit}
-                className="relative bg-white rounded-lg shadow-lg w-full max-w-md z-10 p-6"
+                className="project-modal-panel"
                 onKeyDown={(ev) => {
                     if (ev.key === "Escape") onClose();
                 }}
                 aria-busy={creating}
             >
-                <h2 id="create-project-title" className="text-lg font-medium">
+                <h2 id="create-project-title" className="project-modal-title">
                     Create Project
                 </h2>
 
-                <label className="block mt-4">
-                    <div className="text-sm text-slate-700">Name</div>
+                <label className="project-modal-field">
+                    <div className="project-modal-label">Name</div>
                     <input
                         ref={nameRef}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="mt-1 block w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                        className="project-modal-input"
                         aria-required
                         disabled={creating}
                     />
                 </label>
 
-                <label className="block mt-4">
-                    <div className="text-sm text-slate-700">Project Type</div>
-                    <div className="mt-1">
+                <label className="project-modal-field">
+                    <div className="project-modal-label">Project Type</div>
+                    <div>
                         <input
                             type="search"
                             aria-label="Filter project types"
                             placeholder="Search project types..."
                             value={filter}
                             onChange={(e) => setFilter(e.target.value)}
-                            className="mb-2 block w-full border rounded px-3 py-2"
+                            className="project-modal-input"
                             disabled={creating || loadingTypes}
                         />
                         <select
@@ -257,7 +258,7 @@ export default function CreateProjectModal({
                             onChange={(e) =>
                                 setProjectType(e.target.value as string)
                             }
-                            className="block w-full border rounded px-3 py-2"
+                            className="project-modal-select"
                             disabled={
                                 creating ||
                                 loadingTypes ||
@@ -296,7 +297,7 @@ export default function CreateProjectModal({
                         </select>
                     </div>
                     {types && types.length > 0 && (
-                        <div className="text-xs text-slate-500 mt-1">
+                        <div className="project-modal-hint">
                             {
                                 types.find((t) => t.id === projectType)
                                     ?.description
@@ -311,7 +312,7 @@ export default function CreateProjectModal({
                             if (!sel) return null;
                             if (sel.validationError)
                                 return (
-                                    <div className="text-sm text-red-600 mt-3">
+                                    <div className="project-modal-error">
                                         Template validation:{" "}
                                         {sel.validationError}
                                     </div>
@@ -319,7 +320,7 @@ export default function CreateProjectModal({
                             return null;
                         })()}
                     {typesError && (
-                        <div className="text-sm text-red-600 mt-3">
+                        <div className="project-modal-error">
                             Failed to load project types: {typesError}
                             <button
                                 type="button"
@@ -333,21 +334,22 @@ export default function CreateProjectModal({
                 </label>
 
                 {error ? (
-                    <div className="text-sm text-red-600 mt-3">{error}</div>
+                    <div className="project-modal-error">{error}</div>
                 ) : null}
 
-                <div className="mt-6 flex justify-end gap-3">
+                <div className="project-modal-actions">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-3 py-1 rounded border"
+                        className="project-modal-button project-modal-button-secondary"
                         disabled={creating}
                     >
+                        <X size={14} aria-hidden="true" />
                         Cancel
                     </button>
                     <button
                         type="submit"
-                        className="px-3 py-1 rounded bg-brand-500 text-white"
+                        className="project-modal-button project-modal-button-primary"
                         disabled={
                             creating ||
                             (!!types &&
@@ -359,6 +361,7 @@ export default function CreateProjectModal({
                                 ))
                         }
                     >
+                        <FolderPlus size={14} aria-hidden="true" />
                         {creating ? "Creating…" : "Create"}
                     </button>
                 </div>

@@ -32,17 +32,17 @@ export default function DiffView({
     className = "",
 }: DiffViewProps): JSX.Element {
     return (
-        <div className={`p-4 ${className}`}>
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Diff</h2>
+        <div className={`${className}`}>
+            <div className="workarea-section">
+                <h2 className="workarea-section-title">Diff</h2>
             </div>
 
             <div className="flex flex-col gap-4">
                 <div className="flex gap-4">
-                    <section className="flex-1 p-3 bg-white rounded-md border">
-                        <h3 className="text-sm font-medium mb-2">Left</h3>
+                    <section className="flex-1 workarea-pane">
+                        <h3 className="workarea-pane-title">Left</h3>
                         <div
-                            className="prose max-w-none text-sm"
+                            className="workarea-pane-content prose prose-sm max-w-none"
                             aria-label="left-pane"
                             dangerouslySetInnerHTML={{
                                 __html: String(leftContent),
@@ -50,10 +50,10 @@ export default function DiffView({
                         />
                     </section>
 
-                    <section className="flex-1 p-3 bg-white rounded-md border">
-                        <h3 className="text-sm font-medium mb-2">Right</h3>
+                    <section className="flex-1 workarea-pane">
+                        <h3 className="workarea-pane-title">Right</h3>
                         <div
-                            className="prose max-w-none text-sm"
+                            className="workarea-pane-content prose prose-sm max-w-none"
                             aria-label="right-pane"
                             dangerouslySetInnerHTML={{
                                 __html: String(rightContent),
@@ -62,9 +62,9 @@ export default function DiffView({
                     </section>
                 </div>
 
-                <aside className="w-full p-3 bg-white rounded-md border">
-                    <h4 className="text-sm font-medium mb-2">Revisions</h4>
-                    <ul className="space-y-2">
+                <aside className="w-full workarea-pane">
+                    <h4 className="workarea-pane-title">Revisions</h4>
+                    <ul className="workarea-list">
                         {revisions.map((r) => (
                             <li key={r.id}>
                                 <button
@@ -73,14 +73,16 @@ export default function DiffView({
                                         onSelectRevision &&
                                         onSelectRevision(r.id)
                                     }
-                                    className="w-full text-left p-2 rounded hover:bg-slate-50 text-sm"
+                                    className="workarea-button w-full text-left"
                                 >
-                                    <div className="font-medium">{r.label}</div>
-                                    <div className="text-xs text-slate-500">
+                                    <div className="workarea-list-item-label">
+                                        {r.label}
+                                    </div>
+                                    <div className="workarea-list-item-meta">
                                         {r.timestamp ?? ""}
                                     </div>
                                     {r.summary && (
-                                        <div className="text-xs text-slate-400">
+                                        <div className="workarea-list-item-meta">
                                             {r.summary}
                                         </div>
                                     )}

@@ -12,13 +12,25 @@ export default function EditorMenuIconGroup({
     children,
 }: EditorMenuIconGroupProps) {
     const [isOpen, setIsOpen] = useState(true);
+
     return (
-        <div className="flex">
-            <button onClick={() => setIsOpen(!isOpen)} className="p-2">
-                <EllipsisVertical size={20} className="hover:text-gray-400" />
+        <div className="editor-menu-group-root">
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="editor-menu-group-toggle"
+                aria-expanded={isOpen}
+                aria-controls={groupId}
+                aria-label={`Toggle ${groupName} controls`}
+            >
+                <EllipsisVertical size={18} />
             </button>
             {isOpen && (
-                <div id={groupId} className="flex p-2" aria-label={groupName}>
+                <div
+                    id={groupId}
+                    className="editor-menu-group"
+                    aria-label={groupName}
+                >
                     {children}
                 </div>
             )}

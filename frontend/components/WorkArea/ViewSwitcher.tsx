@@ -10,6 +10,7 @@
  *   function evaluated on each render.
  */
 import React from "react";
+import { Pencil, LayoutList, BarChart3, GitCompare, Clock } from "lucide-react";
 import { ViewName } from "../../src/lib/models/types";
 
 /**
@@ -42,15 +43,20 @@ interface ViewOption {
     key: ViewName;
     /** Human-readable label shown on the tab button. */
     label: string;
+    /** Lucide icon component for the tab. */
+    icon: React.ComponentType<{
+        size?: number;
+        "aria-hidden"?: boolean | "true" | "false";
+    }>;
 }
 
 /** Ordered view options rendered by {@link ViewSwitcher}. */
 const VIEW_OPTIONS: ViewOption[] = [
-    { key: "edit", label: "Edit" },
-    { key: "organizer", label: "Organizer" },
-    { key: "data", label: "Data" },
-    { key: "diff", label: "Diff" },
-    { key: "timeline", label: "Timeline" },
+    { key: "edit", label: "Edit", icon: Pencil },
+    { key: "organizer", label: "Organizer", icon: LayoutList },
+    { key: "data", label: "Data", icon: BarChart3 },
+    { key: "diff", label: "Diff", icon: GitCompare },
+    { key: "timeline", label: "Timeline", icon: Clock },
 ];
 
 /**
@@ -96,7 +102,7 @@ export default function ViewSwitcher({
 
     return (
         <div
-            className={`flex items-center gap-2 ${className}`}
+            className={`workarea-view-tabs ${className}`}
             role="tablist"
             aria-label="Work area views"
         >
@@ -161,9 +167,9 @@ export default function ViewSwitcher({
                                 e.preventDefault();
                             }
                         }}
-                        className={`px-3 py-1 rounded-md text-sm border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-400
-              ${active ? "bg-indigo-600 text-white border-indigo-700" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className="workarea-tab-button"
                     >
+                        <opt.icon size={14} aria-hidden="true" />
                         {opt.label}
                     </button>
                 );

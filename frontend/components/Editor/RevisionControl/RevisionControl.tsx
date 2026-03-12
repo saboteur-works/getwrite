@@ -194,15 +194,18 @@ export default function RevisionControl() {
     };
 
     return (
-        <section className="border-t border-slate-200 bg-white">
-            <header className="flex items-center justify-between gap-3 p-4">
+        <section className="revision-control-root">
+            <header className="revision-control-header">
                 <div className="flex items-center gap-2">
-                    <History className="h-4 w-4 text-slate-500" />
+                    <History
+                        className="h-4 w-4"
+                        style={{ color: "var(--color-neutral-500)" }}
+                    />
                     <div>
-                        <h2 className="text-sm font-semibold text-slate-800">
+                        <h2 className="revision-control-title">
                             Revision Control
                         </h2>
-                        <p className="text-xs text-slate-500">
+                        <p className="revision-control-description">
                             Save, browse, and restore document revisions.
                         </p>
                     </div>
@@ -210,7 +213,7 @@ export default function RevisionControl() {
                 <button
                     type="button"
                     onClick={() => setIsExpanded((current) => !current)}
-                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    className="revision-control-toggle"
                     aria-expanded={isExpanded}
                     aria-controls="revision-control-content"
                 >
@@ -226,11 +229,11 @@ export default function RevisionControl() {
             {isExpanded && (
                 <div
                     id="revision-control-content"
-                    className="border-t border-slate-100 p-4 overflow-hidden"
+                    className="revision-control-content"
                 >
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="w-full lg:w-4/12 lg:max-w-sm">
-                            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <h3 className="revision-control-section-heading">
                                 Save Explicit Revision
                             </h3>
                             <div className="mt-2 flex items-center gap-2">
@@ -241,7 +244,7 @@ export default function RevisionControl() {
                                         setRevisionName(event.target.value)
                                     }
                                     placeholder="Revision name"
-                                    className="h-9 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                                    className="revision-control-input"
                                     disabled={!canInteract || isSaving}
                                 />
                                 <button
@@ -252,7 +255,7 @@ export default function RevisionControl() {
                                         isSaving ||
                                         !revisionName.trim().length
                                     }
-                                    className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md bg-slate-800 px-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="revision-control-save-button"
                                 >
                                     <Save className="h-4 w-4" />
                                     Save
@@ -261,17 +264,17 @@ export default function RevisionControl() {
                         </div>
 
                         <div className="w-full min-w-0 lg:flex-1">
-                            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <h3 className="revision-control-section-heading">
                                 Existing Revisions
                             </h3>
 
-                            <div className="mt-2 w-full max-w-full rounded-lg border border-slate-200 bg-slate-50/50 p-3 overflow-hidden">
+                            <div className="mt-2 revision-control-list-shell">
                                 {isLoading ? (
-                                    <p className="text-sm text-slate-500">
+                                    <p className="revision-control-description">
                                         Loading revisions…
                                     </p>
                                 ) : revisionItems.length === 0 ? (
-                                    <p className="text-sm text-slate-500">
+                                    <p className="revision-control-description">
                                         No revisions available.
                                     </p>
                                 ) : (
@@ -280,20 +283,20 @@ export default function RevisionControl() {
                                             {revisionItems.map((revision) => (
                                                 <article
                                                     key={revision.id}
-                                                    className={`w-full min-w-0 rounded-md border p-3 shadow-sm ${
+                                                    className={`revision-control-card ${
                                                         revision.isCanonical
-                                                            ? "border-slate-400 bg-slate-50"
-                                                            : "border-slate-200 bg-white"
+                                                            ? "revision-control-card--canonical"
+                                                            : ""
                                                     }`}
                                                 >
                                                     <div className="mb-3 flex items-start justify-between gap-2">
                                                         <div>
-                                                            <h4 className="text-sm font-semibold text-slate-800">
+                                                            <h4 className="revision-control-card-name">
                                                                 {
                                                                     revision.displayName
                                                                 }
                                                             </h4>
-                                                            <p className="text-xs text-slate-500">
+                                                            <p className="revision-control-card-meta">
                                                                 v
                                                                 {
                                                                     revision.versionNumber
@@ -305,7 +308,7 @@ export default function RevisionControl() {
                                                             </p>
                                                         </div>
                                                         {revision.isCanonical && (
-                                                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                                                            <span className="revision-control-badge">
                                                                 Canonical
                                                             </span>
                                                         )}
@@ -324,9 +327,14 @@ export default function RevisionControl() {
                                                                     fetchingRevisionId ===
                                                                     revision.id
                                                                 }
-                                                                className="flex items-center rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                className="revision-control-action-button"
                                                             >
-                                                                <View className="h-3 w-3 mr-2 text-slate-500" />
+                                                                <View
+                                                                    className="h-3 w-3 mr-2"
+                                                                    style={{
+                                                                        color: "var(--color-neutral-500)",
+                                                                    }}
+                                                                />
                                                                 {fetchingRevisionId ===
                                                                 revision.id
                                                                     ? "Loading..."
@@ -339,7 +347,7 @@ export default function RevisionControl() {
                                                                         revision.id,
                                                                     )
                                                                 }
-                                                                className="flex items-center rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                                                className="revision-control-action-button"
                                                             >
                                                                 <Star className="h-3 w-3 mr-2 text-yellow-500" />
                                                                 Set as Canonical
@@ -356,9 +364,14 @@ export default function RevisionControl() {
                                                                     deletingRevisionId ===
                                                                     revision.id
                                                                 }
-                                                                className="flex rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                className="revision-control-action-button revision-control-action-button--danger"
                                                             >
-                                                                <Trash2 className="h-3 w-3 mr-2 text-rose-500" />
+                                                                <Trash2
+                                                                    className="h-3 w-3 mr-2"
+                                                                    style={{
+                                                                        color: "#f43f5e",
+                                                                    }}
+                                                                />
                                                                 {deletingRevisionId ===
                                                                 revision.id
                                                                     ? "Deleting..."
@@ -371,9 +384,14 @@ export default function RevisionControl() {
                                                                         revision.id,
                                                                     )
                                                                 }
-                                                                className="flex rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                                                className="revision-control-action-button"
                                                             >
-                                                                <History className="h-3 w-3 mr-2 text-slate-500" />
+                                                                <History
+                                                                    className="h-3 w-3 mr-2"
+                                                                    style={{
+                                                                        color: "var(--color-neutral-500)",
+                                                                    }}
+                                                                />
                                                                 Roll Back to
                                                                 Revision
                                                             </button>
@@ -382,7 +400,7 @@ export default function RevisionControl() {
 
                                                     {fetchingRevisionId ===
                                                         revision.id && (
-                                                        <p className="mt-2 text-xs text-slate-500">
+                                                        <p className="mt-2 revision-control-card-meta">
                                                             Loading revision…
                                                         </p>
                                                     )}
@@ -399,7 +417,7 @@ export default function RevisionControl() {
                                                                             revision.id,
                                                                         )
                                                                     }
-                                                                    className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-800"
+                                                                    className="revision-control-preview-toggle"
                                                                     aria-expanded={
                                                                         !collapsedPreviewRevisionIds[
                                                                             revision
@@ -422,8 +440,8 @@ export default function RevisionControl() {
                                                                 {!collapsedPreviewRevisionIds[
                                                                     revision.id
                                                                 ] && (
-                                                                    <div className="mt-2 max-h-32 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-2">
-                                                                        <p className="whitespace-pre-wrap break-words text-xs text-slate-700">
+                                                                    <div className="revision-control-preview-box">
+                                                                        <p className="revision-control-preview-text">
                                                                             {
                                                                                 fetchedRevisionContent
                                                                             }
@@ -440,7 +458,7 @@ export default function RevisionControl() {
                             </div>
 
                             {errorMessage && (
-                                <p className="mt-2 text-xs text-rose-600">
+                                <p className="mt-2 revision-control-error">
                                     {errorMessage}
                                 </p>
                             )}

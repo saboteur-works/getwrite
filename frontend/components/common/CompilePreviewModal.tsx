@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Zap, X, PackageCheck } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
 
 export interface CompilePreviewModalProps {
@@ -135,27 +136,27 @@ export default function CompilePreviewModal(
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+        <div className="compile-modal-root">
             <div
-                className="fixed inset-0 bg-black/40"
+                className="compile-modal-backdrop"
                 onClick={onClose}
                 aria-hidden="true"
             />
 
-            <div className="z-70 bg-white rounded-md shadow-lg max-w-3xl w-full p-6">
-                <h3 className="text-lg font-medium">Compile Preview</h3>
-                <p className="mt-2 text-sm text-slate-600">
+            <div className="compile-modal-panel">
+                <h3 className="compile-modal-title">Compile Preview</h3>
+                <p className="compile-modal-description">
                     Choose a scope and generate a visual-only compiled package
                     preview.
                 </p>
 
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                        <label className="text-sm font-medium">Scope</label>
+                        <label className="compile-modal-label">Scope</label>
                         <select
                             value={scope}
                             onChange={(e) => setScope(e.target.value as any)}
-                            className="w-full border rounded px-2 py-1 mt-1"
+                            className="compile-modal-select"
                             aria-label="compile-scope"
                         >
                             <option value="project">Entire project</option>
@@ -166,7 +167,7 @@ export default function CompilePreviewModal(
 
                     {scope === "folder" ? (
                         <div>
-                            <label className="text-sm font-medium">
+                            <label className="compile-modal-label">
                                 Folder
                             </label>
                             <select
@@ -174,7 +175,7 @@ export default function CompilePreviewModal(
                                 onChange={(e) =>
                                     setSelectedFolder(e.target.value)
                                 }
-                                className="w-full border rounded px-2 py-1 mt-1"
+                                className="compile-modal-select"
                                 aria-label="compile-folder"
                             >
                                 <option value="">(select folder)</option>
@@ -189,7 +190,7 @@ export default function CompilePreviewModal(
 
                     {scope === "resource" ? (
                         <div>
-                            <label className="text-sm font-medium">
+                            <label className="compile-modal-label">
                                 Resource
                             </label>
                             <select
@@ -197,7 +198,7 @@ export default function CompilePreviewModal(
                                 onChange={(e) =>
                                     setSelectedResource(e.target.value)
                                 }
-                                className="w-full border rounded px-2 py-1 mt-1"
+                                className="compile-modal-select"
                                 aria-label="compile-resource"
                             >
                                 <option value="">(select resource)</option>
@@ -215,8 +216,9 @@ export default function CompilePreviewModal(
                     <button
                         type="button"
                         onClick={generatePreview}
-                        className="px-3 py-1 rounded bg-slate-100"
+                        className="compile-modal-generate-button"
                     >
+                        <Zap size={14} aria-hidden="true" />
                         Generate preview
                     </button>
                 </div>
@@ -225,21 +227,22 @@ export default function CompilePreviewModal(
                     <textarea
                         readOnly
                         value={preview}
-                        className="w-full h-64 border rounded p-2 font-mono text-xs"
+                        className="compile-modal-textarea"
                         aria-label="compile-preview"
                     />
                 </div>
 
                 <div className="mt-4 flex justify-between items-center">
-                    <div className="text-xs text-slate-600">
+                    <div className="compile-modal-meta-text">
                         {selectedIds.length} resource(s) selected
                     </div>
                     <div className="flex justify-end gap-3">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-3 py-1 rounded border"
+                            className="compile-modal-close"
                         >
+                            <X size={14} aria-hidden="true" />
                             Close
                         </button>
                         <button
@@ -249,8 +252,9 @@ export default function CompilePreviewModal(
                                 onConfirm?.();
                                 onClose?.();
                             }}
-                            className="px-3 py-1 rounded bg-brand-500 text-white"
+                            className="compile-modal-confirm"
                         >
+                            <PackageCheck size={14} aria-hidden="true" />
                             Confirm
                         </button>
                     </div>
