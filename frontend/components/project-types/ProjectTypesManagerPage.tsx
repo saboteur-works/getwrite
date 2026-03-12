@@ -9,6 +9,7 @@
  */
 
 import React, { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type {
     ProjectTypeDefinition,
     ProjectTypeDefaultResource,
@@ -111,6 +112,8 @@ function normalizeDefinition(
 export default function ProjectTypesManagerPage({
     initialTemplates,
 }: ProjectTypesManagerPageProps): JSX.Element {
+    const router = useRouter();
+
     const initialItems = useMemo<ProjectTypeListItem[]>(() => {
         return initialTemplates.map((template) => {
             const normalized = normalizeDefinition(template.definition);
@@ -245,6 +248,19 @@ export default function ProjectTypesManagerPage({
         }));
     };
 
+    /**
+     * Closes the manager and returns user to the previous app screen.
+     * Falls back to `/` when there is no meaningful history entry.
+     */
+    const handleCloseManager = (): void => {
+        if (window.history.length > 1) {
+            router.back();
+            return;
+        }
+
+        router.push("/");
+    };
+
     return (
         <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-10">
             <header className="flex items-start justify-between gap-4">
@@ -257,13 +273,22 @@ export default function ProjectTypesManagerPage({
                         getwrite-config/templates/project-types.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={handleCreateProjectType}
-                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                >
-                    New Project Type
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={handleCloseManager}
+                        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    >
+                        Close
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleCreateProjectType}
+                        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    >
+                        New Project Type
+                    </button>
+                </div>
             </header>
 
             <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
