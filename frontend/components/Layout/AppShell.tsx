@@ -38,6 +38,7 @@ import TimelineView from "../WorkArea/TimelineView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import debounce from "lodash/debounce";
+import { Moon, Sun } from "lucide-react";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
 
@@ -534,6 +535,11 @@ export default function AppShell({
                                 aria-pressed={isDarkMode}
                                 onClick={handleToggleColorMode}
                             >
+                                {isDarkMode ? (
+                                    <Sun size={14} aria-hidden="true" />
+                                ) : (
+                                    <Moon size={14} aria-hidden="true" />
+                                )}
                                 {isDarkMode
                                     ? "Switch to light mode"
                                     : "Switch to dark mode"}
