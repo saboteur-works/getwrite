@@ -54,7 +54,10 @@ export default function OrganizerCard({
 
     return (
         <article
-            className="h-48 border rounded-md p-4 bg-white shadow-card"
+            className="h-48 border rounded-md p-4 bg-white shadow-sm"
+            style={{
+                borderColor: "var(--color-neutral-200)",
+            }}
             aria-labelledby={`res-${resource.id}-title`}
         >
             <header className="flex items-start justify-between gap-3 mb-3">
@@ -65,22 +68,34 @@ export default function OrganizerCard({
                     >
                         {title}
                     </h3>
-                    <div className="text-xs text-slate-500 mt-1">
+                    <div
+                        className="text-xs mt-1"
+                        style={{ color: "var(--color-neutral-500)" }}
+                    >
                         {resource.type} file
                     </div>
                 </div>
-                <div className="text-xs text-slate-600 whitespace-nowrap">
+                <div
+                    className="text-xs whitespace-nowrap"
+                    style={{ color: "var(--color-neutral-600)" }}
+                >
                     {updated ? new Date(updated).toLocaleDateString() : ""}
                 </div>
             </header>
 
             {showBody && body && (
-                <div className="text-sm text-slate-700 mb-3 overflow-y-scroll h-16">
+                <div
+                    className="text-sm mb-3 overflow-y-scroll h-16"
+                    style={{ color: "var(--color-neutral-700)" }}
+                >
                     {body || "No notes available."}
                 </div>
             )}
 
-            <footer className="text-xs text-slate-500 flex items-center justify-between gap-4">
+            <footer
+                className="text-xs flex items-center justify-between gap-4"
+                style={{ color: "var(--color-neutral-500)" }}
+            >
                 <div>
                     Words: {(resource.metadata as any)?.wordCount ?? "unknown"}
                 </div>

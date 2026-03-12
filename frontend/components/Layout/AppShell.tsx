@@ -604,7 +604,7 @@ export default function AppShell({
                 <div className="appshell-work-area-content p-4 md:p-6">
                     {resources ? (
                         <div className="w-full">
-                            <div className="w-full mb-4 flex items-center justify-between gap-4">
+                            <div className="workarea-header">
                                 <ViewSwitcher
                                     view={view}
                                     onChange={setView}
@@ -632,7 +632,7 @@ export default function AppShell({
 
                                 if (selected) {
                                     return (
-                                        <div className="text-lg font-bold">
+                                        <div className="text-lg font-bold mb-4">
                                             {selected.name}
                                         </div>
                                     );
@@ -641,14 +641,14 @@ export default function AppShell({
                         </div>
                     ) : null}
                     <div className="max-w-full mx-auto">
-                        <div className="bg-white rounded-xl shadow-sm p-6 min-h-[400px]">
+                        <div className="workarea-container">
                             {/* If a resource is selected, render the chosen view; otherwise render children (StartPage or prompt) */}
                             {selectedResource && combined
                                 ? (() => {
                                       if (!selectedResource)
                                           return (
                                               <div>
-                                                  <h2 className="text-2xl font-semibold">
+                                                  <h2 className="workarea-section-title">
                                                       Work Area
                                                   </h2>
                                                   <p className="mt-2 text-sm text-slate-600">
@@ -714,7 +714,7 @@ export default function AppShell({
                                           default:
                                               return (
                                                   <div>
-                                                      <h2 className="text-2xl font-semibold">
+                                                      <h2 className="workarea-section-title">
                                                           Work Area
                                                       </h2>
                                                   </div>
@@ -723,7 +723,7 @@ export default function AppShell({
                                   })()
                                 : (children ?? (
                                       <div>
-                                          <h2 className="text-2xl font-semibold">
+                                          <h2 className="workarea-section-title">
                                               Work Area
                                           </h2>
                                           <p className="mt-2 text-sm text-slate-600">

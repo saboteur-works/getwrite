@@ -47,45 +47,51 @@ export default function DataView({
     const projectsCount = projects ? projects.length : project ? 1 : 1;
 
     return (
-        <div className={`p-4 ${className}`}>
-            <h2 className="text-lg font-semibold mb-4">
-                Data — {project?.name ?? "No Project"}
-            </h2>
+        <div className={`${className}`}>
+            <div className="workarea-section">
+                <h2 className="workarea-section-title">
+                    Data — {project?.name ?? "No Project"}
+                </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="p-3 bg-white rounded-md border text-sm">
-                    <div className="text-slate-500">Projects</div>
-                    <div className="text-xl font-medium">{projectsCount}</div>
-                </div>
-                <div className="p-3 bg-white rounded-md border text-sm">
-                    <div className="text-slate-500">Resources</div>
-                    <div className="text-xl font-medium">{totalResources}</div>
-                </div>
-                <div className="p-3 bg-white rounded-md border text-sm">
-                    <div className="text-slate-500">Total words</div>
-                    <div className="text-xl font-medium">{totalWords}</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                    <div className="workarea-stat-card">
+                        <div className="workarea-stat-label">Projects</div>
+                        <div className="workarea-stat-value">
+                            {projectsCount}
+                        </div>
+                    </div>
+                    <div className="workarea-stat-card">
+                        <div className="workarea-stat-label">Resources</div>
+                        <div className="workarea-stat-value">
+                            {totalResources}
+                        </div>
+                    </div>
+                    <div className="workarea-stat-card">
+                        <div className="workarea-stat-label">Total words</div>
+                        <div className="workarea-stat-value">{totalWords}</div>
+                    </div>
                 </div>
             </div>
 
-            <section>
-                <h3 className="text-sm font-medium mb-2">Resources</h3>
-                <ul className="space-y-2">
+            <div className="workarea-section">
+                <h3 className="workarea-section-title">Resources</h3>
+                <ul className="workarea-list">
                     {flatResources.map((r: AnyResource) => (
                         <li
                             key={r.id}
-                            className="p-3 bg-white rounded-md border flex items-center justify-between"
+                            className="workarea-list-item flex items-center justify-between"
                         >
                             <div>
-                                <div className="text-sm font-medium">
+                                <div className="workarea-list-item-label">
                                     {(r as any).name ??
                                         (r as any).title ??
                                         r.id}
                                 </div>
-                                <div className="text-xs text-slate-500">
+                                <div className="workarea-list-item-meta">
                                     {r.type}
                                 </div>
                             </div>
-                            <div className="text-xs text-slate-500">
+                            <div className="workarea-list-item-meta">
                                 {(r as any).metadata?.wordCount ??
                                     (r as any).wordCount ??
                                     0}{" "}
@@ -94,7 +100,7 @@ export default function DataView({
                         </li>
                     ))}
                 </ul>
-            </section>
+            </div>
         </div>
     );
 }

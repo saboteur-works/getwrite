@@ -96,7 +96,7 @@ export default function ViewSwitcher({
 
     return (
         <div
-            className={`flex items-center gap-2 ${className}`}
+            className={`workarea-view-tabs ${className}`}
             role="tablist"
             aria-label="Work area views"
         >
@@ -161,8 +161,7 @@ export default function ViewSwitcher({
                                 e.preventDefault();
                             }
                         }}
-                        className={`px-3 py-1 rounded-md text-sm border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-400
-              ${active ? "bg-indigo-600 text-white border-indigo-700" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className="workarea-tab-button"
                     >
                         {opt.label}
                     </button>

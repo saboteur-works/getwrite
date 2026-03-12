@@ -38,27 +38,26 @@ export default function TimelineView({ className = "" }: TimelineViewProps) {
     );
 
     return (
-        <div className={`p-4 ${className}`}>
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">
+        <div className={`${className}`}>
+            <div className="workarea-section">
+                <h2 className="workarea-section-title">
                     Timeline — {projectFromStore?.name}
                 </h2>
             </div>
 
             <div className="space-y-6">
                 {dates.map((d) => (
-                    <section key={d} className="bg-white border rounded-md p-3">
-                        <h3 className="text-sm font-medium mb-2">{d}</h3>
-                        <ul className="space-y-2">
+                    <section key={d} className="workarea-section">
+                        <h3 className="workarea-section-title text-base">
+                            {d}
+                        </h3>
+                        <ul className="workarea-list">
                             {dated[d].map((r) => (
-                                <li
-                                    key={r.id}
-                                    className="p-2 rounded hover:bg-slate-50"
-                                >
-                                    <div className="font-medium text-sm">
+                                <li key={r.id} className="workarea-list-item">
+                                    <div className="workarea-list-item-label">
                                         {r.name ?? (r as any).title}
                                     </div>
-                                    <div className="text-xs text-slate-500">
+                                    <div className="workarea-list-item-meta">
                                         {r.type}
                                     </div>
                                 </li>
@@ -68,18 +67,17 @@ export default function TimelineView({ className = "" }: TimelineViewProps) {
                 ))}
 
                 {undated.length > 0 && (
-                    <section className="bg-white border rounded-md p-3">
-                        <h3 className="text-sm font-medium mb-2">Undated</h3>
-                        <ul className="space-y-2">
+                    <section className="workarea-section">
+                        <h3 className="workarea-section-title text-base">
+                            Undated
+                        </h3>
+                        <ul className="workarea-list">
                             {undated.map((r) => (
-                                <li
-                                    key={r.id}
-                                    className="p-2 rounded hover:bg-slate-50"
-                                >
-                                    <div className="font-medium text-sm">
+                                <li key={r.id} className="workarea-list-item">
+                                    <div className="workarea-list-item-label">
                                         {r.name ?? (r as any).title}
                                     </div>
-                                    <div className="text-xs text-slate-500">
+                                    <div className="workarea-list-item-meta">
                                         {r.type}
                                     </div>
                                 </li>
