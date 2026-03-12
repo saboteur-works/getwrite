@@ -3,12 +3,12 @@
  * @module Layout/AppShell
  *
  * Main three-pane application shell coordinating:
- * - Left pane: resource tree navigation and context actions.
+ * - Left pane: resource tree navigation and context actions (resizable, collapsible).
  * - Center pane: active work-area view (edit/diff/organizer/data/timeline).
- * - Right pane: metadata editing controls for the selected resource.
+ * - Right pane: metadata editing controls for the selected resource (resizable, collapsible).
  *
  * Responsibilities include view switching, modal orchestration for
- * create/export/compile flows, split-pane resizing, and debounced persistence
+ * create/export/compile flows, resizable/collapsible split panes, and debounced persistence
  * of editor content.
  */
 import React, { useState, useRef, useEffect } from "react";
@@ -135,9 +135,9 @@ export interface AppShellProps {
  * Three-column app shell used in the main app and Storybook.
  *
  * Layout:
- * - Left pane: `ResourceTree` and tree actions.
- * - Center pane: `ViewSwitcher`, search, and active work view.
- * - Right pane: `MetadataSidebar` bound to selected resource.
+ * - Left pane: `ResourceTree` and tree actions (resizable, collapsible).
+ * - Center pane: `ViewSwitcher`, search, and active work view (constant width).
+ * - Right pane: `MetadataSidebar` bound to selected resource (resizable, collapsible).
  *
  * @param props - {@link AppShellProps}.
  * @returns Top-level app shell layout.
@@ -174,6 +174,11 @@ export default function AppShell({
     const [view, setView] = useState<ViewName>("edit");
     const [leftWidth, setLeftWidth] = useState<number>(280);
     const [rightWidth, setRightWidth] = useState<number>(320);
+    const [leftOpen, setLeftOpen] = useState<boolean>(true);
+    const [rightOpen, setRightOpen] = useState<boolean>(true);
+
+    const MIN_SIDEBAR_WIDTH = 160;
+    const COLLAPSE_THRESHOLD = 120;
 
     const draggingRef = useRef<null | {
         side: "left" | "right";
@@ -193,20 +198,30 @@ export default function AppShell({
             const d = draggingRef.current;
             if (!d) return;
             const deltaX = e.clientX - d.startX;
-            const min = 160;
-            const max = 800;
+            const maxWidth = 800;
+
             if (d.side === "left") {
-                const next = Math.min(
-                    max,
-                    Math.max(min, d.startWidth + deltaX),
-                );
-                setLeftWidth(next);
+                const next = d.startWidth + deltaX;
+                // If dragged left past collapse threshold, close the sidebar
+                if (next < COLLAPSE_THRESHOLD) {
+                    setLeftOpen(false);
+                } else {
+                    setLeftOpen(true);
+                    setLeftWidth(
+                        Math.min(maxWidth, Math.max(MIN_SIDEBAR_WIDTH, next)),
+                    );
+                }
             } else {
-                const next = Math.min(
-                    max,
-                    Math.max(min, d.startWidth - deltaX),
-                );
-                setRightWidth(next);
+                const next = d.startWidth - deltaX;
+                // If dragged right past collapse threshold, close the sidebar
+                if (next < COLLAPSE_THRESHOLD) {
+                    setRightOpen(false);
+                } else {
+                    setRightOpen(true);
+                    setRightWidth(
+                        Math.min(maxWidth, Math.max(MIN_SIDEBAR_WIDTH, next)),
+                    );
+                }
             }
             document.body.style.userSelect = "none";
             document.body.style.cursor = "col-resize";
@@ -244,9 +259,6 @@ export default function AppShell({
      * @returns Plain-text content for view rendering.
      */
     const getResourceContent = (r: AnyResource | any) => r.plaintext;
-    // const getResourceContent = (r: AnyResource | any) => {
-    //     console.log(r);
-    // };
 
     const [contextAction, setContextAction] = useState<ContextActionState>({
         open: false,
@@ -398,19 +410,45 @@ export default function AppShell({
     const handlerEditorChange = (content: string, doc: TipTapDocument) => {
         debouncedPersistContent(content, doc);
     };
+
     useEffect(() => {
         return () => {
             debouncedPersistContent.cancel(); // Cancel any pending debounced calls
         };
     }, [debouncedPersistContent]);
+
     return (
-        <div className="flex h-screen max-h-screen w-full max-w-full overflow-hidden bg-slate-50 text-slate-900">
-            {showSidebars ? (
+        <div className="appshell-container">
+            {/* Left Sidebar */}
+            {showSidebars && leftOpen ? (
                 <aside
-                    className="hidden sm:block h-full overflow-y-auto bg-white border-r p-4"
+                    className="hidden sm:flex appshell-sidebar border-r"
                     style={{ width: leftWidth }}
                 >
-                    <div className="mt-0">
+                    <div className="appshell-sidebar-header">
+                        <span className="text-xs uppercase tracking-widest font-semibold text-slate-700">
+                            Resources
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setLeftOpen(false)}
+                            className="appshell-close-button"
+                            title="Close left sidebar"
+                            aria-label="Close resource sidebar"
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                            >
+                                <path d="M3 13L13 3M3 3l10 10" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div className="appshell-sidebar-content p-4 pt-3">
                         {project ? (
                             <ResourceTree
                                 debug={false}
@@ -423,6 +461,30 @@ export default function AppShell({
                         )}
                     </div>
                 </aside>
+            ) : null}
+
+            {/* Left Sidebar Collapsed Toggle */}
+            {showSidebars && !leftOpen ? (
+                <div className="hidden sm:flex flex-col items-center justify-start h-full p-2 bg-white border-r">
+                    <button
+                        type="button"
+                        onClick={() => setLeftOpen(true)}
+                        className="appshell-sidebar-toggle"
+                        title="Open left sidebar"
+                        aria-label="Open resource sidebar"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
+                            <path d="M6 4L10 8L6 12" />
+                        </svg>
+                    </button>
+                </div>
             ) : null}
 
             <ConfirmDialog
@@ -521,176 +583,206 @@ export default function AppShell({
                 }}
             />
 
-            {/* Left resize handle */}
-            {showSidebars ? (
+            {/* Left Resize Handle */}
+            {showSidebars && leftOpen ? (
                 <div
-                    className="hidden sm:flex items-stretch"
-                    style={{ alignSelf: "stretch" }}
-                >
-                    <div
-                        role="separator"
-                        aria-orientation="vertical"
-                        onMouseDown={(e) => {
-                            draggingRef.current = {
-                                side: "left",
-                                startX: e.clientX,
-                                startWidth: leftWidth,
-                            };
-                        }}
-                        className="w-2 -ml-2 cursor-col-resize hover:bg-slate-200"
-                    />
-                </div>
+                    role="separator"
+                    aria-orientation="vertical"
+                    onMouseDown={(e) => {
+                        draggingRef.current = {
+                            side: "left",
+                            startX: e.clientX,
+                            startWidth: leftWidth,
+                        };
+                    }}
+                    className="hidden sm:block appshell-resize-handle"
+                />
             ) : null}
 
-            <main className="flex-1 min-w-0 h-full overflow-x-hidden overflow-y-auto p-4 md:p-6">
-                {resources ? (
-                    <div className="w-full">
-                        <div className="w-full mb-4 flex items-center justify-between gap-4">
-                            <ViewSwitcher
-                                view={view}
-                                onChange={setView}
-                                disabledViews={(() => {
-                                    const disabled: ViewName[] = [];
-                                    if (!selectedResource) {
-                                        disabled.push("edit", "diff");
-                                    }
-                                    if (selectedResource?.type !== "text") {
-                                        disabled.push("edit", "diff");
-                                    }
-                                    return Array.from(new Set(disabled));
-                                })()}
-                            />
-                            <div style={{ width: 320 }}>
-                                <SearchBar
-                                    onSelect={(id) => onResourceSelect?.(id)}
+            {/* Main Work Area */}
+            <main className="appshell-work-area">
+                <div className="appshell-work-area-content p-4 md:p-6">
+                    {resources ? (
+                        <div className="w-full">
+                            <div className="w-full mb-4 flex items-center justify-between gap-4">
+                                <ViewSwitcher
+                                    view={view}
+                                    onChange={setView}
+                                    disabledViews={(() => {
+                                        const disabled: ViewName[] = [];
+                                        if (!selectedResource) {
+                                            disabled.push("edit", "diff");
+                                        }
+                                        if (selectedResource?.type !== "text") {
+                                            disabled.push("edit", "diff");
+                                        }
+                                        return Array.from(new Set(disabled));
+                                    })()}
                                 />
+                                <div style={{ width: 320 }}>
+                                    <SearchBar
+                                        onSelect={(id) =>
+                                            onResourceSelect?.(id)
+                                        }
+                                    />
+                                </div>
                             </div>
+                            {(() => {
+                                const selected = selectedResource;
+
+                                if (selected) {
+                                    return (
+                                        <div className="text-lg font-bold">
+                                            {selected.name}
+                                        </div>
+                                    );
+                                }
+                            })()}
                         </div>
-                        {(() => {
-                            const selected = selectedResource;
-
-                            if (selected) {
-                                return (
-                                    <div className="text-lg font-bold">
-                                        {selected.name}
-                                    </div>
-                                );
-                            }
-                        })()}
-                    </div>
-                ) : null}
-                <div className="max-w-full mx-auto">
-                    <div className="bg-white rounded-xl shadow-sm p-6 min-h-[400px]">
-                        {/* If a resource is selected, render the chosen view; otherwise render children (StartPage or prompt) */}
-                        {selectedResource && combined
-                            ? (() => {
-                                  if (!selectedResource)
-                                      return (
-                                          <div>
-                                              <h2 className="text-2xl font-semibold">
-                                                  Work Area
-                                              </h2>
-                                              <p className="mt-2 text-sm text-slate-600">
-                                                  Resource not found.
-                                              </p>
-                                          </div>
-                                      );
-
-                                  switch (view) {
-                                      case "edit":
-                                          if (
-                                              selectedResource.type !== "text"
-                                          ) {
-                                              return (
-                                                  <div>
-                                                      <h2 className="text-2xl font-semibold">
-                                                          Work Area
-                                                      </h2>
-                                                      <p className="mt-2 text-sm text-slate-600">
-                                                          Selected resource is
-                                                          not a text resource.
-                                                      </p>
-                                                  </div>
-                                              );
-                                          }
-                                          return (
-                                              <EditView
-                                                  onChange={handlerEditorChange}
-                                                  initialContent={getResourceContent(
-                                                      selectedResource,
-                                                  )}
-                                              />
-                                          );
-                                      case "diff":
-                                          return (
-                                              <DiffView
-                                                  leftContent=""
-                                                  rightContent={getResourceContent(
-                                                      selectedResource,
-                                                  )}
-                                              />
-                                          );
-                                      case "organizer":
-                                          return (
-                                              <OrganizerView
-                                                  resources={resources ?? []}
-                                              />
-                                          );
-                                      case "data":
-                                          return (
-                                              <DataView resources={resources} />
-                                          );
-                                      case "timeline":
-                                          return <TimelineView />;
-                                      default:
+                    ) : null}
+                    <div className="max-w-full mx-auto">
+                        <div className="bg-white rounded-xl shadow-sm p-6 min-h-[400px]">
+                            {/* If a resource is selected, render the chosen view; otherwise render children (StartPage or prompt) */}
+                            {selectedResource && combined
+                                ? (() => {
+                                      if (!selectedResource)
                                           return (
                                               <div>
                                                   <h2 className="text-2xl font-semibold">
                                                       Work Area
                                                   </h2>
+                                                  <p className="mt-2 text-sm text-slate-600">
+                                                      Resource not found.
+                                                  </p>
                                               </div>
                                           );
-                                  }
-                              })()
-                            : (children ?? (
-                                  <div>
-                                      <h2 className="text-2xl font-semibold">
-                                          Work Area
-                                      </h2>
-                                      <p className="mt-2 text-sm text-slate-600">
-                                          Placeholder editor and views go here.
-                                      </p>
-                                  </div>
-                              ))}
+
+                                      switch (view) {
+                                          case "edit":
+                                              if (
+                                                  selectedResource.type !==
+                                                  "text"
+                                              ) {
+                                                  return (
+                                                      <div>
+                                                          <h2 className="text-2xl font-semibold">
+                                                              Work Area
+                                                          </h2>
+                                                          <p className="mt-2 text-sm text-slate-600">
+                                                              Selected resource
+                                                              is not a text
+                                                              resource.
+                                                          </p>
+                                                      </div>
+                                                  );
+                                              }
+                                              return (
+                                                  <EditView
+                                                      onChange={
+                                                          handlerEditorChange
+                                                      }
+                                                      initialContent={getResourceContent(
+                                                          selectedResource,
+                                                      )}
+                                                  />
+                                              );
+                                          case "diff":
+                                              return (
+                                                  <DiffView
+                                                      leftContent=""
+                                                      rightContent={getResourceContent(
+                                                          selectedResource,
+                                                      )}
+                                                  />
+                                              );
+                                          case "organizer":
+                                              return (
+                                                  <OrganizerView
+                                                      resources={
+                                                          resources ?? []
+                                                      }
+                                                  />
+                                              );
+                                          case "data":
+                                              return (
+                                                  <DataView
+                                                      resources={resources}
+                                                  />
+                                              );
+                                          case "timeline":
+                                              return <TimelineView />;
+                                          default:
+                                              return (
+                                                  <div>
+                                                      <h2 className="text-2xl font-semibold">
+                                                          Work Area
+                                                      </h2>
+                                                  </div>
+                                              );
+                                      }
+                                  })()
+                                : (children ?? (
+                                      <div>
+                                          <h2 className="text-2xl font-semibold">
+                                              Work Area
+                                          </h2>
+                                          <p className="mt-2 text-sm text-slate-600">
+                                              Placeholder editor and views go
+                                              here.
+                                          </p>
+                                      </div>
+                                  ))}
+                        </div>
                     </div>
                 </div>
             </main>
 
-            {showSidebars ? (
-                <>
-                    {/* Right resize handle */}
-                    <div
-                        className="hidden lg:flex items-stretch"
-                        style={{ alignSelf: "stretch" }}
-                    >
-                        <div
-                            role="separator"
-                            aria-orientation="vertical"
-                            onMouseDown={(e) => {
-                                draggingRef.current = {
-                                    side: "right",
-                                    startX: e.clientX,
-                                    startWidth: rightWidth,
-                                };
-                            }}
-                            className="w-2 -mr-2 cursor-col-resize hover:bg-slate-200"
-                        />
-                    </div>
+            {/* Right Resize Handle */}
+            {showSidebars && rightOpen ? (
+                <div
+                    role="separator"
+                    aria-orientation="vertical"
+                    onMouseDown={(e) => {
+                        draggingRef.current = {
+                            side: "right",
+                            startX: e.clientX,
+                            startWidth: rightWidth,
+                        };
+                    }}
+                    className="hidden lg:block appshell-resize-handle"
+                />
+            ) : null}
 
-                    <aside
-                        className="hidden lg:block lg:min-w-1/5 h-full overflow-y-auto bg-white border-l p-4"
-                        style={{ width: rightWidth }}
-                    >
+            {/* Right Sidebar */}
+            {showSidebars && rightOpen ? (
+                <aside
+                    className="hidden lg:flex appshell-sidebar border-l"
+                    style={{ width: rightWidth }}
+                >
+                    <div className="appshell-sidebar-header">
+                        <span className="text-xs uppercase tracking-widest font-semibold text-slate-700">
+                            Metadata
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setRightOpen(false)}
+                            className="appshell-close-button"
+                            title="Close right sidebar"
+                            aria-label="Close metadata sidebar"
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                            >
+                                <path d="M3 13L13 3M3 3l10 10" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div className="appshell-sidebar-content p-4 pt-3">
                         <MetadataSidebar
                             onChangeNotes={(text) =>
                                 selectedResource &&
@@ -720,8 +812,32 @@ export default function AppShell({
                                 onChangePOV?.(pov, selectedResource.id)
                             }
                         />
-                    </aside>
-                </>
+                    </div>
+                </aside>
+            ) : null}
+
+            {/* Right Sidebar Collapsed Toggle */}
+            {showSidebars && !rightOpen ? (
+                <div className="hidden lg:flex flex-col items-center justify-start h-full p-2 bg-white border-l">
+                    <button
+                        type="button"
+                        onClick={() => setRightOpen(true)}
+                        className="appshell-sidebar-toggle"
+                        title="Open right sidebar"
+                        aria-label="Open metadata sidebar"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
+                            <path d="M10 4L6 8L10 12" />
+                        </svg>
+                    </button>
+                </div>
             ) : null}
         </div>
     );
