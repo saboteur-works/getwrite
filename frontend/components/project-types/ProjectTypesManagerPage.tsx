@@ -10,6 +10,11 @@
 
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import useAppSelector from "../../src/store/hooks";
+import {
+    selectProject,
+    selectSelectedProjectId,
+} from "../../src/store/projectsSlice";
 import type {
     ProjectTypeDefinition,
     ProjectTypeDefaultResource,
@@ -17,6 +22,8 @@ import type {
     ProjectTypeResourceKind,
     ProjectTypeTemplateFile,
 } from "../../src/types/project-types";
+import { resolvePreferredColorMode } from "../../src/lib/user-preferences";
+import type { MetadataValue } from "../../src/lib/models/types";
 
 /**
  * Properties required by {@link ProjectTypesManagerPage}.
@@ -113,6 +120,24 @@ export default function ProjectTypesManagerPage({
     initialTemplates,
 }: ProjectTypesManagerPageProps): JSX.Element {
     const router = useRouter();
+    const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+    const selectedProjectId = useAppSelector((state) =>
+        selectSelectedProjectId(state),
+    );
+    const selectedProject = useAppSelector((state) => {
+        if (!selectedProjectId) {
+            return null;
+        }
+
+        return selectProject(state, selectedProjectId);
+    });
+
+    React.useEffect(() => {
+        const metadata = selectedProject?.metadata as
+            | Record<string, MetadataValue>
+            | undefined;
+        setIsDarkMode(resolvePreferredColorMode(metadata) === "dark");
+    }, [selectedProject?.id, selectedProject?.metadata]);
 
     const initialItems = useMemo<ProjectTypeListItem[]>(() => {
         return initialTemplates.map((template) => {
@@ -262,97 +287,105 @@ export default function ProjectTypesManagerPage({
     };
 
     return (
-        <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-10">
-            <header className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                    <h1 className="text-2xl font-semibold text-slate-900">
-                        Project Type Management
-                    </h1>
-                    <p className="text-sm text-slate-600">
-                        View, create, and edit project type templates from
-                        getwrite-config/templates/project-types.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={handleCloseManager}
-                        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                    >
-                        Close
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleCreateProjectType}
-                        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                    >
-                        New Project Type
-                    </button>
-                </div>
-            </header>
-
-            <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
-                <aside className="rounded-lg border border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800">
-                        Templates
+        <div
+            className={`appshell-shell ${isDarkMode ? "appshell-theme-dark" : ""}`}
+        >
+            <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-10">
+                <header className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                        <h1 className="text-2xl font-semibold text-slate-900">
+                            Project Type Management
+                        </h1>
+                        <p className="text-sm text-slate-600">
+                            View, create, and edit project type templates from
+                            getwrite-config/templates/project-types.
+                        </p>
                     </div>
-                    <ul className="max-h-[65vh] overflow-y-auto p-2">
-                        {items.map((item) => {
-                            const isSelected = item.key === selectedKey;
-                            const title =
-                                item.definition.name.trim() ||
-                                item.definition.id.trim() ||
-                                "Untitled";
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleCloseManager}
+                            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                        >
+                            Close
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleCreateProjectType}
+                            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                        >
+                            New Project Type
+                        </button>
+                    </div>
+                </header>
 
-                            return (
-                                <li key={item.key}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSelectedKey(item.key)}
-                                        className={`mb-1 flex w-full flex-col rounded-md border px-3 py-2 text-left ${
-                                            isSelected
-                                                ? "border-slate-700 bg-slate-100"
-                                                : "border-transparent hover:border-slate-200 hover:bg-slate-50"
-                                        }`}
-                                    >
-                                        <span className="text-sm font-medium text-slate-900">
-                                            {title}
-                                        </span>
-                                        <span className="text-xs text-slate-500">
-                                            {item.fileName ?? "new draft"}
-                                        </span>
-                                        {item.hasChanges ? (
-                                            <span className="mt-1 text-[11px] font-medium text-amber-700">
-                                                Unsaved changes
-                                            </span>
-                                        ) : null}
-                                    </button>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                </aside>
-
-                <div className="rounded-lg border border-slate-200 bg-white p-5">
-                    {selectedItem ? (
-                        <ProjectTypeEditor
-                            definition={selectedItem.definition}
-                            onChange={(nextDefinition) => {
-                                updateSelectedDefinition(() => nextDefinition);
-                            }}
-                            onAddFolder={handleAddFolder}
-                            onRemoveFolder={handleRemoveFolder}
-                            onAddResource={handleAddResource}
-                            onRemoveResource={handleRemoveResource}
-                        />
-                    ) : (
-                        <div className="rounded-md border border-dashed border-slate-300 p-6 text-sm text-slate-500">
-                            No project type selected.
+                <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
+                    <aside className="rounded-lg border border-slate-200 bg-white">
+                        <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800">
+                            Templates
                         </div>
-                    )}
-                </div>
-            </section>
-        </main>
+                        <ul className="max-h-[65vh] overflow-y-auto p-2">
+                            {items.map((item) => {
+                                const isSelected = item.key === selectedKey;
+                                const title =
+                                    item.definition.name.trim() ||
+                                    item.definition.id.trim() ||
+                                    "Untitled";
+
+                                return (
+                                    <li key={item.key}>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setSelectedKey(item.key)
+                                            }
+                                            className={`mb-1 flex w-full flex-col rounded-md border px-3 py-2 text-left ${
+                                                isSelected
+                                                    ? "border-slate-700 bg-slate-100"
+                                                    : "border-transparent hover:border-slate-200 hover:bg-slate-50"
+                                            }`}
+                                        >
+                                            <span className="text-sm font-medium text-slate-900">
+                                                {title}
+                                            </span>
+                                            <span className="text-xs text-slate-500">
+                                                {item.fileName ?? "new draft"}
+                                            </span>
+                                            {item.hasChanges ? (
+                                                <span className="mt-1 text-[11px] font-medium text-amber-700">
+                                                    Unsaved changes
+                                                </span>
+                                            ) : null}
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </aside>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-5">
+                        {selectedItem ? (
+                            <ProjectTypeEditor
+                                definition={selectedItem.definition}
+                                onChange={(nextDefinition) => {
+                                    updateSelectedDefinition(
+                                        () => nextDefinition,
+                                    );
+                                }}
+                                onAddFolder={handleAddFolder}
+                                onRemoveFolder={handleRemoveFolder}
+                                onAddResource={handleAddResource}
+                                onRemoveResource={handleRemoveResource}
+                            />
+                        ) : (
+                            <div className="rounded-md border border-dashed border-slate-300 p-6 text-sm text-slate-500">
+                                No project type selected.
+                            </div>
+                        )}
+                    </div>
+                </section>
+            </main>
+        </div>
     );
 }
 

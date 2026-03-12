@@ -213,6 +213,16 @@
         background-color: var(--color-dark-900) !important;
     }
 
+    /* Buttons/cards that use light slate fills in light mode need dark fills here
+       to preserve readable contrast against light foreground text. */
+    .appshell-shell.appshell-theme-dark .bg-slate-50 {
+        background-color: var(--color-dark-850) !important;
+    }
+
+    .appshell-shell.appshell-theme-dark .bg-slate-100 {
+        background-color: var(--color-dark-800) !important;
+    }
+
     .appshell-shell.appshell-theme-dark .border-r,
     .appshell-shell.appshell-theme-dark .border-l,
     .appshell-shell.appshell-theme-dark .border {
@@ -294,6 +304,12 @@
         background-color: var(--color-dark-800) !important;
     }
 
+    /* Preferences/manager buttons use hover:bg-slate-100 in light mode;
+       keep hover contrast high in dark theme. */
+    .appshell-shell.appshell-theme-dark .hover\:bg-slate-100:hover {
+        background-color: var(--color-dark-700) !important;
+    }
+
     /* ResourceTree hover text: stone-600 (#57534e) on dark bg = 1.9:1 fail */
     .appshell-shell.appshell-theme-dark .hover\:text-stone-600:hover {
         color: var(--color-dark-50) !important;
@@ -304,6 +320,11 @@
         .placeholder\:text-slate-400::placeholder {
         color: var(--color-dark-100) !important;
         opacity: 1;
+    }
+
+    /* Amber-700 on dark surfaces is too dim; lift warning text for AA contrast. */
+    .appshell-shell.appshell-theme-dark .text-amber-700 {
+        color: #fcd34d !important;
     }
 
     .appshell-container {
