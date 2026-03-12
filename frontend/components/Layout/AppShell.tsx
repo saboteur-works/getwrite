@@ -404,10 +404,10 @@ export default function AppShell({
         };
     }, [debouncedPersistContent]);
     return (
-        <div className="min-h-screen flex bg-slate-50 text-slate-900">
+        <div className="flex h-screen max-h-screen w-full max-w-full overflow-hidden bg-slate-50 text-slate-900">
             {showSidebars ? (
                 <aside
-                    className="hidden sm:block bg-white border-r p-4"
+                    className="hidden sm:block h-full overflow-y-auto bg-white border-r p-4"
                     style={{ width: leftWidth }}
                 >
                     <div className="mt-0">
@@ -542,7 +542,7 @@ export default function AppShell({
                 </div>
             ) : null}
 
-            <main className="flex-1 min-w-0 p-4 md:p-6 overflow-x-hidden">
+            <main className="flex-1 min-w-0 h-full overflow-x-hidden overflow-y-auto p-4 md:p-6">
                 {resources ? (
                     <div className="w-full">
                         <div className="w-full mb-4 flex items-center justify-between gap-4">
@@ -688,7 +688,7 @@ export default function AppShell({
                     </div>
 
                     <aside
-                        className="hidden lg:block lg:min-w-1/5 bg-white border-l p-4"
+                        className="hidden lg:block lg:min-w-1/5 h-full overflow-y-auto bg-white border-l p-4"
                         style={{ width: rightWidth }}
                     >
                         <MetadataSidebar
