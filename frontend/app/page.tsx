@@ -40,6 +40,7 @@ import type {
     AnyResource,
     ResourceBase,
 } from "../src/lib/models";
+import type { MetadataValue } from "../src/lib/models/types";
 import { buildProjectView } from "../src/lib/models/project-view";
 import {
     setResources,
@@ -69,6 +70,8 @@ interface SelectedProjectState {
     folders: Folder[];
     /** All resource files (text documents, etc.) belonging to the project. */
     resources: AnyResource[];
+    /** Optional project-level metadata from `project.json`. */
+    metadata?: Record<string, MetadataValue>;
 }
 
 /**
@@ -191,6 +194,7 @@ export default function Home(): JSX.Element {
                           }),
                       )
                     : [],
+                metadata: projectFiles.project.metadata,
             }),
         );
         dispatch(setSelectedProjectId(projectFiles.project.id));
@@ -203,6 +207,7 @@ export default function Home(): JSX.Element {
             rootPath: projectFiles.project.rootPath ?? "",
             folders: (projectFiles as any).folders ?? [],
             resources: (projectFiles as any).resources ?? [],
+            metadata: projectFiles.project.metadata,
         });
     };
 
@@ -251,6 +256,7 @@ export default function Home(): JSX.Element {
                               plaintext: r.plaintext,
                           }))
                         : [],
+                    metadata: p.project.metadata,
                 }),
             );
 
@@ -265,6 +271,7 @@ export default function Home(): JSX.Element {
                 rootPath: p.project.rootPath ?? "",
                 folders: p.folders,
                 resources: p.resources,
+                metadata: p.project.metadata,
             });
         }
     };

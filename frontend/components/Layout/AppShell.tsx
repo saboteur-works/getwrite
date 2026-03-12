@@ -54,8 +54,9 @@ import { selectResource } from "../../src/store/resourcesSlice";
 import {
     type ColorMode,
     resolvePreferredColorMode,
-    saveColorMode,
+    saveGlobalColorMode,
 } from "../../src/lib/user-preferences";
+import type { MetadataValue } from "../../src/lib/models/types";
 
 /**
  * Optional payload bag forwarded to `onResourceAction` callbacks.
@@ -460,17 +461,45 @@ export default function AppShell({
     }, []);
 
     useEffect(() => {
-        setColorMode(resolvePreferredColorMode());
-    }, []);
-
-    useEffect(() => {
-        saveColorMode(colorMode);
-    }, [colorMode]);
+        const metadata = project?.metadata as
+            | Record<string, MetadataValue>
+            | undefined;
+        setColorMode(resolvePreferredColorMode(metadata));
+    }, [project?.id, project?.metadata]);
 
     const isDarkMode = colorMode === "dark";
     const router = useRouter();
+    const persistColorModePreference = async (
+        nextMode: ColorMode,
+    ): Promise<void> => {
+        saveGlobalColorMode(nextMode);
+
+        if (!project?.rootPath) {
+            return;
+        }
+
+        try {
+            await fetch("/api/project/preferences", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    projectPath: project.rootPath,
+                    preferences: {
+                        colorMode: nextMode,
+                    },
+                }),
+            });
+        } catch (error) {
+            console.error("Failed to persist project user preferences", error);
+        }
+    };
+
     const handleToggleColorMode = () => {
-        setColorMode((previous) => (previous === "dark" ? "light" : "dark"));
+        setColorMode((previous) => {
+            const nextMode: ColorMode = previous === "dark" ? "light" : "dark";
+            void persistColorModePreference(nextMode);
+            return nextMode;
+        });
     };
 
     const handleOpenProjectTypeManager = (): void => {

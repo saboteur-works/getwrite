@@ -8,11 +8,17 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import useAppSelector from "../../src/store/hooks";
+import {
+    selectProject,
+    selectSelectedProjectId,
+} from "../../src/store/projectsSlice";
 import {
     type ColorMode,
     resolvePreferredColorMode,
-    saveColorMode,
+    saveGlobalColorMode,
 } from "../../src/lib/user-preferences";
+import type { MetadataValue } from "../../src/lib/models/types";
 
 /**
  * User preferences page UI.
@@ -22,19 +28,49 @@ import {
 export default function UserPreferencesPage(): JSX.Element {
     const router = useRouter();
     const [colorMode, setColorMode] = useState<ColorMode>("light");
+    const selectedProjectId = useAppSelector((state) =>
+        selectSelectedProjectId(state),
+    );
+    const selectedProject = useAppSelector((state) => {
+        if (!selectedProjectId) {
+            return null;
+        }
+
+        return selectProject(state, selectedProjectId);
+    });
 
     useEffect(() => {
-        setColorMode(resolvePreferredColorMode());
-    }, []);
+        const metadata = selectedProject?.metadata as
+            | Record<string, MetadataValue>
+            | undefined;
+        setColorMode(resolvePreferredColorMode(metadata));
+    }, [selectedProject?.id, selectedProject?.metadata]);
 
     /**
      * Persists and updates color mode preference.
      *
      * @param nextMode - Selected color mode.
      */
-    const handleColorModeChange = (nextMode: ColorMode): void => {
+    const handleColorModeChange = async (
+        nextMode: ColorMode,
+    ): Promise<void> => {
         setColorMode(nextMode);
-        saveColorMode(nextMode);
+        saveGlobalColorMode(nextMode);
+
+        if (!selectedProject?.rootPath) {
+            return;
+        }
+
+        await fetch("/api/project/preferences", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                projectPath: selectedProject.rootPath,
+                preferences: {
+                    colorMode: nextMode,
+                },
+            }),
+        });
     };
 
     /**
@@ -57,7 +93,8 @@ export default function UserPreferencesPage(): JSX.Element {
                         User Preferences
                     </h1>
                     <p className="text-sm text-slate-600">
-                        Personal settings stored on this device.
+                        Personal settings stored in the selected project's
+                        metadata.
                     </p>
                 </div>
                 <button

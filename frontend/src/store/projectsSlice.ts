@@ -13,6 +13,7 @@
  */
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Project } from "../lib/models";
+import type { MetadataValue } from "../lib/models/types";
 
 /**
  * Minimal folder shape persisted within a stored project record.
@@ -47,6 +48,8 @@ export interface StoredProject {
     folders?: Folder[];
     /** Resource entries known for this project. */
     resources?: ResourceMeta[];
+    /** Optional project-level metadata persisted in project.json. */
+    metadata?: Record<string, MetadataValue>;
 }
 
 /**
@@ -108,6 +111,7 @@ const projectsSlice = createSlice({
                     rootPath: p.project.rootPath ?? "",
                     folders: p.folders,
                     resources: p.resources,
+                    metadata: p.project.metadata,
                 };
             });
             return state;

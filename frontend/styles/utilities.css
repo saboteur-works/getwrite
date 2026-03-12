@@ -967,6 +967,78 @@
     .start-page-fade-in-delayed {
         animation: start-page-reveal 760ms ease both;
     }
+
+    .appshell-shell.appshell-theme-dark .start-page-shell {
+        background:
+            radial-gradient(
+                circle at top left,
+                rgba(14, 165, 255, 0.14) 0%,
+                rgba(14, 165, 255, 0) 36%
+            ),
+            linear-gradient(180deg, #0b1220 0%, #0f172a 50%, #0b1220 100%);
+    }
+
+    .appshell-shell.appshell-theme-dark .start-page-hero {
+        border-color: rgba(148, 163, 184, 0.22);
+        background: linear-gradient(
+            135deg,
+            rgba(15, 23, 42, 0.96),
+            rgba(15, 23, 42, 0.92)
+        );
+        box-shadow: 0 22px 56px rgba(2, 6, 23, 0.55);
+    }
+
+    .appshell-shell.appshell-theme-dark .start-page-kicker,
+    .appshell-shell.appshell-theme-dark .start-page-chip {
+        border-color: rgba(148, 163, 184, 0.24);
+        background: rgba(15, 23, 42, 0.72);
+        color: #cbd5e1;
+    }
+
+    .appshell-shell.appshell-theme-dark .start-page-panel {
+        border-color: rgba(148, 163, 184, 0.24);
+        background: rgba(15, 23, 42, 0.78);
+        box-shadow: 0 20px 52px rgba(2, 6, 23, 0.55);
+    }
+
+    .appshell-shell.appshell-theme-dark .start-page-card {
+        border-color: rgba(148, 163, 184, 0.22);
+        background: rgba(15, 23, 42, 0.78);
+        box-shadow: 0 16px 44px rgba(2, 6, 23, 0.5);
+    }
+
+    .appshell-shell.appshell-theme-dark .start-page-card:hover {
+        border-color: rgba(56, 189, 248, 0.34);
+        box-shadow: 0 24px 62px rgba(2, 6, 23, 0.62);
+    }
+
+    .appshell-shell.appshell-theme-dark .start-page-secondary-button {
+        border-color: rgba(148, 163, 184, 0.28);
+        background: rgba(15, 23, 42, 0.68);
+        color: #e2e8f0;
+    }
+
+    .appshell-shell.appshell-theme-dark .start-page-secondary-button:hover {
+        background: rgba(30, 41, 59, 0.84);
+    }
+
+    .appshell-shell.appshell-theme-dark .text-ink-900,
+    .appshell-shell.appshell-theme-dark .text-ink-700,
+    .appshell-shell.appshell-theme-dark .text-neutral-500 {
+        color: #cbd5e1 !important;
+    }
+
+    .appshell-shell.appshell-theme-dark .bg-paper-50,
+    .appshell-shell.appshell-theme-dark .bg-paper-100,
+    .appshell-shell.appshell-theme-dark .bg-brand-50,
+    .appshell-shell.appshell-theme-dark .bg-white {
+        background-color: rgba(15, 23, 42, 0.7) !important;
+    }
+
+    .appshell-shell.appshell-theme-dark .border-neutral-200,
+    .appshell-shell.appshell-theme-dark .border-brand-200 {
+        border-color: rgba(148, 163, 184, 0.24) !important;
+    }
 }
 
 @media (min-width: 1024px) {
