@@ -7,6 +7,7 @@ import {
     fetchRevisionContentForSelectedResource,
     loadRevisionsForSelectedResource,
     saveRevisionForSelectedResource,
+    setCanonicalRevisionForSelectedResource,
     selectCurrentRevisionContent,
     selectCurrentRevisionId,
     selectDeletingRevisionId,
@@ -15,7 +16,6 @@ import {
     selectIsSavingRevision,
     selectRevisionsErrorMessage,
     selectVisibleRevisions,
-    setCanonicalRevisionId,
 } from "../../../src/store/revisionsSlice";
 import { selectResource } from "../../../src/store/resourcesSlice";
 
@@ -102,9 +102,20 @@ export default function RevisionControl() {
         void fetchRevision(revisionId);
     };
 
-    const handleSetCanonical = (revisionId: string) => {
-        dispatch(setCanonicalRevisionId(revisionId));
-        void fetchRevision(revisionId);
+    const handleSetCanonical = async (revisionId: string) => {
+        if (!selectedResource?.id) return;
+
+        try {
+            await dispatch(
+                setCanonicalRevisionForSelectedResource({
+                    resourceId: selectedResource.id,
+                    revisionId,
+                }),
+            ).unwrap();
+            await fetchRevision(revisionId);
+        } catch {
+            return;
+        }
     };
 
     const handleDeleteRevision = async (revisionId: string) => {
@@ -122,9 +133,20 @@ export default function RevisionControl() {
         }
     };
 
-    const handleRollbackRevision = (revisionId: string) => {
-        dispatch(setCanonicalRevisionId(revisionId));
-        void fetchRevision(revisionId);
+    const handleRollbackRevision = async (revisionId: string) => {
+        if (!selectedResource?.id) return;
+
+        try {
+            await dispatch(
+                setCanonicalRevisionForSelectedResource({
+                    resourceId: selectedResource.id,
+                    revisionId,
+                }),
+            ).unwrap();
+            await fetchRevision(revisionId);
+        } catch {
+            return;
+        }
     };
 
     return (
@@ -268,7 +290,7 @@ export default function RevisionControl() {
                                                             <button
                                                                 type="button"
                                                                 onClick={() =>
-                                                                    handleSetCanonical(
+                                                                    void handleSetCanonical(
                                                                         revision.id,
                                                                     )
                                                                 }
@@ -298,7 +320,7 @@ export default function RevisionControl() {
                                                             <button
                                                                 type="button"
                                                                 onClick={() =>
-                                                                    handleRollbackRevision(
+                                                                    void handleRollbackRevision(
                                                                         revision.id,
                                                                     )
                                                                 }

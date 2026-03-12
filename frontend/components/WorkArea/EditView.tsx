@@ -28,6 +28,17 @@ export default function EditView({
     initialContent = "",
     onChange,
 }: EditViewProps): JSX.Element {
+    interface ResourceContentResponse {
+        resourceContent?: {
+            tipTapContent?: TipTapDocument | null;
+            plaintextContent?: string | null;
+        };
+        revisions?: Array<{
+            id: string;
+            isCanonical: boolean;
+        }>;
+    }
+
     const currentRevisionId = useAppSelector(selectCurrentRevisionId);
     const currentRevisionContent = useAppSelector(selectCurrentRevisionContent);
     const selectedResource = useAppSelector(
@@ -47,50 +58,118 @@ export default function EditView({
         shallowEqual,
     );
 
-    const fetchResourceContent = async () => {
-        if (selectedResource) {
+    const fetchResourceContent =
+        async (): Promise<ResourceContentResponse | null> => {
+            if (!selectedResource || !project?.rootPath) {
+                return null;
+            }
+
             const response = await fetch("/api/project-resources", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    projectPath: project?.rootPath,
+                    projectPath: project.rootPath,
                     resourceId: selectedResource.id,
                 }),
             });
-            const data = await response.json();
-            return data;
+
+            if (!response.ok) {
+                return null;
+            }
+
+            return (await response.json()) as ResourceContentResponse;
+        };
+
+    const fetchCanonicalRevisionContent = async (
+        revisionId: string,
+    ): Promise<string | null> => {
+        if (!selectedResource || !project?.rootPath) {
+            return null;
         }
+
+        const params = new URLSearchParams({
+            projectPath: project.rootPath,
+            revisionId,
+        });
+
+        const response = await fetch(
+            `/api/resource/revision/${selectedResource.id}?${params.toString()}`,
+        );
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const payload = (await response.json()) as { content?: unknown };
+        return typeof payload.content === "string" ? payload.content : null;
     };
 
     // On mount or when resourceId / initialContent changes, fetch the resource
     // content if a resource ID is provided. If no resourceId is provided, keep
     // the `initialContent` prop so tests and consumers can render initial text.
     useEffect(() => {
-        console.log("fetching resource content for", selectedResource);
-        setContent(initialContent);
-        setTipTapDoc(null);
-        if (selectedResource) {
-            fetchResourceContent().then((res) => {
-                // When loading TipTap content, we need to make sure the shape is valid before
-                // we set it.
-                if (
-                    res.resourceContent.tipTapContent &&
-                    Object.keys(res.resourceContent.tipTapContent).length > 0
-                ) {
-                    setTipTapDoc(res.resourceContent.tipTapContent);
-                }
+        let isCancelled = false;
 
-                // If plaintext content is also available, use it as a fallback. This allows
-                // us to support resources that may not have been saved in TipTap format yet.
-                if (
-                    res.resourceContent.plaintextContent &&
-                    res.resourceContent.plaintextContent !== ""
-                ) {
-                    setContent(res.resourceContent.plaintextContent);
-                }
-            });
+        const loadResourceAndCanonicalRevision = async () => {
+            setContent(initialContent);
+            setTipTapDoc(null);
+
+            const resourceData = await fetchResourceContent();
+            if (!resourceData || isCancelled) {
+                return;
+            }
+
+            if (
+                resourceData.resourceContent?.tipTapContent &&
+                Object.keys(resourceData.resourceContent.tipTapContent).length >
+                    0
+            ) {
+                setTipTapDoc(resourceData.resourceContent.tipTapContent);
+            }
+
+            if (
+                resourceData.resourceContent?.plaintextContent &&
+                resourceData.resourceContent.plaintextContent !== ""
+            ) {
+                setContent(resourceData.resourceContent.plaintextContent);
+            }
+
+            const canonicalRevision = resourceData.revisions?.find(
+                (revision) => revision.isCanonical,
+            );
+
+            if (!canonicalRevision?.id) {
+                return;
+            }
+
+            const canonicalContent = await fetchCanonicalRevisionContent(
+                canonicalRevision.id,
+            );
+
+            if (!canonicalContent || isCancelled) {
+                return;
+            }
+
+            const parsedTipTapDoc =
+                parseTipTapRevisionContent(canonicalContent);
+            if (parsedTipTapDoc) {
+                setTipTapDoc(parsedTipTapDoc);
+                setContent(canonicalContent);
+                return;
+            }
+
+            setTipTapDoc(null);
+            setContent(canonicalContent);
+        };
+
+        if (selectedResource && project?.rootPath) {
+            void loadResourceAndCanonicalRevision();
         }
-    }, [selectedResource, initialContent]);
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [initialContent, project?.rootPath, selectedResource]);
 
     const handleChange = (next: string, doc: TipTapDocument) => {
         setContent(next);

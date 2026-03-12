@@ -10,6 +10,9 @@
  *   Saves a new revision. Reads current filesystem content when body.content
  *   is omitted.
  *
+ * PATCH  /api/resource/revision/:resourceId
+ *   Marks an existing revision as canonical.
+ *
  * DELETE /api/resource/revision/:resourceId
  *   Removes a revision directory by revision UUID.
  */
@@ -19,6 +22,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
     listRevisions,
     revisionDir,
+    setCanonicalRevision,
     writeRevision,
 } from "../../../../../src/lib/models/revision";
 import type { Revision } from "../../../../../src/lib/models/types";
@@ -60,6 +64,16 @@ interface DeleteRevisionBody {
     /** Absolute path to the project root on the server filesystem. */
     projectPath: string;
     /** Revision UUID to delete. */
+    revisionId: string;
+}
+
+/**
+ * Expected shape of the PATCH request body.
+ */
+interface SetCanonicalRevisionBody {
+    /** Absolute path to the project root on the server filesystem. */
+    projectPath: string;
+    /** Revision UUID to mark canonical. */
     revisionId: string;
 }
 
@@ -387,5 +401,86 @@ export async function DELETE(
                 : "Failed to delete revision.";
         const status = message.includes("not found") ? 404 : 500;
         return NextResponse.json({ error: message }, { status });
+    }
+}
+
+/**
+ * PATCH handler — marks an existing revision as canonical.
+ *
+ * Request body: {@link SetCanonicalRevisionBody}
+ *
+ * Responses:
+ * - `200 OK` with the updated canonical `Revision` metadata on success.
+ * - `400 Bad Request` when required fields are missing.
+ * - `404 Not Found` when the revision cannot be found.
+ * - `500 Internal Server Error` when update fails.
+ *
+ * @param req - Incoming Next.js request.
+ * @param context - Route context containing the `resource-id` path param.
+ * @returns JSON response containing the updated revision or an error message.
+ */
+export async function PATCH(
+    req: NextRequest,
+    { params }: { params: Promise<{ "resource-id": string }> },
+) {
+    const resourceId = (await params)["resource-id"];
+
+    let body: SetCanonicalRevisionBody;
+    try {
+        body = (await req.json()) as SetCanonicalRevisionBody;
+    } catch {
+        return NextResponse.json(
+            { error: "Invalid JSON body." },
+            { status: 400 },
+        );
+    }
+
+    const { projectPath, revisionId } = body;
+
+    if (!projectPath || typeof projectPath !== "string") {
+        return NextResponse.json(
+            { error: "Missing required field: projectPath." },
+            { status: 400 },
+        );
+    }
+
+    if (!revisionId || typeof revisionId !== "string") {
+        return NextResponse.json(
+            { error: "Missing required field: revisionId." },
+            { status: 400 },
+        );
+    }
+
+    try {
+        const revisions = await listRevisions(projectPath, resourceId);
+        const target = revisions.find((revision) => revision.id === revisionId);
+
+        if (!target) {
+            return NextResponse.json(
+                { error: `Revision ${revisionId} not found.` },
+                { status: 404 },
+            );
+        }
+
+        const canonicalRevision = await setCanonicalRevision(
+            projectPath,
+            resourceId,
+            target.versionNumber,
+        );
+
+        if (!canonicalRevision) {
+            return NextResponse.json(
+                { error: `Revision ${revisionId} not found.` },
+                { status: 404 },
+            );
+        }
+
+        return NextResponse.json(canonicalRevision, { status: 200 });
+    } catch (error) {
+        const message =
+            error instanceof Error
+                ? error.message
+                : "Failed to set canonical revision.";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

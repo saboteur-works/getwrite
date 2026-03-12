@@ -127,6 +127,14 @@ interface FetchRevisionContentResult {
 }
 
 /**
+ * Fulfilled payload for setting canonical revision.
+ */
+interface SetCanonicalRevisionResult {
+    resourceId: string;
+    revisionId: string;
+}
+
+/**
  * Initial `revisions` slice state.
  */
 const initialState: RevisionsState = {
@@ -484,6 +492,50 @@ export const fetchRevisionContentForSelectedResource = createAsyncThunk<
 );
 
 /**
+ * Persists the canonical revision for the currently selected resource.
+ */
+export const setCanonicalRevisionForSelectedResource = createAsyncThunk<
+    SetCanonicalRevisionResult,
+    DeleteRevisionPayload,
+    { state: RootState; rejectValue: string }
+>(
+    "revisions/setCanonicalRevisionForSelectedResource",
+    async ({ resourceId, revisionId }, thunkApi) => {
+        const context = resolveRevisionRequestContext(
+            thunkApi.getState(),
+            resourceId,
+        );
+
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+
+        const response = await fetch(`/api/resource/revision/${resourceId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                projectPath: context.projectPath,
+                revisionId,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorBody = (await response.json().catch(() => ({}))) as {
+                error?: string;
+            };
+            return thunkApi.rejectWithValue(
+                errorBody.error ?? "Failed to set canonical revision.",
+            );
+        }
+
+        return {
+            resourceId,
+            revisionId,
+        };
+    },
+);
+
+/**
  * Resets the slice back to its initial empty state.
  *
  * @param state - Slice draft state to reset.
@@ -715,6 +767,40 @@ const revisionsSlice = createSlice({
                 state.deletingRevisionId = null;
                 state.errorMessage =
                     action.payload ?? "Failed to delete revision.";
+                return state;
+            },
+        );
+
+        builder.addCase(
+            setCanonicalRevisionForSelectedResource.pending,
+            (state) => {
+                state.errorMessage = "";
+                return state;
+            },
+        );
+        builder.addCase(
+            setCanonicalRevisionForSelectedResource.fulfilled,
+            (state, action) => {
+                if (
+                    state.resourceId !== null &&
+                    state.resourceId !== action.payload.resourceId
+                ) {
+                    return state;
+                }
+
+                state.revisions = state.revisions.map((revision) => ({
+                    ...revision,
+                    isCanonical: revision.id === action.payload.revisionId,
+                }));
+                state.currentRevisionId = action.payload.revisionId;
+                return state;
+            },
+        );
+        builder.addCase(
+            setCanonicalRevisionForSelectedResource.rejected,
+            (state, action) => {
+                state.errorMessage =
+                    action.payload ?? "Failed to set canonical revision.";
                 return state;
             },
         );
