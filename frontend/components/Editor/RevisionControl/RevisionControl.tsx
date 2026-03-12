@@ -1,5 +1,6 @@
 import {
     ChevronDown,
+    ChevronRight,
     ChevronUp,
     History,
     Save,
@@ -41,6 +42,8 @@ export default function RevisionControl() {
 
     const [isExpanded, setIsExpanded] = useState<boolean>(true);
     const [revisionName, setRevisionName] = useState<string>("");
+    const [collapsedPreviewRevisionIds, setCollapsedPreviewRevisionIds] =
+        useState<Record<string, boolean>>({});
     const revisionItems = useAppSelector(selectVisibleRevisions, shallowEqual);
     const isLoading = useAppSelector(selectIsLoadingRevisions);
     const isSaving = useAppSelector(selectIsSavingRevision);
@@ -117,7 +120,24 @@ export default function RevisionControl() {
     );
 
     const handleViewRevision = (revisionId: string) => {
+        setCollapsedPreviewRevisionIds((previous) => {
+            if (!previous[revisionId]) {
+                return previous;
+            }
+
+            return {
+                ...previous,
+                [revisionId]: false,
+            };
+        });
         void fetchRevision(revisionId);
+    };
+
+    const toggleRevisionPreview = (revisionId: string) => {
+        setCollapsedPreviewRevisionIds((previous) => ({
+            ...previous,
+            [revisionId]: !previous[revisionId],
+        }));
     };
 
     const handleSetCanonical = async (revisionId: string) => {
@@ -371,12 +391,45 @@ export default function RevisionControl() {
                                                         revision.id &&
                                                         fetchedRevisionContent !==
                                                             null && (
-                                                            <div className="mt-2 max-h-32 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-2">
-                                                                <p className="whitespace-pre-wrap break-words text-xs text-slate-700">
-                                                                    {
-                                                                        fetchedRevisionContent
+                                                            <div className="mt-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        toggleRevisionPreview(
+                                                                            revision.id,
+                                                                        )
                                                                     }
-                                                                </p>
+                                                                    className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-800"
+                                                                    aria-expanded={
+                                                                        !collapsedPreviewRevisionIds[
+                                                                            revision
+                                                                                .id
+                                                                        ]
+                                                                    }
+                                                                >
+                                                                    {collapsedPreviewRevisionIds[
+                                                                        revision
+                                                                            .id
+                                                                    ] ? (
+                                                                        <ChevronRight className="h-3 w-3" />
+                                                                    ) : (
+                                                                        <ChevronDown className="h-3 w-3" />
+                                                                    )}
+                                                                    Revision
+                                                                    content
+                                                                </button>
+
+                                                                {!collapsedPreviewRevisionIds[
+                                                                    revision.id
+                                                                ] && (
+                                                                    <div className="mt-2 max-h-32 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-2">
+                                                                        <p className="whitespace-pre-wrap break-words text-xs text-slate-700">
+                                                                            {
+                                                                                fetchedRevisionContent
+                                                                            }
+                                                                        </p>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )}
                                                 </article>
