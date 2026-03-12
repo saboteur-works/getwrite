@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp, History, Save } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { shallowEqual } from "react-redux";
+import { toast } from "react-hot-toast";
 import useAppSelector, { useAppDispatch } from "../../../src/store/hooks";
 import {
     deleteRevisionForSelectedResource,
@@ -41,6 +42,16 @@ export default function RevisionControl() {
     const activeRevisionId = useAppSelector(selectCurrentRevisionId);
     const fetchedRevisionContent = useAppSelector(selectCurrentRevisionContent);
     const errorMessage = useAppSelector(selectRevisionsErrorMessage);
+
+    const resolveRevisionName = useCallback(
+        (revisionId: string): string => {
+            const match = revisionItems.find(
+                (revision) => revision.id === revisionId,
+            );
+            return match?.displayName ?? "Revision";
+        },
+        [revisionItems],
+    );
 
     const canInteract = useMemo(() => {
         return !!project?.rootPath && !!selectedResource?.id;
@@ -113,7 +124,9 @@ export default function RevisionControl() {
                 }),
             ).unwrap();
             await fetchRevision(revisionId);
+            toast.success(`Set canonical: ${resolveRevisionName(revisionId)}`);
         } catch {
+            toast.error("Failed to set canonical revision.");
             return;
         }
     };
@@ -128,7 +141,9 @@ export default function RevisionControl() {
                     revisionId,
                 }),
             ).unwrap();
+            toast.success(`Deleted: ${resolveRevisionName(revisionId)}`);
         } catch {
+            toast.error("Failed to delete revision.");
             return;
         }
     };
@@ -144,7 +159,9 @@ export default function RevisionControl() {
                 }),
             ).unwrap();
             await fetchRevision(revisionId);
+            toast.success(`Rolled back to: ${resolveRevisionName(revisionId)}`);
         } catch {
+            toast.error("Failed to roll back revision.");
             return;
         }
     };
@@ -238,7 +255,7 @@ export default function RevisionControl() {
                                                     (revision) => (
                                                         <article
                                                             key={revision.id}
-                                                            className={`w-[340px] rounded-md border p-3 shadow-sm w-full ${
+                                                            className={`w-full max-w-[340px] rounded-md border p-3 shadow-sm ${
                                                                 revision.isCanonical
                                                                     ? "border-slate-400 bg-slate-50"
                                                                     : "border-slate-200 bg-white"
