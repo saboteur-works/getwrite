@@ -1,6 +1,6 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import OrganizerCard from "../../components/WorkArea/OrganizerCard";
+import OrganizerCard from "../../components/WorkArea/Views/OrganizerView/OrganizerCard";
 import { createTextResource } from "../../src/lib/models/resource";
 
 const meta: Meta<typeof OrganizerCard> = {

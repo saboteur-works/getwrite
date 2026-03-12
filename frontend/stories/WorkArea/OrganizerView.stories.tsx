@@ -2,7 +2,7 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import OrganizerView, {
     OrganizerViewProps,
-} from "../../components/WorkArea/OrganizerView";
+} from "../../components/WorkArea/Views/OrganizerView/OrganizerView";
 import { AnyResource } from "../../src/lib/models";
 
 const meta: Meta<typeof OrganizerView> = {

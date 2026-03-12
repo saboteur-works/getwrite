@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import OrganizerCard from "../components/WorkArea/OrganizerCard";
+import OrganizerCard from "../components/WorkArea/Views/OrganizerView/OrganizerCard";
 import { createTextResource } from "../src/lib/models/resource";
 
 describe("OrganizerCard", () => {

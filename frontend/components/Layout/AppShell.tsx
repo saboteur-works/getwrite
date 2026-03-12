@@ -32,7 +32,7 @@ import type { ResourceContextAction } from "../Tree/ResourceContextMenu";
 import ViewSwitcher from "../WorkArea/ViewSwitcher";
 import EditView from "../WorkArea/EditView";
 import DiffView from "../WorkArea/DiffView";
-import OrganizerView from "../WorkArea/OrganizerView";
+import OrganizerView from "../WorkArea/Views/OrganizerView/OrganizerView";
 import DataView from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/TimelineView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";

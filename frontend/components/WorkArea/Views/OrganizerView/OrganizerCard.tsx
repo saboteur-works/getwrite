@@ -1,22 +1,55 @@
 import React from "react";
-import type { AnyResource } from "../../src/lib/models/types";
+import type { AnyResource } from "../../../../src/lib/models/types";
 
+/**
+ * @module OrganizerCard
+ * Renders a compact, presentational card for a single resource inside the
+ * organizer view. The card displays title, type, last-updated date, optional
+ * body preview, and key metadata summaries.
+ */
+
+/**
+ * Props accepted by {@link OrganizerCard}.
+ */
 export interface OrganizerCardProps {
+    /**
+     * Resource model rendered by the card.
+     *
+     * @remarks
+     * The component supports any resource variant (`text`, `image`, `audio`,
+     * `folder`) and derives display fields from common/shared properties.
+     */
     resource: AnyResource;
+    /**
+     * Whether to render the resource body preview section.
+     *
+     * @defaultValue true
+     */
     showBody?: boolean;
 }
 
 /**
- * Presentational card for a single `Resource` used by `OrganizerView`.
- * Keeps markup small and re-usable; uses project utilities where applicable.
+ * Presentational resource card used by organizer layouts.
+ *
+ * @param props - Component props.
+ * @param props.resource - Resource instance to render.
+ * @param props.showBody - Controls whether body preview text is shown.
+ * @returns A styled `<article>` card with resource summary information.
+ *
+ * @example
+ * <OrganizerCard resource={resource} showBody />
  */
 export default function OrganizerCard({
     resource,
     showBody = true,
 }: OrganizerCardProps): JSX.Element {
+    /** Best-effort display title fallback chain. */
     const title = (resource as any).title ?? resource.name ?? "Untitled";
+    /** Optional body preview text, sourced from resource notes metadata. */
     const body = resource.metadata?.notes as string;
+    /** Most relevant timestamp used for human-readable date display. */
     const updated = resource.updatedAt ?? resource.createdAt ?? "";
+    /** Normalized status value shown in the metadata footer. */
     const status = (resource.metadata?.status as string) ?? "unknown";
 
     return (

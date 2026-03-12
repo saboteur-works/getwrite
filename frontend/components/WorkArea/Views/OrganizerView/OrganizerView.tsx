@@ -1,8 +1,11 @@
 import React from "react";
-import type { AnyResource } from "../../src/lib/models/types";
+import type { AnyResource } from "../../../../src/lib/models/types";
 import OrganizerCard from "./OrganizerCard";
-import useAppSelector from "../../src/store/hooks";
-import { selectFolders, selectResources } from "../../src/store/resourcesSlice";
+import useAppSelector from "../../../../src/store/hooks";
+import {
+    selectFolders,
+    selectResources,
+} from "../../../../src/store/resourcesSlice";
 import { filter } from "lodash";
 import { ChevronRight, ChevronDown, Eye, EyeClosed } from "lucide-react";
 import { shallowEqual } from "react-redux";

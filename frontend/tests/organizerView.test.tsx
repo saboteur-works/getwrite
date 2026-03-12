@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { Provider } from "react-redux";
-import OrganizerView from "../components/WorkArea/OrganizerView";
+import OrganizerView from "../components/WorkArea/Views/OrganizerView/OrganizerView";
 import { createTextResource } from "../src/lib/models/resource";
 import { makeStore } from "../src/store/store";
 import { setFolders, setResources } from "../src/store/resourcesSlice";
