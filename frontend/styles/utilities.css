@@ -316,6 +316,153 @@
         background-color: var(--color-neutral-50);
     }
 
+    /* Create Project modal utilities */
+
+    .project-modal-root {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--spacing-4);
+    }
+
+    .project-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(20, 32, 51, 0.42);
+        backdrop-filter: blur(2px);
+    }
+
+    .project-modal-panel {
+        position: relative;
+        z-index: 10;
+        width: 100%;
+        max-width: 34rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-xl);
+        background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.98) 0%,
+            rgba(250, 250, 250, 0.95) 100%
+        );
+        box-shadow: var(--shadow-panel);
+        padding: var(--spacing-6);
+    }
+
+    .project-modal-title {
+        margin: 0;
+        color: var(--color-ink-900);
+        font-size: var(--text-xl);
+        font-weight: 600;
+    }
+
+    .project-modal-field {
+        display: block;
+        margin-top: var(--spacing-4);
+    }
+
+    .project-modal-label {
+        margin-bottom: var(--spacing-2);
+        color: var(--color-neutral-700);
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .project-modal-input,
+    .project-modal-select {
+        display: block;
+        width: 100%;
+        border: 1px solid var(--color-neutral-300);
+        border-radius: var(--radius-md);
+        background-color: white;
+        color: var(--color-neutral-900);
+        padding: 0.625rem 0.75rem;
+        font-size: 0.9375rem;
+        transition:
+            border-color 150ms ease,
+            box-shadow 150ms ease,
+            background-color 150ms ease;
+    }
+
+    .project-modal-input::placeholder {
+        color: var(--color-neutral-500);
+    }
+
+    .project-modal-input:focus,
+    .project-modal-select:focus {
+        outline: none;
+        border-color: var(--color-brand-400);
+        box-shadow: 0 0 0 3px rgba(14, 165, 255, 0.18);
+    }
+
+    .project-modal-input:disabled,
+    .project-modal-select:disabled {
+        cursor: not-allowed;
+        background-color: var(--color-neutral-100);
+        color: var(--color-neutral-500);
+    }
+
+    .project-modal-hint {
+        margin-top: var(--spacing-2);
+        color: var(--color-neutral-600);
+        font-size: 0.75rem;
+        line-height: 1.4;
+    }
+
+    .project-modal-error {
+        margin-top: var(--spacing-3);
+        color: #b91c1c;
+        font-size: 0.875rem;
+    }
+
+    .project-modal-actions {
+        margin-top: var(--spacing-6);
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--spacing-3);
+    }
+
+    .project-modal-button {
+        border-radius: var(--radius-md);
+        border: 1px solid transparent;
+        padding: 0.5rem 0.875rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition:
+            background-color 150ms ease,
+            border-color 150ms ease,
+            color 150ms ease;
+    }
+
+    .project-modal-button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+
+    .project-modal-button-secondary {
+        border-color: var(--color-neutral-300);
+        background-color: white;
+        color: var(--color-neutral-700);
+    }
+
+    .project-modal-button-secondary:hover:not(:disabled) {
+        background-color: var(--color-neutral-50);
+        border-color: var(--color-neutral-400);
+    }
+
+    .project-modal-button-primary {
+        border-color: var(--color-brand-600);
+        background-color: var(--color-brand-500);
+        color: white;
+    }
+
+    .project-modal-button-primary:hover:not(:disabled) {
+        border-color: var(--color-brand-700);
+        background-color: var(--color-brand-600);
+    }
+
     .start-page-shell {
         min-height: 100%;
         background:
