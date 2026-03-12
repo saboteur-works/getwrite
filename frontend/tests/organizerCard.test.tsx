@@ -8,8 +8,11 @@ describe("OrganizerCard", () => {
     it("renders title, type, date, body and metadata when showBody is true", () => {
         const res = createTextResource({
             name: "Test Resource",
-            plainText: "Placeholder content for Test Resource",
-            metadata: { wordCount: 42, status: "draft" },
+            metadata: {
+                wordCount: 42,
+                status: "draft",
+                notes: "Placeholder content for Test Resource",
+            },
         } as any);
 
         render(<OrganizerCard resource={res} showBody={true} />);
@@ -27,8 +30,7 @@ describe("OrganizerCard", () => {
     it("hides the body when showBody is false", () => {
         const res = createTextResource({
             name: "Hidden Body",
-            plainText: "Placeholder content for Hidden Body",
-            metadata: {},
+            metadata: { notes: "Placeholder content for Hidden Body" },
         } as any);
         render(<OrganizerCard resource={res} showBody={false} />);
 
