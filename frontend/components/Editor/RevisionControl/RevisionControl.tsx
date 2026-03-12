@@ -1,4 +1,12 @@
-import { ChevronDown, ChevronUp, History, Save } from "lucide-react";
+import {
+    ChevronDown,
+    ChevronUp,
+    History,
+    Save,
+    Star,
+    Trash2,
+    View,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { toast } from "react-hot-toast";
@@ -19,7 +27,6 @@ import {
     selectVisibleRevisions,
 } from "../../../src/store/revisionsSlice";
 import { selectResource } from "../../../src/store/resourcesSlice";
-
 export default function RevisionControl() {
     const dispatch = useAppDispatch();
     const project = useAppSelector(
@@ -299,8 +306,9 @@ export default function RevisionControl() {
                                                                             fetchingRevisionId ===
                                                                             revision.id
                                                                         }
-                                                                        className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                        className="flex items-center rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                                                     >
+                                                                        <View className="h-3 w-3 mr-2 text-slate-500" />
                                                                         {fetchingRevisionId ===
                                                                         revision.id
                                                                             ? "Loading..."
@@ -313,8 +321,9 @@ export default function RevisionControl() {
                                                                                 revision.id,
                                                                             )
                                                                         }
-                                                                        className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                                                        className="flex items-center rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                                                                     >
+                                                                        <Star className="h-3 w-3 mr-2 text-yellow-500" />
                                                                         Set as
                                                                         Canonical
                                                                         Revision
@@ -330,8 +339,9 @@ export default function RevisionControl() {
                                                                             deletingRevisionId ===
                                                                             revision.id
                                                                         }
-                                                                        className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                        className="flex rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
                                                                     >
+                                                                        <Trash2 className="h-3 w-3 mr-2 text-rose-500" />
                                                                         {deletingRevisionId ===
                                                                         revision.id
                                                                             ? "Deleting..."
@@ -344,8 +354,9 @@ export default function RevisionControl() {
                                                                                 revision.id,
                                                                             )
                                                                         }
-                                                                        className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                                                        className="flex rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                                                                     >
+                                                                        <History className="h-3 w-3 mr-2 text-slate-500" />
                                                                         Roll
                                                                         Back to
                                                                         Revision

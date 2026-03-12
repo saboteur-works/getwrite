@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import debounce from "lodash/debounce";
 import TipTapEditor from "../TipTapEditor";
 import { TipTapDocument } from "../../src/lib/models";
 import useAppSelector from "../../src/store/hooks";
@@ -68,6 +69,12 @@ export default function EditView({
             currentRevisionId !== canonicalRevisionId,
         [currentRevisionId, canonicalRevisionId],
     );
+    const isEditingCanonicalRevision = React.useMemo(
+        () =>
+            currentRevisionId !== null &&
+            currentRevisionId === canonicalRevisionId,
+        [currentRevisionId, canonicalRevisionId],
+    );
     const projectId = useAppSelector(
         (state) => state.projects.selectedProjectId,
         shallowEqual,
@@ -76,6 +83,49 @@ export default function EditView({
         (state) => (projectId ? state.projects.projects[projectId] : null),
         shallowEqual,
     );
+
+    const persistCanonicalRevisionContent = React.useCallback(
+        async (doc: TipTapDocument) => {
+            if (
+                !project?.rootPath ||
+                !selectedResource?.id ||
+                !currentRevisionId ||
+                currentRevisionId !== canonicalRevisionId
+            ) {
+                return;
+            }
+
+            await fetch(`/api/resource/revision/${selectedResource.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    projectPath: project.rootPath,
+                    revisionId: currentRevisionId,
+                    content: JSON.stringify(doc),
+                }),
+            });
+        },
+        [
+            canonicalRevisionId,
+            currentRevisionId,
+            project?.rootPath,
+            selectedResource?.id,
+        ],
+    );
+
+    const debouncedPersistCanonicalRevisionContent = React.useMemo(
+        () =>
+            debounce((doc: TipTapDocument) => {
+                void persistCanonicalRevisionContent(doc);
+            }, 2500),
+        [persistCanonicalRevisionContent],
+    );
+
+    useEffect(() => {
+        return () => {
+            debouncedPersistCanonicalRevisionContent.cancel();
+        };
+    }, [debouncedPersistCanonicalRevisionContent]);
 
     const fetchResourceContent =
         async (): Promise<ResourceContentResponse | null> => {
@@ -194,6 +244,9 @@ export default function EditView({
         setContent(next);
         if (isViewingNonCanonical) {
             setHasEditsAfterRevisionSwitch(true);
+        }
+        if (isEditingCanonicalRevision) {
+            debouncedPersistCanonicalRevisionContent(doc);
         }
         if (onChange) onChange(next, doc);
     };
