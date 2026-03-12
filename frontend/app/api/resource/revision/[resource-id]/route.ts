@@ -125,7 +125,11 @@ async function deleteRevisionById(
         throw new Error(`Revision ${revisionId} not found.`);
     }
 
-    const directory = revisionDir(projectPath, resourceId, revision.versionNumber);
+    const directory = revisionDir(
+        projectPath,
+        resourceId,
+        revision.versionNumber,
+    );
     await fs.rm(directory, { recursive: true, force: true });
 
     return revision;
