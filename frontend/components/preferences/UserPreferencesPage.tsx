@@ -28,11 +28,24 @@ import {
 import type { MetadataValue } from "../../src/lib/models/types";
 
 /**
+ * Props accepted by {@link UserPreferencesPage}.
+ */
+interface UserPreferencesPageProps {
+    /** Optional close handler used when rendered as a modal. */
+    onClose?: () => void;
+    /** Renders without page-level shell wrapper when true. */
+    renderInModal?: boolean;
+}
+
+/**
  * User preferences page UI.
  *
  * @returns Preferences page element.
  */
-export default function UserPreferencesPage(): JSX.Element {
+export default function UserPreferencesPage({
+    onClose,
+    renderInModal = false,
+}: UserPreferencesPageProps): JSX.Element {
     const router = useRouter();
     const [appearance, setAppearance] = useState<AppearancePreferences>(
         DEFAULT_APPEARANCE_PREFERENCES,
@@ -115,6 +128,11 @@ export default function UserPreferencesPage(): JSX.Element {
      * Closes preferences and returns to previous page when possible.
      */
     const handleClose = (): void => {
+        if (onClose) {
+            onClose();
+            return;
+        }
+
         if (window.history.length > 1) {
             router.back();
             return;
@@ -123,145 +141,149 @@ export default function UserPreferencesPage(): JSX.Element {
         router.push("/");
     };
 
+    const content = (
+        <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8 lg:px-10">
+            <header className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                    <h1 className="text-2xl font-semibold text-slate-900">
+                        User Preferences
+                    </h1>
+                    <p className="text-sm text-slate-600">
+                        Personal settings stored in the selected project's
+                        metadata.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={handleClose}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                >
+                    Close
+                </button>
+            </header>
+
+            <section className="rounded-lg border border-slate-200 bg-white p-5">
+                <h2 className="text-sm font-semibold text-slate-900">Theme</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                    Choose the default UI appearance mode.
+                </p>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    <button
+                        type="button"
+                        onClick={() => handleColorModeChange("light")}
+                        className={`rounded-md border px-3 py-2 text-sm font-medium ${
+                            appearance.colorModePreference === "light"
+                                ? "border-slate-700 bg-slate-100 text-slate-900"
+                                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                        }`}
+                        aria-pressed={
+                            appearance.colorModePreference === "light"
+                        }
+                    >
+                        Light
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleColorModeChange("dark")}
+                        className={`rounded-md border px-3 py-2 text-sm font-medium ${
+                            appearance.colorModePreference === "dark"
+                                ? "border-slate-700 bg-slate-100 text-slate-900"
+                                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                        }`}
+                        aria-pressed={appearance.colorModePreference === "dark"}
+                    >
+                        Dark
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleColorModeChange("system")}
+                        className={`rounded-md border px-3 py-2 text-sm font-medium ${
+                            appearance.colorModePreference === "system"
+                                ? "border-slate-700 bg-slate-100 text-slate-900"
+                                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                        }`}
+                        aria-pressed={
+                            appearance.colorModePreference === "system"
+                        }
+                    >
+                        System
+                    </button>
+                </div>
+
+                <div className="mt-6 border-t border-slate-200 pt-5">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                        Density
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-600">
+                        Control spacing density across app layouts.
+                    </p>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {(
+                            [
+                                ["comfortable", "Comfortable"],
+                                ["compact", "Compact"],
+                            ] as Array<[UiDensity, string]>
+                        ).map(([densityValue, densityLabel]) => (
+                            <button
+                                key={densityValue}
+                                type="button"
+                                onClick={() => {
+                                    persistAppearance({
+                                        ...appearance,
+                                        density: densityValue,
+                                    });
+                                }}
+                                className={`rounded-md border px-3 py-2 text-sm font-medium ${
+                                    appearance.density === densityValue
+                                        ? "border-slate-700 bg-slate-100 text-slate-900"
+                                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                }`}
+                                aria-pressed={
+                                    appearance.density === densityValue
+                                }
+                            >
+                                {densityLabel}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="mt-6 border-t border-slate-200 pt-5">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                        Motion
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-600">
+                        Reduce non-essential motion and transitions.
+                    </p>
+                    <label className="mt-4 inline-flex items-center gap-2 text-sm text-slate-700">
+                        <input
+                            type="checkbox"
+                            checked={appearance.reducedMotion}
+                            onChange={(event) => {
+                                persistAppearance({
+                                    ...appearance,
+                                    reducedMotion: event.target.checked,
+                                });
+                            }}
+                            className="h-4 w-4 rounded border-slate-300"
+                        />
+                        Enable reduced motion
+                    </label>
+                </div>
+            </section>
+        </main>
+    );
+
+    if (renderInModal) {
+        return content;
+    }
+
     return (
         <div
             className={`appshell-shell ${isDarkMode ? "appshell-theme-dark" : ""}`}
         >
-            <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8 lg:px-10">
-                <header className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                        <h1 className="text-2xl font-semibold text-slate-900">
-                            User Preferences
-                        </h1>
-                        <p className="text-sm text-slate-600">
-                            Personal settings stored in the selected project's
-                            metadata.
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={handleClose}
-                        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                    >
-                        Close
-                    </button>
-                </header>
-
-                <section className="rounded-lg border border-slate-200 bg-white p-5">
-                    <h2 className="text-sm font-semibold text-slate-900">
-                        Theme
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                        Choose the default UI appearance mode.
-                    </p>
-
-                    <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                        <button
-                            type="button"
-                            onClick={() => handleColorModeChange("light")}
-                            className={`rounded-md border px-3 py-2 text-sm font-medium ${
-                                appearance.colorModePreference === "light"
-                                    ? "border-slate-700 bg-slate-100 text-slate-900"
-                                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-                            }`}
-                            aria-pressed={
-                                appearance.colorModePreference === "light"
-                            }
-                        >
-                            Light
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleColorModeChange("dark")}
-                            className={`rounded-md border px-3 py-2 text-sm font-medium ${
-                                appearance.colorModePreference === "dark"
-                                    ? "border-slate-700 bg-slate-100 text-slate-900"
-                                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-                            }`}
-                            aria-pressed={
-                                appearance.colorModePreference === "dark"
-                            }
-                        >
-                            Dark
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleColorModeChange("system")}
-                            className={`rounded-md border px-3 py-2 text-sm font-medium ${
-                                appearance.colorModePreference === "system"
-                                    ? "border-slate-700 bg-slate-100 text-slate-900"
-                                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-                            }`}
-                            aria-pressed={
-                                appearance.colorModePreference === "system"
-                            }
-                        >
-                            System
-                        </button>
-                    </div>
-
-                    <div className="mt-6 border-t border-slate-200 pt-5">
-                        <h3 className="text-sm font-semibold text-slate-900">
-                            Density
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-600">
-                            Control spacing density across app layouts.
-                        </p>
-                        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                            {(
-                                [
-                                    ["comfortable", "Comfortable"],
-                                    ["compact", "Compact"],
-                                ] as Array<[UiDensity, string]>
-                            ).map(([densityValue, densityLabel]) => (
-                                <button
-                                    key={densityValue}
-                                    type="button"
-                                    onClick={() => {
-                                        persistAppearance({
-                                            ...appearance,
-                                            density: densityValue,
-                                        });
-                                    }}
-                                    className={`rounded-md border px-3 py-2 text-sm font-medium ${
-                                        appearance.density === densityValue
-                                            ? "border-slate-700 bg-slate-100 text-slate-900"
-                                            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-                                    }`}
-                                    aria-pressed={
-                                        appearance.density === densityValue
-                                    }
-                                >
-                                    {densityLabel}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="mt-6 border-t border-slate-200 pt-5">
-                        <h3 className="text-sm font-semibold text-slate-900">
-                            Motion
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-600">
-                            Reduce non-essential motion and transitions.
-                        </p>
-                        <label className="mt-4 inline-flex items-center gap-2 text-sm text-slate-700">
-                            <input
-                                type="checkbox"
-                                checked={appearance.reducedMotion}
-                                onChange={(event) => {
-                                    persistAppearance({
-                                        ...appearance,
-                                        reducedMotion: event.target.checked,
-                                    });
-                                }}
-                                className="h-4 w-4 rounded border-slate-300"
-                            />
-                            Enable reduced motion
-                        </label>
-                    </div>
-                </section>
-            </main>
+            {content}
         </div>
     );
 }

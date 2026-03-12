@@ -141,9 +141,31 @@
         color: var(--color-brand-700);
     }
 
+    .appshell-modal-backdrop {
+        background-color: rgba(2, 6, 23, 0.4);
+        -webkit-backdrop-filter: blur(2px);
+        backdrop-filter: blur(2px);
+    }
+
+    .appshell-modal-panel {
+        background-color: white;
+    }
+
     .appshell-shell.appshell-theme-dark {
         background-color: var(--color-dark-950);
         color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-modal-backdrop {
+        background-color: rgba(2, 6, 23, 0.74);
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-modal-panel {
+        background-color: var(--color-dark-900);
+        border-color: var(--color-dark-700);
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.55);
     }
 
     .appshell-shell.appshell-theme-dark .appshell-topbar {

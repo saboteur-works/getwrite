@@ -28,6 +28,8 @@ import ConfirmDialog from "../common/ConfirmDialog";
 import CreateResourceModal from "../Tree/CreateResourceModal";
 import ExportPreviewModal from "../common/ExportPreviewModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
+import UserPreferencesPage from "../preferences/UserPreferencesPage";
+import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import type { ResourceContextAction } from "../Tree/ResourceContextMenu";
 import ViewSwitcher from "../WorkArea/ViewSwitcher";
 import EditView from "../WorkArea/EditView";
@@ -48,7 +50,6 @@ import {
     PanelRightClose,
     PanelRightOpen,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
 import {
@@ -59,6 +60,10 @@ import {
     saveGlobalColorMode,
 } from "../../src/lib/user-preferences";
 import type { MetadataValue } from "../../src/lib/models/types";
+import type {
+    ProjectTypeDefinition,
+    ProjectTypeTemplateFile,
+} from "../../src/types/project-types";
 
 /**
  * Optional payload bag forwarded to `onResourceAction` callbacks.
@@ -197,6 +202,18 @@ export default function AppShell({
     const [rightOpen, setRightOpen] = useState<boolean>(true);
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] =
         useState<boolean>(false);
+    const [isPreferencesModalOpen, setIsPreferencesModalOpen] =
+        useState<boolean>(false);
+    const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
+        useState<boolean>(false);
+    const [projectTypeTemplates, setProjectTypeTemplates] = useState<
+        ProjectTypeTemplateFile[]
+    >([]);
+    const [isProjectTypesLoading, setIsProjectTypesLoading] =
+        useState<boolean>(false);
+    const [projectTypesLoadError, setProjectTypesLoadError] = useState<
+        string | null
+    >(null);
     const [colorMode, setColorMode] = useState<ColorMode>("light");
     const settingsMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -450,6 +467,8 @@ export default function AppShell({
         const onDocumentKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
                 setIsSettingsMenuOpen(false);
+                setIsPreferencesModalOpen(false);
+                setIsProjectTypesModalOpen(false);
             }
         };
 
@@ -470,7 +489,6 @@ export default function AppShell({
     }, [project?.id, project?.metadata]);
 
     const isDarkMode = colorMode === "dark";
-    const router = useRouter();
     const persistColorModePreference = async (
         nextMode: ColorMode,
     ): Promise<void> => {
@@ -511,13 +529,81 @@ export default function AppShell({
 
     const handleOpenProjectTypeManager = (): void => {
         setIsSettingsMenuOpen(false);
-        router.push("/project-types");
+        setIsProjectTypesModalOpen(true);
     };
 
     const handleOpenPreferences = (): void => {
         setIsSettingsMenuOpen(false);
-        router.push("/preferences");
+        setIsPreferencesModalOpen(true);
     };
+
+    useEffect(() => {
+        if (!isProjectTypesModalOpen) {
+            return;
+        }
+
+        let isCancelled = false;
+
+        const loadProjectTypes = async (): Promise<void> => {
+            setIsProjectTypesLoading(true);
+            setProjectTypesLoadError(null);
+
+            try {
+                const response = await fetch("/api/project-types");
+                if (!response.ok) {
+                    throw new Error(
+                        `Failed to load project types (${response.status})`,
+                    );
+                }
+
+                const definitions =
+                    (await response.json()) as ProjectTypeDefinition[];
+
+                if (isCancelled) {
+                    return;
+                }
+
+                const templates: ProjectTypeTemplateFile[] = definitions.map(
+                    (definition, index) => {
+                        return {
+                            fileName:
+                                definition.id?.trim().length > 0
+                                    ? `${definition.id}.json`
+                                    : `template-${index + 1}.json`,
+                            definition: {
+                                ...definition,
+                                folders: definition.folders ?? [],
+                                defaultResources:
+                                    definition.defaultResources ?? [],
+                            },
+                        };
+                    },
+                );
+
+                setProjectTypeTemplates(templates);
+            } catch (error) {
+                if (isCancelled) {
+                    return;
+                }
+
+                const message =
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to load project types";
+                setProjectTypesLoadError(message);
+            } finally {
+                if (!isCancelled) {
+                    setIsProjectTypesLoading(false);
+                }
+            }
+        };
+
+        void loadProjectTypes();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [isProjectTypesModalOpen]);
 
     return (
         <div
@@ -740,6 +826,49 @@ export default function AppShell({
                         setCompileModal({ open: false });
                     }}
                 />
+
+                {isPreferencesModalOpen ? (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="fixed inset-0 appshell-modal-backdrop"
+                            onClick={() => setIsPreferencesModalOpen(false)}
+                        />
+                        <div className="relative z-10 w-[min(820px,94vw)] max-h-[92vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl appshell-modal-panel">
+                            <UserPreferencesPage
+                                renderInModal
+                                onClose={() => setIsPreferencesModalOpen(false)}
+                            />
+                        </div>
+                    </div>
+                ) : null}
+
+                {isProjectTypesModalOpen ? (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="fixed inset-0 appshell-modal-backdrop"
+                            onClick={() => setIsProjectTypesModalOpen(false)}
+                        />
+                        <div className="relative z-10 w-[min(1200px,96vw)] max-h-[92vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl appshell-modal-panel">
+                            {isProjectTypesLoading ? (
+                                <div className="p-6 text-sm text-slate-600">
+                                    Loading project types…
+                                </div>
+                            ) : projectTypesLoadError ? (
+                                <div className="p-6 text-sm text-red-700">
+                                    {projectTypesLoadError}
+                                </div>
+                            ) : (
+                                <ProjectTypesManagerPage
+                                    initialTemplates={projectTypeTemplates}
+                                    renderInModal
+                                    onClose={() =>
+                                        setIsProjectTypesModalOpen(false)
+                                    }
+                                />
+                            )}
+                        </div>
+                    </div>
+                ) : null}
 
                 {/* Left Resize Handle */}
                 {showSidebars && leftOpen ? (
