@@ -30,6 +30,8 @@ export default function EditView({
     initialContent = "",
     onChange,
 }: EditViewProps): JSX.Element {
+    type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
+
     interface ResourceContentResponse {
         resourceContent?: {
             tipTapContent?: TipTapDocument | null;
@@ -55,6 +57,8 @@ export default function EditView({
     const [tipTapDoc, setTipTapDoc] = React.useState<TipTapDocument | null>(
         null,
     );
+    const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
+    const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
     const [hasEditsAfterRevisionSwitch, setHasEditsAfterRevisionSwitch] =
         React.useState<boolean>(false);
 
@@ -116,7 +120,19 @@ export default function EditView({
     const debouncedPersistCanonicalRevisionContent = React.useMemo(
         () =>
             debounce((doc: TipTapDocument) => {
-                void persistCanonicalRevisionContent(doc);
+                setSaveStatus("saving");
+                void persistCanonicalRevisionContent(doc)
+                    .then(() => {
+                        setSaveStatus("saved");
+                        setLastSavedAt(new Date());
+                    })
+                    .catch((error) => {
+                        console.error(
+                            "Failed to persist canonical revision content",
+                            error,
+                        );
+                        setSaveStatus("error");
+                    });
             }, 2500),
         [persistCanonicalRevisionContent],
     );
@@ -246,6 +262,7 @@ export default function EditView({
             setHasEditsAfterRevisionSwitch(true);
         }
         if (isEditingCanonicalRevision) {
+            setSaveStatus("pending");
             debouncedPersistCanonicalRevisionContent(doc);
         }
         if (onChange) onChange(next, doc);
@@ -261,7 +278,52 @@ export default function EditView({
         return text ? text.split(" ").length : 0;
     }, [content]);
 
-    const lastSaved = React.useMemo(() => new Date().toLocaleString(), []);
+    const lastSavedLabel = React.useMemo(() => {
+        if (!lastSavedAt) {
+            return "Not yet";
+        }
+
+        return lastSavedAt.toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+        });
+    }, [lastSavedAt]);
+
+    const autosaveLabel = React.useMemo(() => {
+        if (!isEditingCanonicalRevision) {
+            return "Autosave unavailable for non-canonical revisions";
+        }
+
+        if (saveStatus === "pending") {
+            return "Autosave queued…";
+        }
+
+        if (saveStatus === "saving") {
+            return "Saving…";
+        }
+
+        if (saveStatus === "error") {
+            return "Autosave failed";
+        }
+
+        if (saveStatus === "saved") {
+            return `Saved · ${lastSavedLabel}`;
+        }
+
+        return `Last saved · ${lastSavedLabel}`;
+    }, [isEditingCanonicalRevision, saveStatus, lastSavedLabel]);
+
+    const autosaveClassName = React.useMemo(() => {
+        if (saveStatus === "error") {
+            return "text-red-600";
+        }
+
+        if (saveStatus === "saving" || saveStatus === "pending") {
+            return "text-slate-700";
+        }
+
+        return "text-slate-500";
+    }, [saveStatus]);
 
     /**
      * Safely parses revision payloads that may be stored as TipTap JSON strings.
@@ -316,6 +378,10 @@ export default function EditView({
         setContent(currentRevisionContent);
     }, [currentRevisionContent, currentRevisionId, parseTipTapRevisionContent]);
 
+    useEffect(() => {
+        setSaveStatus("idle");
+    }, [selectedResource?.id, currentRevisionId]);
+
     return (
         <div className="flex h-full min-w-0 w-full flex-col overflow-hidden">
             <RevisionControl />
@@ -343,8 +409,8 @@ export default function EditView({
                         changes.
                     </p>
                 )}
-                <div className="text-slate-500">
-                    Last saved: <span>{lastSaved}</span>
+                <div className={autosaveClassName} aria-live="polite">
+                    {autosaveLabel}
                 </div>
             </footer>
         </div>

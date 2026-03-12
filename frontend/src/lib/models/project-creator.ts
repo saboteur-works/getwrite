@@ -46,6 +46,7 @@ import { generateUUID } from "./uuid";
 import { validateProjectTypeFile, validateProjectType } from "./schemas";
 import type { Project, Folder, TextResource, ResourceType } from "./types";
 import { createResourceOfType, writeResourceToFile } from "./resource";
+import { writeRevision } from "./revision";
 
 /**
  * Minimal spec types for project-type JSON files.
@@ -265,8 +266,19 @@ export async function createProjectFromType(options: {
                 orderIndex: j,
                 metadata: { orderIndex: j },
             });
-            resources.push(typedResource as TextResource);
-            await writeResourceToFile(projectRoot, typedResource);
+            const seededTextResource = typedResource as TextResource;
+
+            resources.push(seededTextResource);
+            await writeResourceToFile(projectRoot, seededTextResource);
+            await writeRevision(
+                projectRoot,
+                seededTextResource.id,
+                1,
+                seededTextResource.plainText ?? "",
+                {
+                    isCanonical: true,
+                },
+            );
         }
     }
 

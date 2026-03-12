@@ -6,6 +6,7 @@ import path from "node:path";
 import { createAndAssertProject } from "./helpers/project-creator";
 import { flushIndexer } from "../../lib/models/indexer-queue";
 import { removeDirRetry } from "./helpers/fs-utils";
+import { listRevisions } from "../../lib/models/revision";
 
 describe("models/project-creator", () => {
     it("creates project structure and resource placeholders from spec", async () => {
@@ -41,6 +42,14 @@ describe("models/project-creator", () => {
             // resources dir exists and resources have sidecars
             const meta = await fs.readdir(path.join(projectPath, "meta"));
             expect(meta.length).toBeGreaterThanOrEqual(resources.length);
+
+            for (const resource of resources) {
+                const revisions = await listRevisions(projectPath, resource.id);
+                expect(revisions.length).toBe(1);
+                expect(revisions[0]?.versionNumber).toBe(1);
+                expect(revisions[0]?.isCanonical).toBe(true);
+            }
+
             // ensure background indexing finished before cleanup
             await flushIndexer();
         } finally {
