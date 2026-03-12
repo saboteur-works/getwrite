@@ -1,5 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import projectsReducer from "./projectsSlice";
+import revisionsReducer from "./revisionsSlice";
 import resourcesReducer from "./resourcesSlice";
 
 /**
@@ -8,6 +9,8 @@ import resourcesReducer from "./resourcesSlice";
 export const store = configureStore({
     reducer: {
         projects: projectsReducer,
+        resources: resourcesReducer,
+        revisions: revisionsReducer,
     },
 });
 
@@ -16,6 +19,7 @@ export const makeStore = () => {
         reducer: {
             projects: projectsReducer,
             resources: resourcesReducer,
+            revisions: revisionsReducer,
         },
     });
 };

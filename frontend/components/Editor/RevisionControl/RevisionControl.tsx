@@ -1,62 +1,26 @@
 import { ChevronDown, ChevronUp, History, Save } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { shallowEqual } from "react-redux";
-import useAppSelector from "../../../src/store/hooks";
-import { selectProject } from "../../../src/store/projectsSlice";
+import useAppSelector, { useAppDispatch } from "../../../src/store/hooks";
+import {
+    deleteRevisionForSelectedResource,
+    fetchRevisionContentForSelectedResource,
+    loadRevisionsForSelectedResource,
+    saveRevisionForSelectedResource,
+    selectCurrentRevisionContent,
+    selectCurrentRevisionId,
+    selectDeletingRevisionId,
+    selectFetchingRevisionId,
+    selectIsLoadingRevisions,
+    selectIsSavingRevision,
+    selectRevisionsErrorMessage,
+    selectVisibleRevisions,
+    setCanonicalRevisionId,
+} from "../../../src/store/revisionsSlice";
 import { selectResource } from "../../../src/store/resourcesSlice";
-import type { Revision } from "../../../src/lib/models/types";
-
-interface RevisionListItem {
-    id: string;
-    name: string;
-    versionNumber: number;
-    createdAt: string;
-    isCanonical: boolean;
-}
-
-function toRevisionListItems(payload: unknown): RevisionListItem[] {
-    if (!payload || typeof payload !== "object") return [];
-
-    const possibleRevisions =
-        "revisions" in payload
-            ? (payload as { revisions?: unknown }).revisions
-            : payload;
-
-    if (!Array.isArray(possibleRevisions)) return [];
-
-    return possibleRevisions
-        .filter((revision): revision is Revision => {
-            return (
-                !!revision &&
-                typeof revision === "object" &&
-                "id" in revision &&
-                "versionNumber" in revision &&
-                "createdAt" in revision &&
-                "isCanonical" in revision
-            );
-        })
-        .map((revision) => {
-            const metadataName =
-                revision.metadata && typeof revision.metadata === "object"
-                    ? revision.metadata["name"]
-                    : undefined;
-            const resolvedName =
-                typeof metadataName === "string" && metadataName.trim().length
-                    ? metadataName.trim()
-                    : `Revision v${revision.versionNumber}`;
-
-            return {
-                id: revision.id,
-                name: resolvedName,
-                versionNumber: revision.versionNumber,
-                createdAt: revision.createdAt,
-                isCanonical: revision.isCanonical,
-            };
-        })
-        .sort((a, b) => b.versionNumber - a.versionNumber);
-}
 
 export default function RevisionControl() {
+    const dispatch = useAppDispatch();
     const project = useAppSelector(
         (state) =>
             state.projects.projects[state.projects.selectedProjectId || ""],
@@ -69,68 +33,30 @@ export default function RevisionControl() {
 
     const [isExpanded, setIsExpanded] = useState<boolean>(true);
     const [revisionName, setRevisionName] = useState<string>("");
-    const [revisionItems, setRevisionItems] = useState<RevisionListItem[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [isSaving, setIsSaving] = useState<boolean>(false);
-    const [deletingRevisionId, setDeletingRevisionId] = useState<string | null>(
-        null,
-    );
-    const [fetchingRevisionId, setFetchingRevisionId] = useState<string | null>(
-        null,
-    );
-    const [activeRevisionId, setActiveRevisionId] = useState<string | null>(
-        null,
-    );
-    const [fetchedRevisionContent, setFetchedRevisionContent] = useState<
-        string | null
-    >(null);
-    const [errorMessage, setErrorMessage] = useState<string>("");
+    const revisionItems = useAppSelector(selectVisibleRevisions, shallowEqual);
+    const isLoading = useAppSelector(selectIsLoadingRevisions);
+    const isSaving = useAppSelector(selectIsSavingRevision);
+    const deletingRevisionId = useAppSelector(selectDeletingRevisionId);
+    const fetchingRevisionId = useAppSelector(selectFetchingRevisionId);
+    const activeRevisionId = useAppSelector(selectCurrentRevisionId);
+    const fetchedRevisionContent = useAppSelector(selectCurrentRevisionContent);
+    const errorMessage = useAppSelector(selectRevisionsErrorMessage);
 
     const canInteract = useMemo(() => {
         return !!project?.rootPath && !!selectedResource?.id;
     }, [project?.rootPath, selectedResource?.id]);
 
-    const loadRevisions = useCallback(async () => {
-        if (!project?.rootPath || !selectedResource?.id) {
-            setRevisionItems([]);
+    useEffect(() => {
+        if (!canInteract || !selectedResource?.id) {
             return;
         }
 
-        setIsLoading(true);
-        setErrorMessage("");
-
-        try {
-            const response = await fetch("/api/project-resources", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    projectPath: project.rootPath,
-                    resourceId: selectedResource.id,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error("Unable to load revisions.");
-            }
-
-            const data: unknown = await response.json();
-            setRevisionItems(toRevisionListItems(data));
-        } catch (error) {
-            setErrorMessage(
-                error instanceof Error
-                    ? error.message
-                    : "Unable to load revisions.",
-            );
-        } finally {
-            setIsLoading(false);
-        }
-    }, [project?.rootPath, selectedResource?.id]);
-
-    useEffect(() => {
-        void loadRevisions();
-    }, [loadRevisions]);
+        void dispatch(
+            loadRevisionsForSelectedResource({
+                resourceId: selectedResource.id,
+            }),
+        );
+    }, [canInteract, dispatch, project?.rootPath, selectedResource?.id]);
 
     const handleSaveRevision = async () => {
         if (
@@ -141,51 +67,16 @@ export default function RevisionControl() {
         )
             return;
 
-        setIsSaving(true);
-        setErrorMessage("");
-
         try {
-            const response = await fetch(
-                `/api/resource/revision/${selectedResource.id}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        projectPath: project.rootPath,
-                        isCanonical: false,
-                    }),
-                },
-            );
-
-            if (!response.ok) {
-                const errorBody = (await response.json().catch(() => ({}))) as {
-                    error?: string;
-                };
-                throw new Error(errorBody.error ?? "Failed to save revision.");
-            }
-
-            const saved = (await response.json()) as RevisionListItem & {
-                metadata?: Record<string, unknown>;
-            };
-
-            const savedItem: RevisionListItem = {
-                id: saved.id,
-                name: revisionName.trim(),
-                versionNumber: saved.versionNumber,
-                createdAt: saved.createdAt,
-                isCanonical: saved.isCanonical,
-            };
-
-            setRevisionItems((current) => [savedItem, ...current]);
+            await dispatch(
+                saveRevisionForSelectedResource({
+                    resourceId: selectedResource.id,
+                    revisionName: revisionName.trim(),
+                }),
+            ).unwrap();
             setRevisionName("");
-        } catch (error) {
-            setErrorMessage(
-                error instanceof Error
-                    ? error.message
-                    : "Failed to save revision.",
-            );
-        } finally {
-            setIsSaving(false);
+        } catch {
+            return;
         }
     };
 
@@ -193,46 +84,18 @@ export default function RevisionControl() {
         async (revisionId: string) => {
             if (!project?.rootPath || !selectedResource?.id) return;
 
-            setFetchingRevisionId(revisionId);
-            setErrorMessage("");
-
             try {
-                const params = new URLSearchParams({
-                    projectPath: project.rootPath,
-                    revisionId,
-                });
-
-                const response = await fetch(
-                    `/api/resource/revision/${selectedResource.id}?${params.toString()}`,
-                );
-
-                if (!response.ok) {
-                    const errorBody = (await response
-                        .json()
-                        .catch(() => ({}))) as { error?: string };
-                    throw new Error(
-                        errorBody.error ?? "Failed to fetch revision.",
-                    );
-                }
-
-                const data = (await response.json()) as {
-                    revision: Revision;
-                    content: string;
-                };
-
-                setActiveRevisionId(revisionId);
-                setFetchedRevisionContent(data.content);
-            } catch (error) {
-                setErrorMessage(
-                    error instanceof Error
-                        ? error.message
-                        : "Failed to fetch revision.",
-                );
-            } finally {
-                setFetchingRevisionId(null);
+                await dispatch(
+                    fetchRevisionContentForSelectedResource({
+                        resourceId: selectedResource.id,
+                        revisionId,
+                    }),
+                ).unwrap();
+            } catch {
+                return;
             }
         },
-        [project?.rootPath, selectedResource?.id],
+        [dispatch, project?.rootPath, selectedResource?.id],
     );
 
     const handleViewRevision = (revisionId: string) => {
@@ -240,68 +103,26 @@ export default function RevisionControl() {
     };
 
     const handleSetCanonical = (revisionId: string) => {
-        setRevisionItems((current) =>
-            current.map((revision) => ({
-                ...revision,
-                isCanonical: revision.id === revisionId,
-            })),
-        );
+        dispatch(setCanonicalRevisionId(revisionId));
     };
 
     const handleDeleteRevision = async (revisionId: string) => {
         if (!project?.rootPath || !selectedResource?.id) return;
 
-        setDeletingRevisionId(revisionId);
-        setErrorMessage("");
-
         try {
-            const response = await fetch(
-                `/api/resource/revision/${selectedResource.id}`,
-                {
-                    method: "DELETE",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        projectPath: project.rootPath,
-                        revisionId,
-                    }),
-                },
-            );
-
-            if (!response.ok) {
-                const errorBody = (await response.json().catch(() => ({}))) as {
-                    error?: string;
-                };
-                throw new Error(
-                    errorBody.error ?? "Failed to delete revision.",
-                );
-            }
-
-            setRevisionItems((current) =>
-                current.filter((revision) => revision.id !== revisionId),
-            );
-
-            if (activeRevisionId === revisionId) {
-                setActiveRevisionId(null);
-            }
-        } catch (error) {
-            setErrorMessage(
-                error instanceof Error
-                    ? error.message
-                    : "Failed to delete revision.",
-            );
-        } finally {
-            setDeletingRevisionId(null);
+            await dispatch(
+                deleteRevisionForSelectedResource({
+                    resourceId: selectedResource.id,
+                    revisionId,
+                }),
+            ).unwrap();
+        } catch {
+            return;
         }
     };
 
     const handleRollbackRevision = (revisionId: string) => {
-        setActiveRevisionId(revisionId);
-        setRevisionItems((current) =>
-            current.map((revision) => ({
-                ...revision,
-                isCanonical: revision.id === revisionId,
-            })),
-        );
+        dispatch(setCanonicalRevisionId(revisionId));
     };
 
     return (
@@ -400,7 +221,9 @@ export default function RevisionControl() {
                                                     <div className="mb-3 flex items-start justify-between gap-2">
                                                         <div>
                                                             <h4 className="text-sm font-semibold text-slate-800">
-                                                                {revision.name}
+                                                                {
+                                                                    revision.displayName
+                                                                }
                                                             </h4>
                                                             <p className="text-xs text-slate-500">
                                                                 v
