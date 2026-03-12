@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { MoreHorizontal, Pencil, Trash2, Package } from "lucide-react";
 import ConfirmDialog from "../common/ConfirmDialog";
 import RenameProjectModal from "./RenameProjectModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
@@ -104,9 +105,9 @@ export default function ManageProjectMenu({
                 aria-haspopup="menu"
                 aria-expanded={open}
                 onClick={() => setOpen((v) => !v)}
-                className="px-2 py-1 border rounded text-sm"
+                className="inline-flex items-center justify-center px-2 py-1 border rounded text-sm"
             >
-                •••
+                <MoreHorizontal size={16} aria-hidden="true" />
             </button>
 
             {open ? (
@@ -121,8 +122,9 @@ export default function ManageProjectMenu({
                                 type="button"
                                 role="menuitem"
                                 onClick={() => setRenameOpen(true)}
-                                className="w-full text-left px-2 py-2 text-sm hover:bg-slate-50 rounded"
+                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm hover:bg-slate-50 rounded"
                             >
+                                <Pencil size={14} aria-hidden="true" />
                                 Rename
                             </button>
 
@@ -130,8 +132,9 @@ export default function ManageProjectMenu({
                                 type="button"
                                 role="menuitem"
                                 onClick={() => setConfirmDeleteOpen(true)}
-                                className="w-full text-left px-2 py-2 text-sm hover:bg-slate-50 rounded text-red-600"
+                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm hover:bg-slate-50 rounded text-red-600"
                             >
+                                <Trash2 size={14} aria-hidden="true" />
                                 Delete
                             </button>
 
@@ -139,8 +142,9 @@ export default function ManageProjectMenu({
                                 type="button"
                                 role="menuitem"
                                 onClick={() => setCompileOpen(true)}
-                                className="w-full text-left px-2 py-2 text-sm hover:bg-slate-50 rounded"
+                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm hover:bg-slate-50 rounded"
                             >
+                                <Package size={14} aria-hidden="true" />
                                 Package
                             </button>
                         </>

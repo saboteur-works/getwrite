@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Zap, X, PackageCheck } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
 
 export interface CompilePreviewModalProps {
@@ -217,6 +218,7 @@ export default function CompilePreviewModal(
                         onClick={generatePreview}
                         className="compile-modal-generate-button"
                     >
+                        <Zap size={14} aria-hidden="true" />
                         Generate preview
                     </button>
                 </div>
@@ -240,6 +242,7 @@ export default function CompilePreviewModal(
                             onClick={onClose}
                             className="compile-modal-close"
                         >
+                            <X size={14} aria-hidden="true" />
                             Close
                         </button>
                         <button
@@ -251,6 +254,7 @@ export default function CompilePreviewModal(
                             }}
                             className="compile-modal-confirm"
                         >
+                            <PackageCheck size={14} aria-hidden="true" />
                             Confirm
                         </button>
                     </div>

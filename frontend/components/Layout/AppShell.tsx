@@ -38,7 +38,16 @@ import TimelineView from "../WorkArea/TimelineView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import debounce from "lodash/debounce";
-import { Moon, Sun } from "lucide-react";
+import {
+    Moon,
+    Sun,
+    Settings,
+    SlidersHorizontal,
+    PanelLeftClose,
+    PanelLeftOpen,
+    PanelRightClose,
+    PanelRightOpen,
+} from "lucide-react";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
 
@@ -498,19 +507,7 @@ export default function AppShell({
                         aria-label="Open project settings menu"
                         onClick={() => setIsSettingsMenuOpen((prev) => !prev)}
                     >
-                        <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.08a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                        </svg>
+                        <Settings size={18} aria-hidden="true" />
                     </button>
 
                     {isSettingsMenuOpen ? (
@@ -525,6 +522,10 @@ export default function AppShell({
                                 role="menuitem"
                                 onClick={() => setIsSettingsMenuOpen(false)}
                             >
+                                <SlidersHorizontal
+                                    size={14}
+                                    aria-hidden="true"
+                                />
                                 Placeholder option
                             </button>
                             <button
@@ -567,16 +568,7 @@ export default function AppShell({
                                 title="Close left sidebar"
                                 aria-label="Close resource sidebar"
                             >
-                                <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 16 16"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                >
-                                    <path d="M3 13L13 3M3 3l10 10" />
-                                </svg>
+                                <PanelLeftClose size={16} aria-hidden="true" />
                             </button>
                         </div>
                         <div className="appshell-sidebar-content p-4 pt-3">
@@ -604,16 +596,7 @@ export default function AppShell({
                             title="Open left sidebar"
                             aria-label="Open resource sidebar"
                         >
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 16 16"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path d="M6 4L10 8L6 12" />
-                            </svg>
+                            <PanelLeftOpen size={16} aria-hidden="true" />
                         </button>
                     </div>
                 ) : null}
@@ -909,16 +892,7 @@ export default function AppShell({
                                 title="Close right sidebar"
                                 aria-label="Close metadata sidebar"
                             >
-                                <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 16 16"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                >
-                                    <path d="M3 13L13 3M3 3l10 10" />
-                                </svg>
+                                <PanelRightClose size={16} aria-hidden="true" />
                             </button>
                         </div>
                         <div className="appshell-sidebar-content p-4 pt-3">
@@ -971,16 +945,7 @@ export default function AppShell({
                             title="Open right sidebar"
                             aria-label="Open metadata sidebar"
                         >
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 16 16"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path d="M10 4L6 8L10 12" />
-                            </svg>
+                            <PanelRightOpen size={16} aria-hidden="true" />
                         </button>
                     </div>
                 ) : null}

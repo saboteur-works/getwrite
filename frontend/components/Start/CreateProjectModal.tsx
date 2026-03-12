@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
+import { X, FolderPlus } from "lucide-react";
 import type { Project as CanonicalProject } from "../../src/lib/models/types";
 
 export interface CreateProjectPayload {
@@ -343,6 +344,7 @@ export default function CreateProjectModal({
                         className="project-modal-button project-modal-button-secondary"
                         disabled={creating}
                     >
+                        <X size={14} aria-hidden="true" />
                         Cancel
                     </button>
                     <button
@@ -359,6 +361,7 @@ export default function CreateProjectModal({
                                 ))
                         }
                     >
+                        <FolderPlus size={14} aria-hidden="true" />
                         {creating ? "Creating…" : "Create"}
                     </button>
                 </div>

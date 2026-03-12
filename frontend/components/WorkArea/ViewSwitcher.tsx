@@ -10,6 +10,7 @@
  *   function evaluated on each render.
  */
 import React from "react";
+import { Pencil, LayoutList, BarChart3, GitCompare, Clock } from "lucide-react";
 import { ViewName } from "../../src/lib/models/types";
 
 /**
@@ -42,15 +43,20 @@ interface ViewOption {
     key: ViewName;
     /** Human-readable label shown on the tab button. */
     label: string;
+    /** Lucide icon component for the tab. */
+    icon: React.ComponentType<{
+        size?: number;
+        "aria-hidden"?: boolean | "true" | "false";
+    }>;
 }
 
 /** Ordered view options rendered by {@link ViewSwitcher}. */
 const VIEW_OPTIONS: ViewOption[] = [
-    { key: "edit", label: "Edit" },
-    { key: "organizer", label: "Organizer" },
-    { key: "data", label: "Data" },
-    { key: "diff", label: "Diff" },
-    { key: "timeline", label: "Timeline" },
+    { key: "edit", label: "Edit", icon: Pencil },
+    { key: "organizer", label: "Organizer", icon: LayoutList },
+    { key: "data", label: "Data", icon: BarChart3 },
+    { key: "diff", label: "Diff", icon: GitCompare },
+    { key: "timeline", label: "Timeline", icon: Clock },
 ];
 
 /**
@@ -163,6 +169,7 @@ export default function ViewSwitcher({
                         }}
                         className="workarea-tab-button"
                     >
+                        <opt.icon size={14} aria-hidden="true" />
                         {opt.label}
                     </button>
                 );

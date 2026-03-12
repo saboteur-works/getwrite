@@ -10,6 +10,7 @@
  * and local optimistic updates for create/rename/delete interactions.
  */
 import React, { useEffect, useMemo, useState } from "react";
+import { FolderPlus, Plus, FolderOpen } from "lucide-react";
 import type {
     Project as CanonicalProject,
     AnyResource,
@@ -231,7 +232,9 @@ export default function StartPage({
                                     </div>
                                     <p className="mt-2 text-sm leading-6 text-ink-700">
                                         Project
-                                        {localProjects.length === 1 ? "" : "s"}{" "}
+                                        {localProjects.length === 1
+                                            ? ""
+                                            : "s"}{" "}
                                         ready to open and continue.
                                     </p>
                                 </div>
@@ -260,6 +263,7 @@ export default function StartPage({
                                     onClick={handleCreateClick}
                                     className="start-page-primary-button inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-medium text-white"
                                 >
+                                    <FolderPlus size={16} aria-hidden="true" />
                                     Start a New Project
                                 </button>
                             </div>
@@ -305,6 +309,7 @@ export default function StartPage({
                                 onClick={handleCreateClick}
                                 className="start-page-secondary-button mt-6 inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700"
                             >
+                                <Plus size={15} aria-hidden="true" />
                                 Create the first project
                             </button>
                         </article>
@@ -420,6 +425,10 @@ export default function StartPage({
                                         }
                                         className="start-page-secondary-button inline-flex items-center rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-ink-900"
                                     >
+                                        <FolderOpen
+                                            size={15}
+                                            aria-hidden="true"
+                                        />
                                         Open Project
                                     </button>
 
