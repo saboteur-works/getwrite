@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import path from "node:path";
 import fs from "node:fs";
 import { ResourceType, TipTapDocument } from "../../../src/lib/models";
+import { listRevisions } from "../../../src/lib/models/revision";
 const getProjectResource = (
     projectPath: string,
     resourceId: string,
@@ -45,6 +46,8 @@ export async function POST(req: Request) {
         projectPath: string;
         resourceId: string;
     };
+    const revisions = await listRevisions(projectPath, resourceId);
+    console.log(revisions);
     // Get the project resources from the filesystem based on the provided project path and resource ID
     try {
         // For now, we assume all resources are text resources and fetch accordingly.
@@ -54,9 +57,11 @@ export async function POST(req: Request) {
             resourceId,
             "text",
         );
+
         return NextResponse.json({
             message: "Project resources endpoint",
             resourceContent,
+            revisions,
         });
     } catch (err) {
         console.error("Error fetching project resource:", err);

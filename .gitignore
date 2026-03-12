@@ -20,3 +20,6 @@ Thumbs.db
 *.tsbuildinfo
 tsconfig.tsbuildinfo
 /projects/
+
+# Local development and testing
+experiments-nopush/
