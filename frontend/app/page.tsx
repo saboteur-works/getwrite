@@ -620,6 +620,16 @@ export default function Home(): JSX.Element {
             return;
         }
     };
+
+    const handleCloseProject = (): void => {
+        setSelectedProject(null);
+        setSelectedResourceId(null);
+        dispatch(setSelectedProjectId(null));
+        dispatch(setResourceId(null));
+        dispatch(setResources([]));
+        dispatch(setFolders([]));
+    };
+
     return (
         <AppShell
             showSidebars={Boolean(selectedProject)}
@@ -628,6 +638,7 @@ export default function Home(): JSX.Element {
             project={selectedProject as any}
             onResourceSelect={handleResourceSelect}
             onResourceAction={handleResourceAction}
+            onCloseProject={handleCloseProject}
             selectedResourceId={selectedResource?.id ?? null}
             onChangeNotes={handleChangeNotes}
             onChangeStatus={handleChangeStatus}

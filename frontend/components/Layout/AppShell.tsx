@@ -51,6 +51,11 @@ import {
     PanelRightClose,
     PanelRightOpen,
     HelpCircle,
+    FileText,
+    Image as ImageIcon,
+    Music2,
+    Plus,
+    LogOut,
 } from "lucide-react";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
@@ -155,6 +160,8 @@ export interface AppShellProps {
         resourceId?: string,
         opts?: AppShellResourceActionOptions,
     ) => Promise<void>;
+    /** Closes the active project and returns to the start page. */
+    onCloseProject?: () => void;
 }
 
 /**
@@ -182,6 +189,7 @@ export default function AppShell({
     onChangeItems,
     onChangePOV,
     onResourceAction,
+    onCloseProject,
     project,
 }: AppShellProps): JSX.Element {
     // Read the callback from the raw arguments to avoid name-resolution
@@ -218,7 +226,12 @@ export default function AppShell({
         string | null
     >(null);
     const [colorMode, setColorMode] = useState<ColorMode>("light");
+    const [hasUnsavedEditorChanges, setHasUnsavedEditorChanges] =
+        useState<boolean>(false);
+    const [isCloseProjectConfirmOpen, setIsCloseProjectConfirmOpen] =
+        useState<boolean>(false);
     const settingsMenuRef = useRef<HTMLDivElement | null>(null);
+    const latestEditorEditVersionRef = useRef<number>(0);
 
     const MIN_SIDEBAR_WIDTH = 160;
     const COLLAPSE_THRESHOLD = 120;
@@ -235,6 +248,87 @@ export default function AppShell({
         (state) => selectResource(state.resources),
         shallowEqual,
     );
+    const [recentTimestampTick, setRecentTimestampTick] = useState<number>(
+        Date.now(),
+    );
+
+    const recentResources = React.useMemo(() => {
+        const sortableResources = (resources ?? []).filter(
+            (resource) => resource.type !== "folder",
+        );
+
+        return [...sortableResources]
+            .sort((left, right) => {
+                const leftTimestamp = Date.parse(
+                    left.updatedAt ?? left.createdAt ?? "",
+                );
+                const rightTimestamp = Date.parse(
+                    right.updatedAt ?? right.createdAt ?? "",
+                );
+
+                const leftSafe = Number.isNaN(leftTimestamp)
+                    ? 0
+                    : leftTimestamp;
+                const rightSafe = Number.isNaN(rightTimestamp)
+                    ? 0
+                    : rightTimestamp;
+
+                return rightSafe - leftSafe;
+            })
+            .slice(0, 6);
+    }, [resources]);
+
+    const formatRelativeTimestamp = React.useCallback(
+        (timestamp: string | undefined): string => {
+            if (!timestamp) {
+                return "just now";
+            }
+
+            const parsed = Date.parse(timestamp);
+            if (Number.isNaN(parsed)) {
+                return "just now";
+            }
+
+            const elapsedMs = Math.max(0, recentTimestampTick - parsed);
+            const elapsedSeconds = Math.floor(elapsedMs / 1000);
+
+            if (elapsedSeconds < 5) {
+                return "just now";
+            }
+
+            if (elapsedSeconds < 60) {
+                return `${elapsedSeconds}s ago`;
+            }
+
+            const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+            if (elapsedMinutes < 60) {
+                return `${elapsedMinutes}m ago`;
+            }
+
+            const elapsedHours = Math.floor(elapsedMinutes / 60);
+            if (elapsedHours < 24) {
+                return `${elapsedHours}h ago`;
+            }
+
+            const elapsedDays = Math.floor(elapsedHours / 24);
+            if (elapsedDays < 7) {
+                return `${elapsedDays}d ago`;
+            }
+
+            return new Date(parsed).toLocaleDateString();
+        },
+        [recentTimestampTick],
+    );
+
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            setRecentTimestampTick(Date.now());
+        }, 30000);
+
+        return () => {
+            window.clearInterval(interval);
+        };
+    }, []);
 
     useEffect(() => {
         const onMouseMove = (e: MouseEvent) => {
@@ -417,22 +511,48 @@ export default function AppShell({
      * @param content - Current plain-text editor content (reserved for parity/logging).
      * @param doc - Current TipTap document snapshot to persist.
      */
-    const persistContent = (content: string, doc: TipTapDocument) => {
-        if (!project || !selectedResourceId) return;
-        if (!project.rootPath) return;
+    const persistContent = async (
+        content: string,
+        doc: TipTapDocument,
+        editVersion: number,
+    ): Promise<void> => {
+        if (!project || !selectedResourceId) {
+            setHasUnsavedEditorChanges(false);
+            return;
+        }
+        if (!project.rootPath) {
+            setHasUnsavedEditorChanges(false);
+            return;
+        }
         console.log("Persisting content for", selectedResourceId);
-        fetch(`/api/resource/${selectedResourceId}/content`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                projectPath: project.rootPath,
-                doc,
-            }),
-        }).catch((err) => {
+        try {
+            const response = await fetch(
+                `/api/resource/${selectedResourceId}/content`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        projectPath: project.rootPath,
+                        doc,
+                    }),
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    `Failed to persist content (${response.status})`,
+                );
+            }
+
+            if (latestEditorEditVersionRef.current === editVersion) {
+                setHasUnsavedEditorChanges(false);
+            }
+        } catch (err) {
             console.error("Failed to persist content:", err);
-        });
+            setHasUnsavedEditorChanges(true);
+        }
     };
 
     /**
@@ -451,7 +571,10 @@ export default function AppShell({
      * @param doc - Latest TipTap document snapshot.
      */
     const handlerEditorChange = (content: string, doc: TipTapDocument) => {
-        debouncedPersistContent(content, doc);
+        latestEditorEditVersionRef.current += 1;
+        const nextEditVersion = latestEditorEditVersionRef.current;
+        setHasUnsavedEditorChanges(true);
+        debouncedPersistContent(content, doc, nextEditVersion);
     };
 
     useEffect(() => {
@@ -459,6 +582,11 @@ export default function AppShell({
             debouncedPersistContent.cancel(); // Cancel any pending debounced calls
         };
     }, [debouncedPersistContent]);
+
+    useEffect(() => {
+        setHasUnsavedEditorChanges(false);
+        latestEditorEditVersionRef.current = 0;
+    }, [project?.id, selectedResourceId]);
 
     useEffect(() => {
         const onDocumentMouseDown = (event: MouseEvent) => {
@@ -544,6 +672,27 @@ export default function AppShell({
     const handleOpenHelp = (): void => {
         setIsSettingsMenuOpen(false);
         setIsHelpModalOpen(true);
+    };
+
+    const handleCloseProject = (): void => {
+        setIsSettingsMenuOpen(false);
+        setIsPreferencesModalOpen(false);
+        setIsProjectTypesModalOpen(false);
+        setIsHelpModalOpen(false);
+
+        if (hasUnsavedEditorChanges) {
+            setIsCloseProjectConfirmOpen(true);
+            return;
+        }
+
+        onCloseProject?.();
+    };
+
+    const handleConfirmCloseProject = (): void => {
+        setIsCloseProjectConfirmOpen(false);
+        setHasUnsavedEditorChanges(false);
+        debouncedPersistContent.cancel();
+        onCloseProject?.();
     };
 
     useEffect(() => {
@@ -691,6 +840,23 @@ export default function AppShell({
                                     ? "Switch to light mode"
                                     : "Switch to dark mode"}
                             </button>
+                            {project ? (
+                                <>
+                                    <div
+                                        className="appshell-topbar-dropdown-separator"
+                                        role="separator"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="appshell-topbar-dropdown-item"
+                                        role="menuitem"
+                                        onClick={handleCloseProject}
+                                    >
+                                        <LogOut size={14} aria-hidden="true" />
+                                        Close Project
+                                    </button>
+                                </>
+                            ) : null}
                         </div>
                     ) : null}
                 </div>
@@ -780,6 +946,16 @@ export default function AppShell({
                         setContextAction({ open: false });
                     }}
                     onCancel={() => setContextAction({ open: false })}
+                />
+
+                <ConfirmDialog
+                    isOpen={isCloseProjectConfirmOpen}
+                    title="Close project?"
+                    description="You have unsaved changes that may still be syncing. Close the project anyway and return to Start Page?"
+                    confirmLabel="Close Project"
+                    cancelLabel="Keep Editing"
+                    onConfirm={handleConfirmCloseProject}
+                    onCancel={() => setIsCloseProjectConfirmOpen(false)}
                 />
 
                 <CreateResourceModal
@@ -967,7 +1143,7 @@ export default function AppShell({
                         ) : null}
                         <div className="max-w-full mx-auto">
                             <div className="workarea-container">
-                                {/* If a resource is selected, render the chosen view; otherwise render children (StartPage or prompt) */}
+                                {/* If a resource is selected, render the chosen view; otherwise render empty state or children. */}
                                 {selectedResource && combined
                                     ? (() => {
                                           if (!selectedResource)
@@ -1047,17 +1223,157 @@ export default function AppShell({
                                                   );
                                           }
                                       })()
-                                    : (children ?? (
-                                          <div>
-                                              <h2 className="workarea-section-title">
-                                                  Work Area
-                                              </h2>
-                                              <p className="mt-2 text-sm text-slate-600">
-                                                  Placeholder editor and views
-                                                  go here.
-                                              </p>
-                                          </div>
-                                      ))}
+                                    : project && showSidebars
+                                      ? (() => {
+                                            return (
+                                                <section className="mx-auto w-full max-w-4xl rounded-xl border border-slate-200 bg-white p-6 md:p-8">
+                                                    <div className="flex flex-wrap items-start justify-between gap-4">
+                                                        <div>
+                                                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                                                Work Area
+                                                            </p>
+                                                            <h2 className="mt-2 text-3xl font-semibold text-slate-900">
+                                                                {project.name}
+                                                            </h2>
+                                                            <p className="mt-2 text-sm text-slate-600">
+                                                                Select a file
+                                                                from the
+                                                                resource tree,
+                                                                or create a new
+                                                                resource to
+                                                                continue.
+                                                            </p>
+                                                        </div>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setCreateModal({
+                                                                    open: true,
+                                                                    initialTitle:
+                                                                        "",
+                                                                    parentId:
+                                                                        undefined,
+                                                                })
+                                                            }
+                                                            className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
+                                                        >
+                                                            <Plus
+                                                                size={14}
+                                                                aria-hidden="true"
+                                                            />
+                                                            Create Resource
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="mt-8">
+                                                        <div className="mb-3 flex items-center justify-between">
+                                                            <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                                                Recent Files
+                                                            </h3>
+                                                            <span className="text-xs text-slate-500">
+                                                                {
+                                                                    recentResources.length
+                                                                }{" "}
+                                                                shown
+                                                            </span>
+                                                        </div>
+
+                                                        {recentResources.length >
+                                                        0 ? (
+                                                            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-slate-50">
+                                                                {recentResources.map(
+                                                                    (
+                                                                        resource,
+                                                                    ) => {
+                                                                        const icon =
+                                                                            resource.type ===
+                                                                            "image"
+                                                                                ? ImageIcon
+                                                                                : resource.type ===
+                                                                                    "audio"
+                                                                                  ? Music2
+                                                                                  : FileText;
+
+                                                                        const Icon =
+                                                                            icon;
+
+                                                                        return (
+                                                                            <li
+                                                                                key={
+                                                                                    resource.id
+                                                                                }
+                                                                            >
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() =>
+                                                                                        onResourceSelect?.(
+                                                                                            resource.id,
+                                                                                        )
+                                                                                    }
+                                                                                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-100"
+                                                                                >
+                                                                                    <span className="flex min-w-0 items-center gap-3">
+                                                                                        <Icon
+                                                                                            size={
+                                                                                                16
+                                                                                            }
+                                                                                            className="shrink-0 text-slate-500"
+                                                                                            aria-hidden="true"
+                                                                                        />
+                                                                                        <span className="min-w-0">
+                                                                                            <span className="block truncate text-sm font-medium text-slate-800">
+                                                                                                {
+                                                                                                    resource.name
+                                                                                                }
+                                                                                            </span>
+                                                                                            <span className="block text-xs text-slate-500">
+                                                                                                {
+                                                                                                    resource.type
+                                                                                                }
+                                                                                            </span>
+                                                                                        </span>
+                                                                                    </span>
+                                                                                    <span className="text-xs text-slate-500">
+                                                                                        {resource.updatedAt
+                                                                                            ? `Updated ${formatRelativeTimestamp(resource.updatedAt)}`
+                                                                                            : `Created ${formatRelativeTimestamp(resource.createdAt)}`}
+                                                                                    </span>
+                                                                                </button>
+                                                                            </li>
+                                                                        );
+                                                                    },
+                                                                )}
+                                                            </ul>
+                                                        ) : (
+                                                            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+                                                                No files yet.
+                                                                Use{" "}
+                                                                <span className="font-medium text-slate-800">
+                                                                    Create
+                                                                    Resource
+                                                                </span>{" "}
+                                                                to add your
+                                                                first text,
+                                                                image, or audio
+                                                                item.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </section>
+                                            );
+                                        })()
+                                      : (children ?? (
+                                            <div>
+                                                <h2 className="workarea-section-title">
+                                                    Work Area
+                                                </h2>
+                                                <p className="mt-2 text-sm text-slate-600">
+                                                    Placeholder editor and views
+                                                    go here.
+                                                </p>
+                                            </div>
+                                        ))}
                             </div>
                         </div>
                     </div>
