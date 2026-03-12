@@ -104,6 +104,7 @@ export default function RevisionControl() {
 
     const handleSetCanonical = (revisionId: string) => {
         dispatch(setCanonicalRevisionId(revisionId));
+        void fetchRevision(revisionId);
     };
 
     const handleDeleteRevision = async (revisionId: string) => {
@@ -123,6 +124,7 @@ export default function RevisionControl() {
 
     const handleRollbackRevision = (revisionId: string) => {
         dispatch(setCanonicalRevisionId(revisionId));
+        void fetchRevision(revisionId);
     };
 
     return (

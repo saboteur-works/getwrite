@@ -3,6 +3,10 @@ import TipTapEditor from "../TipTapEditor";
 import { TipTapDocument } from "../../src/lib/models";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
+import {
+    selectCurrentRevisionContent,
+    selectCurrentRevisionId,
+} from "../../src/store/revisionsSlice";
 import { selectResource } from "../../src/store/resourcesSlice";
 import RevisionControl from "../Editor/RevisionControl/RevisionControl";
 
@@ -24,6 +28,8 @@ export default function EditView({
     initialContent = "",
     onChange,
 }: EditViewProps): JSX.Element {
+    const currentRevisionId = useAppSelector(selectCurrentRevisionId);
+    const currentRevisionContent = useAppSelector(selectCurrentRevisionContent);
     const selectedResource = useAppSelector(
         (state) => selectResource(state.resources),
         shallowEqual,
@@ -102,6 +108,57 @@ export default function EditView({
     }, [content]);
 
     const lastSaved = React.useMemo(() => new Date().toLocaleString(), []);
+
+    /**
+     * Safely parses revision payloads that may be stored as TipTap JSON strings.
+     *
+     * @param value - Raw persisted revision content.
+     * @returns Parsed TipTap document when available, otherwise `null`.
+     */
+    const parseTipTapRevisionContent = React.useCallback(
+        (value: string): TipTapDocument | null => {
+            const trimmed = value.trim();
+            if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+                return null;
+            }
+
+            try {
+                const parsed = JSON.parse(trimmed) as unknown;
+                if (
+                    parsed &&
+                    typeof parsed === "object" &&
+                    "type" in parsed &&
+                    (parsed as { type?: unknown }).type === "doc"
+                ) {
+                    return parsed as TipTapDocument;
+                }
+            } catch {
+                return null;
+            }
+
+            return null;
+        },
+        [],
+    );
+
+    useEffect(() => {
+        if (!currentRevisionId || currentRevisionContent === null) {
+            return;
+        }
+
+        const parsedTipTapDoc = parseTipTapRevisionContent(
+            currentRevisionContent,
+        );
+
+        if (parsedTipTapDoc) {
+            setTipTapDoc(parsedTipTapDoc);
+            setContent(currentRevisionContent);
+            return;
+        }
+
+        setTipTapDoc(null);
+        setContent(currentRevisionContent);
+    }, [currentRevisionContent, currentRevisionId, parseTipTapRevisionContent]);
 
     return (
         <div className="flex flex-col">
