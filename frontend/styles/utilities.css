@@ -1808,6 +1808,248 @@
     .appshell-shell.appshell-theme-dark .compile-modal-close:hover {
         background-color: var(--color-dark-800);
     }
+
+    .tiptap-editor-shell {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+        width: 100%;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-lg);
+        background-color: white;
+        overflow: hidden;
+    }
+
+    .editor-menubar {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        min-height: 3rem;
+        max-height: 3rem;
+        height: 3rem;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-bottom: 1px solid var(--color-neutral-200);
+        white-space: nowrap;
+        scrollbar-width: none;
+    }
+
+    .editor-menubar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .editor-menu-group-root {
+        display: flex;
+        align-items: center;
+        border-right: 1px solid var(--color-neutral-200);
+    }
+
+    .editor-menu-group-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        margin: 0 0.25rem;
+        border: none;
+        border-radius: var(--radius-md);
+        color: var(--color-neutral-500);
+        background: transparent;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            color 150ms ease;
+    }
+
+    .editor-menu-group-toggle:hover {
+        background-color: var(--color-neutral-100);
+        color: var(--color-neutral-700);
+    }
+
+    .editor-menu-group {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0 0.5rem;
+    }
+
+    .editor-menu-icon-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border: none;
+        border-radius: var(--radius-md);
+        background: transparent;
+        color: var(--color-neutral-700);
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            color 150ms ease;
+    }
+
+    .editor-menu-icon-button:hover:not(:disabled) {
+        background-color: var(--color-neutral-100);
+        color: var(--color-neutral-900);
+    }
+
+    .editor-menu-icon-button-active {
+        background-color: var(--color-brand-100);
+        color: var(--color-brand-700);
+    }
+
+    .editor-menu-icon-button-disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .editor-menu-input-root {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+    }
+
+    .editor-menu-input-icon {
+        display: inline-flex;
+        align-items: center;
+        color: var(--color-neutral-500);
+    }
+
+    .editor-menu-input-control {
+        height: 2rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        background-color: white;
+        color: var(--color-neutral-700);
+        padding: 0 0.5rem;
+        font-size: 0.8125rem;
+    }
+
+    .editor-menu-number-input {
+        width: 3.5rem;
+        text-align: right;
+    }
+
+    .editor-menu-color-root {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .editor-menu-color-submenu {
+        position: absolute;
+        top: calc(100% + 0.25rem);
+        left: 0;
+        z-index: 30;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.25rem;
+        padding: 0.375rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        background: white;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .editor-menu-color-option {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-sm);
+        background: white;
+        cursor: pointer;
+        transition:
+            border-color 150ms ease,
+            background-color 150ms ease;
+    }
+
+    .editor-menu-color-option:hover {
+        background-color: var(--color-neutral-50);
+        border-color: var(--color-neutral-300);
+    }
+
+    .editor-menu-color-option-active {
+        border-color: var(--color-brand-500);
+        box-shadow: 0 0 0 1px var(--color-brand-500);
+    }
+
+    .tiptap-editor-content {
+        flex: 1;
+        min-height: 0;
+    }
+
+    .tiptap-editor-content .ProseMirror {
+        height: 100%;
+        min-height: 100%;
+        overflow-y: auto;
+    }
+
+    .appshell-shell.appshell-theme-dark .tiptap-editor-shell {
+        background-color: var(--color-dark-900);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .editor-menubar {
+        border-bottom-color: var(--color-dark-700);
+        background-color: var(--color-dark-850);
+    }
+
+    .appshell-shell.appshell-theme-dark .editor-menu-group-root {
+        border-right-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .editor-menu-group-toggle {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .editor-menu-group-toggle:hover {
+        background-color: var(--color-dark-800);
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .editor-menu-icon-button {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark
+        .editor-menu-icon-button:hover:not(:disabled) {
+        background-color: var(--color-dark-800);
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .editor-menu-icon-button-active {
+        background-color: rgba(102, 207, 255, 0.2);
+        color: var(--color-brand-200);
+    }
+
+    .appshell-shell.appshell-theme-dark .editor-menu-input-icon {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .editor-menu-input-control {
+        background-color: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .editor-menu-color-submenu {
+        background-color: var(--color-dark-900);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .editor-menu-color-option {
+        background-color: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .editor-menu-color-option:hover {
+        background-color: var(--color-dark-800);
+        border-color: var(--color-dark-700);
+    }
 }
 
 .dragline {

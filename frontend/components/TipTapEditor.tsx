@@ -198,7 +198,7 @@ export default function TipTapEditor({
                 // Use focus:outline-none to remove the default browser outline
                 // and optionally focus:ring-0 to remove the ring added by
                 // the Tailwind CSS forms plugin (if used)
-                class: "focus:outline-none focus:ring-0 mx-4 h-full overflow-y-scroll",
+                class: "focus:outline-none focus:ring-0 h-full min-h-full px-4 py-4",
             },
         },
     });
@@ -224,7 +224,7 @@ export default function TipTapEditor({
         // Minimal mock for tests: render content as plain HTML so components
         // that read initial content (like EditView) behave deterministically.
         return (
-            <div data-testid="tiptap-mock" className="prose max-w-none">
+            <div data-testid="tiptap-mock" className="tiptap-editor-shell">
                 <div dangerouslySetInnerHTML={{ __html: value || "" }} />
             </div>
         );
@@ -234,12 +234,12 @@ export default function TipTapEditor({
 
     return (
         <EditorContext.Provider value={{ editor }}>
-            <div className="prose border max-w-4xl">
+            <div className="tiptap-editor-shell">
                 <MenuBar editor={editor} />
                 <EditorContent
                     editor={editor}
                     id={id}
-                    className="tiptap h-[calc(100vh-20rem)]"
+                    className="tiptap tiptap-editor-content"
                 />
             </div>
         </EditorContext.Provider>

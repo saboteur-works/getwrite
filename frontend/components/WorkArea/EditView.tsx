@@ -317,10 +317,10 @@ export default function EditView({
     }, [currentRevisionContent, currentRevisionId, parseTipTapRevisionContent]);
 
     return (
-        <div className="flex min-w-0 w-full flex-col overflow-hidden">
+        <div className="flex h-full min-w-0 w-full flex-col overflow-hidden">
             <RevisionControl />
-            <div className="w-full min-w-0 overflow-x-auto p-2">
-                <div className="mx-auto w-full max-w-4xl">
+            <div className="flex-1 min-h-0 w-full min-w-0 p-2">
+                <div className="mx-auto h-full w-full max-w-4xl">
                     <TipTapEditor
                         id="editview-editor"
                         value={tipTapDoc ?? content} // prefer loaded doc, fallback to initial/plain content

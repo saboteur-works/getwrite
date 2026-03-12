@@ -112,11 +112,8 @@ export default function EditorMenuInput({
     const [value, setValue] = useState(initialValue);
     const IconComponent = IconTypes[Icon as keyof typeof IconTypes];
 
-    const activeClass = active ? "bg-gray-400 text-white" : "";
-    const disabledClass = disabled ? "opacity-50 cursor-not-allowed" : "";
-    const hoverClass = disabled
-        ? ""
-        : "hover:bg-gray-200 dark:hover:bg-gray-200";
+    const activeClass = active ? "editor-menu-icon-button-active" : "";
+    const disabledClass = disabled ? "editor-menu-icon-button-disabled" : "";
 
     const opts = {
         type: type || "color",
@@ -126,8 +123,8 @@ export default function EditorMenuInput({
     };
 
     return (
-        <div className="flex items-center">
-            <label>
+        <div className="editor-menu-input-root">
+            <label className="editor-menu-input-icon">
                 <IconComponent size={iconSize} id="font-color-input" />
             </label>
             {type === "color" && (
@@ -137,7 +134,7 @@ export default function EditorMenuInput({
                     id="font-color-input"
                     onClick={onClick}
                     disabled={disabled}
-                    className={`${activeClass} ${disabledClass} ${hoverClass} p-1 rounded`}
+                    className={`editor-menu-icon-button ${activeClass} ${disabledClass}`}
                     data-tooltip-content={tooltipContent}
                     value={value}
                     onChange={(e) => {
@@ -156,7 +153,7 @@ export default function EditorMenuInput({
                     id="font-style-input"
                     onClick={onClick}
                     disabled={disabled}
-                    className={`${activeClass} ${disabledClass} ${hoverClass} p-1 rounded`}
+                    className={`editor-menu-icon-button ${activeClass} ${disabledClass}`}
                     data-tooltip-content={tooltipContent}
                     value={value}
                     onChange={(e) => {
@@ -175,7 +172,7 @@ export default function EditorMenuInput({
                     id="font-size-input"
                     onClick={onClick}
                     disabled={disabled}
-                    className={`text-right ${activeClass} ${disabledClass} ${hoverClass} w-14 p-1 rounded`}
+                    className={`editor-menu-input-control editor-menu-number-input ${activeClass} ${disabledClass}`}
                     data-tooltip-content={tooltipContent}
                     value={value}
                     onChange={(e) => {
@@ -191,7 +188,7 @@ export default function EditorMenuInput({
                     data-tooltip-id="my-tooltip"
                     id="font-size-input"
                     disabled={disabled}
-                    className={`${activeClass} ${disabledClass} ${hoverClass} p-1 rounded`}
+                    className={`editor-menu-input-control ${activeClass} ${disabledClass}`}
                     data-tooltip-content={tooltipContent}
                     value={value}
                     onChange={(e) => {

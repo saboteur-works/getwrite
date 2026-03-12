@@ -10,13 +10,37 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import React, { useCallback } from "react";
+import { Baseline } from "lucide-react";
 import { menuBarStateSelector } from "./menuBarState";
 import EditorMenuIcon from "./EditorMenuIcon";
 import EditorMenuIconGroup from "./EditorMenuIconGroup";
 import EditorMenuInput from "./EditorMenuInput";
+import EditorMenuColorSubmenu from "./EditorMenuColorSubmenu";
 
 /** Standard icon size (px) used by all menu controls for visual consistency. */
 const ICON_SIZE = 16;
+
+const TEXT_COLOR_OPTIONS = [
+    "#111827",
+    "#1f2937",
+    "#0ea5ff",
+    "#2563eb",
+    "#059669",
+    "#b45309",
+    "#be123c",
+    "#7c3aed",
+];
+
+const BACKGROUND_COLOR_OPTIONS = [
+    "#fff8b3",
+    "#ffe4e6",
+    "#dbeafe",
+    "#dcfce7",
+    "#fef3c7",
+    "#e9d5ff",
+    "#f3f4f6",
+    "#ffffff",
+];
 
 /**
  * Props for {@link MenuBar}.
@@ -96,11 +120,7 @@ export const MenuBar = ({ editor }: MenuBarProps) => {
     );
 
     return (
-        <div
-            id="editor-menu-bar"
-            className="flex shrink divide-x border-b items-center h-12 overflow-x-scroll"
-            style={{ scrollbarWidth: "none" }}
-        >
+        <div id="editor-menu-bar" className="editor-menubar">
             <EditorMenuIconGroup
                 groupName="Typography"
                 groupId="typography-controls"
@@ -397,37 +417,27 @@ export const MenuBar = ({ editor }: MenuBarProps) => {
                     iconSize={ICON_SIZE}
                     tooltipContent="Highlight"
                 />
-                <EditorMenuInput
-                    Icon="fontColor"
-                    onClick={() => {}}
-                    disabled={false}
-                    active={false}
-                    tooltipContent="Font Color"
-                    initialValue="#000000"
-                    onInput={(event) =>
-                        editor
-                            .chain()
-                            .focus()
-                            .setColor(event.currentTarget.value)
-                            .run()
-                    }
-                    type="color"
+                <EditorMenuColorSubmenu
+                    icon={Baseline}
+                    iconSize={ICON_SIZE}
+                    tooltipContent="Text Color"
+                    colors={TEXT_COLOR_OPTIONS}
+                    activeColor={editor.getAttributes("textStyle").color}
+                    onSelectColor={(color) => {
+                        editor.chain().focus().setColor(color).run();
+                    }}
                 />
-                <EditorMenuInput
-                    Icon="fontColor"
-                    onClick={() => {}}
-                    disabled={false}
-                    active={false}
+                <EditorMenuColorSubmenu
+                    icon={Baseline}
+                    iconSize={ICON_SIZE}
                     tooltipContent="Background Color"
-                    initialValue="#FFFFFF"
-                    type="color"
-                    onInput={(event) =>
-                        editor
-                            .chain()
-                            .focus()
-                            .setBackgroundColor(event.currentTarget.value)
-                            .run()
+                    colors={BACKGROUND_COLOR_OPTIONS}
+                    activeColor={
+                        editor.getAttributes("textStyle").backgroundColor
                     }
+                    onSelectColor={(color) => {
+                        editor.chain().focus().setBackgroundColor(color).run();
+                    }}
                 />
             </EditorMenuIconGroup>
             <EditorMenuIconGroup groupName="Math" groupId="math-controls">
