@@ -11,6 +11,11 @@ import {
 } from "../../src/store/revisionsSlice";
 import { selectResource } from "../../src/store/resourcesSlice";
 import RevisionControl from "../Editor/RevisionControl/RevisionControl";
+import {
+    APPEARANCE_CHANGED_EVENT,
+    GLOBAL_APPEARANCE_STORAGE_KEY,
+    getStoredGlobalAppearancePreferences,
+} from "../../src/lib/user-preferences";
 
 export interface EditViewProps {
     /** Initial editor content (HTML or plain text) */
@@ -21,10 +26,10 @@ export interface EditViewProps {
 
 /**
  * `EditView` provides a simple editing surface using `TipTapEditor` and a
- * footer that displays lightweight stats such as word count and a last-saved
- * timestamp (placeholder only).
+ * footer that displays lightweight stats such as word count and a functional
+ * autosave indicator.
  *
- * It is intentionally presentational — saving is not implemented.
+ * Saving is coordinated via debounced persistence of canonical revisions.
  */
 export default function EditView({
     initialContent = "",
@@ -59,6 +64,11 @@ export default function EditView({
     );
     const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
     const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
+    const [nowTick, setNowTick] = React.useState<number>(Date.now());
+    const [isReducedMotionEnabled, setIsReducedMotionEnabled] =
+        React.useState<boolean>(false);
+    const [failedSaveDoc, setFailedSaveDoc] =
+        React.useState<TipTapDocument | null>(null);
     const [hasEditsAfterRevisionSwitch, setHasEditsAfterRevisionSwitch] =
         React.useState<boolean>(false);
 
@@ -99,15 +109,24 @@ export default function EditView({
                 return;
             }
 
-            await fetch(`/api/resource/revision/${selectedResource.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    projectPath: project.rootPath,
-                    revisionId: currentRevisionId,
-                    content: JSON.stringify(doc),
-                }),
-            });
+            const response = await fetch(
+                `/api/resource/revision/${selectedResource.id}`,
+                {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        projectPath: project.rootPath,
+                        revisionId: currentRevisionId,
+                        content: JSON.stringify(doc),
+                    }),
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    `Failed to persist revision (${response.status})`,
+                );
+            }
         },
         [
             canonicalRevisionId,
@@ -117,24 +136,33 @@ export default function EditView({
         ],
     );
 
+    const saveCanonicalRevisionNow = React.useCallback(
+        async (doc: TipTapDocument): Promise<void> => {
+            setSaveStatus("saving");
+
+            try {
+                await persistCanonicalRevisionContent(doc);
+                setSaveStatus("saved");
+                setLastSavedAt(new Date());
+                setFailedSaveDoc(null);
+            } catch (error) {
+                console.error(
+                    "Failed to persist canonical revision content",
+                    error,
+                );
+                setSaveStatus("error");
+                setFailedSaveDoc(doc);
+            }
+        },
+        [persistCanonicalRevisionContent],
+    );
+
     const debouncedPersistCanonicalRevisionContent = React.useMemo(
         () =>
             debounce((doc: TipTapDocument) => {
-                setSaveStatus("saving");
-                void persistCanonicalRevisionContent(doc)
-                    .then(() => {
-                        setSaveStatus("saved");
-                        setLastSavedAt(new Date());
-                    })
-                    .catch((error) => {
-                        console.error(
-                            "Failed to persist canonical revision content",
-                            error,
-                        );
-                        setSaveStatus("error");
-                    });
+                void saveCanonicalRevisionNow(doc);
             }, 2500),
-        [persistCanonicalRevisionContent],
+        [saveCanonicalRevisionNow],
     );
 
     useEffect(() => {
@@ -263,6 +291,7 @@ export default function EditView({
         }
         if (isEditingCanonicalRevision) {
             setSaveStatus("pending");
+            setFailedSaveDoc(null);
             debouncedPersistCanonicalRevisionContent(doc);
         }
         if (onChange) onChange(next, doc);
@@ -280,14 +309,31 @@ export default function EditView({
 
     const lastSavedLabel = React.useMemo(() => {
         if (!lastSavedAt) {
-            return "Not yet";
+            return "not saved yet";
         }
 
-        return lastSavedAt.toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-        });
-    }, [lastSavedAt]);
+        const elapsedSeconds = Math.floor(
+            (nowTick - lastSavedAt.getTime()) / 1000,
+        );
+        if (elapsedSeconds < 5) {
+            return "just now";
+        }
+        if (elapsedSeconds < 60) {
+            return `${elapsedSeconds}s ago`;
+        }
+
+        const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+        if (elapsedMinutes < 60) {
+            return `${elapsedMinutes}m ago`;
+        }
+
+        const elapsedHours = Math.floor(elapsedMinutes / 60);
+        if (elapsedHours < 24) {
+            return `${elapsedHours}h ago`;
+        }
+
+        return lastSavedAt.toLocaleDateString();
+    }, [lastSavedAt, nowTick]);
 
     const autosaveLabel = React.useMemo(() => {
         if (!isEditingCanonicalRevision) {
@@ -310,7 +356,7 @@ export default function EditView({
             return `Saved · ${lastSavedLabel}`;
         }
 
-        return `Last saved · ${lastSavedLabel}`;
+        return `All changes saved · ${lastSavedLabel}`;
     }, [isEditingCanonicalRevision, saveStatus, lastSavedLabel]);
 
     const autosaveClassName = React.useMemo(() => {
@@ -324,6 +370,26 @@ export default function EditView({
 
         return "text-slate-500";
     }, [saveStatus]);
+
+    const autosaveDotClassName = React.useMemo(() => {
+        if (saveStatus === "error") {
+            return "bg-red-500";
+        }
+
+        if (saveStatus === "saving" || saveStatus === "pending") {
+            return "bg-amber-500";
+        }
+
+        return "bg-emerald-500";
+    }, [saveStatus]);
+
+    const showAnimatedSavingSpinner = React.useMemo(() => {
+        if (isReducedMotionEnabled) {
+            return false;
+        }
+
+        return saveStatus === "saving" || saveStatus === "pending";
+    }, [isReducedMotionEnabled, saveStatus]);
 
     /**
      * Safely parses revision payloads that may be stored as TipTap JSON strings.
@@ -380,7 +446,116 @@ export default function EditView({
 
     useEffect(() => {
         setSaveStatus("idle");
+        setFailedSaveDoc(null);
     }, [selectedResource?.id, currentRevisionId]);
+
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            setNowTick(Date.now());
+        }, 30000);
+
+        return () => {
+            window.clearInterval(interval);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (saveStatus !== "saved") {
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            setSaveStatus((current) => {
+                if (current !== "saved") {
+                    return current;
+                }
+
+                return "idle";
+            });
+        }, 1500);
+
+        return () => {
+            window.clearTimeout(timeout);
+        };
+    }, [saveStatus]);
+
+    useEffect(() => {
+        const syncReducedMotionPreference = (): void => {
+            const appearance = getStoredGlobalAppearancePreferences();
+
+            let hasExplicitAppearancePreference = false;
+            try {
+                hasExplicitAppearancePreference =
+                    window.localStorage.getItem(
+                        GLOBAL_APPEARANCE_STORAGE_KEY,
+                    ) !== null;
+            } catch {
+                hasExplicitAppearancePreference = false;
+            }
+
+            if (hasExplicitAppearancePreference) {
+                setIsReducedMotionEnabled(appearance.reducedMotion);
+                return;
+            }
+
+            try {
+                const prefersReducedMotion = window.matchMedia(
+                    "(prefers-reduced-motion: reduce)",
+                ).matches;
+                setIsReducedMotionEnabled(prefersReducedMotion);
+            } catch {
+                setIsReducedMotionEnabled(false);
+            }
+        };
+
+        syncReducedMotionPreference();
+
+        const mediaQuery = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+        );
+
+        const onSystemMotionPreferenceChanged = () => {
+            syncReducedMotionPreference();
+        };
+
+        window.addEventListener(
+            APPEARANCE_CHANGED_EVENT,
+            syncReducedMotionPreference,
+        );
+
+        if (typeof mediaQuery.addEventListener === "function") {
+            mediaQuery.addEventListener(
+                "change",
+                onSystemMotionPreferenceChanged,
+            );
+        } else {
+            mediaQuery.addListener(onSystemMotionPreferenceChanged);
+        }
+
+        return () => {
+            window.removeEventListener(
+                APPEARANCE_CHANGED_EVENT,
+                syncReducedMotionPreference,
+            );
+
+            if (typeof mediaQuery.removeEventListener === "function") {
+                mediaQuery.removeEventListener(
+                    "change",
+                    onSystemMotionPreferenceChanged,
+                );
+            } else {
+                mediaQuery.removeListener(onSystemMotionPreferenceChanged);
+            }
+        };
+    }, []);
+
+    const handleRetrySave = (): void => {
+        if (!failedSaveDoc) {
+            return;
+        }
+
+        void saveCanonicalRevisionNow(failedSaveDoc);
+    };
 
     return (
         <div className="flex h-full min-w-0 w-full flex-col overflow-hidden">
@@ -409,8 +584,28 @@ export default function EditView({
                         changes.
                     </p>
                 )}
-                <div className={autosaveClassName} aria-live="polite">
-                    {autosaveLabel}
+                <div className="flex items-center gap-2" aria-live="polite">
+                    {showAnimatedSavingSpinner ? (
+                        <span
+                            className="inline-block h-3 w-3 rounded-full border-2 border-amber-500 border-r-transparent animate-spin"
+                            aria-hidden="true"
+                        />
+                    ) : (
+                        <span
+                            className={`inline-block h-2 w-2 rounded-full ${autosaveDotClassName}`}
+                            aria-hidden="true"
+                        />
+                    )}
+                    <span className={autosaveClassName}>{autosaveLabel}</span>
+                    {saveStatus === "error" && failedSaveDoc ? (
+                        <button
+                            type="button"
+                            className="text-xs font-medium text-brand-700 hover:text-brand-600"
+                            onClick={handleRetrySave}
+                        >
+                            Retry now
+                        </button>
+                    ) : null}
                 </div>
             </footer>
         </div>
