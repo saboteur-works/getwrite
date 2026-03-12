@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { Plus, Copy, Files, Trash2, Download } from "lucide-react";
 
 /** Allowed context menu actions exposed to callers; UI-only signals. */
 export type ResourceContextAction =
@@ -74,6 +75,8 @@ export default function ResourceContextMenu({
         onClose?.();
     };
 
+    const menuTitle = resourceName ?? resourceTitle;
+
     // Focus management: focus the first menu item when opened and allow
     // arrow-key navigation + Escape to close.
     useEffect(() => {
@@ -112,22 +115,32 @@ export default function ResourceContextMenu({
         <div
             role="menu"
             aria-label={
-                (resourceName ?? resourceTitle)
-                    ? `${(resourceName ?? resourceTitle) as string} options`
+                menuTitle
+                    ? `${menuTitle as string} options`
                     : "Resource options"
             }
             ref={containerRef}
-            className={`absolute z-50 min-w-[160px] rounded-md bg-white dark:bg-surface-800 shadow-md ring-1 ring-black/5 ${className}`}
+            className={`resource-context-menu ${className}`}
             style={{ left: x, top: y }}
         >
-            <ul className="py-1">
+            {menuTitle ? (
+                <div className="resource-context-menu-header" title={menuTitle}>
+                    {menuTitle}
+                </div>
+            ) : null}
+
+            <ul className="resource-context-menu-list">
                 <li>
                     <button
                         type="button"
                         role="menuitem"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-surface-100 dark:hover:bg-surface-700"
+                        className="resource-context-menu-item"
                         onClick={() => handle("create")}
                     >
+                        <Plus
+                            size={14}
+                            className="resource-context-menu-item-icon"
+                        />
                         Create
                     </button>
                 </li>
@@ -135,9 +148,13 @@ export default function ResourceContextMenu({
                     <button
                         type="button"
                         role="menuitem"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-surface-100 dark:hover:bg-surface-700"
+                        className="resource-context-menu-item"
                         onClick={() => handle("copy")}
                     >
+                        <Copy
+                            size={14}
+                            className="resource-context-menu-item-icon"
+                        />
                         Copy
                     </button>
                 </li>
@@ -145,9 +162,13 @@ export default function ResourceContextMenu({
                     <button
                         type="button"
                         role="menuitem"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-surface-100 dark:hover:bg-surface-700"
+                        className="resource-context-menu-item"
                         onClick={() => handle("duplicate")}
                     >
+                        <Files
+                            size={14}
+                            className="resource-context-menu-item-icon"
+                        />
                         Duplicate
                     </button>
                 </li>
@@ -155,9 +176,13 @@ export default function ResourceContextMenu({
                     <button
                         type="button"
                         role="menuitem"
-                        className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-surface-100 dark:hover:bg-surface-700"
+                        className="resource-context-menu-item resource-context-menu-item-danger"
                         onClick={() => handle("delete")}
                     >
+                        <Trash2
+                            size={14}
+                            className="resource-context-menu-item-icon"
+                        />
                         Delete
                     </button>
                 </li>
@@ -165,9 +190,13 @@ export default function ResourceContextMenu({
                     <button
                         type="button"
                         role="menuitem"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-surface-100 dark:hover:bg-surface-700"
+                        className="resource-context-menu-item"
                         onClick={() => handle("export")}
                     >
+                        <Download
+                            size={14}
+                            className="resource-context-menu-item-icon"
+                        />
                         Export
                     </button>
                 </li>

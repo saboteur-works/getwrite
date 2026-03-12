@@ -1098,6 +1098,77 @@
         color: var(--color-neutral-900);
     }
 
+    .resource-context-menu {
+        position: fixed;
+        z-index: 50;
+        min-width: 12rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        background-color: white;
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+
+    .resource-context-menu-header {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--color-neutral-600);
+        border-bottom: 1px solid var(--color-neutral-200);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .resource-context-menu-list {
+        list-style: none;
+        margin: 0;
+        padding: 0.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+    }
+
+    .resource-context-menu-item {
+        width: 100%;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--color-neutral-700);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-align: left;
+        font-size: 0.875rem;
+        padding: 0.5rem 0.625rem;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            color 150ms ease;
+    }
+
+    .resource-context-menu-item:hover,
+    .resource-context-menu-item:focus-visible {
+        background-color: var(--color-neutral-100);
+        color: var(--color-neutral-900);
+        outline: none;
+    }
+
+    .resource-context-menu-item-icon {
+        flex-shrink: 0;
+        color: inherit;
+    }
+
+    .resource-context-menu-item-danger {
+        color: #be123c;
+    }
+
+    .resource-context-menu-item-danger:hover,
+    .resource-context-menu-item-danger:focus-visible {
+        background-color: #fff1f2;
+        color: #9f1239;
+    }
+
     /* ─── Metadata Sidebar ──────────────────────────────────────────────────── */
 
     .metadata-sidebar-root {
@@ -1611,6 +1682,39 @@
         background-color: var(--color-dark-850);
         border-color: var(--color-dark-700);
         color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .resource-context-menu {
+        background-color: var(--color-dark-900);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .resource-context-menu-header {
+        color: var(--color-dark-100);
+        border-bottom-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .resource-context-menu-item {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .resource-context-menu-item:hover,
+    .appshell-shell.appshell-theme-dark
+        .resource-context-menu-item:focus-visible {
+        background-color: var(--color-dark-800);
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .resource-context-menu-item-danger {
+        color: #fda4af;
+    }
+
+    .appshell-shell.appshell-theme-dark
+        .resource-context-menu-item-danger:hover,
+    .appshell-shell.appshell-theme-dark
+        .resource-context-menu-item-danger:focus-visible {
+        background-color: rgba(244, 63, 94, 0.18);
+        color: #fecdd3;
     }
 
     /* MetadataSidebar */
