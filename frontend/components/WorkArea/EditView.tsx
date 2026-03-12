@@ -6,6 +6,7 @@ import { shallowEqual } from "react-redux";
 import {
     selectCurrentRevisionContent,
     selectCurrentRevisionId,
+    selectVisibleRevisions,
 } from "../../src/store/revisionsSlice";
 import { selectResource } from "../../src/store/resourcesSlice";
 import RevisionControl from "../Editor/RevisionControl/RevisionControl";
@@ -41,6 +42,10 @@ export default function EditView({
 
     const currentRevisionId = useAppSelector(selectCurrentRevisionId);
     const currentRevisionContent = useAppSelector(selectCurrentRevisionContent);
+    const visibleRevisions = useAppSelector(
+        selectVisibleRevisions,
+        shallowEqual,
+    );
     const selectedResource = useAppSelector(
         (state) => selectResource(state.resources),
         shallowEqual,
@@ -48,6 +53,20 @@ export default function EditView({
     const [content, setContent] = React.useState<string>(initialContent);
     const [tipTapDoc, setTipTapDoc] = React.useState<TipTapDocument | null>(
         null,
+    );
+    const [hasEditsAfterRevisionSwitch, setHasEditsAfterRevisionSwitch] =
+        React.useState<boolean>(false);
+
+    const canonicalRevisionId = React.useMemo(
+        () => visibleRevisions.find((r) => r.isCanonical)?.id ?? null,
+        [visibleRevisions],
+    );
+
+    const isViewingNonCanonical = React.useMemo(
+        () =>
+            currentRevisionId !== null &&
+            currentRevisionId !== canonicalRevisionId,
+        [currentRevisionId, canonicalRevisionId],
     );
     const projectId = useAppSelector(
         (state) => state.projects.selectedProjectId,
@@ -173,6 +192,9 @@ export default function EditView({
 
     const handleChange = (next: string, doc: TipTapDocument) => {
         setContent(next);
+        if (isViewingNonCanonical) {
+            setHasEditsAfterRevisionSwitch(true);
+        }
         if (onChange) onChange(next, doc);
     };
 
@@ -225,6 +247,8 @@ export default function EditView({
             return;
         }
 
+        setHasEditsAfterRevisionSwitch(false);
+
         const parsedTipTapDoc = parseTipTapRevisionContent(
             currentRevisionContent,
         );
@@ -260,6 +284,12 @@ export default function EditView({
                 <div className="text-slate-600">
                     Words: <strong>{wordCount}</strong>
                 </div>
+                {isViewingNonCanonical && hasEditsAfterRevisionSwitch && (
+                    <p className="text-red-600 font-medium">
+                        Unsaved edits — save as a new revision to keep your
+                        changes.
+                    </p>
+                )}
                 <div className="text-slate-500">
                     Last saved: <span>{lastSaved}</span>
                 </div>
