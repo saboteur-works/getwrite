@@ -255,7 +255,7 @@ export default function RevisionControl() {
                                                     (revision) => (
                                                         <article
                                                             key={revision.id}
-                                                            className={`w-full max-w-[340px] rounded-md border p-3 shadow-sm ${
+                                                            className={`w-full rounded-md border p-3 shadow-sm ${
                                                                 revision.isCanonical
                                                                     ? "border-slate-400 bg-slate-50"
                                                                     : "border-slate-200 bg-white"
