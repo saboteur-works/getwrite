@@ -48,6 +48,7 @@ import {
     PanelRightClose,
     PanelRightOpen,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
 
@@ -482,8 +483,14 @@ export default function AppShell({
     }, [colorMode]);
 
     const isDarkMode = colorMode === "dark";
+    const router = useRouter();
     const handleToggleColorMode = () => {
         setColorMode((previous) => (previous === "dark" ? "light" : "dark"));
+    };
+
+    const handleOpenProjectTypeManager = (): void => {
+        setIsSettingsMenuOpen(false);
+        router.push("/project-types");
     };
 
     return (
@@ -520,13 +527,13 @@ export default function AppShell({
                                 type="button"
                                 className="appshell-topbar-dropdown-item"
                                 role="menuitem"
-                                onClick={() => setIsSettingsMenuOpen(false)}
+                                onClick={handleOpenProjectTypeManager}
                             >
                                 <SlidersHorizontal
                                     size={14}
                                     aria-hidden="true"
                                 />
-                                Placeholder option
+                                Project Type Manager
                             </button>
                             <button
                                 type="button"
