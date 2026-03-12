@@ -1941,7 +1941,7 @@
         position: absolute;
         top: calc(100% + 0.25rem);
         left: 0;
-        z-index: 30;
+        z-index: 80;
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 0.25rem;

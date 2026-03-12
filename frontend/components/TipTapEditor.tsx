@@ -71,7 +71,9 @@ const extensions = [
     Blockquote,
     BulletList,
     ListItem,
-    Highlight,
+    Highlight.configure({
+        multicolor: true,
+    }),
     CodeBlock.configure({
         enableTabIndentation: true,
     }),

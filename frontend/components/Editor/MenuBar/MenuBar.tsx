@@ -10,7 +10,7 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import React, { useCallback } from "react";
-import { Baseline } from "lucide-react";
+import { Baseline, Highlighter } from "lucide-react";
 import { Tooltip } from "react-tooltip";
 import { menuBarStateSelector } from "./menuBarState";
 import EditorMenuIcon from "./EditorMenuIcon";
@@ -41,6 +41,17 @@ const BACKGROUND_COLOR_OPTIONS = [
     "#e9d5ff",
     "#f3f4f6",
     "#ffffff",
+];
+
+const HIGHLIGHT_COLOR_OPTIONS = [
+    "#fff8b3",
+    "#fde68a",
+    "#fecaca",
+    "#fed7aa",
+    "#bfdbfe",
+    "#c7d2fe",
+    "#d9f99d",
+    "#ddd6fe",
 ];
 
 /**
@@ -409,14 +420,15 @@ export const MenuBar = ({ editor }: MenuBarProps) => {
                 groupName="Highlight"
                 groupId="highlight-controls"
             >
-                <EditorMenuIcon
-                    onClick={() =>
-                        editor.chain().focus().toggleHighlight().run()
-                    }
-                    active={editor.isActive("highlight")}
-                    Icon="highlight"
+                <EditorMenuColorSubmenu
+                    icon={Highlighter}
                     iconSize={ICON_SIZE}
                     tooltipContent="Highlight"
+                    colors={HIGHLIGHT_COLOR_OPTIONS}
+                    activeColor={editor.getAttributes("highlight").color}
+                    onSelectColor={(color) => {
+                        editor.chain().focus().setHighlight({ color }).run();
+                    }}
                 />
                 <EditorMenuColorSubmenu
                     icon={Baseline}
