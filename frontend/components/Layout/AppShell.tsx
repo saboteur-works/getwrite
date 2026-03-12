@@ -176,6 +176,9 @@ export default function AppShell({
     const [rightWidth, setRightWidth] = useState<number>(320);
     const [leftOpen, setLeftOpen] = useState<boolean>(true);
     const [rightOpen, setRightOpen] = useState<boolean>(true);
+    const [isSettingsMenuOpen, setIsSettingsMenuOpen] =
+        useState<boolean>(false);
+    const settingsMenuRef = useRef<HTMLDivElement | null>(null);
 
     const MIN_SIDEBAR_WIDTH = 160;
     const COLLAPSE_THRESHOLD = 120;
@@ -417,24 +420,135 @@ export default function AppShell({
         };
     }, [debouncedPersistContent]);
 
+    useEffect(() => {
+        const onDocumentMouseDown = (event: MouseEvent) => {
+            if (!settingsMenuRef.current) return;
+            if (settingsMenuRef.current.contains(event.target as Node)) return;
+            setIsSettingsMenuOpen(false);
+        };
+
+        const onDocumentKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setIsSettingsMenuOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", onDocumentMouseDown);
+        document.addEventListener("keydown", onDocumentKeyDown);
+
+        return () => {
+            document.removeEventListener("mousedown", onDocumentMouseDown);
+            document.removeEventListener("keydown", onDocumentKeyDown);
+        };
+    }, []);
+
     return (
-        <div className="appshell-container">
-            {/* Left Sidebar */}
-            {showSidebars && leftOpen ? (
-                <aside
-                    className="hidden sm:flex appshell-sidebar border-r"
-                    style={{ width: leftWidth }}
+        <div className="appshell-shell">
+            <header className="appshell-topbar">
+                <div
+                    className="appshell-topbar-project"
+                    title={project?.name ?? "Untitled Project"}
                 >
-                    <div className="appshell-sidebar-header">
-                        <span className="text-xs uppercase tracking-widest font-semibold text-slate-700">
-                            Resources
-                        </span>
+                    {project?.name ?? "Untitled Project"}
+                </div>
+
+                <div className="appshell-topbar-menu" ref={settingsMenuRef}>
+                    <button
+                        type="button"
+                        className="appshell-topbar-button"
+                        aria-haspopup="menu"
+                        aria-expanded={isSettingsMenuOpen}
+                        aria-label="Open project settings menu"
+                        onClick={() => setIsSettingsMenuOpen((prev) => !prev)}
+                    >
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.08a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                        </svg>
+                    </button>
+
+                    {isSettingsMenuOpen ? (
+                        <div
+                            className="appshell-topbar-dropdown"
+                            role="menu"
+                            aria-label="Project settings menu"
+                        >
+                            <button
+                                type="button"
+                                className="appshell-topbar-dropdown-item"
+                                role="menuitem"
+                                onClick={() => setIsSettingsMenuOpen(false)}
+                            >
+                                Placeholder option
+                            </button>
+                        </div>
+                    ) : null}
+                </div>
+            </header>
+
+            <div className="appshell-body">
+                {/* Left Sidebar */}
+                {showSidebars && leftOpen ? (
+                    <aside
+                        className="hidden sm:flex appshell-sidebar border-r"
+                        style={{ width: leftWidth }}
+                    >
+                        <div className="appshell-sidebar-header">
+                            <span className="text-xs uppercase tracking-widest font-semibold text-slate-700">
+                                Resources
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setLeftOpen(false)}
+                                className="appshell-close-button"
+                                title="Close left sidebar"
+                                aria-label="Close resource sidebar"
+                            >
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 16 16"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
+                                    <path d="M3 13L13 3M3 3l10 10" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="appshell-sidebar-content p-4 pt-3">
+                            {project ? (
+                                <ResourceTree
+                                    debug={false}
+                                    onResourceAction={handleResourceAction}
+                                />
+                            ) : (
+                                <div className="space-y-2">
+                                    <p>Loading Resource Tree</p>
+                                </div>
+                            )}
+                        </div>
+                    </aside>
+                ) : null}
+
+                {/* Left Sidebar Collapsed Toggle */}
+                {showSidebars && !leftOpen ? (
+                    <div className="hidden sm:flex flex-col items-center justify-start h-full p-2 bg-white border-r">
                         <button
                             type="button"
-                            onClick={() => setLeftOpen(false)}
-                            className="appshell-close-button"
-                            title="Close left sidebar"
-                            aria-label="Close resource sidebar"
+                            onClick={() => setLeftOpen(true)}
+                            className="appshell-sidebar-toggle"
+                            title="Open left sidebar"
+                            aria-label="Open resource sidebar"
                         >
                             <svg
                                 width="16"
@@ -444,331 +558,364 @@ export default function AppShell({
                                 stroke="currentColor"
                                 strokeWidth="2"
                             >
-                                <path d="M3 13L13 3M3 3l10 10" />
+                                <path d="M6 4L10 8L6 12" />
                             </svg>
                         </button>
                     </div>
-                    <div className="appshell-sidebar-content p-4 pt-3">
-                        {project ? (
-                            <ResourceTree
-                                debug={false}
-                                onResourceAction={handleResourceAction}
-                            />
-                        ) : (
-                            <div className="space-y-2">
-                                <p>Loading Resource Tree</p>
-                            </div>
-                        )}
-                    </div>
-                </aside>
-            ) : null}
+                ) : null}
 
-            {/* Left Sidebar Collapsed Toggle */}
-            {showSidebars && !leftOpen ? (
-                <div className="hidden sm:flex flex-col items-center justify-start h-full p-2 bg-white border-r">
-                    <button
-                        type="button"
-                        onClick={() => setLeftOpen(true)}
-                        className="appshell-sidebar-toggle"
-                        title="Open left sidebar"
-                        aria-label="Open resource sidebar"
-                    >
-                        <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
-                            <path d="M6 4L10 8L6 12" />
-                        </svg>
-                    </button>
-                </div>
-            ) : null}
-
-            <ConfirmDialog
-                isOpen={contextAction.open && contextAction.action === "delete"}
-                title={
-                    contextAction.resourceTitle
-                        ? `Delete ${contextAction.resourceTitle}`
-                        : "Delete resource"
-                }
-                description={
-                    "This will remove the resource from the project UI (placeholder). Proceed?"
-                }
-                confirmLabel="Delete"
-                cancelLabel="Cancel"
-                onConfirm={async () => {
-                    if (contextAction.resourceId) {
-                        // dispatch removeResource optimistically in store
-                        if (project) {
-                            dispatch(
-                                removeResource({
-                                    projectId: project.id,
-                                    resourceId: contextAction.resourceId,
-                                }),
+                <ConfirmDialog
+                    isOpen={
+                        contextAction.open && contextAction.action === "delete"
+                    }
+                    title={
+                        contextAction.resourceTitle
+                            ? `Delete ${contextAction.resourceTitle}`
+                            : "Delete resource"
+                    }
+                    description={
+                        "This will remove the resource from the project UI (placeholder). Proceed?"
+                    }
+                    confirmLabel="Delete"
+                    cancelLabel="Cancel"
+                    onConfirm={async () => {
+                        if (contextAction.resourceId) {
+                            // dispatch removeResource optimistically in store
+                            if (project) {
+                                dispatch(
+                                    removeResource({
+                                        projectId: project.id,
+                                        resourceId: contextAction.resourceId,
+                                    }),
+                                );
+                            }
+                            await propOnResourceAction?.(
+                                "delete",
+                                contextAction.resourceId,
                             );
                         }
-                        await propOnResourceAction?.(
-                            "delete",
-                            contextAction.resourceId,
-                        );
-                    }
-                    setContextAction({ open: false });
-                }}
-                onCancel={() => setContextAction({ open: false })}
-            />
-
-            <CreateResourceModal
-                isOpen={createModal.open}
-                initialTitle={createModal.initialTitle}
-                parentId={createModal.parentId}
-                onClose={() => setCreateModal({ open: false })}
-                onCreate={(payload, parentId, opts) =>
-                    handleCreateConfirmed(payload, parentId, opts)
-                }
-                parents={folders ?? []}
-            />
-
-            <ExportPreviewModal
-                isOpen={exportModal.open}
-                resourceTitle={exportModal.resourceTitle}
-                preview={exportModal.preview}
-                onClose={() => setExportModal({ open: false })}
-                onConfirmExport={() =>
-                    handleExportConfirmed(exportModal.resourceId)
-                }
-                onShowCompile={() => {
-                    // generate a simple compiled preview from resources
-                    const r = exportModal.resourceId
-                        ? resources?.find(
-                              (x) => x.id === exportModal.resourceId,
-                          )
-                        : undefined;
-                    const preview = r
-                        ? `Compiled package for ${getResourceName(r)}\n\n` +
-                          JSON.stringify(r, null, 2)
-                        : `Compiled project bundle\n\n` +
-                          JSON.stringify(resources ?? [], null, 2);
-                    setCompileModal({
-                        open: true,
-                        resourceId: exportModal.resourceId,
-                        preview,
-                    });
-                }}
-            />
-
-            <CompilePreviewModal
-                isOpen={compileModal.open}
-                resource={
-                    compileModal.resourceId
-                        ? resources?.find(
-                              (r) => r.id === compileModal.resourceId,
-                          )
-                        : undefined
-                }
-                resources={resources}
-                projectId={project?.id}
-                preview={compileModal.preview}
-                onClose={() => setCompileModal({ open: false })}
-                onConfirm={() => {
-                    // forward as export confirm action for now
-                    if (compileModal.resourceId)
-                        propOnResourceAction?.(
-                            "export",
-                            compileModal.resourceId,
-                        );
-                    setCompileModal({ open: false });
-                }}
-            />
-
-            {/* Left Resize Handle */}
-            {showSidebars && leftOpen ? (
-                <div
-                    role="separator"
-                    aria-orientation="vertical"
-                    onMouseDown={(e) => {
-                        draggingRef.current = {
-                            side: "left",
-                            startX: e.clientX,
-                            startWidth: leftWidth,
-                        };
+                        setContextAction({ open: false });
                     }}
-                    className="hidden sm:block appshell-resize-handle"
+                    onCancel={() => setContextAction({ open: false })}
                 />
-            ) : null}
 
-            {/* Main Work Area */}
-            <main className="appshell-work-area">
-                <div className="appshell-work-area-content p-4 md:p-6">
-                    {resources ? (
-                        <div className="w-full">
-                            <div className="workarea-header">
-                                <ViewSwitcher
-                                    view={view}
-                                    onChange={setView}
-                                    disabledViews={(() => {
-                                        const disabled: ViewName[] = [];
-                                        if (!selectedResource) {
-                                            disabled.push("edit", "diff");
-                                        }
-                                        if (selectedResource?.type !== "text") {
-                                            disabled.push("edit", "diff");
-                                        }
-                                        return Array.from(new Set(disabled));
-                                    })()}
-                                />
-                                <div style={{ width: 320 }}>
-                                    <SearchBar
-                                        onSelect={(id) =>
-                                            onResourceSelect?.(id)
-                                        }
+                <CreateResourceModal
+                    isOpen={createModal.open}
+                    initialTitle={createModal.initialTitle}
+                    parentId={createModal.parentId}
+                    onClose={() => setCreateModal({ open: false })}
+                    onCreate={(payload, parentId, opts) =>
+                        handleCreateConfirmed(payload, parentId, opts)
+                    }
+                    parents={folders ?? []}
+                />
+
+                <ExportPreviewModal
+                    isOpen={exportModal.open}
+                    resourceTitle={exportModal.resourceTitle}
+                    preview={exportModal.preview}
+                    onClose={() => setExportModal({ open: false })}
+                    onConfirmExport={() =>
+                        handleExportConfirmed(exportModal.resourceId)
+                    }
+                    onShowCompile={() => {
+                        // generate a simple compiled preview from resources
+                        const r = exportModal.resourceId
+                            ? resources?.find(
+                                  (x) => x.id === exportModal.resourceId,
+                              )
+                            : undefined;
+                        const preview = r
+                            ? `Compiled package for ${getResourceName(r)}\n\n` +
+                              JSON.stringify(r, null, 2)
+                            : `Compiled project bundle\n\n` +
+                              JSON.stringify(resources ?? [], null, 2);
+                        setCompileModal({
+                            open: true,
+                            resourceId: exportModal.resourceId,
+                            preview,
+                        });
+                    }}
+                />
+
+                <CompilePreviewModal
+                    isOpen={compileModal.open}
+                    resource={
+                        compileModal.resourceId
+                            ? resources?.find(
+                                  (r) => r.id === compileModal.resourceId,
+                              )
+                            : undefined
+                    }
+                    resources={resources}
+                    projectId={project?.id}
+                    preview={compileModal.preview}
+                    onClose={() => setCompileModal({ open: false })}
+                    onConfirm={() => {
+                        // forward as export confirm action for now
+                        if (compileModal.resourceId)
+                            propOnResourceAction?.(
+                                "export",
+                                compileModal.resourceId,
+                            );
+                        setCompileModal({ open: false });
+                    }}
+                />
+
+                {/* Left Resize Handle */}
+                {showSidebars && leftOpen ? (
+                    <div
+                        role="separator"
+                        aria-orientation="vertical"
+                        onMouseDown={(e) => {
+                            draggingRef.current = {
+                                side: "left",
+                                startX: e.clientX,
+                                startWidth: leftWidth,
+                            };
+                        }}
+                        className="hidden sm:block appshell-resize-handle"
+                    />
+                ) : null}
+
+                {/* Main Work Area */}
+                <main className="appshell-work-area">
+                    <div className="appshell-work-area-content p-4 md:p-6">
+                        {resources ? (
+                            <div className="w-full">
+                                <div className="workarea-header">
+                                    <ViewSwitcher
+                                        view={view}
+                                        onChange={setView}
+                                        disabledViews={(() => {
+                                            const disabled: ViewName[] = [];
+                                            if (!selectedResource) {
+                                                disabled.push("edit", "diff");
+                                            }
+                                            if (
+                                                selectedResource?.type !==
+                                                "text"
+                                            ) {
+                                                disabled.push("edit", "diff");
+                                            }
+                                            return Array.from(
+                                                new Set(disabled),
+                                            );
+                                        })()}
                                     />
+                                    <div style={{ width: 320 }}>
+                                        <SearchBar
+                                            onSelect={(id) =>
+                                                onResourceSelect?.(id)
+                                            }
+                                        />
+                                    </div>
                                 </div>
+                                {(() => {
+                                    const selected = selectedResource;
+
+                                    if (selected) {
+                                        return (
+                                            <div className="text-lg font-bold mb-4">
+                                                {selected.name}
+                                            </div>
+                                        );
+                                    }
+                                })()}
                             </div>
-                            {(() => {
-                                const selected = selectedResource;
-
-                                if (selected) {
-                                    return (
-                                        <div className="text-lg font-bold mb-4">
-                                            {selected.name}
-                                        </div>
-                                    );
-                                }
-                            })()}
-                        </div>
-                    ) : null}
-                    <div className="max-w-full mx-auto">
-                        <div className="workarea-container">
-                            {/* If a resource is selected, render the chosen view; otherwise render children (StartPage or prompt) */}
-                            {selectedResource && combined
-                                ? (() => {
-                                      if (!selectedResource)
-                                          return (
-                                              <div>
-                                                  <h2 className="workarea-section-title">
-                                                      Work Area
-                                                  </h2>
-                                                  <p className="mt-2 text-sm text-slate-600">
-                                                      Resource not found.
-                                                  </p>
-                                              </div>
-                                          );
-
-                                      switch (view) {
-                                          case "edit":
-                                              if (
-                                                  selectedResource.type !==
-                                                  "text"
-                                              ) {
-                                                  return (
-                                                      <div>
-                                                          <h2 className="text-2xl font-semibold">
-                                                              Work Area
-                                                          </h2>
-                                                          <p className="mt-2 text-sm text-slate-600">
-                                                              Selected resource
-                                                              is not a text
-                                                              resource.
-                                                          </p>
-                                                      </div>
-                                                  );
-                                              }
-                                              return (
-                                                  <EditView
-                                                      onChange={
-                                                          handlerEditorChange
-                                                      }
-                                                      initialContent={getResourceContent(
-                                                          selectedResource,
-                                                      )}
-                                                  />
-                                              );
-                                          case "diff":
-                                              return (
-                                                  <DiffView
-                                                      leftContent=""
-                                                      rightContent={getResourceContent(
-                                                          selectedResource,
-                                                      )}
-                                                  />
-                                              );
-                                          case "organizer":
-                                              return (
-                                                  <OrganizerView
-                                                      resources={
-                                                          resources ?? []
-                                                      }
-                                                  />
-                                              );
-                                          case "data":
-                                              return (
-                                                  <DataView
-                                                      resources={resources}
-                                                  />
-                                              );
-                                          case "timeline":
-                                              return <TimelineView />;
-                                          default:
+                        ) : null}
+                        <div className="max-w-full mx-auto">
+                            <div className="workarea-container">
+                                {/* If a resource is selected, render the chosen view; otherwise render children (StartPage or prompt) */}
+                                {selectedResource && combined
+                                    ? (() => {
+                                          if (!selectedResource)
                                               return (
                                                   <div>
                                                       <h2 className="workarea-section-title">
                                                           Work Area
                                                       </h2>
+                                                      <p className="mt-2 text-sm text-slate-600">
+                                                          Resource not found.
+                                                      </p>
                                                   </div>
                                               );
-                                      }
-                                  })()
-                                : (children ?? (
-                                      <div>
-                                          <h2 className="workarea-section-title">
-                                              Work Area
-                                          </h2>
-                                          <p className="mt-2 text-sm text-slate-600">
-                                              Placeholder editor and views go
-                                              here.
-                                          </p>
-                                      </div>
-                                  ))}
+
+                                          switch (view) {
+                                              case "edit":
+                                                  if (
+                                                      selectedResource.type !==
+                                                      "text"
+                                                  ) {
+                                                      return (
+                                                          <div>
+                                                              <h2 className="text-2xl font-semibold">
+                                                                  Work Area
+                                                              </h2>
+                                                              <p className="mt-2 text-sm text-slate-600">
+                                                                  Selected
+                                                                  resource is
+                                                                  not a text
+                                                                  resource.
+                                                              </p>
+                                                          </div>
+                                                      );
+                                                  }
+                                                  return (
+                                                      <EditView
+                                                          onChange={
+                                                              handlerEditorChange
+                                                          }
+                                                          initialContent={getResourceContent(
+                                                              selectedResource,
+                                                          )}
+                                                      />
+                                                  );
+                                              case "diff":
+                                                  return (
+                                                      <DiffView
+                                                          leftContent=""
+                                                          rightContent={getResourceContent(
+                                                              selectedResource,
+                                                          )}
+                                                      />
+                                                  );
+                                              case "organizer":
+                                                  return (
+                                                      <OrganizerView
+                                                          resources={
+                                                              resources ?? []
+                                                          }
+                                                      />
+                                                  );
+                                              case "data":
+                                                  return (
+                                                      <DataView
+                                                          resources={resources}
+                                                      />
+                                                  );
+                                              case "timeline":
+                                                  return <TimelineView />;
+                                              default:
+                                                  return (
+                                                      <div>
+                                                          <h2 className="workarea-section-title">
+                                                              Work Area
+                                                          </h2>
+                                                      </div>
+                                                  );
+                                          }
+                                      })()
+                                    : (children ?? (
+                                          <div>
+                                              <h2 className="workarea-section-title">
+                                                  Work Area
+                                              </h2>
+                                              <p className="mt-2 text-sm text-slate-600">
+                                                  Placeholder editor and views
+                                                  go here.
+                                              </p>
+                                          </div>
+                                      ))}
+                            </div>
                         </div>
                     </div>
-                </div>
-            </main>
+                </main>
 
-            {/* Right Resize Handle */}
-            {showSidebars && rightOpen ? (
-                <div
-                    role="separator"
-                    aria-orientation="vertical"
-                    onMouseDown={(e) => {
-                        draggingRef.current = {
-                            side: "right",
-                            startX: e.clientX,
-                            startWidth: rightWidth,
-                        };
-                    }}
-                    className="hidden lg:block appshell-resize-handle"
-                />
-            ) : null}
+                {/* Right Resize Handle */}
+                {showSidebars && rightOpen ? (
+                    <div
+                        role="separator"
+                        aria-orientation="vertical"
+                        onMouseDown={(e) => {
+                            draggingRef.current = {
+                                side: "right",
+                                startX: e.clientX,
+                                startWidth: rightWidth,
+                            };
+                        }}
+                        className="hidden lg:block appshell-resize-handle"
+                    />
+                ) : null}
 
-            {/* Right Sidebar */}
-            {showSidebars && rightOpen ? (
-                <aside
-                    className="hidden lg:flex appshell-sidebar border-l"
-                    style={{ width: rightWidth }}
-                >
-                    <div className="appshell-sidebar-header">
-                        <span className="text-xs uppercase tracking-widest font-semibold text-slate-700">
-                            Metadata
-                        </span>
+                {/* Right Sidebar */}
+                {showSidebars && rightOpen ? (
+                    <aside
+                        className="hidden lg:flex appshell-sidebar border-l"
+                        style={{ width: rightWidth }}
+                    >
+                        <div className="appshell-sidebar-header">
+                            <span className="text-xs uppercase tracking-widest font-semibold text-slate-700">
+                                Metadata
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setRightOpen(false)}
+                                className="appshell-close-button"
+                                title="Close right sidebar"
+                                aria-label="Close metadata sidebar"
+                            >
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 16 16"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
+                                    <path d="M3 13L13 3M3 3l10 10" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="appshell-sidebar-content p-4 pt-3">
+                            <MetadataSidebar
+                                onChangeNotes={(text) =>
+                                    selectedResource &&
+                                    onChangeNotes?.(text, selectedResource.id)
+                                }
+                                onChangeStatus={(status) =>
+                                    selectedResource &&
+                                    onChangeStatus?.(
+                                        status as any,
+                                        selectedResource.id,
+                                    )
+                                }
+                                onChangeCharacters={(chars) =>
+                                    selectedResource &&
+                                    onChangeCharacters?.(
+                                        chars,
+                                        selectedResource.id,
+                                    )
+                                }
+                                onChangeLocations={(locs) =>
+                                    selectedResource &&
+                                    onChangeLocations?.(
+                                        locs,
+                                        selectedResource.id,
+                                    )
+                                }
+                                onChangeItems={(items) =>
+                                    selectedResource &&
+                                    onChangeItems?.(items, selectedResource.id)
+                                }
+                                onChangePOV={(pov) =>
+                                    selectedResource &&
+                                    onChangePOV?.(pov, selectedResource.id)
+                                }
+                            />
+                        </div>
+                    </aside>
+                ) : null}
+
+                {/* Right Sidebar Collapsed Toggle */}
+                {showSidebars && !rightOpen ? (
+                    <div className="hidden lg:flex flex-col items-center justify-start h-full p-2 bg-white border-l">
                         <button
                             type="button"
-                            onClick={() => setRightOpen(false)}
-                            className="appshell-close-button"
-                            title="Close right sidebar"
-                            aria-label="Close metadata sidebar"
+                            onClick={() => setRightOpen(true)}
+                            className="appshell-sidebar-toggle"
+                            title="Open right sidebar"
+                            aria-label="Open metadata sidebar"
                         >
                             <svg
                                 width="16"
@@ -778,67 +925,12 @@ export default function AppShell({
                                 stroke="currentColor"
                                 strokeWidth="2"
                             >
-                                <path d="M3 13L13 3M3 3l10 10" />
+                                <path d="M10 4L6 8L10 12" />
                             </svg>
                         </button>
                     </div>
-                    <div className="appshell-sidebar-content p-4 pt-3">
-                        <MetadataSidebar
-                            onChangeNotes={(text) =>
-                                selectedResource &&
-                                onChangeNotes?.(text, selectedResource.id)
-                            }
-                            onChangeStatus={(status) =>
-                                selectedResource &&
-                                onChangeStatus?.(
-                                    status as any,
-                                    selectedResource.id,
-                                )
-                            }
-                            onChangeCharacters={(chars) =>
-                                selectedResource &&
-                                onChangeCharacters?.(chars, selectedResource.id)
-                            }
-                            onChangeLocations={(locs) =>
-                                selectedResource &&
-                                onChangeLocations?.(locs, selectedResource.id)
-                            }
-                            onChangeItems={(items) =>
-                                selectedResource &&
-                                onChangeItems?.(items, selectedResource.id)
-                            }
-                            onChangePOV={(pov) =>
-                                selectedResource &&
-                                onChangePOV?.(pov, selectedResource.id)
-                            }
-                        />
-                    </div>
-                </aside>
-            ) : null}
-
-            {/* Right Sidebar Collapsed Toggle */}
-            {showSidebars && !rightOpen ? (
-                <div className="hidden lg:flex flex-col items-center justify-start h-full p-2 bg-white border-l">
-                    <button
-                        type="button"
-                        onClick={() => setRightOpen(true)}
-                        className="appshell-sidebar-toggle"
-                        title="Open right sidebar"
-                        aria-label="Open metadata sidebar"
-                    >
-                        <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
-                            <path d="M10 4L6 8L10 12" />
-                        </svg>
-                    </button>
-                </div>
-            ) : null}
+                ) : null}
+            </div>
         </div>
     );
 }

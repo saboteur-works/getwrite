@@ -20,6 +20,109 @@
     }
 
     /* AppShell layout utilities */
+    .appshell-shell {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        max-height: 100vh;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        background-color: var(--color-neutral-50);
+    }
+
+    .appshell-topbar {
+        flex-shrink: 0;
+        height: 3.5rem;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 var(--spacing-4);
+        border-bottom: 1px solid var(--color-neutral-200);
+        background: white;
+    }
+
+    .appshell-topbar-project {
+        min-width: 0;
+        color: var(--color-ink-900);
+        font-size: 0.9375rem;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .appshell-topbar-menu {
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .appshell-topbar-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--color-neutral-300);
+        background: white;
+        color: var(--color-neutral-700);
+        transition:
+            background-color 150ms ease,
+            border-color 150ms ease,
+            color 150ms ease;
+    }
+
+    .appshell-topbar-button:hover {
+        background-color: var(--color-neutral-50);
+        border-color: var(--color-neutral-400);
+        color: var(--color-neutral-900);
+    }
+
+    .appshell-topbar-button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(14, 165, 255, 0.18);
+        border-color: var(--color-brand-400);
+    }
+
+    .appshell-topbar-dropdown {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        min-width: 12rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        background: white;
+        box-shadow: var(--shadow-md);
+        padding: 0.25rem;
+        z-index: 40;
+    }
+
+    .appshell-topbar-dropdown-item {
+        width: 100%;
+        border: 0;
+        border-radius: calc(var(--radius-md) - 2px);
+        background: transparent;
+        color: var(--color-neutral-700);
+        font-size: 0.875rem;
+        text-align: left;
+        padding: 0.5rem 0.625rem;
+        transition: background-color 150ms ease;
+    }
+
+    .appshell-topbar-dropdown-item:hover {
+        background-color: var(--color-neutral-50);
+    }
+
+    .appshell-body {
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+        display: flex;
+        overflow: hidden;
+    }
+
     .appshell-container {
         display: flex;
         height: 100vh;
