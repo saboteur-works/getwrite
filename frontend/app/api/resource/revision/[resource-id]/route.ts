@@ -55,6 +55,8 @@ interface SaveRevisionBody {
     author?: string;
     /** When true, marks the new revision as canonical. Defaults to false. */
     isCanonical?: boolean;
+    /** Optional arbitrary metadata to persist with the revision (e.g. user-provided name). */
+    metadata?: Record<string, unknown>;
 }
 
 /**
@@ -301,7 +303,13 @@ export async function POST(
         );
     }
 
-    const { projectPath, content: bodyContent, author, isCanonical } = body;
+    const {
+        projectPath,
+        content: bodyContent,
+        author,
+        isCanonical,
+        metadata,
+    } = body;
 
     if (!projectPath || typeof projectPath !== "string") {
         return NextResponse.json(
@@ -328,6 +336,7 @@ export async function POST(
             {
                 author,
                 isCanonical: isCanonical ?? false,
+                metadata,
             },
         );
 
