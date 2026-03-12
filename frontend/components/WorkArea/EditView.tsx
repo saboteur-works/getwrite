@@ -253,14 +253,17 @@ export default function EditView({
                 </div>
             </div>
 
-            <div className="border-t px-4 py-2 bg-white text-sm flex items-center justify-between">
+            <footer
+                id="editview-footer"
+                className="border-t px-4 py-2 bg-white text-sm flex items-center justify-between"
+            >
                 <div className="text-slate-600">
                     Words: <strong>{wordCount}</strong>
                 </div>
                 <div className="text-slate-500">
                     Last saved: <span>{lastSaved}</span>
                 </div>
-            </div>
+            </footer>
         </div>
     );
 }
