@@ -4,6 +4,7 @@ import { TipTapDocument } from "../../src/lib/models";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
 import { selectResource } from "../../src/store/resourcesSlice";
+import RevisionControl from "../Editor/RevisionControl/RevisionControl";
 
 export interface EditViewProps {
     /** Initial editor content (HTML or plain text) */
@@ -104,6 +105,7 @@ export default function EditView({
 
     return (
         <div className="flex flex-col">
+            <RevisionControl />
             <div className="flex overflow-x-scroll p-2 ">
                 <TipTapEditor
                     id="editview-editor"
