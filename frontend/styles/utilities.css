@@ -2417,6 +2417,155 @@
     }
 }
 
+/* ============================================================
+   Help Page
+   ============================================================ */
+
+.help-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.help-header {
+    background-color: white;
+    border-bottom-color: var(--color-neutral-200, #e2e8f0);
+}
+
+.help-nav {
+    display: flex;
+    flex-direction: column;
+    width: 180px;
+    flex-shrink: 0;
+    padding: 12px 8px;
+    border-right: 1px solid var(--color-neutral-200, #e2e8f0);
+    background-color: var(--color-neutral-50, #f8fafc);
+    gap: 2px;
+}
+
+.help-nav-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    font-weight: 450;
+    color: var(--color-neutral-600, #475569);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition:
+        background 150ms ease,
+        color 150ms ease;
+}
+
+.help-nav-item:hover {
+    background-color: var(--color-neutral-100, #f1f5f9);
+    color: var(--color-neutral-900, #0f172a);
+}
+
+.help-nav-item--active {
+    background-color: var(--color-brand-50, #eff6ff);
+    color: var(--color-brand-700, #1d4ed8);
+    font-weight: 600;
+}
+
+.help-content {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    padding: 24px 28px;
+    background-color: white;
+}
+
+.help-heading {
+    color: var(--color-neutral-900, #0f172a);
+}
+
+.help-text {
+    color: var(--color-neutral-600, #475569);
+}
+
+.help-label {
+    color: var(--color-neutral-500, #64748b);
+}
+
+.help-card {
+    background-color: var(--color-neutral-50, #f8fafc);
+    border-color: var(--color-neutral-100, #f1f5f9);
+}
+
+.help-icon {
+    color: var(--color-neutral-400, #94a3b8);
+}
+
+.help-kbd {
+    background-color: var(--color-neutral-200, #e2e8f0);
+    color: var(--color-neutral-700, #334155);
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: none) {
+    /* placeholder, overridden by class below */
+}
+
+.appshell-shell.appshell-theme-dark .help-header {
+    background-color: var(--color-dark-900);
+    border-bottom-color: var(--color-dark-700);
+}
+
+.appshell-shell.appshell-theme-dark .help-nav {
+    background-color: var(--color-dark-950);
+    border-right-color: var(--color-dark-700);
+}
+
+.appshell-shell.appshell-theme-dark .help-nav-item {
+    color: var(--color-dark-300);
+}
+
+.appshell-shell.appshell-theme-dark .help-nav-item:hover {
+    background-color: var(--color-dark-800);
+    color: var(--color-dark-50);
+}
+
+.appshell-shell.appshell-theme-dark .help-nav-item--active {
+    background-color: rgba(102, 207, 255, 0.12);
+    color: var(--color-brand-200);
+}
+
+.appshell-shell.appshell-theme-dark .help-content {
+    background-color: var(--color-dark-900);
+}
+
+.appshell-shell.appshell-theme-dark .help-heading {
+    color: var(--color-dark-50);
+}
+
+.appshell-shell.appshell-theme-dark .help-text {
+    color: var(--color-dark-300);
+}
+
+.appshell-shell.appshell-theme-dark .help-label {
+    color: var(--color-dark-400);
+}
+
+.appshell-shell.appshell-theme-dark .help-card {
+    background-color: var(--color-dark-850);
+    border-color: var(--color-dark-700);
+}
+
+.appshell-shell.appshell-theme-dark .help-icon {
+    color: var(--color-dark-500);
+}
+
+.appshell-shell.appshell-theme-dark .help-kbd {
+    background-color: var(--color-dark-800);
+    color: var(--color-dark-100);
+}
+
+/* ============================================================ */
+
 .dragline {
     height: 2px;
     margin-top: -1px;

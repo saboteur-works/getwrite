@@ -30,6 +30,7 @@ import ExportPreviewModal from "../common/ExportPreviewModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
+import HelpPage from "../help/HelpPage";
 import type { ResourceContextAction } from "../Tree/ResourceContextMenu";
 import ViewSwitcher from "../WorkArea/ViewSwitcher";
 import EditView from "../WorkArea/EditView";
@@ -49,6 +50,7 @@ import {
     PanelLeftOpen,
     PanelRightClose,
     PanelRightOpen,
+    HelpCircle,
 } from "lucide-react";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
@@ -206,6 +208,7 @@ export default function AppShell({
         useState<boolean>(false);
     const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
         useState<boolean>(false);
+    const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
     const [projectTypeTemplates, setProjectTypeTemplates] = useState<
         ProjectTypeTemplateFile[]
     >([]);
@@ -469,6 +472,7 @@ export default function AppShell({
                 setIsSettingsMenuOpen(false);
                 setIsPreferencesModalOpen(false);
                 setIsProjectTypesModalOpen(false);
+                setIsHelpModalOpen(false);
             }
         };
 
@@ -535,6 +539,11 @@ export default function AppShell({
     const handleOpenPreferences = (): void => {
         setIsSettingsMenuOpen(false);
         setIsPreferencesModalOpen(true);
+    };
+
+    const handleOpenHelp = (): void => {
+        setIsSettingsMenuOpen(false);
+        setIsHelpModalOpen(true);
     };
 
     useEffect(() => {
@@ -655,6 +664,15 @@ export default function AppShell({
                                     aria-hidden="true"
                                 />
                                 Project Type Manager
+                            </button>
+                            <button
+                                type="button"
+                                className="appshell-topbar-dropdown-item"
+                                role="menuitem"
+                                onClick={handleOpenHelp}
+                            >
+                                <HelpCircle size={14} aria-hidden="true" />
+                                Help
                             </button>
                             <button
                                 type="button"
@@ -837,6 +855,21 @@ export default function AppShell({
                             <UserPreferencesPage
                                 renderInModal
                                 onClose={() => setIsPreferencesModalOpen(false)}
+                            />
+                        </div>
+                    </div>
+                ) : null}
+
+                {isHelpModalOpen ? (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="fixed inset-0 appshell-modal-backdrop"
+                            onClick={() => setIsHelpModalOpen(false)}
+                        />
+                        <div className="relative z-10 w-[min(860px,94vw)] max-h-[92vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl appshell-modal-panel">
+                            <HelpPage
+                                renderInModal
+                                onClose={() => setIsHelpModalOpen(false)}
                             />
                         </div>
                     </div>
