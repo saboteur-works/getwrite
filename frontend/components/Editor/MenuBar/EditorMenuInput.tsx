@@ -9,7 +9,6 @@
  * editor tooling can react to formatting changes.
  */
 import { Baseline } from "lucide-react";
-import { Tooltip } from "react-tooltip";
 import { useState } from "react";
 import { ALargeSmall } from "lucide-react";
 
@@ -115,13 +114,6 @@ export default function EditorMenuInput({
     const activeClass = active ? "editor-menu-icon-button-active" : "";
     const disabledClass = disabled ? "editor-menu-icon-button-disabled" : "";
 
-    const opts = {
-        type: type || "color",
-        tooltipId: "my-tooltip",
-
-        value: value,
-    };
-
     return (
         <div className="editor-menu-input-root">
             <label className="editor-menu-input-icon">
@@ -209,7 +201,6 @@ export default function EditorMenuInput({
                     ))}
                 </select>
             )}
-            <Tooltip id="my-tooltip" />
         </div>
     );
 }

@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Tooltip } from "react-tooltip";
 
 interface EditorMenuColorSubmenuProps {
     icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
@@ -97,8 +96,6 @@ export default function EditorMenuColorSubmenu({
                     })}
                 </div>
             ) : null}
-
-            <Tooltip id="my-tooltip" />
         </div>
     );
 }

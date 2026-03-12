@@ -11,6 +11,7 @@ import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import React, { useCallback } from "react";
 import { Baseline } from "lucide-react";
+import { Tooltip } from "react-tooltip";
 import { menuBarStateSelector } from "./menuBarState";
 import EditorMenuIcon from "./EditorMenuIcon";
 import EditorMenuIconGroup from "./EditorMenuIconGroup";
@@ -449,6 +450,7 @@ export const MenuBar = ({ editor }: MenuBarProps) => {
                     disabled={true}
                 />
             </EditorMenuIconGroup>
+            <Tooltip id="my-tooltip" place="top" />
         </div>
     );
 };
