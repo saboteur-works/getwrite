@@ -65,9 +65,9 @@ export default function ConfirmDialog({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="confirm-dialog-root">
             <div
-                className="fixed inset-0 bg-black/40"
+                className="confirm-dialog-backdrop"
                 onClick={onCancel}
                 aria-hidden="true"
             />
@@ -76,20 +76,20 @@ export default function ConfirmDialog({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="confirm-dialog-title"
-                className="z-10 bg-white rounded-md shadow-lg max-w-lg w-full p-6"
+                className="confirm-dialog-panel"
             >
-                <h3 id="confirm-dialog-title" className="text-lg font-medium">
+                <h3 id="confirm-dialog-title" className="confirm-dialog-title">
                     {title}
                 </h3>
                 {description ? (
-                    <p className="mt-2 text-sm text-slate-600">{description}</p>
+                    <p className="confirm-dialog-description">{description}</p>
                 ) : null}
 
-                <div className="mt-6 flex justify-end gap-3">
+                <div className="confirm-dialog-actions">
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="px-3 py-1 rounded border"
+                        className="confirm-dialog-cancel"
                     >
                         {cancelLabel}
                     </button>
@@ -98,7 +98,7 @@ export default function ConfirmDialog({
                         ref={confirmRef}
                         type="button"
                         onClick={onConfirm}
-                        className="px-3 py-1 rounded bg-red-600 text-white"
+                        className="confirm-dialog-confirm"
                     >
                         {confirmLabel}
                     </button>

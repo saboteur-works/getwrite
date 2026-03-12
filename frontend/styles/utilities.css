@@ -1031,6 +1031,770 @@
     }
 }
 
+@layer utilities {
+    /* ─── Resource Tree ────────────────────────────────────────────────────── */
+
+    .resource-tree-item {
+        width: 100%;
+        display: flex;
+        border-radius: var(--radius-sm);
+        transition: background-color 120ms ease;
+    }
+
+    .resource-tree-item:hover {
+        background-color: var(--color-neutral-200);
+    }
+
+    .resource-tree-icon-button {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.25rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--color-neutral-500);
+    }
+
+    .resource-tree-button {
+        width: 100%;
+        background: none;
+        border: none;
+        cursor: pointer;
+        text-align: left;
+        color: var(--color-neutral-900);
+        transition: color 120ms ease;
+    }
+
+    .resource-tree-button:hover {
+        color: var(--color-neutral-700);
+    }
+
+    .resource-tree-item-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .resource-tree-item-row--drag-target {
+        background-color: var(--color-brand-100);
+        border-radius: var(--radius-md);
+    }
+
+    .resource-tree-drag-preview {
+        background-color: white;
+        border: 1px solid var(--color-neutral-200);
+        padding: 0.125rem 0.5rem;
+        border-radius: var(--radius-sm);
+        opacity: 0.65;
+        font-size: 0.875rem;
+        color: var(--color-neutral-900);
+    }
+
+    /* ─── Metadata Sidebar ──────────────────────────────────────────────────── */
+
+    .metadata-sidebar-root {
+        padding: 1rem;
+        background-color: white;
+    }
+
+    .metadata-sidebar-title {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--color-neutral-900);
+    }
+
+    .metadata-sidebar-section-heading {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--color-neutral-700);
+        margin-bottom: 0.5rem;
+    }
+
+    .metadata-sidebar-empty {
+        font-size: 0.875rem;
+        color: var(--color-neutral-500);
+    }
+
+    /* ─── Revision Control ──────────────────────────────────────────────────── */
+
+    .revision-control-root {
+        border-top: 1px solid var(--color-neutral-200);
+        background-color: white;
+    }
+
+    .revision-control-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+
+    .revision-control-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--color-neutral-900);
+    }
+
+    .revision-control-description {
+        font-size: 0.75rem;
+        color: var(--color-neutral-500);
+    }
+
+    .revision-control-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--color-neutral-700);
+        background: white;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            border-color 150ms ease;
+    }
+
+    .revision-control-toggle:hover {
+        background-color: var(--color-neutral-50);
+    }
+
+    .revision-control-content {
+        border-top: 1px solid var(--color-neutral-100);
+        padding: 1rem;
+        overflow: hidden;
+    }
+
+    .revision-control-section-heading {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-neutral-500);
+    }
+
+    .revision-control-input {
+        height: 2.25rem;
+        width: 100%;
+        border: 1px solid var(--color-neutral-300);
+        border-radius: var(--radius-md);
+        padding: 0 0.75rem;
+        font-size: 0.875rem;
+        color: var(--color-neutral-900);
+        background-color: white;
+        transition:
+            border-color 150ms ease,
+            box-shadow 150ms ease;
+    }
+
+    .revision-control-input::placeholder {
+        color: var(--color-neutral-400);
+    }
+
+    .revision-control-input:focus {
+        outline: none;
+        border-color: var(--color-brand-400);
+        box-shadow: 0 0 0 3px rgba(14, 165, 255, 0.18);
+    }
+
+    .revision-control-input:disabled {
+        background-color: var(--color-neutral-100);
+        cursor: not-allowed;
+    }
+
+    .revision-control-save-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex-shrink: 0;
+        height: 2.25rem;
+        border: none;
+        border-radius: var(--radius-md);
+        padding: 0 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        background-color: var(--color-neutral-900);
+        color: white;
+        cursor: pointer;
+        transition: background-color 150ms ease;
+    }
+
+    .revision-control-save-button:hover:not(:disabled) {
+        background-color: var(--color-neutral-700);
+    }
+
+    .revision-control-save-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .revision-control-list-shell {
+        width: 100%;
+        max-width: 100%;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-lg);
+        background-color: rgba(250, 250, 250, 0.5);
+        padding: 0.75rem;
+        overflow: hidden;
+    }
+
+    .revision-control-card {
+        width: 100%;
+        min-width: 0;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        background-color: white;
+        padding: 0.75rem;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .revision-control-card--canonical {
+        border-color: var(--color-neutral-400);
+        background-color: var(--color-neutral-50);
+    }
+
+    .revision-control-card-name {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--color-neutral-900);
+    }
+
+    .revision-control-card-meta {
+        font-size: 0.75rem;
+        color: var(--color-neutral-500);
+    }
+
+    .revision-control-badge {
+        border-radius: 9999px;
+        background-color: var(--color-neutral-100);
+        padding: 0.125rem 0.5rem;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        color: var(--color-neutral-700);
+    }
+
+    .revision-control-action-button {
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        padding: 0.375rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--color-neutral-700);
+        background: white;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            border-color 150ms ease;
+    }
+
+    .revision-control-action-button:hover:not(:disabled) {
+        background-color: var(--color-neutral-50);
+    }
+
+    .revision-control-action-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .revision-control-action-button--danger {
+        color: #be123c; /* rose-700 */
+    }
+
+    .revision-control-action-button--danger:hover:not(:disabled) {
+        background-color: #fff1f2; /* rose-50 */
+        border-color: #fecdd3; /* rose-200 */
+    }
+
+    .revision-control-preview-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--color-neutral-600);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        transition: color 150ms ease;
+    }
+
+    .revision-control-preview-toggle:hover {
+        color: var(--color-neutral-900);
+    }
+
+    .revision-control-preview-box {
+        margin-top: 0.5rem;
+        max-height: 8rem;
+        overflow-y: auto;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        background-color: var(--color-neutral-50);
+        padding: 0.5rem;
+    }
+
+    .revision-control-preview-text {
+        white-space: pre-wrap;
+        word-break: break-words;
+        font-size: 0.75rem;
+        color: var(--color-neutral-700);
+    }
+
+    .revision-control-error {
+        font-size: 0.75rem;
+        color: #be123c; /* rose-700 */
+    }
+
+    /* ─── Confirm Dialog ────────────────────────────────────────────────────── */
+
+    .confirm-dialog-root {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .confirm-dialog-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+    }
+
+    .confirm-dialog-panel {
+        position: relative;
+        z-index: 10;
+        background-color: white;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-panel);
+        max-width: 32rem;
+        width: 100%;
+        padding: 1.5rem;
+    }
+
+    .confirm-dialog-title {
+        font-size: var(--text-lg);
+        font-weight: 500;
+        color: var(--color-neutral-900);
+    }
+
+    .confirm-dialog-description {
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+        color: var(--color-neutral-600);
+    }
+
+    .confirm-dialog-actions {
+        margin-top: 1.5rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+    }
+
+    .confirm-dialog-cancel {
+        padding: 0.25rem 0.75rem;
+        border: 1px solid var(--color-neutral-300);
+        border-radius: var(--radius-md);
+        background: white;
+        color: var(--color-neutral-700);
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            border-color 150ms ease;
+    }
+
+    .confirm-dialog-cancel:hover {
+        background-color: var(--color-neutral-50);
+        border-color: var(--color-neutral-400);
+    }
+
+    .confirm-dialog-confirm {
+        padding: 0.25rem 0.75rem;
+        border: none;
+        border-radius: var(--radius-md);
+        background-color: #dc2626; /* red-600 — destructive action */
+        color: white;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            opacity 150ms ease;
+    }
+
+    .confirm-dialog-confirm:hover {
+        background-color: #b91c1c; /* red-700 */
+    }
+
+    /* ─── Compile Preview Modal ─────────────────────────────────────────────── */
+
+    .compile-modal-root {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .compile-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+    }
+
+    .compile-modal-panel {
+        position: relative;
+        z-index: 70;
+        background-color: white;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-panel);
+        max-width: 48rem;
+        width: 100%;
+        padding: 1.5rem;
+    }
+
+    .compile-modal-title {
+        font-size: var(--text-lg);
+        font-weight: 500;
+        color: var(--color-neutral-900);
+    }
+
+    .compile-modal-description {
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+        color: var(--color-neutral-600);
+    }
+
+    .compile-modal-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--color-neutral-700);
+    }
+
+    .compile-modal-select {
+        display: block;
+        width: 100%;
+        border: 1px solid var(--color-neutral-300);
+        border-radius: var(--radius-md);
+        background-color: white;
+        color: var(--color-neutral-900);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        transition: border-color 150ms ease;
+    }
+
+    .compile-modal-select:focus {
+        outline: none;
+        border-color: var(--color-brand-400);
+        box-shadow: 0 0 0 3px rgba(14, 165, 255, 0.18);
+    }
+
+    .compile-modal-generate-button {
+        padding: 0.25rem 0.75rem;
+        border: none;
+        border-radius: var(--radius-md);
+        background-color: var(--color-neutral-100);
+        color: var(--color-neutral-900);
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: background-color 150ms ease;
+    }
+
+    .compile-modal-generate-button:hover {
+        background-color: var(--color-neutral-200);
+    }
+
+    .compile-modal-textarea {
+        display: block;
+        width: 100%;
+        height: 16rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        background-color: var(--color-neutral-50);
+        color: var(--color-neutral-900);
+        padding: 0.5rem;
+        font-family: ui-monospace, monospace;
+        font-size: 0.75rem;
+        resize: none;
+    }
+
+    .compile-modal-meta-text {
+        font-size: 0.75rem;
+        color: var(--color-neutral-600);
+    }
+
+    .compile-modal-close {
+        padding: 0.25rem 0.75rem;
+        border: 1px solid var(--color-neutral-300);
+        border-radius: var(--radius-md);
+        background: white;
+        color: var(--color-neutral-700);
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            border-color 150ms ease;
+    }
+
+    .compile-modal-close:hover {
+        background-color: var(--color-neutral-50);
+    }
+
+    .compile-modal-confirm {
+        padding: 0.25rem 0.75rem;
+        border: none;
+        border-radius: var(--radius-md);
+        background-color: var(--color-brand-500);
+        color: white;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: background-color 150ms ease;
+    }
+
+    .compile-modal-confirm:hover {
+        background-color: var(--color-brand-600);
+    }
+
+    /* ─── Dark mode overrides for new utility groups ────────────────────────── */
+
+    /* ResourceTree */
+    .appshell-shell.appshell-theme-dark .resource-tree-item:hover {
+        background-color: var(--color-dark-800);
+    }
+
+    .appshell-shell.appshell-theme-dark .resource-tree-button {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .resource-tree-button:hover {
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .resource-tree-icon-button {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .resource-tree-item-row--drag-target {
+        background-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .resource-tree-drag-preview {
+        background-color: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+        color: var(--color-dark-50);
+    }
+
+    /* MetadataSidebar */
+    .appshell-shell.appshell-theme-dark .metadata-sidebar-root {
+        background-color: var(--color-dark-900);
+    }
+
+    .appshell-shell.appshell-theme-dark .metadata-sidebar-title {
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .metadata-sidebar-section-heading {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .metadata-sidebar-empty {
+        color: var(--color-dark-100);
+    }
+
+    /* RevisionControl */
+    .appshell-shell.appshell-theme-dark .revision-control-root {
+        background-color: var(--color-dark-900);
+        border-top-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-content {
+        border-top-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-title {
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-description,
+    .appshell-shell.appshell-theme-dark .revision-control-section-heading,
+    .appshell-shell.appshell-theme-dark .revision-control-card-meta {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-toggle {
+        background-color: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-toggle:hover {
+        background-color: var(--color-dark-800);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-input {
+        background-color: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-input::placeholder {
+        color: var(--color-dark-100);
+        opacity: 1;
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-save-button {
+        background-color: var(--color-brand-500);
+        color: white;
+    }
+
+    .appshell-shell.appshell-theme-dark
+        .revision-control-save-button:hover:not(:disabled) {
+        background-color: var(--color-brand-400);
+        color: var(--color-dark-950);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-list-shell {
+        background-color: rgba(17, 24, 39, 0.5);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-card {
+        background-color: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-card--canonical {
+        background-color: var(--color-dark-800);
+        border-color: var(--color-brand-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-card-name {
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-badge {
+        background-color: var(--color-dark-700);
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-action-button {
+        background-color: var(--color-dark-800);
+        border-color: var(--color-dark-700);
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark
+        .revision-control-action-button:hover:not(:disabled) {
+        background-color: var(--color-dark-700);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-preview-toggle {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-preview-toggle:hover {
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-preview-box {
+        background-color: var(--color-dark-950);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .revision-control-preview-text {
+        color: var(--color-dark-100);
+    }
+
+    /* ConfirmDialog */
+    .appshell-shell.appshell-theme-dark .confirm-dialog-panel {
+        background-color: var(--color-dark-900);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .confirm-dialog-title {
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .confirm-dialog-description {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .confirm-dialog-cancel {
+        background-color: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .confirm-dialog-cancel:hover {
+        background-color: var(--color-dark-800);
+    }
+
+    /* CompilePreviewModal */
+    .appshell-shell.appshell-theme-dark .compile-modal-panel {
+        background-color: var(--color-dark-900);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .compile-modal-title {
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .compile-modal-description,
+    .appshell-shell.appshell-theme-dark .compile-modal-meta-text {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .compile-modal-label {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .compile-modal-select {
+        background-color: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .compile-modal-generate-button {
+        background-color: var(--color-dark-850);
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .compile-modal-generate-button:hover {
+        background-color: var(--color-dark-800);
+    }
+
+    .appshell-shell.appshell-theme-dark .compile-modal-textarea {
+        background-color: var(--color-dark-950);
+        border-color: var(--color-dark-700);
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .compile-modal-close {
+        background-color: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .compile-modal-close:hover {
+        background-color: var(--color-dark-800);
+    }
+}
+
 .dragline {
     height: 2px;
     margin-top: -1px;

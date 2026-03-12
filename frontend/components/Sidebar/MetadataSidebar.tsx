@@ -103,18 +103,18 @@ export default function MetadataSidebar({
 
     return (
         <aside
-            className={`p-4 bg-white ${className}`}
+            className={`metadata-sidebar-root ${className}`}
             aria-label="metadata-sidebar"
         >
             {selectedResource?.type === "text" ? (
                 <React.Fragment>
                     <div className="mb-4">
-                        <h3 className="text-sm font-bold text-slate-700">
+                        <h3 className="metadata-sidebar-title">
                             {selectedResource.name}
                         </h3>
                     </div>
                     <div className="mb-6">
-                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                        <h4 className="metadata-sidebar-section-heading">
                             Notes
                         </h4>
                         <NotesInput
@@ -128,7 +128,7 @@ export default function MetadataSidebar({
                     </div>
 
                     <div className="mb-6">
-                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                        <h4 className="metadata-sidebar-section-heading">
                             Status
                         </h4>
                         <StatusSelector
@@ -148,7 +148,7 @@ export default function MetadataSidebar({
                         />
                     </div>
                     <div className="mb-6">
-                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                        <h4 className="metadata-sidebar-section-heading">
                             Characters
                         </h4>
                         <MultiSelectList
@@ -163,7 +163,7 @@ export default function MetadataSidebar({
                     </div>
 
                     <div className="mb-6">
-                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                        <h4 className="metadata-sidebar-section-heading">
                             Locations
                         </h4>
                         <MultiSelectList
@@ -177,7 +177,7 @@ export default function MetadataSidebar({
                         />
                     </div>
                     <div className="mb-6">
-                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                        <h4 className="metadata-sidebar-section-heading">
                             Items
                         </h4>
                         <MultiSelectList
@@ -191,7 +191,7 @@ export default function MetadataSidebar({
                         />
                     </div>
                     <div>
-                        <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                        <h4 className="metadata-sidebar-section-heading">
                             POV
                         </h4>
                         <POVAutocomplete
@@ -205,8 +205,8 @@ export default function MetadataSidebar({
                     </div>
                 </React.Fragment>
             ) : (
-                <div className="text-sm text-slate-500">
-                    <h4 className="text-xs font-semibold text-slate-600 mb-2">
+                <div className="metadata-sidebar-empty">
+                    <h4 className="metadata-sidebar-section-heading">
                         Select a text resource to view and edit its metadata.
                     </h4>
                 </div>
