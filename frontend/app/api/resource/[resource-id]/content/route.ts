@@ -12,6 +12,6 @@ export async function POST(
         doc: TipTapDocument;
     };
     const resourceId = await (await params)["resource-id"];
-    persistResourceContent(projectPath, resourceId, doc);
+    await persistResourceContent(projectPath, resourceId, doc);
     return NextResponse.json({ message: "Content persisted successfully" });
 }

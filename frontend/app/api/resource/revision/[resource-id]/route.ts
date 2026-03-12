@@ -55,6 +55,8 @@ interface SaveRevisionBody {
     author?: string;
     /** When true, marks the new revision as canonical. Defaults to false. */
     isCanonical?: boolean;
+    /** Optional arbitrary metadata to persist with the revision (e.g. user-provided name). */
+    metadata?: Record<string, unknown>;
 }
 
 /**
@@ -75,6 +77,8 @@ interface SetCanonicalRevisionBody {
     projectPath: string;
     /** Revision UUID to mark canonical. */
     revisionId: string;
+    /** Optional revision content to persist in-place for canonical revisions. */
+    content?: string;
 }
 
 /**
@@ -118,6 +122,27 @@ async function readRevisionContent(
         "content.bin",
     );
     return fs.readFile(contentPath, "utf8");
+}
+
+/**
+ * Writes `content.bin` for a specific revision version.
+ *
+ * @param projectPath - Absolute path to the project root.
+ * @param resourceId - Resource UUID.
+ * @param versionNumber - Revision version number.
+ * @param content - Raw content string to persist.
+ */
+async function writeRevisionContent(
+    projectPath: string,
+    resourceId: string,
+    versionNumber: number,
+    content: string,
+): Promise<void> {
+    const contentPath = path.join(
+        revisionDir(projectPath, resourceId, versionNumber),
+        "content.bin",
+    );
+    await fs.writeFile(contentPath, content, "utf8");
 }
 
 /**
@@ -301,7 +326,13 @@ export async function POST(
         );
     }
 
-    const { projectPath, content: bodyContent, author, isCanonical } = body;
+    const {
+        projectPath,
+        content: bodyContent,
+        author,
+        isCanonical,
+        metadata,
+    } = body;
 
     if (!projectPath || typeof projectPath !== "string") {
         return NextResponse.json(
@@ -328,6 +359,7 @@ export async function POST(
             {
                 author,
                 isCanonical: isCanonical ?? false,
+                metadata,
             },
         );
 
@@ -435,7 +467,7 @@ export async function PATCH(
         );
     }
 
-    const { projectPath, revisionId } = body;
+    const { projectPath, revisionId, content } = body;
 
     if (!projectPath || typeof projectPath !== "string") {
         return NextResponse.json(
@@ -460,6 +492,26 @@ export async function PATCH(
                 { error: `Revision ${revisionId} not found.` },
                 { status: 404 },
             );
+        }
+
+        if (typeof content === "string") {
+            if (!target.isCanonical) {
+                return NextResponse.json(
+                    {
+                        error: "Only the canonical revision can be updated in place.",
+                    },
+                    { status: 400 },
+                );
+            }
+
+            await writeRevisionContent(
+                projectPath,
+                resourceId,
+                target.versionNumber,
+                content,
+            );
+
+            return NextResponse.json(target, { status: 200 });
         }
 
         const canonicalRevision = await setCanonicalRevision(

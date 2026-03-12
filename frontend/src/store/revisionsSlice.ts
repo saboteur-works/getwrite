@@ -376,6 +376,7 @@ export const saveRevisionForSelectedResource = createAsyncThunk<
             body: JSON.stringify({
                 projectPath: context.projectPath,
                 isCanonical: false,
+                metadata: { name: revisionName },
             }),
         });
 

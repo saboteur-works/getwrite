@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import debounce from "lodash/debounce";
 import TipTapEditor from "../TipTapEditor";
 import { TipTapDocument } from "../../src/lib/models";
 import useAppSelector from "../../src/store/hooks";
@@ -6,6 +7,7 @@ import { shallowEqual } from "react-redux";
 import {
     selectCurrentRevisionContent,
     selectCurrentRevisionId,
+    selectVisibleRevisions,
 } from "../../src/store/revisionsSlice";
 import { selectResource } from "../../src/store/resourcesSlice";
 import RevisionControl from "../Editor/RevisionControl/RevisionControl";
@@ -41,6 +43,10 @@ export default function EditView({
 
     const currentRevisionId = useAppSelector(selectCurrentRevisionId);
     const currentRevisionContent = useAppSelector(selectCurrentRevisionContent);
+    const visibleRevisions = useAppSelector(
+        selectVisibleRevisions,
+        shallowEqual,
+    );
     const selectedResource = useAppSelector(
         (state) => selectResource(state.resources),
         shallowEqual,
@@ -48,6 +54,26 @@ export default function EditView({
     const [content, setContent] = React.useState<string>(initialContent);
     const [tipTapDoc, setTipTapDoc] = React.useState<TipTapDocument | null>(
         null,
+    );
+    const [hasEditsAfterRevisionSwitch, setHasEditsAfterRevisionSwitch] =
+        React.useState<boolean>(false);
+
+    const canonicalRevisionId = React.useMemo(
+        () => visibleRevisions.find((r) => r.isCanonical)?.id ?? null,
+        [visibleRevisions],
+    );
+
+    const isViewingNonCanonical = React.useMemo(
+        () =>
+            currentRevisionId !== null &&
+            currentRevisionId !== canonicalRevisionId,
+        [currentRevisionId, canonicalRevisionId],
+    );
+    const isEditingCanonicalRevision = React.useMemo(
+        () =>
+            currentRevisionId !== null &&
+            currentRevisionId === canonicalRevisionId,
+        [currentRevisionId, canonicalRevisionId],
     );
     const projectId = useAppSelector(
         (state) => state.projects.selectedProjectId,
@@ -57,6 +83,49 @@ export default function EditView({
         (state) => (projectId ? state.projects.projects[projectId] : null),
         shallowEqual,
     );
+
+    const persistCanonicalRevisionContent = React.useCallback(
+        async (doc: TipTapDocument) => {
+            if (
+                !project?.rootPath ||
+                !selectedResource?.id ||
+                !currentRevisionId ||
+                currentRevisionId !== canonicalRevisionId
+            ) {
+                return;
+            }
+
+            await fetch(`/api/resource/revision/${selectedResource.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    projectPath: project.rootPath,
+                    revisionId: currentRevisionId,
+                    content: JSON.stringify(doc),
+                }),
+            });
+        },
+        [
+            canonicalRevisionId,
+            currentRevisionId,
+            project?.rootPath,
+            selectedResource?.id,
+        ],
+    );
+
+    const debouncedPersistCanonicalRevisionContent = React.useMemo(
+        () =>
+            debounce((doc: TipTapDocument) => {
+                void persistCanonicalRevisionContent(doc);
+            }, 2500),
+        [persistCanonicalRevisionContent],
+    );
+
+    useEffect(() => {
+        return () => {
+            debouncedPersistCanonicalRevisionContent.cancel();
+        };
+    }, [debouncedPersistCanonicalRevisionContent]);
 
     const fetchResourceContent =
         async (): Promise<ResourceContentResponse | null> => {
@@ -173,6 +242,12 @@ export default function EditView({
 
     const handleChange = (next: string, doc: TipTapDocument) => {
         setContent(next);
+        if (isViewingNonCanonical) {
+            setHasEditsAfterRevisionSwitch(true);
+        }
+        if (isEditingCanonicalRevision) {
+            debouncedPersistCanonicalRevisionContent(doc);
+        }
         if (onChange) onChange(next, doc);
     };
 
@@ -225,6 +300,8 @@ export default function EditView({
             return;
         }
 
+        setHasEditsAfterRevisionSwitch(false);
+
         const parsedTipTapDoc = parseTipTapRevisionContent(
             currentRevisionContent,
         );
@@ -253,14 +330,23 @@ export default function EditView({
                 </div>
             </div>
 
-            <div className="border-t px-4 py-2 bg-white text-sm flex items-center justify-between">
+            <footer
+                id="editview-footer"
+                className="border-t px-4 py-2 bg-white text-sm flex items-center justify-between"
+            >
                 <div className="text-slate-600">
                     Words: <strong>{wordCount}</strong>
                 </div>
+                {isViewingNonCanonical && hasEditsAfterRevisionSwitch && (
+                    <p className="text-red-600 font-medium">
+                        Unsaved edits — save as a new revision to keep your
+                        changes.
+                    </p>
+                )}
                 <div className="text-slate-500">
                     Last saved: <span>{lastSaved}</span>
                 </div>
-            </div>
+            </footer>
         </div>
     );
 }

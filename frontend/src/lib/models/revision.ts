@@ -22,6 +22,8 @@ export interface WriteRevisionOptions {
     author?: string;
     /** When true, marks the written revision as canonical. */
     isCanonical?: boolean;
+    /** Optional arbitrary metadata to persist alongside the revision (e.g. user-provided name). */
+    metadata?: Record<string, unknown>;
 }
 
 /** Optional behavior controls for prune operations. */
@@ -178,6 +180,7 @@ export async function writeRevision(
             author: options?.author,
             filePath: finalFilePath,
             isCanonical: !!options?.isCanonical,
+            metadata: options?.metadata,
         };
 
         const metaPath = path.join(tmpDir, "metadata.json");
