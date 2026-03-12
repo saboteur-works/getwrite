@@ -123,6 +123,149 @@
         overflow: hidden;
     }
 
+    .appshell-topbar-dropdown-item[aria-pressed="true"] {
+        background-color: var(--color-brand-100);
+        color: var(--color-brand-700);
+    }
+
+    .appshell-shell.appshell-theme-dark {
+        background-color: var(--color-dark-950);
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-topbar {
+        background: var(--color-dark-900);
+        border-bottom-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-topbar-project {
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-topbar-button {
+        background: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-topbar-button:hover {
+        background: var(--color-dark-800);
+        border-color: var(--color-brand-400);
+        color: white;
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-topbar-dropdown {
+        background: var(--color-dark-900);
+        border-color: var(--color-dark-700);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-topbar-dropdown-item {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-topbar-dropdown-item:hover {
+        background: var(--color-dark-800);
+    }
+
+    .appshell-shell.appshell-theme-dark
+        .appshell-topbar-dropdown-item[aria-pressed="true"] {
+        background: rgba(102, 207, 255, 0.18);
+        color: var(--color-brand-200);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-sidebar {
+        background: var(--color-dark-900);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-sidebar-header {
+        border-bottom-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-close-button {
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-close-button:hover {
+        background: var(--color-dark-800);
+        color: white;
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-resize-handle:hover {
+        background: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-sidebar-toggle {
+        background: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+        color: var(--color-dark-100);
+    }
+
+    .appshell-shell.appshell-theme-dark .appshell-sidebar-toggle:hover {
+        background: var(--color-dark-800);
+    }
+
+    .appshell-shell.appshell-theme-dark .bg-white {
+        background-color: var(--color-dark-900) !important;
+    }
+
+    .appshell-shell.appshell-theme-dark .border-r,
+    .appshell-shell.appshell-theme-dark .border-l,
+    .appshell-shell.appshell-theme-dark .border {
+        border-color: var(--color-dark-700) !important;
+    }
+
+    .appshell-shell.appshell-theme-dark .text-slate-700,
+    .appshell-shell.appshell-theme-dark .text-slate-600,
+    .appshell-shell.appshell-theme-dark .text-slate-500,
+    .appshell-shell.appshell-theme-dark .text-slate-400 {
+        color: var(--color-dark-100) !important;
+    }
+
+    .appshell-shell.appshell-theme-dark .workarea-container {
+        background-color: var(--color-dark-900);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
+    }
+
+    .appshell-shell.appshell-theme-dark .workarea-section-title,
+    .appshell-shell.appshell-theme-dark .workarea-list-item-label,
+    .appshell-shell.appshell-theme-dark .workarea-pane-title,
+    .appshell-shell.appshell-theme-dark .workarea-stat-value {
+        color: var(--color-dark-50);
+    }
+
+    .appshell-shell.appshell-theme-dark .workarea-stat-card,
+    .appshell-shell.appshell-theme-dark .workarea-list-item,
+    .appshell-shell.appshell-theme-dark .workarea-pane {
+        background-color: var(--color-dark-850);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .workarea-list-item:hover,
+    .appshell-shell.appshell-theme-dark .workarea-button:hover,
+    .appshell-shell.appshell-theme-dark
+        .workarea-tab-button[role="tab"][aria-selected="false"]:not(
+            :disabled
+        ):hover {
+        background-color: var(--color-dark-800);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark
+        .workarea-tab-button[role="tab"][aria-selected="false"]:not(:disabled) {
+        background-color: var(--color-dark-850);
+        color: var(--color-dark-100);
+        border-color: var(--color-dark-700);
+    }
+
+    .appshell-shell.appshell-theme-dark .workarea-list-item-meta,
+    .appshell-shell.appshell-theme-dark .workarea-stat-label,
+    .appshell-shell.appshell-theme-dark .workarea-pane-content,
+    .appshell-shell.appshell-theme-dark .workarea-button {
+        color: var(--color-dark-100);
+    }
+
     .appshell-container {
         display: flex;
         height: 100vh;

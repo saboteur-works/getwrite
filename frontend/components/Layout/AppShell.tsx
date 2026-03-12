@@ -178,7 +178,9 @@ export default function AppShell({
     const [rightOpen, setRightOpen] = useState<boolean>(true);
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] =
         useState<boolean>(false);
+    const [colorMode, setColorMode] = useState<"light" | "dark">("light");
     const settingsMenuRef = useRef<HTMLDivElement | null>(null);
+    const COLOR_MODE_STORAGE_KEY = "getwrite-color-mode";
 
     const MIN_SIDEBAR_WIDTH = 160;
     const COLLAPSE_THRESHOLD = 120;
@@ -442,8 +444,42 @@ export default function AppShell({
         };
     }, []);
 
+    useEffect(() => {
+        try {
+            const storedMode = window.localStorage.getItem(
+                COLOR_MODE_STORAGE_KEY,
+            );
+            if (storedMode === "dark" || storedMode === "light") {
+                setColorMode(storedMode);
+                return;
+            }
+
+            const prefersDark = window.matchMedia(
+                "(prefers-color-scheme: dark)",
+            ).matches;
+            setColorMode(prefersDark ? "dark" : "light");
+        } catch {
+            setColorMode("light");
+        }
+    }, []);
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(COLOR_MODE_STORAGE_KEY, colorMode);
+        } catch {
+            // ignore localStorage failures in constrained environments
+        }
+    }, [colorMode]);
+
+    const isDarkMode = colorMode === "dark";
+    const handleToggleColorMode = () => {
+        setColorMode((previous) => (previous === "dark" ? "light" : "dark"));
+    };
+
     return (
-        <div className="appshell-shell">
+        <div
+            className={`appshell-shell ${isDarkMode ? "appshell-theme-dark" : ""}`}
+        >
             <header className="appshell-topbar">
                 <div
                     className="appshell-topbar-project"
@@ -489,6 +525,18 @@ export default function AppShell({
                                 onClick={() => setIsSettingsMenuOpen(false)}
                             >
                                 Placeholder option
+                            </button>
+                            <button
+                                type="button"
+                                className="appshell-topbar-dropdown-item"
+                                role="menuitemcheckbox"
+                                aria-checked={isDarkMode}
+                                aria-pressed={isDarkMode}
+                                onClick={handleToggleColorMode}
+                            >
+                                {isDarkMode
+                                    ? "Switch to light mode"
+                                    : "Switch to dark mode"}
                             </button>
                         </div>
                     ) : null}
