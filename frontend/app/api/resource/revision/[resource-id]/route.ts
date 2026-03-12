@@ -1,15 +1,17 @@
 /**
  * @module api/resource/revision/[resource-id]
  *
- * Next.js route handler for creating a new revision for a resource.
+ * Next.js route handlers for revision lifecycle on a single resource.
  *
- * POST /api/resource/revision/:resourceId
+ * GET    /api/resource/revision/:resourceId?projectPath=...&revisionId=...
+ *   Returns revision metadata and content for a specific revision.
  *
- * Accepts a JSON body containing the project path and optional revision options.
- * When `content` is omitted the handler reads the resource's current saved
- * content from the filesystem (`content.tiptap.json`, falling back to
- * `content.txt`). Determines the next version number by listing existing
- * revisions and calls `writeRevision` to atomically persist the new revision.
+ * POST   /api/resource/revision/:resourceId
+ *   Saves a new revision. Reads current filesystem content when body.content
+ *   is omitted.
+ *
+ * DELETE /api/resource/revision/:resourceId
+ *   Removes a revision directory by revision UUID.
  */
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -19,6 +21,17 @@ import {
     revisionDir,
     writeRevision,
 } from "../../../../../src/lib/models/revision";
+import type { Revision } from "../../../../../src/lib/models/types";
+
+/**
+ * Shape of the response returned by the GET handler.
+ */
+interface GetRevisionResponse {
+    /** Revision metadata. */
+    revision: Revision;
+    /** Raw revision content as a UTF-8 string. */
+    content: string;
+}
 
 /**
  * Expected shape of the POST request body.
@@ -48,6 +61,49 @@ interface DeleteRevisionBody {
     projectPath: string;
     /** Revision UUID to delete. */
     revisionId: string;
+}
+
+/**
+ * Finds a revision by UUID within a resource's stored revisions.
+ *
+ * @param projectPath - Absolute path to the project root.
+ * @param resourceId - Resource UUID.
+ * @param revisionId - Revision UUID to locate.
+ * @returns Matching revision metadata.
+ * @throws {Error} If the revision is not found.
+ */
+async function findRevisionById(
+    projectPath: string,
+    resourceId: string,
+    revisionId: string,
+): Promise<Revision> {
+    const revisions = await listRevisions(projectPath, resourceId);
+    const match = revisions.find((r) => r.id === revisionId);
+    if (!match) {
+        throw new Error(`Revision ${revisionId} not found.`);
+    }
+    return match;
+}
+
+/**
+ * Reads the `content.bin` file for a specific revision.
+ *
+ * @param projectPath - Absolute path to the project root.
+ * @param resourceId - Resource UUID.
+ * @param versionNumber - Revision version number.
+ * @returns Raw content as a UTF-8 string.
+ * @throws {Error} If `content.bin` cannot be read.
+ */
+async function readRevisionContent(
+    projectPath: string,
+    resourceId: string,
+    versionNumber: number,
+): Promise<string> {
+    const contentPath = path.join(
+        revisionDir(projectPath, resourceId, versionNumber),
+        "content.bin",
+    );
+    return fs.readFile(contentPath, "utf8");
 }
 
 /**
@@ -133,6 +189,72 @@ async function deleteRevisionById(
     await fs.rm(directory, { recursive: true, force: true });
 
     return revision;
+}
+
+/**
+ * GET handler — retrieves a revision's metadata and content by revision UUID.
+ *
+ * Query parameters:
+ * - `projectPath` (required) — absolute path to the project root.
+ * - `revisionId`  (required) — UUID of the revision to retrieve.
+ *
+ * Responses:
+ * - `200 OK` with `{ revision, content }` on success.
+ * - `400 Bad Request` when required query params are missing.
+ * - `404 Not Found` when the revision cannot be found.
+ * - `500 Internal Server Error` when reading content fails.
+ *
+ * @param req - Incoming Next.js request.
+ * @param context - Route context containing the `resource-id` path param.
+ * @returns JSON response containing revision metadata and content.
+ */
+export async function GET(
+    req: NextRequest,
+    { params }: { params: Promise<{ "resource-id": string }> },
+) {
+    const resourceId = (await params)["resource-id"];
+    const { searchParams } = new URL(req.url);
+
+    const projectPath = searchParams.get("projectPath");
+    const revisionId = searchParams.get("revisionId");
+
+    if (!projectPath) {
+        return NextResponse.json(
+            { error: "Missing required query param: projectPath." },
+            { status: 400 },
+        );
+    }
+
+    if (!revisionId) {
+        return NextResponse.json(
+            { error: "Missing required query param: revisionId." },
+            { status: 400 },
+        );
+    }
+
+    try {
+        const revision = await findRevisionById(
+            projectPath,
+            resourceId,
+            revisionId,
+        );
+
+        const content = await readRevisionContent(
+            projectPath,
+            resourceId,
+            revision.versionNumber,
+        );
+
+        const responseBody: GetRevisionResponse = { revision, content };
+        return NextResponse.json(responseBody, { status: 200 });
+    } catch (error) {
+        const message =
+            error instanceof Error
+                ? error.message
+                : "Failed to retrieve revision.";
+        const status = message.includes("not found") ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
+    }
 }
 
 /**
