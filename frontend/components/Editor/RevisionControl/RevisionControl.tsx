@@ -182,10 +182,10 @@ export default function RevisionControl() {
             {isExpanded && (
                 <div
                     id="revision-control-content"
-                    className="border-t border-slate-100 p-4"
+                    className="border-t border-slate-100 p-4 overflow-hidden"
                 >
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="w-full lg:max-w-sm">
+                        <div className="w-full lg:w-4/12 lg:max-w-sm">
                             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                                 Save Explicit Revision
                             </h3>
@@ -216,12 +216,12 @@ export default function RevisionControl() {
                             </div>
                         </div>
 
-                        <div className="w-full lg:flex-1">
+                        <div className="w-full min-w-0 lg:flex-1">
                             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                                 Existing Revisions
                             </h3>
 
-                            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+                            <div className="mt-2 w-full max-w-full rounded-lg border border-slate-200 bg-slate-50/50 p-3 overflow-hidden">
                                 {isLoading ? (
                                     <p className="text-sm text-slate-500">
                                         Loading revisions…
@@ -231,128 +231,135 @@ export default function RevisionControl() {
                                         No revisions available.
                                     </p>
                                 ) : (
-                                    <div className="max-h-52 overflow-y-auto overflow-x-auto pr-1">
-                                        <div className="flex min-w-max gap-3">
-                                            {revisionItems.map((revision) => (
-                                                <article
-                                                    key={revision.id}
-                                                    className={`w-[340px] rounded-md border p-3 shadow-sm ${
-                                                        revision.isCanonical
-                                                            ? "border-slate-400 bg-slate-50"
-                                                            : "border-slate-200 bg-white"
-                                                    }`}
-                                                >
-                                                    <div className="mb-3 flex items-start justify-between gap-2">
-                                                        <div>
-                                                            <h4 className="text-sm font-semibold text-slate-800">
-                                                                {
-                                                                    revision.displayName
-                                                                }
-                                                            </h4>
-                                                            <p className="text-xs text-slate-500">
-                                                                v
-                                                                {
-                                                                    revision.versionNumber
-                                                                }{" "}
-                                                                •{" "}
-                                                                {new Date(
-                                                                    revision.createdAt,
-                                                                ).toLocaleString()}
-                                                            </p>
-                                                        </div>
-                                                        {revision.isCanonical && (
-                                                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                                                                Canonical
-                                                            </span>
-                                                        )}
-                                                    </div>
-
-                                                    {!revision.isCanonical && (
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    handleViewRevision(
-                                                                        revision.id,
-                                                                    )
-                                                                }
-                                                                disabled={
-                                                                    fetchingRevisionId ===
-                                                                    revision.id
-                                                                }
-                                                                className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                                            >
-                                                                {fetchingRevisionId ===
-                                                                revision.id
-                                                                    ? "Loading..."
-                                                                    : "View Revision"}
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    void handleSetCanonical(
-                                                                        revision.id,
-                                                                    )
-                                                                }
-                                                                className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                                                            >
-                                                                Set as Canonical
-                                                                Revision
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    handleDeleteRevision(
-                                                                        revision.id,
-                                                                    )
-                                                                }
-                                                                disabled={
-                                                                    deletingRevisionId ===
-                                                                    revision.id
-                                                                }
-                                                                className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                                            >
-                                                                {deletingRevisionId ===
-                                                                revision.id
-                                                                    ? "Deleting..."
-                                                                    : "Delete Revision"}
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    void handleRollbackRevision(
-                                                                        revision.id,
-                                                                    )
-                                                                }
-                                                                className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                                                            >
-                                                                Roll Back to
-                                                                Revision
-                                                            </button>
-                                                        </div>
-                                                    )}
-
-                                                    {fetchingRevisionId ===
-                                                        revision.id && (
-                                                        <p className="mt-2 text-xs text-slate-500">
-                                                            Loading revision…
-                                                        </p>
-                                                    )}
-
-                                                    {activeRevisionId ===
-                                                        revision.id &&
-                                                        fetchedRevisionContent !==
-                                                            null && (
-                                                            <div className="mt-2 max-h-32 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-2">
-                                                                <p className="whitespace-pre-wrap break-words text-xs text-slate-700">
-                                                                    {
-                                                                        fetchedRevisionContent
-                                                                    }
-                                                                </p>
+                                    <div className="w-full max-w-full overflow-x-auto pb-1">
+                                        <div className="max-h-52 overflow-y-auto pr-1">
+                                            <div className="flex flex-col min-w-max gap-3">
+                                                {revisionItems.map(
+                                                    (revision) => (
+                                                        <article
+                                                            key={revision.id}
+                                                            className={`w-[340px] rounded-md border p-3 shadow-sm w-full ${
+                                                                revision.isCanonical
+                                                                    ? "border-slate-400 bg-slate-50"
+                                                                    : "border-slate-200 bg-white"
+                                                            }`}
+                                                        >
+                                                            <div className="mb-3 flex items-start justify-between gap-2">
+                                                                <div>
+                                                                    <h4 className="text-sm font-semibold text-slate-800">
+                                                                        {
+                                                                            revision.displayName
+                                                                        }
+                                                                    </h4>
+                                                                    <p className="text-xs text-slate-500">
+                                                                        v
+                                                                        {
+                                                                            revision.versionNumber
+                                                                        }{" "}
+                                                                        •{" "}
+                                                                        {new Date(
+                                                                            revision.createdAt,
+                                                                        ).toLocaleString()}
+                                                                    </p>
+                                                                </div>
+                                                                {revision.isCanonical && (
+                                                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                                                                        Canonical
+                                                                    </span>
+                                                                )}
                                                             </div>
-                                                        )}
-                                                </article>
-                                            ))}
+
+                                                            {!revision.isCanonical && (
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleViewRevision(
+                                                                                revision.id,
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            fetchingRevisionId ===
+                                                                            revision.id
+                                                                        }
+                                                                        className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                    >
+                                                                        {fetchingRevisionId ===
+                                                                        revision.id
+                                                                            ? "Loading..."
+                                                                            : "View Revision"}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            void handleSetCanonical(
+                                                                                revision.id,
+                                                                            )
+                                                                        }
+                                                                        className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                                                    >
+                                                                        Set as
+                                                                        Canonical
+                                                                        Revision
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleDeleteRevision(
+                                                                                revision.id,
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            deletingRevisionId ===
+                                                                            revision.id
+                                                                        }
+                                                                        className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                    >
+                                                                        {deletingRevisionId ===
+                                                                        revision.id
+                                                                            ? "Deleting..."
+                                                                            : "Delete Revision"}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            void handleRollbackRevision(
+                                                                                revision.id,
+                                                                            )
+                                                                        }
+                                                                        className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                                                    >
+                                                                        Roll
+                                                                        Back to
+                                                                        Revision
+                                                                    </button>
+                                                                </div>
+                                                            )}
+
+                                                            {fetchingRevisionId ===
+                                                                revision.id && (
+                                                                <p className="mt-2 text-xs text-slate-500">
+                                                                    Loading
+                                                                    revision…
+                                                                </p>
+                                                            )}
+
+                                                            {activeRevisionId ===
+                                                                revision.id &&
+                                                                fetchedRevisionContent !==
+                                                                    null && (
+                                                                    <div className="mt-2 max-h-32 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-2">
+                                                                        <p className="whitespace-pre-wrap break-words text-xs text-slate-700">
+                                                                            {
+                                                                                fetchedRevisionContent
+                                                                            }
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+                                                        </article>
+                                                    ),
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}

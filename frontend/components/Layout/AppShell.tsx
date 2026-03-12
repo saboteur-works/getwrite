@@ -542,7 +542,7 @@ export default function AppShell({
                 </div>
             ) : null}
 
-            <main className="flex-1 p-4 md:p-6">
+            <main className="flex-1 min-w-0 p-4 md:p-6 overflow-x-hidden">
                 {resources ? (
                     <div className="w-full">
                         <div className="w-full mb-4 flex items-center justify-between gap-4">
