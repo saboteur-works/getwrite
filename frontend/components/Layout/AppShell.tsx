@@ -25,6 +25,7 @@ import { setProject, removeResource } from "../../src/store/projectsSlice";
 import type { AppDispatch } from "../../src/store/store";
 import ResourceTree from "../ResourceTree/ResourceTree";
 import ConfirmDialog from "../common/ConfirmDialog";
+import ResourceCommandPalette from "../common/ResourceCommandPalette";
 import CreateResourceModal from "../Tree/CreateResourceModal";
 import ExportPreviewModal from "../common/ExportPreviewModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
@@ -217,6 +218,8 @@ export default function AppShell({
     const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
         useState<boolean>(false);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
+    const [isResourcePaletteOpen, setIsResourcePaletteOpen] =
+        useState<boolean>(false);
     const [projectTypeTemplates, setProjectTypeTemplates] = useState<
         ProjectTypeTemplateFile[]
     >([]);
@@ -596,11 +599,23 @@ export default function AppShell({
         };
 
         const onDocumentKeyDown = (event: KeyboardEvent) => {
+            const isCommandPaletteShortcut =
+                (event.metaKey || event.ctrlKey) &&
+                event.key.toLowerCase() === "k";
+
+            if (isCommandPaletteShortcut) {
+                event.preventDefault();
+                setIsSettingsMenuOpen(false);
+                setIsResourcePaletteOpen(true);
+                return;
+            }
+
             if (event.key === "Escape") {
                 setIsSettingsMenuOpen(false);
                 setIsPreferencesModalOpen(false);
                 setIsProjectTypesModalOpen(false);
                 setIsHelpModalOpen(false);
+                setIsResourcePaletteOpen(false);
             }
         };
 
@@ -965,6 +980,15 @@ export default function AppShell({
                         handleCreateConfirmed(payload, parentId, opts)
                     }
                     parents={folders ?? []}
+                />
+
+                <ResourceCommandPalette
+                    isOpen={isResourcePaletteOpen}
+                    resources={resources ?? []}
+                    onClose={() => setIsResourcePaletteOpen(false)}
+                    onSelectResource={(resourceId) => {
+                        onResourceSelect?.(resourceId);
+                    }}
                 />
 
                 <ExportPreviewModal
