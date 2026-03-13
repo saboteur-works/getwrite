@@ -51,6 +51,7 @@ import {
     selectResource,
 } from "../src/store/resourcesSlice";
 import { shallowEqual } from "react-redux";
+import { toastService } from "../src/lib/toast-service";
 
 /**
  * Flat representation of a project that has been opened in the current session.
@@ -209,6 +210,7 @@ export default function Home(): JSX.Element {
             resources: (projectFiles as any).resources ?? [],
             metadata: projectFiles.project.metadata,
         });
+        toastService.success("Project created", projectFiles.project.name);
     };
 
     /**
@@ -511,6 +513,10 @@ export default function Home(): JSX.Element {
 
             setSelectedResourceId(res.id);
 
+            toastService.success(
+                "Resource created",
+                `${opts?.title ?? "New Resource"} created`,
+            );
             return;
         }
 
@@ -566,6 +572,7 @@ export default function Home(): JSX.Element {
                     } as any,
                 }),
             );
+            toastService.success("Resource copied", `${copy.name}`);
             return;
         }
 
@@ -606,6 +613,10 @@ export default function Home(): JSX.Element {
             dispatch(
                 removeResource({ projectId: selectedProject.id, resourceId }),
             );
+            const resourceName =
+                selectedProject.resources.find((r) => r.id === resourceId)
+                    ?.name ?? "Resource";
+            toastService.success("Resource deleted", resourceName);
             return;
         }
 
@@ -614,9 +625,7 @@ export default function Home(): JSX.Element {
             const r = selectedProject.resources.find(
                 (x) => x.id === resourceId,
             );
-            window.alert(
-                `Export preview (placeholder) for: ${r?.name ?? resourceId}`,
-            );
+            toastService.info(`Export preview for: ${r?.name ?? resourceId}`);
             return;
         }
     };

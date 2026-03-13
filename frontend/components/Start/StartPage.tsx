@@ -20,6 +20,7 @@ import CreateProjectModal, {
     type CreateProjectPayload,
 } from "./CreateProjectModal";
 import ManageProjectMenu from "./ManageProjectMenu";
+import { toastService } from "../../src/lib/toast-service";
 
 /**
  * Project card data shape displayed on the start page.
@@ -384,8 +385,8 @@ export default function StartPage({
                                                         ? `\nSelected: ${selectedIds.join(", ")}`
                                                         : "";
 
-                                                window.alert(
-                                                    `Package placeholder for ${selectedProject?.project.name ?? id}${selectedText}`,
+                                                toastService.info(
+                                                    `Package ${selectedProject?.project.name ?? id}${selectedText ? " (" + selectedIds?.length + " selected)" : " (all resources)"}`,
                                                 );
                                             }}
                                             resources={resourceList}
