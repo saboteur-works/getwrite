@@ -3,6 +3,7 @@ import "react-tooltip/dist/react-tooltip.css";
 import React from "react";
 import ClientProvider from "../src/store/ClientProvider";
 import AppToaster from "../components/notifications/Toaster";
+import AppearanceRuntime from "../components/preferences/AppearanceRuntime";
 
 /** Page metadata for Next.js layout — basic title for dev/storybook. */
 export const metadata = {
@@ -19,6 +20,7 @@ export default function RootLayout({
         <html lang="en">
             <body>
                 <ClientProvider>
+                    <AppearanceRuntime />
                     <div className="min-h-screen bg-gray-50 text-slate-900">
                         {children}
                         <AppToaster />

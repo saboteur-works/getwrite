@@ -25,9 +25,13 @@ import { setProject, removeResource } from "../../src/store/projectsSlice";
 import type { AppDispatch } from "../../src/store/store";
 import ResourceTree from "../ResourceTree/ResourceTree";
 import ConfirmDialog from "../common/ConfirmDialog";
+import ResourceCommandPalette from "../common/ResourceCommandPalette";
 import CreateResourceModal from "../Tree/CreateResourceModal";
 import ExportPreviewModal from "../common/ExportPreviewModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
+import UserPreferencesPage from "../preferences/UserPreferencesPage";
+import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
+import HelpPage from "../help/HelpPage";
 import type { ResourceContextAction } from "../Tree/ResourceContextMenu";
 import ViewSwitcher from "../WorkArea/ViewSwitcher";
 import EditView from "../WorkArea/EditView";
@@ -47,9 +51,27 @@ import {
     PanelLeftOpen,
     PanelRightClose,
     PanelRightOpen,
+    HelpCircle,
+    FileText,
+    Image as ImageIcon,
+    Music2,
+    Plus,
+    LogOut,
 } from "lucide-react";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
+import {
+    getStoredGlobalAppearancePreferences,
+    type ColorMode,
+    resolvePreferredColorMode,
+    saveGlobalAppearancePreferences,
+    saveGlobalColorMode,
+} from "../../src/lib/user-preferences";
+import type { MetadataValue } from "../../src/lib/models/types";
+import type {
+    ProjectTypeDefinition,
+    ProjectTypeTemplateFile,
+} from "../../src/types/project-types";
 
 /**
  * Optional payload bag forwarded to `onResourceAction` callbacks.
@@ -139,6 +161,8 @@ export interface AppShellProps {
         resourceId?: string,
         opts?: AppShellResourceActionOptions,
     ) => Promise<void>;
+    /** Closes the active project and returns to the start page. */
+    onCloseProject?: () => void;
 }
 
 /**
@@ -166,6 +190,7 @@ export default function AppShell({
     onChangeItems,
     onChangePOV,
     onResourceAction,
+    onCloseProject,
     project,
 }: AppShellProps): JSX.Element {
     // Read the callback from the raw arguments to avoid name-resolution
@@ -188,9 +213,28 @@ export default function AppShell({
     const [rightOpen, setRightOpen] = useState<boolean>(true);
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] =
         useState<boolean>(false);
-    const [colorMode, setColorMode] = useState<"light" | "dark">("light");
+    const [isPreferencesModalOpen, setIsPreferencesModalOpen] =
+        useState<boolean>(false);
+    const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
+        useState<boolean>(false);
+    const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
+    const [isResourcePaletteOpen, setIsResourcePaletteOpen] =
+        useState<boolean>(false);
+    const [projectTypeTemplates, setProjectTypeTemplates] = useState<
+        ProjectTypeTemplateFile[]
+    >([]);
+    const [isProjectTypesLoading, setIsProjectTypesLoading] =
+        useState<boolean>(false);
+    const [projectTypesLoadError, setProjectTypesLoadError] = useState<
+        string | null
+    >(null);
+    const [colorMode, setColorMode] = useState<ColorMode>("light");
+    const [hasUnsavedEditorChanges, setHasUnsavedEditorChanges] =
+        useState<boolean>(false);
+    const [isCloseProjectConfirmOpen, setIsCloseProjectConfirmOpen] =
+        useState<boolean>(false);
     const settingsMenuRef = useRef<HTMLDivElement | null>(null);
-    const COLOR_MODE_STORAGE_KEY = "getwrite-color-mode";
+    const latestEditorEditVersionRef = useRef<number>(0);
 
     const MIN_SIDEBAR_WIDTH = 160;
     const COLLAPSE_THRESHOLD = 120;
@@ -207,6 +251,87 @@ export default function AppShell({
         (state) => selectResource(state.resources),
         shallowEqual,
     );
+    const [recentTimestampTick, setRecentTimestampTick] = useState<number>(
+        Date.now(),
+    );
+
+    const recentResources = React.useMemo(() => {
+        const sortableResources = (resources ?? []).filter(
+            (resource) => resource.type !== "folder",
+        );
+
+        return [...sortableResources]
+            .sort((left, right) => {
+                const leftTimestamp = Date.parse(
+                    left.updatedAt ?? left.createdAt ?? "",
+                );
+                const rightTimestamp = Date.parse(
+                    right.updatedAt ?? right.createdAt ?? "",
+                );
+
+                const leftSafe = Number.isNaN(leftTimestamp)
+                    ? 0
+                    : leftTimestamp;
+                const rightSafe = Number.isNaN(rightTimestamp)
+                    ? 0
+                    : rightTimestamp;
+
+                return rightSafe - leftSafe;
+            })
+            .slice(0, 6);
+    }, [resources]);
+
+    const formatRelativeTimestamp = React.useCallback(
+        (timestamp: string | undefined): string => {
+            if (!timestamp) {
+                return "just now";
+            }
+
+            const parsed = Date.parse(timestamp);
+            if (Number.isNaN(parsed)) {
+                return "just now";
+            }
+
+            const elapsedMs = Math.max(0, recentTimestampTick - parsed);
+            const elapsedSeconds = Math.floor(elapsedMs / 1000);
+
+            if (elapsedSeconds < 5) {
+                return "just now";
+            }
+
+            if (elapsedSeconds < 60) {
+                return `${elapsedSeconds}s ago`;
+            }
+
+            const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+            if (elapsedMinutes < 60) {
+                return `${elapsedMinutes}m ago`;
+            }
+
+            const elapsedHours = Math.floor(elapsedMinutes / 60);
+            if (elapsedHours < 24) {
+                return `${elapsedHours}h ago`;
+            }
+
+            const elapsedDays = Math.floor(elapsedHours / 24);
+            if (elapsedDays < 7) {
+                return `${elapsedDays}d ago`;
+            }
+
+            return new Date(parsed).toLocaleDateString();
+        },
+        [recentTimestampTick],
+    );
+
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            setRecentTimestampTick(Date.now());
+        }, 30000);
+
+        return () => {
+            window.clearInterval(interval);
+        };
+    }, []);
 
     useEffect(() => {
         const onMouseMove = (e: MouseEvent) => {
@@ -389,22 +514,48 @@ export default function AppShell({
      * @param content - Current plain-text editor content (reserved for parity/logging).
      * @param doc - Current TipTap document snapshot to persist.
      */
-    const persistContent = (content: string, doc: TipTapDocument) => {
-        if (!project || !selectedResourceId) return;
-        if (!project.rootPath) return;
+    const persistContent = async (
+        content: string,
+        doc: TipTapDocument,
+        editVersion: number,
+    ): Promise<void> => {
+        if (!project || !selectedResourceId) {
+            setHasUnsavedEditorChanges(false);
+            return;
+        }
+        if (!project.rootPath) {
+            setHasUnsavedEditorChanges(false);
+            return;
+        }
         console.log("Persisting content for", selectedResourceId);
-        fetch(`/api/resource/${selectedResourceId}/content`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                projectPath: project.rootPath,
-                doc,
-            }),
-        }).catch((err) => {
+        try {
+            const response = await fetch(
+                `/api/resource/${selectedResourceId}/content`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        projectPath: project.rootPath,
+                        doc,
+                    }),
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    `Failed to persist content (${response.status})`,
+                );
+            }
+
+            if (latestEditorEditVersionRef.current === editVersion) {
+                setHasUnsavedEditorChanges(false);
+            }
+        } catch (err) {
             console.error("Failed to persist content:", err);
-        });
+            setHasUnsavedEditorChanges(true);
+        }
     };
 
     /**
@@ -423,7 +574,10 @@ export default function AppShell({
      * @param doc - Latest TipTap document snapshot.
      */
     const handlerEditorChange = (content: string, doc: TipTapDocument) => {
-        debouncedPersistContent(content, doc);
+        latestEditorEditVersionRef.current += 1;
+        const nextEditVersion = latestEditorEditVersionRef.current;
+        setHasUnsavedEditorChanges(true);
+        debouncedPersistContent(content, doc, nextEditVersion);
     };
 
     useEffect(() => {
@@ -433,6 +587,11 @@ export default function AppShell({
     }, [debouncedPersistContent]);
 
     useEffect(() => {
+        setHasUnsavedEditorChanges(false);
+        latestEditorEditVersionRef.current = 0;
+    }, [project?.id, selectedResourceId]);
+
+    useEffect(() => {
         const onDocumentMouseDown = (event: MouseEvent) => {
             if (!settingsMenuRef.current) return;
             if (settingsMenuRef.current.contains(event.target as Node)) return;
@@ -440,8 +599,23 @@ export default function AppShell({
         };
 
         const onDocumentKeyDown = (event: KeyboardEvent) => {
+            const isCommandPaletteShortcut =
+                (event.metaKey || event.ctrlKey) &&
+                event.key.toLowerCase() === "k";
+
+            if (isCommandPaletteShortcut) {
+                event.preventDefault();
+                setIsSettingsMenuOpen(false);
+                setIsResourcePaletteOpen(true);
+                return;
+            }
+
             if (event.key === "Escape") {
                 setIsSettingsMenuOpen(false);
+                setIsPreferencesModalOpen(false);
+                setIsProjectTypesModalOpen(false);
+                setIsHelpModalOpen(false);
+                setIsResourcePaletteOpen(false);
             }
         };
 
@@ -455,36 +629,154 @@ export default function AppShell({
     }, []);
 
     useEffect(() => {
-        try {
-            const storedMode = window.localStorage.getItem(
-                COLOR_MODE_STORAGE_KEY,
-            );
-            if (storedMode === "dark" || storedMode === "light") {
-                setColorMode(storedMode);
-                return;
-            }
-
-            const prefersDark = window.matchMedia(
-                "(prefers-color-scheme: dark)",
-            ).matches;
-            setColorMode(prefersDark ? "dark" : "light");
-        } catch {
-            setColorMode("light");
-        }
-    }, []);
-
-    useEffect(() => {
-        try {
-            window.localStorage.setItem(COLOR_MODE_STORAGE_KEY, colorMode);
-        } catch {
-            // ignore localStorage failures in constrained environments
-        }
-    }, [colorMode]);
+        const metadata = project?.metadata as
+            | Record<string, MetadataValue>
+            | undefined;
+        setColorMode(resolvePreferredColorMode(metadata));
+    }, [project?.id, project?.metadata]);
 
     const isDarkMode = colorMode === "dark";
-    const handleToggleColorMode = () => {
-        setColorMode((previous) => (previous === "dark" ? "light" : "dark"));
+    const persistColorModePreference = async (
+        nextMode: ColorMode,
+    ): Promise<void> => {
+        const appearance = getStoredGlobalAppearancePreferences();
+        saveGlobalAppearancePreferences({
+            ...appearance,
+            colorModePreference: nextMode,
+        });
+        saveGlobalColorMode(nextMode);
+
+        if (!project?.rootPath) {
+            return;
+        }
+
+        try {
+            await fetch("/api/project/preferences", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    projectPath: project.rootPath,
+                    preferences: {
+                        colorMode: nextMode,
+                    },
+                }),
+            });
+        } catch (error) {
+            console.error("Failed to persist project user preferences", error);
+        }
     };
+
+    const handleToggleColorMode = () => {
+        setColorMode((previous) => {
+            const nextMode: ColorMode = previous === "dark" ? "light" : "dark";
+            void persistColorModePreference(nextMode);
+            return nextMode;
+        });
+    };
+
+    const handleOpenProjectTypeManager = (): void => {
+        setIsSettingsMenuOpen(false);
+        setIsProjectTypesModalOpen(true);
+    };
+
+    const handleOpenPreferences = (): void => {
+        setIsSettingsMenuOpen(false);
+        setIsPreferencesModalOpen(true);
+    };
+
+    const handleOpenHelp = (): void => {
+        setIsSettingsMenuOpen(false);
+        setIsHelpModalOpen(true);
+    };
+
+    const handleCloseProject = (): void => {
+        setIsSettingsMenuOpen(false);
+        setIsPreferencesModalOpen(false);
+        setIsProjectTypesModalOpen(false);
+        setIsHelpModalOpen(false);
+
+        if (hasUnsavedEditorChanges) {
+            setIsCloseProjectConfirmOpen(true);
+            return;
+        }
+
+        onCloseProject?.();
+    };
+
+    const handleConfirmCloseProject = (): void => {
+        setIsCloseProjectConfirmOpen(false);
+        setHasUnsavedEditorChanges(false);
+        debouncedPersistContent.cancel();
+        onCloseProject?.();
+    };
+
+    useEffect(() => {
+        if (!isProjectTypesModalOpen) {
+            return;
+        }
+
+        let isCancelled = false;
+
+        const loadProjectTypes = async (): Promise<void> => {
+            setIsProjectTypesLoading(true);
+            setProjectTypesLoadError(null);
+
+            try {
+                const response = await fetch("/api/project-types");
+                if (!response.ok) {
+                    throw new Error(
+                        `Failed to load project types (${response.status})`,
+                    );
+                }
+
+                const definitions =
+                    (await response.json()) as ProjectTypeDefinition[];
+
+                if (isCancelled) {
+                    return;
+                }
+
+                const templates: ProjectTypeTemplateFile[] = definitions.map(
+                    (definition, index) => {
+                        return {
+                            fileName:
+                                definition.id?.trim().length > 0
+                                    ? `${definition.id}.json`
+                                    : `template-${index + 1}.json`,
+                            definition: {
+                                ...definition,
+                                folders: definition.folders ?? [],
+                                defaultResources:
+                                    definition.defaultResources ?? [],
+                            },
+                        };
+                    },
+                );
+
+                setProjectTypeTemplates(templates);
+            } catch (error) {
+                if (isCancelled) {
+                    return;
+                }
+
+                const message =
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to load project types";
+                setProjectTypesLoadError(message);
+            } finally {
+                if (!isCancelled) {
+                    setIsProjectTypesLoading(false);
+                }
+            }
+        };
+
+        void loadProjectTypes();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [isProjectTypesModalOpen]);
 
     return (
         <div
@@ -520,14 +812,24 @@ export default function AppShell({
                                 type="button"
                                 className="appshell-topbar-dropdown-item"
                                 role="menuitem"
-                                onClick={() => setIsSettingsMenuOpen(false)}
+                                onClick={handleOpenPreferences}
+                            >
+                                <Settings size={14} aria-hidden="true" />
+                                User Preferences
+                            </button>
+                            <button
+                                type="button"
+                                className="appshell-topbar-dropdown-item"
+                                role="menuitem"
+                                onClick={handleOpenProjectTypeManager}
                             >
                                 <SlidersHorizontal
                                     size={14}
                                     aria-hidden="true"
                                 />
-                                Placeholder option
+                                Project Type Manager
                             </button>
+                            <hr className="appshell-topbar-dropdown-separator" />
                             <button
                                 type="button"
                                 className="appshell-topbar-dropdown-item"
@@ -545,6 +847,29 @@ export default function AppShell({
                                     ? "Switch to light mode"
                                     : "Switch to dark mode"}
                             </button>
+                            <hr className="appshell-topbar-dropdown-separator" />
+                            <button
+                                type="button"
+                                className="appshell-topbar-dropdown-item"
+                                role="menuitem"
+                                onClick={handleOpenHelp}
+                            >
+                                <HelpCircle size={14} aria-hidden="true" />
+                                Help
+                            </button>
+                            {project ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        className="appshell-topbar-dropdown-item"
+                                        role="menuitem"
+                                        onClick={handleCloseProject}
+                                    >
+                                        <LogOut size={14} aria-hidden="true" />
+                                        Close Project
+                                    </button>
+                                </>
+                            ) : null}
                         </div>
                     ) : null}
                 </div>
@@ -636,6 +961,16 @@ export default function AppShell({
                     onCancel={() => setContextAction({ open: false })}
                 />
 
+                <ConfirmDialog
+                    isOpen={isCloseProjectConfirmOpen}
+                    title="Close project?"
+                    description="You have unsaved changes that may still be syncing. Close the project anyway and return to Start Page?"
+                    confirmLabel="Close Project"
+                    cancelLabel="Keep Editing"
+                    onConfirm={handleConfirmCloseProject}
+                    onCancel={() => setIsCloseProjectConfirmOpen(false)}
+                />
+
                 <CreateResourceModal
                     isOpen={createModal.open}
                     initialTitle={createModal.initialTitle}
@@ -645,6 +980,15 @@ export default function AppShell({
                         handleCreateConfirmed(payload, parentId, opts)
                     }
                     parents={folders ?? []}
+                />
+
+                <ResourceCommandPalette
+                    isOpen={isResourcePaletteOpen}
+                    resources={resources ?? []}
+                    onClose={() => setIsResourcePaletteOpen(false)}
+                    onSelectResource={(resourceId) => {
+                        onResourceSelect?.(resourceId);
+                    }}
                 />
 
                 <ExportPreviewModal
@@ -699,6 +1043,64 @@ export default function AppShell({
                     }}
                 />
 
+                {isPreferencesModalOpen ? (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="fixed inset-0 appshell-modal-backdrop"
+                            onClick={() => setIsPreferencesModalOpen(false)}
+                        />
+                        <div className="relative z-10 w-[min(820px,94vw)] max-h-[92vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl appshell-modal-panel">
+                            <UserPreferencesPage
+                                renderInModal
+                                onClose={() => setIsPreferencesModalOpen(false)}
+                            />
+                        </div>
+                    </div>
+                ) : null}
+
+                {isHelpModalOpen ? (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="fixed inset-0 appshell-modal-backdrop"
+                            onClick={() => setIsHelpModalOpen(false)}
+                        />
+                        <div className="relative z-10 w-[min(860px,94vw)] max-h-[92vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl appshell-modal-panel">
+                            <HelpPage
+                                renderInModal
+                                onClose={() => setIsHelpModalOpen(false)}
+                            />
+                        </div>
+                    </div>
+                ) : null}
+
+                {isProjectTypesModalOpen ? (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="fixed inset-0 appshell-modal-backdrop"
+                            onClick={() => setIsProjectTypesModalOpen(false)}
+                        />
+                        <div className="relative z-10 w-[min(1200px,96vw)] max-h-[92vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl appshell-modal-panel">
+                            {isProjectTypesLoading ? (
+                                <div className="p-6 text-sm text-slate-600">
+                                    Loading project types…
+                                </div>
+                            ) : projectTypesLoadError ? (
+                                <div className="p-6 text-sm text-red-700">
+                                    {projectTypesLoadError}
+                                </div>
+                            ) : (
+                                <ProjectTypesManagerPage
+                                    initialTemplates={projectTypeTemplates}
+                                    renderInModal
+                                    onClose={() =>
+                                        setIsProjectTypesModalOpen(false)
+                                    }
+                                />
+                            )}
+                        </div>
+                    </div>
+                ) : null}
+
                 {/* Left Resize Handle */}
                 {showSidebars && leftOpen ? (
                     <div
@@ -748,22 +1150,11 @@ export default function AppShell({
                                         />
                                     </div>
                                 </div>
-                                {(() => {
-                                    const selected = selectedResource;
-
-                                    if (selected) {
-                                        return (
-                                            <div className="text-lg font-bold mb-4">
-                                                {selected.name}
-                                            </div>
-                                        );
-                                    }
-                                })()}
                             </div>
                         ) : null}
                         <div className="max-w-full mx-auto">
                             <div className="workarea-container">
-                                {/* If a resource is selected, render the chosen view; otherwise render children (StartPage or prompt) */}
+                                {/* If a resource is selected, render the chosen view; otherwise render empty state or children. */}
                                 {selectedResource && combined
                                     ? (() => {
                                           if (!selectedResource)
@@ -843,17 +1234,157 @@ export default function AppShell({
                                                   );
                                           }
                                       })()
-                                    : (children ?? (
-                                          <div>
-                                              <h2 className="workarea-section-title">
-                                                  Work Area
-                                              </h2>
-                                              <p className="mt-2 text-sm text-slate-600">
-                                                  Placeholder editor and views
-                                                  go here.
-                                              </p>
-                                          </div>
-                                      ))}
+                                    : project && showSidebars
+                                      ? (() => {
+                                            return (
+                                                <section className="mx-auto w-full max-w-4xl rounded-xl border border-slate-200 bg-white p-6 md:p-8">
+                                                    <div className="flex flex-wrap items-start justify-between gap-4">
+                                                        <div>
+                                                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                                                Work Area
+                                                            </p>
+                                                            <h2 className="mt-2 text-3xl font-semibold text-slate-900">
+                                                                {project.name}
+                                                            </h2>
+                                                            <p className="mt-2 text-sm text-slate-600">
+                                                                Select a file
+                                                                from the
+                                                                resource tree,
+                                                                or create a new
+                                                                resource to
+                                                                continue.
+                                                            </p>
+                                                        </div>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setCreateModal({
+                                                                    open: true,
+                                                                    initialTitle:
+                                                                        "",
+                                                                    parentId:
+                                                                        undefined,
+                                                                })
+                                                            }
+                                                            className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
+                                                        >
+                                                            <Plus
+                                                                size={14}
+                                                                aria-hidden="true"
+                                                            />
+                                                            Create Resource
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="mt-8">
+                                                        <div className="mb-3 flex items-center justify-between">
+                                                            <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                                                Recent Files
+                                                            </h3>
+                                                            <span className="text-xs text-slate-500">
+                                                                {
+                                                                    recentResources.length
+                                                                }{" "}
+                                                                shown
+                                                            </span>
+                                                        </div>
+
+                                                        {recentResources.length >
+                                                        0 ? (
+                                                            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-slate-50">
+                                                                {recentResources.map(
+                                                                    (
+                                                                        resource,
+                                                                    ) => {
+                                                                        const icon =
+                                                                            resource.type ===
+                                                                            "image"
+                                                                                ? ImageIcon
+                                                                                : resource.type ===
+                                                                                    "audio"
+                                                                                  ? Music2
+                                                                                  : FileText;
+
+                                                                        const Icon =
+                                                                            icon;
+
+                                                                        return (
+                                                                            <li
+                                                                                key={
+                                                                                    resource.id
+                                                                                }
+                                                                            >
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() =>
+                                                                                        onResourceSelect?.(
+                                                                                            resource.id,
+                                                                                        )
+                                                                                    }
+                                                                                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-100"
+                                                                                >
+                                                                                    <span className="flex min-w-0 items-center gap-3">
+                                                                                        <Icon
+                                                                                            size={
+                                                                                                16
+                                                                                            }
+                                                                                            className="shrink-0 text-slate-500"
+                                                                                            aria-hidden="true"
+                                                                                        />
+                                                                                        <span className="min-w-0">
+                                                                                            <span className="block truncate text-sm font-medium text-slate-800">
+                                                                                                {
+                                                                                                    resource.name
+                                                                                                }
+                                                                                            </span>
+                                                                                            <span className="block text-xs text-slate-500">
+                                                                                                {
+                                                                                                    resource.type
+                                                                                                }
+                                                                                            </span>
+                                                                                        </span>
+                                                                                    </span>
+                                                                                    <span className="text-xs text-slate-500">
+                                                                                        {resource.updatedAt
+                                                                                            ? `Updated ${formatRelativeTimestamp(resource.updatedAt)}`
+                                                                                            : `Created ${formatRelativeTimestamp(resource.createdAt)}`}
+                                                                                    </span>
+                                                                                </button>
+                                                                            </li>
+                                                                        );
+                                                                    },
+                                                                )}
+                                                            </ul>
+                                                        ) : (
+                                                            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+                                                                No files yet.
+                                                                Use{" "}
+                                                                <span className="font-medium text-slate-800">
+                                                                    Create
+                                                                    Resource
+                                                                </span>{" "}
+                                                                to add your
+                                                                first text,
+                                                                image, or audio
+                                                                item.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </section>
+                                            );
+                                        })()
+                                      : (children ?? (
+                                            <div>
+                                                <h2 className="workarea-section-title">
+                                                    Work Area
+                                                </h2>
+                                                <p className="mt-2 text-sm text-slate-600">
+                                                    Placeholder editor and views
+                                                    go here.
+                                                </p>
+                                            </div>
+                                        ))}
                             </div>
                         </div>
                     </div>

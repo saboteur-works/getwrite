@@ -49,6 +49,8 @@ export default function SearchBar({
     placeholder = "Search resources...",
     onSelect,
 }: SearchBarProps): JSX.Element {
+    /** Keyboard shortcut hint label shown in the search field. */
+    const [shortcutHint, setShortcutHint] = useState<string>("⌘K / Ctrl K");
     const dispatch = useAppDispatch();
     /** Resource collection sourced from Redux state. */
     const resources = useAppSelector((s) => selectResources(s.resources));
@@ -157,6 +159,15 @@ export default function SearchBar({
 
     useEffect(() => setHighlight(0), [query]);
 
+    useEffect(() => {
+        const platform =
+            typeof navigator === "undefined" ? "" : navigator.platform;
+        const userAgent =
+            typeof navigator === "undefined" ? "" : navigator.userAgent;
+        const isMacPlatform = /mac/i.test(`${platform} ${userAgent}`);
+        setShortcutHint(isMacPlatform ? "⌘K" : "Ctrl K");
+    }, []);
+
     /**
      * Handles keyboard navigation and selection in the suggestion list.
      *
@@ -246,6 +257,9 @@ export default function SearchBar({
                     aria-label="resource-search"
                     className="searchbar-input"
                 />
+                <span className="searchbar-shortcut" aria-hidden="true">
+                    {shortcutHint}
+                </span>
             </div>
 
             {open && results.length > 0 ? (

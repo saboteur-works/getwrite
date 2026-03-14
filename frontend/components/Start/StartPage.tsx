@@ -20,6 +20,7 @@ import CreateProjectModal, {
     type CreateProjectPayload,
 } from "./CreateProjectModal";
 import ManageProjectMenu from "./ManageProjectMenu";
+import { toastService } from "../../src/lib/toast-service";
 
 /**
  * Project card data shape displayed on the start page.
@@ -47,6 +48,98 @@ export interface StartPageCreateResult {
 
 /** Non-folder resources summarized on start-page cards and package actions. */
 type StartPageRenderableResource = Exclude<AnyResource, Folder>;
+
+/**
+ * Returns the freshest available timestamp for a project card.
+ *
+ * Considers the project record, all folders, and all resources so the card
+ * reflects the most recent activity anywhere in that project.
+ *
+ * @param projectEntry - Project card data.
+ * @returns Latest timestamp string when available.
+ */
+function getProjectLastEditedTimestamp(
+    projectEntry: StartPageProjectEntry,
+): string | undefined {
+    const candidateTimestamps = [
+        projectEntry.project.updatedAt,
+        projectEntry.project.createdAt,
+        ...projectEntry.resources.flatMap((resource) => [
+            resource.updatedAt,
+            resource.createdAt,
+        ]),
+        ...projectEntry.folders.flatMap((folder) => [
+            folder.updatedAt,
+            folder.createdAt,
+        ]),
+    ].filter((timestamp): timestamp is string => Boolean(timestamp));
+
+    let latestTimestamp: string | undefined;
+    let latestValue = 0;
+
+    for (const timestamp of candidateTimestamps) {
+        const parsed = Date.parse(timestamp);
+        if (Number.isNaN(parsed)) {
+            continue;
+        }
+
+        if (!latestTimestamp || parsed > latestValue) {
+            latestTimestamp = timestamp;
+            latestValue = parsed;
+        }
+    }
+
+    return latestTimestamp;
+}
+
+/**
+ * Formats a timestamp as a compact relative label.
+ *
+ * @param timestamp - ISO timestamp to format.
+ * @param now - Current time used for relative calculations.
+ * @returns Relative label such as `2d ago`.
+ */
+function formatRelativeTimestamp(
+    timestamp: string | undefined,
+    now: number,
+): string {
+    if (!timestamp) {
+        return "just now";
+    }
+
+    const parsed = Date.parse(timestamp);
+    if (Number.isNaN(parsed)) {
+        return "just now";
+    }
+
+    const elapsedMs = Math.max(0, now - parsed);
+    const elapsedSeconds = Math.floor(elapsedMs / 1000);
+
+    if (elapsedSeconds < 5) {
+        return "just now";
+    }
+
+    if (elapsedSeconds < 60) {
+        return `${elapsedSeconds}s ago`;
+    }
+
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+    if (elapsedMinutes < 60) {
+        return `${elapsedMinutes}m ago`;
+    }
+
+    const elapsedHours = Math.floor(elapsedMinutes / 60);
+    if (elapsedHours < 24) {
+        return `${elapsedHours}h ago`;
+    }
+
+    const elapsedDays = Math.floor(elapsedHours / 24);
+    if (elapsedDays < 7) {
+        return `${elapsedDays}d ago`;
+    }
+
+    return new Date(parsed).toLocaleDateString();
+}
 
 /**
  * Narrows a canonical resource to a renderable, non-folder resource.
@@ -100,6 +193,8 @@ export default function StartPage({
         useState<StartPageProjectEntry[]>(projects);
     /** Controls the create-project modal visibility. */
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    /** Tick used to keep relative timestamps fresh while the page is open. */
+    const [timestampTick, setTimestampTick] = useState<number>(Date.now());
 
     /** Total non-folder resources across all visible projects. */
     const totalRenderableResources = useMemo<number>(() => {
@@ -164,6 +259,16 @@ export default function StartPage({
     useEffect(() => {
         setLocalProjects(projects);
     }, [projects]);
+
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            setTimestampTick(Date.now());
+        }, 30000);
+
+        return () => {
+            window.clearInterval(interval);
+        };
+    }, []);
 
     return (
         <section
@@ -322,6 +427,9 @@ export default function StartPage({
                         /** Resolved project name for the current card. */
                         const projectName =
                             projectEntry.project.name || "Untitled Project";
+                        /** Most recent project-wide activity timestamp. */
+                        const lastEditedTimestamp =
+                            getProjectLastEditedTimestamp(projectEntry);
 
                         return (
                             <article
@@ -384,8 +492,8 @@ export default function StartPage({
                                                         ? `\nSelected: ${selectedIds.join(", ")}`
                                                         : "";
 
-                                                window.alert(
-                                                    `Package placeholder for ${selectedProject?.project.name ?? id}${selectedText}`,
+                                                toastService.info(
+                                                    `Package ${selectedProject?.project.name ?? id}${selectedText ? " (" + selectedIds?.length + " selected)" : " (all resources)"}`,
                                                 );
                                             }}
                                             resources={resourceList}
@@ -400,6 +508,14 @@ export default function StartPage({
                                         {projectEntry.folders.length === 1
                                             ? ""
                                             : "s"}
+                                    </p>
+
+                                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-neutral-500">
+                                        Last edited{" "}
+                                        {formatRelativeTimestamp(
+                                            lastEditedTimestamp,
+                                            timestampTick,
+                                        )}
                                     </p>
 
                                     <div className="mt-4 flex flex-wrap gap-2 text-xs text-ink-700">

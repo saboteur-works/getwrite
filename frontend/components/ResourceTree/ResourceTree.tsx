@@ -54,7 +54,9 @@ import { shallowEqual } from "react-redux";
 import {
     ChevronDown,
     ChevronRight,
-    FileIcon,
+    FileTextIcon,
+    ImageIcon,
+    AudioIcon,
     FolderIcon,
 } from "./ResourceTreeIcons";
 import { uniq } from "lodash";
@@ -91,6 +93,8 @@ interface ResourceItemData {
     resourceId: string;
     /** Zero-based index that controls sibling sort order within a parent. */
     orderIndex: number;
+    /** Resource type: `"text"`, `"image"`, `"audio"`, or `"folder"`. */
+    resourceType: "text" | "image" | "audio" | "folder";
 }
 
 /**
@@ -159,6 +163,7 @@ function transformResourcesToTreeData(
             isFolder: true,
             parentId: null,
             orderIndex: 0,
+            resourceType: "folder",
         },
     };
 
@@ -185,6 +190,7 @@ function transformResourcesToTreeData(
                     ? currentResource.special
                     : undefined,
             orderIndex: currentResource.orderIndex || 0,
+            resourceType: currentResource.type,
         };
 
         // Check if the parent resource is already in the data object; if not, add a placeholder for it (this can happen if a child resource is processed before its parent)
@@ -200,6 +206,7 @@ function transformResourcesToTreeData(
                 parentId: null,
                 special: undefined,
                 orderIndex: 0,
+                resourceType: "folder",
             };
         }
 
@@ -340,15 +347,31 @@ export default function ResourceTree({
     };
 
     /**
-     * Returns the appropriate icon element for a tree node.
+     * Returns the appropriate icon element for a tree node based on resource type.
      *
-     * Folders receive a `FolderIcon`; all other resources receive a `FileIcon`.
+     * - Folders receive a `FolderIcon`
+     * - Text resources receive a `FileTextIcon`
+     * - Image resources receive an `ImageIcon`
+     * - Audio resources receive an `AudioIcon`
      *
      * @param item - The tree item to render an icon for.
-     * @returns A React icon element.
+     * @returns A React icon element matching the resource type.
      */
     const renderResourceIcon = (item: ItemInstance<ResourceItemData>) => {
-        return item.isFolder() ? <FolderIcon /> : <FileIcon />;
+        const resourceType = item.getItemData().resourceType;
+
+        switch (resourceType) {
+            case "folder":
+                return <FolderIcon />;
+            case "text":
+                return <FileTextIcon />;
+            case "image":
+                return <ImageIcon />;
+            case "audio":
+                return <AudioIcon />;
+            default:
+                return <FileTextIcon />;
+        }
     };
 
     /**

@@ -6,6 +6,7 @@ import CompilePreviewModal from "../common/CompilePreviewModal";
 import type { AnyResource } from "../../src/lib/models/types";
 import { selectProject } from "../../src/store/projectsSlice";
 import useAppSelector from "../../src/store/hooks";
+import { toastService } from "../../src/lib/toast-service";
 
 export interface ManageProjectMenuProps {
     projectId: string;
@@ -67,6 +68,7 @@ export default function ManageProjectMenu({
         if (onRename) onRename(projectId, trimmed);
         setEditing(false);
         setOpen(false);
+        toastService.success("Project renamed", trimmed);
     };
 
     const handleDeleteConfirm = (): void => {
@@ -77,9 +79,11 @@ export default function ManageProjectMenu({
             body: JSON.stringify({ projectPath: projectFromStore?.rootPath }),
         }).catch((err) => {
             console.error("Failed to delete project:", err);
+            toastService.error("Failed to delete project", "Please try again");
         });
         setConfirmDeleteOpen(false);
         setOpen(false);
+        toastService.success("Project deleted", projectName);
     };
 
     const handlePackageConfirm = (): void => {
@@ -87,12 +91,16 @@ export default function ManageProjectMenu({
         if (onPackage) onPackage(projectId);
         setConfirmPackageOpen(false);
         setOpen(false);
+        toastService.info("Package created");
     };
 
     const handleConfirmCompile = (selectedIds: string[]) => {
         if (onPackage) onPackage(projectId, selectedIds);
         setCompileOpen(false);
         setOpen(false);
+        toastService.info(
+            `Package created (${selectedIds.length || "all"} resources)`,
+        );
     };
 
     // Implementation notes: `menuRef` ensures outside-click detection. Rename only
