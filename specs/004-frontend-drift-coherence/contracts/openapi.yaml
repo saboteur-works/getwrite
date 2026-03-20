@@ -1,0 +1,331 @@
+openapi: 3.0.3
+info:
+    title: GetWrite Frontend Drift Analysis Artifacts
+    version: 0.1.0
+    description: >-
+        Conceptual contract for the structured planning outputs produced by spec 004.
+        These endpoints describe the shape of generated analysis artifacts and serve as
+        a contract for later task execution, not as a commitment to a deployed runtime API.
+
+paths:
+    /analysis/drift-report:
+        post:
+            summary: Generate or update the frontend drift report for the current planning pass
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DriftReportRequest"
+            responses:
+                "200":
+                    description: Drift report generated
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DriftReport"
+
+    /analysis/style-contract:
+        post:
+            summary: Generate or update style rules derived from exemplar repository code
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/StyleContractRequest"
+            responses:
+                "200":
+                    description: Style contract generated
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/StyleContract"
+
+    /analysis/execution-blueprint:
+        post:
+            summary: Generate a prioritized execution blueprint from drift findings and style rules
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ExecutionBlueprintRequest"
+            responses:
+                "200":
+                    description: Execution blueprint generated
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ExecutionBlueprint"
+
+    /analysis/verification-gates:
+        post:
+            summary: Generate verification gates for the planned refactor initiatives
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/VerificationGateRequest"
+            responses:
+                "200":
+                    description: Verification gates generated
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/VerificationGateSet"
+
+components:
+    schemas:
+        DriftReportRequest:
+            type: object
+            required:
+                - scope
+                - authorityReferences
+            properties:
+                scope:
+                    type: string
+                    example: frontend-only
+                authorityReferences:
+                    type: array
+                    items:
+                        type: string
+                domains:
+                    type: array
+                    items:
+                        type: string
+
+        DriftReport:
+            type: object
+            required:
+                - findings
+                - domainCoverage
+            properties:
+                findings:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/DriftFinding"
+                domainCoverage:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/DomainCoverage"
+
+        DriftFinding:
+            type: object
+            required:
+                - id
+                - domain
+                - targetArea
+                - driftTypes
+                - riskLevel
+                - invariantImpact
+                - evidenceSummary
+            properties:
+                id:
+                    type: string
+                domain:
+                    type: string
+                targetArea:
+                    type: string
+                driftTypes:
+                    type: array
+                    items:
+                        type: string
+                        enum:
+                            [
+                                size,
+                                responsibility,
+                                architectural-boundary,
+                                duplication,
+                                standards,
+                            ]
+                riskLevel:
+                    type: string
+                    enum: [High, Medium, Low]
+                invariantImpact:
+                    type: array
+                    items:
+                        type: string
+                        enum:
+                            [
+                                workspace,
+                                revisions+canonical,
+                                resource-identity,
+                                compile,
+                                token-system,
+                                none,
+                            ]
+                evidenceSummary:
+                    type: string
+                recommendedDirection:
+                    type: string
+
+        DomainCoverage:
+            type: object
+            required:
+                - domain
+                - coverageStatus
+            properties:
+                domain:
+                    type: string
+                coverageStatus:
+                    type: string
+                    enum: [finding-recorded, no-material-drift]
+                linkedFindingIds:
+                    type: array
+                    items:
+                        type: string
+                notes:
+                    type: string
+
+        StyleContractRequest:
+            type: object
+            required:
+                - exemplarReferences
+            properties:
+                exemplarReferences:
+                    type: array
+                    items:
+                        type: string
+
+        StyleContract:
+            type: object
+            required:
+                - rules
+            properties:
+                rules:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/StyleRule"
+
+        StyleRule:
+            type: object
+            required:
+                - id
+                - category
+                - rule
+                - antiPattern
+                - sourceExamples
+            properties:
+                id:
+                    type: string
+                category:
+                    type: string
+                    enum:
+                        [
+                            type-safety,
+                            module-responsibility,
+                            state-management,
+                            error-handling,
+                            react-shape,
+                            styling,
+                        ]
+                rule:
+                    type: string
+                antiPattern:
+                    type: string
+                sourceExamples:
+                    type: array
+                    items:
+                        type: string
+
+        ExecutionBlueprintRequest:
+            type: object
+            required:
+                - findings
+                - styleRules
+            properties:
+                findings:
+                    type: array
+                    items:
+                        type: string
+                styleRules:
+                    type: array
+                    items:
+                        type: string
+
+        ExecutionBlueprint:
+            type: object
+            required:
+                - items
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ExecutionBlueprintItem"
+
+        ExecutionBlueprintItem:
+            type: object
+            required:
+                - id
+                - title
+                - priority
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                priority:
+                    type: integer
+                dependsOn:
+                    type: array
+                    items:
+                        type: string
+                parallelizable:
+                    type: boolean
+                nonGoals:
+                    type: array
+                    items:
+                        type: string
+                behaviorGuardrails:
+                    type: array
+                    items:
+                        type: string
+
+        VerificationGateRequest:
+            type: object
+            required:
+                - blueprintItemIds
+            properties:
+                blueprintItemIds:
+                    type: array
+                    items:
+                        type: string
+
+        VerificationGateSet:
+            type: object
+            required:
+                - gates
+            properties:
+                gates:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/VerificationGate"
+
+        VerificationGate:
+            type: object
+            required:
+                - id
+                - targetArea
+            properties:
+                id:
+                    type: string
+                targetArea:
+                    type: string
+                testTargets:
+                    type: array
+                    items:
+                        type: string
+                manualChecks:
+                    type: array
+                    items:
+                        type: string
+                invariantChecks:
+                    type: array
+                    items:
+                        type: string
+                artifactChecks:
+                    type: array
+                    items:
+                        type: string
