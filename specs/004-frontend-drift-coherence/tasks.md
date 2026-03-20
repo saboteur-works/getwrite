@@ -36,10 +36,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T006 [P] [US1] Document drift findings for app shell, work area/editor, resource tree, modal flows, and sidebar metadata domains in `specs/004-frontend-drift-coherence/drift-inventory.md`
-- [ ] T007 [P] [US1] Document drift findings for model utilities, Redux slices, project types manager, help surface, and editor menu duplication in `specs/004-frontend-drift-coherence/drift-inventory.md`
-- [ ] T008 [US1] Rank all documented findings and annotate each with drift type, risk level, invariant impact, evidence summary, and recommended direction in `specs/004-frontend-drift-coherence/drift-inventory.md`
-- [ ] T009 [US1] Complete the domain coverage table and add explicit `no material drift` notes for any in-scope domain without a hotspot in `specs/004-frontend-drift-coherence/drift-inventory.md`
+- [x] T006 [P] [US1] Document drift findings for app shell, work area/editor, resource tree, modal flows, and sidebar metadata domains in `specs/004-frontend-drift-coherence/drift-inventory.md`
+- [x] T007 [P] [US1] Document drift findings for model utilities, Redux slices, project types manager, help surface, and editor menu duplication in `specs/004-frontend-drift-coherence/drift-inventory.md`
+- [x] T008 [US1] Rank all documented findings and annotate each with drift type, risk level, invariant impact, evidence summary, and recommended direction in `specs/004-frontend-drift-coherence/drift-inventory.md`
+- [x] T009 [US1] Complete the domain coverage table and add explicit `no material drift` notes for any in-scope domain without a hotspot in `specs/004-frontend-drift-coherence/drift-inventory.md`
 
 **Checkpoint**: User Story 1 is complete when the drift inventory alone can guide hotspot prioritization without requiring additional clarification.
 
@@ -53,10 +53,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T010 [P] [US2] Capture exemplar observations from `frontend/src/lib/models/revision-manager.ts`, `frontend/src/lib/models/resource.ts`, `frontend/src/lib/models/schemas.ts`, and `frontend/src/lib/models/uuid.ts` in `specs/004-frontend-drift-coherence/style-contract.md`
-- [ ] T011 [P] [US2] Capture exemplar observations from `frontend/src/store/resourcesSlice.ts`, `frontend/src/store/store.ts`, `frontend/src/store/hooks.ts`, `frontend/src/lib/projectTypes.ts`, `frontend/src/lib/toast-service.ts`, `frontend/components/Sidebar/controls/MultiSelectList.tsx`, and `frontend/components/common/ConfirmDialog.tsx` in `specs/004-frontend-drift-coherence/style-contract.md`
-- [ ] T012 [US2] Convert exemplar observations into keep-rules and anti-patterns for type safety, module responsibility, state management, error handling, React component shape, and styling in `specs/004-frontend-drift-coherence/style-contract.md`
-- [ ] T013 [US2] Add tie-breaker guidance that resolves conflicting examples in favor of product invariants, repository standards, and token-first consistency in `specs/004-frontend-drift-coherence/style-contract.md`
+- [x] T010 [P] [US2] Capture exemplar observations from `frontend/src/lib/models/revision-manager.ts`, `frontend/src/lib/models/resource.ts`, `frontend/src/lib/models/schemas.ts`, and `frontend/src/lib/models/uuid.ts` in `specs/004-frontend-drift-coherence/style-contract.md`
+- [x] T011 [P] [US2] Capture exemplar observations from `frontend/src/store/resourcesSlice.ts`, `frontend/src/store/store.ts`, `frontend/src/store/hooks.ts`, `frontend/src/lib/projectTypes.ts`, `frontend/src/lib/toast-service.ts`, `frontend/components/Sidebar/controls/MultiSelectList.tsx`, and `frontend/components/common/ConfirmDialog.tsx` in `specs/004-frontend-drift-coherence/style-contract.md`
+- [x] T012 [US2] Convert exemplar observations into keep-rules and anti-patterns for type safety, module responsibility, state management, error handling, React component shape, and styling in `specs/004-frontend-drift-coherence/style-contract.md`
+- [x] T013 [US2] Add tie-breaker guidance that resolves conflicting examples in favor of product invariants, repository standards, and token-first consistency in `specs/004-frontend-drift-coherence/style-contract.md`
 
 **Checkpoint**: User Story 2 is complete when maintainers can choose between competing refactor options by consulting the style contract alone.
 
