@@ -11,8 +11,8 @@
 
 **Purpose**: Create the artifact files and directories that the analysis will fill.
 
-- [ ] T001 Create the planning artifact files `specs/004-frontend-drift-coherence/drift-inventory.md`, `specs/004-frontend-drift-coherence/style-contract.md`, `specs/004-frontend-drift-coherence/execution-blueprint.md`, and `specs/004-frontend-drift-coherence/verification-gates.md`
-- [ ] T002 Create the hotspot seam directory `specs/004-frontend-drift-coherence/seams/` and the seam documents `specs/004-frontend-drift-coherence/seams/AppShell.md`, `specs/004-frontend-drift-coherence/seams/resource-templates.md`, `specs/004-frontend-drift-coherence/seams/ProjectTypesManagerPage.md`, `specs/004-frontend-drift-coherence/seams/revisionsSlice.md`, `specs/004-frontend-drift-coherence/seams/EditView.md`, `specs/004-frontend-drift-coherence/seams/ResourceTree.md`, `specs/004-frontend-drift-coherence/seams/HelpPage.md`, `specs/004-frontend-drift-coherence/seams/MenuBar.md`, and `specs/004-frontend-drift-coherence/seams/projectsSlice.md`
+- [x] T001 Create the planning artifact files `specs/004-frontend-drift-coherence/drift-inventory.md`, `specs/004-frontend-drift-coherence/style-contract.md`, `specs/004-frontend-drift-coherence/execution-blueprint.md`, and `specs/004-frontend-drift-coherence/verification-gates.md`
+- [x] T002 Create the hotspot seam directory `specs/004-frontend-drift-coherence/seams/` and the seam documents `specs/004-frontend-drift-coherence/seams/AppShell.md`, `specs/004-frontend-drift-coherence/seams/resource-templates.md`, `specs/004-frontend-drift-coherence/seams/ProjectTypesManagerPage.md`, `specs/004-frontend-drift-coherence/seams/revisionsSlice.md`, `specs/004-frontend-drift-coherence/seams/EditView.md`, `specs/004-frontend-drift-coherence/seams/ResourceTree.md`, `specs/004-frontend-drift-coherence/seams/HelpPage.md`, `specs/004-frontend-drift-coherence/seams/MenuBar.md`, and `specs/004-frontend-drift-coherence/seams/projectsSlice.md`
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -20,9 +20,9 @@
 
 **⚠️ CRITICAL**: No user story work should begin until these shared definitions exist.
 
-- [ ] T003 Define the shared drift taxonomy, risk rubric, invariant-impact legend, and domain coverage table structure in `specs/004-frontend-drift-coherence/drift-inventory.md`, including explicit `High` criteria: invariant impact not `none` or cross-domain blast radius.
-- [ ] T004 [P] Define the exemplar capture format, rule categories, and anti-pattern sections in `specs/004-frontend-drift-coherence/style-contract.md`
-- [ ] T005 [P] Define the common section structure for sequencing, non-goals, guardrails, and verification criteria in `specs/004-frontend-drift-coherence/execution-blueprint.md` and `specs/004-frontend-drift-coherence/verification-gates.md`
+- [x] T003 Define the shared drift taxonomy, risk rubric, invariant-impact legend, and domain coverage table structure in `specs/004-frontend-drift-coherence/drift-inventory.md`, including explicit `High` criteria: invariant impact not `none` or cross-domain blast radius.
+- [x] T004 [P] Define the exemplar capture format, rule categories, and anti-pattern sections in `specs/004-frontend-drift-coherence/style-contract.md`
+- [x] T005 [P] Define the common section structure for sequencing, non-goals, guardrails, and verification criteria in `specs/004-frontend-drift-coherence/execution-blueprint.md` and `specs/004-frontend-drift-coherence/verification-gates.md`
 
 **Checkpoint**: The shared planning structure is in place and user-story artifact work can proceed.
 
