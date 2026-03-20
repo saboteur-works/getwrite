@@ -70,13 +70,13 @@
 
 ### Implementation for User Story 3
 
-- [ ] T014 [P] [US3] Define refactor seams, dependency order, blast radius, and public-behavior guardrails in `specs/004-frontend-drift-coherence/seams/AppShell.md`, `specs/004-frontend-drift-coherence/seams/EditView.md`, and `specs/004-frontend-drift-coherence/seams/ResourceTree.md`
-- [ ] T015 [P] [US3] Define refactor seams, dependency order, blast radius, and public-behavior guardrails in `specs/004-frontend-drift-coherence/seams/resource-templates.md`, `specs/004-frontend-drift-coherence/seams/revisionsSlice.md`, and `specs/004-frontend-drift-coherence/seams/projectsSlice.md`
-- [ ] T016 [P] [US3] Define refactor seams, dependency order, blast radius, and public-behavior guardrails in `specs/004-frontend-drift-coherence/seams/ProjectTypesManagerPage.md`, `specs/004-frontend-drift-coherence/seams/HelpPage.md`, and `specs/004-frontend-drift-coherence/seams/MenuBar.md`
-- [ ] T017 [US3] Add style-alignment mappings from `specs/004-frontend-drift-coherence/style-contract.md` to every seam document in `specs/004-frontend-drift-coherence/seams/*.md`
-- [ ] T018 [US3] Build the prioritized hotspot order, dependency graph, parallel execution tracks, and explicit non-goals in `specs/004-frontend-drift-coherence/execution-blueprint.md`
-- [ ] T019 [US3] Add per-hotspot behavior guardrails and rationale for sequencing choices in `specs/004-frontend-drift-coherence/execution-blueprint.md`
-- [ ] T020 [US3] Define per-hotspot verification gates, including future test targets, manual checks (explicit accessibility and responsiveness checks), invariant checks, and artifact checks, in `specs/004-frontend-drift-coherence/verification-gates.md`
+- [x] T014 [P] [US3] Define refactor seams, dependency order, blast radius, and public-behavior guardrails in `specs/004-frontend-drift-coherence/seams/AppShell.md`, `specs/004-frontend-drift-coherence/seams/EditView.md`, and `specs/004-frontend-drift-coherence/seams/ResourceTree.md`
+- [x] T015 [P] [US3] Define refactor seams, dependency order, blast radius, and public-behavior guardrails in `specs/004-frontend-drift-coherence/seams/resource-templates.md`, `specs/004-frontend-drift-coherence/seams/revisionsSlice.md`, and `specs/004-frontend-drift-coherence/seams/projectsSlice.md`
+- [x] T016 [P] [US3] Define refactor seams, dependency order, blast radius, and public-behavior guardrails in `specs/004-frontend-drift-coherence/seams/ProjectTypesManagerPage.md`, `specs/004-frontend-drift-coherence/seams/HelpPage.md`, and `specs/004-frontend-drift-coherence/seams/MenuBar.md`
+- [x] T017 [US3] Add style-alignment mappings from `specs/004-frontend-drift-coherence/style-contract.md` to every seam document in `specs/004-frontend-drift-coherence/seams/*.md`
+- [x] T018 [US3] Build the prioritized hotspot order, dependency graph, parallel execution tracks, and explicit non-goals in `specs/004-frontend-drift-coherence/execution-blueprint.md`
+- [x] T019 [US3] Add per-hotspot behavior guardrails and rationale for sequencing choices in `specs/004-frontend-drift-coherence/execution-blueprint.md`
+- [x] T020 [US3] Define per-hotspot verification gates, including future test targets, manual checks (explicit accessibility and responsiveness checks), invariant checks, and artifact checks, in `specs/004-frontend-drift-coherence/verification-gates.md`
 
 **Checkpoint**: User Story 3 is complete when reviewers can sequence and evaluate future refactor initiatives without inventing new criteria.
 
