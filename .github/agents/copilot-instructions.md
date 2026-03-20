@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2026-02-16
 
 ## Active Technologies
+- TypeScript 5.9.3, Node 22.16.0, Markdown/OpenAPI artifacts + Next.js 16.1.6, React 19.2.4, Redux Toolkit 2.11.2, Zod 4.3.6, Vitest 4.0.18, Playwright 1.58.2 (004-frontend-drift-coherence)
+- Repository-local planning artifacts under `specs/004-frontend-drift-coherence/`; source evidence from `frontend/`, `docs/`, and `experiments-nopush/` (004-frontend-drift-coherence)
 
 - (001-ui-getwrite-skeleton)
 
@@ -23,6 +25,7 @@ tests/
 : Follow standard conventions
 
 ## Recent Changes
+- 004-frontend-drift-coherence: Added TypeScript 5.9.3, Node 22.16.0, Markdown/OpenAPI artifacts + Next.js 16.1.6, React 19.2.4, Redux Toolkit 2.11.2, Zod 4.3.6, Vitest 4.0.18, Playwright 1.58.2
 - 003-add-project-types: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 - 001-ui-getwrite-skeleton: Added
