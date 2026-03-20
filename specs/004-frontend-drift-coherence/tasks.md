@@ -86,10 +86,10 @@
 
 **Purpose**: Ensure the generated planning artifacts are internally consistent and ready for task execution.
 
-- [ ] T021 [P] Reconcile terminology, cross-links, and scope statements across `specs/004-frontend-drift-coherence/spec.md`, `specs/004-frontend-drift-coherence/plan.md`, `specs/004-frontend-drift-coherence/research.md`, `specs/004-frontend-drift-coherence/data-model.md`, `specs/004-frontend-drift-coherence/quickstart.md`, `specs/004-frontend-drift-coherence/contracts/openapi.yaml`, and the generated analysis artifacts in `specs/004-frontend-drift-coherence/`
-- [ ] T022 Run the quickstart validation workflow in `specs/004-frontend-drift-coherence/quickstart.md` and perform a final completeness review against the success criteria in `specs/004-frontend-drift-coherence/spec.md`
-- [ ] T023 [P] Add and run an automated artifact-consistency check (headings/required sections/cross-link presence) over `specs/004-frontend-drift-coherence/*.md` and `specs/004-frontend-drift-coherence/seams/*.md`, then record outcomes in `specs/004-frontend-drift-coherence/verification-gates.md`
-- [ ] T024 Add a security/privacy confirmation section to `specs/004-frontend-drift-coherence/verification-gates.md` that verifies the analysis process is local-only and does not require exposing project content outside the repository context
+- [x] T021 [P] Reconcile terminology, cross-links, and scope statements across `specs/004-frontend-drift-coherence/spec.md`, `specs/004-frontend-drift-coherence/plan.md`, `specs/004-frontend-drift-coherence/research.md`, `specs/004-frontend-drift-coherence/data-model.md`, `specs/004-frontend-drift-coherence/quickstart.md`, `specs/004-frontend-drift-coherence/contracts/openapi.yaml`, and the generated analysis artifacts in `specs/004-frontend-drift-coherence/`
+- [x] T022 Run the quickstart validation workflow in `specs/004-frontend-drift-coherence/quickstart.md` and perform a final completeness review against the success criteria in `specs/004-frontend-drift-coherence/spec.md`
+- [x] T023 [P] Add and run an automated artifact-consistency check (headings/required sections/cross-link presence) over `specs/004-frontend-drift-coherence/*.md` and `specs/004-frontend-drift-coherence/seams/*.md`, then record outcomes in `specs/004-frontend-drift-coherence/verification-gates.md`
+- [x] T024 Add a security/privacy confirmation section to `specs/004-frontend-drift-coherence/verification-gates.md` that verifies the analysis process is local-only and does not require exposing project content outside the repository context
 
 ---
 

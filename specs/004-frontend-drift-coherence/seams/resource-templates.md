@@ -1,7 +1,3 @@
-# Resource Templates Seam
-
-Refactor seam definition placeholder for resource template hotspots.
-
 # Resource Templates Seam (Model Utilities)
 
 **Finding**: DF-006 · Rank 5 · Risk: High · Invariant Impact: resource-identity

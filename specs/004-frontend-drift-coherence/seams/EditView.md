@@ -1,9 +1,5 @@
 # EditView Seam
 
-Refactor seam definition placeholder for EditView hotspot.
-
-# EditView Seam
-
 **Finding**: DF-002 · Rank 2 · Risk: High · Invariant Impact: revisions+canonical
 **Target**: `frontend/components/WorkArea/EditView.tsx` (637 lines)
 **Drift Types**: responsibility, architectural-boundary, size

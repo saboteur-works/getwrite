@@ -1,9 +1,5 @@
 # MenuBar Seam
 
-Refactor seam definition placeholder for MenuBar hotspot.
-
-# MenuBar Seam
-
 **Finding**: DF-010 · Rank 8 · Risk: Medium · Invariant Impact: none
 **Target**: `frontend/components/Editor/MenuBar/MenuBar.tsx`, `EditorMenuInput.tsx`, `EditorMenuColorSubmenu.tsx`
 **Drift Types**: duplication, responsibility, standards

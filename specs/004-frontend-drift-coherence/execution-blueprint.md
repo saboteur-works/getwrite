@@ -1,31 +1,5 @@
 # Execution Blueprint
 
-This artifact captures prioritized hotspot sequencing, dependencies, parallel tracks, non-goals, and behavior guardrails for spec 004.
-
-## Sequencing Structure
-
-| Priority | Hotspot      | Depends On | Parallel Track | Rationale                  |
-| -------- | ------------ | ---------- | -------------- | -------------------------- |
-| 1        | hotspot-name | none       | A/B/C          | short sequencing rationale |
-
-## Non-Goals
-
-Each hotspot must include explicit exclusions to prevent scope creep.
-
-| Hotspot      | Non-Goal        | Reason Excluded          |
-| ------------ | --------------- | ------------------------ |
-| hotspot-name | excluded change | kept out of current seam |
-
-## Behavior Guardrails
-
-Each hotspot must restate behavior that cannot change.
-
-| Hotspot      | Guardrail                    | Invariant Link                                                            | Failure Signal                 |
-| ------------ | ---------------------------- | ------------------------------------------------------------------------- | ------------------------------ |
-| hotspot-name | preserved behavior statement | workspace/revisions+canonical/resource-identity/compile/token-system/none | what would indicate regression |
-
-# Execution Blueprint
-
 This artifact captures the prioritized refactor order, dependency graph, parallel execution tracks, non-goals, and per-hotspot behavior guardrails for spec 004.
 
 ---
@@ -93,6 +67,17 @@ The rule: **technical dependency takes precedence over drift rank when they conf
 | Track C | resource-templates → template-service → ProjectTypesManagerPage | `schemas.ts` stable | Can start in parallel; merges into Track A dependency when AppShell is reached         |
 | Track D | MenuBar (any time)                                              | none                | Fully independent; schedule opportunistically                                          |
 | Track E | HelpPage (any time)                                             | none                | Fully independent; lowest risk; good onboarding task                                   |
+
+---
+
+## Deferred Hotspot Notes
+
+Two Medium-risk findings from `drift-inventory.md` are not included in the prioritized hotspot order. Both lack invariant impact and are independent of the critical execution path. They are explicitly deferred, not omitted.
+
+| Finding | Domain           | Risk   | Drift Types                                         | Deferral Rationale                                                                                                                                                                                                                                                   |
+| ------- | ---------------- | ------ | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DF-004  | modal flows      | Medium | responsibility, duplication, architectural-boundary | Modal trigger and lifecycle concerns are partially addressed in the AppShell seam (DF-001). The remaining centralization work — collapsing duplicated close/confirm patterns — is isolated and low blast-radius. Address opportunistically after AppShell (Track A). |
+| DF-005  | sidebar metadata | Medium | standards, responsibility, duplication              | `MetadataSidebar.tsx` selector duplication and `as any` casts are localized to one component with no invariant impact. Safe to address standalone or alongside Track D/E work.                                                                                       |
 
 ---
 

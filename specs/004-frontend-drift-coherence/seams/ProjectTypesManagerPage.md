@@ -1,9 +1,5 @@
 # ProjectTypesManagerPage Seam
 
-Refactor seam definition placeholder for Project Types Manager hotspot.
-
-# ProjectTypesManagerPage Seam
-
 **Finding**: DF-008 · Rank 4 · Risk: High · Invariant Impact: workspace
 **Target**: `frontend/components/project-types/ProjectTypesManagerPage.tsx` (838 lines)
 **Drift Types**: size, responsibility, standards

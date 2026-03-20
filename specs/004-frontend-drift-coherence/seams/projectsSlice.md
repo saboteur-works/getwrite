@@ -1,9 +1,5 @@
 # Projects Slice Seam
 
-Refactor seam definition placeholder for projects slice hotspot.
-
-# Projects Slice Seam
-
 **Finding**: DF-007 (projectsSlice component) · Rank 1 (shared with revisionsSlice) · Risk: High · Invariant Impact: revisions+canonical (indirect, via project state mutation)
 **Target**: `frontend/src/store/projectsSlice.ts`
 **Drift Types**: responsibility, standards

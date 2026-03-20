@@ -1,9 +1,5 @@
 # Revisions Slice Seam
 
-Refactor seam definition placeholder for revisions slice hotspot.
-
-# Revisions Slice Seam
-
 **Finding**: DF-007 · Rank 1 · Risk: High · Invariant Impact: revisions+canonical
 **Target**: `frontend/src/store/revisionsSlice.ts` (884 lines)
 **Drift Types**: size, responsibility, architectural-boundary

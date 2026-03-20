@@ -1,9 +1,5 @@
 # ResourceTree Seam
 
-Refactor seam definition placeholder for ResourceTree hotspot.
-
-# ResourceTree Seam
-
 **Finding**: DF-003 · Rank 3 · Risk: High · Invariant Impact: resource-identity
 **Target**: `frontend/components/ResourceTree/ResourceTree.tsx` (600 lines)
 **Drift Types**: responsibility, architectural-boundary, size

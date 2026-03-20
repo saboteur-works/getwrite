@@ -157,3 +157,63 @@ This artifact captures per-hotspot verification gates for spec 004, including fu
 | 3    | VG-004 (EditView), VG-005 (ResourceTree), VG-006 (ProjectTypesManagerPage) | VG-002 for VG-004; VG-001 for VG-005 and VG-006 |
 | 4    | VG-007 (AppShell)                                                          | VG-004 and VG-006 both passed                   |
 | Any  | VG-008 (MenuBar), VG-009 (HelpPage)                                        | No dependency; exercise whenever convenient     |
+
+---
+
+## T023 Artifact-Consistency Check Record (2026-03-20)
+
+Automated consistency check performed across all `specs/004-frontend-drift-coherence/*.md` and `specs/004-frontend-drift-coherence/seams/*.md` artifacts.
+
+### Heading Presence
+
+| Artifact                           | Required Sections                                                                                                                                    | Result |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| `drift-inventory.md`               | Drift Taxonomy, Risk Rubric, Invariant-Impact Legend, Findings Register, Domain Coverage                                                             | PASS   |
+| `style-contract.md`                | Exemplar Capture Format, Rule Categories, Exemplar Observations, Keep-Rules, Anti-Patterns, Tie-Breaker Guidance                                     | PASS   |
+| `execution-blueprint.md`           | Sequencing Rationale, Prioritized Hotspot Order, Dependency Graph, Parallel Execution Tracks, Deferred Hotspot Notes, Non-Goals, Behavior Guardrails | PASS   |
+| `verification-gates.md`            | Manual Check Baseline, Invariant Check Baseline, Verification Gates, Gate Sequencing                                                                 | PASS   |
+| `seams/AppShell.md`                | Overview, Seam Splits, Dependency Order, Blast Radius, Public-Behavior Guardrails, Non-Goals, Style-Alignment Mappings                               | PASS   |
+| `seams/EditView.md`                | All required sections                                                                                                                                | PASS   |
+| `seams/HelpPage.md`                | All required sections                                                                                                                                | PASS   |
+| `seams/MenuBar.md`                 | All required sections                                                                                                                                | PASS   |
+| `seams/projectsSlice.md`           | All required sections                                                                                                                                | PASS   |
+| `seams/ProjectTypesManagerPage.md` | All required sections                                                                                                                                | PASS   |
+| `seams/resource-templates.md`      | All required sections                                                                                                                                | PASS   |
+| `seams/ResourceTree.md`            | All required sections                                                                                                                                | PASS   |
+| `seams/revisionsSlice.md`          | All required sections                                                                                                                                | PASS   |
+
+### Placeholder Removal
+
+| Check                                                            | Result                               |
+| ---------------------------------------------------------------- | ------------------------------------ |
+| No `placeholder` or `hotspot-name` text in any artifact          | PASS — 0 matches across all 13 files |
+| Duplicate template headers removed from all seam files           | PASS — 9 seam files cleaned          |
+| Duplicate template section removed from `execution-blueprint.md` | PASS                                 |
+
+### Cross-Link Consistency
+
+| Check                                                                              | Result                                            |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------- |
+| DF- finding IDs present and consistent in seam files and blueprint                 | PASS — DF-001 through DF-010 correctly referenced |
+| SR-/AP-/TB- style rule IDs present in all seam `Style-Alignment Mappings` sections | PASS — all 9 seam files contain SR- rule mappings |
+| VG-001 through VG-009 defined and sequenced in `verification-gates.md`             | PASS                                              |
+| Deferred findings DF-004 and DF-005 explicitly noted in `execution-blueprint.md`   | PASS                                              |
+
+**Overall T023 Result**: PASS — artifacts are internally consistent and ready for task execution.
+
+---
+
+## Security and Privacy Confirmation (T024)
+
+This section verifies that the analysis process for spec 004 is local-only and does not require exposing project content outside the repository context. This addresses the **Security & Privacy** non-functional requirement in `spec.md`.
+
+| Verification Item                                                                                                    | Expected       | Status | Notes                                                                                                                    |
+| -------------------------------------------------------------------------------------------------------------------- | -------------- | ------ | ------------------------------------------------------------------------------------------------------------------------ |
+| All analysis artifacts are stored under `specs/004-frontend-drift-coherence/` within the repository                  | Local-only     | PASS   | No artifact is published to an external store or service                                                                 |
+| No analysis step requires uploading source code to an external API or service                                        | None permitted | PASS   | All evidence was gathered by reading files within the local `frontend/`, `docs/`, and `experiments-nopush/` directories  |
+| No credentials, tokens, environment secrets, or user-generated project content appear in any artifact                | None permitted | PASS   | Artifacts contain only structural code pattern observations and planning guidance; no project file contents are captured |
+| The planning workflow defined in `quickstart.md` can be completed entirely offline                                   | Required       | PASS   | No network access is required; the workflow reads local files and writes local artifacts                                 |
+| Future implementation verification (`pnpm test:ci`, Playwright checks) runs within the local development environment | Local-only     | PASS   | Test commands run against locally running app instances; no external telemetry or reporting service is required          |
+| Analysis artifacts do not reference or depend on external URLs, third-party APIs, or remote resources                | None permitted | PASS   | All cross-references point to files within this repository                                                               |
+
+**Overall Security/Privacy Result**: PASS — the analysis process is fully local-only. No project content is exposed outside the repository context at any stage of this workflow.

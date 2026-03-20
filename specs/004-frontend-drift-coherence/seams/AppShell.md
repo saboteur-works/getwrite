@@ -1,9 +1,5 @@
 # AppShell Seam
 
-Refactor seam definition placeholder for AppShell hotspot.
-
-# AppShell Seam
-
 **Finding**: DF-001 · Rank 6 · Risk: High · Invariant Impact: none
 **Target**: `frontend/components/Layout/AppShell.tsx` (1486 lines)
 **Drift Types**: size, responsibility, architectural-boundary

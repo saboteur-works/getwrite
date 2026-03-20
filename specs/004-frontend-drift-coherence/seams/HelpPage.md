@@ -1,9 +1,5 @@
 # HelpPage Seam
 
-Refactor seam definition placeholder for HelpPage hotspot.
-
-# HelpPage Seam
-
 **Finding**: DF-009 · Rank 10 · Risk: Low · Invariant Impact: none
 **Target**: `frontend/components/help/HelpPage.tsx` (532 lines)
 **Drift Types**: size, responsibility, duplication
