@@ -39,12 +39,12 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Add model-layer regression coverage in `frontend/src/tests/unit/resource-factory.test.ts`, `frontend/src/tests/unit/resource-persistence.test.ts`, `frontend/src/tests/unit/project-view-adapter.test.ts`, and `frontend/src/tests/unit/template-service.test.ts`
-- [ ] T008 [P] [US1] Add slice guardrail coverage in `frontend/src/tests/unit/revision-canonical-guards.test.ts`, `frontend/src/tests/unit/revisions-slice-selectors.test.ts`, and `frontend/src/tests/unit/projects-slice-controller.test.ts`
+- [x] T007 [P] [US1] Add model-layer regression coverage in `frontend/src/tests/unit/resource-factory.test.ts`, `frontend/src/tests/unit/resource-persistence.test.ts`, `frontend/src/tests/unit/project-view-adapter.test.ts`, and `frontend/src/tests/unit/template-service.test.ts`
+- [x] T008 [P] [US1] Add slice guardrail coverage in `frontend/src/tests/unit/revision-canonical-guards.test.ts`, `frontend/src/tests/unit/revisions-slice-selectors.test.ts`, and `frontend/src/tests/unit/projects-slice-controller.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Extract pure factories to `frontend/src/lib/models/resource-factory.ts` and re-export stable factory APIs from `frontend/src/lib/models/resource.ts`
+- [x] T009 [US1] Extract pure factories to `frontend/src/lib/models/resource-factory.ts` and re-export stable factory APIs from `frontend/src/lib/models/resource.ts`
 - [ ] T010 [P] [US1] Extract persistence helpers to `frontend/src/lib/models/resource-persistence.ts` and trim side effects from `frontend/src/lib/models/resource.ts`
 - [ ] T011 [P] [US1] Extract typed adapter helpers to `frontend/src/lib/models/project-view-adapter.ts` and remove `as any` usage from `frontend/src/lib/models/project-view.ts`
 - [ ] T012 [P] [US1] Extract template scanning and validation to `frontend/src/lib/models/template-service.ts` from `frontend/src/lib/models/resource-templates.ts`
