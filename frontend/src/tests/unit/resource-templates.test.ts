@@ -7,6 +7,7 @@ import {
     saveResourceTemplate,
     createResourceFromTemplate,
     duplicateResource,
+    inspectResourceTemplate,
 } from "../../lib/models/resource-templates";
 import { saveResourceTemplateFromResource } from "../../lib/models/resource-templates";
 import { main as templatesMain } from "../../cli/templates";
@@ -58,6 +59,56 @@ describe("models/resource-templates (T027)", () => {
             await flushIndexer();
         } finally {
             await removeDirRetry(tmp);
+        }
+    });
+
+    it("reports placeholders and dry-run writes without mutating project files", async () => {
+        const projectPath = await fs.mkdtemp(
+            path.join(os.tmpdir(), "getwrite-rt-dry-run-"),
+        );
+
+        try {
+            await saveResourceTemplate(projectPath, {
+                id: "tpl-dry-run",
+                name: "{{TITLE}}",
+                type: "text",
+                metadata: {
+                    section: "intro",
+                    tags: ["draft", "template"],
+                },
+                plainText: "{{TITLE}}\n\nBody",
+            });
+
+            const inspection = await inspectResourceTemplate(
+                projectPath,
+                "tpl-dry-run",
+            );
+            expect(inspection.placeholders).toEqual(["TITLE"]);
+            expect(inspection.metadataKeys).toEqual(["section", "tags"]);
+
+            const dryRun = await createResourceFromTemplate(
+                projectPath,
+                "tpl-dry-run",
+                {
+                    vars: { TITLE: "Opening Scene" },
+                    dryRun: true,
+                },
+            );
+
+            expect("plannedWrites" in dryRun).toBe(true);
+            if (!("plannedWrites" in dryRun)) {
+                throw new Error("expected dry-run response");
+            }
+
+            expect(dryRun.plannedWrites).toHaveLength(2);
+            expect(dryRun.resourcePreview.name).toBe("Opening Scene");
+            expect(dryRun.resourcePreview.plainText).toContain("Opening Scene");
+
+            const resourcesDir = path.join(projectPath, "resources");
+            const resourceEntries = await fs.readdir(resourcesDir);
+            expect(resourceEntries).toEqual([]);
+        } finally {
+            await removeDirRetry(projectPath);
         }
     });
 

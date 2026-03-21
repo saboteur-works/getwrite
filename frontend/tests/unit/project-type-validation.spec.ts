@@ -46,6 +46,17 @@ describe("project-type validation (T016)", () => {
         expect(JSON.stringify(res.errors)).toMatch(/Too small|>=1/);
     });
 
+    it("rejects a template without a Workspace folder", () => {
+        const spec = {
+            id: "no-workspace",
+            name: "No Workspace",
+            folders: [{ name: "Drafts" }],
+        };
+        const res = validateProjectType(spec);
+        expect(res.success).toBe(false);
+        expect(JSON.stringify(res.errors)).toContain("Workspace");
+    });
+
     it("rejects invalid id pattern", () => {
         const spec = {
             id: "Bad ID!",
@@ -55,5 +66,17 @@ describe("project-type validation (T016)", () => {
         const res = validateProjectType(spec);
         expect(res.success).toBe(false);
         expect(JSON.stringify(res.errors)).toContain("pattern");
+    });
+
+    it("rejects unknown top-level fields", () => {
+        const spec = {
+            id: "strict-shape",
+            name: "Strict Shape",
+            folders: [{ name: "Workspace" }],
+            extra: true,
+        };
+        const res = validateProjectType(spec);
+        expect(res.success).toBe(false);
+        expect(JSON.stringify(res.errors)).toContain("extra");
     });
 });

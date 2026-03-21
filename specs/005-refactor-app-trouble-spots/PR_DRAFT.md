@@ -18,6 +18,7 @@ This branch currently contains:
 
 1. The full planning and execution artifact set for feature `005-refactor-app-trouble-spots`.
 2. The completed Phase 1 setup work that establishes shared refactor guardrail scaffolding and hotspot-specific test commands.
+3. The completed Phase 2 foundational baseline work that locks model, template, revision, and reorder assertions before any seam extraction begins.
 
 At the current branch state, this is still early execution work. The branch does **not** yet implement the model, slice, or UI seam extractions described in later phases.
 
@@ -31,7 +32,7 @@ At the current branch state, this is still early execution work. The branch does
 
 This PR starts execution for feature `005-refactor-app-trouble-spots`.
 
-It adds the planning package for the frontend trouble-spot refactor and completes Phase 1 setup work needed before invariant-sensitive implementation begins.
+It adds the planning package for the frontend trouble-spot refactor and completes the Phase 1 setup plus Phase 2 foundational work needed before invariant-sensitive seam extraction begins.
 
 The current branch state focuses on execution readiness, not the downstream seam extractions themselves.
 
@@ -43,11 +44,11 @@ This branch currently includes:
 - shared refactor fixture builders for invariant-sensitive tests
 - shared UI parity helpers for behavior-preserving integration coverage
 - hotspot-specific frontend test command aliases for later execution tracks
-- task tracking updates marking Phase 1 complete
+- foundational baseline assertions for model, template, revision, and reorder guardrails
+- task tracking updates marking Phases 1 and 2 complete
 
 This branch does not yet include:
 
-- Phase 2 foundational baseline assertions
 - User Story 1 model or Redux seam extraction
 - User Story 2, 3, 4, or 5 implementation work
 - any intended user-facing behavior change
@@ -103,6 +104,27 @@ Updated `frontend/package.json` with hotspot-specific command aliases:
 
 These commands create stable entry points for guardrail verification as each hotspot track is implemented.
 
+### Phase 2 foundational baseline assertions
+
+Expanded the blocking baseline coverage before any seam extraction starts:
+
+- `frontend/src/tests/unit/resource.test.ts`
+- `frontend/src/tests/unit/uuid.test.ts`
+- `frontend/src/tests/unit/resource-templates.test.ts`
+- `frontend/tests/unit/project-type-validation.spec.ts`
+- `frontend/src/tests/unit/revision-invariants.test.ts`
+- `frontend/tests/reorder-persistence.test.tsx`
+- `specs/005-refactor-app-trouble-spots/quickstart.md`
+
+This work adds baseline assertions for:
+
+- schema-validated resource factory output, slugging, timestamps, and UUID shape
+- template placeholder inspection and dry-run write planning
+- Workspace folder validation and strict project-type spec shape
+- canonical revision reassignment and prune-protection behavior
+- reorder persistence payload identity and order-index persistence
+- explicit Phase 2 entry-gate commands in the quickstart guide
+
 ### Task state updates
 
 Updated `specs/005-refactor-app-trouble-spots/tasks.md` to mark the following tasks complete:
@@ -110,19 +132,24 @@ Updated `specs/005-refactor-app-trouble-spots/tasks.md` to mark the following ta
 - `T001`
 - `T002`
 - `T003`
+- `T004`
+- `T005`
+- `T006`
 
-This leaves the branch ready to begin Phase 2 foundational work.
+This leaves the branch ready to begin User Story 1 implementation work.
 
 ## Validation
 
 Validation completed so far:
 
 - `pnpm --filter getwrite-frontend run test:refactor:resource-templates` passed
+- `pnpm --filter getwrite-frontend run test:refactor:revisions` passed
 - new helper files and task/package edits reported no editor diagnostics after creation
 
 Validation note:
 
 - `pnpm --filter getwrite-frontend typecheck` is currently blocked by a pre-existing import error in `frontend/src/hooks/use-toast.ts` referencing `@/lib/toast-service`
+- the passing revisions suite still emits existing test stderr warnings from sidecar lookups and React `act(...)` guidance inside `tests/reorder-persistence.test.tsx`, but these warnings did not fail the suite
 
 ## Product and Invariant Notes
 
@@ -170,3 +197,6 @@ When this branch changes, update this file with:
 - Recorded completion of Phase 1 setup tasks `T001` through `T003`.
 - Recorded the passing `test:refactor:resource-templates` validation run.
 - Recorded the pre-existing frontend typecheck blocker in `frontend/src/hooks/use-toast.ts`.
+- Recorded completion of Phase 2 foundational tasks `T004` through `T006`.
+- Recorded the passing `test:refactor:revisions` validation run.
+- Recorded the existing non-failing stderr warnings emitted by the revisions baseline suite.

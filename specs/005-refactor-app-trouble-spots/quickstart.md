@@ -17,6 +17,19 @@ Before starting any refactor work:
 - [ ] Author has confirmed no blocking dependencies remain (prerequisites are complete)
 - [ ] Author has created a draft PR with a clear description of the seam extraction
 
+### Phase 2 Foundational Entry Gates
+
+Run from repo root after `nvm use 22.16.0`:
+
+```bash
+pnpm --filter getwrite-frontend run test:refactor:resource-templates
+pnpm --filter getwrite-frontend run test:refactor:revisions
+```
+
+- [ ] T004 baseline coverage confirms resource factories, UUID generation, template dry-run planning, and project-type Workspace validation remain stable before seam extraction
+- [ ] T005 baseline coverage confirms canonical revision reassignment, prune protection, reorder payload identity, and persisted order indexes remain stable before seam extraction
+- [ ] T006 gate recording is updated in this document before Phase 3 or any downstream hotspot work begins
+
 ## Post-Implementation Verification by Hotspot
 
 ### Track A: resource-templates (DF-006)

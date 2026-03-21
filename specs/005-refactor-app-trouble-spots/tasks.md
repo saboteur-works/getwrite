@@ -23,9 +23,9 @@
 
 **⚠️ CRITICAL**: No user story implementation should begin until this phase is complete.
 
-- [ ] T004 Expand model and template baseline assertions in `frontend/src/tests/unit/resource.test.ts`, `frontend/src/tests/unit/uuid.test.ts`, `frontend/src/tests/unit/resource-templates.test.ts`, and `frontend/tests/unit/project-type-validation.spec.ts`
-- [ ] T005 [P] Expand revision and identity baseline assertions in `frontend/src/tests/unit/revision-invariants.test.ts` and `frontend/tests/reorder-persistence.test.tsx`
-- [ ] T006 [P] Record baseline verification commands and entry gates in `specs/005-refactor-app-trouble-spots/quickstart.md`
+- [x] T004 Expand model and template baseline assertions in `frontend/src/tests/unit/resource.test.ts`, `frontend/src/tests/unit/uuid.test.ts`, `frontend/src/tests/unit/resource-templates.test.ts`, and `frontend/tests/unit/project-type-validation.spec.ts`
+- [x] T005 [P] Expand revision and identity baseline assertions in `frontend/src/tests/unit/revision-invariants.test.ts` and `frontend/tests/reorder-persistence.test.tsx`
+- [x] T006 [P] Record baseline verification commands and entry gates in `specs/005-refactor-app-trouble-spots/quickstart.md`
 
 **Checkpoint**: Shared baselines are fixed and all hotspot tracks can now proceed according to blueprint dependencies.
 
