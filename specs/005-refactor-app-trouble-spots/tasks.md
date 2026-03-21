@@ -11,9 +11,9 @@
 
 **Purpose**: Establish shared verification scaffolding and baseline commands used by every hotspot track.
 
-- [ ] T001 Create shared refactor fixture builders in `frontend/src/tests/unit/refactor-guardrails/fixtureBuilders.ts`
-- [ ] T002 [P] Create shared UI parity helpers in `frontend/tests/integration/refactorParity.ts`
-- [ ] T003 [P] Add hotspot-specific test command aliases in `frontend/package.json`
+- [x] T001 Create shared refactor fixture builders in `frontend/src/tests/unit/refactor-guardrails/fixtureBuilders.ts`
+- [x] T002 [P] Create shared UI parity helpers in `frontend/tests/integration/refactorParity.ts`
+- [x] T003 [P] Add hotspot-specific test command aliases in `frontend/package.json`
 
 ---
 

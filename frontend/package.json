@@ -15,7 +15,16 @@
         "test:ci": "vitest run",
         "test:watch": "vitest --watch",
         "test-storybook": "vitest --config=vitest.storybook.config.ts",
-        "test:e2e": "playwright test"
+        "test:e2e": "playwright test",
+        "test:refactor:resource-templates": "pnpm exec vitest run --passWithNoTests src/tests/unit/resource.test.ts src/tests/unit/resource-templates.test.ts src/tests/unit/resource-templates-export.test.ts src/tests/unit/resource-templates-list.test.ts src/tests/unit/uuid.test.ts tests/unit/project-type-validation.spec.ts",
+        "test:refactor:revisions": "pnpm exec vitest run --passWithNoTests src/tests/unit/revision-invariants.test.ts src/tests/unit/revision-manager.test.ts src/tests/unit/revision.test.ts tests/reorder-persistence.test.tsx",
+        "test:refactor:projects": "pnpm exec vitest run --passWithNoTests tests/start.test.tsx tests/create-project-modal.spec.tsx tests/unit/project-type-validation.spec.ts",
+        "test:refactor:edit-view": "pnpm exec vitest run --passWithNoTests tests/editView.test.tsx tests/flows.test.tsx tests/integration/editViewAutosave.test.tsx",
+        "test:refactor:resource-tree": "pnpm exec vitest run --passWithNoTests tests/resourceTree.test.tsx tests/resourceTree.order.test.tsx tests/resourceTreeDrag.test.tsx tests/resourceTreeContextMenu.test.tsx tests/reorder-persistence.test.tsx",
+        "test:refactor:project-types": "pnpm exec vitest run --passWithNoTests tests/unit/project-type-validation.spec.ts tests/create-project-modal.spec.tsx tests/createProjectModal.error.test.tsx src/tests/unit/project-type.test.ts src/tests/unit/project-types.spec.ts",
+        "test:refactor:app-shell": "pnpm exec vitest run --passWithNoTests tests/flows.test.tsx tests/exportPreviewModal.test.tsx tests/compilePreviewModal.test.tsx tests/reorder-persistence.test.tsx tests/create-project-modal.spec.tsx",
+        "test:refactor:menu-bar": "pnpm exec vitest run --passWithNoTests tests/controls.test.tsx tests/editorMenuBar.test.tsx",
+        "test:refactor:help-page": "pnpm exec vitest run --passWithNoTests tests/component/helpPage.test.tsx tests/a11y/helpPage.a11y.test.tsx"
     },
     "dependencies": {
         "@dnd-kit/react": "^0.3.2",
