@@ -27,8 +27,12 @@ This branch currently contains:
 9. User Story 1 template scanning/validation extraction is complete with `template-service` (`T012`).
 10. User Story 1 resource/template facade trim is complete with `T013` delegation updates.
 11. User Story 1 revision transport/normalization extraction is complete with `T014`.
+12. User Story 1 canonical guard extraction is complete with `T015`.
+13. User Story 1 revisions slice trim is complete with `T016`.
+14. User Story 1 project actions controller extraction is complete with `T017`.
+15. User Story 1 projects slice/menu trim is complete with `T018`.
 
-At the current branch state, this is still early execution work. The branch does **not** yet implement the model, slice, or UI seam extractions described in later phases.
+At the current branch state, User Story 1 foundation seam extractions are complete. The branch does **not** yet implement User Story 2+ UI hotspot extractions described in later phases.
 
 ## Proposed PR Title
 
@@ -42,7 +46,7 @@ This PR starts execution for feature `005-refactor-app-trouble-spots`.
 
 It adds the planning package for the frontend trouble-spot refactor and completes the Phase 1 setup plus Phase 2 foundational work needed before invariant-sensitive seam extraction begins.
 
-The current branch state focuses on execution readiness, not the downstream seam extractions themselves.
+The current branch state includes completed User Story 1 seam extractions and is now ready to proceed into User Story 2 workflows.
 
 ## Scope
 
@@ -247,6 +251,49 @@ Updated:
 
 This extraction moves revision API request orchestration and revision entry normalization helpers out of `revisionsSlice.ts` while preserving existing thunk names, payload contracts, and selector behavior.
 
+### User Story 1 canonical guard extraction (T015)
+
+Added:
+
+- `frontend/src/store/revision-canonical-guards.ts`
+
+Updated:
+
+- `frontend/src/store/revisionsSlice.ts`
+
+This extraction moves the canonical revision guard functions (`applyCanonicalRevision`, `isStaleCanonicalUpdate`) into a dedicated pure-function module. The `setCanonicalRevisionId` reducer and the `setCanonicalRevisionForSelectedResource.fulfilled` extraReducer both delegate to these helpers, making the single-canonical invariant explicit and independently testable.
+
+### User Story 1 revisions slice trim (T016)
+
+Updated:
+
+- `frontend/src/store/revisionsSlice.ts`
+- `frontend/src/store/revision-normalization.ts`
+
+This trim removes remaining in-slice revision list mutation details by delegating save/delete list transformations to normalization helpers (`mergeRevisionEntry`, `removeRevisionEntry`) while preserving existing thunk names, fulfilled/rejected payload contracts, and selector outputs.
+
+### User Story 1 project actions controller extraction (T017)
+
+Added:
+
+- `frontend/src/store/project-actions-controller.ts`
+
+Updated:
+
+- `frontend/src/tests/unit/projects-slice-controller.test.ts`
+
+This extraction introduces a dedicated project actions controller with a single exported `projectActionsController` constant that centralizes rename/delete orchestration for the existing API contracts (`/api/project/rename`, `/api/project/delete`), including required project-path guard checks and API error normalization.
+
+### User Story 1 projects slice/menu trim (T018)
+
+Updated:
+
+- `frontend/src/store/projectsSlice.ts`
+- `frontend/components/Start/ManageProjectMenu.tsx`
+- `frontend/src/tests/unit/projects-slice-controller.test.ts`
+
+This trim finalizes the US1 projects seam by adding explicit `renameProject` and `deleteProject` reducers, then routing `ManageProjectMenu` rename/delete flows through typed hooks and `projectActionsController` while preserving callback contracts and endpoint payloads.
+
 ### Task state updates
 
 Updated `specs/005-refactor-app-trouble-spots/tasks.md` to mark the following tasks complete:
@@ -265,8 +312,12 @@ Updated `specs/005-refactor-app-trouble-spots/tasks.md` to mark the following ta
 - `T012`
 - `T013`
 - `T014`
+- `T015`
+- `T016`
+- `T017`
+- `T018`
 
-This leaves the branch ready for the next US1 extraction tasks `T015` through `T018`.
+This leaves the branch ready for User Story 2 tasks (`T019` onward).
 
 ## Validation
 
@@ -286,6 +337,14 @@ Validation completed so far:
 - `pnpm --filter getwrite-frontend run test:refactor:resource-templates` passed after the `T013` trim
 - `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/revision-canonical-guards.test.ts src/tests/unit/revisions-slice-selectors.test.ts src/tests/unit/revision-invariants.test.ts src/tests/unit/revision-manager.test.ts src/tests/unit/revision.test.ts tests/reorder-persistence.test.tsx` passed after `T014`
 - `pnpm --filter getwrite-frontend run test:refactor:revisions` passed after `T014`
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/revision-canonical-guards.test.ts` passed after `T015` (3 tests: single-canonical on reducer, single-canonical on async fulfill, stale-resource ignore)
+- `pnpm --filter getwrite-frontend run test:refactor:revisions` passed after `T015` (6 files, 20 tests)
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/revisions-slice-selectors.test.ts src/tests/unit/revision-canonical-guards.test.ts` passed after `T016` (5 tests)
+- `pnpm --filter getwrite-frontend run test:refactor:revisions` passed after `T016` (6 files, 20 tests)
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/projects-slice-controller.test.ts` passed after `T017` (5 tests)
+- `pnpm --filter getwrite-frontend run test:refactor:projects` passed after `T017` (4 files, 14 tests)
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/projects-slice-controller.test.ts` passed after `T018` (6 tests)
+- `pnpm --filter getwrite-frontend run test:refactor:projects` passed after `T018` (4 files, 15 tests)
 - new helper files and task/package edits reported no editor diagnostics after creation
 
 Validation note:

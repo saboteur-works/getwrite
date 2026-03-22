@@ -11,7 +11,7 @@
  * shell-level UI concerns (project selection, project-scoped resource lists),
  * while resource editing details are maintained in `resourcesSlice`.
  */
-import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Project } from "../lib/models";
 import type { MetadataValue } from "../lib/models/types";
 
@@ -127,6 +127,47 @@ const projectsSlice = createSlice({
             return state;
         },
         /**
+         * Updates a stored project's display name.
+         *
+         * @param state - Current slice state draft.
+         * @param action - Target project ID and next display name.
+         */
+        renameProject(
+            state,
+            action: PayloadAction<{ projectId: string; newName: string }>,
+        ) {
+            const { projectId, newName } = action.payload;
+            const project = state.projects[projectId];
+            if (!project) {
+                return state;
+            }
+
+            state.projects[projectId] = {
+                ...project,
+                name: newName,
+            };
+            return state;
+        },
+        /**
+         * Removes a stored project by ID and clears selection when needed.
+         *
+         * @param state - Current slice state draft.
+         * @param action - Project identifier to remove.
+         */
+        deleteProject(state, action: PayloadAction<{ projectId: string }>) {
+            const { projectId } = action.payload;
+            if (!(projectId in state.projects)) {
+                return state;
+            }
+
+            delete state.projects[projectId];
+            if (state.selectedProjectId === projectId) {
+                state.selectedProjectId = null;
+            }
+
+            return state;
+        },
+        /**
          * Appends a resource to a project's `resources` array.
          *
          * @deprecated
@@ -179,6 +220,8 @@ export const {
     setProject,
     setProjects,
     setSelectedProjectId,
+    renameProject,
+    deleteProject,
     addResource,
     removeResource,
 } = projectsSlice.actions;

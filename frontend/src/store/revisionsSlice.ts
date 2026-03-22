@@ -7,9 +7,14 @@ import {
     PayloadAction,
 } from "@reduxjs/toolkit";
 import {
+    applyCanonicalRevision,
+    isStaleCanonicalUpdate,
+} from "./revision-canonical-guards";
+import {
+    mergeRevisionEntry,
     parseRevisionEntries,
+    removeRevisionEntry,
     resolveCurrentRevisionId,
-    sortRevisionsDescending,
     toRevisionEntry,
     type RevisionEntry,
 } from "./revision-normalization";
@@ -378,10 +383,10 @@ const revisionsSlice = createSlice({
          */
         setCanonicalRevisionId(state, action: PayloadAction<string>) {
             const nextRevisionId = action.payload;
-            state.revisions = state.revisions.map((revision) => ({
-                ...revision,
-                isCanonical: revision.id === nextRevisionId,
-            }));
+            state.revisions = applyCanonicalRevision(
+                state.revisions,
+                nextRevisionId,
+            );
             state.currentRevisionId = nextRevisionId;
             return state;
         },
@@ -450,13 +455,10 @@ const revisionsSlice = createSlice({
                 }
 
                 state.resourceId = action.payload.resourceId;
-                state.revisions = sortRevisionsDescending([
+                state.revisions = mergeRevisionEntry(
+                    state.revisions,
                     action.payload.revision,
-                    ...state.revisions.filter(
-                        (revision) =>
-                            revision.id !== action.payload.revision.id,
-                    ),
-                ]);
+                );
                 state.isSaving = false;
                 return state;
             },
@@ -525,8 +527,9 @@ const revisionsSlice = createSlice({
                     return state;
                 }
 
-                state.revisions = state.revisions.filter(
-                    (revision) => revision.id !== action.payload.revisionId,
+                state.revisions = removeRevisionEntry(
+                    state.revisions,
+                    action.payload.revisionId,
                 );
                 state.deletingRevisionId = null;
 
@@ -565,16 +568,18 @@ const revisionsSlice = createSlice({
             setCanonicalRevisionForSelectedResource.fulfilled,
             (state, action) => {
                 if (
-                    state.resourceId !== null &&
-                    state.resourceId !== action.payload.resourceId
+                    isStaleCanonicalUpdate(
+                        state.resourceId,
+                        action.payload.resourceId,
+                    )
                 ) {
                     return state;
                 }
 
-                state.revisions = state.revisions.map((revision) => ({
-                    ...revision,
-                    isCanonical: revision.id === action.payload.revisionId,
-                }));
+                state.revisions = applyCanonicalRevision(
+                    state.revisions,
+                    action.payload.revisionId,
+                );
                 state.currentRevisionId = action.payload.revisionId;
                 return state;
             },

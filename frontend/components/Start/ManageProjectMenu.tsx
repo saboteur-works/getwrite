@@ -4,8 +4,13 @@ import ConfirmDialog from "../common/ConfirmDialog";
 import RenameProjectModal from "./RenameProjectModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import type { AnyResource } from "../../src/lib/models/types";
-import { selectProject } from "../../src/store/projectsSlice";
-import useAppSelector from "../../src/store/hooks";
+import {
+    deleteProject as deleteProjectInStore,
+    renameProject as renameProjectInStore,
+    selectProject,
+} from "../../src/store/projectsSlice";
+import { useAppDispatch, useAppSelector } from "../../src/store/hooks";
+import { projectActionsController } from "../../src/store/project-actions-controller";
 import { toastService } from "../../src/lib/toast-service";
 
 export interface ManageProjectMenuProps {
@@ -29,6 +34,7 @@ export default function ManageProjectMenu({
     onPackage,
     resources = [],
 }: ManageProjectMenuProps): JSX.Element {
+    const dispatch = useAppDispatch();
     const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
     const [open, setOpen] = useState<boolean>(false);
     const [editing, setEditing] = useState<boolean>(false);
@@ -72,15 +78,21 @@ export default function ManageProjectMenu({
     };
 
     const handleDeleteConfirm = (): void => {
-        if (onDelete) onDelete(projectId);
-        fetch(`/api/project/delete`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ projectPath: projectFromStore?.rootPath }),
-        }).catch((err) => {
-            console.error("Failed to delete project:", err);
-            toastService.error("Failed to delete project", "Please try again");
-        });
+        void projectActionsController
+            .deleteProject({
+                projectId,
+                projectPath: projectFromStore?.rootPath,
+                onDelete,
+            })
+            .catch((err) => {
+                console.error("Failed to delete project:", err);
+                toastService.error(
+                    "Failed to delete project",
+                    "Please try again",
+                );
+            });
+
+        dispatch(deleteProjectInStore({ projectId }));
         setConfirmDeleteOpen(false);
         setOpen(false);
         toastService.success("Project deleted", projectName);
@@ -193,15 +205,13 @@ export default function ManageProjectMenu({
                 initialName={name}
                 onClose={() => setRenameOpen(false)}
                 onConfirm={async (newName) => {
-                    if (onRename) onRename(projectId, newName);
-                    await fetch(`/api/project/rename`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            projectPath: projectFromStore?.rootPath,
-                            newName,
-                        }),
+                    await projectActionsController.renameProject({
+                        projectId,
+                        projectPath: projectFromStore?.rootPath,
+                        newName,
+                        onRename,
                     });
+                    dispatch(renameProjectInStore({ projectId, newName }));
                     setName(newName);
                     setRenameOpen(false);
                     setOpen(false);

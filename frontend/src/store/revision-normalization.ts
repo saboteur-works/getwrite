@@ -73,6 +73,29 @@ export function sortRevisionsDescending(
 }
 
 /**
+ * Inserts or replaces a revision entry and returns a newest-first list.
+ */
+export function mergeRevisionEntry(
+    revisions: RevisionEntry[],
+    revision: RevisionEntry,
+): RevisionEntry[] {
+    return sortRevisionsDescending([
+        revision,
+        ...revisions.filter((entry) => entry.id !== revision.id),
+    ]);
+}
+
+/**
+ * Removes a revision entry by id.
+ */
+export function removeRevisionEntry(
+    revisions: RevisionEntry[],
+    revisionId: string,
+): RevisionEntry[] {
+    return revisions.filter((revision) => revision.id !== revisionId);
+}
+
+/**
  * Extracts and normalizes revisions from the list API payload.
  */
 export function parseRevisionEntries(payload: unknown): RevisionEntry[] {
