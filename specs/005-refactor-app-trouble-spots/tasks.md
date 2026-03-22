@@ -45,8 +45,8 @@
 ### Implementation for User Story 1
 
 - [x] T009 [US1] Extract pure factories to `frontend/src/lib/models/resource-factory.ts` and re-export stable factory APIs from `frontend/src/lib/models/resource.ts`
-- [ ] T010 [P] [US1] Extract persistence helpers to `frontend/src/lib/models/resource-persistence.ts` and trim side effects from `frontend/src/lib/models/resource.ts`
-- [ ] T011 [P] [US1] Extract typed adapter helpers to `frontend/src/lib/models/project-view-adapter.ts` and remove `as any` usage from `frontend/src/lib/models/project-view.ts`
+- [x] T010 [P] [US1] Extract persistence helpers to `frontend/src/lib/models/resource-persistence.ts` and trim side effects from `frontend/src/lib/models/resource.ts`
+- [x] T011 [P] [US1] Extract typed adapter helpers to `frontend/src/lib/models/project-view-adapter.ts` and remove `as any` usage from `frontend/src/lib/models/project-view.ts`
 - [ ] T012 [P] [US1] Extract template scanning and validation to `frontend/src/lib/models/template-service.ts` from `frontend/src/lib/models/resource-templates.ts`
 - [ ] T013 [US1] Trim `frontend/src/lib/models/resource-templates.ts` and `frontend/src/lib/models/resource.ts` to delegate to `frontend/src/lib/models/resource-factory.ts`, `frontend/src/lib/models/resource-persistence.ts`, and `frontend/src/lib/models/template-service.ts`
 - [ ] T014 [P] [US1] Extract transport and normalization helpers to `frontend/src/store/revision-transport-service.ts` and `frontend/src/store/revision-normalization.ts` from `frontend/src/store/revisionsSlice.ts`

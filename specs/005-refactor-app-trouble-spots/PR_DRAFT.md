@@ -22,6 +22,8 @@ This branch currently contains:
 4. The first User Story 1 regression coverage pass for model-layer seams before extraction begins.
 5. The second User Story 1 regression coverage pass for slice guardrails and selector stability.
 6. User Story 1 extraction has started with the `resource-factory` seam (`T009`).
+7. User Story 1 persistence extraction is complete with `resource-persistence` (`T010`).
+8. User Story 1 typed adapter extraction is complete with `project-view-adapter` (`T011`).
 
 At the current branch state, this is still early execution work. The branch does **not** yet implement the model, slice, or UI seam extractions described in later phases.
 
@@ -51,6 +53,8 @@ This branch currently includes:
 - focused model-layer regression coverage for factory, persistence, project-view adapter, and template-service seams
 - focused slice guardrail coverage for canonical revision behavior, selector visibility rules, and project-slice normalization contracts
 - first model seam extraction by moving pure factory logic to `resource-factory.ts` while preserving `resource.ts` exports
+- persistence seam extraction by moving write/load helpers to `resource-persistence.ts` while preserving `resource.ts` exports
+- typed project-view adapter extraction by moving UI-mapping helpers to `project-view-adapter.ts` while preserving `project-view.ts` exports
 - task tracking updates marking Phases 1 and 2 complete
 
 This branch does not yet include:
@@ -179,6 +183,30 @@ Updated:
 
 This extraction moves pure resource factory construction/validation logic into the dedicated module while re-exporting the same public factory APIs from `resource.ts` so downstream imports remain stable.
 
+### User Story 1 persistence extraction (T010)
+
+Added:
+
+- `frontend/src/lib/models/resource-persistence.ts`
+
+Updated:
+
+- `frontend/src/lib/models/resource.ts`
+
+This extraction moves local write/load side-effect logic into a dedicated persistence module while preserving call sites through stable re-exports from `resource.ts`.
+
+### User Story 1 typed adapter extraction (T011)
+
+Added:
+
+- `frontend/src/lib/models/project-view-adapter.ts`
+
+Updated:
+
+- `frontend/src/lib/models/project-view.ts`
+
+This extraction moves typed project-view mapping helpers into a dedicated adapter module and removes `as any` usage from the seam while preserving the existing `buildProjectView` API surface.
+
 ### Task state updates
 
 Updated `specs/005-refactor-app-trouble-spots/tasks.md` to mark the following tasks complete:
@@ -192,8 +220,10 @@ Updated `specs/005-refactor-app-trouble-spots/tasks.md` to mark the following ta
 - `T007`
 - `T008`
 - `T009`
+- `T010`
+- `T011`
 
-This leaves the branch ready for the next US1 extraction tasks `T010` through `T018`.
+This leaves the branch ready for the next US1 extraction tasks `T012` through `T018`.
 
 ## Validation
 
@@ -205,6 +235,8 @@ Validation completed so far:
 - `pnpm --filter getwrite-frontend test:ci src/tests/unit/resource-factory.test.ts src/tests/unit/resource-persistence.test.ts src/tests/unit/project-view-adapter.test.ts src/tests/unit/template-service.test.ts` passed
 - `pnpm --filter getwrite-frontend test:ci src/tests/unit/revision-canonical-guards.test.ts src/tests/unit/revisions-slice-selectors.test.ts src/tests/unit/projects-slice-controller.test.ts` passed
 - `pnpm --filter getwrite-frontend test:ci src/tests/unit/resource-factory.test.ts src/tests/unit/resource-persistence.test.ts src/tests/unit/project-view-adapter.test.ts src/tests/unit/template-service.test.ts src/tests/unit/revision-canonical-guards.test.ts src/tests/unit/revisions-slice-selectors.test.ts src/tests/unit/projects-slice-controller.test.ts` passed after the `T009` extraction
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/project-view-adapter.test.ts` passed after the `T011` extraction
+- `pnpm --filter getwrite-frontend run test:refactor:resource-templates` passed after the `T011` extraction
 - new helper files and task/package edits reported no editor diagnostics after creation
 
 Validation note:
