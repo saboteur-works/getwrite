@@ -6,20 +6,30 @@ import {
     createSlice,
     PayloadAction,
 } from "@reduxjs/toolkit";
-import type { Revision } from "../lib/models/types";
+import {
+    applyCanonicalRevision,
+    isStaleCanonicalUpdate,
+} from "./revision-canonical-guards";
+import {
+    mergeRevisionEntry,
+    parseRevisionEntries,
+    removeRevisionEntry,
+    resolveCurrentRevisionId,
+    toRevisionEntry,
+    type RevisionEntry,
+} from "./revision-normalization";
+import {
+    createRevision,
+    fetchRevisionContent,
+    fetchRevisionList,
+    persistCanonicalRevision,
+    removeRevision,
+    resolveRevisionRequestContext,
+} from "./revision-transport-service";
 import { setSelectedResourceId } from "./resourcesSlice";
 import type { RootState } from "./store";
 
-/**
- * Revision shape stored in Redux for the selected resource.
- *
- * This extends the persisted revision metadata with a display label used by
- * `RevisionControl`.
- */
-export interface RevisionEntry extends Revision {
-    /** Human-readable label shown in the revision list UI. */
-    displayName: string;
-}
+export type { RevisionEntry } from "./revision-normalization";
 
 /**
  * Redux state managed by the `revisions` slice.
@@ -76,21 +86,6 @@ interface DeleteRevisionPayload extends ResourceScopedPayload {
  * Fetch payload for loading preview content for a specific revision.
  */
 interface FetchRevisionContentPayload extends DeleteRevisionPayload {}
-
-/**
- * Response shape for `/api/project-resources` used by revision list loading.
- */
-interface ProjectResourcesResponse {
-    revisions?: unknown;
-}
-
-/**
- * Response shape for fetching a single revision preview.
- */
-interface RevisionContentResponse {
-    revision: Revision;
-    content: string;
-}
 
 /**
  * Fulfilled payload for loading a resource's revisions.
@@ -150,157 +145,12 @@ const initialState: RevisionsState = {
     errorMessage: "",
 };
 
-/**
- * Returns a human-readable display label for a revision.
- *
- * @param revision - Persisted revision metadata.
- * @param fallbackName - Optional UI override, typically from the explicit save input.
- * @returns Display name for use in revision cards.
- */
-function resolveRevisionDisplayName(
-    revision: Revision,
-    fallbackName?: string,
-): string {
-    const metadataName =
-        revision.metadata && typeof revision.metadata === "object"
-            ? revision.metadata["name"]
-            : undefined;
-
-    if (typeof metadataName === "string" && metadataName.trim().length > 0) {
-        return metadataName.trim();
+function getErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof Error && error.message.trim().length > 0) {
+        return error.message;
     }
 
-    if (typeof fallbackName === "string" && fallbackName.trim().length > 0) {
-        return fallbackName.trim();
-    }
-
-    return `Revision v${revision.versionNumber}`;
-}
-
-/**
- * Converts a persisted revision record into the slice entry shape.
- *
- * @param revision - Raw persisted revision metadata.
- * @param fallbackName - Optional UI label override.
- * @returns Normalized revision entry.
- */
-function toRevisionEntry(
-    revision: Revision,
-    fallbackName?: string,
-): RevisionEntry {
-    return {
-        ...revision,
-        displayName: resolveRevisionDisplayName(revision, fallbackName),
-    };
-}
-
-/**
- * Type guard for revision payload values.
- *
- * @param value - Unknown payload item.
- * @returns True when `value` matches the persisted revision shape.
- */
-function isRevision(value: unknown): value is Revision {
-    return (
-        !!value &&
-        typeof value === "object" &&
-        "id" in value &&
-        "resourceId" in value &&
-        "versionNumber" in value &&
-        "createdAt" in value &&
-        "filePath" in value &&
-        "isCanonical" in value
-    );
-}
-
-/**
- * Sorts revisions newest-first by version number.
- *
- * @param revisions - Revision entries to order.
- * @returns Sorted revision entries.
- */
-function sortRevisionsDescending(revisions: RevisionEntry[]): RevisionEntry[] {
-    return [...revisions].sort((a, b) => b.versionNumber - a.versionNumber);
-}
-
-/**
- * Extracts and normalizes revisions from the list API payload.
- *
- * @param payload - JSON returned by `/api/project-resources`.
- * @returns Normalized revision entries.
- */
-function parseRevisionEntries(payload: unknown): RevisionEntry[] {
-    if (!payload || typeof payload !== "object") {
-        return [];
-    }
-
-    const rawRevisions =
-        "revisions" in payload
-            ? (payload as ProjectResourcesResponse).revisions
-            : payload;
-
-    if (!Array.isArray(rawRevisions)) {
-        return [];
-    }
-
-    return sortRevisionsDescending(
-        rawRevisions
-            .filter(isRevision)
-            .map((revision) => toRevisionEntry(revision)),
-    );
-}
-
-/**
- * Resolves the best default active revision for a loaded list.
- *
- * Prefers the canonical revision. If none is marked canonical, falls back to
- * the newest revision.
- *
- * @param revisions - Loaded revisions for the selected resource.
- * @returns Active revision ID, or `null` when the list is empty.
- */
-function resolveCurrentRevisionId(revisions: RevisionEntry[]): string | null {
-    const canonical = revisions.find((revision) => revision.isCanonical);
-    if (canonical) {
-        return canonical.id;
-    }
-
-    return revisions[0]?.id ?? null;
-}
-
-/**
- * Resolves the currently selected resource/project context needed for revision
- * API requests.
- *
- * @param state - Current Redux root state.
- * @param expectedResourceId - Resource the caller expects to be selected.
- * @returns Request context or a recoverable error string.
- */
-function resolveRevisionRequestContext(
-    state: RootState,
-    expectedResourceId: string,
-): { projectPath: string; resourceId: string } | { error: string } {
-    const selectedProjectId = state.projects.selectedProjectId;
-    const selectedResourceId = state.resources.selectedResourceId;
-
-    if (!selectedProjectId) {
-        return { error: "No project selected." };
-    }
-
-    if (!selectedResourceId || selectedResourceId !== expectedResourceId) {
-        return { error: "Selected resource changed before revisions updated." };
-    }
-
-    const project = state.projects.projects[selectedProjectId];
-
-    if (!project?.rootPath) {
-        return { error: "Selected project is missing a root path." };
-    }
-
-    return {
-        projectPath: project.rootPath,
-        resourceId: selectedResourceId,
-    };
+    return fallback;
 }
 
 /**
@@ -322,32 +172,20 @@ export const loadRevisionsForSelectedResource = createAsyncThunk<
             return thunkApi.rejectWithValue(context.error);
         }
 
-        const response = await fetch("/api/project-resources", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                projectPath: context.projectPath,
-                resourceId: context.resourceId,
-            }),
-        });
+        try {
+            const data = await fetchRevisionList(context);
+            const revisions = parseRevisionEntries(data);
 
-        if (!response.ok) {
-            const errorBody = (await response.json().catch(() => ({}))) as {
-                error?: string;
+            return {
+                resourceId,
+                revisions,
+                currentRevisionId: resolveCurrentRevisionId(revisions),
             };
+        } catch (error) {
             return thunkApi.rejectWithValue(
-                errorBody.error ?? "Unable to load revisions.",
+                getErrorMessage(error, "Unable to load revisions."),
             );
         }
-
-        const data = (await response.json()) as ProjectResourcesResponse;
-        const revisions = parseRevisionEntries(data);
-
-        return {
-            resourceId,
-            revisions,
-            currentRevisionId: resolveCurrentRevisionId(revisions),
-        };
     },
 );
 
@@ -370,34 +208,18 @@ export const saveRevisionForSelectedResource = createAsyncThunk<
             return thunkApi.rejectWithValue(context.error);
         }
 
-        const response = await fetch(`/api/resource/revision/${resourceId}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                projectPath: context.projectPath,
-                isCanonical: false,
-                metadata: { name: revisionName },
-            }),
-        });
+        try {
+            const revision = await createRevision(context, revisionName);
 
-        if (!response.ok) {
-            const errorBody = (await response.json().catch(() => ({}))) as {
-                error?: string;
+            return {
+                resourceId,
+                revision: toRevisionEntry(revision, revisionName),
             };
+        } catch (error) {
             return thunkApi.rejectWithValue(
-                errorBody.error ?? "Failed to save revision.",
+                getErrorMessage(error, "Failed to save revision."),
             );
         }
-
-        const revision = toRevisionEntry(
-            (await response.json()) as Revision,
-            revisionName,
-        );
-
-        return {
-            resourceId,
-            revision,
-        };
     },
 );
 
@@ -420,28 +242,17 @@ export const deleteRevisionForSelectedResource = createAsyncThunk<
             return thunkApi.rejectWithValue(context.error);
         }
 
-        const response = await fetch(`/api/resource/revision/${resourceId}`, {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                projectPath: context.projectPath,
+        try {
+            await removeRevision(context, revisionId);
+            return {
+                resourceId,
                 revisionId,
-            }),
-        });
-
-        if (!response.ok) {
-            const errorBody = (await response.json().catch(() => ({}))) as {
-                error?: string;
             };
+        } catch (error) {
             return thunkApi.rejectWithValue(
-                errorBody.error ?? "Failed to delete revision.",
+                getErrorMessage(error, "Failed to delete revision."),
             );
         }
-
-        return {
-            resourceId,
-            revisionId,
-        };
     },
 );
 
@@ -464,31 +275,18 @@ export const fetchRevisionContentForSelectedResource = createAsyncThunk<
             return thunkApi.rejectWithValue(context.error);
         }
 
-        const params = new URLSearchParams({
-            projectPath: context.projectPath,
-            revisionId,
-        });
-
-        const response = await fetch(
-            `/api/resource/revision/${resourceId}?${params.toString()}`,
-        );
-
-        if (!response.ok) {
-            const errorBody = (await response.json().catch(() => ({}))) as {
-                error?: string;
+        try {
+            const data = await fetchRevisionContent(context, revisionId);
+            return {
+                resourceId,
+                revisionId,
+                content: data.content,
             };
+        } catch (error) {
             return thunkApi.rejectWithValue(
-                errorBody.error ?? "Failed to fetch revision.",
+                getErrorMessage(error, "Failed to fetch revision."),
             );
         }
-
-        const data = (await response.json()) as RevisionContentResponse;
-
-        return {
-            resourceId,
-            revisionId,
-            content: data.content,
-        };
     },
 );
 
@@ -511,28 +309,17 @@ export const setCanonicalRevisionForSelectedResource = createAsyncThunk<
             return thunkApi.rejectWithValue(context.error);
         }
 
-        const response = await fetch(`/api/resource/revision/${resourceId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                projectPath: context.projectPath,
+        try {
+            await persistCanonicalRevision(context, revisionId);
+            return {
+                resourceId,
                 revisionId,
-            }),
-        });
-
-        if (!response.ok) {
-            const errorBody = (await response.json().catch(() => ({}))) as {
-                error?: string;
             };
+        } catch (error) {
             return thunkApi.rejectWithValue(
-                errorBody.error ?? "Failed to set canonical revision.",
+                getErrorMessage(error, "Failed to set canonical revision."),
             );
         }
-
-        return {
-            resourceId,
-            revisionId,
-        };
     },
 );
 
@@ -596,10 +383,10 @@ const revisionsSlice = createSlice({
          */
         setCanonicalRevisionId(state, action: PayloadAction<string>) {
             const nextRevisionId = action.payload;
-            state.revisions = state.revisions.map((revision) => ({
-                ...revision,
-                isCanonical: revision.id === nextRevisionId,
-            }));
+            state.revisions = applyCanonicalRevision(
+                state.revisions,
+                nextRevisionId,
+            );
             state.currentRevisionId = nextRevisionId;
             return state;
         },
@@ -668,13 +455,10 @@ const revisionsSlice = createSlice({
                 }
 
                 state.resourceId = action.payload.resourceId;
-                state.revisions = sortRevisionsDescending([
+                state.revisions = mergeRevisionEntry(
+                    state.revisions,
                     action.payload.revision,
-                    ...state.revisions.filter(
-                        (revision) =>
-                            revision.id !== action.payload.revision.id,
-                    ),
-                ]);
+                );
                 state.isSaving = false;
                 return state;
             },
@@ -743,8 +527,9 @@ const revisionsSlice = createSlice({
                     return state;
                 }
 
-                state.revisions = state.revisions.filter(
-                    (revision) => revision.id !== action.payload.revisionId,
+                state.revisions = removeRevisionEntry(
+                    state.revisions,
+                    action.payload.revisionId,
                 );
                 state.deletingRevisionId = null;
 
@@ -783,16 +568,18 @@ const revisionsSlice = createSlice({
             setCanonicalRevisionForSelectedResource.fulfilled,
             (state, action) => {
                 if (
-                    state.resourceId !== null &&
-                    state.resourceId !== action.payload.resourceId
+                    isStaleCanonicalUpdate(
+                        state.resourceId,
+                        action.payload.resourceId,
+                    )
                 ) {
                     return state;
                 }
 
-                state.revisions = state.revisions.map((revision) => ({
-                    ...revision,
-                    isCanonical: revision.id === action.payload.revisionId,
-                }));
+                state.revisions = applyCanonicalRevision(
+                    state.revisions,
+                    action.payload.revisionId,
+                );
                 state.currentRevisionId = action.payload.revisionId;
                 return state;
             },

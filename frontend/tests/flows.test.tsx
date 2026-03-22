@@ -7,6 +7,8 @@ import { makeStore } from "../src/store/store";
 import { Provider } from "react-redux";
 import { setProject } from "../src/store/projectsSlice";
 import EditView from "../components/WorkArea/EditView";
+import ExportPreviewModal from "../components/common/ExportPreviewModal";
+import CompilePreviewModal from "../components/common/CompilePreviewModal";
 import type { TextResource } from "../src/lib/models/types";
 // Use a small, canonical test-local fixture instead of legacy `sampleProjects` placeholder.
 
@@ -183,5 +185,83 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                 screen.getByText(String(expectedCount), { selector: "strong" }),
             ).toBeTruthy();
         });
+    });
+});
+
+/**
+ * T028: US3 — AppShell modal-trigger parity coverage.
+ *
+ * Verifies that the ExportPreviewModal and CompilePreviewModal modal lifecycles
+ * behave correctly after ShellModalCoordinator extraction.  These are
+ * component-level tests that do not require the full AppShell harness.
+ */
+describe("AppShell modal-trigger parity (T028)", () => {
+    it("ExportPreviewModal opens and closes when triggered then cancelled", () => {
+        const onClose = vi.fn();
+
+        const { rerender } = render(
+            <ExportPreviewModal
+                isOpen={false}
+                resourceTitle="Act One"
+                preview="Preview text"
+                onConfirmExport={vi.fn()}
+                onClose={onClose}
+            />,
+        );
+
+        // Initially closed — modal should not be visible
+        expect(screen.queryByText("Export Act One")).not.toBeInTheDocument();
+
+        // Trigger open (simulates AppShell setting exportModal.open = true)
+        rerender(
+            <ExportPreviewModal
+                isOpen={true}
+                resourceTitle="Act One"
+                preview="Preview text"
+                onConfirmExport={vi.fn()}
+                onClose={onClose}
+            />,
+        );
+
+        expect(screen.getByText("Export Act One")).toBeInTheDocument();
+        expect(screen.getByRole("dialog")).toHaveTextContent("Export Act One");
+
+        // Cancel closes the modal
+        fireEvent.click(screen.getByText("Cancel"));
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("CompilePreviewModal opens and closes when triggered then cancelled", () => {
+        const onClose = vi.fn();
+
+        const { rerender } = render(
+            <CompilePreviewModal
+                isOpen={false}
+                resource={undefined}
+                resources={[]}
+                onClose={onClose}
+                onConfirm={vi.fn()}
+            />,
+        );
+
+        expect(screen.queryByText("Compile Preview")).not.toBeInTheDocument();
+
+        rerender(
+            <CompilePreviewModal
+                isOpen={true}
+                resource={undefined}
+                resources={[]}
+                onClose={onClose}
+                onConfirm={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText("Compile Preview")).toBeInTheDocument();
+        expect(
+            screen.getByRole("button", { name: /Generate preview/i }),
+        ).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: /close/i }));
+        expect(onClose).toHaveBeenCalledTimes(1);
     });
 });

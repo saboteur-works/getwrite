@@ -34,17 +34,13 @@ import {
     dragAndDropFeature,
     FeatureImplementation,
     ItemInstance,
-    createOnDropHandler,
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
-import { AnyResource, Folder } from "../../src/lib/models";
+import { AnyResource } from "../../src/lib/models";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
-    persistReorder,
     selectFoldersAndResources,
     setSelectedResourceId,
-    updateFolders,
-    updateResources,
 } from "../../src/store/resourcesSlice";
 import ResourceContextMenu, {
     ResourceContextAction,
@@ -59,43 +55,15 @@ import {
     AudioIcon,
     FolderIcon,
 } from "./ResourceTreeIcons";
-import { uniq } from "lodash";
+import {
+    buildResourceTree,
+    ResourceItemData,
+    ROOT_ITEM_ID,
+} from "./buildResourceTree";
+import { useResourceReorder } from "./useResourceReorder";
 
 /** Horizontal pixel offset applied per nesting level when rendering tree items. */
 const INDENTATION_WIDTH = 20;
-
-/**
- * Sentinel identifier for the virtual root node that owns all top-level
- * resources (those whose `folderId` is `null`).
- */
-const ROOT_ITEM_ID = "root";
-
-/**
- * Shape of the data payload attached to every node in the `@headless-tree`
- * instance.  The tree itself is generic over this type, so all item-level
- * helpers (e.g. `item.getItemData()`) return `ResourceItemData`.
- */
-interface ResourceItemData {
-    /** The display name of the resource or folder. */
-    name: string;
-    /** Ordered IDs of direct child nodes.  Empty for leaf resources. */
-    children: string[];
-    /** `true` when this node represents a `Folder` rather than a text resource. */
-    isFolder: boolean;
-    /** ID of the immediate parent folder, or `null` for top-level nodes. */
-    parentId: string | null;
-    /**
-     * When `true` the folder is treated as a "special" system folder that
-     * cannot be freely reparented by the user.
-     */
-    special?: boolean;
-    /** The stable resource ID that corresponds to the entry in the Redux store. */
-    resourceId: string;
-    /** Zero-based index that controls sibling sort order within a parent. */
-    orderIndex: number;
-    /** Resource type: `"text"`, `"image"`, `"audio"`, or `"folder"`. */
-    resourceType: "text" | "image" | "audio" | "folder";
-}
 
 /**
  * A `@headless-tree` feature plug-in that overrides the default click handler
@@ -131,105 +99,6 @@ const customClickBehavior: FeatureImplementation = {
         }),
     },
 };
-
-/**
- * Converts a flat array of `AnyResource` entries into a keyed map that the
- * `@headless-tree` synchronous data loader can consume.
- *
- * Each resource becomes an entry in the returned record keyed by its `id`.
- * A virtual `"root"` entry is always present and owns all top-level resources
- * (those whose `folderId` is `null` or absent).
- *
- * The transformation is recursive for folders: when a folder is encountered,
- * its children are immediately added to the map so that child references in
- * `children` arrays are always resolvable.  If a parent is referenced before
- * it has been processed, a placeholder node is inserted and a warning is
- * emitted to the console.
- *
- * @param resources - Flat list of all project resources (folders and files).
- * @returns A record mapping each resource ID (plus `"root"`) to its
- *   `ResourceItemData` descriptor.
- */
-function transformResourcesToTreeData(
-    resources: AnyResource[],
-): Record<string, ResourceItemData> {
-    // Create a base object with a root node
-    // The root's children will be the top-level resources (those with no folderId)
-    const dataObject: Record<string, ResourceItemData> = {
-        root: {
-            resourceId: "root",
-            name: "Root",
-            children: [],
-            isFolder: true,
-            parentId: null,
-            orderIndex: 0,
-            resourceType: "folder",
-        },
-    };
-
-    /**
-     * Recursively upserts `currentResource` — and all of its folder descendants
-     * — into `dataObject`, and registers the resource's ID in its parent's
-     * `children` array.
-     *
-     * @param currentResource - The resource to insert.
-     */
-    function addResourceToDataObject(currentResource: AnyResource) {
-        // Create the basic structure for the resource and add it to the data object
-        const id = currentResource.id;
-        const parentId = currentResource.folderId || "root";
-        dataObject[id] = {
-            resourceId: id,
-            name: currentResource.name,
-            children: [],
-            isFolder: currentResource.type === "folder",
-            parentId,
-            special:
-                currentResource.type === "folder" &&
-                "special" in currentResource
-                    ? currentResource.special
-                    : undefined,
-            orderIndex: currentResource.orderIndex || 0,
-            resourceType: currentResource.type,
-        };
-
-        // Check if the parent resource is already in the data object; if not, add a placeholder for it (this can happen if a child resource is processed before its parent)
-        if (!dataObject[parentId]) {
-            console.warn(
-                `Parent resource with ID ${parentId} not found for resource with ID ${id}. Adding placeholder for parent.`,
-            );
-            dataObject[parentId] = {
-                resourceId: parentId,
-                name: "Placeholder",
-                children: [],
-                isFolder: true,
-                parentId: null,
-                special: undefined,
-                orderIndex: 0,
-                resourceType: "folder",
-            };
-        }
-
-        // Add the resource's ID to its parent's children array
-        // When we add a child, we need to check if it's already there to avoid duplicates (in case of multiple resources with the same folderId)
-        if (!dataObject[parentId].children.includes(id)) {
-            dataObject[parentId].children.push(id);
-        }
-
-        // If the resource is a folder, we need to find its children and add them to the data object as well
-        if (currentResource.type === "folder") {
-            const childResources = resources.filter(
-                (res) => res.folderId === currentResource.id,
-            );
-            childResources.forEach((childRes) =>
-                addResourceToDataObject(childRes),
-            );
-        }
-    }
-
-    resources.forEach((res) => addResourceToDataObject(res));
-    return dataObject;
-}
 
 /**
  * Props accepted by the {@link ResourceTree} component.
@@ -277,10 +146,17 @@ export default function ResourceTree({
         shallowEqual,
     );
 
-    const transformedResourceData = useMemo(
-        () => transformResourcesToTreeData(rawResources),
-        [rawResources],
-    );
+    const transformedResourceData = useMemo(() => {
+        return buildResourceTree(rawResources);
+    }, [rawResources]);
+
+    const onDrop = useResourceReorder({
+        dispatch,
+        currentProject,
+        rawResources,
+        transformedResourceData,
+        rootItemId: ROOT_ITEM_ID,
+    });
 
     const [contextMenu, setContextMenu] = useState<{
         open: boolean;
@@ -416,94 +292,7 @@ export default function ResourceTree({
         onPrimaryAction: (item) => {
             dispatch(setSelectedResourceId(item.getId()));
         },
-        /**
-         * Handles a completed drag-and-drop operation.
-         *
-         * `createOnDropHandler` provides the drop target `item` and its
-         * recomputed `newChildren` array after the drop.  This handler:
-         * 1. Updates the in-memory `transformedResourceData` so the tree
-         *    reflects the new order immediately without waiting for a Redux
-         *    round-trip.
-         * 2. Separates the dropped children into folders and leaf resources
-         *    and assigns new `orderIndex` values (0-based within each group).
-         * 3. Dispatches `updateFolders` / `updateResources` to update the
-         *    Redux slice.
-         * 4. Dispatches `persistReorder` to write the updated order to disk.
-         */
-        onDrop: createOnDropHandler((item, newChildren) => {
-            console.log(
-                "Dropped item:",
-                item.getItemData(),
-                "New children:",
-                newChildren,
-            );
-            transformedResourceData[item.getId()].children = newChildren;
-            const updateData = uniq(newChildren).reduce(
-                (prev, childId) => {
-                    const chilData = rawResources.find((r) => r.id === childId);
-                    if (!chilData) {
-                        console.error(
-                            `Resource with ID ${childId} not found in raw resources.`,
-                        );
-                        return prev;
-                    }
-                    if (chilData.type === "folder") {
-                        prev.folderOrder.push({
-                            id: childId,
-                            orderIndex: prev.folderOrder.length,
-                            folderId:
-                                item.getId() === ROOT_ITEM_ID
-                                    ? null
-                                    : item.getId(),
-                        } as Partial<Folder> & { id: string });
-                        transformedResourceData[childId].orderIndex =
-                            prev.folderOrder.length - 1;
-                    } else {
-                        prev.resourceOrder.push({
-                            id: childId,
-                            orderIndex: prev.resourceOrder.length,
-                            folderId:
-                                item.getId() === ROOT_ITEM_ID
-                                    ? null
-                                    : item.getId(),
-                        } as Partial<AnyResource> & { id: string });
-                        transformedResourceData[childId].orderIndex =
-                            prev.resourceOrder.length - 1;
-                    }
-                    return prev;
-                },
-                {
-                    folderOrder: [] as (Partial<Folder> & { id: string })[],
-                    resourceOrder: [] as (Partial<AnyResource> & {
-                        id: string;
-                    })[],
-                },
-            );
-            console.log("Update data:", {
-                folders: updateData.folderOrder.map(
-                    (f) => transformedResourceData[f.id as string].name,
-                ),
-                resources: updateData.resourceOrder.map(
-                    (r) => transformedResourceData[r.id as string].name,
-                ),
-            });
-
-            if (updateData.folderOrder.length > 0) {
-                dispatch(updateFolders(updateData.folderOrder));
-            }
-            if (updateData.resourceOrder.length > 0) {
-                dispatch(updateResources(updateData.resourceOrder));
-            }
-
-            dispatch(
-                persistReorder({
-                    projectId: currentProject.id,
-                    projectRoot: currentProject.rootPath,
-                    folderOrder: updateData.folderOrder,
-                    resourceOrder: updateData.resourceOrder,
-                }),
-            );
-        }),
+        onDrop,
         setDragImage: () => ({
             imgElement: document.getElementById("dragpreview")!,
             xOffset: -40,

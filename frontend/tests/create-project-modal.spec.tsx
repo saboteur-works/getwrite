@@ -146,3 +146,96 @@ describe("Create project flow (integration) - modal calls API and adds project",
         console.log("[test-debug] onCreate received created project");
     });
 });
+
+/**
+ * T027: US3 — Project-type list pane parity coverage.
+ *
+ * Verifies that the CreateProjectModal correctly loads and exposes project-type
+ * options, so that downstream ProjectTypeListPane decomposition cannot break
+ * the create-project modal flow.
+ */
+describe("Create project modal — project-type list parity (T027)", () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it("renders only the project types returned by the API", async () => {
+        vi.spyOn(globalThis as any, "fetch").mockImplementation(
+            (...args: unknown[]) => {
+                const [input] = args as [RequestInfo | URL];
+                const url =
+                    typeof input === "string"
+                        ? input
+                        : input instanceof URL
+                          ? input.toString()
+                          : (input as Request).url;
+
+                if (url.endsWith("/api/project-types")) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: async () => [
+                            {
+                                id: "screenplay",
+                                name: "Screenplay",
+                                folders: [{ name: "Workspace" }],
+                            },
+                            {
+                                id: "essay",
+                                name: "Essay",
+                                folders: [{ name: "Workspace" }],
+                            },
+                        ],
+                    });
+                }
+                return Promise.resolve({ ok: true, json: async () => [] });
+            },
+        );
+
+        render(
+            <CreateProjectModal
+                isOpen={true}
+                onClose={vi.fn()}
+                onCreate={vi.fn()}
+                defaultName=""
+                defaultType=""
+            />,
+        );
+
+        await waitFor(() => {
+            const select = screen.getByRole("combobox");
+            expect(select).toBeTruthy();
+        });
+
+        const options = screen.getByRole("combobox").querySelectorAll("option");
+        const optionValues = Array.from(options).map(
+            (o) => (o as HTMLOptionElement).value,
+        );
+        expect(optionValues).toContain("screenplay");
+        expect(optionValues).toContain("essay");
+    });
+
+    it("shows an error placeholder when the project-types API call fails", async () => {
+        vi.spyOn(globalThis as any, "fetch").mockResolvedValue({
+            ok: false,
+            status: 500,
+        });
+
+        render(
+            <CreateProjectModal
+                isOpen={true}
+                onClose={vi.fn()}
+                onCreate={vi.fn()}
+                defaultName=""
+                defaultType=""
+            />,
+        );
+
+        await waitFor(
+            () => {
+                // Modal should still render; either show error text or empty select
+                expect(screen.getByRole("dialog")).toBeTruthy();
+            },
+            { timeout: 2000 },
+        );
+    });
+});

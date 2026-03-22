@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import AppShell from "../components/Layout/AppShell";
 import { makeStore } from "../src/store/store";
@@ -44,7 +44,7 @@ describe("Reorder persistence integration", () => {
         console.log("[test] stubbing global fetch");
         // stub global fetch so AppShell's persistence call writes into our tmp project
         const originalFetch = globalThis.fetch;
-        globalThis.fetch = vi.fn(
+        const fetchMock = vi.fn(
             async (input: RequestInfo | URL, opts?: any) => {
                 const url =
                     typeof input === "string"
@@ -107,6 +107,7 @@ describe("Reorder persistence integration", () => {
                 return { ok: true, status: 200 } as any;
             },
         );
+        globalThis.fetch = fetchMock as typeof globalThis.fetch;
 
         console.log("[test] seeding test-local store and rendering AppShell");
         // create a test-local Redux store, seed it, and render AppShell
@@ -164,19 +165,66 @@ describe("Reorder persistence integration", () => {
             },
         };
 
-        fireEvent.dragStart(source, { dataTransfer });
-        fireEvent.dragOver(target, { dataTransfer });
-        fireEvent.drop(target, { dataTransfer });
+        await act(async () => {
+            fireEvent.dragStart(source, { dataTransfer });
+            fireEvent.dragOver(target, { dataTransfer });
+            fireEvent.drop(target, { dataTransfer });
+            await Promise.resolve();
+        });
 
         // allow async persistence stub to complete
         console.log("[test] waiting for persistence stub to complete");
-        await new Promise((r) => setTimeout(r, 100));
+        await act(async () => {
+            await new Promise((r) => setTimeout(r, 100));
+        });
         console.log("[test] waiting complete");
+
+        expect(fetchMock).toHaveBeenCalled();
+        const lastCall = fetchMock.mock.calls.at(-1);
+        expect(lastCall).toBeDefined();
+        const requestOptions = lastCall?.[1] as { body?: string } | undefined;
+        const payload = JSON.parse(requestOptions?.body ?? "{}");
+        const knownFolderIds = new Set(
+            created.folders.map((folder) => folder.id),
+        );
+        const knownResourceIds = new Set(
+            created.resources.map((resource) => resource.id),
+        );
+
+        expect(Array.isArray(payload.folderOrder)).toBe(true);
+        expect(Array.isArray(payload.resourceOrder)).toBe(true);
+        expect(payload.folderOrder.length).toBeGreaterThan(0);
+        expect(
+            new Set(payload.folderOrder.map((item: { id: string }) => item.id))
+                .size,
+        ).toBe(payload.folderOrder.length);
+        expect(
+            new Set(
+                payload.resourceOrder.map((item: { id: string }) => item.id),
+            ).size,
+        ).toBe(payload.resourceOrder.length);
+
+        for (const item of payload.folderOrder) {
+            expect(knownFolderIds.has(item.id)).toBe(true);
+            expect(typeof item.orderIndex).toBe("number");
+            expect(item).not.toHaveProperty("name");
+            expect(item).not.toHaveProperty("path");
+        }
+
+        for (const item of payload.resourceOrder) {
+            expect(knownResourceIds.has(item.id)).toBe(true);
+            expect(typeof item.orderIndex).toBe("number");
+            expect(item).not.toHaveProperty("name");
+            expect(item).not.toHaveProperty("path");
+        }
 
         // verify that at least one resource sidecar was updated with orderIndex
         const sampleRes = created.resources[0];
         const sidecar = await readSidecar(tmp, sampleRes.id);
         expect(sidecar).not.toBeNull();
+        expect(sidecar?.id).toBe(sampleRes.id);
+        expect(typeof sidecar?.id).toBe("string");
+        expect(knownResourceIds.has(String(sidecar?.id ?? ""))).toBe(true);
         expect(typeof sidecar?.orderIndex === "number").toBeTruthy();
 
         // verify folder descriptors contain orderIndex fields

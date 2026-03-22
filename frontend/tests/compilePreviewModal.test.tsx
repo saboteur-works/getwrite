@@ -41,3 +41,44 @@ describe("CompilePreviewModal", () => {
         expect(onConfirm).toHaveBeenCalledTimes(1);
     });
 });
+
+/**
+ * T028: US3 — AppShell parity coverage for CompilePreviewModal.
+ *
+ * Verifies that the close lifecycle is preserved after ShellModalCoordinator
+ * extraction.
+ */
+describe("CompilePreviewModal — AppShell parity (T028)", () => {
+    it("calls onClose when the Cancel button is clicked", () => {
+        const onClose = vi.fn();
+
+        render(
+            <CompilePreviewModal
+                isOpen={true}
+                resource={undefined}
+                resources={[]}
+                onClose={onClose}
+                onConfirm={vi.fn()}
+            />,
+        );
+
+        const closeBtn = screen.getByRole("button", { name: /close/i });
+        fireEvent.click(closeBtn);
+
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not render when isOpen is false", () => {
+        render(
+            <CompilePreviewModal
+                isOpen={false}
+                resource={undefined}
+                resources={[]}
+                onClose={vi.fn()}
+                onConfirm={vi.fn()}
+            />,
+        );
+
+        expect(screen.queryByText("Compile Preview")).not.toBeInTheDocument();
+    });
+});

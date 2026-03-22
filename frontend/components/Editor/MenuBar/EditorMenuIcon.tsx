@@ -60,9 +60,11 @@ const IconTypes = {
     fontStyle: Type,
 };
 
-interface EditorMenuIconProps {
+export type EditorMenuIconName = keyof typeof IconTypes;
+
+export interface EditorMenuIconProps {
     iconSize?: number;
-    Icon: keyof typeof IconTypes;
+    Icon: EditorMenuIconName;
     onClick?: () => void;
     disabled?: boolean;
     active?: boolean;
@@ -77,7 +79,7 @@ export default function EditorMenuIcon({
     active,
     tooltipContent = "",
 }: EditorMenuIconProps) {
-    const IconComponent = IconTypes[Icon as keyof typeof IconTypes];
+    const IconComponent = IconTypes[Icon];
 
     const activeClass = active ? "editor-menu-icon-button-active" : "";
     const disabledClass = disabled ? "editor-menu-icon-button-disabled" : "";
@@ -90,6 +92,7 @@ export default function EditorMenuIcon({
             disabled={disabled}
             className={`editor-menu-icon-button ${activeClass} ${disabledClass}`}
             data-tooltip-content={tooltipContent}
+            aria-label={tooltipContent || Icon}
         >
             <IconComponent size={iconSize} />
         </button>

@@ -1,0 +1,524 @@
+# PR Draft: Refactor Frontend App Trouble Spots
+
+**Feature**: [spec.md](/Users/jedaisaboteur/Repositories/getwrite/specs/005-refactor-app-trouble-spots/spec.md)
+**Branch**: `005-refactor-app-trouble-spots`
+**Base**: `main`
+**Status**: Draft
+**Last Updated**: 2026-03-21
+
+## Purpose
+
+This file is the working PR draft for feature `005-refactor-app-trouble-spots`.
+
+Update it as implementation progresses so the eventual PR body can be assembled from the branch's recorded scope, validation, risks, and completion status instead of reconstructing that context at PR creation time.
+
+## Current Branch Summary
+
+This branch currently contains:
+
+1. The full planning and execution artifact set for feature `005-refactor-app-trouble-spots`.
+2. The completed Phase 1 setup work that establishes shared refactor guardrail scaffolding and hotspot-specific test commands.
+3. The completed Phase 2 foundational baseline work that locks model, template, revision, and reorder assertions before any seam extraction begins.
+4. The first User Story 1 regression coverage pass for model-layer seams before extraction begins.
+5. The second User Story 1 regression coverage pass for slice guardrails and selector stability.
+6. User Story 1 extraction has started with the `resource-factory` seam (`T009`).
+7. User Story 1 persistence extraction is complete with `resource-persistence` (`T010`).
+8. User Story 1 typed adapter extraction is complete with `project-view-adapter` (`T011`).
+9. User Story 1 template scanning/validation extraction is complete with `template-service` (`T012`).
+10. User Story 1 resource/template facade trim is complete with `T013` delegation updates.
+11. User Story 1 revision transport/normalization extraction is complete with `T014`.
+12. User Story 1 canonical guard extraction is complete with `T015`.
+13. User Story 1 revisions slice trim is complete with `T016`.
+14. User Story 1 project actions controller extraction is complete with `T017`.
+15. User Story 1 projects slice/menu trim is complete with `T018`.
+16. User Story 2 EditView parity coverage is complete with `T019`.
+17. User Story 2 ResourceTree parity coverage is complete with `T020`.
+18. User Story 2 revision hydration extraction is complete with `T021`.
+19. User Story 2 canonical autosave lifecycle extraction is complete with `T022`.
+20. User Story 2 EditView presentational trim is complete with `T023`.
+21. User Story 2 tree-adapter extraction is complete with `T024`.
+22. User Story 2 reorder-orchestration extraction is complete with `T025`.
+23. User Story 2 ResourceTree render-focused trim and lodash-conformance update are complete with `T026`.
+24. User Story 3 project-type guardrail coverage is complete with `T027`.
+25. User Story 3 AppShell parity coverage is complete with `T028`.
+26. User Story 3 project-type draft service and list pane extraction are complete with `T029`.
+27. User Story 3 project-type editor form extraction is complete with `T030`.
+28. User Story 3 project-type manager slim-shell trim is complete with `T031`.
+29. User Story 3 shell layout and settings menu extraction are complete with `T032`.
+30. User Story 3 shell modal coordinator and project-type loader extraction are complete with `T033`.
+31. User Story 3 AppShell composition trim is complete with `T034`.
+32. User Story 5 invariant validation is complete with `T035` through `T039`, including cross-invariant tests, cross-track parity coverage, OrganizerView import-policy cleanup, and recorded guardrail verification evidence.
+33. User Story 4 toolbar parity coverage is complete with `T040`.
+34. User Story 4 help surface parity coverage is complete with `T041`.
+35. User Story 4 typed toolbar schema and command resolution are complete with `T042`.
+36. User Story 4 MenuBar input and color renderer trims are complete with `T043`.
+37. User Story 4 MenuBar schema-driven shell trim is complete with `T044`.
+38. User Story 4 help content and section-card extraction are complete with `T045`.
+39. User Story 4 HelpPage slim-shell trim is complete with `T046`.
+40. Phase 8 cleanup removed obsolete AppShell callback indirection and normalized typed dispatch usage with `T047`.
+41. Phase 8 styling normalization is complete for shell modal and project-type manager seams with `T048`, and full hotspot alias validation is recorded with `T049`.
+
+At the current branch state, User Stories 1 through 5 and Phase 8 polish are complete, with full refactor alias validation recorded in quickstart and one pre-existing frontend typecheck gate failure documented separately.
+
+## Proposed PR Title
+
+`feat(spec-005): start refactor app trouble spots execution`
+
+## Draft PR Body
+
+## Summary
+
+This PR starts execution for feature `005-refactor-app-trouble-spots`.
+
+It adds the planning package for the frontend trouble-spot refactor, completes the Phase 1 and 2 baselines, and carries the implementation through the shell, project-type, menu, and help seams.
+
+The current branch state includes completed User Stories 1 through 5 seam extractions plus the targeted regression coverage and validation commands needed to preserve behavior.
+
+## Scope
+
+This branch currently includes:
+
+- the full feature spec package under `specs/005-refactor-app-trouble-spots`
+- shared refactor fixture builders for invariant-sensitive tests
+- shared UI parity helpers for behavior-preserving integration coverage
+- hotspot-specific frontend test command aliases for later execution tracks
+- foundational baseline assertions for model, template, revision, and reorder guardrails
+- focused model-layer regression coverage for factory, persistence, project-view adapter, and template-service seams
+- focused slice guardrail coverage for canonical revision behavior, selector visibility rules, and project-slice normalization contracts
+- first model seam extraction by moving pure factory logic to `resource-factory.ts` while preserving `resource.ts` exports
+- persistence seam extraction by moving write/load helpers to `resource-persistence.ts` while preserving `resource.ts` exports
+- typed project-view adapter extraction by moving UI-mapping helpers to `project-view-adapter.ts` while preserving `project-view.ts` exports
+- template scanning and validation extraction by moving inspect/validate logic into `template-service.ts` while preserving `resource-templates.ts` public APIs
+- facade/delegation trim in `resource-templates.ts` and `resource.ts` to route through `resource-factory`, `resource-persistence`, and `template-service`
+- revision slice extraction by moving transport and normalization helpers to `revision-transport-service.ts` and `revision-normalization.ts`
+- task tracking updates marking Phases 1 and 2 complete
+- task tracking updates marking Phase 4 complete (T019-T026)
+- EditView seam extraction into dedicated hydration and autosave hooks
+- ResourceTree seam extraction into dedicated tree-building and reorder orchestration modules
+- project-type manager decomposition into a draft service, list pane, and editor form
+- AppShell decomposition into dedicated layout, settings, modal, and project-type loading units
+- root-level `pnpm test run ...` forwarding for targeted frontend Vitest execution under Node 22
+
+This branch does not yet include:
+
+- any intended user-facing behavior change
+
+### User Story 2 workflow stabilization (Phase 4)
+
+Added:
+
+- `frontend/components/WorkArea/useRevisionContent.ts`
+- `frontend/components/WorkArea/useCanonicalAutosave.ts`
+- `frontend/components/ResourceTree/buildResourceTree.ts`
+- `frontend/components/ResourceTree/useResourceReorder.ts`
+- `frontend/tests/integration/editViewAutosave.test.tsx`
+
+Updated:
+
+- `frontend/components/WorkArea/EditView.tsx`
+- `frontend/components/ResourceTree/ResourceTree.tsx`
+- `frontend/tests/editView.test.tsx`
+- `frontend/tests/resourceTree.test.tsx`
+- `frontend/tests/resourceTreeDrag.test.tsx`
+- `specs/005-refactor-app-trouble-spots/tasks.md`
+
+This work preserves EditView and ResourceTree behavior while separating stateful workflows from rendering concerns and replacing non-conformant lodash usage in the ResourceTree seam.
+
+### User Story 3 shell and project-type decomposition (Phase 5)
+
+Added:
+
+- `frontend/components/project-types/ProjectTypeDraftService.ts`
+- `frontend/components/project-types/ProjectTypeListPane.tsx`
+- `frontend/components/project-types/ProjectTypeEditorForm.tsx`
+- `frontend/components/Layout/ShellLayoutController.tsx`
+- `frontend/components/Layout/ShellSettingsMenu.tsx`
+- `frontend/components/Layout/ShellModalCoordinator.tsx`
+- `frontend/components/Layout/ShellProjectTypeLoader.tsx`
+
+Updated:
+
+- `frontend/components/project-types/ProjectTypesManagerPage.tsx`
+- `frontend/components/Layout/AppShell.tsx`
+- `frontend/tests/unit/project-type-validation.spec.ts`
+- `frontend/tests/create-project-modal.spec.tsx`
+- `frontend/tests/exportPreviewModal.test.tsx`
+- `frontend/tests/compilePreviewModal.test.tsx`
+- `frontend/tests/flows.test.tsx`
+- `package.json`
+- `specs/005-refactor-app-trouble-spots/tasks.md`
+
+This work preserves project-type workspace guardrails, shell modal triggers, command-palette behavior, and editor-save coordination while reducing the two largest orchestration surfaces into smaller units.
+
+### User Story 4 menu and help consolidation (Phase 7)
+
+Added:
+
+- `frontend/components/Editor/MenuBar/toolbar-command-schema.ts`
+- `frontend/components/Editor/MenuBar/useToolbarCommand.ts`
+- `frontend/components/help/help-content.ts`
+- `frontend/components/help/HelpSectionCard.tsx`
+- `frontend/tests/editorMenuBar.test.tsx`
+- `frontend/tests/component/helpPage.test.tsx`
+- `frontend/tests/a11y/helpPage.a11y.test.tsx`
+
+Updated:
+
+- `frontend/components/Editor/MenuBar/MenuBar.tsx`
+- `frontend/components/Editor/MenuBar/EditorMenuColorSubmenu.tsx`
+- `frontend/components/Editor/MenuBar/EditorMenuInput.tsx`
+- `frontend/components/Editor/MenuBar/EditorMenuIcon.tsx`
+- `frontend/components/Editor/MenuBar/menuBarState.tsx`
+- `frontend/components/help/HelpPage.tsx`
+- `frontend/styles/utilities.css`
+- `frontend/tests/controls.test.tsx`
+- `specs/005-refactor-app-trouble-spots/tasks.md`
+
+This work replaces duplicated MenuBar command wiring with a typed schema and shared resolution layer, then extracts HelpPage content and section primitives while preserving tab behavior, modal dismissal, and token-first styling.
+
+## What Changed
+
+### Feature planning and execution artifacts
+
+Added the feature package under `specs/005-refactor-app-trouble-spots`:
+
+- `spec.md`
+- `plan.md`
+- `research.md`
+- `data-model.md`
+- `quickstart.md`
+- `tasks.md`
+- `checklists/requirements.md`
+
+These artifacts define:
+
+- the refactor scope and priorities
+- the authority chain back to feature `004-frontend-drift-coherence`
+- the hotspot sequencing and execution tracks
+- the invariant guardrails and verification workflow
+- the per-phase implementation task list
+
+### Phase 1 setup scaffolding
+
+Added shared test infrastructure for the refactor tracks:
+
+- `frontend/src/tests/unit/refactor-guardrails/fixtureBuilders.ts`
+- `frontend/tests/integration/refactorParity.ts`
+
+This setup work provides:
+
+- deterministic fixture builders for folders, resources, revisions, and project-type specs
+- reusable parity assertions for ordered identities and strict output comparisons
+- lightweight UI tick and parity wait helpers for later integration coverage
+
+### Frontend test command aliases
+
+Updated `frontend/package.json` with hotspot-specific command aliases:
+
+- `test:refactor:resource-templates`
+- `test:refactor:revisions`
+- `test:refactor:projects`
+- `test:refactor:edit-view`
+- `test:refactor:resource-tree`
+- `test:refactor:project-types`
+- `test:refactor:app-shell`
+- `test:refactor:menu-bar`
+- `test:refactor:help-page`
+
+These commands create stable entry points for guardrail verification as each hotspot track is implemented.
+
+### Phase 2 foundational baseline assertions
+
+Expanded the blocking baseline coverage before any seam extraction starts:
+
+- `frontend/src/tests/unit/resource.test.ts`
+- `frontend/src/tests/unit/uuid.test.ts`
+- `frontend/src/tests/unit/resource-templates.test.ts`
+- `frontend/tests/unit/project-type-validation.spec.ts`
+- `frontend/src/tests/unit/revision-invariants.test.ts`
+- `frontend/tests/reorder-persistence.test.tsx`
+- `specs/005-refactor-app-trouble-spots/quickstart.md`
+
+This work adds baseline assertions for:
+
+- schema-validated resource factory output, slugging, timestamps, and UUID shape
+- template placeholder inspection and dry-run write planning
+- Workspace folder validation and strict project-type spec shape
+- canonical revision reassignment and prune-protection behavior
+- reorder persistence payload identity and order-index persistence
+- explicit Phase 2 entry-gate commands in the quickstart guide
+
+### User Story 1 model-layer regression coverage
+
+Added focused seam-level regression coverage for the first extraction track:
+
+- `frontend/src/tests/unit/resource-factory.test.ts`
+- `frontend/src/tests/unit/resource-persistence.test.ts`
+- `frontend/src/tests/unit/project-view-adapter.test.ts`
+- `frontend/src/tests/unit/template-service.test.ts`
+
+This work locks down:
+
+- factory dispatch, slug normalization, metadata passthrough, and invalid-shape rejection
+- text and folder persistence behavior, sidecar identity, and local resource loading
+- project-view folder/resource ordering and flat legacy adapter output
+- template listing, nested placeholder inspection, schema validation, and bulk scaffold creation
+
+### User Story 1 slice guardrail coverage
+
+Added focused slice-level guardrail coverage for the Redux foundation seams:
+
+- `frontend/src/tests/unit/revision-canonical-guards.test.ts`
+- `frontend/src/tests/unit/revisions-slice-selectors.test.ts`
+- `frontend/src/tests/unit/projects-slice-controller.test.ts`
+
+This work locks down:
+
+- single-canonical revision transitions for both reducer and thunk fulfillment paths
+- visible-revision selector behavior when the selected resource changes and status-flag selector stability
+- project-slice normalization, selector memoization, and resource add/remove behavior keyed by stable ids
+
+The hotspot-specific aliases were also refreshed so:
+
+- `test:refactor:resource-templates` now includes the four T007 model-layer regression files
+- `test:refactor:revisions` now includes the new T008 revision slice tests
+- `test:refactor:projects` now includes the new T008 project slice test
+
+### User Story 1 seam extraction start (T009)
+
+Started the first model seam extraction by introducing:
+
+- `frontend/src/lib/models/resource-factory.ts`
+
+Updated:
+
+- `frontend/src/lib/models/resource.ts`
+
+This extraction moves pure resource factory construction/validation logic into the dedicated module while re-exporting the same public factory APIs from `resource.ts` so downstream imports remain stable.
+
+### User Story 1 persistence extraction (T010)
+
+Added:
+
+- `frontend/src/lib/models/resource-persistence.ts`
+
+Updated:
+
+- `frontend/src/lib/models/resource.ts`
+
+This extraction moves local write/load side-effect logic into a dedicated persistence module while preserving call sites through stable re-exports from `resource.ts`.
+
+### User Story 1 typed adapter extraction (T011)
+
+Added:
+
+- `frontend/src/lib/models/project-view-adapter.ts`
+
+Updated:
+
+- `frontend/src/lib/models/project-view.ts`
+
+This extraction moves typed project-view mapping helpers into a dedicated adapter module and removes `as any` usage from the seam while preserving the existing `buildProjectView` API surface.
+
+### User Story 1 template scanning and validation extraction (T012)
+
+Added:
+
+- `frontend/src/lib/models/template-service.ts`
+
+Updated:
+
+- `frontend/src/lib/models/resource-templates.ts`
+
+This extraction moves placeholder scanning and schema-validation logic into a dedicated template-service module while preserving existing `inspectResourceTemplate` and `validateResourceTemplate` call surfaces in `resource-templates.ts`.
+
+### User Story 1 resource/template facade trim (T013)
+
+Updated:
+
+- `frontend/src/lib/models/resource-templates.ts`
+- `frontend/src/lib/models/resource.ts`
+
+This trim completes the delegation seam by routing template resource creation through extracted factory helpers, keeping template validation/inspection in `template-service`, and reducing broad cast-based result handling paths.
+
+### User Story 1 revision transport and normalization extraction (T014)
+
+Added:
+
+- `frontend/src/store/revision-transport-service.ts`
+- `frontend/src/store/revision-normalization.ts`
+
+Updated:
+
+- `frontend/src/store/revisionsSlice.ts`
+
+This extraction moves revision API request orchestration and revision entry normalization helpers out of `revisionsSlice.ts` while preserving existing thunk names, payload contracts, and selector behavior.
+
+### User Story 1 canonical guard extraction (T015)
+
+Added:
+
+- `frontend/src/store/revision-canonical-guards.ts`
+
+Updated:
+
+- `frontend/src/store/revisionsSlice.ts`
+
+This extraction moves the canonical revision guard functions (`applyCanonicalRevision`, `isStaleCanonicalUpdate`) into a dedicated pure-function module. The `setCanonicalRevisionId` reducer and the `setCanonicalRevisionForSelectedResource.fulfilled` extraReducer both delegate to these helpers, making the single-canonical invariant explicit and independently testable.
+
+### User Story 1 revisions slice trim (T016)
+
+Updated:
+
+- `frontend/src/store/revisionsSlice.ts`
+- `frontend/src/store/revision-normalization.ts`
+
+This trim removes remaining in-slice revision list mutation details by delegating save/delete list transformations to normalization helpers (`mergeRevisionEntry`, `removeRevisionEntry`) while preserving existing thunk names, fulfilled/rejected payload contracts, and selector outputs.
+
+### User Story 1 project actions controller extraction (T017)
+
+Added:
+
+- `frontend/src/store/project-actions-controller.ts`
+
+Updated:
+
+- `frontend/src/tests/unit/projects-slice-controller.test.ts`
+
+This extraction introduces a dedicated project actions controller with a single exported `projectActionsController` constant that centralizes rename/delete orchestration for the existing API contracts (`/api/project/rename`, `/api/project/delete`), including required project-path guard checks and API error normalization.
+
+### User Story 1 projects slice/menu trim (T018)
+
+Updated:
+
+- `frontend/src/store/projectsSlice.ts`
+- `frontend/components/Start/ManageProjectMenu.tsx`
+- `frontend/src/tests/unit/projects-slice-controller.test.ts`
+
+This trim finalizes the US1 projects seam by adding explicit `renameProject` and `deleteProject` reducers, then routing `ManageProjectMenu` rename/delete flows through typed hooks and `projectActionsController` while preserving callback contracts and endpoint payloads.
+
+### Task state updates
+
+Updated `specs/005-refactor-app-trouble-spots/tasks.md` to mark the following tasks complete:
+
+- `T001`
+- `T002`
+- `T003`
+- `T004`
+- `T005`
+- `T006`
+- `T007`
+- `T008`
+- `T009`
+- `T010`
+- `T011`
+- `T012`
+- `T013`
+- `T014`
+- `T015`
+- `T016`
+- `T017`
+- `T018`
+
+This leaves the branch ready for User Story 2 tasks (`T019` onward).
+
+## Validation
+
+Validation completed so far:
+
+- `pnpm --filter getwrite-frontend run test:refactor:resource-templates` passed
+- `pnpm --filter getwrite-frontend run test:refactor:revisions` passed
+- `pnpm --filter getwrite-frontend run test:refactor:projects` passed
+- `pnpm --filter getwrite-frontend test:ci src/tests/unit/resource-factory.test.ts src/tests/unit/resource-persistence.test.ts src/tests/unit/project-view-adapter.test.ts src/tests/unit/template-service.test.ts` passed
+- `pnpm --filter getwrite-frontend test:ci src/tests/unit/revision-canonical-guards.test.ts src/tests/unit/revisions-slice-selectors.test.ts src/tests/unit/projects-slice-controller.test.ts` passed
+- `pnpm --filter getwrite-frontend test:ci src/tests/unit/resource-factory.test.ts src/tests/unit/resource-persistence.test.ts src/tests/unit/project-view-adapter.test.ts src/tests/unit/template-service.test.ts src/tests/unit/revision-canonical-guards.test.ts src/tests/unit/revisions-slice-selectors.test.ts src/tests/unit/projects-slice-controller.test.ts` passed after the `T009` extraction
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/project-view-adapter.test.ts` passed after the `T011` extraction
+- `pnpm --filter getwrite-frontend run test:refactor:resource-templates` passed after the `T011` extraction
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/template-service.test.ts` passed after the `T012` extraction
+- `pnpm --filter getwrite-frontend run test:refactor:resource-templates` passed after the `T012` extraction
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/template-service.test.ts src/tests/unit/resource-templates.test.ts src/tests/unit/resource-templates-list.test.ts src/tests/unit/resource-templates-export.test.ts` passed after the `T013` trim
+- `pnpm --filter getwrite-frontend run test:refactor:resource-templates` passed after the `T013` trim
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/revision-canonical-guards.test.ts src/tests/unit/revisions-slice-selectors.test.ts src/tests/unit/revision-invariants.test.ts src/tests/unit/revision-manager.test.ts src/tests/unit/revision.test.ts tests/reorder-persistence.test.tsx` passed after `T014`
+- `pnpm --filter getwrite-frontend run test:refactor:revisions` passed after `T014`
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/revision-canonical-guards.test.ts` passed after `T015` (3 tests: single-canonical on reducer, single-canonical on async fulfill, stale-resource ignore)
+- `pnpm --filter getwrite-frontend run test:refactor:revisions` passed after `T015` (6 files, 20 tests)
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/revisions-slice-selectors.test.ts src/tests/unit/revision-canonical-guards.test.ts` passed after `T016` (5 tests)
+- `pnpm --filter getwrite-frontend run test:refactor:revisions` passed after `T016` (6 files, 20 tests)
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/projects-slice-controller.test.ts` passed after `T017` (5 tests)
+- `pnpm --filter getwrite-frontend run test:refactor:projects` passed after `T017` (4 files, 14 tests)
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/projects-slice-controller.test.ts` passed after `T018` (6 tests)
+- `pnpm --filter getwrite-frontend run test:refactor:projects` passed after `T018` (4 files, 15 tests)
+- `pnpm test run tests/unit/project-type-validation.spec.ts tests/create-project-modal.spec.tsx tests/exportPreviewModal.test.tsx tests/compilePreviewModal.test.tsx tests/flows.test.tsx` passed after switching to `nvm use 22.16.0`
+- `pnpm --filter getwrite-frontend run test:refactor:project-types` passed after `T027` through `T031` (5 files, 23 tests)
+- `pnpm --filter getwrite-frontend run test:refactor:app-shell` passed after `T028` through `T034` (5 files, 13 tests)
+- new helper files and task/package edits reported no editor diagnostics after creation
+
+Validation note:
+
+- `pnpm --filter getwrite-frontend typecheck` is currently blocked by a pre-existing import error in `frontend/src/hooks/use-toast.ts` referencing `@/lib/toast-service`
+- Vitest startup under Node 18 hit `ERR_REQUIRE_ESM`; targeted test execution is now validated via `nvm use 22.16.0`
+- the passing revisions suite still emits existing test stderr warnings from sidecar lookups and React `act(...)` guidance inside `tests/reorder-persistence.test.tsx`, but these warnings did not fail the suite
+- the passing `resource-persistence` regression suite emits a non-failing sidecar lookup warning during temp-directory cleanup because background indexing can outlive the test body briefly
+- the passing projects alias emits existing integration-test debug logging from `tests/create-project-modal.spec.tsx`, but it does not affect pass/fail status
+- the passing app-shell alias still emits an existing non-failing TipTap duplicate-extension warning in `tests/flows.test.tsx`
+
+## Product and Invariant Notes
+
+The setup work in this branch is intended to support later refactors that must preserve:
+
+- Workspace protection and seed structure
+- resource identity stability across reorder and move flows
+- canonical revision invariants
+- token-first UI consistency for touched frontend surfaces
+
+No runtime behavior change is intended by the Phase 1 through Phase 5 work currently on the branch.
+
+## Files of Interest
+
+- [specs/005-refactor-app-trouble-spots/spec.md](/Users/jedaisaboteur/Repositories/getwrite/specs/005-refactor-app-trouble-spots/spec.md)
+- [specs/005-refactor-app-trouble-spots/plan.md](/Users/jedaisaboteur/Repositories/getwrite/specs/005-refactor-app-trouble-spots/plan.md)
+- [specs/005-refactor-app-trouble-spots/tasks.md](/Users/jedaisaboteur/Repositories/getwrite/specs/005-refactor-app-trouble-spots/tasks.md)
+- [frontend/src/tests/unit/refactor-guardrails/fixtureBuilders.ts](/Users/jedaisaboteur/Repositories/getwrite/frontend/src/tests/unit/refactor-guardrails/fixtureBuilders.ts)
+- [frontend/tests/integration/refactorParity.ts](/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/integration/refactorParity.ts)
+- [frontend/package.json](/Users/jedaisaboteur/Repositories/getwrite/frontend/package.json)
+
+## Branch History Snapshot
+
+Commits currently on this branch relative to `main`:
+
+- `9ade122` — `spec(005): add planning artifacts for refactor-app-trouble-spots`
+- `4593ce9` — `feat(spec-005): complete phase 1 setup scaffolding`
+
+## Update Checklist
+
+When this branch changes, update this file with:
+
+- newly completed phases or task ids
+- added validation commands and outcomes
+- known blockers or pre-existing failures encountered during validation
+- changes to PR title or scope if the branch expands
+- any new files that reviewers should prioritize
+
+## Update Log
+
+### 2026-03-21
+
+- Created the initial PR draft file for feature `005-refactor-app-trouble-spots`.
+- Recorded the planning artifacts already present on the branch.
+- Recorded completion of Phase 1 setup tasks `T001` through `T003`.
+- Recorded the passing `test:refactor:resource-templates` validation run.
+- Recorded the pre-existing frontend typecheck blocker in `frontend/src/hooks/use-toast.ts`.
+- Recorded completion of Phase 2 foundational tasks `T004` through `T006`.
+- Recorded the passing `test:refactor:revisions` validation run.
+- Recorded the existing non-failing stderr warnings emitted by the revisions baseline suite.
+- Recorded completion of `T007` with focused model-layer regression tests covering factory, persistence, project-view adapter, and template-service seams.
+- Recorded the passing targeted Vitest command for the four new T007 regression files.
+- Recorded completion of `T008` with focused slice guardrail coverage for `revisionsSlice` and `projectsSlice`.
+- Recorded the passing targeted Vitest command for the three new T008 slice tests.
+- Recorded the passing refreshed hotspot alias commands for `resource-templates`, `revisions`, and `projects`.
+- Recorded completion of `T009` by extracting pure factory construction/validation logic to `frontend/src/lib/models/resource-factory.ts` while preserving stable exports from `frontend/src/lib/models/resource.ts`.
+- Recorded the passing combined T007/T008 targeted guardrail command and the passing refreshed hotspot alias commands after `T009`.
+- Recorded completion of User Story 3 tasks `T027` through `T034`.
+- Recorded the passing root-level targeted Vitest command after switching to `nvm use 22.16.0`.
+- Recorded the passing `test:refactor:project-types` and `test:refactor:app-shell` validation runs.
+- Recorded the root `package.json` test-script update so `pnpm test run ...` forwards directly to frontend Vitest.

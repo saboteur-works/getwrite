@@ -21,18 +21,23 @@ import {
     createTextResource,
     createImageResource,
     createAudioResource,
-} from "./resource";
+} from "./resource-factory";
 import { writeSidecar, readSidecar } from "./sidecar";
 import { withMetaLock } from "./meta-locks";
+import {
+    inspectTemplate,
+    validateTemplate,
+    type TemplateValidationResult,
+} from "./template-service";
 import type {
     UUID,
     TextResource,
     ImageResource,
     AudioResource,
+    AnyResource,
     ResourceType,
     MetadataValue,
 } from "./types";
-import Schemas from "./schemas";
 
 const TEMPLATES_DIR = (projectRoot: string) =>
     path.join(projectRoot, "meta", "templates");
@@ -60,6 +65,29 @@ export interface ResourceTemplate {
     folderId?: UUID | null;
     metadata?: Record<string, MetadataValue>;
     plainText?: string; // for text templates
+}
+
+type TemplateCreatePreview = {
+    plannedWrites: Array<{ path: string; content: string | null }>;
+    resourcePreview: AnyResource;
+};
+
+type TemplateCreateResult =
+    | TextResource
+    | ImageResource
+    | AudioResource
+    | TemplateCreatePreview;
+
+function getCreatedResourceId(result: TemplateCreateResult): string | null {
+    if ("id" in result) {
+        return result.id;
+    }
+
+    if ("resourcePreview" in result && result.resourcePreview.id) {
+        return result.resourcePreview.id;
+    }
+
+    return null;
 }
 
 /**
@@ -196,26 +224,7 @@ export async function inspectResourceTemplate(
     metadataKeys: string[];
 }> {
     const tpl = await loadResourceTemplate(projectRoot, templateId);
-    const placeholders = new Set<string>();
-    const placeholderRe = /{{\s*([A-Za-z0-9_]+)\s*}}/g;
-    function scan(v: unknown) {
-        if (typeof v === "string") {
-            let m: RegExpExecArray | null;
-            while ((m = placeholderRe.exec(v))) placeholders.add(m[1]);
-        } else if (Array.isArray(v)) v.forEach(scan);
-        else if (v && typeof v === "object")
-            Object.values(v).forEach(scan as any);
-    }
-    scan(tpl.name);
-    scan(tpl.plainText);
-    const metadataKeys = tpl.metadata ? Object.keys(tpl.metadata) : [];
-    return {
-        id: tpl.id,
-        name: tpl.name,
-        type: tpl.type,
-        placeholders: Array.from(placeholders),
-        metadataKeys,
-    };
+    return inspectTemplate(tpl);
 }
 
 /**
@@ -245,20 +254,14 @@ export async function createResourceFromTemplate(
         dryRun?: boolean;
     },
 ): Promise<
-    | TextResource
-    | ImageResource
-    | AudioResource
-    | {
-          plannedWrites: Array<{ path: string; content: string | null }>;
-          resourcePreview: any;
-      }
+    TextResource | ImageResource | AudioResource | TemplateCreatePreview
 > {
     const tmpl = await loadResourceTemplate(projectRoot, templateId);
 
     const vars: Record<string, string> | undefined =
         typeof opts?.vars === "string"
-            ? JSON.parse(opts!.vars as string)
-            : (opts?.vars as any | undefined);
+            ? (JSON.parse(opts.vars) as Record<string, string>)
+            : opts?.vars;
 
     // helper to apply vars substitution ({{VAR}}) into strings/objects
     function applyVars(v: unknown): unknown {
@@ -560,15 +563,9 @@ export async function importResourceTemplates(
 export async function validateResourceTemplate(
     projectRoot: string,
     templateId: string,
-): Promise<{ valid: true } | { valid: false; errors: string[] }> {
+): Promise<TemplateValidationResult> {
     const tpl = await loadResourceTemplate(projectRoot, templateId);
-    const res = Schemas.ResourceTemplateSchema.safeParse(tpl);
-    if (res.success) return { valid: true };
-    const errors: string[] = [];
-    for (const issue of res.error.issues) {
-        errors.push(`${issue.path.join(".")}: ${issue.message}`);
-    }
-    return { valid: false, errors };
+    return validateTemplate(tpl);
 }
 
 /**
@@ -595,14 +592,8 @@ export async function scaffoldResourcesFromTemplate(
         const res = await createResourceFromTemplate(projectRoot, templateId, {
             name,
         });
-        // createResourceFromTemplate returns resource object for real creations
-        // or plannedWrites object for dry-run; ensure we captured id
-        if ((res as any).id) created.push((res as any).id as string);
-        else if (
-            (res as any).resourcePreview &&
-            (res as any).resourcePreview.id
-        )
-            created.push((res as any).resourcePreview.id as string);
+        const createdId = getCreatedResourceId(res);
+        if (createdId) created.push(createdId);
     }
     return created;
 }
@@ -627,8 +618,23 @@ export async function applyMultipleFromTemplate(
     let entries: Array<Record<string, string>> = [];
     try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) entries = parsed as any;
-        else throw new Error("JSON input must be an array");
+        if (!Array.isArray(parsed)) {
+            throw new Error("JSON input must be an array");
+        }
+
+        entries = parsed.map((entry) => {
+            if (!entry || typeof entry !== "object") {
+                throw new Error("JSON entries must be objects");
+            }
+
+            const vars: Record<string, string> = {};
+            for (const [key, value] of Object.entries(
+                entry as Record<string, unknown>,
+            )) {
+                vars[key] = String(value ?? "");
+            }
+            return vars;
+        });
     } catch (err) {
         // fallback to CSV
         const lines = raw.split(/\r?\n/).filter((l) => l.trim());
@@ -649,12 +655,8 @@ export async function applyMultipleFromTemplate(
         const res = await createResourceFromTemplate(projectRoot, templateId, {
             vars,
         });
-        if ((res as any).id) created.push((res as any).id as string);
-        else if (
-            (res as any).resourcePreview &&
-            (res as any).resourcePreview.id
-        )
-            created.push((res as any).resourcePreview.id as string);
+        const createdId = getCreatedResourceId(res);
+        if (createdId) created.push(createdId);
     }
     return created;
 }

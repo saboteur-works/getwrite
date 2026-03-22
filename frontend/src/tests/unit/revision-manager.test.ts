@@ -46,6 +46,7 @@ describe("revision-manager", () => {
         expect(all.length).toBe(2);
         const versions = all.map((r) => r.versionNumber);
         expect(versions).toEqual([3, 4]);
+        expect(all.filter((revision) => revision.isCanonical)).toHaveLength(1);
 
         const canonical = await getCanonicalRevision(projectRoot, resourceId);
         expect(canonical).not.toBeNull();
@@ -65,5 +66,30 @@ describe("revision-manager", () => {
         const all = await listRevisions(projectRoot, resourceId);
         const versions = all.map((r) => r.versionNumber).sort((a, b) => a - b);
         expect(versions).toEqual([1, 2]);
+    });
+
+    it("keeps the canonical revision addressable after pruning older versions", async () => {
+        const projectRoot = "/proj-" + generateUUID();
+        const resourceId = generateUUID();
+
+        await createRevision(projectRoot, resourceId, "one");
+        await createRevision(projectRoot, resourceId, "two");
+        const canonical = await createRevision(
+            projectRoot,
+            resourceId,
+            "three",
+            {
+                isCanonical: true,
+                maxRevisions: 2,
+            },
+        );
+
+        const revisions = await listRevisions(projectRoot, resourceId);
+        expect(revisions.map((revision) => revision.versionNumber)).toEqual([
+            2, 3,
+        ]);
+        expect(revisions.find((revision) => revision.isCanonical)?.id).toBe(
+            canonical.id,
+        );
     });
 });

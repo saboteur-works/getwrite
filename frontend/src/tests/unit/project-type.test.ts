@@ -41,4 +41,27 @@ describe("project-type schema (T016/T017)", () => {
         // zod produces a human-friendly message for regex failures
         expect(JSON.stringify(res.errors)).toContain("must match pattern");
     });
+
+    it("preserves Workspace defaults when validation succeeds", () => {
+        const spec = {
+            id: "workspace-seed",
+            name: "Workspace Seed",
+            folders: [
+                {
+                    name: "Workspace",
+                    special: true,
+                    defaultResources: [{ name: "Opening Scene", type: "text" }],
+                },
+            ],
+        };
+
+        const res = validateProjectType(spec);
+        expect(res.success).toBe(true);
+        if (res.success && "value" in res && res.value) {
+            expect(res.value.folders[0]?.name).toBe("Workspace");
+            expect(res.value.folders[0]?.defaultResources?.[0]?.name).toBe(
+                "Opening Scene",
+            );
+        }
+    });
 });
