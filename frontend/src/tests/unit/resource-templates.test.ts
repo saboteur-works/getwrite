@@ -102,6 +102,9 @@ describe("models/resource-templates (T027)", () => {
 
             expect(dryRun.plannedWrites).toHaveLength(2);
             expect(dryRun.resourcePreview.name).toBe("Opening Scene");
+            if (dryRun.resourcePreview.type !== "text") {
+                throw new Error("Expected text preview resource in dry-run");
+            }
             expect(dryRun.resourcePreview.plainText).toContain("Opening Scene");
 
             const resourcesDir = path.join(projectPath, "resources");

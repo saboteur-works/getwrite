@@ -31,7 +31,7 @@
 
 "use client";
 
-import { toastService } from "@/lib/toast-service";
+import { toastService } from "../lib/toast-service";
 
 /**
  * React hook that provides access to toast notification methods.

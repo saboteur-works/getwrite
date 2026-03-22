@@ -5,7 +5,7 @@ import StartPage from "../components/Start/StartPage";
 import { Provider } from "react-redux";
 import { makeStore } from "../src/store/store";
 import { createTextResource } from "../src/lib/models/resource";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 test("StartPage renders projects and opens CreateProjectModal", async () => {
     const user = userEvent.setup();
     const now = new Date().toISOString();

@@ -35,6 +35,11 @@ describe("models/resource factory regressions (T007)", () => {
         expect(created.slug).toBe("scene-3");
         expect(created.orderIndex).toBe(7);
         expect(created.metadata).toEqual(metadata);
+        if (created.type !== "text") {
+            throw new Error(
+                "Expected text resource from typed factory dispatch",
+            );
+        }
         expect(created.wordCount).toBe(4);
         expect(created.paragraphCount).toBe(2);
 
