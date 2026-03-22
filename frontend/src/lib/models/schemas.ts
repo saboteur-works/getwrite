@@ -10,7 +10,6 @@
  * - Validate project-type JSON specs from memory or file.
  */
 import { z } from "zod";
-import fs from "node:fs/promises";
 
 /**
  * Canonical UUID v4 string validator used across model schemas.
@@ -303,6 +302,7 @@ export function validateProjectType(spec: unknown) {
  * const result = await validateProjectTypeFile("/tmp/novel.project-type.json");
  */
 export async function validateProjectTypeFile(filePath: string) {
+    const { default: fs } = await import("node:fs/promises");
     const raw = await fs.readFile(filePath, "utf8");
     let parsed: unknown;
     try {
