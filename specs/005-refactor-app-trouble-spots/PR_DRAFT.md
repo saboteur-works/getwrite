@@ -25,6 +25,7 @@ This branch currently contains:
 7. User Story 1 persistence extraction is complete with `resource-persistence` (`T010`).
 8. User Story 1 typed adapter extraction is complete with `project-view-adapter` (`T011`).
 9. User Story 1 template scanning/validation extraction is complete with `template-service` (`T012`).
+10. User Story 1 resource/template facade trim is complete with `T013` delegation updates.
 
 At the current branch state, this is still early execution work. The branch does **not** yet implement the model, slice, or UI seam extractions described in later phases.
 
@@ -57,6 +58,7 @@ This branch currently includes:
 - persistence seam extraction by moving write/load helpers to `resource-persistence.ts` while preserving `resource.ts` exports
 - typed project-view adapter extraction by moving UI-mapping helpers to `project-view-adapter.ts` while preserving `project-view.ts` exports
 - template scanning and validation extraction by moving inspect/validate logic into `template-service.ts` while preserving `resource-templates.ts` public APIs
+- facade/delegation trim in `resource-templates.ts` and `resource.ts` to route through `resource-factory`, `resource-persistence`, and `template-service`
 - task tracking updates marking Phases 1 and 2 complete
 
 This branch does not yet include:
@@ -221,6 +223,15 @@ Updated:
 
 This extraction moves placeholder scanning and schema-validation logic into a dedicated template-service module while preserving existing `inspectResourceTemplate` and `validateResourceTemplate` call surfaces in `resource-templates.ts`.
 
+### User Story 1 resource/template facade trim (T013)
+
+Updated:
+
+- `frontend/src/lib/models/resource-templates.ts`
+- `frontend/src/lib/models/resource.ts`
+
+This trim completes the delegation seam by routing template resource creation through extracted factory helpers, keeping template validation/inspection in `template-service`, and reducing broad cast-based result handling paths.
+
 ### Task state updates
 
 Updated `specs/005-refactor-app-trouble-spots/tasks.md` to mark the following tasks complete:
@@ -237,8 +248,9 @@ Updated `specs/005-refactor-app-trouble-spots/tasks.md` to mark the following ta
 - `T010`
 - `T011`
 - `T012`
+- `T013`
 
-This leaves the branch ready for the next US1 extraction tasks `T013` through `T018`.
+This leaves the branch ready for the next US1 extraction tasks `T014` through `T018`.
 
 ## Validation
 
@@ -254,6 +266,8 @@ Validation completed so far:
 - `pnpm --filter getwrite-frontend run test:refactor:resource-templates` passed after the `T011` extraction
 - `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/template-service.test.ts` passed after the `T012` extraction
 - `pnpm --filter getwrite-frontend run test:refactor:resource-templates` passed after the `T012` extraction
+- `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/template-service.test.ts src/tests/unit/resource-templates.test.ts src/tests/unit/resource-templates-list.test.ts src/tests/unit/resource-templates-export.test.ts` passed after the `T013` trim
+- `pnpm --filter getwrite-frontend run test:refactor:resource-templates` passed after the `T013` trim
 - new helper files and task/package edits reported no editor diagnostics after creation
 
 Validation note:
