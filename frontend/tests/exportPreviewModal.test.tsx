@@ -27,3 +27,44 @@ describe("ExportPreviewModal", () => {
         expect(onConfirmExport).toHaveBeenCalledTimes(1);
     });
 });
+
+/**
+ * T028: US3 — AppShell parity coverage for ExportPreviewModal.
+ *
+ * Verifies that the modal lifecycle (close, cancel) is preserved after
+ * ShellModalCoordinator extraction.
+ */
+describe("ExportPreviewModal — AppShell parity (T028)", () => {
+    it("calls onClose when the Cancel button is clicked", () => {
+        const onClose = vi.fn();
+
+        render(
+            <ExportPreviewModal
+                isOpen={true}
+                resourceTitle={"Chapter One"}
+                preview={"Some preview text"}
+                onConfirmExport={vi.fn()}
+                onClose={onClose}
+            />,
+        );
+
+        const cancelBtn = screen.getByText("Cancel");
+        fireEvent.click(cancelBtn);
+
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not render content when isOpen is false", () => {
+        render(
+            <ExportPreviewModal
+                isOpen={false}
+                resourceTitle={"Hidden"}
+                preview={"Hidden preview"}
+                onConfirmExport={vi.fn()}
+                onClose={vi.fn()}
+            />,
+        );
+
+        expect(screen.queryByText("Hidden")).not.toBeInTheDocument();
+    });
+});

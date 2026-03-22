@@ -39,8 +39,16 @@ This branch currently contains:
 21. User Story 2 tree-adapter extraction is complete with `T024`.
 22. User Story 2 reorder-orchestration extraction is complete with `T025`.
 23. User Story 2 ResourceTree render-focused trim and lodash-conformance update are complete with `T026`.
+24. User Story 3 project-type guardrail coverage is complete with `T027`.
+25. User Story 3 AppShell parity coverage is complete with `T028`.
+26. User Story 3 project-type draft service and list pane extraction are complete with `T029`.
+27. User Story 3 project-type editor form extraction is complete with `T030`.
+28. User Story 3 project-type manager slim-shell trim is complete with `T031`.
+29. User Story 3 shell layout and settings menu extraction are complete with `T032`.
+30. User Story 3 shell modal coordinator and project-type loader extraction are complete with `T033`.
+31. User Story 3 AppShell composition trim is complete with `T034`.
 
-At the current branch state, User Stories 1 and 2 are complete and the branch is ready to proceed into User Story 3 seam work.
+At the current branch state, User Stories 1 through 3 are complete and the branch is ready to proceed into Phase 6 invariant validation work.
 
 ## Proposed PR Title
 
@@ -52,9 +60,9 @@ At the current branch state, User Stories 1 and 2 are complete and the branch is
 
 This PR starts execution for feature `005-refactor-app-trouble-spots`.
 
-It adds the planning package for the frontend trouble-spot refactor and completes the Phase 1 setup plus Phase 2 foundational work needed before invariant-sensitive seam extraction begins.
+It adds the planning package for the frontend trouble-spot refactor, completes the Phase 1 and 2 baselines, and carries the implementation through the User Story 3 shell and project-type seams.
 
-The current branch state includes completed User Story 1 seam extractions and is now ready to proceed into User Story 2 workflows.
+The current branch state includes completed User Stories 1 through 3 seam extractions plus the targeted regression coverage and validation commands needed to preserve behavior.
 
 ## Scope
 
@@ -77,10 +85,13 @@ This branch currently includes:
 - task tracking updates marking Phase 4 complete (T019-T026)
 - EditView seam extraction into dedicated hydration and autosave hooks
 - ResourceTree seam extraction into dedicated tree-building and reorder orchestration modules
+- project-type manager decomposition into a draft service, list pane, and editor form
+- AppShell decomposition into dedicated layout, settings, modal, and project-type loading units
+- root-level `pnpm test run ...` forwarding for targeted frontend Vitest execution under Node 22
 
 This branch does not yet include:
 
-- User Story 3, 4, or 5 implementation work
+- User Story 4 or 5 implementation work
 - any intended user-facing behavior change
 
 ### User Story 2 workflow stabilization (Phase 4)
@@ -103,6 +114,32 @@ Updated:
 - `specs/005-refactor-app-trouble-spots/tasks.md`
 
 This work preserves EditView and ResourceTree behavior while separating stateful workflows from rendering concerns and replacing non-conformant lodash usage in the ResourceTree seam.
+
+### User Story 3 shell and project-type decomposition (Phase 5)
+
+Added:
+
+- `frontend/components/project-types/ProjectTypeDraftService.ts`
+- `frontend/components/project-types/ProjectTypeListPane.tsx`
+- `frontend/components/project-types/ProjectTypeEditorForm.tsx`
+- `frontend/components/Layout/ShellLayoutController.tsx`
+- `frontend/components/Layout/ShellSettingsMenu.tsx`
+- `frontend/components/Layout/ShellModalCoordinator.tsx`
+- `frontend/components/Layout/ShellProjectTypeLoader.tsx`
+
+Updated:
+
+- `frontend/components/project-types/ProjectTypesManagerPage.tsx`
+- `frontend/components/Layout/AppShell.tsx`
+- `frontend/tests/unit/project-type-validation.spec.ts`
+- `frontend/tests/create-project-modal.spec.tsx`
+- `frontend/tests/exportPreviewModal.test.tsx`
+- `frontend/tests/compilePreviewModal.test.tsx`
+- `frontend/tests/flows.test.tsx`
+- `package.json`
+- `specs/005-refactor-app-trouble-spots/tasks.md`
+
+This work preserves project-type workspace guardrails, shell modal triggers, command-palette behavior, and editor-save coordination while reducing the two largest orchestration surfaces into smaller units.
 
 ## What Changed
 
@@ -376,14 +413,19 @@ Validation completed so far:
 - `pnpm --filter getwrite-frontend run test:refactor:projects` passed after `T017` (4 files, 14 tests)
 - `pnpm --filter getwrite-frontend exec vitest run src/tests/unit/projects-slice-controller.test.ts` passed after `T018` (6 tests)
 - `pnpm --filter getwrite-frontend run test:refactor:projects` passed after `T018` (4 files, 15 tests)
+- `pnpm test run tests/unit/project-type-validation.spec.ts tests/create-project-modal.spec.tsx tests/exportPreviewModal.test.tsx tests/compilePreviewModal.test.tsx tests/flows.test.tsx` passed after switching to `nvm use 22.16.0`
+- `pnpm --filter getwrite-frontend run test:refactor:project-types` passed after `T027` through `T031` (5 files, 23 tests)
+- `pnpm --filter getwrite-frontend run test:refactor:app-shell` passed after `T028` through `T034` (5 files, 13 tests)
 - new helper files and task/package edits reported no editor diagnostics after creation
 
 Validation note:
 
 - `pnpm --filter getwrite-frontend typecheck` is currently blocked by a pre-existing import error in `frontend/src/hooks/use-toast.ts` referencing `@/lib/toast-service`
+- Vitest startup under Node 18 hit `ERR_REQUIRE_ESM`; targeted test execution is now validated via `nvm use 22.16.0`
 - the passing revisions suite still emits existing test stderr warnings from sidecar lookups and React `act(...)` guidance inside `tests/reorder-persistence.test.tsx`, but these warnings did not fail the suite
 - the passing `resource-persistence` regression suite emits a non-failing sidecar lookup warning during temp-directory cleanup because background indexing can outlive the test body briefly
 - the passing projects alias emits existing integration-test debug logging from `tests/create-project-modal.spec.tsx`, but it does not affect pass/fail status
+- the passing app-shell alias still emits an existing non-failing TipTap duplicate-extension warning in `tests/flows.test.tsx`
 
 ## Product and Invariant Notes
 
@@ -394,7 +436,7 @@ The setup work in this branch is intended to support later refactors that must p
 - canonical revision invariants
 - token-first UI consistency for touched frontend surfaces
 
-No runtime behavior change is intended by the Phase 1 work currently on the branch.
+No runtime behavior change is intended by the Phase 1 through Phase 5 work currently on the branch.
 
 ## Files of Interest
 
@@ -441,3 +483,7 @@ When this branch changes, update this file with:
 - Recorded the passing refreshed hotspot alias commands for `resource-templates`, `revisions`, and `projects`.
 - Recorded completion of `T009` by extracting pure factory construction/validation logic to `frontend/src/lib/models/resource-factory.ts` while preserving stable exports from `frontend/src/lib/models/resource.ts`.
 - Recorded the passing combined T007/T008 targeted guardrail command and the passing refreshed hotspot alias commands after `T009`.
+- Recorded completion of User Story 3 tasks `T027` through `T034`.
+- Recorded the passing root-level targeted Vitest command after switching to `nvm use 22.16.0`.
+- Recorded the passing `test:refactor:project-types` and `test:refactor:app-shell` validation runs.
+- Recorded the root `package.json` test-script update so `pnpm test run ...` forwards directly to frontend Vitest.

@@ -91,17 +91,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T027 [P] [US3] Expand project-type guardrail coverage in `frontend/tests/unit/project-type-validation.spec.ts` and `frontend/tests/create-project-modal.spec.tsx`
-- [ ] T028 [P] [US3] Add AppShell parity coverage in `frontend/tests/flows.test.tsx`, `frontend/tests/exportPreviewModal.test.tsx`, `frontend/tests/compilePreviewModal.test.tsx`, and `frontend/tests/create-project-modal.spec.tsx`
+- [x] T027 [P] [US3] Expand project-type guardrail coverage in `frontend/tests/unit/project-type-validation.spec.ts` and `frontend/tests/create-project-modal.spec.tsx`
+- [x] T028 [P] [US3] Add AppShell parity coverage in `frontend/tests/flows.test.tsx`, `frontend/tests/exportPreviewModal.test.tsx`, `frontend/tests/compilePreviewModal.test.tsx`, and `frontend/tests/create-project-modal.spec.tsx`
 
 ### Implementation for User Story 3
 
-- [ ] T029 [P] [US3] Extract `frontend/components/project-types/ProjectTypeDraftService.ts` and `frontend/components/project-types/ProjectTypeListPane.tsx` from `frontend/components/project-types/ProjectTypesManagerPage.tsx`
-- [ ] T030 [P] [US3] Extract `frontend/components/project-types/ProjectTypeEditorForm.tsx` and wire it to `frontend/components/project-types/ProjectTypeDraftService.ts`
-- [ ] T031 [US3] Trim `frontend/components/project-types/ProjectTypesManagerPage.tsx` to a slim shell that validates Workspace boundaries before committing through `frontend/src/lib/models/template-service.ts`
-- [ ] T032 [P] [US3] Extract `frontend/components/Layout/ShellLayoutController.tsx` and `frontend/components/Layout/ShellSettingsMenu.tsx` from `frontend/components/Layout/AppShell.tsx`
-- [ ] T033 [P] [US3] Extract `frontend/components/Layout/ShellModalCoordinator.tsx` and `frontend/components/Layout/ShellProjectTypeLoader.tsx` from `frontend/components/Layout/AppShell.tsx`
-- [ ] T034 [US3] Trim `frontend/components/Layout/AppShell.tsx` to compose the extracted shell units while preserving modal triggers, command-palette behavior, project-type propagation, and editor-save coordination
+- [x] T029 [P] [US3] Extract `frontend/components/project-types/ProjectTypeDraftService.ts` and `frontend/components/project-types/ProjectTypeListPane.tsx` from `frontend/components/project-types/ProjectTypesManagerPage.tsx`
+- [x] T030 [P] [US3] Extract `frontend/components/project-types/ProjectTypeEditorForm.tsx` and wire it to `frontend/components/project-types/ProjectTypeDraftService.ts`
+- [x] T031 [US3] Trim `frontend/components/project-types/ProjectTypesManagerPage.tsx` to a slim shell that validates Workspace boundaries before committing through `frontend/src/lib/models/template-service.ts`
+- [x] T032 [P] [US3] Extract `frontend/components/Layout/ShellLayoutController.tsx` and `frontend/components/Layout/ShellSettingsMenu.tsx` from `frontend/components/Layout/AppShell.tsx`
+- [x] T033 [P] [US3] Extract `frontend/components/Layout/ShellModalCoordinator.tsx` and `frontend/components/Layout/ShellProjectTypeLoader.tsx` from `frontend/components/Layout/AppShell.tsx`
+- [x] T034 [US3] Trim `frontend/components/Layout/AppShell.tsx` to compose the extracted shell units while preserving modal triggers, command-palette behavior, project-type propagation, and editor-save coordination
 
 **Checkpoint**: User Story 3 is complete when both complex shell surfaces can be reasoned about as orchestrators instead of monoliths and all workspace/save guardrails still pass.
 
