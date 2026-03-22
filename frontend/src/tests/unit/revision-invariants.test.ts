@@ -80,6 +80,31 @@ describe("revision invariants (T014)", () => {
         ).toBe(3);
     });
 
+    it("preserves a single canonical revision across repeated canonical switches", async () => {
+        const projectRoot = "/proj-" + generateUUID();
+        const resourceId = generateUUID();
+
+        await writeRevision(projectRoot, resourceId, 1, "one", {
+            isCanonical: true,
+        });
+        await writeRevision(projectRoot, resourceId, 2, "two");
+        await writeRevision(projectRoot, resourceId, 3, "three");
+
+        await setCanonicalRevision(projectRoot, resourceId, 2);
+        await setCanonicalRevision(projectRoot, resourceId, 3);
+
+        const revisions = await listRevisions(projectRoot, resourceId);
+        const canonicalRevisions = revisions.filter(
+            (revision) => revision.isCanonical,
+        );
+
+        expect(revisions.map((revision) => revision.versionNumber)).toEqual([
+            1, 2, 3,
+        ]);
+        expect(canonicalRevisions).toHaveLength(1);
+        expect(canonicalRevisions[0]?.versionNumber).toBe(3);
+    });
+
     it("signals when pruning cannot reach target because canonical must be preserved (prompt simulation)", () => {
         // Build a small revisions set where canonical prevents removing enough items
         const revs: Revision[] = [

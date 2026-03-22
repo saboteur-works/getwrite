@@ -47,8 +47,9 @@ This branch currently contains:
 29. User Story 3 shell layout and settings menu extraction are complete with `T032`.
 30. User Story 3 shell modal coordinator and project-type loader extraction are complete with `T033`.
 31. User Story 3 AppShell composition trim is complete with `T034`.
+32. User Story 5 invariant validation is complete with `T035` through `T039`, including cross-invariant tests, cross-track parity coverage, OrganizerView import-policy cleanup, and recorded guardrail verification evidence.
 
-At the current branch state, User Stories 1 through 3 are complete and the branch is ready to proceed into Phase 6 invariant validation work.
+At the current branch state, User Stories 1 through 3 and User Story 5 are complete, and the branch is ready to proceed into Phase 7 menu/help surface consolidation.
 
 ## Proposed PR Title
 
@@ -91,7 +92,7 @@ This branch currently includes:
 
 This branch does not yet include:
 
-- User Story 4 or 5 implementation work
+- User Story 4 implementation work
 - any intended user-facing behavior change
 
 ### User Story 2 workflow stabilization (Phase 4)

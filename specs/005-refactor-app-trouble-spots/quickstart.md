@@ -7,6 +7,24 @@
 
 This document is an operator's checklist for verifying that each completed refactor hotspot meets its behavior-preservation guardrails. Use this after a PR is opened to confirm the refactor is complete before merging.
 
+## Phase 6 Verification Record (T039)
+
+Run date: 2026-03-21
+
+Command run from `frontend/` after `nvm use 22.16.0`:
+
+```bash
+pnpm exec vitest run src/tests/unit/revision-invariants.test.ts tests/reorder-persistence.test.tsx tests/unit/project-type-validation.spec.ts src/tests/unit/resource.test.ts src/tests/unit/revision-manager.test.ts src/tests/unit/project-type.test.ts tests/flows.test.tsx tests/start.test.tsx tests/a11y/workarea.a11y.test.tsx
+```
+
+Result: PASS (`9` test files, `41` tests)
+
+Notes:
+
+- `tests/a11y/workarea.a11y.test.tsx` was added for the cross-track workarea accessibility parity gate.
+- `frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx` was updated to replace non-conformant `lodash` filtering with native array methods.
+- Existing TipTap duplicate-extension and sidecar-miss logs were observed in stderr during the run; they did not fail the suite and were present in baseline behavior.
+
 ## Pre-Implementation Verification
 
 Before starting any refactor work:

@@ -7,6 +7,8 @@ import {
 } from "../../lib/models/resource";
 import { isValidUUID } from "../../lib/models/uuid";
 
+const FOLDER_ID = "11111111-1111-4111-8111-111111111111";
+
 describe("models/resource", () => {
     it("creates and validates TextResource", () => {
         const r = createTextResource({
@@ -38,6 +40,9 @@ describe("models/resource", () => {
         expect(r.metadata?.focalPoint).toBe("center");
         const v = validateResource(r);
         expect(v.type).toBe("image");
+        if (v.type !== "image") {
+            throw new Error("expected validated image resource");
+        }
         expect(v.width).toBe(600);
         expect(v.height).toBe(800);
     });
@@ -55,7 +60,24 @@ describe("models/resource", () => {
         expect(r.metadata?.narrator).toBe("Test Voice");
         const v = validateResource(r);
         expect(v.type).toBe("audio");
+        if (v.type !== "audio") {
+            throw new Error("expected validated audio resource");
+        }
         expect(v.durationSeconds).toBe(120.5);
         expect(v.format).toBe("mp3");
+    });
+
+    it("preserves folder identity and ordering metadata through validation", () => {
+        const r = createTextResource({
+            name: "Scene 2",
+            folderId: FOLDER_ID,
+            plainText: "A focused scene",
+            metadata: { status: "Draft" },
+        });
+
+        const validated = validateResource(r);
+        expect(validated.id).toBe(r.id);
+        expect(validated.folderId).toBe(FOLDER_ID);
+        expect(validated.metadata?.status).toBe("Draft");
     });
 });

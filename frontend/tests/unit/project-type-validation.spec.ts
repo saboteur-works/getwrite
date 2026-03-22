@@ -131,6 +131,28 @@ describe("project-type Workspace-invariant guardrails (T027)", () => {
         expect(res.success).toBe(true);
     });
 
+    it("accepts Workspace when default resources are defined at both root and folder level", () => {
+        const spec = {
+            id: "workspace-defaults",
+            name: "Workspace Defaults",
+            folders: [
+                {
+                    name: "Workspace",
+                    special: true,
+                    defaultResources: [{ name: "Scene Seed", type: "text" }],
+                },
+            ],
+            defaultResources: [{ name: "Front Matter", type: "text" }],
+        };
+
+        const res = validateProjectType(spec);
+        expect(res.success).toBe(true);
+        if (res.success && "value" in res && res.value) {
+            expect(res.value.folders[0]?.name).toBe("Workspace");
+            expect(res.value.defaultResources).toHaveLength(1);
+        }
+    });
+
     it("rejects a definition whose id contains uppercase letters", () => {
         const spec = {
             id: "NovelType",

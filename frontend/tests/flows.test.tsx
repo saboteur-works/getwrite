@@ -224,6 +224,7 @@ describe("AppShell modal-trigger parity (T028)", () => {
         );
 
         expect(screen.getByText("Export Act One")).toBeInTheDocument();
+        expect(screen.getByRole("dialog")).toHaveTextContent("Export Act One");
 
         // Cancel closes the modal
         fireEvent.click(screen.getByText("Cancel"));
@@ -256,6 +257,9 @@ describe("AppShell modal-trigger parity (T028)", () => {
         );
 
         expect(screen.getByText("Compile Preview")).toBeInTheDocument();
+        expect(
+            screen.getByRole("button", { name: /Generate preview/i }),
+        ).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: /close/i }));
         expect(onClose).toHaveBeenCalledTimes(1);

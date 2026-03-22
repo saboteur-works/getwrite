@@ -69,3 +69,39 @@ test("StartPage renders projects and opens CreateProjectModal", async () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText(/Create Project/i)).toBeInTheDocument();
 });
+
+test("StartPage opens projects using the project root path when available", async () => {
+    const user = userEvent.setup();
+    const now = new Date().toISOString();
+    const onOpen = vi.fn();
+    const projects = [
+        {
+            project: {
+                id: "proj_open_1",
+                name: "Open Me",
+                createdAt: now,
+                updatedAt: now,
+                rootPath: "/tmp/proj_open_1",
+            },
+            resources: [
+                createTextResource({
+                    name: "Doc 1",
+                    plainText: "Doc 1",
+                    folderId: null,
+                } as any),
+            ],
+            folders: [],
+        },
+    ];
+
+    const store = makeStore();
+    render(
+        <Provider store={store}>
+            <StartPage projects={projects} onOpen={onOpen} />
+        </Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Open Project/i }));
+
+    expect(onOpen).toHaveBeenCalledWith("/tmp/proj_open_1");
+});

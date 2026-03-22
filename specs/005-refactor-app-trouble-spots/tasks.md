@@ -115,14 +115,14 @@
 
 ### Tests for User Story 5
 
-- [ ] T035 [P] [US5] Add cross-invariant regression coverage in `frontend/src/tests/unit/revision-invariants.test.ts`, `frontend/tests/reorder-persistence.test.tsx`, and `frontend/tests/unit/project-type-validation.spec.ts`
-- [ ] T036 [P] [US5] Add cross-track parity coverage in `frontend/tests/flows.test.tsx`, `frontend/tests/start.test.tsx`, and `frontend/tests/a11y/workarea.a11y.test.tsx`
+- [x] T035 [P] [US5] Add cross-invariant regression coverage in `frontend/src/tests/unit/revision-invariants.test.ts`, `frontend/tests/reorder-persistence.test.tsx`, and `frontend/tests/unit/project-type-validation.spec.ts`
+- [x] T036 [P] [US5] Add cross-track parity coverage in `frontend/tests/flows.test.tsx`, `frontend/tests/start.test.tsx`, and `frontend/tests/a11y/workarea.a11y.test.tsx`
 
 ### Implementation for User Story 5
 
-- [ ] T037 [US5] Update `frontend/src/tests/unit/resource.test.ts`, `frontend/src/tests/unit/revision-manager.test.ts`, and `frontend/src/tests/unit/project-type.test.ts` to assert invariant preservation after seam extraction
-- [ ] T038 [P] [US5] Remove remaining type-safety and import-policy drift in `frontend/src/lib/models/project-view.ts`, `frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx`, and `frontend/components/ResourceTree/ResourceTree.tsx`
-- [ ] T039 [US5] Run and record guardrail verification outcomes in `specs/005-refactor-app-trouble-spots/quickstart.md`
+- [x] T037 [US5] Update `frontend/src/tests/unit/resource.test.ts`, `frontend/src/tests/unit/revision-manager.test.ts`, and `frontend/src/tests/unit/project-type.test.ts` to assert invariant preservation after seam extraction
+- [x] T038 [P] [US5] Remove remaining type-safety and import-policy drift in `frontend/src/lib/models/project-view.ts`, `frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx`, and `frontend/components/ResourceTree/ResourceTree.tsx`
+- [x] T039 [US5] Run and record guardrail verification outcomes in `specs/005-refactor-app-trouble-spots/quickstart.md`
 
 **Checkpoint**: User Story 5 is complete when invariant regressions are explicitly ruled out by tests, audits, and quickstart verification evidence.
 

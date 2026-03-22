@@ -6,7 +6,6 @@ import {
     selectFolders,
     selectResources,
 } from "../../../../src/store/resourcesSlice";
-import { filter } from "lodash";
 import { ChevronRight, ChevronDown, Eye, EyeClosed } from "lucide-react";
 import { shallowEqual } from "react-redux";
 
@@ -61,15 +60,15 @@ export default function OrganizerView({
     };
 
     const filterResourcesByFolder = (folderId: string) => {
-        return filter(resources, { folderId });
+        return resources.filter((resource) => resource.folderId === folderId);
     };
 
     const getChildFolders = (parentId: string | null) => {
-        return filter(folders, { folderId: parentId });
+        return folders.filter((folder) => folder.folderId === parentId);
     };
 
     const getRootFolders = () => {
-        return filter(folders, (f) => !f.folderId);
+        return folders.filter((folder) => !folder.folderId);
     };
 
     const handleToggle = React.useCallback(() => {

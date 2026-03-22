@@ -194,6 +194,15 @@ describe("Reorder persistence integration", () => {
         expect(Array.isArray(payload.folderOrder)).toBe(true);
         expect(Array.isArray(payload.resourceOrder)).toBe(true);
         expect(payload.folderOrder.length).toBeGreaterThan(0);
+        expect(
+            new Set(payload.folderOrder.map((item: { id: string }) => item.id))
+                .size,
+        ).toBe(payload.folderOrder.length);
+        expect(
+            new Set(
+                payload.resourceOrder.map((item: { id: string }) => item.id),
+            ).size,
+        ).toBe(payload.resourceOrder.length);
 
         for (const item of payload.folderOrder) {
             expect(knownFolderIds.has(item.id)).toBe(true);
@@ -214,6 +223,8 @@ describe("Reorder persistence integration", () => {
         const sidecar = await readSidecar(tmp, sampleRes.id);
         expect(sidecar).not.toBeNull();
         expect(sidecar?.id).toBe(sampleRes.id);
+        expect(typeof sidecar?.id).toBe("string");
+        expect(knownResourceIds.has(String(sidecar?.id ?? ""))).toBe(true);
         expect(typeof sidecar?.orderIndex === "number").toBeTruthy();
 
         // verify folder descriptors contain orderIndex fields
