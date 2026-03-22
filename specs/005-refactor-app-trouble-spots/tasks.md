@@ -49,7 +49,7 @@
 - [x] T011 [P] [US1] Extract typed adapter helpers to `frontend/src/lib/models/project-view-adapter.ts` and remove `as any` usage from `frontend/src/lib/models/project-view.ts`
 - [x] T012 [P] [US1] Extract template scanning and validation to `frontend/src/lib/models/template-service.ts` from `frontend/src/lib/models/resource-templates.ts`
 - [x] T013 [US1] Trim `frontend/src/lib/models/resource-templates.ts` and `frontend/src/lib/models/resource.ts` to delegate to `frontend/src/lib/models/resource-factory.ts`, `frontend/src/lib/models/resource-persistence.ts`, and `frontend/src/lib/models/template-service.ts`
-- [ ] T014 [P] [US1] Extract transport and normalization helpers to `frontend/src/store/revision-transport-service.ts` and `frontend/src/store/revision-normalization.ts` from `frontend/src/store/revisionsSlice.ts`
+- [x] T014 [P] [US1] Extract transport and normalization helpers to `frontend/src/store/revision-transport-service.ts` and `frontend/src/store/revision-normalization.ts` from `frontend/src/store/revisionsSlice.ts`
 - [ ] T015 [P] [US1] Extract canonical guard helpers to `frontend/src/store/revision-canonical-guards.ts` and rewire reducer checks in `frontend/src/store/revisionsSlice.ts`
 - [ ] T016 [US1] Trim `frontend/src/store/revisionsSlice.ts` to preserve thunk and selector contracts while delegating to `frontend/src/store/revision-transport-service.ts`, `frontend/src/store/revision-normalization.ts`, and `frontend/src/store/revision-canonical-guards.ts`
 - [ ] T017 [P] [US1] Add `frontend/src/store/project-actions-controller.ts` and move delete/rename orchestration out of `frontend/src/store/projectsSlice.ts`
