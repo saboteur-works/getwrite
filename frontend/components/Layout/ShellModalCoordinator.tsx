@@ -213,12 +213,12 @@ export default function ShellModalCoordinator({
             />
 
             {isPreferencesModalOpen ? (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="appshell-modal-root">
                     <div
-                        className="fixed inset-0 appshell-modal-backdrop"
+                        className="appshell-modal-backdrop"
                         onClick={() => setIsPreferencesModalOpen(false)}
                     />
-                    <div className="relative z-10 w-[min(820px,94vw)] max-h-[92vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl appshell-modal-panel">
+                    <div className="appshell-modal-panel appshell-modal-panel--preferences">
                         <UserPreferencesPage
                             renderInModal
                             onClose={() => setIsPreferencesModalOpen(false)}
@@ -228,12 +228,12 @@ export default function ShellModalCoordinator({
             ) : null}
 
             {isHelpModalOpen ? (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="appshell-modal-root">
                     <div
-                        className="fixed inset-0 appshell-modal-backdrop"
+                        className="appshell-modal-backdrop"
                         onClick={() => setIsHelpModalOpen(false)}
                     />
-                    <div className="relative z-10 w-[min(860px,94vw)] max-h-[92vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl appshell-modal-panel">
+                    <div className="appshell-modal-panel appshell-modal-panel--help">
                         <HelpPage
                             renderInModal
                             onClose={() => setIsHelpModalOpen(false)}
@@ -243,18 +243,18 @@ export default function ShellModalCoordinator({
             ) : null}
 
             {isProjectTypesModalOpen ? (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="appshell-modal-root">
                     <div
-                        className="fixed inset-0 appshell-modal-backdrop"
+                        className="appshell-modal-backdrop"
                         onClick={() => setIsProjectTypesModalOpen(false)}
                     />
-                    <div className="relative z-10 w-[min(1200px,96vw)] max-h-[92vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl appshell-modal-panel">
+                    <div className="appshell-modal-panel appshell-modal-panel--project-types">
                         {isProjectTypesLoading ? (
-                            <div className="p-6 text-sm text-slate-600">
+                            <div className="appshell-modal-message">
                                 Loading project types...
                             </div>
                         ) : projectTypesLoadError ? (
-                            <div className="p-6 text-sm text-red-700">
+                            <div className="appshell-modal-message appshell-modal-message--error">
                                 {projectTypesLoadError}
                             </div>
                         ) : (

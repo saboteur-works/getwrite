@@ -155,9 +155,9 @@
 
 **Purpose**: Final cleanup, full validation, and release-readiness for the refactor branch.
 
-- [ ] T047 [P] Remove obsolete inline helpers, dead imports, and duplicate logic from `frontend/src/lib/models/resource.ts`, `frontend/src/lib/models/resource-templates.ts`, `frontend/src/store/revisionsSlice.ts`, `frontend/src/store/projectsSlice.ts`, `frontend/components/WorkArea/EditView.tsx`, `frontend/components/ResourceTree/ResourceTree.tsx`, `frontend/components/project-types/ProjectTypesManagerPage.tsx`, `frontend/components/Layout/AppShell.tsx`, `frontend/components/Editor/MenuBar/MenuBar.tsx`, and `frontend/components/help/HelpPage.tsx`
-- [ ] T048 [P] Normalize token-first styling and typed hook usage across `frontend/components/Layout/ShellLayoutController.tsx`, `frontend/components/Layout/ShellSettingsMenu.tsx`, `frontend/components/Layout/ShellModalCoordinator.tsx`, `frontend/components/project-types/ProjectTypeListPane.tsx`, `frontend/components/project-types/ProjectTypeEditorForm.tsx`, `frontend/components/Editor/MenuBar/MenuBar.tsx`, and `frontend/components/help/HelpSectionCard.tsx`
-- [ ] T049 Run the full refactor validation workflow and record completion in `specs/005-refactor-app-trouble-spots/quickstart.md`
+- [x] T047 [P] Remove obsolete inline helpers, dead imports, and duplicate logic from `frontend/src/lib/models/resource.ts`, `frontend/src/lib/models/resource-templates.ts`, `frontend/src/store/revisionsSlice.ts`, `frontend/src/store/projectsSlice.ts`, `frontend/components/WorkArea/EditView.tsx`, `frontend/components/ResourceTree/ResourceTree.tsx`, `frontend/components/project-types/ProjectTypesManagerPage.tsx`, `frontend/components/Layout/AppShell.tsx`, `frontend/components/Editor/MenuBar/MenuBar.tsx`, and `frontend/components/help/HelpPage.tsx`
+- [x] T048 [P] Normalize token-first styling and typed hook usage across `frontend/components/Layout/ShellLayoutController.tsx`, `frontend/components/Layout/ShellSettingsMenu.tsx`, `frontend/components/Layout/ShellModalCoordinator.tsx`, `frontend/components/project-types/ProjectTypeListPane.tsx`, `frontend/components/project-types/ProjectTypeEditorForm.tsx`, `frontend/components/Editor/MenuBar/MenuBar.tsx`, and `frontend/components/help/HelpSectionCard.tsx`
+- [x] T049 Run the full refactor validation workflow and record completion in `specs/005-refactor-app-trouble-spots/quickstart.md`
 
 ---
 

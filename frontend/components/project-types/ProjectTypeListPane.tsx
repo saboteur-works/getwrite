@@ -41,11 +41,9 @@ export default function ProjectTypeListPane({
     onCreateProjectType,
 }: ProjectTypeListPaneProps): JSX.Element {
     return (
-        <aside className="rounded-lg border border-slate-200 bg-white">
-            <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800">
-                Templates
-            </div>
-            <ul className="max-h-[65vh] overflow-y-auto p-2">
+        <aside className="project-type-list-pane">
+            <div className="project-type-list-pane-header">Templates</div>
+            <ul className="project-type-list-pane-items">
                 {items.map((item) => {
                     const isSelected = item.key === selectedKey;
                     const title =
@@ -58,20 +56,20 @@ export default function ProjectTypeListPane({
                             <button
                                 type="button"
                                 onClick={() => onSelectKey(item.key)}
-                                className={`mb-1 flex w-full flex-col rounded-md border px-3 py-2 text-left ${
+                                className={`project-type-list-pane-item ${
                                     isSelected
-                                        ? "border-slate-700 bg-slate-100"
-                                        : "border-transparent hover:border-slate-200 hover:bg-slate-50"
+                                        ? "project-type-list-pane-item--selected"
+                                        : "project-type-list-pane-item--idle"
                                 }`}
                             >
-                                <span className="text-sm font-medium text-slate-900">
+                                <span className="project-type-list-pane-item-title">
                                     {title}
                                 </span>
-                                <span className="text-xs text-slate-500">
+                                <span className="project-type-list-pane-item-meta">
                                     {item.fileName ?? "new draft"}
                                 </span>
                                 {item.hasChanges ? (
-                                    <span className="mt-1 text-[11px] font-medium text-amber-700">
+                                    <span className="project-type-list-pane-item-dirty">
                                         Unsaved changes
                                     </span>
                                 ) : null}
@@ -80,11 +78,11 @@ export default function ProjectTypeListPane({
                     );
                 })}
             </ul>
-            <div className="border-t border-slate-200 px-4 py-2">
+            <div className="project-type-list-pane-footer">
                 <button
                     type="button"
                     onClick={onCreateProjectType}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    className="project-type-list-pane-create-button"
                 >
                     New Project Type
                 </button>

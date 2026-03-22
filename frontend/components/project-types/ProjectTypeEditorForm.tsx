@@ -96,8 +96,8 @@ export default function ProjectTypeEditorForm({
     };
 
     return (
-        <div className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
+        <div className="project-type-editor-form">
+            <div className="project-type-editor-form-grid project-type-editor-form-grid--two-column">
                 <LabeledInput
                     label="ID"
                     value={definition.id}
@@ -120,25 +120,25 @@ export default function ProjectTypeEditorForm({
                 onChange={(value) => patchDefinition({ description: value })}
             />
 
-            <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-slate-900">
+            <section className="project-type-editor-section">
+                <div className="project-type-editor-section-header">
+                    <h2 className="project-type-editor-section-title">
                         Folders
                     </h2>
                     <button
                         type="button"
                         onClick={onAddFolder}
-                        className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                        className="project-type-editor-action-button"
                     >
                         Add Folder
                     </button>
                 </div>
 
-                <div className="space-y-2">
+                <div className="project-type-editor-stack">
                     {definition.folders.map((folder, index) => (
                         <div
                             key={`${folder.name || "folder"}-${index}`}
-                            className="grid gap-2 rounded-md border border-slate-200 p-3 sm:grid-cols-[1fr_auto_auto]"
+                            className="project-type-editor-form-grid project-type-editor-form-grid--folder-row project-type-editor-card"
                         >
                             <LabeledInput
                                 label="Folder Name"
@@ -148,8 +148,8 @@ export default function ProjectTypeEditorForm({
                                     patchFolder(index, { name: value });
                                 }}
                             />
-                            <div className="flex items-end pb-0.5">
-                                <label className="flex items-center gap-2 text-sm text-slate-700">
+                            <div className="project-type-editor-row-end">
+                                <label className="project-type-editor-checkbox-label">
                                     <input
                                         type="checkbox"
                                         checked={Boolean(folder.special)}
@@ -158,16 +158,16 @@ export default function ProjectTypeEditorForm({
                                                 special: event.target.checked,
                                             });
                                         }}
-                                        className="h-4 w-4 rounded border-slate-300"
+                                        className="project-type-editor-checkbox"
                                     />
                                     Special
                                 </label>
                             </div>
-                            <div className="flex items-end justify-end pb-0.5">
+                            <div className="project-type-editor-row-end project-type-editor-row-end--right">
                                 <button
                                     type="button"
                                     onClick={() => onRemoveFolder(index)}
-                                    className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                                    className="project-type-editor-action-button"
                                 >
                                     Remove
                                 </button>
@@ -177,28 +177,28 @@ export default function ProjectTypeEditorForm({
                 </div>
             </section>
 
-            <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-slate-900">
+            <section className="project-type-editor-section">
+                <div className="project-type-editor-section-header">
+                    <h2 className="project-type-editor-section-title">
                         Default Resources
                     </h2>
                     <button
                         type="button"
                         onClick={onAddResource}
-                        className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                        className="project-type-editor-action-button"
                     >
                         Add Resource
                     </button>
                 </div>
 
-                <div className="space-y-2">
+                <div className="project-type-editor-stack">
                     {(definition.defaultResources ?? []).map(
                         (resource, index) => (
                             <div
                                 key={`${resource.name || "resource"}-${index}`}
-                                className="space-y-3 rounded-md border border-slate-200 p-3"
+                                className="project-type-editor-card project-type-editor-stack"
                             >
-                                <div className="grid gap-2 sm:grid-cols-3">
+                                <div className="project-type-editor-form-grid project-type-editor-form-grid--three-column">
                                     <LabeledInput
                                         label="Name"
                                         value={resource.name}
@@ -243,11 +243,11 @@ export default function ProjectTypeEditorForm({
                                     }}
                                 />
 
-                                <div className="flex justify-end">
+                                <div className="project-type-editor-row-end project-type-editor-row-end--right">
                                     <button
                                         type="button"
                                         onClick={() => onRemoveResource(index)}
-                                        className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                                        className="project-type-editor-action-button"
                                     >
                                         Remove Resource
                                     </button>
@@ -275,15 +275,13 @@ function LabeledInput({
     onChange,
 }: LabeledInputProps): JSX.Element {
     return (
-        <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                {label}
-            </span>
+        <label className="project-type-editor-field">
+            <span className="project-type-editor-field-label">{label}</span>
             <input
                 value={value}
                 placeholder={placeholder}
                 onChange={(event) => onChange(event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
+                className="project-type-editor-field-control"
             />
         </label>
     );
@@ -305,16 +303,14 @@ function LabeledTextarea({
     onChange,
 }: LabeledTextareaProps): JSX.Element {
     return (
-        <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                {label}
-            </span>
+        <label className="project-type-editor-field">
+            <span className="project-type-editor-field-label">{label}</span>
             <textarea
                 value={value}
                 rows={rows}
                 placeholder={placeholder}
                 onChange={(event) => onChange(event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
+                className="project-type-editor-field-control"
             />
         </label>
     );
@@ -334,16 +330,14 @@ function LabeledSelect({
     onChange,
 }: LabeledSelectProps): JSX.Element {
     return (
-        <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                {label}
-            </span>
+        <label className="project-type-editor-field">
+            <span className="project-type-editor-field-label">{label}</span>
             <select
                 value={value}
                 onChange={(event) => {
                     onChange(event.target.value as ProjectTypeResourceKind);
                 }}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
+                className="project-type-editor-field-control"
             >
                 {options.map((option) => (
                     <option key={option} value={option}>

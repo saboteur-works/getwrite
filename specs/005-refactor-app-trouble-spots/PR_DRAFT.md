@@ -55,8 +55,10 @@ This branch currently contains:
 37. User Story 4 MenuBar schema-driven shell trim is complete with `T044`.
 38. User Story 4 help content and section-card extraction are complete with `T045`.
 39. User Story 4 HelpPage slim-shell trim is complete with `T046`.
+40. Phase 8 cleanup removed obsolete AppShell callback indirection and normalized typed dispatch usage with `T047`.
+41. Phase 8 styling normalization is complete for shell modal and project-type manager seams with `T048`, and full hotspot alias validation is recorded with `T049`.
 
-At the current branch state, User Stories 1 through 5 are complete, including the independent Phase 7 menu/help surface consolidation track. The branch is ready for Phase 8 polish and full validation.
+At the current branch state, User Stories 1 through 5 and Phase 8 polish are complete, with full refactor alias validation recorded in quickstart and one pre-existing frontend typecheck gate failure documented separately.
 
 ## Proposed PR Title
 

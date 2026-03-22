@@ -20,9 +20,8 @@ import type {
     Folder,
     TipTapDocument,
 } from "../../src/lib/models/types";
-import { shallowEqual, useDispatch } from "react-redux";
+import { shallowEqual } from "react-redux";
 import { removeResource } from "../../src/store/projectsSlice";
-import type { AppDispatch } from "../../src/store/store";
 import ResourceTree from "../ResourceTree/ResourceTree";
 import ShellLayoutController from "./ShellLayoutController";
 import ShellSettingsMenu from "./ShellSettingsMenu";
@@ -48,7 +47,7 @@ import {
     Music2,
     Plus,
 } from "lucide-react";
-import useAppSelector from "../../src/store/hooks";
+import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
 import {
     getStoredGlobalAppearancePreferences,
@@ -179,19 +178,6 @@ export default function AppShell({
     onCloseProject,
     project,
 }: AppShellProps): JSX.Element {
-    // Read the callback from the raw arguments to avoid name-resolution
-    // issues during the incremental migration. Typed explicitly to match
-    // the expected shape so downstream call sites remain typed.
-    type OnResAction =
-        | ((
-              action: ResourceContextAction,
-              resourceId?: string,
-              opts?: AppShellResourceActionOptions,
-          ) => Promise<void>)
-        | undefined;
-    const propOnResourceAction = (arguments as any)[0]?.onResourceAction as
-        | OnResAction
-        | undefined;
     const [view, setView] = useState<ViewName>("edit");
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] =
         useState<boolean>(false);
@@ -368,7 +354,7 @@ export default function AppShell({
         }
 
         // Fallback forward
-        await propOnResourceAction?.(action, resourceId);
+        await onResourceAction?.(action, resourceId);
     };
 
     const [createModal, setCreateModal] = useState<CreateModalState>({
@@ -398,7 +384,7 @@ export default function AppShell({
         _opts?: AppShellResourceActionOptions,
     ) => {
         // forward to page-level handler to mutate project resources
-        await propOnResourceAction?.("create", parentId, payload);
+        await onResourceAction?.("create", parentId, payload);
         setCreateModal({ open: false });
     };
 
@@ -408,7 +394,7 @@ export default function AppShell({
      * @param resourceId - Optional resource id to export; when omitted exports project context.
      */
     const handleExportConfirmed = async (resourceId?: string) => {
-        await propOnResourceAction?.("export", resourceId);
+        await onResourceAction?.("export", resourceId);
         setExportModal({ open: false });
     };
 
@@ -418,7 +404,7 @@ export default function AppShell({
             _prevProjectId.current = project?.id;
         }
     }, [project?.id]);
-    const dispatch = useDispatch<AppDispatch>();
+    const dispatch = useAppDispatch();
 
     /**
      * Persists editor content to resource API using debounced transport.
@@ -771,7 +757,7 @@ export default function AppShell({
                                                 }),
                                             );
                                         }
-                                        await propOnResourceAction?.(
+                                        await onResourceAction?.(
                                             "delete",
                                             resourceId,
                                         );
@@ -819,7 +805,7 @@ export default function AppShell({
                                     }}
                                     onCompileConfirm={(resourceId) => {
                                         if (resourceId) {
-                                            void propOnResourceAction?.(
+                                            void onResourceAction?.(
                                                 "export",
                                                 resourceId,
                                             );

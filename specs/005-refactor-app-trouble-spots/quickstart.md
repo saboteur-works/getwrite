@@ -25,6 +25,48 @@ Notes:
 - `frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx` was updated to replace non-conformant `lodash` filtering with native array methods.
 - Existing TipTap duplicate-extension and sidecar-miss logs were observed in stderr during the run; they did not fail the suite and were present in baseline behavior.
 
+## Phase 8 Verification Record (T049)
+
+Run date: 2026-03-21
+
+Commands run from repo root after `nvm use 22.16.0`:
+
+```bash
+pnpm --filter getwrite-frontend run typecheck
+pnpm --filter getwrite-frontend run test:refactor:resource-templates
+pnpm --filter getwrite-frontend run test:refactor:revisions
+pnpm --filter getwrite-frontend run test:refactor:projects
+pnpm --filter getwrite-frontend run test:refactor:edit-view
+pnpm --filter getwrite-frontend run test:refactor:resource-tree
+pnpm --filter getwrite-frontend run test:refactor:project-types
+pnpm --filter getwrite-frontend run test:refactor:app-shell
+pnpm --filter getwrite-frontend run test:refactor:menu-bar
+pnpm --filter getwrite-frontend run test:refactor:help-page
+```
+
+Results:
+
+- `typecheck`: FAIL due to pre-existing frontend typing issues unrelated to Phase 8 files:
+    - `src/hooks/use-toast.ts` unresolved `@/lib/toast-service`
+    - `src/tests/unit/resource-factory.test.ts` union narrowing for `wordCount`/`paragraphCount`
+    - `src/tests/unit/resource-templates.test.ts` union narrowing for `resourcePreview.plainText`
+    - `tests/start.test.tsx` missing `vi` symbol
+- Hotspot alias suites: PASS
+    - `test:refactor:resource-templates` (10 files, 44 tests)
+    - `test:refactor:revisions` (6 files, 22 tests)
+    - `test:refactor:projects` (4 files, 26 tests)
+    - `test:refactor:edit-view` (3 files, 7 tests)
+    - `test:refactor:resource-tree` (5 files, 5 tests)
+    - `test:refactor:project-types` (5 files, 25 tests)
+    - `test:refactor:app-shell` (5 files, 13 tests)
+    - `test:refactor:menu-bar` (2 files, 9 tests; 1 skipped)
+    - `test:refactor:help-page` (2 files, 4 tests)
+
+Notes:
+
+- During the first chained alias run, `test:refactor:resource-tree` was interrupted with `SIGINT` while one test was queued; rerunning the alias in isolation completed successfully.
+- Baseline informational stderr logs about sidecar misses and duplicate TipTap extension names remained non-failing and matched previously observed behavior.
+
 ## Pre-Implementation Verification
 
 Before starting any refactor work:
