@@ -24,6 +24,11 @@ import {
 } from "./resource";
 import { writeSidecar, readSidecar } from "./sidecar";
 import { withMetaLock } from "./meta-locks";
+import {
+    inspectTemplate,
+    validateTemplate,
+    type TemplateValidationResult,
+} from "./template-service";
 import type {
     UUID,
     TextResource,
@@ -196,26 +201,7 @@ export async function inspectResourceTemplate(
     metadataKeys: string[];
 }> {
     const tpl = await loadResourceTemplate(projectRoot, templateId);
-    const placeholders = new Set<string>();
-    const placeholderRe = /{{\s*([A-Za-z0-9_]+)\s*}}/g;
-    function scan(v: unknown) {
-        if (typeof v === "string") {
-            let m: RegExpExecArray | null;
-            while ((m = placeholderRe.exec(v))) placeholders.add(m[1]);
-        } else if (Array.isArray(v)) v.forEach(scan);
-        else if (v && typeof v === "object")
-            Object.values(v).forEach(scan as any);
-    }
-    scan(tpl.name);
-    scan(tpl.plainText);
-    const metadataKeys = tpl.metadata ? Object.keys(tpl.metadata) : [];
-    return {
-        id: tpl.id,
-        name: tpl.name,
-        type: tpl.type,
-        placeholders: Array.from(placeholders),
-        metadataKeys,
-    };
+    return inspectTemplate(tpl);
 }
 
 /**
@@ -560,15 +546,9 @@ export async function importResourceTemplates(
 export async function validateResourceTemplate(
     projectRoot: string,
     templateId: string,
-): Promise<{ valid: true } | { valid: false; errors: string[] }> {
+): Promise<TemplateValidationResult> {
     const tpl = await loadResourceTemplate(projectRoot, templateId);
-    const res = Schemas.ResourceTemplateSchema.safeParse(tpl);
-    if (res.success) return { valid: true };
-    const errors: string[] = [];
-    for (const issue of res.error.issues) {
-        errors.push(`${issue.path.join(".")}: ${issue.message}`);
-    }
-    return { valid: false, errors };
+    return validateTemplate(tpl);
 }
 
 /**
