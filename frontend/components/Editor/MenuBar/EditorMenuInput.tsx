@@ -9,7 +9,7 @@
  * editor tooling can react to formatting changes.
  */
 import { Baseline } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ALargeSmall } from "lucide-react";
 
 /**
@@ -24,10 +24,13 @@ const IconTypes = {
     fontStyle: ALargeSmall,
 };
 
+export type EditorMenuInputIconName = keyof typeof IconTypes;
+export type EditorMenuInputType = "color" | "range" | "number" | "select";
+
 /**
  * Props for {@link EditorMenuInput}.
  */
-interface EditorMenuInputProps {
+export interface EditorMenuInputProps {
     /**
      * Icon size in pixels.
      *
@@ -35,7 +38,7 @@ interface EditorMenuInputProps {
      */
     iconSize?: number;
     /** Icon key selecting a component from `IconTypes`. */
-    Icon: keyof typeof IconTypes;
+    Icon: EditorMenuInputIconName;
     /** Optional click callback for the rendered input control. */
     onClick?: () => void;
     /** Disables interaction and applies disabled styling when true. */
@@ -62,7 +65,7 @@ interface EditorMenuInputProps {
      *
      * If omitted, internal options default to `color`.
      */
-    type?: string;
+    type?: EditorMenuInputType;
     /** Select options used only when `type === "select"`. */
     options?: string[];
     /** Change callback fired when the control value changes. */
@@ -109,25 +112,31 @@ export default function EditorMenuInput({
     onChange,
 }: EditorMenuInputProps) {
     const [value, setValue] = useState(initialValue);
-    const IconComponent = IconTypes[Icon as keyof typeof IconTypes];
+    const IconComponent = IconTypes[Icon];
+    const controlId = `${Icon}-${type ?? "color"}-input`;
 
     const activeClass = active ? "editor-menu-icon-button-active" : "";
     const disabledClass = disabled ? "editor-menu-icon-button-disabled" : "";
 
+    useEffect(() => {
+        setValue(initialValue);
+    }, [initialValue]);
+
     return (
         <div className="editor-menu-input-root">
-            <label className="editor-menu-input-icon">
-                <IconComponent size={iconSize} id="font-color-input" />
+            <label className="editor-menu-input-icon" htmlFor={controlId}>
+                <IconComponent size={iconSize} aria-hidden="true" />
             </label>
             {type === "color" && (
                 <input
-                    type={"color"}
+                    type="color"
                     data-tooltip-id="my-tooltip"
-                    id="font-color-input"
+                    id={controlId}
                     onClick={onClick}
                     disabled={disabled}
                     className={`editor-menu-icon-button ${activeClass} ${disabledClass}`}
                     data-tooltip-content={tooltipContent}
+                    aria-label={tooltipContent || Icon}
                     value={value}
                     onChange={(e) => {
                         setValue(e.target.value);
@@ -140,13 +149,14 @@ export default function EditorMenuInput({
             )}
             {type === "range" && (
                 <input
-                    type={"range"}
+                    type="range"
                     data-tooltip-id="my-tooltip"
-                    id="font-style-input"
+                    id={controlId}
                     onClick={onClick}
                     disabled={disabled}
                     className={`editor-menu-icon-button ${activeClass} ${disabledClass}`}
                     data-tooltip-content={tooltipContent}
+                    aria-label={tooltipContent || Icon}
                     value={value}
                     onChange={(e) => {
                         setValue(e.target.value);
@@ -161,11 +171,12 @@ export default function EditorMenuInput({
                 <input
                     type="number"
                     data-tooltip-id="my-tooltip"
-                    id="font-size-input"
+                    id={controlId}
                     onClick={onClick}
                     disabled={disabled}
                     className={`editor-menu-input-control editor-menu-number-input ${activeClass} ${disabledClass}`}
                     data-tooltip-content={tooltipContent}
+                    aria-label={tooltipContent || Icon}
                     value={value}
                     onChange={(e) => {
                         setValue(e.target.value);
@@ -178,10 +189,11 @@ export default function EditorMenuInput({
             {type === "select" && (
                 <select
                     data-tooltip-id="my-tooltip"
-                    id="font-size-input"
+                    id={controlId}
                     disabled={disabled}
                     className={`editor-menu-input-control ${activeClass} ${disabledClass}`}
                     data-tooltip-content={tooltipContent}
+                    aria-label={tooltipContent || Icon}
                     value={value}
                     onChange={(e) => {
                         setValue(e.target.value);

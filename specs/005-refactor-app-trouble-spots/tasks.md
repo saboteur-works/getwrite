@@ -136,16 +136,16 @@
 
 ### Tests for User Story 4
 
-- [ ] T040 [P] [US4] Add toolbar parity coverage in `frontend/tests/controls.test.tsx` and `frontend/tests/editorMenuBar.test.tsx`
-- [ ] T041 [P] [US4] Add help surface parity coverage in `frontend/tests/component/helpPage.test.tsx` and `frontend/tests/a11y/helpPage.a11y.test.tsx`
+- [x] T040 [P] [US4] Add toolbar parity coverage in `frontend/tests/controls.test.tsx` and `frontend/tests/editorMenuBar.test.tsx`
+- [x] T041 [P] [US4] Add help surface parity coverage in `frontend/tests/component/helpPage.test.tsx` and `frontend/tests/a11y/helpPage.a11y.test.tsx`
 
 ### Implementation for User Story 4
 
-- [ ] T042 [US4] Add typed toolbar schema to `frontend/components/Editor/MenuBar/toolbar-command-schema.ts` and command resolution to `frontend/components/Editor/MenuBar/useToolbarCommand.ts`
-- [ ] T043 [P] [US4] Trim `frontend/components/Editor/MenuBar/EditorMenuColorSubmenu.tsx` and `frontend/components/Editor/MenuBar/EditorMenuInput.tsx` to schema-driven renderers
-- [ ] T044 [US4] Trim `frontend/components/Editor/MenuBar/MenuBar.tsx` to render from `frontend/components/Editor/MenuBar/toolbar-command-schema.ts` while preserving the `editor` prop surface
-- [ ] T045 [P] [US4] Extract help content and section primitives to `frontend/components/help/help-content.ts` and `frontend/components/help/HelpSectionCard.tsx`
-- [ ] T046 [US4] Trim `frontend/components/help/HelpPage.tsx` to a slim shell that preserves tabs, modal lifecycle, and keyboard dismissal behavior
+- [x] T042 [US4] Add typed toolbar schema to `frontend/components/Editor/MenuBar/toolbar-command-schema.ts` and command resolution to `frontend/components/Editor/MenuBar/useToolbarCommand.ts`
+- [x] T043 [P] [US4] Trim `frontend/components/Editor/MenuBar/EditorMenuColorSubmenu.tsx` and `frontend/components/Editor/MenuBar/EditorMenuInput.tsx` to schema-driven renderers
+- [x] T044 [US4] Trim `frontend/components/Editor/MenuBar/MenuBar.tsx` to render from `frontend/components/Editor/MenuBar/toolbar-command-schema.ts` while preserving the `editor` prop surface
+- [x] T045 [P] [US4] Extract help content and section primitives to `frontend/components/help/help-content.ts` and `frontend/components/help/HelpSectionCard.tsx`
+- [x] T046 [US4] Trim `frontend/components/help/HelpPage.tsx` to a slim shell that preserves tabs, modal lifecycle, and keyboard dismissal behavior
 
 **Checkpoint**: User Story 4 is complete when both low-risk surfaces become easier to maintain without changing command or help behavior.
 

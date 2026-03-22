@@ -48,8 +48,15 @@ This branch currently contains:
 30. User Story 3 shell modal coordinator and project-type loader extraction are complete with `T033`.
 31. User Story 3 AppShell composition trim is complete with `T034`.
 32. User Story 5 invariant validation is complete with `T035` through `T039`, including cross-invariant tests, cross-track parity coverage, OrganizerView import-policy cleanup, and recorded guardrail verification evidence.
+33. User Story 4 toolbar parity coverage is complete with `T040`.
+34. User Story 4 help surface parity coverage is complete with `T041`.
+35. User Story 4 typed toolbar schema and command resolution are complete with `T042`.
+36. User Story 4 MenuBar input and color renderer trims are complete with `T043`.
+37. User Story 4 MenuBar schema-driven shell trim is complete with `T044`.
+38. User Story 4 help content and section-card extraction are complete with `T045`.
+39. User Story 4 HelpPage slim-shell trim is complete with `T046`.
 
-At the current branch state, User Stories 1 through 3 and User Story 5 are complete, and the branch is ready to proceed into Phase 7 menu/help surface consolidation.
+At the current branch state, User Stories 1 through 5 are complete, including the independent Phase 7 menu/help surface consolidation track. The branch is ready for Phase 8 polish and full validation.
 
 ## Proposed PR Title
 
@@ -61,9 +68,9 @@ At the current branch state, User Stories 1 through 3 and User Story 5 are compl
 
 This PR starts execution for feature `005-refactor-app-trouble-spots`.
 
-It adds the planning package for the frontend trouble-spot refactor, completes the Phase 1 and 2 baselines, and carries the implementation through the User Story 3 shell and project-type seams.
+It adds the planning package for the frontend trouble-spot refactor, completes the Phase 1 and 2 baselines, and carries the implementation through the shell, project-type, menu, and help seams.
 
-The current branch state includes completed User Stories 1 through 3 seam extractions plus the targeted regression coverage and validation commands needed to preserve behavior.
+The current branch state includes completed User Stories 1 through 5 seam extractions plus the targeted regression coverage and validation commands needed to preserve behavior.
 
 ## Scope
 
@@ -92,7 +99,6 @@ This branch currently includes:
 
 This branch does not yet include:
 
-- User Story 4 implementation work
 - any intended user-facing behavior change
 
 ### User Story 2 workflow stabilization (Phase 4)
@@ -141,6 +147,32 @@ Updated:
 - `specs/005-refactor-app-trouble-spots/tasks.md`
 
 This work preserves project-type workspace guardrails, shell modal triggers, command-palette behavior, and editor-save coordination while reducing the two largest orchestration surfaces into smaller units.
+
+### User Story 4 menu and help consolidation (Phase 7)
+
+Added:
+
+- `frontend/components/Editor/MenuBar/toolbar-command-schema.ts`
+- `frontend/components/Editor/MenuBar/useToolbarCommand.ts`
+- `frontend/components/help/help-content.ts`
+- `frontend/components/help/HelpSectionCard.tsx`
+- `frontend/tests/editorMenuBar.test.tsx`
+- `frontend/tests/component/helpPage.test.tsx`
+- `frontend/tests/a11y/helpPage.a11y.test.tsx`
+
+Updated:
+
+- `frontend/components/Editor/MenuBar/MenuBar.tsx`
+- `frontend/components/Editor/MenuBar/EditorMenuColorSubmenu.tsx`
+- `frontend/components/Editor/MenuBar/EditorMenuInput.tsx`
+- `frontend/components/Editor/MenuBar/EditorMenuIcon.tsx`
+- `frontend/components/Editor/MenuBar/menuBarState.tsx`
+- `frontend/components/help/HelpPage.tsx`
+- `frontend/styles/utilities.css`
+- `frontend/tests/controls.test.tsx`
+- `specs/005-refactor-app-trouble-spots/tasks.md`
+
+This work replaces duplicated MenuBar command wiring with a typed schema and shared resolution layer, then extracts HelpPage content and section primitives while preserving tab behavior, modal dismissal, and token-first styling.
 
 ## What Changed
 

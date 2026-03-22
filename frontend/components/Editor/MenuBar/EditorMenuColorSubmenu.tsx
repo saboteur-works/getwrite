@@ -1,7 +1,16 @@
+import { Baseline, Highlighter } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-interface EditorMenuColorSubmenuProps {
-    icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
+const ColorIconTypes = {
+    fontColor: Baseline,
+    highlight: Highlighter,
+};
+
+export type EditorMenuColorIconName = keyof typeof ColorIconTypes;
+
+export interface EditorMenuColorSubmenuProps {
+    icon?: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
+    iconName?: EditorMenuColorIconName;
     iconSize?: number;
     tooltipContent?: string;
     colors: string[];
@@ -16,7 +25,8 @@ const normalizeColor = (value: string | undefined): string | undefined => {
 };
 
 export default function EditorMenuColorSubmenu({
-    icon: Icon,
+    icon,
+    iconName,
     iconSize = 16,
     tooltipContent = "",
     colors,
@@ -33,6 +43,11 @@ export default function EditorMenuColorSubmenu({
         () => normalizeColor(activeColor),
         [activeColor],
     );
+    const Icon = iconName ? ColorIconTypes[iconName] : icon;
+
+    if (!Icon) {
+        return null;
+    }
 
     useEffect(() => {
         if (!open || !buttonRef.current) {
@@ -103,6 +118,7 @@ export default function EditorMenuColorSubmenu({
                 }}
                 aria-expanded={open}
                 aria-haspopup="menu"
+                aria-label={tooltipContent || iconName || "color menu"}
             >
                 <Icon size={iconSize} />
             </button>
