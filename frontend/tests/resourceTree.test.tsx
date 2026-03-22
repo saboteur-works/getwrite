@@ -1,66 +1,65 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
-import ResourceTree from "../components/Tree/ResourceTree";
+import { describe, it, expect } from "vitest";
+import ResourceTree from "../components/ResourceTree/ResourceTree";
 import { Provider } from "react-redux";
-import { setProject } from "../src/store/projectsSlice";
+import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { makeStore } from "../src/store/store";
 import { createProject } from "../src/lib/models/project";
-import { createTextResource } from "../src/lib/models/resource";
-import { generateUUID } from "../src/lib/models/uuid";
+import {
+    createFolderResource,
+    createTextResource,
+} from "../src/lib/models/resource";
+import { setFolders, setResources } from "../src/store/resourcesSlice";
 
 describe("ResourceTree", () => {
-    it("renders and expands folder nodes and calls onSelect", () => {
+    it("renders folders, expands nodes, and syncs selected resource", async () => {
         const project = createProject({ name: "Test Project" });
-        const now = new Date().toISOString();
-        const folderId = generateUUID();
-        const folder = {
-            id: folderId,
+        const folder = createFolderResource({
             name: "Folder A",
-            type: "folder",
-            createdAt: now,
-            metadata: {},
-        };
+            parentFolderId: null,
+            orderIndex: 0,
+        });
+        const folderId = folder.id;
 
         const item = createTextResource({
             name: "Child Item",
             folderId: folderId,
             plainText: "Child content",
         });
+        item.orderIndex = 0;
 
-        const resources = [folder, item];
-
-        const onSelect = vi.fn();
-        // create isolated store for this test and register project
         const testStore = makeStore();
         testStore.dispatch(
             setProject({
                 id: project.id,
                 name: project.name,
                 rootPath: project.rootPath ?? "",
-                resources,
+                folders: [folder],
+                resources: [item],
             }),
         );
+        testStore.dispatch(setSelectedProjectId(project.id));
+        testStore.dispatch(setFolders([folder]));
+        testStore.dispatch(setResources([item]));
+
         render(
             <Provider store={testStore}>
-                <ResourceTree projectId={project.id} onSelect={onSelect} />
+                <ResourceTree />
             </Provider>,
         );
 
-        // folder title should be in the document
         const folderNode = screen.getByText("Folder A");
         expect(folderNode).toBeTruthy();
 
-        // click the folder's button to toggle expand for this specific node
         const folderBtn = folderNode.closest("button");
         expect(folderBtn).toBeTruthy();
         fireEvent.click(folderBtn as HTMLElement);
 
-        // after toggling expand, the child item should be visible
-        const childNode = screen.getByText("Child Item");
+        const childNode = await screen.findByText("Child Item");
         expect(childNode).toBeTruthy();
 
         fireEvent.click(childNode);
-        expect(onSelect).toHaveBeenCalledWith(item.id);
+        expect(testStore.getState().resources.selectedResourceId).toBe(item.id);
     });
 });

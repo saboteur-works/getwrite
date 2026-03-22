@@ -67,17 +67,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Add EditView parity coverage in `frontend/tests/editView.test.tsx` and `frontend/tests/integration/editViewAutosave.test.tsx`
-- [ ] T020 [P] [US2] Expand ResourceTree parity coverage in `frontend/tests/resourceTree.test.tsx`, `frontend/tests/resourceTreeDrag.test.tsx`, and `frontend/tests/reorder-persistence.test.tsx`
+- [x] T019 [P] [US2] Add EditView parity coverage in `frontend/tests/editView.test.tsx` and `frontend/tests/integration/editViewAutosave.test.tsx`
+- [x] T020 [P] [US2] Expand ResourceTree parity coverage in `frontend/tests/resourceTree.test.tsx`, `frontend/tests/resourceTreeDrag.test.tsx`, and `frontend/tests/reorder-persistence.test.tsx`
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Extract revision hydration logic to `frontend/components/WorkArea/useRevisionContent.ts` from `frontend/components/WorkArea/EditView.tsx`
-- [ ] T022 [US2] Extract autosave lifecycle and retry handling to `frontend/components/WorkArea/useCanonicalAutosave.ts` from `frontend/components/WorkArea/EditView.tsx`
-- [ ] T023 [US2] Trim `frontend/components/WorkArea/EditView.tsx` to presentational editor coordination using `frontend/components/WorkArea/useRevisionContent.ts` and `frontend/components/WorkArea/useCanonicalAutosave.ts`
-- [ ] T024 [US2] Extract the tree adapter to `frontend/components/ResourceTree/buildResourceTree.ts` from `frontend/components/ResourceTree/ResourceTree.tsx`
-- [ ] T025 [US2] Extract reorder orchestration to `frontend/components/ResourceTree/useResourceReorder.ts` from `frontend/components/ResourceTree/ResourceTree.tsx`
-- [ ] T026 [US2] Trim `frontend/components/ResourceTree/ResourceTree.tsx` to render-only tree behavior and replace non-conformant lodash usage in `frontend/components/ResourceTree/ResourceTree.tsx`
+- [x] T021 [US2] Extract revision hydration logic to `frontend/components/WorkArea/useRevisionContent.ts` from `frontend/components/WorkArea/EditView.tsx`
+- [x] T022 [US2] Extract autosave lifecycle and retry handling to `frontend/components/WorkArea/useCanonicalAutosave.ts` from `frontend/components/WorkArea/EditView.tsx`
+- [x] T023 [US2] Trim `frontend/components/WorkArea/EditView.tsx` to presentational editor coordination using `frontend/components/WorkArea/useRevisionContent.ts` and `frontend/components/WorkArea/useCanonicalAutosave.ts`
+- [x] T024 [US2] Extract the tree adapter to `frontend/components/ResourceTree/buildResourceTree.ts` from `frontend/components/ResourceTree/ResourceTree.tsx`
+- [x] T025 [US2] Extract reorder orchestration to `frontend/components/ResourceTree/useResourceReorder.ts` from `frontend/components/ResourceTree/ResourceTree.tsx`
+- [x] T026 [US2] Trim `frontend/components/ResourceTree/ResourceTree.tsx` to render-only tree behavior and replace non-conformant lodash usage in `frontend/components/ResourceTree/ResourceTree.tsx`
 
 **Checkpoint**: User Story 2 is complete when revision and tree workflows can be validated independently of large component bodies and all identity/canonical guardrails remain green.
 

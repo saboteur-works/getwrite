@@ -7,6 +7,8 @@ import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
 import { selectResource } from "../../src/store/resourcesSlice";
 
+const EMPTY_LIST: string[] = [];
+
 export interface MetadataSidebarProps {
     onChangeNotes?: (text: string) => void;
     onChangeStatus?: (status: string) => void;
@@ -31,7 +33,7 @@ export default function MetadataSidebar({
     );
     // get the character folder id from the project folders
     const characterList = useAppSelector((state) => {
-        if (state.projects.selectedProjectId === null) return null;
+        if (state.projects.selectedProjectId === null) return EMPTY_LIST;
 
         const characterFolderId = state.projects.projects[
             state.projects.selectedProjectId
@@ -46,7 +48,7 @@ export default function MetadataSidebar({
     }, shallowEqual);
 
     const locationList = useAppSelector((state) => {
-        if (state.projects.selectedProjectId === null) return null;
+        if (state.projects.selectedProjectId === null) return EMPTY_LIST;
         const locationFolderId = state.projects.projects[
             state.projects.selectedProjectId
         ].folders?.find((f) => f.name?.toLowerCase() === "locations")?.id;
@@ -56,10 +58,10 @@ export default function MetadataSidebar({
             }
             return acc;
         }, []);
-    });
+    }, shallowEqual);
 
     const itemList = useAppSelector((state) => {
-        if (state.projects.selectedProjectId === null) return null;
+        if (state.projects.selectedProjectId === null) return EMPTY_LIST;
         const itemFolderId = state.projects.projects[
             state.projects.selectedProjectId
         ].folders?.find((f) => f.name?.toLowerCase() === "items")?.id;
@@ -69,7 +71,7 @@ export default function MetadataSidebar({
             }
             return acc;
         }, []);
-    });
+    }, shallowEqual);
     const [notes, setNotes] = React.useState<string>(
         (selectedResource?.metadata?.notes as any) ?? "",
     );
@@ -97,9 +99,6 @@ export default function MetadataSidebar({
         setItems((selectedResource?.metadata?.items as any) ?? []);
         setPOV((selectedResource?.metadata?.pov as any) ?? null);
     }, [selectedResource]);
-
-    // Fallback sample lists when metadata arrays are empty
-    const sampleCharacters = characters.length ? characters : ["Alice", "Bob"];
 
     return (
         <aside
@@ -153,7 +152,7 @@ export default function MetadataSidebar({
                         </h4>
                         <MultiSelectList
                             label="Characters"
-                            items={characterList || []}
+                            items={characterList}
                             selected={characters}
                             onChange={(next) => {
                                 setCharacters(next);
@@ -168,7 +167,7 @@ export default function MetadataSidebar({
                         </h4>
                         <MultiSelectList
                             label="Locations"
-                            items={locationList || []}
+                            items={locationList}
                             selected={locations}
                             onChange={(next) => {
                                 setLocations(next);
@@ -182,7 +181,7 @@ export default function MetadataSidebar({
                         </h4>
                         <MultiSelectList
                             label="Items"
-                            items={itemList || []}
+                            items={itemList}
                             selected={items}
                             onChange={(next) => {
                                 setItems(next);
@@ -195,7 +194,7 @@ export default function MetadataSidebar({
                             POV
                         </h4>
                         <POVAutocomplete
-                            options={characterList || []}
+                            options={characterList}
                             value={pov ?? ""}
                             onChange={(v) => {
                                 setPOV(v);

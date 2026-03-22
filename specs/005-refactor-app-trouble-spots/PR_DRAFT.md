@@ -31,8 +31,16 @@ This branch currently contains:
 13. User Story 1 revisions slice trim is complete with `T016`.
 14. User Story 1 project actions controller extraction is complete with `T017`.
 15. User Story 1 projects slice/menu trim is complete with `T018`.
+16. User Story 2 EditView parity coverage is complete with `T019`.
+17. User Story 2 ResourceTree parity coverage is complete with `T020`.
+18. User Story 2 revision hydration extraction is complete with `T021`.
+19. User Story 2 canonical autosave lifecycle extraction is complete with `T022`.
+20. User Story 2 EditView presentational trim is complete with `T023`.
+21. User Story 2 tree-adapter extraction is complete with `T024`.
+22. User Story 2 reorder-orchestration extraction is complete with `T025`.
+23. User Story 2 ResourceTree render-focused trim and lodash-conformance update are complete with `T026`.
 
-At the current branch state, User Story 1 foundation seam extractions are complete. The branch does **not** yet implement User Story 2+ UI hotspot extractions described in later phases.
+At the current branch state, User Stories 1 and 2 are complete and the branch is ready to proceed into User Story 3 seam work.
 
 ## Proposed PR Title
 
@@ -66,12 +74,35 @@ This branch currently includes:
 - facade/delegation trim in `resource-templates.ts` and `resource.ts` to route through `resource-factory`, `resource-persistence`, and `template-service`
 - revision slice extraction by moving transport and normalization helpers to `revision-transport-service.ts` and `revision-normalization.ts`
 - task tracking updates marking Phases 1 and 2 complete
+- task tracking updates marking Phase 4 complete (T019-T026)
+- EditView seam extraction into dedicated hydration and autosave hooks
+- ResourceTree seam extraction into dedicated tree-building and reorder orchestration modules
 
 This branch does not yet include:
 
-- User Story 1 Redux seam extraction
-- User Story 2, 3, 4, or 5 implementation work
+- User Story 3, 4, or 5 implementation work
 - any intended user-facing behavior change
+
+### User Story 2 workflow stabilization (Phase 4)
+
+Added:
+
+- `frontend/components/WorkArea/useRevisionContent.ts`
+- `frontend/components/WorkArea/useCanonicalAutosave.ts`
+- `frontend/components/ResourceTree/buildResourceTree.ts`
+- `frontend/components/ResourceTree/useResourceReorder.ts`
+- `frontend/tests/integration/editViewAutosave.test.tsx`
+
+Updated:
+
+- `frontend/components/WorkArea/EditView.tsx`
+- `frontend/components/ResourceTree/ResourceTree.tsx`
+- `frontend/tests/editView.test.tsx`
+- `frontend/tests/resourceTree.test.tsx`
+- `frontend/tests/resourceTreeDrag.test.tsx`
+- `specs/005-refactor-app-trouble-spots/tasks.md`
+
+This work preserves EditView and ResourceTree behavior while separating stateful workflows from rendering concerns and replacing non-conformant lodash usage in the ResourceTree seam.
 
 ## What Changed
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import AppShell from "../components/Layout/AppShell";
 import { makeStore } from "../src/store/store";
@@ -165,13 +165,18 @@ describe("Reorder persistence integration", () => {
             },
         };
 
-        fireEvent.dragStart(source, { dataTransfer });
-        fireEvent.dragOver(target, { dataTransfer });
-        fireEvent.drop(target, { dataTransfer });
+        await act(async () => {
+            fireEvent.dragStart(source, { dataTransfer });
+            fireEvent.dragOver(target, { dataTransfer });
+            fireEvent.drop(target, { dataTransfer });
+            await Promise.resolve();
+        });
 
         // allow async persistence stub to complete
         console.log("[test] waiting for persistence stub to complete");
-        await new Promise((r) => setTimeout(r, 100));
+        await act(async () => {
+            await new Promise((r) => setTimeout(r, 100));
+        });
         console.log("[test] waiting complete");
 
         expect(fetchMock).toHaveBeenCalled();

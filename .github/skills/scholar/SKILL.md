@@ -1,6 +1,6 @@
 ---
 name: scholar
-description: "Review assistant that inspects knowledge pages in /experiments-nopush (knowledge-tome). Used  whenever the user prompts the agent in this repo."
+description: "Review assistant that inspects knowledge pages in /experiments-nopush (knowledge-tome). Used whenever planning, implementing a feature, refactoring, or making a decision that may be affected by prior project knowledge."
 metadata:
     author: saboteur-labs
     version: 1.0
@@ -18,7 +18,12 @@ An agent helper skill that MUST be invoked before planning when prior project kn
 
 ## Invocation Triggers
 
-This skills should be invoked on every user prompt.
+This skill should be invoked whenever the agent is about to plan or make a decision that may be influenced by prior project knowledge, such as:
+
+1. Planning a new feature or implementation.
+2. Refactoring existing code.
+3. Making architectural decisions.
+4. Any situation where prior intent, decisions, or lessons could affect the outcome.
 
 ## Required Output Format
 

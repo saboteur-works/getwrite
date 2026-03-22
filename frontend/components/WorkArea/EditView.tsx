@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import debounce from "lodash/debounce";
 import TipTapEditor from "../TipTapEditor";
 import { TipTapDocument } from "../../src/lib/models";
 import useAppSelector from "../../src/store/hooks";
@@ -16,6 +15,8 @@ import {
     GLOBAL_APPEARANCE_STORAGE_KEY,
     getStoredGlobalAppearancePreferences,
 } from "../../src/lib/user-preferences";
+import { useRevisionContent } from "./useRevisionContent";
+import { useCanonicalAutosave } from "./useCanonicalAutosave";
 
 export interface EditViewProps {
     /** Initial editor content (HTML or plain text) */
@@ -35,19 +36,6 @@ export default function EditView({
     initialContent = "",
     onChange,
 }: EditViewProps): JSX.Element {
-    type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
-
-    interface ResourceContentResponse {
-        resourceContent?: {
-            tipTapContent?: TipTapDocument | null;
-            plaintextContent?: string | null;
-        };
-        revisions?: Array<{
-            id: string;
-            isCanonical: boolean;
-        }>;
-    }
-
     const currentRevisionId = useAppSelector(selectCurrentRevisionId);
     const currentRevisionContent = useAppSelector(selectCurrentRevisionContent);
     const visibleRevisions = useAppSelector(
@@ -58,17 +46,9 @@ export default function EditView({
         (state) => selectResource(state.resources),
         shallowEqual,
     );
-    const [content, setContent] = React.useState<string>(initialContent);
-    const [tipTapDoc, setTipTapDoc] = React.useState<TipTapDocument | null>(
-        null,
-    );
-    const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
-    const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
     const [nowTick, setNowTick] = React.useState<number>(Date.now());
     const [isReducedMotionEnabled, setIsReducedMotionEnabled] =
         React.useState<boolean>(false);
-    const [failedSaveDoc, setFailedSaveDoc] =
-        React.useState<TipTapDocument | null>(null);
     const [hasEditsAfterRevisionSwitch, setHasEditsAfterRevisionSwitch] =
         React.useState<boolean>(false);
 
@@ -97,192 +77,27 @@ export default function EditView({
         (state) => (projectId ? state.projects.projects[projectId] : null),
         shallowEqual,
     );
+    const { content, tipTapDoc, setContent } = useRevisionContent({
+        initialContent,
+        selectedResourceId: selectedResource?.id ?? null,
+        projectRootPath: project?.rootPath ?? null,
+        currentRevisionId,
+        currentRevisionContent,
+    });
 
-    const persistCanonicalRevisionContent = React.useCallback(
-        async (doc: TipTapDocument) => {
-            if (
-                !project?.rootPath ||
-                !selectedResource?.id ||
-                !currentRevisionId ||
-                currentRevisionId !== canonicalRevisionId
-            ) {
-                return;
-            }
-
-            const response = await fetch(
-                `/api/resource/revision/${selectedResource.id}`,
-                {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        projectPath: project.rootPath,
-                        revisionId: currentRevisionId,
-                        content: JSON.stringify(doc),
-                    }),
-                },
-            );
-
-            if (!response.ok) {
-                throw new Error(
-                    `Failed to persist revision (${response.status})`,
-                );
-            }
-        },
-        [
-            canonicalRevisionId,
-            currentRevisionId,
-            project?.rootPath,
-            selectedResource?.id,
-        ],
-    );
-
-    const saveCanonicalRevisionNow = React.useCallback(
-        async (doc: TipTapDocument): Promise<void> => {
-            setSaveStatus("saving");
-
-            try {
-                await persistCanonicalRevisionContent(doc);
-                setSaveStatus("saved");
-                setLastSavedAt(new Date());
-                setFailedSaveDoc(null);
-            } catch (error) {
-                console.error(
-                    "Failed to persist canonical revision content",
-                    error,
-                );
-                setSaveStatus("error");
-                setFailedSaveDoc(doc);
-            }
-        },
-        [persistCanonicalRevisionContent],
-    );
-
-    const debouncedPersistCanonicalRevisionContent = React.useMemo(
-        () =>
-            debounce((doc: TipTapDocument) => {
-                void saveCanonicalRevisionNow(doc);
-            }, 2500),
-        [saveCanonicalRevisionNow],
-    );
-
-    useEffect(() => {
-        return () => {
-            debouncedPersistCanonicalRevisionContent.cancel();
-        };
-    }, [debouncedPersistCanonicalRevisionContent]);
-
-    const fetchResourceContent =
-        async (): Promise<ResourceContentResponse | null> => {
-            if (!selectedResource || !project?.rootPath) {
-                return null;
-            }
-
-            const response = await fetch("/api/project-resources", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    projectPath: project.rootPath,
-                    resourceId: selectedResource.id,
-                }),
-            });
-
-            if (!response.ok) {
-                return null;
-            }
-
-            return (await response.json()) as ResourceContentResponse;
-        };
-
-    const fetchCanonicalRevisionContent = async (
-        revisionId: string,
-    ): Promise<string | null> => {
-        if (!selectedResource || !project?.rootPath) {
-            return null;
-        }
-
-        const params = new URLSearchParams({
-            projectPath: project.rootPath,
-            revisionId,
-        });
-
-        const response = await fetch(
-            `/api/resource/revision/${selectedResource.id}?${params.toString()}`,
-        );
-
-        if (!response.ok) {
-            return null;
-        }
-
-        const payload = (await response.json()) as { content?: unknown };
-        return typeof payload.content === "string" ? payload.content : null;
-    };
-
-    // On mount or when resourceId / initialContent changes, fetch the resource
-    // content if a resource ID is provided. If no resourceId is provided, keep
-    // the `initialContent` prop so tests and consumers can render initial text.
-    useEffect(() => {
-        let isCancelled = false;
-
-        const loadResourceAndCanonicalRevision = async () => {
-            setContent(initialContent);
-            setTipTapDoc(null);
-
-            const resourceData = await fetchResourceContent();
-            if (!resourceData || isCancelled) {
-                return;
-            }
-
-            if (
-                resourceData.resourceContent?.tipTapContent &&
-                Object.keys(resourceData.resourceContent.tipTapContent).length >
-                    0
-            ) {
-                setTipTapDoc(resourceData.resourceContent.tipTapContent);
-            }
-
-            if (
-                resourceData.resourceContent?.plaintextContent &&
-                resourceData.resourceContent.plaintextContent !== ""
-            ) {
-                setContent(resourceData.resourceContent.plaintextContent);
-            }
-
-            const canonicalRevision = resourceData.revisions?.find(
-                (revision) => revision.isCanonical,
-            );
-
-            if (!canonicalRevision?.id) {
-                return;
-            }
-
-            const canonicalContent = await fetchCanonicalRevisionContent(
-                canonicalRevision.id,
-            );
-
-            if (!canonicalContent || isCancelled) {
-                return;
-            }
-
-            const parsedTipTapDoc =
-                parseTipTapRevisionContent(canonicalContent);
-            if (parsedTipTapDoc) {
-                setTipTapDoc(parsedTipTapDoc);
-                setContent(canonicalContent);
-                return;
-            }
-
-            setTipTapDoc(null);
-            setContent(canonicalContent);
-        };
-
-        if (selectedResource && project?.rootPath) {
-            void loadResourceAndCanonicalRevision();
-        }
-
-        return () => {
-            isCancelled = true;
-        };
-    }, [initialContent, project?.rootPath, selectedResource]);
+    const {
+        saveStatus,
+        lastSavedAt,
+        failedSaveDoc,
+        queueAutosave,
+        retryFailedSave,
+        clearSaveErrors,
+    } = useCanonicalAutosave({
+        projectRootPath: project?.rootPath ?? null,
+        selectedResourceId: selectedResource?.id ?? null,
+        currentRevisionId,
+        canonicalRevisionId,
+    });
 
     const handleChange = (next: string, doc: TipTapDocument) => {
         setContent(next);
@@ -290,9 +105,8 @@ export default function EditView({
             setHasEditsAfterRevisionSwitch(true);
         }
         if (isEditingCanonicalRevision) {
-            setSaveStatus("pending");
-            setFailedSaveDoc(null);
-            debouncedPersistCanonicalRevisionContent(doc);
+            clearSaveErrors();
+            queueAutosave(doc);
         }
         if (onChange) onChange(next, doc);
     };
@@ -407,63 +221,13 @@ export default function EditView({
         return "Document editor";
     }, [isViewingNonCanonical]);
 
-    /**
-     * Safely parses revision payloads that may be stored as TipTap JSON strings.
-     *
-     * @param value - Raw persisted revision content.
-     * @returns Parsed TipTap document when available, otherwise `null`.
-     */
-    const parseTipTapRevisionContent = React.useCallback(
-        (value: string): TipTapDocument | null => {
-            const trimmed = value.trim();
-            if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-                return null;
-            }
-
-            try {
-                const parsed = JSON.parse(trimmed) as unknown;
-                if (
-                    parsed &&
-                    typeof parsed === "object" &&
-                    "type" in parsed &&
-                    (parsed as { type?: unknown }).type === "doc"
-                ) {
-                    return parsed as TipTapDocument;
-                }
-            } catch {
-                return null;
-            }
-
-            return null;
-        },
-        [],
-    );
-
     useEffect(() => {
         if (!currentRevisionId || currentRevisionContent === null) {
             return;
         }
 
         setHasEditsAfterRevisionSwitch(false);
-
-        const parsedTipTapDoc = parseTipTapRevisionContent(
-            currentRevisionContent,
-        );
-
-        if (parsedTipTapDoc) {
-            setTipTapDoc(parsedTipTapDoc);
-            setContent(currentRevisionContent);
-            return;
-        }
-
-        setTipTapDoc(null);
-        setContent(currentRevisionContent);
-    }, [currentRevisionContent, currentRevisionId, parseTipTapRevisionContent]);
-
-    useEffect(() => {
-        setSaveStatus("idle");
-        setFailedSaveDoc(null);
-    }, [selectedResource?.id, currentRevisionId]);
+    }, [currentRevisionContent, currentRevisionId]);
 
     useEffect(() => {
         const interval = window.setInterval(() => {
@@ -474,26 +238,6 @@ export default function EditView({
             window.clearInterval(interval);
         };
     }, []);
-
-    useEffect(() => {
-        if (saveStatus !== "saved") {
-            return;
-        }
-
-        const timeout = window.setTimeout(() => {
-            setSaveStatus((current) => {
-                if (current !== "saved") {
-                    return current;
-                }
-
-                return "idle";
-            });
-        }, 1500);
-
-        return () => {
-            window.clearTimeout(timeout);
-        };
-    }, [saveStatus]);
 
     useEffect(() => {
         const syncReducedMotionPreference = (): void => {
@@ -526,9 +270,10 @@ export default function EditView({
 
         syncReducedMotionPreference();
 
-        const mediaQuery = window.matchMedia(
-            "(prefers-reduced-motion: reduce)",
-        );
+        const mediaQuery =
+            typeof window.matchMedia === "function"
+                ? window.matchMedia("(prefers-reduced-motion: reduce)")
+                : null;
 
         const onSystemMotionPreferenceChanged = () => {
             syncReducedMotionPreference();
@@ -539,12 +284,12 @@ export default function EditView({
             syncReducedMotionPreference,
         );
 
-        if (typeof mediaQuery.addEventListener === "function") {
+        if (mediaQuery && typeof mediaQuery.addEventListener === "function") {
             mediaQuery.addEventListener(
                 "change",
                 onSystemMotionPreferenceChanged,
             );
-        } else {
+        } else if (mediaQuery) {
             mediaQuery.addListener(onSystemMotionPreferenceChanged);
         }
 
@@ -554,23 +299,22 @@ export default function EditView({
                 syncReducedMotionPreference,
             );
 
-            if (typeof mediaQuery.removeEventListener === "function") {
+            if (
+                mediaQuery &&
+                typeof mediaQuery.removeEventListener === "function"
+            ) {
                 mediaQuery.removeEventListener(
                     "change",
                     onSystemMotionPreferenceChanged,
                 );
-            } else {
+            } else if (mediaQuery) {
                 mediaQuery.removeListener(onSystemMotionPreferenceChanged);
             }
         };
     }, []);
 
     const handleRetrySave = (): void => {
-        if (!failedSaveDoc) {
-            return;
-        }
-
-        void saveCanonicalRevisionNow(failedSaveDoc);
+        retryFailedSave();
     };
 
     return (
