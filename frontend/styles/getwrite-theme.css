@@ -1,0 +1,189 @@
+/*
+ * getwrite-theme.css
+ * GetWrite product theme tokens for Tailwind v4.
+ * Extends saboteur-base.css — import base first.
+ *
+ * Usage:
+ *   @import "saboteur-base.css";
+ *   @import "getwrite-theme.css";
+ *
+ * Token naming convention:
+ *   --color-gw-*   Color tokens specific to GetWrite
+ *   --color-brand-* are inherited from saboteur-base.css
+ *
+ * Quick reference for AI assistants:
+ *   bg-gw-bg            Application background
+ *   bg-gw-chrome        Panel / sidebar surface (slightly cooler than editor)
+ *   bg-gw-chrome2       Nested chrome surface
+ *   bg-gw-editor        Writing surface (warmer than chrome — always)
+ *   bg-gw-input         Input field background
+ *   text-gw-primary     Primary UI text
+ *   text-gw-secondary   Muted labels, metadata
+ *   text-gw-ink         Body text on editor surface
+ *   text-gw-red         Signal red (cursor, active file, canonical badge)
+ *   border-gw-dim       Default border
+ *   border-gw-red       Active state border
+ *
+ * CRITICAL: bg-gw-editor is always warmer than bg-gw-chrome.
+ * Do not flatten this distinction. It is the primary spatial signal
+ * that tells the writer where their work lives.
+ */
+
+@import "saboteur-base.css";
+
+@theme {
+    /* ── CHROME SURFACE COLORS (dark mode) ── */
+    /* "Chrome" = everything outside the editor: sidebar, title bar, metadata panel */
+    --color-gw-bg: #0a0a0a; /* bg-gw-bg      | Application background */
+    --color-gw-chrome: #111110; /* bg-gw-chrome  | Panels, sidebars, title bar */
+    --color-gw-chrome2: #161614; /* bg-gw-chrome2 | Nested chrome: cards, inputs */
+    --color-gw-chrome3: #1a1a18; /* bg-gw-chrome3 | Deepest chrome level */
+
+    /* ── EDITOR SURFACE COLORS ── */
+    /* "Editor" = the writing environment. Always warmer than chrome. */
+    --color-gw-editor: #1c1c1a; /* bg-gw-editor  | Writing surface in dark mode */
+    --color-gw-paper: #f0ede6; /* bg-gw-paper   | Writing surface in light mode */
+    --color-gw-ink: #1a1916; /* text-gw-ink   | Body text on light editor surface */
+
+    /* ── LIGHT MODE CHROME COLORS ── */
+    /* Chrome in light mode is cooler than the editor surface */
+    --color-gw-chrome-light: #f5f4f0; /* bg-gw-chrome-light    | Light mode panels */
+    --color-gw-chrome2-light: #eceae3; /* bg-gw-chrome2-light   | Light mode cards, inputs */
+    --color-gw-chrome3-light: #e4e1da; /* bg-gw-chrome3-light   | Deepest light chrome */
+    --color-gw-border-light: #d0cec8; /* border-gw-border-light */
+    --color-gw-rule-light: #d8d5ce; /* border-gw-rule-light  */
+    --color-gw-secondary-light: #7a7870; /* text-gw-secondary-light */
+
+    /* ── TEXT COLORS ── */
+    --color-gw-primary: #f5f4f0; /* text-gw-primary   | Primary UI text */
+    --color-gw-secondary: #6a6864; /* text-gw-secondary | Muted labels, panel headers */
+    --color-gw-dim: #3a3a38; /* text-gw-dim       | Near-invisible — folder items */
+    --color-gw-red: #d44040; /* text-gw-red       | Signal Red — position marker */
+
+    /* ── BORDER COLORS ── */
+    --color-gw-border: #2e2e2c; /* border-gw-border     | Default 0.5px borders */
+    --color-gw-border-md: #3a3a38; /* border-gw-border-md  | Hover / emphasis */
+    --color-gw-rule: #1a1a18; /* border-gw-rule       | Divider lines */
+    --color-gw-red-border: #d44040; /* border-gw-red-border | Active file, canonical badge */
+
+    /* ── FUNCTIONAL COLORS (not brand colors — exceptions for status only) ── */
+    --color-gw-saved: #4a9e4a; /* text-gw-saved   | Save status dot — green */
+    --color-gw-saving: #d4a440; /* text-gw-saving  | Saving status dot — amber */
+    /* These are functional status colors only. They do not appear elsewhere. */
+
+    /* ── PRODUCT TYPE SCALE ── */
+    --font-size-gw-hero: clamp(
+        60px,
+        9vw,
+        88px
+    ); /* text-gw-hero    | Hero wordmark */
+    --font-size-gw-display: 48px; /* text-gw-display */
+    --font-size-gw-h1: 28px; /* text-gw-h1      | Project/page titles */
+    --font-size-gw-h2: 18px; /* text-gw-h2      | Section headings */
+    --font-size-gw-h3: 14px; /* text-gw-h3      | Card titles, panel headings */
+    --font-size-gw-body: 14px; /* text-gw-body    | UI body */
+    --font-size-gw-small: 13px; /* text-gw-small   | Secondary body */
+    --font-size-gw-editor: 15px; /* text-gw-editor  | Editor body (IBM Plex Serif) */
+    --font-size-gw-label: 11px; /* text-gw-label   | Panel section headers */
+    --font-size-gw-micro: 10px; /* text-gw-micro   | Timestamps, metadata values */
+    --font-size-gw-nano: 9px; /* text-gw-nano    | Tab labels, kb shortcuts */
+
+    /* ── LAYOUT ── */
+    --width-gw-resource-panel: 200px; /* w-gw-resource  | Resource tree panel width */
+    --width-gw-metadata-panel: 220px; /* w-gw-metadata  | Metadata panel width */
+    --height-gw-titlebar: 44px; /* h-gw-titlebar  | Application title bar */
+    --height-gw-tree-item: 32px; /* h-gw-tree-item | Resource tree row height */
+    --height-gw-tab: 38px; /* h-gw-tab       | Editor tab bar height */
+
+    /* ── EDITOR SPACING ── */
+    --padding-gw-editor-x: 40px; /* px-gw-editor | Editor horizontal padding */
+    --padding-gw-editor-y: 32px; /* py-gw-editor | Editor top padding */
+
+    /* ── COMPONENT TOKENS ── */
+
+    /* Active file indicator */
+    --width-gw-active-indicator: 2px; /* The red left border on active resource tree item */
+
+    /* Tab active underline */
+    --height-gw-tab-underline: 1.5px; /* Height of red underline on active tab */
+
+    /* Focus ring */
+    --color-gw-focus-ring: rgba(212, 64, 64, 0.2); /* ring-* utilities */
+
+    /* Revision badge */
+    /* Canonical: border-gw-red-border text-gw-red opacity-80 (never filled) */
+
+    /* Metadata tags */
+    /* Default: border-gw-border text-gw-secondary */
+    /* Active:  border-gw-red-border text-gw-red opacity-80 */
+}
+
+/*
+ * ── UTILITY NOTES FOR AI ASSISTANTS ──
+ *
+ * WORDMARK CONSTRUCTION
+ * The GetWrite wordmark uses an internal weight split — this is mandatory:
+ *   <span class="font-display font-normal tracking-[-0.02em] text-gw-secondary">Get</span>
+ *   <span class="font-display font-bold tracking-wordmark text-gw-primary">Write</span>
+ * Wrap both in: border-l-[4px] border-gw-red-border pl-6
+ * "Get" is ALWAYS lighter weight and secondary color. Never bold both.
+ *
+ * SURFACE HIERARCHY — CRITICAL
+ * The editor surface must always be warmer than the surrounding chrome.
+ * Dark mode:  bg-gw-chrome (#111110) surrounds bg-gw-editor (#1C1C1A)
+ * Light mode: bg-gw-chrome-light (#F5F4F0) surrounds bg-gw-paper (#F0EDE6)
+ * Do not use the same background value for both. Do not use bg-white or bg-black
+ * for either surface — use the named tokens.
+ *
+ * THREE-PANEL LAYOUT
+ * Standard workspace layout:
+ *   <div class="flex h-screen">
+ *     <aside class="w-[200px] shrink-0 border-r border-[0.5px] border-gw-border bg-gw-chrome">
+ *     <main class="flex-1 flex flex-col bg-gw-editor overflow-hidden">
+ *     <aside class="w-[220px] shrink-0 border-l border-[0.5px] border-gw-border bg-gw-chrome">
+ *   </div>
+ *
+ * ACTIVE FILE IN RESOURCE TREE
+ * Default item: text-gw-secondary hover:bg-gw-chrome2 font-sans text-[12px]
+ * Active item:  text-gw-primary bg-gw-chrome2 border-l-[2px] border-gw-red-border pl-[14px]
+ * (reduce pl by 2px to compensate for the border: default pl-4, active pl-[14px])
+ *
+ * ACTIVE TAB
+ * Default tab: text-gw-dim font-mono text-[9px] uppercase tracking-label
+ * Active tab:  text-gw-primary border-b-[1.5px] border-gw-red-border
+ *
+ * EDITOR BODY TEXT
+ * Always font-serif (IBM Plex Serif) inside the editor surface.
+ * font-serif text-[15px] leading-relaxed text-gw-ink (light) or text-gw-primary (dark)
+ * Never use font-sans or font-mono for editor body text.
+ *
+ * CHAPTER HEADINGS IN EDITOR
+ * font-serif font-bold text-[13px] uppercase tracking-label text-gw-red
+ * This is the only red text inside the editor surface.
+ *
+ * BUTTONS — NO RED FILL
+ * GetWrite has no red-fill buttons. Primary outlined:
+ *   border border-gw-primary text-gw-primary font-mono text-[10px] uppercase tracking-label-wide
+ *   hover:bg-gw-chrome2
+ * Secondary ghost:
+ *   border border-gw-border text-gw-secondary font-mono text-[10px] uppercase tracking-label-wide
+ *   hover:border-gw-border-md hover:text-gw-primary
+ * Destructive (never filled):
+ *   border border-gw-red-border text-gw-red font-mono text-[10px] uppercase tracking-label-wide
+ *
+ * CANONICAL REVISION BADGE
+ * border border-gw-red-border text-gw-red font-mono text-[9px] uppercase tracking-label opacity-80
+ * Never: bg-gw-red — the badge is outlined only.
+ *
+ * SAVE STATUS INDICATOR
+ * Saved:  <span class="w-[5px] h-[5px] rounded-full bg-gw-saved inline-block" />
+ * Saving: <span class="w-[5px] h-[5px] rounded-full bg-gw-saving inline-block" />
+ * Label:  font-mono text-[9px] uppercase tracking-[0.12em] text-gw-secondary
+ *
+ * WHAT NEVER APPEARS IN GETWRITE
+ * - bg-gw-red on any button or interactive element
+ * - font-serif outside the editor surface
+ * - Blue of any kind (no Tailwind blue-* utilities)
+ * - Gradient utilities (bg-gradient-*, from-*, to-*) — surfaces are flat
+ * - Decorative animations — motion is functional only
+ */
