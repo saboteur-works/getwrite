@@ -9,7 +9,7 @@
  * The component supports both externally supplied project lists (via props)
  * and local optimistic updates for create/rename/delete interactions.
  */
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FolderPlus, Plus, FolderOpen } from "lucide-react";
 import type {
     Project as CanonicalProject,
