@@ -1578,4 +1578,135 @@
         padding-top: 16px;
         padding-bottom: 16px;
     }
+
+    /* ── EDITOR TOOLBAR ── */
+    .tiptap-editor-shell {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background-color: var(--color-gw-editor);
+    }
+
+    .tiptap-editor-content {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: var(--padding-gw-editor-y, 32px) var(--padding-gw-editor-x, 40px);
+    }
+
+    .editor-menubar {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-bottom: 0.5px solid var(--color-gw-border);
+        background-color: var(--color-gw-chrome);
+        flex-wrap: wrap;
+    }
+
+    .editor-menu-group-root {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 0 4px;
+        border-right: 0.5px solid var(--color-gw-border);
+    }
+
+    .editor-menu-group-root:last-child {
+        border-right: none;
+    }
+
+    .editor-menu-group-toggle {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .editor-menu-icon-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: var(--radius-sm);
+        border: none;
+        background: transparent;
+        color: var(--color-gw-secondary);
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            color 150ms ease;
+    }
+
+    .editor-menu-icon-button:hover {
+        background-color: var(--color-gw-chrome2);
+        color: var(--color-gw-primary);
+    }
+
+    /* Active (format is on) — surface elevation, no blue (D7) */
+    .editor-menu-icon-button-active {
+        background-color: var(--color-gw-chrome2);
+        color: var(--color-gw-primary);
+    }
+
+    .editor-menu-icon-button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
+    }
+
+    .editor-menu-input-root {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .editor-menu-input-control {
+        width: 48px;
+        background-color: var(--color-gw-chrome2);
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-sm);
+        padding: 3px 6px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--color-gw-primary);
+        outline: none;
+        transition: border-color 150ms ease;
+    }
+
+    .editor-menu-input-control:focus {
+        border-color: var(--color-gw-border-md);
+        box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
+    }
+
+    .editor-menu-color-submenu {
+        position: absolute;
+        z-index: 50;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: var(--color-gw-chrome2);
+        padding: 8px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+    }
+
+    .editor-menu-color-option {
+        width: 20px;
+        height: 20px;
+        border-radius: var(--radius-sm);
+        border: 0.5px solid transparent;
+        cursor: pointer;
+        transition: border-color 150ms ease;
+    }
+
+    .editor-menu-color-option:hover {
+        border-color: var(--color-gw-primary);
+    }
+
+    .editor-menu-color-option-active {
+        border-color: var(--color-gw-primary);
+        outline: 2px solid var(--color-gw-focus-ring);
+        outline-offset: 1px;
+    }
 }
