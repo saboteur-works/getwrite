@@ -8,6 +8,23 @@ This skill guides creation of distinctive, production-grade frontend interfaces 
 
 The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.
 
+## GetWrite Brand Constraints — Load First
+
+Before making any aesthetic decision, read `STYLING.md`. The following rules are non-negotiable and override any creative guidance below:
+
+- **Typography:** IBM Plex Sans (UI), IBM Plex Mono (code/labels/timestamps), IBM Plex Serif (editor body only) — no other typefaces
+- **Color:** Use only the brand tokens defined in `STYLING.md` Section 2 (`--color-black`, `--color-white`, `--color-red`, `--color-mid`, `--color-surface` variants) — no new colors
+- **Red:** Reserved for position and canonical state only (active file indicator, active tab, cursor, canonical revision badge, editor chapter headings) — never for actions, hover states, or decoration
+- **Editor line height:** `--leading-relaxed` (1.8) minimum — non-negotiable
+- **Theming:** Dark/light mode via the existing CSS token system only — no custom theming
+- **Surfaces:** Flat — elevation is communicated through surface color only; no drop shadows anywhere
+- **No decorative overlays:** Gradient meshes, noise textures, and decorative overlays are prohibited (see `STYLING.md` Section 9)
+- **Motion:** `150ms ease` for color/border/opacity transitions; `200ms ease` for layout transitions
+
+**Fallback:** When `STYLING.md` does not cover a scenario (component layout, iconography, interaction choreography), the creative judgment guidance below applies. The fallback covers genuine gaps only — it does not override any rule in `STYLING.md`, including the anti-patterns in Section 9.
+
+---
+
 ## Design Thinking
 
 Before coding, understand the context and commit to a BOLD aesthetic direction:
