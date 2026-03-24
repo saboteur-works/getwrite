@@ -293,8 +293,8 @@ export default function StartPage({
 
                             <h1 className="mt-6 start-page-wordmark">
                                 <span className="start-page-wordmark-accent">
-                                    <span className="font-display font-normal tracking-[-0.02em] text-gw-secondary">Get</span>
-                                    <span className="font-display font-bold tracking-[-0.04em] text-gw-primary">Write</span>
+                                    <span className="font-display font-normal tracking-heading text-gw-secondary">Get</span>
+                                    <span className="font-display font-bold tracking-wordmark text-gw-primary">Write</span>
                                 </span>
                             </h1>
 
@@ -359,7 +359,7 @@ export default function StartPage({
                                 <button
                                     type="button"
                                     onClick={handleCreateClick}
-                                    className="start-page-primary-button inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-medium"
+                                    className="start-page-primary-button inline-flex items-center justify-center gap-2"
                                 >
                                     <FolderPlus size={16} aria-hidden="true" />
                                     Start a New Project
@@ -405,7 +405,7 @@ export default function StartPage({
                             <button
                                 type="button"
                                 onClick={handleCreateClick}
-                                className="start-page-secondary-button mt-6 inline-flex items-center px-4 py-2 text-sm font-medium"
+                                className="start-page-secondary-button mt-6 inline-flex items-center"
                             >
                                 <Plus size={15} aria-hidden="true" />
                                 Create the first project
@@ -532,7 +532,7 @@ export default function StartPage({
                                                     projectEntry.project.id,
                                             )
                                         }
-                                        className="start-page-secondary-button inline-flex items-center px-4 py-2 text-sm font-medium"
+                                        className="start-page-secondary-button inline-flex items-center"
                                     >
                                         <FolderOpen
                                             size={15}
