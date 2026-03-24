@@ -199,7 +199,7 @@ export default function RevisionControl() {
                 <div className="flex items-center gap-2">
                     <History
                         className="h-4 w-4"
-                        style={{ color: "var(--color-neutral-500)" }}
+                        style={{ color: "var(--color-gw-secondary)" }}
                     />
                     <div>
                         <h2 className="revision-control-title">
@@ -332,7 +332,7 @@ export default function RevisionControl() {
                                                                 <View
                                                                     className="h-3 w-3 mr-2"
                                                                     style={{
-                                                                        color: "var(--color-neutral-500)",
+                                                                        color: "var(--color-gw-secondary)",
                                                                     }}
                                                                 />
                                                                 {fetchingRevisionId ===
@@ -367,10 +367,7 @@ export default function RevisionControl() {
                                                                 className="revision-control-action-button revision-control-action-button--danger"
                                                             >
                                                                 <Trash2
-                                                                    className="h-3 w-3 mr-2"
-                                                                    style={{
-                                                                        color: "#f43f5e",
-                                                                    }}
+                                                                    className="h-3 w-3 mr-2 text-gw-red"
                                                                 />
                                                                 {deletingRevisionId ===
                                                                 revision.id
@@ -387,10 +384,7 @@ export default function RevisionControl() {
                                                                 className="revision-control-action-button"
                                                             >
                                                                 <History
-                                                                    className="h-3 w-3 mr-2"
-                                                                    style={{
-                                                                        color: "var(--color-neutral-500)",
-                                                                    }}
+                                                                    className="h-3 w-3 mr-2 text-gw-secondary"
                                                                 />
                                                                 Roll Back to
                                                                 Revision
