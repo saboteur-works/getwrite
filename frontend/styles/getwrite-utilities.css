@@ -705,4 +705,365 @@
         border-radius: 50%;
         background-color: var(--color-gw-red);
     }
+
+    /* ── METADATA SIDEBAR ── */
+    .metadata-sidebar {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background-color: var(--color-gw-chrome);
+        border-left: 0.5px solid var(--color-gw-border);
+        overflow-y: auto;
+    }
+
+    .metadata-sidebar-header {
+        flex-shrink: 0;
+        padding: 12px 16px;
+        border-bottom: 0.5px solid var(--color-gw-border);
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--color-gw-secondary);
+    }
+
+    .metadata-sidebar-section {
+        padding: 16px;
+        border-bottom: 0.5px solid var(--color-gw-rule);
+    }
+
+    .metadata-sidebar-label {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--color-gw-secondary);
+        margin-bottom: 8px;
+    }
+
+    .metadata-sidebar-input {
+        width: 100%;
+        background-color: var(--color-gw-chrome2);
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-sm);
+        padding: 6px 8px;
+        font-size: 12px;
+        color: var(--color-gw-primary);
+        outline: none;
+        transition: border-color 150ms ease;
+    }
+
+    .metadata-sidebar-input:focus {
+        border-color: var(--color-gw-border-md);
+        box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
+    }
+
+    .metadata-sidebar-tag {
+        display: inline-flex;
+        align-items: center;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-sm);
+        padding: 2px 8px;
+        color: var(--color-gw-secondary);
+        background: transparent;
+        cursor: pointer;
+        transition:
+            border-color 150ms ease,
+            color 150ms ease;
+    }
+
+    .metadata-sidebar-tag--active {
+        border-color: var(--color-gw-red-border);
+        color: var(--color-gw-red);
+        opacity: 0.8;
+    }
+
+    /* ── REVISION CONTROL ── */
+    .revision-control {
+        display: flex;
+        flex-direction: column;
+        background-color: var(--color-gw-chrome);
+        border-top: 0.5px solid var(--color-gw-border);
+    }
+
+    .revision-control-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px;
+        border-bottom: 0.5px solid var(--color-gw-border);
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--color-gw-secondary);
+    }
+
+    .revision-control-list {
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .revision-control-item {
+        padding: 12px 16px;
+        border-bottom: 0.5px solid var(--color-gw-rule);
+        background-color: var(--color-gw-chrome);
+        transition: background-color 150ms ease;
+    }
+
+    .revision-control-item:hover {
+        background-color: var(--color-gw-chrome2);
+    }
+
+    .revision-control-item-name {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--color-gw-primary);
+    }
+
+    .revision-control-item-meta {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        color: var(--color-gw-secondary);
+        margin-top: 2px;
+    }
+
+    /* Canonical revision badge — outlined red, never filled (STYLING.md S7) */
+    .revision-control-badge {
+        display: inline-flex;
+        align-items: center;
+        border: 0.5px solid var(--color-gw-red-border);
+        border-radius: var(--radius-sm);
+        padding: 1px 6px;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--color-gw-red);
+        opacity: 0.8;
+        background: transparent;
+    }
+
+    /* Save button — outlined primary, never blue-filled (D20) */
+    .revision-control-save-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--color-gw-primary);
+        border-radius: var(--radius-md);
+        color: var(--color-gw-primary);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        background-color: transparent;
+        padding: 6px 12px;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            border-color 150ms ease;
+    }
+
+    .revision-control-save-button:hover {
+        background-color: var(--color-gw-chrome2);
+    }
+
+    .revision-control-save-button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .revision-control-root {
+        border-top: 0.5px solid var(--color-gw-border);
+        background-color: var(--color-gw-chrome);
+    }
+
+    .revision-control-content {
+        border-top: 0.5px solid var(--color-gw-border);
+        padding: 1rem;
+        overflow: hidden;
+    }
+
+    .revision-control-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--color-gw-primary);
+    }
+
+    .revision-control-description {
+        font-size: 0.75rem;
+        color: var(--color-gw-secondary);
+    }
+
+    .revision-control-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        color: var(--color-gw-secondary);
+        background: transparent;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            border-color 150ms ease;
+    }
+
+    .revision-control-toggle:hover {
+        background-color: var(--color-gw-chrome2);
+    }
+
+    .revision-control-section-heading {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--color-gw-secondary);
+    }
+
+    .revision-control-input {
+        height: 2.25rem;
+        width: 100%;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        padding: 0 0.75rem;
+        font-size: 0.875rem;
+        color: var(--color-gw-primary);
+        background-color: var(--color-gw-chrome2);
+        outline: none;
+        transition: border-color 150ms ease;
+    }
+
+    .revision-control-input::placeholder {
+        color: var(--color-gw-secondary);
+    }
+
+    .revision-control-input:focus {
+        border-color: var(--color-gw-border-md);
+        box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
+    }
+
+    .revision-control-input:disabled {
+        background-color: var(--color-gw-chrome);
+        cursor: not-allowed;
+    }
+
+    .revision-control-list-shell {
+        width: 100%;
+        max-width: 100%;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: var(--color-gw-chrome);
+        padding: 0.75rem;
+        overflow: hidden;
+    }
+
+    .revision-control-card {
+        width: 100%;
+        min-width: 0;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: var(--color-gw-chrome);
+        padding: 0.75rem;
+        /* No box-shadow — elevation via surface color only (D10) */
+    }
+
+    .revision-control-card--canonical {
+        border-color: var(--color-gw-border-md);
+        background-color: var(--color-gw-chrome2);
+    }
+
+    .revision-control-card-name {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--color-gw-primary);
+    }
+
+    .revision-control-card-meta {
+        font-size: 0.75rem;
+        color: var(--color-gw-secondary);
+    }
+
+    .revision-control-action-button {
+        display: flex;
+        align-items: center;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        padding: 0.375rem 0.5rem;
+        font-size: 0.75rem;
+        color: var(--color-gw-secondary);
+        background: transparent;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            border-color 150ms ease,
+            color 150ms ease;
+    }
+
+    .revision-control-action-button:hover:not(:disabled) {
+        background-color: var(--color-gw-chrome2);
+        color: var(--color-gw-primary);
+    }
+
+    .revision-control-action-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .revision-control-action-button--danger {
+        color: var(--color-gw-red);
+    }
+
+    .revision-control-action-button--danger:hover:not(:disabled) {
+        background-color: var(--color-gw-chrome2);
+        border-color: var(--color-gw-border-md);
+        color: var(--color-gw-red);
+    }
+
+    .revision-control-preview-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.75rem;
+        color: var(--color-gw-secondary);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        transition: color 150ms ease;
+    }
+
+    .revision-control-preview-toggle:hover {
+        color: var(--color-gw-primary);
+    }
+
+    .revision-control-preview-box {
+        margin-top: 0.5rem;
+        max-height: 8rem;
+        overflow-y: auto;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: var(--color-gw-chrome2);
+        padding: 0.5rem;
+    }
+
+    .revision-control-preview-text {
+        white-space: pre-wrap;
+        word-break: break-words;
+        font-size: 0.75rem;
+        color: var(--color-gw-secondary);
+    }
+
+    .revision-control-error {
+        font-size: 0.75rem;
+        color: var(--color-gw-red);
+    }
 }

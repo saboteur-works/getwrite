@@ -349,7 +349,7 @@ export default function RevisionControl() {
                                                                 }
                                                                 className="revision-control-action-button"
                                                             >
-                                                                <Star className="h-3 w-3 mr-2 text-yellow-500" />
+                                                                <Star className="h-3 w-3 mr-2 text-gw-secondary" />
                                                                 Set as Canonical
                                                                 Revision
                                                             </button>
