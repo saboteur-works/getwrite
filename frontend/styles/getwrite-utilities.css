@@ -1262,4 +1262,320 @@
         color: var(--color-gw-secondary);
         background-color: var(--color-gw-chrome2);
     }
+
+    /* ── APPSHELL ── */
+    .appshell-shell {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        max-height: 100vh;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        background-color: var(--color-gw-bg);
+        color: var(--color-gw-primary);
+    }
+
+    .appshell-topbar {
+        flex-shrink: 0;
+        height: var(--height-gw-titlebar); /* 44px */
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        border-bottom: 0.5px solid var(--color-gw-border);
+        background-color: var(--color-gw-chrome);
+    }
+
+    .appshell-topbar-project {
+        min-width: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--color-gw-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .appshell-topbar-menu {
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .appshell-topbar-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: var(--radius-md);
+        border: 0.5px solid var(--color-gw-border);
+        background: transparent;
+        color: var(--color-gw-secondary);
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            border-color 150ms ease,
+            color 150ms ease;
+    }
+
+    .appshell-topbar-button:hover {
+        background-color: var(--color-gw-chrome2);
+        border-color: var(--color-gw-border-md);
+        color: var(--color-gw-primary);
+    }
+
+    .appshell-topbar-button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
+        border-color: var(--color-gw-border-md);
+    }
+
+    .appshell-topbar-dropdown {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        min-width: 12rem;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: var(--color-gw-chrome2);
+        padding: 4px;
+        z-index: 40;
+        /* No box-shadow (D10) */
+    }
+
+    .appshell-topbar-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        border: 0;
+        border-radius: calc(var(--radius-md) - 2px);
+        background: transparent;
+        color: var(--color-gw-secondary);
+        font-size: 13px;
+        text-align: left;
+        padding: 6px 10px;
+        cursor: pointer;
+        transition: background-color 150ms ease, color 150ms ease;
+    }
+
+    .appshell-topbar-dropdown-item:hover {
+        background-color: var(--color-gw-chrome3);
+        color: var(--color-gw-primary);
+    }
+
+    /* Active pressed state — surface elevation, no blue (D11) */
+    .appshell-topbar-dropdown-item[aria-pressed="true"] {
+        background-color: var(--color-gw-chrome3);
+        color: var(--color-gw-primary);
+    }
+
+    .appshell-topbar-dropdown-separator {
+        height: 0;
+        border: 0;
+        border-top: 0.5px solid var(--color-gw-border);
+        margin: 4px;
+    }
+
+    .appshell-body {
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+        display: flex;
+        overflow: hidden;
+    }
+
+    .appshell-container {
+        display: flex;
+        height: 100vh;
+        max-height: 100vh;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        background-color: var(--color-gw-bg);
+        color: var(--color-gw-primary);
+    }
+
+    .appshell-sidebar {
+        flex-shrink: 0;
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background-color: var(--color-gw-chrome);
+        border-color: var(--color-gw-border);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .appshell-sidebar-header {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 44px;
+        padding: 0 16px;
+        border-bottom: 0.5px solid var(--color-gw-border);
+    }
+
+    .appshell-sidebar-content {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .appshell-close-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        border: none;
+        border-radius: var(--radius-md);
+        background-color: transparent;
+        color: var(--color-gw-secondary);
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            color 150ms ease;
+    }
+
+    .appshell-close-button:hover {
+        background-color: var(--color-gw-chrome2);
+        color: var(--color-gw-primary);
+    }
+
+    .appshell-resize-handle {
+        flex-shrink: 0;
+        width: 0.5rem;
+        height: 100%;
+        cursor: col-resize;
+        background-color: transparent;
+        transition: background-color 150ms ease;
+        user-select: none;
+    }
+
+    .appshell-resize-handle:hover {
+        background-color: var(--color-gw-border);
+    }
+
+    /* Active resize: subtle, no color signal (D11) */
+    .appshell-resize-handle:active {
+        background-color: var(--color-gw-border-md);
+    }
+
+    .appshell-sidebar-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 2.5rem;
+        height: 2.5rem;
+        padding: 0 0.5rem;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: transparent;
+        color: var(--color-gw-secondary);
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            border-color 150ms ease,
+            color 150ms ease;
+    }
+
+    .appshell-sidebar-toggle:hover {
+        background-color: var(--color-gw-chrome2);
+        border-color: var(--color-gw-border-md);
+        color: var(--color-gw-primary);
+    }
+
+    .appshell-work-area {
+        flex: 1;
+        min-width: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .appshell-work-area-content {
+        flex: 1;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    /* ── MODALS ── */
+    .appshell-modal-root {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .appshell-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(2, 6, 23, 0.4);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+    }
+
+    .appshell-modal-panel {
+        position: relative;
+        z-index: 10;
+        width: min(94vw, 820px);
+        max-height: 92vh;
+        overflow-y: auto;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-lg); /* 8px — STYLING.md S6 */
+        background-color: var(--color-gw-chrome);
+        /* No box-shadow (D10) */
+    }
+
+    .appshell-modal-panel--help {
+        width: min(94vw, 860px);
+    }
+
+    .appshell-modal-panel--project-types {
+        width: min(96vw, 1200px);
+    }
+
+    .appshell-modal-message {
+        padding: 24px;
+        font-size: 13px;
+        color: var(--color-gw-secondary);
+    }
+
+    /* Error message: red as signal (D13) */
+    .appshell-modal-message--error {
+        color: var(--color-gw-red);
+    }
+
+    /* ── DENSITY VARIANTS ── */
+    .gw-density-compact .appshell-topbar {
+        height: 3rem;
+        padding: 0 12px;
+    }
+
+    .gw-density-compact .appshell-sidebar-header {
+        height: 2.5rem;
+        padding: 0 12px;
+    }
+
+    .gw-density-compact .appshell-topbar-dropdown-item {
+        padding: 5px 8px;
+        font-size: 12px;
+    }
+
+    .gw-density-compact .start-page-shell {
+        padding-top: 16px;
+        padding-bottom: 16px;
+    }
 }
