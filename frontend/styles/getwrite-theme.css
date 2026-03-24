@@ -29,8 +29,6 @@
  * that tells the writer where their work lives.
  */
 
-@import "./saboteur-base.css";
-
 @theme {
     /* ── CHROME SURFACE COLORS (dark mode) ── */
     /* "Chrome" = everything outside the editor: sidebar, title bar, metadata panel */
