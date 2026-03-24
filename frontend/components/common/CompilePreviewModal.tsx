@@ -252,7 +252,7 @@ export default function CompilePreviewModal(
                                 onConfirm?.();
                                 onClose?.();
                             }}
-                            className="compile-modal-confirm"
+                            className="border border-gw-primary text-gw-primary bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150 inline-flex items-center gap-2"
                         >
                             <PackageCheck size={14} aria-hidden="true" />
                             Confirm
