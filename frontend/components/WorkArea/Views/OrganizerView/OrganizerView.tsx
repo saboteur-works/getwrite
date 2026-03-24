@@ -161,10 +161,12 @@ export default function OrganizerView({
                     >
                         {showBodyState ? (
                             <EyeClosed
+                                size={16}
                                 className="inline-block mr-1 text-gw-secondary"
                             />
                         ) : (
                             <Eye
+                                size={16}
                                 className="inline-block mr-1 text-gw-secondary"
                             />
                         )}{" "}

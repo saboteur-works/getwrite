@@ -75,7 +75,7 @@ export default function OrganizerCard({
             </header>
 
             {showBody && body && (
-                <div className="text-sm mb-3 overflow-y-scroll h-16 text-gw-primary">
+                <div className="text-sm mb-3 overflow-y-auto h-16 text-gw-primary">
                     {body || "No notes available."}
                 </div>
             )}
