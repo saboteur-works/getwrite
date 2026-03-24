@@ -116,7 +116,7 @@ When you encounter these deprecated inline Tailwind utilities in any component J
 
 **Context:** This task creates the new CSS files (initially empty except for the theme cascade block), updates the import chain in globals.css, and moves the `.tiptap` block to editor.css. The existing `tokens.css` and `utilities.css` imports remain until Task 14. The app should look identical after this task.
 
-- [ ] **Step 1: Create `getwrite-utilities.css` with theme cascade**
+- [x] **Step 1: Create `getwrite-utilities.css` with theme cascade**
 
 Create `frontend/styles/getwrite-utilities.css` with this content:
 
@@ -196,7 +196,7 @@ Create `frontend/styles/getwrite-utilities.css` with this content:
 }
 ```
 
-- [ ] **Step 2: Create `editor.css` (empty shell)**
+- [x] **Step 2: Create `editor.css` (empty shell)**
 
 Create `frontend/styles/editor.css` with this content:
 
@@ -211,7 +211,7 @@ Create `frontend/styles/editor.css` with this content:
 /* .tiptap styles are added in Task 13 */
 ```
 
-- [ ] **Step 3: Update `globals.css`**
+- [x] **Step 3: Update `globals.css`**
 
 Replace the entire contents of `frontend/app/globals.css` with:
 
@@ -235,7 +235,7 @@ body,
 
 Note: The `.tiptap` block is NOT moved to editor.css yet. It will be moved in Task 13 after editor.css is fully populated.
 
-- [ ] **Step 4: Move Domine font loading to layout**
+- [x] **Step 4: Move Domine font loading to layout**
 
 The Domine `@import url(...)` was removed from `globals.css` in Step 3. Domine must still load for the editor font-picker to work. Move it to `frontend/app/layout.tsx` as a `<link>` tag in the `<head>`.
 
@@ -254,7 +254,7 @@ This matches the Google Fonts URL format already in `globals.css` and satisfies 
 
 **Important:** Do NOT add Domine to the `<body>` className or any outer element — the font must remain scoped to the editor surface via the `.domine-400` class defined in `editor.css` (Task 12).
 
-- [ ] **Step 5: Verify the build**
+- [x] **Step 5: Verify the build**
 
 ```bash
 cd frontend && nvm use 22.16.0 && pnpm typecheck
@@ -266,11 +266,11 @@ pnpm build
 ```
 Expected: build succeeds, no CSS errors.
 
-- [ ] **Step 6: Spot-check in browser**
+- [x] **Step 6: Spot-check in browser**
 
 Start the dev server (`pnpm dev`). Open the app. Verify it looks identical to before — no visual changes expected at this stage. Toggle dark/light mode to confirm both still work.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/styles/getwrite-utilities.css frontend/styles/editor.css frontend/app/globals.css frontend/app/layout.tsx
@@ -286,7 +286,7 @@ git commit -m "chore(styles): wire up new CSS architecture — create getwrite-u
 
 **Context:** Add all `start-page-*` and `max-content-width` component classes to `getwrite-utilities.css` using brand tokens. The existing `utilities.css` classes remain active until Task 14 — adding to getwrite-utilities.css now establishes the new definitions; the old ones will be deleted later. Because both files are active, there will be no visual change yet (specificity cascade is fine; both are in @layer components, last-defined wins — the new ones load after the old).
 
-- [ ] **Step 1: Add start-page classes to getwrite-utilities.css**
+- [x] **Step 1: Add start-page classes to getwrite-utilities.css**
 
 Inside the `@layer components { }` block (after the `truncate-2` class), add:
 
@@ -471,14 +471,14 @@ Inside the `@layer components { }` block (after the `truncate-2` class), add:
 
 Note: `start-page-orb`, `start-page-orb-primary`, `start-page-orb-secondary` classes are intentionally NOT added. These were decorative elements (gradient orbs) that are prohibited by STYLING.md Section 9. They will be removed from JSX in Task 3.
 
-- [ ] **Step 2: Verify no build errors**
+- [x] **Step 2: Verify no build errors**
 
 ```bash
 cd frontend && pnpm typecheck && pnpm build
 ```
 Expected: success.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/styles/getwrite-utilities.css
@@ -497,7 +497,7 @@ git commit -m "chore(styles): add start-page component classes to getwrite-utili
 
 **Context:** Replace all deprecated inline token utilities in Start page JSX files. Remove the decorative orb elements. Update button patterns. The `start-page-*` class names stay the same (they now resolve to the new getwrite-utilities.css definitions).
 
-- [ ] **Step 1: Update `StartPage.tsx`**
+- [x] **Step 1: Update `StartPage.tsx`**
 
 Apply these changes to `frontend/components/Start/StartPage.tsx`:
 
@@ -525,15 +525,15 @@ Apply these changes to `frontend/components/Start/StartPage.tsx`:
 
 4. The `start-page-primary-button` and `start-page-secondary-button` now get all their styling from getwrite-utilities.css. Remove any inline color/bg/border classes that duplicate them (the `text-white`, `border-brand-200`, `bg-brand-50`, etc. on those button elements).
 
-- [ ] **Step 2: Update `CreateProjectModal.tsx`**
+- [x] **Step 2: Update `CreateProjectModal.tsx`**
 
 Read the file. Replace all deprecated inline utilities using the substitution table. Check for any blue fill buttons — replace with outlined pattern.
 
-- [ ] **Step 3: Update `RenameProjectModal.tsx` and `ManageProjectMenu.tsx`**
+- [x] **Step 3: Update `RenameProjectModal.tsx` and `ManageProjectMenu.tsx`**
 
 Read each file. Replace all deprecated inline utilities.
 
-- [ ] **Step 4: Update `ConfirmDialog.tsx` (D15 — destructive button)**
+- [x] **Step 4: Update `ConfirmDialog.tsx` (D15 — destructive button)**
 
 Read `frontend/components/common/ConfirmDialog.tsx`. Find the confirm/destructive button and replace the red fill pattern:
 
@@ -551,14 +551,14 @@ className="border border-gw-red-border text-gw-red bg-transparent rounded-md fon
 
 Also add `border border-gw-primary text-gw-primary bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150` to any "cancel" button that currently uses generic styling.
 
-- [ ] **Step 5: Update `CompilePreviewModal.tsx` (D16 — blue fill button)**
+- [x] **Step 5: Update `CompilePreviewModal.tsx` (D16 — blue fill button)**
 
 Read `frontend/components/common/CompilePreviewModal.tsx`. Find `compile-modal-confirm` or any blue fill button and replace with the outlined primary pattern:
 ```tsx
 className="border border-gw-primary text-gw-primary bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150"
 ```
 
-- [ ] **Step 6: Typecheck and visual verify**
+- [x] **Step 6: Typecheck and visual verify**
 
 ```bash
 cd frontend && pnpm typecheck
@@ -571,7 +571,7 @@ Start dev server, navigate to the Start page. Verify:
 - Dark mode toggles correctly (colors shift from warm-light to warm-dark)
 - Wordmark shows "Get" in secondary color and "Write" in primary color with red left border
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/components/Start/ frontend/components/common/ConfirmDialog.tsx frontend/components/common/CompilePreviewModal.tsx
@@ -590,7 +590,7 @@ git commit -m "chore(styles): migrate Start page JSX to brand tokens — remove 
 - Modify: `frontend/components/common/ExportPreviewModal.tsx`
 - Modify: `frontend/components/common/ResourceCommandPalette.tsx`
 
-- [ ] **Step 1: Add project-type CSS to getwrite-utilities.css**
+- [x] **Step 1: Add project-type CSS to getwrite-utilities.css**
 
 Inside `@layer components`, add after the start-page section:
 
@@ -663,22 +663,22 @@ Inside `@layer components`, add after the start-page section:
     }
 ```
 
-- [ ] **Step 2: Update project-type JSX files**
+- [x] **Step 2: Update project-type JSX files**
 
 Read each file. Replace deprecated inline utilities using the substitution table. Replace any blue fill buttons with the outlined primary pattern (D16). Replace `project-modal-button-primary` classes.
 
-- [ ] **Step 3: Update `ExportPreviewModal.tsx` and `ResourceCommandPalette.tsx`**
+- [x] **Step 3: Update `ExportPreviewModal.tsx` and `ResourceCommandPalette.tsx`**
 
 Read each file. Replace deprecated inline utilities. Check for any modal panels — ensure `rounded-lg` (not `rounded-xl` or `rounded-2xl`) is used.
 
-- [ ] **Step 4: Typecheck**
+- [x] **Step 4: Typecheck**
 
 ```bash
 cd frontend && pnpm typecheck
 ```
 Expected: no errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/styles/getwrite-utilities.css frontend/components/project-types/ frontend/components/common/ExportPreviewModal.tsx frontend/components/common/ResourceCommandPalette.tsx
