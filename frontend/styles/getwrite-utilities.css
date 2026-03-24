@@ -1,0 +1,73 @@
+/*
+ * getwrite-utilities.css
+ * GetWrite component utilities for Tailwind v4.
+ *
+ * Structure:
+ *   1. Theme token cascade (outside @layer) — resolves light/dark mode
+ *   2. Reduced-motion blocks
+ *   3. @layer components — component classes using gw-* semantic tokens
+ *
+ * Theming: .appshell-shell reassigns --color-gw-* tokens for light mode.
+ *          .appshell-shell.appshell-theme-dark restores dark mode values.
+ *          All component classes below use semantic tokens only — no explicit
+ *          per-component dark mode overrides are needed.
+ */
+
+/* ── THEME CASCADE ── */
+/* Light mode is the default. Reassign semantic tokens to light-mode values. */
+.appshell-shell {
+    --color-gw-bg:       var(--color-gw-chrome-light);
+    --color-gw-chrome:   var(--color-gw-chrome-light);
+    --color-gw-chrome2:  var(--color-gw-chrome2-light);
+    --color-gw-chrome3:  var(--color-gw-chrome3-light);
+    --color-gw-primary:  #0a0a0a;
+    --color-gw-secondary: var(--color-gw-secondary-light);
+    --color-gw-border:   var(--color-gw-border-light);
+    --color-gw-border-md: #b0ada8;
+    --color-gw-rule:     var(--color-gw-rule-light);
+    --color-gw-editor:   var(--color-gw-paper);
+}
+
+/* Dark mode: restore @theme defaults */
+.appshell-shell.appshell-theme-dark {
+    --color-gw-bg:        #0a0a0a;
+    --color-gw-chrome:    #111110;
+    --color-gw-chrome2:   #161614;
+    --color-gw-chrome3:   #1a1a18;
+    --color-gw-primary:   #f5f4f0;
+    --color-gw-secondary: #6a6864;
+    --color-gw-border:    #2e2e2c;
+    --color-gw-border-md: #3a3a38;
+    --color-gw-rule:      #1a1a18;
+    --color-gw-editor:    #1c1c1a;
+}
+
+/* ── REDUCED MOTION ── (only permitted !important blocks in this file) */
+.gw-reduced-motion *,
+.gw-reduced-motion *::before,
+.gw-reduced-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+    }
+}
+
+/* ── COMPONENT CLASSES ── */
+@layer components {
+    /* Component classes are added here in Tasks 2–13. */
+    .truncate-2 {
+        overflow: hidden;
+        display: -webkit-box;
+        line-clamp: 2;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+}

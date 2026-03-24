@@ -29,7 +29,7 @@
  * that tells the writer where their work lives.
  */
 
-@import "saboteur-base.css";
+@import "./saboteur-base.css";
 
 @theme {
     /* ── CHROME SURFACE COLORS (dark mode) ── */

@@ -1,6 +1,10 @@
-@import url("https://fonts.googleapis.com/css2?family=Domine:wght@400..700&display=swap");
-
 @import "tailwindcss";
+@import "../styles/saboteur-base.css";
+@import "../styles/getwrite-theme.css";
+@import "../styles/getwrite-utilities.css";
+@import "../styles/editor.css";
+
+/* Keeping deprecated files active until Task 14 */
 @import "../styles/tokens.css";
 @import "../styles/utilities.css";
 
