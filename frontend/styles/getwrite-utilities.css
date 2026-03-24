@@ -314,4 +314,196 @@
         color: var(--color-gw-secondary);
         margin-top: 4px;
     }
+
+    /* ── WORKAREA ── */
+    .workarea-container {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 24px;
+        background-color: var(--color-gw-chrome2);
+        color: var(--color-gw-primary);
+        /* No box-shadow — surfaces communicate elevation via color only (D10) */
+    }
+
+    .workarea-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+
+    .workarea-view-tabs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Tab button — D9: no blue fill */
+    .workarea-tab-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: var(--radius-md);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        border: 0.5px solid var(--color-gw-border);
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            color 150ms ease,
+            border-color 150ms ease;
+    }
+
+    .workarea-tab-button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--color-gw-focus-ring); /* focus ring — exempt from D10 */
+    }
+
+    .workarea-tab-button[role="tab"][aria-selected="false"]:not(:disabled) {
+        background-color: var(--color-gw-chrome);
+        color: var(--color-gw-secondary);
+        border-color: var(--color-gw-border);
+    }
+
+    .workarea-tab-button[role="tab"][aria-selected="false"]:not(:disabled):hover {
+        background-color: var(--color-gw-chrome2);
+        color: var(--color-gw-primary);
+    }
+
+    .workarea-tab-button[role="tab"][aria-selected="true"] {
+        background-color: var(--color-gw-chrome2);
+        color: var(--color-gw-primary);
+        border-color: var(--color-gw-border-md);
+    }
+
+    .workarea-pane {
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: var(--color-gw-chrome);
+        padding: 16px;
+    }
+
+    .workarea-pane-title {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--color-gw-secondary);
+        margin-bottom: 12px;
+    }
+
+    .workarea-pane-content {
+        color: var(--color-gw-secondary);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .workarea-section-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--color-gw-primary);
+        margin-bottom: 12px;
+    }
+
+    .workarea-stat-card {
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: var(--color-gw-chrome);
+        padding: 16px;
+    }
+
+    .workarea-stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--color-gw-primary);
+    }
+
+    .workarea-stat-label {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--color-gw-secondary);
+        margin-top: 4px;
+    }
+
+    .workarea-list-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-sm);
+        background-color: var(--color-gw-chrome);
+        transition: background-color 150ms ease;
+        cursor: pointer;
+    }
+
+    .workarea-list-item:hover {
+        background-color: var(--color-gw-chrome2);
+    }
+
+    .workarea-list-item-label {
+        font-size: 13px;
+        color: var(--color-gw-primary);
+    }
+
+    .workarea-list-item-meta {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--color-gw-secondary);
+    }
+
+    .workarea-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: transparent;
+        color: var(--color-gw-secondary);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition:
+            background-color 150ms ease,
+            color 150ms ease,
+            border-color 150ms ease;
+    }
+
+    .workarea-button:hover {
+        background-color: var(--color-gw-chrome2);
+        color: var(--color-gw-primary);
+        border-color: var(--color-gw-border-md);
+    }
+
+    /* ── EDITVIEW DOC HEADER ── */
+    .editview-doc-header {
+        padding: 16px 24px;
+        border-bottom: 0.5px solid var(--color-gw-border);
+        background-color: var(--color-gw-chrome);
+    }
+
+    .editview-doc-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--color-gw-primary);
+    }
+
+    .editview-doc-subtitle {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        color: var(--color-gw-secondary);
+        margin-top: 4px;
+    }
 }
