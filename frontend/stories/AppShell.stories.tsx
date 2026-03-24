@@ -44,10 +44,10 @@ export const Default: Story = {
                         {projects.map((p) => (
                             <div
                                 key={p.id}
-                                className="border rounded p-3 bg-slate-50"
+                                className="border-[0.5px] border-gw-border rounded p-3 bg-gw-chrome"
                             >
                                 <div className="font-medium">{p.name}</div>
-                                <div className="text-xs text-slate-600 mt-1">
+                                <div className="text-xs text-gw-secondary mt-1">
                                     {typeof p.metadata?.description === "string"
                                         ? p.metadata?.description
                                         : ""}

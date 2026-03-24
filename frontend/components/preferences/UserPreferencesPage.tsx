@@ -236,8 +236,8 @@ export default function UserPreferencesPage({
                                 }}
                                 className={`rounded-md border px-3 py-2 text-sm font-medium ${
                                     appearance.density === densityValue
-                                        ? "border-slate-700 bg-slate-100 text-slate-900"
-                                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                        ? "border-gw-border-md bg-gw-chrome2 text-gw-primary"
+                                        : "border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2"
                                 }`}
                                 aria-pressed={
                                     appearance.density === densityValue

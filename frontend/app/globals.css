@@ -4,9 +4,6 @@
 @import "../styles/getwrite-utilities.css";
 @import "../styles/editor.css";
 
-/* Keeping deprecated files active until Task 14 */
-@import "../styles/tokens.css";
-@import "../styles/utilities.css";
 
 html,
 body,

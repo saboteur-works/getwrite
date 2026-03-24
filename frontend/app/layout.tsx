@@ -29,7 +29,7 @@ export default function RootLayout({
             <body>
                 <ClientProvider>
                     <AppearanceRuntime />
-                    <div className="min-h-screen bg-gray-50 text-slate-900">
+                    <div className="min-h-screen bg-gw-surface text-gw-primary">
                         {children}
                         <AppToaster />
                     </div>

@@ -916,24 +916,24 @@ git commit -m "chore(styles): add workarea component classes to getwrite-utiliti
 - Modify: `frontend/components/ResourceTree/ResourceTree.tsx`
 - Modify: `frontend/components/SearchBar/SearchBar.tsx`
 
-- [ ] **Step 1: Read and update each WorkArea component**
+- [x] **Step 1: Read and update each WorkArea component**
 
 For each file, read it first. Replace deprecated inline utilities using the substitution table. Pay attention to:
 - Any `workarea-tab-button[aria-selected="true"]` className — the aria attribute is set at runtime, the class name itself is fine
 - Any focus ring that uses blue — replace with `focus-visible:ring-[3px] focus-visible:ring-gw-focus-ring focus-visible:outline-none`
 - Any `shadow-*` utilities — delete with no replacement
 
-- [ ] **Step 2: Read and update ResourceTree and Tree components**
+- [x] **Step 2: Read and update ResourceTree and Tree components**
 
 For `ResourceTree/ResourceTree.tsx` and `Tree/ResourceTree.tsx`: replace deprecated inline token utilities. Active resource items should have `border-l-[2px] border-gw-red-border bg-gw-chrome2 text-gw-primary pl-[14px]`.
 
 For `Tree/ResourceContextMenu.tsx`: check for `resource-context-menu-item-danger` — ensure it uses `text-gw-red`. If inline, replace any red-variant Tailwind class with `text-gw-red`.
 
-- [ ] **Step 3: Read and update SearchBar**
+- [x] **Step 3: Read and update SearchBar**
 
 Read `frontend/components/SearchBar/SearchBar.tsx`. Replace deprecated inline utilities. Focus ring: `focus-visible:ring-[3px] focus-visible:ring-gw-focus-ring`.
 
-- [ ] **Step 4: Also add resource-related CSS classes to getwrite-utilities.css**
+- [x] **Step 4: Also add resource-related CSS classes to getwrite-utilities.css**
 
 Add inside `@layer components`:
 
@@ -1130,14 +1130,14 @@ Add inside `@layer components`:
     }
 ```
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 ```bash
 cd frontend && pnpm typecheck
 ```
 Expected: no errors.
 
-- [ ] **Step 6: Visual spot-check**
+- [x] **Step 6: Visual spot-check**
 
 Load the app. Open a project. Verify:
 - Resource tree hover and active states are correct
@@ -1145,7 +1145,7 @@ Load the app. Open a project. Verify:
 - Context menu uses brand colors
 - Drag indicator (if visible) uses brand red
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/styles/getwrite-utilities.css frontend/components/WorkArea/ frontend/components/Tree/ frontend/components/ResourceTree/ frontend/components/SearchBar/
@@ -1165,7 +1165,7 @@ git commit -m "chore(styles): migrate WorkArea and ResourceTree to brand tokens"
 - Modify: `frontend/components/Sidebar/controls/StatusSelector.tsx`
 - Modify: `frontend/components/Editor/RevisionControl/RevisionControl.tsx`
 
-- [ ] **Step 1: Add sidebar CSS to getwrite-utilities.css**
+- [x] **Step 1: Add sidebar CSS to getwrite-utilities.css**
 
 Inside `@layer components`, add:
 
@@ -1343,23 +1343,23 @@ Inside `@layer components`, add:
     }
 ```
 
-- [ ] **Step 2: Update sidebar JSX**
+- [x] **Step 2: Update sidebar JSX**
 
 Read each Sidebar component file. Replace deprecated inline utilities using the substitution table. Ensure metadata input focus rings use `focus:ring-[3px] focus:ring-gw-focus-ring focus:outline-none` pattern.
 
-- [ ] **Step 3: Update `RevisionControl.tsx` (D20)**
+- [x] **Step 3: Update `RevisionControl.tsx` (D20)**
 
 Read `frontend/components/Editor/RevisionControl/RevisionControl.tsx`. Find any save/confirm buttons with blue fill patterns and replace with the outlined primary pattern. The `revision-control-save-button` class in getwrite-utilities.css now provides the correct styling — ensure the JSX uses this class.
 
 Find and remove any explicit blue background colors from revision control buttons.
 
-- [ ] **Step 4: Typecheck**
+- [x] **Step 4: Typecheck**
 
 ```bash
 cd frontend && pnpm typecheck
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/styles/getwrite-utilities.css frontend/components/Sidebar/ frontend/components/Editor/RevisionControl/
@@ -1375,7 +1375,7 @@ git commit -m "chore(styles): migrate Sidebar and RevisionControl to brand token
 - Modify: `frontend/components/help/HelpPage.tsx`
 - Modify: `frontend/components/help/HelpSectionCard.tsx`
 
-- [ ] **Step 1: Add help CSS to getwrite-utilities.css**
+- [x] **Step 1: Add help CSS to getwrite-utilities.css**
 
 Inside `@layer components`, add:
 
@@ -1459,11 +1459,11 @@ Inside `@layer components`, add:
     }
 ```
 
-- [ ] **Step 2: Update help JSX**
+- [x] **Step 2: Update help JSX**
 
 Read `HelpPage.tsx` and `HelpSectionCard.tsx`. Replace deprecated inline utilities. Ensure `help-nav-item--active` is used instead of any blue fill active state.
 
-- [ ] **Step 3: Typecheck and commit**
+- [x] **Step 3: Typecheck and commit**
 
 ```bash
 cd frontend && pnpm typecheck
@@ -1480,7 +1480,7 @@ git commit -m "chore(styles): migrate Help page to brand tokens"
 
 **Context:** AppShell is the most complex component group. The theme cascade established in Task 1 means no per-component dark mode override blocks are needed — components use semantic tokens that automatically resolve based on the `.appshell-shell` / `.appshell-shell.appshell-theme-dark` cascade.
 
-- [ ] **Step 1: Add AppShell CSS to getwrite-utilities.css**
+- [x] **Step 1: Add AppShell CSS to getwrite-utilities.css**
 
 Inside `@layer components`, add:
 
@@ -1802,7 +1802,7 @@ Inside `@layer components`, add:
     }
 ```
 
-- [ ] **Step 2: Typecheck and commit**
+- [x] **Step 2: Typecheck and commit**
 
 ```bash
 cd frontend && pnpm typecheck
@@ -1823,7 +1823,7 @@ git commit -m "chore(styles): add AppShell component classes to getwrite-utiliti
 - Modify: `frontend/components/preferences/UserPreferencesPage.tsx`
 - Modify: `frontend/components/preferences/AppearanceRuntime.tsx` (no class changes needed — verify only)
 
-- [ ] **Step 1: Update `AppShell.tsx`**
+- [x] **Step 1: Update `AppShell.tsx`**
 
 Read the full file. Apply the substitution table to all deprecated inline tokens. Specific items to change:
 - Any `bg-white border-r` on the collapsed sidebar toggle div → `bg-gw-chrome border-r border-[0.5px] border-gw-border`
@@ -1832,21 +1832,21 @@ Read the full file. Apply the substitution table to all deprecated inline tokens
 - Any `rounded-xl` → `rounded-lg`
 - Focus ring patterns → `focus-visible:ring-[3px] focus-visible:ring-gw-focus-ring focus-visible:outline-none`
 
-- [ ] **Step 2: Update `ShellSettingsMenu.tsx`, `ShellModalCoordinator.tsx`, and remaining layout files**
+- [x] **Step 2: Update `ShellSettingsMenu.tsx`, `ShellModalCoordinator.tsx`, and remaining layout files**
 
 Read each file. Apply substitution table. Check for any blue fills on buttons.
 
-- [ ] **Step 3: Update `UserPreferencesPage.tsx`**
+- [x] **Step 3: Update `UserPreferencesPage.tsx`**
 
 Read the file. It also wraps content in `appshell-shell` — apply substitution table.
 
-- [ ] **Step 4: Typecheck**
+- [x] **Step 4: Typecheck**
 
 ```bash
 cd frontend && pnpm typecheck
 ```
 
-- [ ] **Step 5: Visual spot-check — full flow**
+- [x] **Step 5: Visual spot-check — full flow**
 
 Start dev server. Test:
 - Light mode: clean warm-light chrome, warm editor surface
@@ -1855,7 +1855,7 @@ Start dev server. Test:
 - Dropdown menu in topbar: brand colors, no blue active state
 - Sidebar open/close/resize: no blue indicators
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/components/Layout/ frontend/components/preferences/
@@ -1875,7 +1875,7 @@ git commit -m "chore(styles): migrate AppShell JSX to brand tokens — remove bl
 - Modify: `frontend/components/Editor/MenuBar/EditorMenuColorSubmenu.tsx`
 - Modify: `frontend/components/TipTapEditor.tsx`
 
-- [ ] **Step 1: Add editor toolbar CSS to getwrite-utilities.css**
+- [x] **Step 1: Add editor toolbar CSS to getwrite-utilities.css**
 
 Inside `@layer components`, add:
 
@@ -2012,17 +2012,17 @@ Inside `@layer components`, add:
     }
 ```
 
-- [ ] **Step 2: Update editor toolbar JSX files**
+- [x] **Step 2: Update editor toolbar JSX files**
 
 Read each file. Replace deprecated inline tokens. Ensure `editor-menu-icon-button-active` is used (not a blue background) for active format states.
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Typecheck**
 
 ```bash
 cd frontend && pnpm typecheck
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/styles/getwrite-utilities.css frontend/components/Editor/MenuBar/ frontend/components/TipTapEditor.tsx
@@ -2039,7 +2039,7 @@ git commit -m "chore(styles): migrate editor toolbar to brand tokens — replace
 
 **Context:** The editor safety constraint applies here. All `.tiptap` rules must use class-based selectors with specificity ≤ (0,1,1). No `!important`. User formatting (inline styles, semantic marks) has specificity (1,0,0) and always wins. Run the manual formatting test after completing this task.
 
-- [ ] **Step 1: Write editor.css content**
+- [x] **Step 1: Write editor.css content**
 
 Replace the placeholder in `frontend/styles/editor.css` with:
 
@@ -2181,11 +2181,11 @@ Replace the placeholder in `frontend/styles/editor.css` with:
 }
 ```
 
-- [ ] **Step 2: Remove .tiptap block from globals.css**
+- [x] **Step 2: Remove .tiptap block from globals.css**
 
 Edit `frontend/app/globals.css`. Remove the entire `.tiptap { ... }` block. The file should contain only the imports and the `html, body, #__next` rule.
 
-- [ ] **Step 3: Run manual editor formatting test**
+- [x] **Step 3: Run manual editor formatting test**
 
 Start the dev server (`pnpm dev`). Open a project. Navigate to a document.
 
@@ -2200,13 +2200,13 @@ Verify each of the following:
 
 All 7 checks must pass. If any user formatting is overridden, check editor.css for a rule that might have higher specificity than expected.
 
-- [ ] **Step 4: Typecheck**
+- [x] **Step 4: Typecheck**
 
 ```bash
 cd frontend && pnpm typecheck
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/styles/editor.css frontend/app/globals.css
@@ -2222,17 +2222,17 @@ git commit -m "chore(styles): populate editor.css with brand-token tiptap styles
 - Modify: `frontend/components/preferences/UserPreferencesPage.tsx` (if not done in Task 10)
 - Modify: `frontend/components/Hello.tsx` (if it contains any deprecated classes)
 
-- [ ] **Step 1: Read and update remaining components**
+- [x] **Step 1: Read and update remaining components**
 
 Read `Toaster.tsx`, `UserPreferencesPage.tsx`, and `Hello.tsx`. Apply the substitution table. These are small components — replace any deprecated inline utilities.
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 ```bash
 cd frontend && pnpm typecheck
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/components/notifications/ frontend/components/preferences/ frontend/components/Hello.tsx
@@ -2252,7 +2252,7 @@ git commit -m "chore(styles): migrate remaining components to brand tokens"
 
 **Context:** This is the final task. Before running it, confirm every component group in Tasks 2–13 has been migrated. After this task, the app relies entirely on `getwrite-utilities.css` and `editor.css` for custom styles.
 
-- [ ] **Step 1: Audit deprecated token references**
+- [x] **Step 1: Audit deprecated token references**
 
 Search for any remaining deprecated tokens across all component files:
 
@@ -2263,7 +2263,7 @@ grep -r "color-neutral\|color-brand\|color-dark\|color-ink\|color-paper\|shadow-
 
 Expected: no files listed. If any remain, fix them before proceeding.
 
-- [ ] **Step 2: Remove deprecated imports from globals.css**
+- [x] **Step 2: Remove deprecated imports from globals.css**
 
 Edit `frontend/app/globals.css`. Remove these two lines:
 ```css
@@ -2286,20 +2286,20 @@ body,
 }
 ```
 
-- [ ] **Step 3: Build test without deprecated files**
+- [x] **Step 3: Build test without deprecated files**
 
 ```bash
 cd frontend && pnpm build
 ```
 Expected: build succeeds. If there are CSS variable resolution errors, a deprecated token was missed — re-run the audit grep.
 
-- [ ] **Step 4: Delete deprecated CSS files**
+- [x] **Step 4: Delete deprecated CSS files**
 
 ```bash
 git rm frontend/styles/tokens.css frontend/styles/utilities.css frontend/styles/_variables.scss frontend/styles/_keyframe-animations.scss
 ```
 
-- [ ] **Step 5: Verify saboteur-base.css is unchanged**
+- [x] **Step 5: Verify saboteur-base.css is unchanged**
 
 ```bash
 git diff HEAD frontend/styles/saboteur-base.css

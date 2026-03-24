@@ -13,7 +13,7 @@ export default meta;
 
 export const Default: StoryObj = {
     render: () => (
-        <div className="p-4 w-96 bg-white">
+        <div className="p-4 w-96 bg-gw-chrome">
             <NotesInput />
             <div className="mt-4">
                 <StatusSelector />
