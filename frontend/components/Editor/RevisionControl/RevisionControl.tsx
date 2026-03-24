@@ -330,10 +330,7 @@ export default function RevisionControl() {
                                                                 className="revision-control-action-button"
                                                             >
                                                                 <View
-                                                                    className="h-3 w-3 mr-2"
-                                                                    style={{
-                                                                        color: "var(--color-gw-secondary)",
-                                                                    }}
+                                                                    className="h-3 w-3 mr-2 text-gw-secondary"
                                                                 />
                                                                 {fetchingRevisionId ===
                                                                 revision.id
