@@ -3,8 +3,8 @@ name: scholar
 description: "Review assistant that inspects knowledge pages in /experiments-nopush (knowledge-tome). Used whenever planning, implementing a feature, refactoring, or making a decision that may be affected by prior project knowledge."
 metadata:
     author: saboteur-labs
-    version: 1.0
-    last_updated: 2026-03-13
+    version: 1.1
+    last_updated: 2026-03-23
 ---
 
 # Scholar
@@ -18,12 +18,20 @@ An agent helper skill that MUST be invoked before planning when prior project kn
 
 ## Invocation Triggers
 
-This skill should be invoked whenever the agent is about to plan or make a decision that may be influenced by prior project knowledge, such as:
+Invoke `scholar` in exactly these three cases:
 
-1. Planning a new feature or implementation.
-2. Refactoring existing code.
-3. Making architectural decisions.
-4. Any situation where prior intent, decisions, or lessons could affect the outcome.
+1. Starting work on a named feature or component that could have a corresponding tome page.
+2. Choosing between competing implementation approaches where a prior decision could exist.
+3. Modifying code that is explicitly named in a previous exchange or in a known tome page.
+
+**Do not invoke** for:
+
+1. Bug fixes in working code
+2. Adding tests to existing behavior
+3. Renaming
+4. Formatting
+5. Routine maintenance
+6. Purely additive work with no pattern choices
 
 ## Required Output Format
 
@@ -49,11 +57,19 @@ Format rules:
 
 ## Protocol (How to use)
 
-1. Enumerate all files in `/experiments-nopush` matching `tome-*.md`.
-2. For each page, quickly scan headings and the one-line summary (if present) to decide whether it might affect the current task.
-3. If a page may apply, extract a one-sentence rationale and a one-sentence concrete effect on the plan. Prefer short, actionable language.
-4. Produce the `Scholar Summary:` block. If none matched, output `Scholar Summary: No tome pages applied.`
-5. Only after the `Scholar Summary` is produced may the agent proceed to planning.
+### Phase 1 — Cheap scan (always)
+
+1. List all files in `/experiments-nopush` matching `tome-###-*.md`.
+2. Read only filenames and the one-line summary field of each page — do not load full content yet.
+3. If no filenames match the current task topic: output `Scholar Summary: No tome pages applied.` and stop. Do not read any file content.
+
+### Phase 2 — Selective load (only when Phase 1 finds matches)
+
+4. Load full content only for pages whose filename or summary matches the current task by topic.
+5. Hard cap: load at most 3 pages. If more than 3 match, list the extras by filename in the Scholar Summary without loading their content.
+6. For each loaded page, extract a one-sentence rationale and a one-sentence effect on the plan.
+7. Produce the `Scholar Summary:` block.
+8. Only after the `Scholar Summary` is produced may the agent proceed to planning.
 
 ## Clarification and Safety
 
