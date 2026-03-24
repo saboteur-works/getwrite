@@ -639,7 +639,7 @@ export default function AppShell({
                                 style={{ width: layout.leftWidth }}
                             >
                                 <div className="appshell-sidebar-header">
-                                    <span className="text-xs uppercase tracking-widest font-semibold text-slate-700">
+                                    <span className="font-mono text-[9px] uppercase tracking-[0.18em] font-semibold text-gw-secondary">
                                         Resources
                                     </span>
                                     <button
@@ -676,7 +676,7 @@ export default function AppShell({
 
                         {/* Left Sidebar Collapsed Toggle */}
                         {showSidebars && !layout.leftOpen ? (
-                            <div className="hidden sm:flex flex-col items-center justify-start h-full p-2 bg-white border-r">
+                            <div className="hidden sm:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-r border-[0.5px] border-gw-border">
                                 <button
                                     type="button"
                                     onClick={() => layout.setLeftOpen(true)}
@@ -878,7 +878,7 @@ export default function AppShell({
                                                               <h2 className="workarea-section-title">
                                                                   Work Area
                                                               </h2>
-                                                              <p className="mt-2 text-sm text-slate-600">
+                                                              <p className="mt-2 text-sm text-gw-secondary">
                                                                   Resource not
                                                                   found.
                                                               </p>
@@ -897,7 +897,7 @@ export default function AppShell({
                                                                           Work
                                                                           Area
                                                                       </h2>
-                                                                      <p className="mt-2 text-sm text-slate-600">
+                                                                      <p className="mt-2 text-sm text-gw-secondary">
                                                                           Selected
                                                                           resource
                                                                           is not
@@ -960,19 +960,19 @@ export default function AppShell({
                                             : project && showSidebars
                                               ? (() => {
                                                     return (
-                                                        <section className="mx-auto w-full max-w-4xl rounded-xl border border-slate-200 bg-white p-6 md:p-8">
+                                                        <section className="mx-auto w-full max-w-4xl rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-6 md:p-8">
                                                             <div className="flex flex-wrap items-start justify-between gap-4">
                                                                 <div>
-                                                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                                                    <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-gw-secondary">
                                                                         Work
                                                                         Area
                                                                     </p>
-                                                                    <h2 className="mt-2 text-3xl font-semibold text-slate-900">
+                                                                    <h2 className="mt-2 text-3xl font-semibold text-gw-primary">
                                                                         {
                                                                             project.name
                                                                         }
                                                                     </h2>
-                                                                    <p className="mt-2 text-sm text-slate-600">
+                                                                    <p className="mt-2 text-sm text-gw-secondary">
                                                                         Select a
                                                                         file
                                                                         from the
@@ -999,7 +999,7 @@ export default function AppShell({
                                                                             },
                                                                         )
                                                                     }
-                                                                    className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
+                                                                    className="inline-flex items-center gap-2 rounded-md border border-gw-primary bg-transparent px-4 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-gw-primary hover:bg-gw-chrome2 transition-colors duration-150"
                                                                 >
                                                                     <Plus
                                                                         size={
@@ -1014,11 +1014,11 @@ export default function AppShell({
 
                                                             <div className="mt-8">
                                                                 <div className="mb-3 flex items-center justify-between">
-                                                                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                                                    <h3 className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-gw-secondary">
                                                                         Recent
                                                                         Files
                                                                     </h3>
-                                                                    <span className="text-xs text-slate-500">
+                                                                    <span className="text-xs text-gw-secondary">
                                                                         {
                                                                             recentResources.length
                                                                         }{" "}
@@ -1028,7 +1028,7 @@ export default function AppShell({
 
                                                                 {recentResources.length >
                                                                 0 ? (
-                                                                    <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-slate-50">
+                                                                    <ul className="divide-y divide-gw-border rounded-lg border-[0.5px] border-gw-border bg-gw-chrome">
                                                                         {recentResources.map(
                                                                             (
                                                                                 resource,
@@ -1058,30 +1058,30 @@ export default function AppShell({
                                                                                                     resource.id,
                                                                                                 )
                                                                                             }
-                                                                                            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-100"
+                                                                                            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gw-chrome2"
                                                                                         >
                                                                                             <span className="flex min-w-0 items-center gap-3">
                                                                                                 <Icon
                                                                                                     size={
                                                                                                         16
                                                                                                     }
-                                                                                                    className="shrink-0 text-slate-500"
+                                                                                                    className="shrink-0 text-gw-secondary"
                                                                                                     aria-hidden="true"
                                                                                                 />
                                                                                                 <span className="min-w-0">
-                                                                                                    <span className="block truncate text-sm font-medium text-slate-800">
+                                                                                                    <span className="block truncate text-sm font-medium text-gw-primary">
                                                                                                         {
                                                                                                             resource.name
                                                                                                         }
                                                                                                     </span>
-                                                                                                    <span className="block text-xs text-slate-500">
+                                                                                                    <span className="block text-xs text-gw-secondary">
                                                                                                         {
                                                                                                             resource.type
                                                                                                         }
                                                                                                     </span>
                                                                                                 </span>
                                                                                             </span>
-                                                                                            <span className="text-xs text-slate-500">
+                                                                                            <span className="text-xs text-gw-secondary">
                                                                                                 {resource.updatedAt
                                                                                                     ? `Updated ${formatRelativeTimestamp(resource.updatedAt)}`
                                                                                                     : `Created ${formatRelativeTimestamp(resource.createdAt)}`}
@@ -1093,10 +1093,10 @@ export default function AppShell({
                                                                         )}
                                                                     </ul>
                                                                 ) : (
-                                                                    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+                                                                    <div className="rounded-lg border border-dashed border-gw-border bg-gw-chrome px-4 py-6 text-sm text-gw-secondary">
                                                                         No files
                                                                         yet. Use{" "}
-                                                                        <span className="font-medium text-slate-800">
+                                                                        <span className="font-medium text-gw-primary">
                                                                             Create
                                                                             Resource
                                                                         </span>{" "}
@@ -1118,7 +1118,7 @@ export default function AppShell({
                                                         <h2 className="workarea-section-title">
                                                             Work Area
                                                         </h2>
-                                                        <p className="mt-2 text-sm text-slate-600">
+                                                        <p className="mt-2 text-sm text-gw-secondary">
                                                             Placeholder editor
                                                             and views go here.
                                                         </p>
@@ -1146,7 +1146,7 @@ export default function AppShell({
                                 style={{ width: layout.rightWidth }}
                             >
                                 <div className="appshell-sidebar-header">
-                                    <span className="text-xs uppercase tracking-widest font-semibold text-slate-700">
+                                    <span className="font-mono text-[9px] uppercase tracking-[0.18em] font-semibold text-gw-secondary">
                                         Metadata
                                     </span>
                                     <button
@@ -1215,7 +1215,7 @@ export default function AppShell({
 
                         {/* Right Sidebar Collapsed Toggle */}
                         {showSidebars && !layout.rightOpen ? (
-                            <div className="hidden lg:flex flex-col items-center justify-start h-full p-2 bg-white border-l">
+                            <div className="hidden lg:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-l border-[0.5px] border-gw-border">
                                 <button
                                     type="button"
                                     onClick={() => layout.setRightOpen(true)}
