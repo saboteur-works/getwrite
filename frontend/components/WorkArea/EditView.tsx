@@ -179,10 +179,10 @@ export default function EditView({
         }
 
         if (saveStatus === "saving" || saveStatus === "pending") {
-            return "text-slate-700";
+            return "text-gw-primary";
         }
 
-        return "text-slate-500";
+        return "text-gw-secondary";
     }, [saveStatus]);
 
     const autosaveDotClassName = React.useMemo(() => {
@@ -341,9 +341,9 @@ export default function EditView({
 
             <footer
                 id="editview-footer"
-                className="border-t px-4 py-2 bg-white text-sm flex items-center justify-between"
+                className="border-t border-gw-border px-4 py-2 bg-gw-chrome text-sm flex items-center justify-between"
             >
-                <div className="text-slate-600">
+                <div className="text-gw-secondary">
                     Words: <strong>{wordCount}</strong>
                 </div>
                 {isViewingNonCanonical && hasEditsAfterRevisionSwitch && (
@@ -368,7 +368,7 @@ export default function EditView({
                     {saveStatus === "error" && failedSaveDoc ? (
                         <button
                             type="button"
-                            className="text-xs font-medium text-brand-700 hover:text-brand-600"
+                            className="text-xs font-medium text-gw-primary hover:text-gw-secondary"
                             onClick={handleRetrySave}
                         >
                             Retry now

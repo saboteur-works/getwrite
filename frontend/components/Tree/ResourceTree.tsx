@@ -267,8 +267,8 @@ export default function ResourceTree({
                 onDrop={(e) => handleDrop(e, node.resource.id)}
             >
                 <div
-                    className={`flex items-center gap-2 px-2 py-1 rounded-md hover:bg-surface-200 dark:hover:bg-surface-700 ${isSelected ? "bg-surface-300 dark:bg-surface-800" : ""}`}
-                    style={{ paddingLeft: `${depth * 10 + 4}px` }}
+                    className={`flex items-center gap-2 px-2 py-1 rounded-md hover:bg-gw-chrome2 ${isSelected ? "border-l-[2px] border-gw-red-border bg-gw-chrome2 text-gw-primary pl-[14px]" : ""}`}
+                    style={isSelected ? undefined : { paddingLeft: `${depth * 10 + 4}px` }}
                     onContextMenu={(e) => {
                         e.preventDefault();
                         // open context menu at mouse position for this resource
@@ -288,7 +288,7 @@ export default function ResourceTree({
                     {reorderable ? (
                         <button
                             aria-label="Drag"
-                            className="cursor-grab p-1 text-muted-500 hover:text-muted-700"
+                            className="cursor-grab p-1 text-gw-secondary hover:text-gw-primary"
                             data-testid="drag-handle"
                         >
                             <svg
@@ -392,7 +392,7 @@ export default function ResourceTree({
                                 e.preventDefault();
                             }
                         }}
-                        className="flex items-center gap-2 text-sm text-muted-700 dark:text-muted-300"
+                        className="flex items-center gap-2 text-sm text-gw-secondary"
                     >
                         <span className="flex items-center w-4 h-4">
                             {hasChildren ? (
@@ -465,7 +465,7 @@ export default function ResourceTree({
                 };
                 return (
                     <div style={style} className="pointer-events-auto">
-                        <div className="border-t bg-background/80 backdrop-blur-sm px-3 py-1 text-xs text-muted-700 dark:text-muted-300">
+                        <div className="border-t border-gw-border bg-gw-chrome px-3 py-1 text-xs text-gw-secondary">
                             Selected:{" "}
                             <span className="font-medium">
                                 {selectedResource

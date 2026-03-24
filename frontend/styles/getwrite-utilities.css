@@ -506,4 +506,195 @@
         color: var(--color-gw-secondary);
         margin-top: 4px;
     }
+
+    /* ── RESOURCE CONTEXT MENU ── */
+    .resource-context-menu {
+        min-width: 180px;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: var(--color-gw-chrome2);
+        padding: 4px;
+    }
+
+    .resource-context-menu-header {
+        padding: 6px 10px;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--color-gw-secondary);
+        border-bottom: 0.5px solid var(--color-gw-border);
+        margin-bottom: 4px;
+    }
+
+    .resource-context-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 6px 10px;
+        border-radius: calc(var(--radius-md) - 2px);
+        background: transparent;
+        border: none;
+        color: var(--color-gw-secondary);
+        font-size: 13px;
+        text-align: left;
+        cursor: pointer;
+        transition: background-color 150ms ease, color 150ms ease;
+    }
+
+    .resource-context-menu-item:hover {
+        background-color: var(--color-gw-chrome3);
+        color: var(--color-gw-primary);
+    }
+
+    .resource-context-menu-item-danger {
+        color: var(--color-gw-red);
+    }
+
+    .resource-context-menu-item-danger:hover {
+        background-color: var(--color-gw-chrome3);
+        color: var(--color-gw-red);
+    }
+
+    /* ── RESOURCE PALETTE (command palette) ── */
+    .resource-palette-panel {
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: var(--color-gw-chrome2);
+        overflow: hidden;
+    }
+
+    .resource-palette-header {
+        padding: 12px 16px;
+        border-bottom: 0.5px solid var(--color-gw-border);
+    }
+
+    .resource-palette-input {
+        width: 100%;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--color-gw-primary);
+        font-size: 14px;
+        padding: 0;
+    }
+
+    .resource-palette-input::placeholder {
+        color: var(--color-gw-secondary);
+    }
+
+    .resource-palette-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        cursor: pointer;
+        color: var(--color-gw-secondary);
+        font-size: 13px;
+        transition: background-color 150ms ease;
+    }
+
+    .resource-palette-item:hover {
+        background-color: var(--color-gw-chrome3);
+        color: var(--color-gw-primary);
+    }
+
+    /* ── SEARCHBAR ── */
+    .searchbar-root {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .searchbar-field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: var(--color-gw-chrome2);
+        padding: 6px 10px;
+        transition: border-color 150ms ease;
+    }
+
+    .searchbar-field:focus-within {
+        border-color: var(--color-gw-border-md);
+        box-shadow: 0 0 0 3px var(--color-gw-focus-ring); /* focus ring — exempt from D10 */
+    }
+
+    .searchbar-icon {
+        color: var(--color-gw-secondary);
+        flex-shrink: 0;
+    }
+
+    .searchbar-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--color-gw-primary);
+        font-size: 13px;
+    }
+
+    .searchbar-input::placeholder {
+        color: var(--color-gw-secondary);
+    }
+
+    .searchbar-shortcut {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--color-gw-secondary);
+    }
+
+    .searchbar-results {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background-color: var(--color-gw-chrome2);
+        overflow: hidden;
+        z-index: 40;
+    }
+
+    .searchbar-result-button {
+        display: block;
+        width: 100%;
+        padding: 8px 12px;
+        background: transparent;
+        border: none;
+        text-align: left;
+        color: var(--color-gw-secondary);
+        font-size: 13px;
+        cursor: pointer;
+        transition: background-color 150ms ease;
+    }
+
+    .searchbar-result-button:hover {
+        background-color: var(--color-gw-chrome3);
+        color: var(--color-gw-primary);
+    }
+
+    /* ── DRAGLINE ── */
+    .dragline {
+        height: 2px;
+        background-color: var(--color-gw-red);
+        position: relative;
+        pointer-events: none;
+    }
+
+    .dragline::before {
+        content: "";
+        position: absolute;
+        left: -4px;
+        top: -3px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: var(--color-gw-red);
+    }
 }
