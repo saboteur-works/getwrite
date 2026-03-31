@@ -29,6 +29,12 @@ export default function MultiSelectList({
     return (
         <div className={className}>
             <label className="text-sm font-medium">{label}</label>
+            {items.length === 0 && (
+                <p className="text-sm text-gw-secondary">
+                    To select {label.toLowerCase()}, add text files to the{" "}
+                    {label} folder.
+                </p>
+            )}
             <div className="mt-2 space-y-2">
                 {items.map((it) => (
                     <label key={it} className="flex items-center gap-2 text-sm">
