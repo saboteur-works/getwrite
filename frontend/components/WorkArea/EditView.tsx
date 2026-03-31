@@ -321,7 +321,7 @@ export default function EditView({
         <div className="flex h-full min-w-0 w-full flex-col overflow-hidden">
             <RevisionControl />
             <div className="flex-1 min-h-0 w-full min-w-0 p-2">
-                <div className="mx-auto h-full w-full max-w-4xl">
+                <div className="mx-auto h-full w-full">
                     <header className="editview-doc-header mb-3 px-4 py-3">
                         <h2 className="editview-doc-title text-base font-semibold truncate">
                             {documentTitle}
