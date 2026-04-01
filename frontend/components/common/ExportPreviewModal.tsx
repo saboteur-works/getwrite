@@ -39,7 +39,7 @@ export default function ExportPreviewModal({
                 <div className="fixed bottom-6 right-6 z-[60]">
                     <button
                         type="button"
-                        className="px-3 py-2 rounded bg-slate-700 text-white"
+                        className="px-3 py-2 rounded-md border border-gw-primary text-gw-primary bg-transparent hover:bg-gw-chrome2 transition-colors duration-150"
                         onClick={() => onShowCompile()}
                     >
                         View compiled

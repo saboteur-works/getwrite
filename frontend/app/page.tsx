@@ -667,7 +667,7 @@ export default function Home(): JSX.Element {
                     <h1 className="text-2xl font-semibold">
                         {selectedProject.name}
                     </h1>
-                    <p className="mt-4 text-slate-600">
+                    <p className="mt-4 text-gw-secondary">
                         Open a resource from the left-hand contents list, or
                         create a new resource to get started.
                     </p>

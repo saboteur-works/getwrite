@@ -89,7 +89,7 @@ export default function ConfirmDialog({
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="confirm-dialog-cancel"
+                        className="border border-gw-primary text-gw-primary bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150"
                     >
                         {cancelLabel}
                     </button>
@@ -98,7 +98,7 @@ export default function ConfirmDialog({
                         ref={confirmRef}
                         type="button"
                         onClick={onConfirm}
-                        className="confirm-dialog-confirm"
+                        className="border border-gw-red-border text-gw-red bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150"
                     >
                         {confirmLabel}
                     </button>

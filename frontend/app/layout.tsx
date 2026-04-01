@@ -18,10 +18,18 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
+            <head>
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+                <link
+                    rel="stylesheet"
+                    href="https://fonts.googleapis.com/css2?family=Domine:wght@400..700&display=swap"
+                />
+            </head>
             <body>
                 <ClientProvider>
                     <AppearanceRuntime />
-                    <div className="min-h-screen bg-gray-50 text-slate-900">
+                    <div className="min-h-screen bg-gw-surface text-gw-primary">
                         {children}
                         <AppToaster />
                     </div>

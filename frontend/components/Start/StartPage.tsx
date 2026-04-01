@@ -9,7 +9,7 @@
  * The component supports both externally supplied project lists (via props)
  * and local optimistic updates for create/rename/delete interactions.
  */
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FolderPlus, Plus, FolderOpen } from "lucide-react";
 import type {
     Project as CanonicalProject,
@@ -283,29 +283,22 @@ export default function StartPage({
 
             <div className="max-content-width mx-auto">
                 <div className="start-page-hero start-page-fade-in px-6 py-8 lg:px-10 lg:py-10">
-                    <div
-                        className="start-page-orb start-page-orb-primary"
-                        aria-hidden="true"
-                    />
-                    <div
-                        className="start-page-orb start-page-orb-secondary"
-                        aria-hidden="true"
-                    />
 
                     <div className="start-page-hero-grid">
                         <div className="start-page-hero-copy">
                             <div className="start-page-kicker">
-                                <span className="inline-block h-2 w-2 rounded-full bg-brand-500" />
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-gw-secondary" />
                                 Local-first writing studio
                             </div>
 
                             <h1 className="mt-6 start-page-wordmark">
                                 <span className="start-page-wordmark-accent">
-                                    GetWrite
+                                    <span className="font-display font-normal tracking-heading text-gw-secondary">Get</span>
+                                    <span className="font-display font-bold tracking-wordmark text-gw-primary">Write</span>
                                 </span>
                             </h1>
 
-                            <p className="mt-5 max-w-2xl text-base leading-8 text-ink-700 sm:text-lg">
+                            <p className="mt-5 max-w-2xl text-base leading-8 text-gw-secondary sm:text-lg">
                                 Shape books, series, and scene libraries with a
                                 calm editorial workspace. Pick up where you left
                                 off in {featuredProjectName} or open a clean
@@ -327,15 +320,15 @@ export default function StartPage({
                         </div>
 
                         <aside className="start-page-panel start-page-fade-in-delayed p-6 lg:p-7">
-                            <p className="text-xs uppercase tracking-[0.28em] text-neutral-500">
+                            <p className="text-xs uppercase tracking-[0.28em] text-gw-secondary">
                                 Writing at a glance
                             </p>
                             <div className="mt-5 grid gap-4">
                                 <div>
-                                    <div className="text-5xl font-semibold text-ink-900">
+                                    <div className="text-5xl font-semibold text-gw-primary">
                                         {localProjects.length}
                                     </div>
-                                    <p className="mt-2 text-sm leading-6 text-ink-700">
+                                    <p className="mt-2 text-sm leading-6 text-gw-secondary">
                                         Project
                                         {localProjects.length === 1
                                             ? ""
@@ -345,19 +338,19 @@ export default function StartPage({
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="rounded-2xl border border-neutral-200 bg-paper-50 px-4 py-4">
-                                        <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">
+                                    <div className="rounded-lg border border-gw-border bg-gw-chrome2 px-4 py-4">
+                                        <div className="text-xs uppercase tracking-[0.2em] text-gw-secondary">
                                             Resources
                                         </div>
-                                        <div className="mt-2 text-2xl font-semibold text-ink-900">
+                                        <div className="mt-2 text-2xl font-semibold text-gw-primary">
                                             {totalRenderableResources}
                                         </div>
                                     </div>
-                                    <div className="rounded-2xl border border-neutral-200 bg-paper-50 px-4 py-4">
-                                        <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">
+                                    <div className="rounded-lg border border-gw-border bg-gw-chrome2 px-4 py-4">
+                                        <div className="text-xs uppercase tracking-[0.2em] text-gw-secondary">
                                             Folders
                                         </div>
-                                        <div className="mt-2 text-2xl font-semibold text-ink-900">
+                                        <div className="mt-2 text-2xl font-semibold text-gw-primary">
                                             {totalFolders}
                                         </div>
                                     </div>
@@ -366,7 +359,7 @@ export default function StartPage({
                                 <button
                                     type="button"
                                     onClick={handleCreateClick}
-                                    className="start-page-primary-button inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-medium text-white"
+                                    className="start-page-primary-button inline-flex items-center justify-center gap-2"
                                 >
                                     <FolderPlus size={16} aria-hidden="true" />
                                     Start a New Project
@@ -378,17 +371,17 @@ export default function StartPage({
 
                 <div className="mt-10 flex items-end justify-between gap-4">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">
+                        <p className="text-xs uppercase tracking-[0.24em] text-gw-secondary">
                             Library
                         </p>
                         <h2
                             id="start-projects"
-                            className="mt-3 text-3xl font-semibold text-ink-900"
+                            className="mt-3 text-3xl font-semibold text-gw-primary"
                         >
                             Projects
                         </h2>
                     </div>
-                    <div className="max-w-xl text-right text-sm leading-6 text-ink-700">
+                    <div className="max-w-xl text-right text-sm leading-6 text-gw-secondary">
                         {localProjects.length === 0
                             ? "Create your first project to begin writing."
                             : "Open a project or manage its packaging and metadata."}
@@ -398,13 +391,13 @@ export default function StartPage({
                 <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {localProjects.length === 0 ? (
                         <article className="start-page-card start-page-fade-in p-6 md:col-span-2 xl:col-span-3">
-                            <p className="text-xs uppercase tracking-[0.22em] text-neutral-500">
+                            <p className="text-xs uppercase tracking-[0.22em] text-gw-secondary">
                                 Empty shelf
                             </p>
-                            <h3 className="mt-3 text-2xl font-semibold text-ink-900">
+                            <h3 className="mt-3 text-2xl font-semibold text-gw-primary">
                                 No projects yet
                             </h3>
-                            <p className="mt-3 max-w-2xl text-sm leading-7 text-ink-700">
+                            <p className="mt-3 max-w-2xl text-sm leading-7 text-gw-secondary">
                                 Create a project to scaffold your workspace,
                                 organize folders, and start drafting in
                                 GetWrite.
@@ -412,7 +405,7 @@ export default function StartPage({
                             <button
                                 type="button"
                                 onClick={handleCreateClick}
-                                className="start-page-secondary-button mt-6 inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700"
+                                className="start-page-secondary-button mt-6 inline-flex items-center"
                             >
                                 <Plus size={15} aria-hidden="true" />
                                 Create the first project
@@ -440,12 +433,12 @@ export default function StartPage({
                                 <div>
                                     <div className="flex items-start justify-between gap-4">
                                         <div>
-                                            <p className="text-xs uppercase tracking-[0.22em] text-neutral-500">
+                                            <p className="text-xs uppercase tracking-[0.22em] text-gw-secondary">
                                                 Project
                                             </p>
                                             <h3
                                                 id={`proj-${projectEntry.project.id}-title`}
-                                                className="mt-3 text-xl font-semibold text-ink-900"
+                                                className="mt-3 text-xl font-semibold text-gw-primary"
                                             >
                                                 {projectName}
                                             </h3>
@@ -500,7 +493,7 @@ export default function StartPage({
                                         />
                                     </div>
 
-                                    <p className="mt-4 text-sm leading-7 text-ink-700">
+                                    <p className="mt-4 text-sm leading-7 text-gw-secondary">
                                         {resourceList.length} resource
                                         {resourceList.length === 1 ? "" : "s"}
                                         {" · "}
@@ -510,7 +503,7 @@ export default function StartPage({
                                             : "s"}
                                     </p>
 
-                                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-neutral-500">
+                                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gw-secondary">
                                         Last edited{" "}
                                         {formatRelativeTimestamp(
                                             lastEditedTimestamp,
@@ -518,12 +511,12 @@ export default function StartPage({
                                         )}
                                     </p>
 
-                                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-ink-700">
-                                        <span className="rounded-full bg-brand-50 px-3 py-1">
+                                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-gw-secondary">
+                                        <span className="bg-gw-chrome2 border border-[0.5px] border-gw-border px-3 py-1 rounded-sm">
                                             {projectEntry.project.projectType ??
                                                 "Custom template"}
                                         </span>
-                                        <span className="truncate rounded-full bg-paper-100 px-3 py-1 max-w-full">
+                                        <span className="truncate bg-gw-chrome border border-[0.5px] border-gw-border px-3 py-1 rounded-sm max-w-full">
                                             {projectEntry.project.rootPath ??
                                                 "Local project"}
                                         </span>
@@ -539,7 +532,7 @@ export default function StartPage({
                                                     projectEntry.project.id,
                                             )
                                         }
-                                        className="start-page-secondary-button inline-flex items-center rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-ink-900"
+                                        className="start-page-secondary-button inline-flex items-center"
                                     >
                                         <FolderOpen
                                             size={15}
@@ -548,7 +541,7 @@ export default function StartPage({
                                         Open Project
                                     </button>
 
-                                    <span className="text-xs uppercase tracking-[0.2em] text-neutral-500">
+                                    <span className="text-xs uppercase tracking-[0.2em] text-gw-secondary">
                                         Ready to write
                                     </span>
                                 </div>

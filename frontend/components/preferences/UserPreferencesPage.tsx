@@ -145,10 +145,10 @@ export default function UserPreferencesPage({
         <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8 lg:px-10">
             <header className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-semibold text-slate-900">
+                    <h1 className="text-2xl font-semibold text-gw-primary">
                         User Preferences
                     </h1>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm text-gw-secondary">
                         Personal settings stored in the selected project's
                         metadata.
                     </p>
@@ -156,15 +156,15 @@ export default function UserPreferencesPage({
                 <button
                     type="button"
                     onClick={handleClose}
-                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary hover:bg-gw-chrome2 transition-colors duration-150"
                 >
                     Close
                 </button>
             </header>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-5">
-                <h2 className="text-sm font-semibold text-slate-900">Theme</h2>
-                <p className="mt-1 text-sm text-slate-600">
+            <section className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
+                <h2 className="text-sm font-semibold text-gw-primary">Theme</h2>
+                <p className="mt-1 text-sm text-gw-secondary">
                     Choose the default UI appearance mode.
                 </p>
 
@@ -174,8 +174,8 @@ export default function UserPreferencesPage({
                         onClick={() => handleColorModeChange("light")}
                         className={`rounded-md border px-3 py-2 text-sm font-medium ${
                             appearance.colorModePreference === "light"
-                                ? "border-slate-700 bg-slate-100 text-slate-900"
-                                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                ? "border-gw-border-md bg-gw-chrome2 text-gw-primary"
+                                : "border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2"
                         }`}
                         aria-pressed={
                             appearance.colorModePreference === "light"
@@ -188,8 +188,8 @@ export default function UserPreferencesPage({
                         onClick={() => handleColorModeChange("dark")}
                         className={`rounded-md border px-3 py-2 text-sm font-medium ${
                             appearance.colorModePreference === "dark"
-                                ? "border-slate-700 bg-slate-100 text-slate-900"
-                                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                ? "border-gw-border-md bg-gw-chrome2 text-gw-primary"
+                                : "border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2"
                         }`}
                         aria-pressed={appearance.colorModePreference === "dark"}
                     >
@@ -200,8 +200,8 @@ export default function UserPreferencesPage({
                         onClick={() => handleColorModeChange("system")}
                         className={`rounded-md border px-3 py-2 text-sm font-medium ${
                             appearance.colorModePreference === "system"
-                                ? "border-slate-700 bg-slate-100 text-slate-900"
-                                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                ? "border-gw-border-md bg-gw-chrome2 text-gw-primary"
+                                : "border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2"
                         }`}
                         aria-pressed={
                             appearance.colorModePreference === "system"
@@ -211,11 +211,11 @@ export default function UserPreferencesPage({
                     </button>
                 </div>
 
-                <div className="mt-6 border-t border-slate-200 pt-5">
-                    <h3 className="text-sm font-semibold text-slate-900">
+                <div className="mt-6 border-t border-gw-border pt-5">
+                    <h3 className="text-sm font-semibold text-gw-primary">
                         Density
                     </h3>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm text-gw-secondary">
                         Control spacing density across app layouts.
                     </p>
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -236,8 +236,8 @@ export default function UserPreferencesPage({
                                 }}
                                 className={`rounded-md border px-3 py-2 text-sm font-medium ${
                                     appearance.density === densityValue
-                                        ? "border-slate-700 bg-slate-100 text-slate-900"
-                                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                        ? "border-gw-border-md bg-gw-chrome2 text-gw-primary"
+                                        : "border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2"
                                 }`}
                                 aria-pressed={
                                     appearance.density === densityValue
@@ -249,14 +249,14 @@ export default function UserPreferencesPage({
                     </div>
                 </div>
 
-                <div className="mt-6 border-t border-slate-200 pt-5">
-                    <h3 className="text-sm font-semibold text-slate-900">
+                <div className="mt-6 border-t border-gw-border pt-5">
+                    <h3 className="text-sm font-semibold text-gw-primary">
                         Motion
                     </h3>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm text-gw-secondary">
                         Reduce non-essential motion and transitions.
                     </p>
-                    <label className="mt-4 inline-flex items-center gap-2 text-sm text-slate-700">
+                    <label className="mt-4 inline-flex items-center gap-2 text-sm text-gw-secondary">
                         <input
                             type="checkbox"
                             checked={appearance.reducedMotion}
@@ -266,7 +266,7 @@ export default function UserPreferencesPage({
                                     reducedMotion: event.target.checked,
                                 });
                             }}
-                            className="h-4 w-4 rounded border-slate-300"
+                            className="h-4 w-4 rounded border-gw-border"
                         />
                         Enable reduced motion
                     </label>

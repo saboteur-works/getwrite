@@ -41,16 +41,16 @@ export default function RenameProjectModal({
                 aria-hidden="true"
             />
 
-            <div className="z-10 bg-white rounded-md shadow-lg max-w-md w-full p-6">
-                <h3 className="text-lg font-medium">Rename project</h3>
+            <div className="z-10 bg-gw-chrome rounded-md max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gw-primary">Rename project</h3>
 
                 <div className="p-2">
-                    <label className="text-sm font-medium">Name</label>
+                    <label className="text-sm font-medium text-gw-secondary">Name</label>
                     <input
                         ref={inputRef}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full border rounded px-2 py-1 mt-1"
+                        className="w-full border border-gw-border rounded px-2 py-1 mt-1 bg-gw-chrome text-gw-primary"
                         aria-label="rename-project-input"
                     />
                 </div>
@@ -59,14 +59,14 @@ export default function RenameProjectModal({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-3 py-1 rounded border"
+                        className="border border-gw-primary text-gw-primary bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150"
                     >
                         Cancel
                     </button>
                     <button
                         type="button"
                         onClick={handleSave}
-                        className="px-3 py-1 rounded bg-brand-500 text-white"
+                        className="border border-gw-primary text-gw-primary bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150"
                     >
                         Save
                     </button>

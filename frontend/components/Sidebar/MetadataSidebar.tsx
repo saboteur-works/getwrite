@@ -108,17 +108,15 @@ export default function MetadataSidebar({
             {selectedResource?.type === "text" ? (
                 <React.Fragment>
                     <div className="mb-4">
-                        <h3 className="metadata-sidebar-title">
+                        <h3 className="metadata-sidebar-title text-gw-secondary-light font-bold">
                             {selectedResource.name}
                         </h3>
                     </div>
                     <div className="mb-6">
-                        <h4 className="metadata-sidebar-section-heading">
-                            Notes
-                        </h4>
                         <NotesInput
                             ariaLabel="notes"
                             value={notes}
+                            className="text-brand-mid"
                             onChange={(v) => {
                                 setNotes(v);
                                 onChangeNotes && onChangeNotes(v);
@@ -127,11 +125,9 @@ export default function MetadataSidebar({
                     </div>
 
                     <div className="mb-6">
-                        <h4 className="metadata-sidebar-section-heading">
-                            Status
-                        </h4>
                         <StatusSelector
                             ariaLabel="status"
+                            className="text-brand-mid"
                             value={status}
                             onChange={(s) => {
                                 const updated = {
@@ -147,11 +143,9 @@ export default function MetadataSidebar({
                         />
                     </div>
                     <div className="mb-6">
-                        <h4 className="metadata-sidebar-section-heading">
-                            Characters
-                        </h4>
                         <MultiSelectList
                             label="Characters"
+                            className="text-brand-mid"
                             items={characterList}
                             selected={characters}
                             onChange={(next) => {
@@ -162,11 +156,9 @@ export default function MetadataSidebar({
                     </div>
 
                     <div className="mb-6">
-                        <h4 className="metadata-sidebar-section-heading">
-                            Locations
-                        </h4>
                         <MultiSelectList
                             label="Locations"
+                            className="text-brand-mid"
                             items={locationList}
                             selected={locations}
                             onChange={(next) => {
@@ -176,11 +168,9 @@ export default function MetadataSidebar({
                         />
                     </div>
                     <div className="mb-6">
-                        <h4 className="metadata-sidebar-section-heading">
-                            Items
-                        </h4>
                         <MultiSelectList
                             label="Items"
+                            className="text-brand-mid"
                             items={itemList}
                             selected={items}
                             onChange={(next) => {
@@ -190,10 +180,8 @@ export default function MetadataSidebar({
                         />
                     </div>
                     <div>
-                        <h4 className="metadata-sidebar-section-heading">
-                            POV
-                        </h4>
                         <POVAutocomplete
+                            className="text-brand-mid"
                             options={characterList}
                             value={pov ?? ""}
                             onChange={(v) => {
@@ -205,7 +193,7 @@ export default function MetadataSidebar({
                 </React.Fragment>
             ) : (
                 <div className="metadata-sidebar-empty">
-                    <h4 className="metadata-sidebar-section-heading">
+                    <h4 className="text-gw-secondary">
                         Select a text resource to view and edit its metadata.
                     </h4>
                 </div>

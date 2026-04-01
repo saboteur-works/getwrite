@@ -22,7 +22,7 @@ export default function POVAutocomplete({
             <input
                 list="pov-options"
                 aria-label="pov-input"
-                className="w-full mt-2 p-2 border rounded text-sm"
+                className="w-full mt-2 p-2 border border-brand-mid rounded text-sm"
                 value={val}
                 onChange={(e) => {
                     setVal(e.target.value);

@@ -1,23 +1,35 @@
 # Code Documentation Standard
 
-This document applies whenever creating or modifying comments and documentation in source code files.
+This document applies when creating or modifying comments and documentation in JavaScript or TypeScript source files.
 
 ---
 
-## 1. Be Thorough
+## 1. File-Level Documentation
 
-When documenting a file, be as thorough as possible. At minimum, this means:
+- Include a `@module` JSDoc comment at the top of every file with a description of the module's purpose
+- Add `//Last Updated: YYYY-MM-DD` on the line immediately following the module docstring
 
-- All functions, types, and interfaces are preceded by a docstring that describes their purpose. Applicable JSDoc tags should be included when relevant.
+---
 
-- All TypeScript type and interface properties are described.
+## 2. Functions, Types, and Interfaces
 
-- All function parameters are described.
+- All functions, types, and interfaces must be preceded by a JSDoc docstring describing their purpose
+- Include `@param`, `@returns`, and `@throws` tags where applicable
+- All properties in `type` and `interface` declarations must be documented — including implicit ones (`name`, `id`, etc.)
+- Include at least one `@example` in function docstrings where practical
 
-- If a function throws errors, ensure the errors are captured in documentation with the `@throws` JSDoc tag.
+---
 
-- All modules include a `@module` JSDoc tag and description of the module at the top of the file.
+## 3. Inline Comments
 
-## 2. Include Examples Where Possible
+- Add inline comments to explain non-obvious or complex logic
+- Do not comment self-explanatory code
 
-- When documenting functions, do your best to include an example of how the function should be used.
+---
+
+## 4. Completeness Check
+
+Before finishing documentation work, verify:
+- Every exported function, type, and interface has a docstring
+- Every type/interface property has a description
+- The module docstring and last-updated timestamp are present at the top of the file

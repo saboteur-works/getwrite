@@ -125,7 +125,7 @@ export default function ManageProjectMenu({
                 aria-haspopup="menu"
                 aria-expanded={open}
                 onClick={() => setOpen((v) => !v)}
-                className="inline-flex items-center justify-center px-2 py-1 border rounded text-sm"
+                className="inline-flex items-center justify-center px-2 py-1 border border-gw-border rounded text-sm text-gw-secondary hover:border-gw-border-md hover:text-gw-primary transition-colors duration-150"
             >
                 <MoreHorizontal size={16} aria-hidden="true" />
             </button>
@@ -134,7 +134,7 @@ export default function ManageProjectMenu({
                 <div
                     role="menu"
                     aria-label="Manage project"
-                    className="absolute right-0 mt-2 w-56 bg-white border rounded shadow-md z-20"
+                    className="absolute right-0 mt-2 w-56 bg-gw-chrome border border-gw-border rounded z-20"
                 >
                     <div className="p-2">
                         <>
@@ -142,7 +142,7 @@ export default function ManageProjectMenu({
                                 type="button"
                                 role="menuitem"
                                 onClick={() => setRenameOpen(true)}
-                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm hover:bg-slate-50 rounded"
+                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm text-gw-secondary hover:bg-gw-chrome2 hover:text-gw-primary rounded transition-colors duration-150"
                             >
                                 <Pencil size={14} aria-hidden="true" />
                                 Rename
@@ -152,7 +152,7 @@ export default function ManageProjectMenu({
                                 type="button"
                                 role="menuitem"
                                 onClick={() => setConfirmDeleteOpen(true)}
-                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm hover:bg-slate-50 rounded text-red-600"
+                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm text-gw-red hover:bg-gw-chrome2 rounded transition-colors duration-150"
                             >
                                 <Trash2 size={14} aria-hidden="true" />
                                 Delete
@@ -162,7 +162,7 @@ export default function ManageProjectMenu({
                                 type="button"
                                 role="menuitem"
                                 onClick={() => setCompileOpen(true)}
-                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm hover:bg-slate-50 rounded"
+                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm text-gw-secondary hover:bg-gw-chrome2 hover:text-gw-primary rounded transition-colors duration-150"
                             >
                                 <Package size={14} aria-hidden="true" />
                                 Package
