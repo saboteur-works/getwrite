@@ -51,9 +51,11 @@ Behavioral configuration for the project, persisted in `project.json`.
 
 ### Resource Metadata
 
-Resource-level metadata consists of system fields at the top level plus an optional `userMetadata` map for user-defined data. All resource types share a common base, with additional type-specific fields.
+Resource-level metadata is persisted in a sidecar file at `meta/resource-<uuid>.meta.json`. It consists of a set of system fields plus a `userMetadata` map for user-defined data. All resource types share a common base, with additional type-specific fields.
 
 #### Base fields (all resource types)
+
+The following fields are written to the sidecar file by the primary persistence path.
 
 🤖 **id** \[UUID]: The unique identifier for the `Resource`
 
@@ -61,33 +63,51 @@ Resource-level metadata consists of system fields at the top level plus an optio
 
 🤖 **type** \["text" | "image" | "audio"]: The resource type
 
-🤖 **orderIndex** \[Number]: The order the resource appears in tree views
+🤖 **orderIndex** \[Number]: The order the resource appears in tree views. Note: when persisting, this value is sourced from `userMetadata.orderIndex`.
 
 🤖 **folderId** \[UUID | null]: The UUID of the containing folder, or `null` if top-level
 
-**slug** \[String]: The resource's URL/file slug. Used in filename construction — changing this directly without renaming the associated file will cause inconsistency. Use the UI.
-
-🤖 **sizeBytes** \[Number]: File size in bytes, derived from the filesystem.
-
-✏️ **notes** \[String]: Optional free-text notes
-
-✏️ **statuses** \[String[]]: Optional status tags (project-scoped values, e.g. "Draft", "In Review")
+**slug** \[String]: The resource's URL/file slug. For folder resources, this is used as the directory name on disk — changing it directly without renaming the directory will cause inconsistency. Use the UI.
 
 🤖 **createdAt** \[ISO Date]: Creation timestamp
+
+The following fields are defined in the schema and may be present in the sidecar (e.g. after a sidecar update via the UI), but are not written by the primary resource creation path.
+
+🤖 **sizeBytes** \[Number]: File size in bytes, derived from the filesystem.
 
 🤖 **updatedAt** \[ISO Date]: Last-modified timestamp
 
 #### `userMetadata`
 
-✏️ **userMetadata** \[Record\<String, MetadataValue\>]: A free-form key/value map for user-defined metadata. Values may be strings, numbers, booleans, or arrays. This field is populated from templates and can be extended freely by the user.
+✏️ **userMetadata** \[Record\<String, MetadataValue\>]: A free-form key/value map for user-defined metadata. Values may be strings, numbers, booleans, null, homogeneous primitive arrays, or nested objects. This field is populated from templates and can be extended freely by the user.
+
+##### Well-known `userMetadata` keys
+
+The following keys are set by the MetadataSidebar UI and have defined meaning within the app. They are safe to edit directly.
+
+✏️ **notes** \[String]: Free-text notes for the resource.
+
+✏️ **status** \["draft" | "in-review" | "published"]: Publication status of the resource. The available values are defined by `config.statuses` in `project.json`.
+
+✏️ **characters** \[String[]]: Character names associated with the resource.
+
+✏️ **locations** \[String[]]: Location names associated with the resource.
+
+✏️ **items** \[String[]]: Item or prop names associated with the resource.
+
+✏️ **pov** \[String]: Point-of-view character name for the resource.
+
+**orderIndex** \[Number]: The resource's position in tree views. Sourced from this key by the persistence layer when writing the top-level `orderIndex` sidecar field. Use the UI to reorder.
 
 #### Text resource fields
 
 Additional fields present on resources with `type: "text"`.
 
-🤖 **plainText** \[String]: Canonical plain-text representation of the resource content. Used for exports and search.
+`plainText` and `tiptap` are stored in separate files under `resources/<uuid>/`, not in the sidecar. `wordCount`, `charCount`, and `paragraphCount` are computed in-memory at creation time; they may appear in the sidecar after a UI-triggered update but are not written by the primary resource creation path.
 
-🤖 **tiptap** \[TipTapDocument]: TipTap editor document (JSON AST) used for rich editing and persistence.
+🤖 **plainText** \[String]: Canonical plain-text representation of the resource content. Stored at `resources/<uuid>/content.txt`. Used for exports and search.
+
+🤖 **tiptap** \[TipTapDocument]: TipTap editor document (JSON AST) used for rich editing and persistence. Stored at `resources/<uuid>/content.tiptap.json`.
 
 🤖 **wordCount** \[Number]: Derived word count.
 
@@ -97,7 +117,7 @@ Additional fields present on resources with `type: "text"`.
 
 #### Image resource fields
 
-Additional fields present on resources with `type: "image"`.
+Additional fields present on resources with `type: "image"`. Schema-defined; not written by the primary persistence path.
 
 🤖 **width** \[Number]: Image width in pixels.
 
@@ -107,11 +127,33 @@ Additional fields present on resources with `type: "image"`.
 
 #### Audio resource fields
 
-Additional fields present on resources with `type: "audio"`.
+Additional fields present on resources with `type: "audio"`. Schema-defined; not written by the primary persistence path.
 
 🤖 **durationSeconds** \[Number]: Duration of the audio file in seconds.
 
 🤖 **format** \[String]: Audio file format (e.g. `"mp3"`, `"wav"`).
+
+---
+
+### Folder Metadata
+
+Folder metadata is persisted as a `folder.json` file inside the folder's own directory at `folders/<slug>/folder.json`. Unlike resources, folders do not use a sidecar file.
+
+🤖 **id** \[UUID]: The unique identifier for the `Folder`.
+
+✏️ **name** \[String]: The display name of the folder.
+
+🤖 **type** \["folder"]: Always `"folder"`. Discriminates folders from resources.
+
+🤖 **slug** \[String]: Used as the folder's directory name on disk. Changing this directly without renaming the directory will break the folder. Use the UI.
+
+🤖 **parentId** \[UUID | null]: The UUID of the parent folder, or `null` for top-level folders.
+
+🤖 **orderIndex** \[Number]: The order the folder appears in tree views.
+
+🤖 **createdAt** \[ISO Date]: Creation timestamp.
+
+🤖 **special** \[Boolean]: When `true`, marks the folder as a system-designated special folder (e.g. Workspace). Special folders may be treated differently in ordering and UI. Should not be set by the user.
 
 ---
 
