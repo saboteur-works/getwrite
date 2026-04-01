@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.1.1...getwrite-v0.2.0) (2026-04-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* changed resource level `metadata` field to `userMetadata`
+
+### Features
+
+* changed resource level `metadata` field to `userMetadata` ([3a0b169](https://github.com/saboteur-works/getwrite/commit/3a0b169c8b5bd00e011fc1602d41acde623dcaa1))
+
 ## [0.1.1](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.1.0...getwrite-v0.1.1) (2026-04-01)
 
 
