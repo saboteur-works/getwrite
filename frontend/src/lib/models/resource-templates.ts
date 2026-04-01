@@ -63,7 +63,7 @@ export interface ResourceTemplate {
     name: string;
     type: ResourceType;
     folderId?: UUID | null;
-    metadata?: Record<string, MetadataValue>;
+    userMetadata?: Record<string, MetadataValue>;
     plainText?: string; // for text templates
 }
 
@@ -296,7 +296,7 @@ export async function createResourceFromTemplate(
             name: appliedName,
             folderId: tmpl.folderId ?? null,
             plainText: (applyVars(tmpl.plainText ?? "") as string) ?? "",
-            metadata: tmpl.metadata,
+            userMetadata: tmpl.userMetadata,
         });
         const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.txt`;
         const filePath = path.join(RESOURCES_DIR(projectRoot), filename);
@@ -335,7 +335,7 @@ export async function createResourceFromTemplate(
         const res = createImageResource({
             name: appliedName,
             folderId: tmpl.folderId ?? null,
-            metadata: tmpl.metadata,
+            userMetadata: tmpl.userMetadata,
         });
         const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.img`;
         const filePath = path.join(RESOURCES_DIR(projectRoot), filename);
@@ -372,7 +372,7 @@ export async function createResourceFromTemplate(
     const res = createAudioResource({
         name: appliedName,
         folderId: tmpl.folderId ?? null,
-        metadata: tmpl.metadata,
+        userMetadata: tmpl.userMetadata,
     });
     const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.aud`;
     const filePath = path.join(RESOURCES_DIR(projectRoot), filename);
@@ -988,7 +988,7 @@ export async function saveResourceTemplateFromResource(
         name: opts?.name ?? (meta.name as string) ?? templateId,
         type,
         folderId: (meta.folderId as UUID) ?? null,
-        metadata: Object.keys(restMeta).length
+        userMetadata: Object.keys(restMeta).length
             ? (restMeta as Record<string, MetadataValue>)
             : undefined,
         plainText: plainText,
@@ -1036,9 +1036,9 @@ export async function parametrizeResourceTemplate(
         plainText: tpl.plainText
             ? (replaceStrings(tpl.plainText) as string)
             : tpl.plainText,
-        metadata: tpl.metadata
-            ? (replaceStrings(tpl.metadata) as Record<string, MetadataValue>)
-            : tpl.metadata,
+        userMetadata: tpl.userMetadata
+            ? (replaceStrings(tpl.userMetadata) as Record<string, MetadataValue>)
+            : tpl.userMetadata,
     };
 
     await saveResourceTemplate(projectRoot, newTpl);

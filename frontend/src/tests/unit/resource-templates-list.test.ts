@@ -38,7 +38,7 @@ describe("resource templates list & inspect (T032)", () => {
                 name: "Beta",
                 type: "text" as const,
                 plainText: "{{TITLE}} intro",
-                metadata: { foo: "bar" },
+                userMetadata: { foo: "bar" },
             };
             await saveResourceTemplate(projectPath, tplA as any);
             await saveResourceTemplate(projectPath, tplB as any);

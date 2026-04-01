@@ -23,7 +23,7 @@ describe("ResourceTree context menu", () => {
             type: "folder",
             createdAt: now,
             updatedAt: now,
-            metadata: {},
+            userMetadata: {},
         } as any;
 
         const scene = createTextResource({

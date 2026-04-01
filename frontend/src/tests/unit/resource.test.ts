@@ -32,12 +32,12 @@ describe("models/resource", () => {
             name: "Cover",
             width: 600,
             height: 800,
-            metadata: { focalPoint: "center" },
+            userMetadata: { focalPoint: "center" },
         });
         expect(r.type).toBe("image");
         expect(r.slug).toBe("cover");
         expect(isValidUUID(r.id)).toBe(true);
-        expect(r.metadata?.focalPoint).toBe("center");
+        expect(r.userMetadata?.focalPoint).toBe("center");
         const v = validateResource(r);
         expect(v.type).toBe("image");
         if (v.type !== "image") {
@@ -52,12 +52,12 @@ describe("models/resource", () => {
             name: "Narration",
             durationSeconds: 120.5,
             format: "mp3",
-            metadata: { narrator: "Test Voice" },
+            userMetadata: { narrator: "Test Voice" },
         });
         expect(r.type).toBe("audio");
         expect(r.slug).toBe("narration");
         expect(isValidUUID(r.id)).toBe(true);
-        expect(r.metadata?.narrator).toBe("Test Voice");
+        expect(r.userMetadata?.narrator).toBe("Test Voice");
         const v = validateResource(r);
         expect(v.type).toBe("audio");
         if (v.type !== "audio") {
@@ -67,17 +67,17 @@ describe("models/resource", () => {
         expect(v.format).toBe("mp3");
     });
 
-    it("preserves folder identity and ordering metadata through validation", () => {
+    it("preserves folder identity and ordering userMetadata through validation", () => {
         const r = createTextResource({
             name: "Scene 2",
             folderId: FOLDER_ID,
             plainText: "A focused scene",
-            metadata: { status: "Draft" },
+            userMetadata: { status: "Draft" },
         });
 
         const validated = validateResource(r);
         expect(validated.id).toBe(r.id);
         expect(validated.folderId).toBe(FOLDER_ID);
-        expect(validated.metadata?.status).toBe("Draft");
+        expect(validated.userMetadata?.status).toBe("Draft");
     });
 });

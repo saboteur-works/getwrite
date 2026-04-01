@@ -12,7 +12,7 @@ const legacyResources = [
         type: "folder",
         createdAt: "",
         updatedAt: "",
-        metadata: {},
+        userMetadata: {},
     },
     {
         id: "r1",
@@ -22,7 +22,7 @@ const legacyResources = [
         parentId: "f1",
         createdAt: "",
         updatedAt: "",
-        metadata: {},
+        userMetadata: {},
     },
     {
         id: "r2",
@@ -32,7 +32,7 @@ const legacyResources = [
         parentId: "f1",
         createdAt: "",
         updatedAt: "",
-        metadata: {},
+        userMetadata: {},
     },
 ];
 

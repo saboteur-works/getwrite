@@ -47,7 +47,7 @@ describe("store/projectsSlice controller guardrails (T008)", () => {
             {
                 id: "resource-1",
                 name: "",
-                metadata: {},
+                userMetadata: {},
             },
         ]);
     });

@@ -35,7 +35,7 @@ describe("models/project-view adapter regressions (T007)", () => {
                 name: "Beta Scene",
                 folderId: betaFolder.id,
                 plainText: "beta content",
-                metadata: { orderIndex: 3, status: "draft" },
+                userMetadata: { orderIndex: 3, status: "draft" },
             }),
             updatedAt: "2026-03-21T12:10:00.000Z",
         };
@@ -45,7 +45,7 @@ describe("models/project-view adapter regressions (T007)", () => {
                 name: "Alpha Second",
                 folderId: alphaFolder.id,
                 plainText: "second content",
-                metadata: { orderIndex: 2 },
+                userMetadata: { orderIndex: 2 },
             }),
             updatedAt: "2026-03-21T12:11:00.000Z",
         };
@@ -55,7 +55,7 @@ describe("models/project-view adapter regressions (T007)", () => {
                 name: "Alpha First",
                 folderId: alphaFolder.id,
                 plainText: "first content",
-                metadata: { orderIndex: 1 },
+                userMetadata: { orderIndex: 1 },
             }),
             updatedAt: "2026-03-21T12:12:00.000Z",
         };

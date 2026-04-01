@@ -30,8 +30,8 @@ type ResourceMeta = {
     name: string;
     /** Parent folder ID, or `null`/`undefined` for top-level resources. */
     folderId?: string | null;
-    /** Arbitrary metadata blob associated with the resource. */
-    metadata?: Record<string, unknown>;
+    /** User-set metadata blob associated with the resource. */
+    userMetadata?: Record<string, unknown>;
 };
 
 /**
@@ -306,7 +306,7 @@ export function normalizeStoredProject(p: StoredProject): StoredProject {
         ? p.resources.map((r) => ({
               id: r.id,
               name: r.name ?? "",
-              metadata: r.metadata ?? {},
+              userMetadata: r.userMetadata ?? {},
           }))
         : p.resources;
     const folders = p.folders ?? [];

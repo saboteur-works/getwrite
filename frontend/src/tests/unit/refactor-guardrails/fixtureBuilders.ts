@@ -97,7 +97,7 @@ export function createFolderFixture(overrides: Partial<Folder> = {}): Folder {
         notes: overrides.notes,
         statuses: overrides.statuses,
         sizeBytes: overrides.sizeBytes,
-        metadata: overrides.metadata,
+        userMetadata: overrides.userMetadata,
         special: overrides.special ?? false,
         createdAt: overrides.createdAt ?? seed.timestamp,
         updatedAt: overrides.updatedAt ?? seed.timestamp,
@@ -130,7 +130,7 @@ export function createTextResourceFixture(
         notes: overrides.notes,
         orderIndex: overrides.orderIndex ?? seed.index - 1,
         statuses: overrides.statuses,
-        metadata: overrides.metadata,
+        userMetadata: overrides.userMetadata,
         createdAt: overrides.createdAt ?? seed.timestamp,
         updatedAt: overrides.updatedAt ?? seed.timestamp,
         plainText:

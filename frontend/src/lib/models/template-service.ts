@@ -70,7 +70,7 @@ export function inspectTemplate(
         name: template.name,
         type: template.type,
         placeholders: Array.from(placeholders),
-        metadataKeys: template.metadata ? Object.keys(template.metadata) : [],
+        metadataKeys: template.userMetadata ? Object.keys(template.userMetadata) : [],
     };
 }
 

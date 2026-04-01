@@ -43,7 +43,7 @@ export function migrateResource(old: any): AnyResource {
         sizeBytes: old?.sizeBytes,
         notes: old?.notes ?? undefined,
         statuses: old?.statuses ?? undefined,
-        metadata: old?.metadata ?? old?.meta ?? {},
+        userMetadata: old?.userMetadata ?? old?.metadata ?? old?.meta ?? {},
         createdAt: old?.createdAt ?? nowIso(),
         updatedAt: old?.updatedAt ?? undefined,
     } as const;

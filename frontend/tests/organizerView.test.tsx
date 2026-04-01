@@ -28,7 +28,7 @@ describe("OrganizerView", () => {
                 name: "Folder A",
                 type: "folder",
                 createdAt: new Date().toISOString(),
-                metadata: {},
+                userMetadata: {},
                 folderId: null,
             },
         ];
@@ -73,7 +73,7 @@ describe("OrganizerView", () => {
                 name: "Folder A",
                 type: "folder",
                 createdAt: new Date().toISOString(),
-                metadata: {},
+                userMetadata: {},
                 folderId: null,
             },
         ];

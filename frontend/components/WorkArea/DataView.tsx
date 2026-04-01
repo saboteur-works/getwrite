@@ -40,7 +40,7 @@ export default function DataView({
     const totalResources = flatResources.length;
     const totalWords = flatResources.reduce(
         (acc: number, r: AnyResource) =>
-            acc + ((r as any).metadata?.wordCount ?? (r as any).wordCount ?? 0),
+            acc + ((r as any).userMetadata?.wordCount ?? (r as any).wordCount ?? 0),
         0,
     );
 
@@ -56,19 +56,19 @@ export default function DataView({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     <div className="workarea-stat-card">
                         <div className="workarea-stat-label">Projects</div>
-                        <div className="workarea-stat-value">
+                        <div className="workarea-stat-value text-xl">
                             {projectsCount}
                         </div>
                     </div>
                     <div className="workarea-stat-card">
                         <div className="workarea-stat-label">Resources</div>
-                        <div className="workarea-stat-value">
+                        <div className="workarea-stat-value text-xl">
                             {totalResources}
                         </div>
                     </div>
                     <div className="workarea-stat-card">
                         <div className="workarea-stat-label">Total words</div>
-                        <div className="workarea-stat-value">{totalWords}</div>
+                        <div className="workarea-stat-value text-xl">{totalWords}</div>
                     </div>
                 </div>
             </div>
@@ -92,7 +92,7 @@ export default function DataView({
                                 </div>
                             </div>
                             <div className="workarea-list-item-meta">
-                                {(r as any).metadata?.wordCount ??
+                                {(r as any).userMetadata?.wordCount ??
                                     (r as any).wordCount ??
                                     0}{" "}
                                 words

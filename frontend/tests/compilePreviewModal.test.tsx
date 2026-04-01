@@ -16,7 +16,7 @@ describe("CompilePreviewModal", () => {
             plainText: "",
             createdAt: "",
             updatedAt: "",
-            metadata: {},
+            userMetadata: {},
         };
 
         render(

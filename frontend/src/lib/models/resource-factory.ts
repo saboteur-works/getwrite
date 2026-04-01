@@ -48,7 +48,7 @@ export function createTextResource(params: {
     plainText?: string;
     tiptap?: TipTapDocument;
     slug?: string;
-    metadata?: Record<string, MetadataValue>;
+    userMetadata?: Record<string, MetadataValue>;
     orderIndex?: number;
 }): TextResource {
     const now = new Date().toISOString();
@@ -72,7 +72,7 @@ export function createTextResource(params: {
         wordCount,
         charCount,
         paragraphCount,
-        metadata: params.metadata,
+        userMetadata: params.userMetadata,
         orderIndex: params.orderIndex,
     };
 
@@ -90,7 +90,7 @@ export function createImageResource(params: {
     height?: number;
     exif?: Record<string, MetadataValue>;
     slug?: string;
-    metadata?: Record<string, MetadataValue>;
+    userMetadata?: Record<string, MetadataValue>;
 }): ImageResource {
     const now = new Date().toISOString();
     const id = generateUUID();
@@ -104,7 +104,7 @@ export function createImageResource(params: {
         width: params.width,
         height: params.height,
         exif: params.exif,
-        metadata: params.metadata,
+        userMetadata: params.userMetadata,
     };
 
     ImageResourceSchema.parse(res);
@@ -120,7 +120,7 @@ export function createAudioResource(params: {
     durationSeconds?: number;
     format?: string;
     slug?: string;
-    metadata?: Record<string, MetadataValue>;
+    userMetadata?: Record<string, MetadataValue>;
 }): AudioResource {
     const now = new Date().toISOString();
     const id = generateUUID();
@@ -133,7 +133,7 @@ export function createAudioResource(params: {
         createdAt: now,
         durationSeconds: params.durationSeconds,
         format: params.format,
-        metadata: params.metadata,
+        userMetadata: params.userMetadata,
     };
 
     AudioResourceSchema.parse(res);
@@ -154,7 +154,7 @@ export function createFolderResource(params: {
     name: string;
     parentFolderId?: UUID | null;
     slug?: string;
-    metadata?: Record<string, MetadataValue>;
+    userMetadata?: Record<string, MetadataValue>;
     orderIndex?: number;
     special?: boolean;
 }): Folder {
@@ -167,7 +167,7 @@ export function createFolderResource(params: {
         type: "folder",
         folderId: params.parentFolderId,
         createdAt: now,
-        metadata: params.metadata,
+        userMetadata: params.userMetadata,
         orderIndex: params.orderIndex,
         special: params.special ?? false,
     };
@@ -184,7 +184,7 @@ export interface CreateResourceOpts {
     type: ResourceType;
     folderId?: UUID | null;
     orderIndex?: number;
-    metadata?: Record<string, MetadataValue>;
+    userMetadata?: Record<string, MetadataValue>;
     text?: {
         plainText?: string;
         tiptap?: TipTapDocument;
@@ -210,7 +210,7 @@ export const createResourceOfType = (
     const baseParams = {
         name: opts.name,
         folderId: opts.folderId,
-        metadata: opts.metadata,
+        userMetadata: opts.userMetadata,
         orderIndex: opts.orderIndex,
     };
 

@@ -18,7 +18,7 @@ export interface UIResource {
     content?: string;
     createdAt: string;
     updatedAt?: string;
-    metadata?: Record<string, MetadataValue>;
+    userMetadata?: Record<string, MetadataValue>;
     _orderIndex?: number;
 }
 
@@ -54,8 +54,8 @@ function toUIResource(
         content: resource.plainText,
         createdAt: resource.createdAt,
         updatedAt: resource.updatedAt,
-        metadata: resource.metadata,
-        _orderIndex: getOrderIndex(resource.metadata, fallbackOrderIndex),
+        userMetadata: resource.userMetadata,
+        _orderIndex: getOrderIndex(resource.userMetadata, fallbackOrderIndex),
     };
 }
 
@@ -68,7 +68,7 @@ function toFolderEntry(folder: FolderType, projectId: string): UIResource {
         type: "folder",
         createdAt: folder.createdAt,
         updatedAt: folder.updatedAt,
-        metadata: {},
+        userMetadata: {},
         _orderIndex: folder.orderIndex ?? 0,
     };
 }
@@ -76,7 +76,7 @@ function toFolderEntry(folder: FolderType, projectId: string): UIResource {
 /**
  * Build a UI-friendly project view from canonical `project`, `folders`, and
  * `resources` produced by the scaffolder. This adapter sorts folders by
- * `orderIndex` and resources per-folder by `metadata.orderIndex` (fallback to
+ * `orderIndex` and resources per-folder by `userMetadata.orderIndex` (fallback to
  * source iteration order).
  */
 export function buildProjectViewAdapter(options: BuildProjectViewOptions): {
