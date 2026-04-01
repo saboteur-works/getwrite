@@ -10,45 +10,107 @@
 
 GetWrite consumes either System Metadata or User Metadata.
 
-**System Medata** is created automatically and managed primarily by GetWrite. Example of System Data include file locations, creation dates, and slugs.
+**System Metadata** is created automatically and managed primarily by GetWrite. Examples include file locations, creation dates, and slugs.
 
-**User Metadata** is usually created as a result of the user generating it. Examples of User Data include notes, file status (such as Draft, In Review, Published), and POV.
+**User Metadata** is usually created as a result of user input. Examples include notes, file status (such as Draft, In Review, Published), and POV.
 
-> **Note**: In the current version, `Resources` contain top-level Metadata and a `metadata` field. The top level Metadata is System Metadata, while the metadata contained in the `metadata` field is user metadata. This can easily be confused as redundant, and cause issues for human and AI developers.
->
-> The `metadata` field will be renamed `userMetadata` where necessary for clarity.
+`Resources` contain top-level system metadata fields (e.g. `id`, `name`, `createdAt`, `orderIndex`) alongside a `userMetadata` field that holds user-defined key/value pairs. These are intentionally distinct to avoid confusion between system-managed and user-managed data.
 
 ## Scopes
 
 ### Project Metadata
 
-Project-scoped metadata.
+Project-level metadata is split across two fields in `project.json`: `metadata` for runtime preferences and `config` for behavioral settings.
 
-```json
-{
-    "userPreferences": {
-        "colorMode": "dark"
-    }
-}
-```
+#### `metadata`
 
-#### `userPreferences`
+A free-form key/value map on the project record. Currently used to persist project-scoped user preferences.
 
-💡❗️ **colorMode** ["light" | "dark"]: Informs the system whether the project should load in light mode or dark mode, so users don't have to (re)set it on each load.
+##### `metadata.userPreferences`
 
-### File Metadata
+💡❗️ **colorMode** ["light" | "dark"]: The preferred color mode for this project. Overrides the global app-level color mode preference when set, so users don't have to reset it each time they open the project.
 
-**id** \[UUID]: The unique identifier for the `File`
+#### `config`
 
-**name** \[String]: The name of the file
+Behavioral configuration for the project, persisted in `project.json`.
 
-**type** \["text" | "image" | "audio"]: The type of `Resource` the `File` contains metadata for
+💡 **maxRevisions** \[Number]: Maximum number of revisions to retain per resource. Defaults to 50 when omitted.
 
-**orderIndex** \[Number]: The order the resource is positioned in tree views.
+💡 **statuses** \[String[]]: Custom status values available to resources in this project (e.g. `["Draft", "In Review", "Complete"]`).
 
-**folderId** \["UUID"]: The UUID of the folder the resource is located in.
+💡 **autoPrune** \[Boolean]: When `true`, the oldest non-canonical revisions are pruned automatically when the `maxRevisions` limit is exceeded. When `false`, the UI prompts the user interactively (or aborts in headless contexts).
 
-**slug** \[String]: The `Resource's` slug
+💡 **tags** \[Tag[]]: Project-scoped tags. Each tag has an `id` (UUID), `name` (String), and optional `color` (String).
+
+💡 **tagAssignments** \[Record\<UUID, UUID[]\>]: Map of resource UUIDs to arrays of tag UUIDs assigned to that resource.
+
+---
+
+### Resource Metadata
+
+Resource-level metadata consists of system fields at the top level plus an optional `userMetadata` map for user-defined data. All resource types share a common base, with additional type-specific fields.
+
+#### Base fields (all resource types)
+
+🤖 **id** \[UUID]: The unique identifier for the `Resource`
+
+**name** \[String]: The display name of the resource
+
+🤖 **type** \["text" | "image" | "audio"]: The resource type
+
+🤖 **orderIndex** \[Number]: The order the resource appears in tree views
+
+🤖 **folderId** \[UUID | null]: The UUID of the containing folder, or `null` if top-level
+
+**slug** \[String]: The resource's URL/file slug
+
+**sizeBytes** \[Number]: File size in bytes
+
+**notes** \[String]: Optional free-text notes
+
+**statuses** \[String[]]: Optional status tags (project-scoped values, e.g. "Draft", "In Review")
+
+🤖 **createdAt** \[ISO Date]: Creation timestamp
+
+🤖 **updatedAt** \[ISO Date]: Last-modified timestamp
+
+#### `userMetadata`
+
+**userMetadata** \[Record\<String, MetadataValue\>]: A free-form key/value map for user-defined metadata. Values may be strings, numbers, booleans, or arrays. This field is populated from templates and can be extended freely by the user.
+
+#### Text resource fields
+
+Additional fields present on resources with `type: "text"`.
+
+🤖 **plainText** \[String]: Canonical plain-text representation of the resource content. Used for exports and search.
+
+🤖 **tiptap** \[TipTapDocument]: TipTap editor document (JSON AST) used for rich editing and persistence.
+
+🤖 **wordCount** \[Number]: Derived word count.
+
+🤖 **charCount** \[Number]: Derived character count.
+
+🤖 **paragraphCount** \[Number]: Derived paragraph count.
+
+#### Image resource fields
+
+Additional fields present on resources with `type: "image"`.
+
+🤖 **width** \[Number]: Image width in pixels.
+
+🤖 **height** \[Number]: Image height in pixels.
+
+🤖 **exif** \[Record\<String, MetadataValue\>]: EXIF and related metadata extracted from the image file.
+
+#### Audio resource fields
+
+Additional fields present on resources with `type: "audio"`.
+
+🤖 **durationSeconds** \[Number]: Duration of the audio file in seconds.
+
+🤖 **format** \[String]: Audio file format (e.g. `"mp3"`, `"wav"`).
+
+---
 
 ### Revision Metadata
 
@@ -56,7 +118,7 @@ Project-scoped metadata.
 
 Changes may cause revisions to break or behave in unexpected ways.
 
-🤖 **id** \[UUID]: The unique identifer of the `Revision`.
+🤖 **id** \[UUID]: The unique identifier of the `Revision`.
 
 🤖 **resourceId** \[UUID]: The Resource the `Revision` represents.
 
@@ -66,6 +128,8 @@ Changes may cause revisions to break or behave in unexpected ways.
 
 🤖 **savedAt** \[ISO Date]: The ISO date the `Revision` was last saved.
 
-🤖 **filePath** \[ISO Date]: The absolute path of the `Revision` on the user's file system.
+🤖 **filePath** \[String]: The absolute path of the `Revision` on the user's file system.
 
 🤖 **isCanonical** \[Boolean]: `True` if the revision is currently set as the canonical `Revision` of the `Resource`. Only 1 `Revision` is allowed to be set as canonical for any given `Resource` at a time.
+
+**author** \[String]: Optional author identifier or display name associated with the revision.
