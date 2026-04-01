@@ -40,6 +40,49 @@ Persistence
 - Index file: `<projectRoot>/meta/index/inverted.json`
 - Backlink index: `<projectRoot>/meta/backlinks.json`
 
+## Backlinks
+
+The backlinks system maintains a cross-reference index: for each resource, it records which other resources link to it.
+
+**What it tracks**
+
+- Wiki-style links: `[[Resource Name]]` or `[[resource-slug]]` or `[[uuid]]` inside resource content
+- Raw UUIDs embedded anywhere in the resource text
+- Aliases defined in the resource's sidecar (`aliases` field)
+
+**`BacklinkIndex` type**
+
+```ts
+type BacklinkIndex = Record<string, string[]>;
+// { resourceId: [referencedResourceId, ...] }
+```
+
+Each key is a resource UUID; its value is the list of resource UUIDs that the key resource links to (outgoing links). To find all resources that link *to* a given resource, scan all values for that ID.
+
+**Resolution order** (for `[[...]]` targets)
+
+1. If the target is a UUID, use it directly
+2. Check `meta/redirects.json` for slug/alias redirects
+3. Match by `slug` from sidecar
+4. Match by `name` (case-insensitive) from sidecar
+5. Match by `aliases` array from sidecar
+6. Slugify the target string and match by slug
+
+**API** (`frontend/src/lib/models/backlinks.ts`)
+
+| Function | Description |
+| --- | --- |
+| `listResourceIds(projectRoot)` | Lists resource UUIDs from `resources/` directory |
+| `computeBacklinks(projectRoot)` | Scans all resource content and builds the full `BacklinkIndex` |
+| `persistBacklinks(projectRoot, index)` | Writes `meta/backlinks.json` under meta lock |
+| `loadBacklinks(projectRoot)` | Reads `meta/backlinks.json`, returns `{}` if absent |
+
+**Live updates** (`frontend/src/lib/models/backlinks-watcher.ts`)
+
+`backlinks-watcher.ts` watches the project's resource files for changes and triggers `computeBacklinks` + `persistBacklinks` on updates. This keeps `meta/backlinks.json` in sync without requiring a full rebuild on every read.
+
+**Storage**: `<projectRoot>/meta/backlinks.json`
+
 Testing and determinism
 
 - `flushIndexer()` is exported and used in unit tests to wait for background indexing to complete before test cleanup (this avoids `ENOTEMPTY` directory errors on some platforms).

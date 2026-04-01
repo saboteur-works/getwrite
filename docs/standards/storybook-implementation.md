@@ -1,11 +1,9 @@
 # Storybook Implementation Standards
 
-This document applies only when implementing Storybook-related features or modifying Storybook configuration.
+This document applies only when implementing Storybook-related features or modifying Storybook configuration. It applies to files within:
 
-It does NOT to files outside of:
-
-- frontend/.storybook
-- frontend/stories
+- `frontend/.storybook`
+- `frontend/stories`
 
 ## Storybook Framework
 

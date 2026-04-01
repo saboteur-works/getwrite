@@ -36,3 +36,18 @@ This document applies when running or writing tests.
 - Unit tests: models, schemas, utilities
 - Component tests: UI components in isolation
 - E2E tests: full user flows against Storybook
+
+### Component Tests
+
+Component tests verify rendered React component behavior in isolation.
+
+- **Location**: `tests/*.test.tsx`
+- **Framework**: React Testing Library + Vitest
+- **What to test**:
+  - Component renders correctly given props
+  - User interactions (click, input, keyboard) produce expected DOM changes
+  - Conditional rendering (loading states, empty states, error states)
+- **What not to test**:
+  - Redux slice internals — test those as unit tests in `src/tests/unit/`
+  - Filesystem operations — those belong in model unit tests
+  - Full navigation flows — those belong in E2E tests

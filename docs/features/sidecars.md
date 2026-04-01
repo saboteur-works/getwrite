@@ -17,7 +17,13 @@
 - `tags` (array[string], optional): project-scoped tags.
 - `preserve` (boolean, optional): if true, prevents pruning of revisions (or signals special handling).
 - `templateId` (string, optional): if resource came from a template, the originating template id.
-- `metadata` (object, optional): freeform, owner-controlled fields for extensions.
+- `metadata` (object, optional): system-managed or developer-extended fields (e.g., derived counts). Not directly editable by users through the UI.
+- `userMetadata` (object): user-managed metadata fields edited through the Metadata sidebar. See [docs/features/data/metadata.md](data/metadata.md) for the full field listing.
+
+**`metadata` vs `userMetadata`**
+
+- `metadata` is written by the system or developer extensions. Users do not edit it directly.
+- `userMetadata` is the primary container for user-controlled properties — notes, status, characters, locations, items, POV, timeframe, and `orderIndex`. The Metadata sidebar reads and writes this field.
 
 ## Example sidecar (`resource-<id>.meta.json`)
 
@@ -31,8 +37,13 @@
     "folderId": "folder-123",
     "tags": ["front-matter"],
     "preserve": true,
-    "metadata": {
-        "wordCount": 12
+    "metadata": {},
+    "userMetadata": {
+        "orderIndex": 0,
+        "status": "Draft",
+        "notes": "Opening chapter — introduce setting before character.",
+        "characters": ["Elena", "Marcus"],
+        "pov": "Third person limited"
     }
 }
 ```

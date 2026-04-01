@@ -1,5 +1,7 @@
 # GetWrite Design System (Final)
 
+> **See Also: [`/STYLING.md`](/STYLING.md)** — the authoritative implementation reference for color token values, typography specs, spacing, component patterns, and Tailwind mapping. This document records design decisions and governance rules; `STYLING.md` records the concrete implementation values. When values conflict, `STYLING.md` takes precedence.
+
 ## Document Role
 
 This is the final design bible for GetWrite UI decisions.
@@ -456,39 +458,45 @@ Notes:
 
 ### 12.1 Color Values
 
-Use these keys for text, background, border, ring, fill, stroke, and divide utilities.
+Use these keys for text, background, border, ring, fill, stroke, and divide utilities. See [`/STYLING.md` § 2. Color tokens](/STYLING.md) for full intent and usage rules.
 
-| Token         | Value     | Tailwind Version                                           |
-| ------------- | --------- | ---------------------------------------------------------- |
-| `brand-50`    | `#f5fbff` | `bg-brand-50`, `text-brand-50`, `border-brand-50`          |
-| `brand-100`   | `#e6f5ff` | `bg-brand-100`, `text-brand-100`, `border-brand-100`       |
-| `brand-200`   | `#cceeff` | `bg-brand-200`, `text-brand-200`, `border-brand-200`       |
-| `brand-300`   | `#99e0ff` | `bg-brand-300`, `text-brand-300`, `border-brand-300`       |
-| `brand-400`   | `#66cfff` | `bg-brand-400`, `text-brand-400`, `border-brand-400`       |
-| `brand-500`   | `#0ea5ff` | `bg-brand-500`, `text-brand-500`, `border-brand-500`       |
-| `brand-600`   | `#0b8de6` | `bg-brand-600`, `text-brand-600`, `border-brand-600`       |
-| `brand-700`   | `#086fb4` | `bg-brand-700`, `text-brand-700`, `border-brand-700`       |
-| `neutral-50`  | `#fafafa` | `bg-neutral-50`, `text-neutral-50`, `border-neutral-50`    |
-| `neutral-100` | `#f3f4f6` | `bg-neutral-100`, `text-neutral-100`, `border-neutral-100` |
-| `neutral-200` | `#e5e7eb` | `bg-neutral-200`, `text-neutral-200`, `border-neutral-200` |
-| `neutral-300` | `#d1d5db` | `bg-neutral-300`, `text-neutral-300`, `border-neutral-300` |
-| `neutral-400` | `#9ca3af` | `bg-neutral-400`, `text-neutral-400`, `border-neutral-400` |
-| `neutral-500` | `#6b7280` | `bg-neutral-500`, `text-neutral-500`, `border-neutral-500` |
-| `neutral-600` | `#4b5563` | `bg-neutral-600`, `text-neutral-600`, `border-neutral-600` |
-| `neutral-700` | `#374151` | `bg-neutral-700`, `text-neutral-700`, `border-neutral-700` |
-| `neutral-900` | `#111827` | `bg-neutral-900`, `text-neutral-900`, `border-neutral-900` |
-| `dark-950`    | `#0b1220` | `bg-dark-950`, `text-dark-950`, `border-dark-950`          |
-| `dark-900`    | `#111827` | `bg-dark-900`, `text-dark-900`, `border-dark-900`          |
-| `dark-850`    | `#172033` | `bg-dark-850`, `text-dark-850`, `border-dark-850`          |
-| `dark-800`    | `#1f2937` | `bg-dark-800`, `text-dark-800`, `border-dark-800`          |
-| `dark-700`    | `#273449` | `bg-dark-700`, `text-dark-700`, `border-dark-700`          |
-| `dark-100`    | `#d6deea` | `bg-dark-100`, `text-dark-100`, `border-dark-100`          |
-| `dark-50`     | `#ecf2fb` | `bg-dark-50`, `text-dark-50`, `border-dark-50`             |
-| `paper-50`    | `#fffdfa` | `bg-paper-50`, `text-paper-50`, `border-paper-50`          |
-| `paper-100`   | `#fff7ed` | `bg-paper-100`, `text-paper-100`, `border-paper-100`       |
-| `paper-200`   | `#fdebd3` | `bg-paper-200`, `text-paper-200`, `border-paper-200`       |
-| `ink-700`     | `#3b4961` | `bg-ink-700`, `text-ink-700`, `border-ink-700`             |
-| `ink-900`     | `#142033` | `bg-ink-900`, `text-ink-900`, `border-ink-900`             |
+**Base tokens (dark mode defaults)**
+
+| CSS Variable            | Value     | Use                                               |
+| ----------------------- | --------- | ------------------------------------------------- |
+| `--color-black`         | `#0A0A0A` | Primary background, dark UI surfaces              |
+| `--color-white`         | `#F5F4F0` | Primary text, light UI background (warm off-white) |
+| `--color-red`           | `#D44040` | Signal Red — position/canonical marker only       |
+| `--color-mid`           | `#6A6864` | Secondary text, muted labels                      |
+| `--color-surface`       | `#111110` | Raised dark surfaces (panels, sidebars)           |
+| `--color-surface2`      | `#161614` | Deeper surface, nested elements, inputs           |
+| `--color-dim`           | `#2E2E2C` | Borders, rules                                    |
+| `--color-rule`          | `#1A1A18` | Divider lines                                     |
+
+**GetWrite-specific surface tokens**
+
+| CSS Variable                | Value     | Use                                                  |
+| --------------------------- | --------- | ---------------------------------------------------- |
+| `--color-editor-dark`       | `#1C1C1A` | Editor writing surface in dark mode (warmer)         |
+| `--color-editor-light`      | `#F0EDE6` | Editor writing surface in light mode (warm paper)    |
+| `--color-ink`               | `#1A1916` | Text on light editor surface                         |
+| `--color-chrome-light`      | `#F5F4F0` | UI chrome in light mode (sidebar, title bar)         |
+| `--color-chrome-light-2`    | `#ECEAE3` | Raised surfaces in light mode chrome                 |
+| `--color-chrome-light-dim`  | `#D0CEC8` | Borders in light mode chrome                         |
+
+**Light mode overrides** (applied when light mode is active)
+
+| CSS Variable       | Light Value |
+| ------------------ | ----------- |
+| `--color-black`    | `#F5F4F0`   |
+| `--color-white`    | `#0A0A0A`   |
+| `--color-surface`  | `#ECEAE3`   |
+| `--color-surface2` | `#E4E1DA`   |
+| `--color-dim`      | `#D0CEC8`   |
+| `--color-rule`     | `#D8D5CE`   |
+| `--color-mid`      | `#7A7870`   |
+
+Red (`#D44040`) is unchanged in both modes.
 
 ### 12.2 Spacing Values
 
@@ -537,10 +545,16 @@ Use these keys for margin, padding, gap, inset, size, and translate utilities wh
 
 ### 12.6 Font Family Values
 
-| Token          | Value                                                                                     | Tailwind Version |
-| -------------- | ----------------------------------------------------------------------------------------- | ---------------- |
-| `font-sans`    | `Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial` | `font-sans`      |
-| `font-display` | `Domine, Georgia, serif`                                                                  | `font-display`   |
+All type is set in the IBM Plex family. See [`/STYLING.md` § 3. Typography](/STYLING.md) for full type scale and tracking rules.
+
+| Token          | Typeface               | Role                                                              |
+| -------------- | ---------------------- | ----------------------------------------------------------------- |
+| `font-sans`    | IBM Plex Sans          | UI body, navigation, labels, metadata — primary interface type   |
+| `font-mono`    | IBM Plex Mono          | Technical labels, timestamps, revision names, keyboard shortcuts  |
+| `font-serif`   | IBM Plex Serif         | Editor body text only — never in navigation, sidebars, or chrome |
+| `font-display` | IBM Plex Sans Condensed | Display headings, wordmark                                       |
+
+IBM Plex Serif is scoped exclusively to the editor writing surface.
 
 ### 12.7 Motion Duration Values
 

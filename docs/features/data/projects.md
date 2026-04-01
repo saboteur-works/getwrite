@@ -18,10 +18,13 @@ This document describes the canonical data flow used when creating a project fro
     - construct a `Folder` model object (id, slug, name, parentId, orderIndex, createdAt) and add it to the returned folder list.
 6. Create default resources: create `<projectRoot>/resources/` and, for each `defaultResources` entry in the spec:
     - pick the destination folder (by slug or default to the first spec folder)
-    - generate a `UUID` for the resource
-    - for text resources: write the text file at `<projectRoot>/resources/<resource-slug>-<uuid>.txt`
+    - generate a `UUID` for the resource via `createResourceOfType`
+    - for text resources: call `writeResourceToFile(projectRoot, resource)` which writes:
+        - `<projectRoot>/resources/<uuid>/content.txt` — plain text content
+        - `<projectRoot>/resources/<uuid>/content.tiptap.json` — TipTap JSON
+        - `<projectRoot>/meta/resource-<uuid>.meta.json` — sidecar metadata (via `writeSidecar`)
+    - call `writeRevision(projectRoot, resourceId, 1, content, { isCanonical: true })` to create the initial canonical revision at `<projectRoot>/revisions/<uuid>/v-1/`
     - build a `TextResource` model object and add it to the returned resources list
-    - write a sidecar metadata file by calling `writeSidecar(projectRoot, resourceId, metadata)`
 7. Return: the function returns the `project` model and arrays of `folders` and `resources` (as in-memory objects) for further processing.
 
 ### Call graph (simplified)
@@ -37,9 +40,9 @@ This document describes the canonical data flow used when creating a project fro
         - `fs.mkdir(<projectRoot>/folders/<slug>, { recursive: true })`
         - `fs.writeFile(<projectRoot>/folders/<slug>/folder.json, JSON.stringify(folderObj))`
     - for each default resource spec (text):
-        - `generateUUID()`
-        - `fs.writeFile(<projectRoot>/resources/<slug>-<uuid>.txt, template)`
-        - `writeSidecar(projectRoot, resourceId, meta)`
+        - `createResourceOfType("text", { name, folderId, text, orderIndex, userMetadata })`
+        - `writeResourceToFile(projectRoot, resource)` — writes `resources/<uuid>/content.txt`, `resources/<uuid>/content.tiptap.json`, and `meta/resource-<uuid>.meta.json`
+        - `writeRevision(projectRoot, resourceId, 1, plainText, { isCanonical: true })` — creates `revisions/<uuid>/v-1/content.bin` + `revisions/<uuid>/v-1/metadata.json`
 
 Note: `writeSidecar` itself performs the creation of the `meta/` directory and writes a canonical sidecar filename. It also enqueues background indexing after updating the sidecar.
 
@@ -53,9 +56,15 @@ Given a `projectRoot` directory, `createProjectFromType` will create the followi
     - `<projectRoot>/folders/<folder-slug>/` (one directory per `spec.folders` entry)
         - `<projectRoot>/folders/<folder-slug>/folder.json` — a small folder descriptor JSON file with the fields: `id`, `slug`, `name`, `parentId`, `orderIndex`, `createdAt`.
 - `<projectRoot>/resources/` (directory)
-    - `<projectRoot>/resources/<resource-slug>-<uuid>.txt` — the resource content file (for `type: 'text'` resources). The filename pattern is `<slug>-<uuid>.txt` where `slug` is the slugified resource name and `uuid` is the generated id.
+    - `<projectRoot>/resources/<uuid>/` — one directory per resource (named by UUID)
+        - `<projectRoot>/resources/<uuid>/content.txt` — plain text content
+        - `<projectRoot>/resources/<uuid>/content.tiptap.json` — TipTap JSON representation
 - `<projectRoot>/meta/` (directory)
     - `<projectRoot>/meta/resource-<uuid>.meta.json` — sidecar metadata file written by `writeSidecar`. The canonical filename is produced by `sidecarFilename(resourceId)` and the path by `sidecarPathForProject(projectRoot, resourceId)`; see the `sidecar` model for implementation details.
+- `<projectRoot>/revisions/` (directory)
+    - `<projectRoot>/revisions/<uuid>/v-1/` — initial revision directory for each resource
+        - `<projectRoot>/revisions/<uuid>/v-1/content.bin` — serialized content payload
+        - `<projectRoot>/revisions/<uuid>/v-1/metadata.json` — revision metadata (id, resourceId, versionNumber, isCanonical: true)
 
 Example tree (minimal):
 
@@ -68,9 +77,16 @@ myproject/
 │  └─ notes/
 │     └─ folder.json
 ├─ resources/
-│  └─ welcome-0a1b2c3d-....txt
-└─ meta/
-   └─ resource-0a1b2c3d-....meta.json
+│  └─ 0a1b2c3d-..../
+│     ├─ content.txt
+│     └─ content.tiptap.json
+├─ meta/
+│  └─ resource-0a1b2c3d-....meta.json
+└─ revisions/
+   └─ 0a1b2c3d-..../
+      └─ v-1/
+         ├─ content.bin
+         └─ metadata.json
 </pre>
 
 ### Sidecar details (exact behavior)
@@ -120,6 +136,7 @@ sequenceDiagram
     participant FS as fs
     participant SD as writeSidecar
     participant IDX as indexer-queue
+    participant WR as writeRevision
 
     Caller->>PC: call(projectRoot, spec)
     PC->>V: validateProjectTypeFile/validateProjectType(spec)
@@ -132,11 +149,18 @@ sequenceDiagram
             PC->>FS: writeFile(folders/<slug>/folder.json)
         end
         loop resources
-            PC->>FS: writeFile(resources/<slug>-<uuid>.txt)
+            PC->>PC: createResourceOfType("text", opts)
+            PC->>FS: mkdir(resources/<uuid>/)
+            PC->>FS: writeFile(resources/<uuid>/content.txt)
+            PC->>FS: writeFile(resources/<uuid>/content.tiptap.json)
             PC->>SD: writeSidecar(projectRoot, resourceId, meta)
             SD->>FS: mkdir(meta/)
             SD->>FS: writeFile(meta/resource-<uuid>.meta.json)
             SD->>IDX: enqueueIndex(projectRoot, resourceId)
+            PC->>WR: writeRevision(projectRoot, resourceId, 1, content, {isCanonical: true})
+            WR->>FS: mkdir(revisions/<uuid>/v-1/)
+            WR->>FS: writeFile(revisions/<uuid>/v-1/content.bin)
+            WR->>FS: writeFile(revisions/<uuid>/v-1/metadata.json)
         end
     else validation fail
         V-->>Caller: throw Error
