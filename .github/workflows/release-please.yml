@@ -1,0 +1,58 @@
+name: Release Please
+
+on:
+    push:
+        branches:
+            - main
+
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    release-please:
+        runs-on: ubuntu-latest
+        outputs:
+            release_created: ${{ steps.release.outputs.release_created }}
+            tag_name: ${{ steps.release.outputs.tag_name }}
+        steps:
+            - uses: googleapis/release-please-action@v4
+              id: release
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  config-file: .release-please-config.json
+                  manifest-file: .release-please-manifest.json
+
+    sync-frontend-version:
+        needs: release-please
+        if: ${{ needs.release-please.outputs.release_created }}
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: main
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v2
+
+            - name: Use Node.js 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+
+            - name: Sync frontend/package.json version
+              run: |
+                  ROOT_VERSION=$(node -p "require('./package.json').version")
+                  ROOT_VERSION=$ROOT_VERSION node -e "
+                    const fs = require('fs');
+                    const pkg = JSON.parse(fs.readFileSync('frontend/package.json', 'utf8'));
+                    pkg.version = process.env.ROOT_VERSION;
+                    fs.writeFileSync('frontend/package.json', JSON.stringify(pkg, null, 4) + '\n');
+                  "
+
+            - name: Commit synced version
+              uses: stefanzweifel/git-auto-commit-action@v5
+              with:
+                  commit_message: "chore: sync frontend version to ${{ needs.release-please.outputs.tag_name }}"
+                  file_pattern: frontend/package.json
