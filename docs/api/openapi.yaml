@@ -1,0 +1,854 @@
+openapi: 3.1.0
+info:
+  title: GetWrite API
+  version: 0.1.0
+  description: |
+    Internal Next.js App Router API for GetWrite. All routes are filesystem-backed —
+    there is no database. Routes read and write the `/projects` directory directly.
+
+    Base URL: `http://localhost:3000` (development)
+
+    All request bodies use `Content-Type: application/json`.
+    All error responses follow `{ "error": string }` or `{ "error": string, "details": string }`.
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+
+components:
+  schemas:
+    UUID:
+      type: string
+      format: uuid
+      example: b19abcd4-81b2-44ef-b4b4-ba1310dbdf87
+
+    ISOTimestamp:
+      type: string
+      format: date-time
+      example: "2026-02-21T07:17:41.691Z"
+
+    MetadataValue:
+      description: Recursive metadata value type — string, number, boolean, null, or nested object.
+      oneOf:
+        - type: string
+        - type: number
+        - type: boolean
+        - type: "null"
+        - type: object
+          additionalProperties:
+            $ref: "#/components/schemas/MetadataValue"
+
+    Folder:
+      type: object
+      required: [id, slug, name, createdAt, type]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        slug:
+          type: string
+        name:
+          type: string
+        parentId:
+          type: [string, "null"]
+        orderIndex:
+          type: number
+        createdAt:
+          $ref: "#/components/schemas/ISOTimestamp"
+        type:
+          type: string
+          enum: [folder]
+        special:
+          type: boolean
+
+    Project:
+      type: object
+      required: [id, name, rootPath, createdAt]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        name:
+          type: string
+        rootPath:
+          type: string
+        projectType:
+          type: string
+        maxRevisions:
+          type: number
+        createdAt:
+          $ref: "#/components/schemas/ISOTimestamp"
+        modifiedAt:
+          $ref: "#/components/schemas/ISOTimestamp"
+        metadata:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/MetadataValue"
+
+    ResourceSidecar:
+      type: object
+      required: [id, name, type]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        name:
+          type: string
+        type:
+          type: string
+          example: text
+        createdAt:
+          $ref: "#/components/schemas/ISOTimestamp"
+        modifiedAt:
+          $ref: "#/components/schemas/ISOTimestamp"
+        folderId:
+          type: [string, "null"]
+        slug:
+          type: [string, "null"]
+        tags:
+          type: array
+          items:
+            type: string
+        preserve:
+          type: boolean
+        metadata:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/MetadataValue"
+        userMetadata:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/MetadataValue"
+          description: User-managed metadata (notes, status, characters, locations, items, pov, orderIndex, timeframe)
+
+    LoadedResource:
+      allOf:
+        - $ref: "#/components/schemas/ResourceSidecar"
+        - type: object
+          properties:
+            plaintext:
+              type: string
+              description: Plain text content loaded from resources/<id>/content.txt
+
+    Revision:
+      type: object
+      required: [id, resourceId, versionNumber, createdAt, isCanonical]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        resourceId:
+          $ref: "#/components/schemas/UUID"
+        versionNumber:
+          type: integer
+          description: Sequential version number; highest is most recent
+        createdAt:
+          $ref: "#/components/schemas/ISOTimestamp"
+        savedAt:
+          $ref: "#/components/schemas/ISOTimestamp"
+        author:
+          type: string
+        filePath:
+          type: string
+        isCanonical:
+          type: boolean
+          description: Exactly one revision per resource is canonical at any time
+        metadata:
+          type: object
+          description: Arbitrary revision metadata; metadata.preserve=true prevents pruning
+
+    ProjectWithFoldersAndResources:
+      type: object
+      required: [project, folders, resources]
+      properties:
+        project:
+          $ref: "#/components/schemas/Project"
+        folders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Folder"
+        resources:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoadedResource"
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+
+paths:
+
+  # ── Projects ──────────────────────────────────────────────────────────────
+
+  /api/projects:
+    get:
+      summary: List all projects
+      description: |
+        Reads the `/projects` directory and returns all projects with their
+        `project.json`, folder descriptors, and resource sidecar metadata.
+        Filesystem path: `<cwd>/../projects/`.
+      responses:
+        "200":
+          description: Array of project records, each with project, folders, and resources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectWithFoldersAndResources"
+        "500":
+          description: Filesystem read failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      summary: Create a new project
+      description: |
+        Creates a new project from a named project-type template. Generates a UUID
+        for the project directory, runs `createProjectFromType`, and returns the
+        created project, folders, and scaffolded resources.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, projectType]
+              properties:
+                name:
+                  type: string
+                  description: Display name for the new project
+                projectType:
+                  type: string
+                  description: ID of the project-type template (e.g. "novel", "article")
+      responses:
+        "200":
+          description: Created project with folders and resources
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectWithFoldersAndResources"
+        "400":
+          description: Missing name or projectType
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Project type not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Project creation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── Project (single) ──────────────────────────────────────────────────────
+
+  /api/project:
+    post:
+      summary: Load a project from disk
+      description: |
+        Loads a project by its absolute filesystem path. Reads `project.json`,
+        folder descriptors, and resource sidecars + plaintext content from
+        `resources/<id>/content.txt`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath]
+              properties:
+                projectPath:
+                  type: string
+                  description: Absolute path to the project root directory
+      responses:
+        "200":
+          description: Project with folders and resources
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectWithFoldersAndResources"
+        "500":
+          description: Failed to load project (file not found, parse error, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/project/delete:
+    post:
+      summary: Delete a project
+      description: |
+        Permanently deletes the project root directory (recursive rm). This is
+        irreversible — there is no trash/recovery for project-level deletion.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath]
+              properties:
+                projectPath:
+                  type: string
+                  description: Absolute path to the project root to delete
+      responses:
+        "200":
+          description: Project deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /api/project/rename:
+    post:
+      summary: Rename a project
+      description: Updates the `name` field in `project.json` for the given project path.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, newName]
+              properties:
+                projectPath:
+                  type: string
+                newName:
+                  type: string
+      responses:
+        "200":
+          description: Updated project data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/Project"
+
+  /api/project/preferences:
+    post:
+      summary: Update project user preferences
+      description: |
+        Merges partial `preferences` into `project.metadata` in `project.json`.
+        Used to persist UI preferences (e.g. sidebar state, editor settings) alongside
+        the project without touching resource data.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, preferences]
+              properties:
+                projectPath:
+                  type: string
+                preferences:
+                  type: object
+                  description: Partial ProjectUserPreferences to merge into metadata
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Updated metadata after merge
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metadata:
+                    type: object
+                    additionalProperties:
+                      $ref: "#/components/schemas/MetadataValue"
+        "400":
+          description: Missing projectPath or preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to update preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── Project Resources ─────────────────────────────────────────────────────
+
+  /api/project-resources:
+    get:
+      summary: Get resources for a project
+      description: Returns sidecar metadata for all resources in a project.
+      parameters:
+        - name: projectPath
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Resource sidecar array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResourceSidecar"
+
+  # ── Project Types ─────────────────────────────────────────────────────────
+
+  /api/project-types:
+    get:
+      summary: List available project types
+      description: |
+        Returns the list of project-type template specs available in
+        `getwrite-config/templates/project-types/`.
+      responses:
+        "200":
+          description: Array of project type entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    filePath:
+                      type: string
+
+  # ── Reorder ───────────────────────────────────────────────────────────────
+
+  /api/projects/{projectId}/reorder:
+    post:
+      summary: Persist resource/folder reorder
+      description: |
+        Writes updated `orderIndex` and `folderId` values for folders and resources
+        back to disk. Called by the Organizer view after drag-and-drop reordering.
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                folderOrder:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      orderIndex:
+                        type: number
+                      folderId:
+                        type: [string, "null"]
+                resourceOrder:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      orderIndex:
+                        type: number
+                      folderId:
+                        type: [string, "null"]
+      responses:
+        "200":
+          description: Reorder persisted
+
+  # ── Resource (create) ─────────────────────────────────────────────────────
+
+  /api/resource:
+    post:
+      summary: Create a resource
+      description: |
+        Creates a new resource via `createResourceOfType` and writes it to disk
+        via `writeResourceToFile`. Writes `resources/<uuid>/content.txt`,
+        `resources/<uuid>/content.tiptap.json`, and `meta/resource-<uuid>.meta.json`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, resourceData]
+              properties:
+                projectPath:
+                  type: string
+                resourceData:
+                  type: object
+                  description: CreateResourceOpts — type, name, folderId, text, orderIndex, userMetadata
+      responses:
+        "200":
+          description: Created resource
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  resource:
+                    $ref: "#/components/schemas/ResourceSidecar"
+        "500":
+          description: Failed to create resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── Resource by ID ────────────────────────────────────────────────────────
+
+  /api/resource/{resource-id}:
+    post:
+      summary: Perform resource action (delete or copy)
+      description: |
+        Dispatches a named action on a resource. Currently supports:
+        - `delete`: removes `resources/<id>/` and `meta/resource-<id>.meta.json`
+        - `copy`: (stub) reads sidecar but does not yet write a copy
+      parameters:
+        - name: resource-id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectRoot, action]
+              properties:
+                projectRoot:
+                  type: string
+                action:
+                  type: string
+                  enum: [delete, copy]
+      responses:
+        "200":
+          description: Action completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  # ── Resource Content ──────────────────────────────────────────────────────
+
+  /api/resource/{resource-id}/content:
+    post:
+      summary: Persist resource content (TipTap document)
+      description: |
+        Saves TipTap JSON content for a resource via `persistResourceContent`.
+        Writes both `resources/<id>/content.tiptap.json` and `resources/<id>/content.txt`.
+      parameters:
+        - name: resource-id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, doc]
+              properties:
+                projectPath:
+                  type: string
+                doc:
+                  type: object
+                  description: TipTap document JSON
+      responses:
+        "200":
+          description: Content persisted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  # ── Resource Sidecar ──────────────────────────────────────────────────────
+
+  /api/resource/{resource-id}/sidecar:
+    post:
+      summary: Update resource sidecar metadata
+      description: |
+        Overwrites the resource sidecar at `meta/resource-<id>.meta.json` with
+        `updatedResource`. Used to persist userMetadata changes (notes, status,
+        characters, locations, items, pov, etc.) from the Metadata sidebar.
+      parameters:
+        - name: resource-id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectRoot, updatedResource]
+              properties:
+                projectRoot:
+                  type: string
+                updatedResource:
+                  $ref: "#/components/schemas/ResourceSidecar"
+      responses:
+        "200":
+          description: Sidecar updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  # ── Revisions ─────────────────────────────────────────────────────────────
+
+  /api/resource/revision/{resource-id}:
+    get:
+      summary: Get a specific revision's metadata and content
+      description: |
+        Returns revision metadata and raw content for a revision identified by
+        `revisionId`. Reads `revisions/<resourceId>/v-<version>/content.bin`.
+      parameters:
+        - name: resource-id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: projectPath
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: revisionId
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Revision metadata and content
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revision, content]
+                properties:
+                  revision:
+                    $ref: "#/components/schemas/Revision"
+                  content:
+                    type: string
+        "400":
+          description: Missing required query params
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Revision not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to read revision content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      summary: Save a new revision
+      description: |
+        Creates a new revision for the resource. The version number is determined
+        by incrementing the current highest version. When `content` is omitted,
+        the current `content.tiptap.json` (or `content.txt`) is snapshotted.
+        Writes `revisions/<resourceId>/v-<N>/content.bin` and `metadata.json` atomically.
+      parameters:
+        - name: resource-id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath]
+              properties:
+                projectPath:
+                  type: string
+                content:
+                  type: string
+                  description: Content to snapshot; omit to use current saved content
+                author:
+                  type: string
+                isCanonical:
+                  type: boolean
+                  default: false
+                metadata:
+                  type: object
+                  description: Arbitrary revision metadata (e.g. { name, preserve })
+      responses:
+        "201":
+          description: Revision created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Revision"
+        "400":
+          description: Missing projectPath
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to save revision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    patch:
+      summary: Set canonical revision or update canonical content
+      description: |
+        Two behaviors depending on body:
+        - When `content` is absent: marks the revision identified by `revisionId` as canonical
+          (unmarks all others for the same resource).
+        - When `content` is provided: updates `content.bin` in-place for the already-canonical
+          revision (only allowed if the revision is already canonical).
+      parameters:
+        - name: resource-id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, revisionId]
+              properties:
+                projectPath:
+                  type: string
+                revisionId:
+                  $ref: "#/components/schemas/UUID"
+                content:
+                  type: string
+                  description: If provided, updates content.bin in-place (canonical revision only)
+      responses:
+        "200":
+          description: Updated canonical revision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Revision"
+        "400":
+          description: Missing required fields or attempting to update non-canonical content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Revision not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to set canonical revision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      summary: Delete a revision
+      description: |
+        Removes the revision directory `revisions/<resourceId>/v-<version>/` for the
+        revision identified by `revisionId`. Returns the deleted revision's metadata.
+      parameters:
+        - name: resource-id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, revisionId]
+              properties:
+                projectPath:
+                  type: string
+                revisionId:
+                  $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Deleted revision metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Revision"
+        "400":
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Revision not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to delete revision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"

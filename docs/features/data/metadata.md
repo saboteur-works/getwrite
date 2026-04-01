@@ -97,6 +97,8 @@ The following keys are set by the MetadataSidebar UI and have defined meaning wi
 
 ✏️ **pov** \[String]: Point-of-view character name for the resource.
 
+✏️ **timeframe** \[Object]: Time period associated with the resource. Used by the Timeline view to sort and position resources chronologically. Format: `{ start: string, end: string }` where each value is a date/time string in `YYYY/MM/DD` or `YYYY/MM/DD HH:MM` format. Edit through the Timeframe section in the Metadata sidebar.
+
 **orderIndex** \[Number]: The resource's position in tree views. Sourced from this key by the persistence layer when writing the top-level `orderIndex` sidecar field. Use the UI to reorder.
 
 #### Text resource fields

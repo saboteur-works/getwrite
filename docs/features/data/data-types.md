@@ -11,7 +11,7 @@ Primitive and ID types
 
 - `UUID` (string): v4 UUID used as canonical identifiers for projects, folders, resources, revisions.
 - `ISO-8601` timestamps (string): used for `createdAt`, `modifiedAt` fields.
-- `MetadataValue` (union): lightweight values allowed in sidecar `metadata` fields (string | number | boolean | null | object with shallow scalars).
+- `MetadataValue` (union): values allowed in sidecar `metadata` and `userMetadata` fields — `string | number | boolean | null | Record<string, MetadataValue>`. The type is recursive: nested objects are supported.
 
 Project
 
@@ -52,21 +52,25 @@ TextResource (concrete)
 - Additional/representative fields:
     - `plainText` (string)
     - `tiptap` (optional TipTap JSON)
-- Files:
-    - Primary file: `<projectRoot>/resources/<slug>-<id>.txt` (plain text)
+- Files (directory-per-resource layout):
+    - Plain text: `<projectRoot>/resources/<uuid>/content.txt`
+    - TipTap JSON: `<projectRoot>/resources/<uuid>/content.tiptap.json`
     - Sidecar: `<projectRoot>/meta/resource-<id>.meta.json`
 
 Revision
 
 - Purpose: versioned snapshot of a resource's content used for history and pruning.
-- Storage: revisions are persisted under `<projectRoot>/revisions/<resourceId>/` as files (e.g., `<resourceId>.rev.json` or similar per project conventions).
+- Storage: each revision version is a directory under `<projectRoot>/revisions/<resourceId>/v-<versionNumber>/` containing two files:
+    - `content.bin` — the serialized content payload
+    - `metadata.json` — revision metadata (id, resourceId, versionNumber, createdAt, isCanonical, etc.)
 - Representative fields:
     - `id` (UUID)
     - `resourceId` (UUID)
-    - `createdAt` (ISO string)
-    - `plainText` (string) or `tiptap` payload
-    - `isCanonical` (boolean)
-    - `metadata` (object)
+    - `versionNumber` (number) — sequential; highest number is most recent
+    - `createdAt` / `savedAt` (ISO string)
+    - `author` (string | undefined)
+    - `isCanonical` (boolean) — exactly one revision per resource is canonical at any time
+    - `metadata` (object | undefined) — arbitrary revision-level metadata; `metadata.preserve: true` prevents pruning
 
 Sidecar Metadata
 
@@ -96,10 +100,13 @@ Storage layout (convention)
 
 - `<projectRoot>/project.json` — project descriptor
 - `<projectRoot>/folders/<folder-slug>/folder.json` — folder descriptor
-- `<projectRoot>/resources/<resource-file>` — resource content files
+- `<projectRoot>/resources/<uuid>/content.txt` — resource plain text content
+- `<projectRoot>/resources/<uuid>/content.tiptap.json` — resource TipTap JSON content
 - `<projectRoot>/meta/resource-<id>.meta.json` — resource sidecar metadata
-- `<projectRoot>/revisions/<resourceId>/` — revision files
+- `<projectRoot>/revisions/<resourceId>/v-<version>/content.bin` — revision content payload
+- `<projectRoot>/revisions/<resourceId>/v-<version>/metadata.json` — revision metadata
 - `<projectRoot>/meta/index/` — indexing artifacts
+- `<projectRoot>/meta/backlinks.json` — cross-resource backlink index
 
 Validation & Runtime Schemas
 
@@ -136,4 +143,5 @@ See also
 - `frontend/src/lib/models/schemas.ts` (runtime zod schemas)
 - `frontend/src/lib/models/project-creator.ts` (scaffolding)
 - `frontend/src/lib/models/sidecar.ts` (sidecar helpers)
-- `specs/002-define-data-models/` for example specs and documentation used by tests
+
+> **Developer note:** `specs/002-define-data-models/` contains example specs and documentation used as test fixtures. It is an implementation artifact, not authoritative documentation — the canonical data definitions are in the source files and Zod schemas above.

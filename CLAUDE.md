@@ -40,7 +40,7 @@ pnpm --filter getwrite-frontend exec vitest
 
 ### Data Layer (No Database)
 
-- **Storage**: `/projects` directory contains one folder per project; each resource is a file + a `*.meta.json` sidecar; revisions in `.revisions` files
+- **Storage**: `/projects` directory contains one folder per project; each text resource is a directory at `resources/<uuid>/` with `content.txt` + `content.tiptap.json`; sidecars at `meta/resource-<uuid>.meta.json`; revisions at `revisions/<uuid>/v-<N>/`
 - **API routes** (`/frontend/app/api`): Read/write the filesystem directly — `/projects`, `/project/*`, `/resource/*`, `/resource/revision/*`
 - **Schemas** (`/frontend/src/lib/models/schemas.ts`): Zod validators gate all persisted data; all data crosses the boundary through these
 - **File locking** (`locks.ts`) prevents concurrent writes
@@ -61,12 +61,18 @@ State is loaded on mount via `GET /api/projects` and updated explicitly via API 
 frontend/
   app/                  # Next.js App Router (pages + API routes)
   components/           # Feature-organized React components
-    AppShell/           # Main layout
+    Layout/             # AppShell, ShellLayoutController, ShellModalCoordinator, ShellProjectTypeLoader
     Editor/             # TipTap rich text editor
-    ResourceTree/       # Hierarchical file navigation
+    Tree/               # ResourceTree, ResourceContextMenu, CreateResourceModal
+    SearchBar/          # Cross-resource search UI
     Sidebar/            # Metadata/properties panel
     Start/              # Project selection screen
-    WorkArea/           # Primary editing surface
+    WorkArea/           # Primary editing surface (Edit, Organizer, Data, Diff, Timeline views)
+    common/             # Shared modals and dialogs (CompilePreviewModal, ExportPreviewModal, ConfirmDialog, ResourceCommandPalette)
+    help/               # Help overlay components
+    notifications/      # Toast and notification system
+    preferences/        # User preferences UI
+    project-types/      # Project type selection and management
   src/
     lib/models/         # Core data models, Zod schemas, resource templates
     store/              # Redux store and slices
@@ -79,10 +85,29 @@ frontend/
 
 - `schemas.ts` — Zod validators for UUIDs, metadata, projects, resources
 - `project-creator.ts` — Scaffolds new projects from templates
-- `resource-templates.ts` — Defines resource types (chapters, scenes, etc.)
-- `revision.ts` — Version control for resources
-- `sidecar.ts` — Helpers for `*.meta.json` metadata files
+- `resource-factory.ts` — `createResourceOfType` factory
+- `resource-persistence.ts` — `writeResourceToFile`, `getLocalResources`
+- `resource-templates.ts` — Template save/load/create/duplicate
+- `revision.ts` — Version control: `writeRevision`, `pruneRevisions`, `setCanonicalRevision`
+- `pruneExecutor.ts` — CLI-orchestrated pruning across all project resources
+- `sidecar.ts` — `readSidecar`, `writeSidecar` helpers
+- `backlinks.ts` — `computeBacklinks`, `persistBacklinks`, `loadBacklinks`, `BacklinkIndex` type
+- `tags.ts` — Project-scoped tag CRUD (`config.tags` + `config.tagAssignments`)
+- `trash.ts` — `softDeleteResource` (moves to `.trash/`)
+- `template-service.ts` — Project-type template loading
+- `project-view.ts` / `project-view-adapter.ts` — Project view model adapters
 - `types.ts` — Core TypeScript interfaces
+
+### Key Store Files
+
+- `projectsSlice.ts` — Active project selection, `StoredProject` dictionary
+- `resourcesSlice.ts` — Resources, folders, selected resource ID
+- `revisionsSlice.ts` — Revision list, canonical selection, loading/saving state
+- `project-actions-controller.ts` — Multi-step project operations (create, load, delete)
+- `revision-canonical-guards.ts` — Enforces single-canonical invariant client-side
+- `revision-normalization.ts` — Normalizes raw revision data to `RevisionEntry`
+- `revision-transport-service.ts` — HTTP layer for revision API calls
+- `hooks.ts` — `useAppDispatch`, `useAppSelector` typed hooks
 
 ## Standards & Authority Hierarchy
 

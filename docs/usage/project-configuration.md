@@ -12,6 +12,19 @@ Common fields
 - `description` (optional): Short description shown in project lists.
 - `maxRevisions` (optional, default 50): How many historical revisions to keep per resource. Set higher if you want longer history, but note disk usage will increase.
 - `autoPrune` (optional, default true): When true, the app will automatically delete oldest non-preserved revisions once `maxRevisions` is exceeded.
+- `config.statuses` (optional): Array of status strings available as options for all resources in the project. Customize this to match your workflow stages.
+
+Example with custom statuses:
+
+```json
+{
+    "name": "My Novel",
+    "maxRevisions": 100,
+    "config": {
+        "statuses": ["Outline", "First Draft", "Revised", "Final"]
+    }
+}
+```
 
 Example
 
@@ -44,6 +57,7 @@ Notes and tips
 Advanced
 
 - Some advanced features (indexing, previews) have additional toggle flags under `meta` in `project.json`. These are primarily used by developers; consult your development team or the developer docs at `docs/features/project-configuration.md` for details.
+- **Tags**: Project-scoped tags (`config.tags` and `config.tagAssignments`) are managed through the Tags UI in the app. Editing them directly in `project.json` is possible but not recommended — use the app UI to avoid consistency issues with tag assignments.
 
 Help
 
