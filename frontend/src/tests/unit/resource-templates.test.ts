@@ -72,7 +72,7 @@ describe("models/resource-templates (T027)", () => {
                 id: "tpl-dry-run",
                 name: "{{TITLE}}",
                 type: "text",
-                metadata: {
+                userMetadata: {
                     section: "intro",
                     tags: ["draft", "template"],
                 },

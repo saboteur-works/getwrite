@@ -25,7 +25,7 @@ describe("models/resource persistence regressions (T007)", () => {
         expect(getLocalResources(missingProjectRoot)).toEqual([]);
     });
 
-    it("writes text resource content and sidecar metadata without changing identity", async () => {
+    it("writes text resource content and sidecar userMetadata without changing identity", async () => {
         const projectRoot = await fs.mkdtemp(
             path.join(os.tmpdir(), "getwrite-resource-persist-"),
         );
@@ -39,7 +39,7 @@ describe("models/resource persistence regressions (T007)", () => {
                     type: "doc",
                     content: [{ type: "paragraph" }],
                 },
-                metadata: {
+                userMetadata: {
                     section: "intro",
                 },
             });

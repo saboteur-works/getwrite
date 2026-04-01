@@ -95,8 +95,8 @@ export interface ResourceBase {
     orderIndex?: number;
     /** Status tags (project-scoped values). */
     statuses?: string[];
-    /** Type-agnostic metadata stored in sidecar. */
-    metadata?: Record<string, MetadataValue>;
+    /** User-set key/value metadata stored in sidecar (distinct from system fields like sizeBytes, createdAt, orderIndex). */
+    userMetadata?: Record<string, MetadataValue>;
     /** Creation timestamp (ISO 8601). */
     createdAt: string;
     /** Last-modified timestamp (ISO 8601). */

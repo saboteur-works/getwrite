@@ -18,7 +18,7 @@ describe("SearchBar", () => {
                 plainText: "",
                 createdAt: now,
                 updatedAt: now,
-                metadata: {},
+                userMetadata: {},
             },
             {
                 id: "r2",
@@ -27,7 +27,7 @@ describe("SearchBar", () => {
                 plainText: "",
                 createdAt: now,
                 updatedAt: now,
-                metadata: {},
+                userMetadata: {},
             },
             {
                 id: "r3",
@@ -36,7 +36,7 @@ describe("SearchBar", () => {
                 plainText: "",
                 createdAt: now,
                 updatedAt: now,
-                metadata: {},
+                userMetadata: {},
             },
         ];
 

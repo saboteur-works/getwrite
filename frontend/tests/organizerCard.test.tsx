@@ -8,7 +8,7 @@ describe("OrganizerCard", () => {
     it("renders title, type, date, body and metadata when showBody is true", () => {
         const res = createTextResource({
             name: "Test Resource",
-            metadata: {
+            userMetadata: {
                 wordCount: 42,
                 status: "draft",
                 notes: "Placeholder content for Test Resource",
@@ -30,7 +30,7 @@ describe("OrganizerCard", () => {
     it("hides the body when showBody is false", () => {
         const res = createTextResource({
             name: "Hidden Body",
-            metadata: { notes: "Placeholder content for Hidden Body" },
+            userMetadata: { notes: "Placeholder content for Hidden Body" },
         } as any);
         render(<OrganizerCard resource={res} showBody={false} />);
 

@@ -79,10 +79,10 @@ export async function writeResourceToFile(
         name: resource.name,
         type: resource.type,
         createdAt: resource.createdAt,
-        orderIndex: resource.metadata?.orderIndex || 0,
+        orderIndex: resource.userMetadata?.orderIndex || 0,
         folderId: resource.folderId || null,
         slug: resource.slug || null,
-        metadata: resource.metadata || {},
+        userMetadata: resource.userMetadata || {},
     };
 
     await writeSidecar(projectPath, resource.id, sidecarData);

@@ -40,7 +40,7 @@ describe("models/template-service regressions (T007)", () => {
                 name: "{{TITLE}}",
                 type: "text",
                 plainText: "{{TITLE}}\n\n{{SUBTITLE}}",
-                metadata: {
+                userMetadata: {
                     nested: {
                         header: "{{TITLE}}",
                         footer: "{{AUTHOR}}",

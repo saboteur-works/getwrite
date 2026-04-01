@@ -11,8 +11,8 @@ import { isValidUUID } from "../../lib/models/uuid";
 const folderId = "11111111-1111-4111-8111-111111111111";
 
 describe("models/resource factory regressions (T007)", () => {
-    it("preserves resource identity and metadata through typed factory dispatch", () => {
-        const metadata = {
+    it("preserves resource identity and userMetadata through typed factory dispatch", () => {
+        const userMetadata = {
             chapter: 3,
             tags: ["draft", "scene"],
         };
@@ -22,7 +22,7 @@ describe("models/resource factory regressions (T007)", () => {
             type: "text",
             folderId,
             orderIndex: 7,
-            metadata,
+            userMetadata,
             text: {
                 plainText: "First line\n\nSecond line",
             },
@@ -34,7 +34,7 @@ describe("models/resource factory regressions (T007)", () => {
         expect(created.folderId).toBe(folderId);
         expect(created.slug).toBe("scene-3");
         expect(created.orderIndex).toBe(7);
-        expect(created.metadata).toEqual(metadata);
+        expect(created.userMetadata).toEqual(userMetadata);
         if (created.type !== "text") {
             throw new Error(
                 "Expected text resource from typed factory dispatch",

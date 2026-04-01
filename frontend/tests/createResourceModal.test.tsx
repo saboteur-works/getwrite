@@ -16,7 +16,7 @@ describe("CreateResourceModal", () => {
                 type: "folder",
                 createdAt: "",
                 updatedAt: "",
-                metadata: {},
+                userMetadata: {},
             },
             {
                 id: "parent_2",
@@ -24,7 +24,7 @@ describe("CreateResourceModal", () => {
                 type: "folder",
                 createdAt: "",
                 updatedAt: "",
-                metadata: {},
+                userMetadata: {},
             },
         ];
 

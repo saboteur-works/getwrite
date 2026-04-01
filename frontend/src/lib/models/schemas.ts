@@ -132,7 +132,7 @@ export const ResourceBaseSchema = z.object({
     sizeBytes: z.number().int().nonnegative().optional(),
     notes: z.string().optional(),
     statuses: z.array(z.string()).optional(),
-    metadata: z.record(z.string(), MetadataValue).optional(),
+    userMetadata: z.record(z.string(), MetadataValue).optional(),
     createdAt: IsoDateString,
     updatedAt: IsoDateString.optional(),
 });
@@ -199,7 +199,7 @@ export const ResourceTemplateSchema = z.object({
     name: z.string(),
     type: ResourceTypeSchema,
     folderId: UUID.nullable().optional(),
-    metadata: z.record(z.string(), MetadataValue).optional(),
+    userMetadata: z.record(z.string(), MetadataValue).optional(),
     plainText: z.string().optional(),
 });
 
@@ -232,7 +232,7 @@ export const ProjectTypeResourceSchema = z.object({
     name: z.string(),
     type: ResourceTypeSchema,
     template: z.string().optional(),
-    metadata: z.record(z.string(), MetadataValue).optional(),
+    userMetadata: z.record(z.string(), MetadataValue).optional(),
 });
 
 /**

@@ -264,7 +264,7 @@ export async function createProjectFromType(options: {
                     plainText: r.template ?? "",
                 },
                 orderIndex: j,
-                metadata: { orderIndex: j },
+                userMetadata: { orderIndex: j },
             });
             const seededTextResource = typedResource as TextResource;
 

@@ -73,31 +73,31 @@ export default function MetadataSidebar({
         }, []);
     }, shallowEqual);
     const [notes, setNotes] = React.useState<string>(
-        (selectedResource?.metadata?.notes as any) ?? "",
+        (selectedResource?.userMetadata?.notes as any) ?? "",
     );
     const [status, setStatus] = React.useState<string>(
-        (selectedResource?.metadata?.status as any) ?? "draft",
+        (selectedResource?.userMetadata?.status as any) ?? "draft",
     );
     const [characters, setCharacters] = React.useState<string[]>(
-        (selectedResource?.metadata?.characters as any) ?? [],
+        (selectedResource?.userMetadata?.characters as any) ?? [],
     );
     const [locations, setLocations] = React.useState<string[]>(
-        (selectedResource?.metadata?.locations as any) ?? [],
+        (selectedResource?.userMetadata?.locations as any) ?? [],
     );
     const [items, setItems] = React.useState<string[]>(
-        (selectedResource?.metadata?.items as any) ?? [],
+        (selectedResource?.userMetadata?.items as any) ?? [],
     );
     const [pov, setPOV] = React.useState<string | null>(
-        (selectedResource?.metadata?.pov as any) ?? null,
+        (selectedResource?.userMetadata?.pov as any) ?? null,
     );
 
     React.useEffect(() => {
-        setNotes((selectedResource?.metadata?.notes as any) ?? "");
-        setStatus((selectedResource?.metadata?.status as any) ?? "draft");
-        setCharacters((selectedResource?.metadata?.characters as any) ?? []);
-        setLocations((selectedResource?.metadata?.locations as any) ?? []);
-        setItems((selectedResource?.metadata?.items as any) ?? []);
-        setPOV((selectedResource?.metadata?.pov as any) ?? null);
+        setNotes((selectedResource?.userMetadata?.notes as any) ?? "");
+        setStatus((selectedResource?.userMetadata?.status as any) ?? "draft");
+        setCharacters((selectedResource?.userMetadata?.characters as any) ?? []);
+        setLocations((selectedResource?.userMetadata?.locations as any) ?? []);
+        setItems((selectedResource?.userMetadata?.items as any) ?? []);
+        setPOV((selectedResource?.userMetadata?.pov as any) ?? null);
     }, [selectedResource]);
 
     return (
@@ -132,8 +132,8 @@ export default function MetadataSidebar({
                             onChange={(s) => {
                                 const updated = {
                                     ...selectedResource,
-                                    metadata: {
-                                        ...selectedResource?.metadata,
+                                    userMetadata: {
+                                        ...selectedResource?.userMetadata,
                                         status: s,
                                     },
                                 };

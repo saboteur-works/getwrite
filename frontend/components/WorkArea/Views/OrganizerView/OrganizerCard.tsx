@@ -46,11 +46,11 @@ export default function OrganizerCard({
     /** Best-effort display title fallback chain. */
     const title = (resource as any).title ?? resource.name ?? "Untitled";
     /** Optional body preview text, sourced from resource notes metadata. */
-    const body = resource.metadata?.notes as string;
+    const body = resource.userMetadata?.notes as string;
     /** Most relevant timestamp used for human-readable date display. */
     const updated = resource.updatedAt ?? resource.createdAt ?? "";
     /** Normalized status value shown in the metadata footer. */
-    const status = (resource.metadata?.status as string) ?? "unknown";
+    const status = (resource.userMetadata?.status as string) ?? "unknown";
 
     return (
         <article
@@ -82,7 +82,7 @@ export default function OrganizerCard({
 
             <footer className="text-xs flex items-center justify-between gap-4 text-gw-secondary">
                 <div>
-                    Words: {(resource.metadata as any)?.wordCount ?? "unknown"}
+                    Words: {(resource.userMetadata as any)?.wordCount ?? "unknown"}
                 </div>
                 <div className="ml-auto">Status: {status || "unknown"}</div>
             </footer>

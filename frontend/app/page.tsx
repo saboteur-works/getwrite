@@ -190,7 +190,7 @@ export default function Home(): JSX.Element {
                           (r: ResourceBase) => ({
                               id: r.id,
                               name: r.name,
-                              metadata: r.metadata ?? {},
+                              userMetadata: r.userMetadata ?? {},
                               folderId: r.folderId ?? null,
                           }),
                       )
@@ -254,7 +254,7 @@ export default function Home(): JSX.Element {
                               id: r.id,
                               name: r.name,
                               folderId: r.folderId ?? null,
-                              metadata: r.metadata ?? {},
+                              userMetadata: r.userMetadata ?? {},
                               plaintext: r.plaintext,
                           }))
                         : [],
@@ -358,7 +358,7 @@ export default function Home(): JSX.Element {
     const handleChangeNotes = (text: string, resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
-            metadata: { ...r.metadata, notes: text },
+            userMetadata: { ...r.userMetadata, notes: text },
         }));
     };
 
@@ -376,7 +376,7 @@ export default function Home(): JSX.Element {
         console.log("Updating status to", status, "for resource", resourceId);
         updateResource(resourceId, (r) => ({
             ...r,
-            metadata: { ...r.metadata, status },
+            userMetadata: { ...r.userMetadata, status },
         }));
     };
 
@@ -389,7 +389,7 @@ export default function Home(): JSX.Element {
     const handleChangeCharacters = (chars: string[], resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
-            metadata: { ...r.metadata, characters: chars },
+            userMetadata: { ...r.userMetadata, characters: chars },
         }));
     };
 
@@ -402,7 +402,7 @@ export default function Home(): JSX.Element {
     const handleChangeLocations = (locs: string[], resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
-            metadata: { ...r.metadata, locations: locs },
+            userMetadata: { ...r.userMetadata, locations: locs },
         }));
     };
 
@@ -415,7 +415,7 @@ export default function Home(): JSX.Element {
     const handleChangeItems = (items: string[], resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
-            metadata: { ...r.metadata, items },
+            userMetadata: { ...r.userMetadata, items },
         }));
     };
 
@@ -428,7 +428,7 @@ export default function Home(): JSX.Element {
     const handleChangePOV = (pov: string | null, resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
-            metadata: { ...r.metadata, pov },
+            userMetadata: { ...r.userMetadata, pov },
         }));
     };
 
@@ -503,7 +503,7 @@ export default function Home(): JSX.Element {
                         projectId: selectedProject.id,
                         resource: {
                             id: res.id,
-                            metadata: res.metadata,
+                            userMetadata: res.userMetadata,
                             name: res.name,
                             folderId: res.folderId ?? null,
                         } as any,
@@ -567,7 +567,7 @@ export default function Home(): JSX.Element {
                     projectId: selectedProject.id,
                     resource: {
                         id: copy.id,
-                        metadata: copy.metadata,
+                        userMetadata: copy.userMetadata,
                         name: copy.title,
                     } as any,
                 }),

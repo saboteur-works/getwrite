@@ -15,7 +15,7 @@ describe("MetadataSidebar", () => {
         const res = createTextResource({
             name: "Notes",
             plainText: "",
-            metadata: { notes: "", status: "draft" },
+            userMetadata: { notes: "", status: "draft" },
         });
         const onNotes = vi.fn();
         const onStatus = vi.fn();
