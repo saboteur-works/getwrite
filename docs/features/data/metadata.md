@@ -5,6 +5,9 @@
 > - 💡: Metadata with this symbol is prescribed and automatically added to its scope.
 > - ❗️: Metadata with this symbol is expected to be in its scope, and should not be deleted by the user.
 > - 🤖: Metadata with this symbol is managed by the system and should not be directly edited by the user. Direct changes may break files or projects.
+> - ✏️: Metadata with this symbol is safe to edit directly in a text editor or via the filesystem.
+>
+> Fields with none of the above symbols should be modified through the UI. Direct edits may be overwritten or cause inconsistency.
 
 ## System vs User Metadata
 
@@ -28,21 +31,21 @@ A free-form key/value map on the project record. Currently used to persist proje
 
 ##### `metadata.userPreferences`
 
-💡❗️ **colorMode** ["light" | "dark"]: The preferred color mode for this project. Overrides the global app-level color mode preference when set, so users don't have to reset it each time they open the project.
+💡❗️✏️ **colorMode** ["light" | "dark"]: The preferred color mode for this project. Overrides the global app-level color mode preference when set, so users don't have to reset it each time they open the project.
 
 #### `config`
 
 Behavioral configuration for the project, persisted in `project.json`.
 
-💡 **maxRevisions** \[Number]: Maximum number of revisions to retain per resource. Defaults to 50 when omitted.
+💡✏️ **maxRevisions** \[Number]: Maximum number of revisions to retain per resource. Defaults to 50 when omitted.
 
-💡 **statuses** \[String[]]: Custom status values available to resources in this project (e.g. `["Draft", "In Review", "Complete"]`).
+💡✏️ **statuses** \[String[]]: Custom status values available to resources in this project (e.g. `["Draft", "In Review", "Complete"]`).
 
-💡 **autoPrune** \[Boolean]: When `true`, the oldest non-canonical revisions are pruned automatically when the `maxRevisions` limit is exceeded. When `false`, the UI prompts the user interactively (or aborts in headless contexts).
+💡✏️ **autoPrune** \[Boolean]: When `true`, the oldest non-canonical revisions are pruned automatically when the `maxRevisions` limit is exceeded. When `false`, the UI prompts the user interactively (or aborts in headless contexts).
 
-💡 **tags** \[Tag[]]: Project-scoped tags. Each tag has an `id` (UUID), `name` (String), and optional `color` (String).
+💡 **tags** \[Tag[]]: Project-scoped tags. Each tag has an `id` (UUID), `name` (String), and optional `color` (String). Tag IDs must stay consistent with `tagAssignments` — use the UI to manage these.
 
-💡 **tagAssignments** \[Record\<UUID, UUID[]\>]: Map of resource UUIDs to arrays of tag UUIDs assigned to that resource.
+💡 **tagAssignments** \[Record\<UUID, UUID[]\>]: Map of resource UUIDs to arrays of tag UUIDs. UUIDs must match valid resources and entries in `tags` — use the UI to manage these.
 
 ---
 
@@ -54,7 +57,7 @@ Resource-level metadata consists of system fields at the top level plus an optio
 
 🤖 **id** \[UUID]: The unique identifier for the `Resource`
 
-**name** \[String]: The display name of the resource
+✏️ **name** \[String]: The display name of the resource
 
 🤖 **type** \["text" | "image" | "audio"]: The resource type
 
@@ -62,13 +65,13 @@ Resource-level metadata consists of system fields at the top level plus an optio
 
 🤖 **folderId** \[UUID | null]: The UUID of the containing folder, or `null` if top-level
 
-**slug** \[String]: The resource's URL/file slug
+**slug** \[String]: The resource's URL/file slug. Used in filename construction — changing this directly without renaming the associated file will cause inconsistency. Use the UI.
 
-**sizeBytes** \[Number]: File size in bytes
+🤖 **sizeBytes** \[Number]: File size in bytes, derived from the filesystem.
 
-**notes** \[String]: Optional free-text notes
+✏️ **notes** \[String]: Optional free-text notes
 
-**statuses** \[String[]]: Optional status tags (project-scoped values, e.g. "Draft", "In Review")
+✏️ **statuses** \[String[]]: Optional status tags (project-scoped values, e.g. "Draft", "In Review")
 
 🤖 **createdAt** \[ISO Date]: Creation timestamp
 
@@ -76,7 +79,7 @@ Resource-level metadata consists of system fields at the top level plus an optio
 
 #### `userMetadata`
 
-**userMetadata** \[Record\<String, MetadataValue\>]: A free-form key/value map for user-defined metadata. Values may be strings, numbers, booleans, or arrays. This field is populated from templates and can be extended freely by the user.
+✏️ **userMetadata** \[Record\<String, MetadataValue\>]: A free-form key/value map for user-defined metadata. Values may be strings, numbers, booleans, or arrays. This field is populated from templates and can be extended freely by the user.
 
 #### Text resource fields
 
@@ -132,4 +135,4 @@ Changes may cause revisions to break or behave in unexpected ways.
 
 🤖 **isCanonical** \[Boolean]: `True` if the revision is currently set as the canonical `Revision` of the `Resource`. Only 1 `Revision` is allowed to be set as canonical for any given `Resource` at a time.
 
-**author** \[String]: Optional author identifier or display name associated with the revision.
+✏️ **author** \[String]: Optional author identifier or display name associated with the revision.
