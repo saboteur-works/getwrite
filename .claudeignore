@@ -1,0 +1,25 @@
+node_modules/
+frontend/node_modules/
+.next/
+
+# Build outputs
+
+dist/
+build/
+coverage/
+_.log
+.env_
+.DS*Store
+Thumbs.db
+.vscode/
+.idea/
+*.tmp
+\_.swp
+/frontend/storybook-static/
+next-env.d.ts
+
+# TypeScript incremental buildinfo
+
+\*.tsbuildinfo
+tsconfig.tsbuildinfo
+/projects/
