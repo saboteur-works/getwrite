@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.1...getwrite-v0.2.2) (2026-04-02)
+
+
+### Bug Fixes
+
+* ensure special folders in metadata sidebar render correctly ([9a1aa85](https://github.com/saboteur-works/getwrite/commit/9a1aa85b161ba663befaa453489ae3e1c58749cd))
+* split folder and resource dispatches after  project creation ([0a95841](https://github.com/saboteur-works/getwrite/commit/0a958414df9a6490dc45579a7dd95a2875cb8217))
+
 ## [0.2.1](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.0...getwrite-v0.2.1) (2026-04-02)
 
 
