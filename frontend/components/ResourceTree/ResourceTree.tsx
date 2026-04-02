@@ -44,7 +44,7 @@ import {
 } from "../../src/store/resourcesSlice";
 import ResourceContextMenu, {
     ResourceContextAction,
-} from "../Tree/ResourceContextMenu";
+} from "./ResourceContextMenu";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { shallowEqual } from "react-redux";
 import {

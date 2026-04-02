@@ -1,6 +1,6 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import ResourceContextMenu from "../../components/Tree/ResourceContextMenu";
+import ResourceContextMenu from "../../components/ResourceTree/ResourceContextMenu";
 import { within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 // `expect` is provided by the test runner (Vitest) in the test environment
