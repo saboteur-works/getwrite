@@ -199,9 +199,8 @@ export default function Home(): JSX.Element {
             }),
         );
         dispatch(setSelectedProjectId(projectFiles.project.id));
-        dispatch(
-            setResources([...projectFiles.resources, ...projectFiles.folders]),
-        );
+        dispatch(setResources(projectFiles.resources));
+        dispatch(setFolders(projectFiles.folders));
         setSelectedProject({
             id: projectFiles.project.id,
             name: projectFiles.project.name,

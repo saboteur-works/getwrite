@@ -4,6 +4,7 @@
     "description": "",
     "main": "index.js",
     "scripts": {
+        "start-dev": "pnpm --filter getwrite-frontend dev",
         "test": "pnpm --filter getwrite-frontend exec vitest"
     },
     "keywords": [],

@@ -6,6 +6,7 @@ import POVAutocomplete from "./controls/POVAutocomplete";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
 import { selectResource } from "../../src/store/resourcesSlice";
+import { Folder } from "../../src/lib/models";
 
 const EMPTY_LIST: string[] = [];
 
@@ -28,6 +29,15 @@ export default function MetadataSidebar({
     onChangePOV,
     className = "",
 }: MetadataSidebarProps): JSX.Element {
+    // TODO: Use this selector to determine what special folders exist in the project,
+    // and only show character/location/item selectors if those folders exist.
+    // This will make the UI more flexible for different project types and avoid
+    // confusion when those folders aren't present.
+    const existingSpecialFolders = useAppSelector((state) => {
+        if (state.projects.selectedProjectId === null) return [];
+        return state.resources.folders?.filter((f) => f.special) as Folder[];
+    }, shallowEqual);
+
     const selectedResource = useAppSelector((state) =>
         selectResource(state.resources),
     );
@@ -94,7 +104,9 @@ export default function MetadataSidebar({
     React.useEffect(() => {
         setNotes((selectedResource?.userMetadata?.notes as any) ?? "");
         setStatus((selectedResource?.userMetadata?.status as any) ?? "draft");
-        setCharacters((selectedResource?.userMetadata?.characters as any) ?? []);
+        setCharacters(
+            (selectedResource?.userMetadata?.characters as any) ?? [],
+        );
         setLocations((selectedResource?.userMetadata?.locations as any) ?? []);
         setItems((selectedResource?.userMetadata?.items as any) ?? []);
         setPOV((selectedResource?.userMetadata?.pov as any) ?? null);
