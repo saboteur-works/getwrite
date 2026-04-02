@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.0...getwrite-v0.2.1) (2026-04-02)
+
+
+### Bug Fixes
+
+* fixed resource tree reordering error when moving items down ([d846ab5](https://github.com/saboteur-works/getwrite/commit/d846ab52da47dacfd9a2217fdbdca44142b9b889))
+* fixed resources not rendering on creation from CreateResourceModal ([c7f576d](https://github.com/saboteur-works/getwrite/commit/c7f576d9ba45c1953ab8dbb48ba3c5b58a6e8265))
+
 ## [0.2.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.1.1...getwrite-v0.2.0) (2026-04-01)
 
 
