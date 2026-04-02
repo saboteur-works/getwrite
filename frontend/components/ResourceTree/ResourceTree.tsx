@@ -45,7 +45,7 @@ import {
 import ResourceContextMenu, {
     ResourceContextAction,
 } from "../Tree/ResourceContextMenu";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { shallowEqual } from "react-redux";
 import {
     ChevronDown,
@@ -307,6 +307,10 @@ export default function ResourceTree({
             dragAndDropFeature,
         ],
     });
+    useEffect(() => {
+        tree.rebuildTree();
+    }, [transformedResourceData]);
+
     const draggedItems = tree.getState().dnd?.draggedItems;
     return (
         <div
