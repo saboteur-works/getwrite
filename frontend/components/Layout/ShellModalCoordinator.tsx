@@ -10,13 +10,13 @@ import type {
 import type { ProjectTypeTemplateFile } from "../../src/types/project-types";
 import ConfirmDialog from "../common/ConfirmDialog";
 import ResourceCommandPalette from "../common/ResourceCommandPalette";
-import CreateResourceModal from "../Tree/CreateResourceModal";
+import CreateResourceModal from "../ResourceTree/CreateResourceModal";
 import ExportPreviewModal from "../common/ExportPreviewModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import HelpPage from "../help/HelpPage";
-import type { ResourceContextAction } from "../Tree/ResourceContextMenu";
+import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 
 export interface ShellContextActionState {
     open: boolean;

@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import ResourceContextMenu from "../components/Tree/ResourceContextMenu";
+import ResourceContextMenu from "../components/ResourceTree/ResourceContextMenu";
 
 describe("ResourceContextMenu", () => {
     it("renders menu items and calls onAction for delete", () => {

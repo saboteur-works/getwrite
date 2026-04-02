@@ -27,7 +27,7 @@ import ShellLayoutController from "./ShellLayoutController";
 import ShellSettingsMenu from "./ShellSettingsMenu";
 import ShellModalCoordinator from "./ShellModalCoordinator";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
-import type { ResourceContextAction } from "../Tree/ResourceContextMenu";
+import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import ViewSwitcher from "../WorkArea/ViewSwitcher";
 import EditView from "../WorkArea/EditView";
 import DiffView from "../WorkArea/DiffView";
