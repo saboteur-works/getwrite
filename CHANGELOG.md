@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.3...getwrite-v0.2.4) (2026-04-03)
+
+
+### Features
+
+* implement paragraph leading extension ([15de02f](https://github.com/saboteur-works/getwrite/commit/15de02f70916616ceaa2a763492eceb7ed1af647))
+
 ## [0.2.3](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.2...getwrite-v0.2.3) (2026-04-03)
 
 
