@@ -53,6 +53,11 @@ export function menuBarStateSelector(ctx: EditorStateSnapshot<Editor>) {
 
         fontSize: ctx.editor.getAttributes("textStyle").fontSize,
         isDomine: ctx.editor.isActive("textStyle", { fontFamily: "Domine" }),
+
+        // Custom extensions
+        // Example: GetWriteParagraphLeading extension state
+        getWriteParagraphLeading:
+            ctx.editor.getAttributes("paragraph").paragraphLeading,
     };
 }
 

@@ -10,8 +10,7 @@
  */
 import { Baseline } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ALargeSmall } from "lucide-react";
-
+import { ALargeSmall, RulerDimensionLine } from "lucide-react";
 /**
  * Available icon components keyed by semantic menu input role.
  */
@@ -22,6 +21,8 @@ const IconTypes = {
     fontSize: ALargeSmall,
     /** Icon used for font-style controls. */
     fontStyle: ALargeSmall,
+    /** Icon used for line-height controls. */
+    lineHeight: RulerDimensionLine,
 };
 
 export type EditorMenuInputIconName = keyof typeof IconTypes;
@@ -72,6 +73,9 @@ export interface EditorMenuInputProps {
     onChange?: (
         event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     ) => void;
+    rotate?: false | "45" | "90";
+    minValue?: number;
+    maxValue?: number;
 }
 
 /**
@@ -110,6 +114,9 @@ export default function EditorMenuInput({
     type,
     options = [],
     onChange,
+    rotate = false,
+    minValue = 0,
+    maxValue = 100,
 }: EditorMenuInputProps) {
     const [value, setValue] = useState(initialValue);
     const IconComponent = IconTypes[Icon];
@@ -125,7 +132,13 @@ export default function EditorMenuInput({
     return (
         <div className="editor-menu-input-root">
             <label className="editor-menu-input-icon" htmlFor={controlId}>
-                <IconComponent size={iconSize} aria-hidden="true" />
+                <IconComponent
+                    size={iconSize}
+                    aria-hidden="true"
+                    style={{
+                        transform: rotate ? `rotate(${rotate}deg)` : undefined,
+                    }}
+                />
             </label>
             {type === "color" && (
                 <input
@@ -171,6 +184,9 @@ export default function EditorMenuInput({
                 <input
                     type="number"
                     data-tooltip-id="my-tooltip"
+                    step="0.1"
+                    min={minValue}
+                    max={maxValue}
                     id={controlId}
                     onClick={onClick}
                     disabled={disabled}

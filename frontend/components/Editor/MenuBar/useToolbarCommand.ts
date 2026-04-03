@@ -23,6 +23,7 @@ export interface ResolvedToolbarIconCommand extends ResolvedToolbarItemBase {
     icon: EditorMenuIconName;
     active: boolean;
     disabled: boolean;
+    rotate?: false | "45" | "90";
     onClick: () => void;
 }
 
@@ -32,6 +33,7 @@ export interface ResolvedToolbarInputCommand extends ResolvedToolbarItemBase {
     inputType: EditorMenuInputType;
     initialValue: string;
     options: string[];
+    rotate?: false | "45" | "90";
     onChange: (value: string) => void;
 }
 
@@ -41,6 +43,7 @@ export interface ResolvedToolbarColorCommand extends ResolvedToolbarItemBase {
     colors: string[];
     activeColor: string | undefined;
     disabled: boolean;
+    rotate?: false | "45" | "90";
     onSelectColor: (color: string) => void;
 }
 
@@ -84,11 +87,13 @@ function resolveGroup(
                     icon: item.icon,
                     inputType: item.inputType,
                     tooltipContent: item.tooltipContent,
-                    initialValue: item.getValue(context),
+                    initialValue:
+                        item.getValue(context) ?? item.initialValue ?? "",
                     options: item.options ?? [],
                     onChange: (value: string) => {
                         item.onChange(context, value);
                     },
+                    rotate: item.rotate,
                 } satisfies ResolvedToolbarInputCommand;
             }
 
@@ -103,6 +108,7 @@ function resolveGroup(
                 onSelectColor: (color: string) => {
                     item.onSelectColor(context, color);
                 },
+                rotate: item.rotate,
             } satisfies ResolvedToolbarColorCommand;
         }),
     };

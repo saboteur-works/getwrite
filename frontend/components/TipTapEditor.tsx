@@ -37,7 +37,7 @@ import { Placeholder, Selection } from "@tiptap/extensions";
 import Typography from "@tiptap/extension-typography";
 import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import TextAlign from "@tiptap/extension-text-align";
-
+import GetWriteParagraphLeading from "./Editor/Extensions/GetWriteParagraphLeading";
 /**
  * Props accepted by {@link TipTapEditor}.
  */
@@ -89,6 +89,7 @@ const extensions = [
         types: ["heading", "paragraph"],
     }),
     FontFamily,
+    GetWriteParagraphLeading,
 ];
 
 /**
@@ -189,8 +190,14 @@ export default function TipTapEditor({
         /**
          * Migrates legacy math string representations to node-based format.
          */
-        onCreate: ({ editor: currentEditor }) => {
-            migrateMathStrings(currentEditor);
+        onCreate: ({ editor }) => {
+            migrateMathStrings(editor);
+            editor
+                .chain()
+                .selectAll()
+                .setParagraphLeading("1.5")
+                .setTextSelection(0) // collapse cursor to start, or wherever you want
+                .run();
         },
         // avoid SSR hydration mismatches by explicitly opting out of
         // immediate render on the server

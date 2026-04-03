@@ -21,6 +21,8 @@ export interface ToolbarCommandGroup {
 interface ToolbarCommandItemBase {
     id: string;
     tooltipContent: string;
+    rotate?: false | "45" | "90";
+    initialValue?: string;
 }
 
 export interface ToolbarIconCommand extends ToolbarCommandItemBase {
@@ -285,6 +287,19 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
                 isActive: ({ state }) => state.isCodeBlock,
                 run: ({ editor }) =>
                     editor.chain().focus().toggleCodeBlock().run(),
+            },
+            {
+                id: "line-height",
+                kind: "input",
+                icon: "lineHeight",
+                inputType: "number",
+                tooltipContent: "Line Height",
+                rotate: "90",
+                initialValue: "1.5",
+                getValue: ({ state }) => state.getWriteParagraphLeading,
+                onChange: ({ editor }, value) => {
+                    editor.chain().focus().setParagraphLeading(value).run();
+                },
             },
         ],
     },
