@@ -75,6 +75,7 @@ export const MenuBar = ({ editor }: MenuBarProps) => {
                                     active={item.active}
                                     iconSize={ICON_SIZE}
                                     tooltipContent={item.tooltipContent}
+                                    rotate={item.rotate}
                                 />
                             );
                         }
@@ -89,6 +90,7 @@ export const MenuBar = ({ editor }: MenuBarProps) => {
                                     type={item.inputType}
                                     options={item.options}
                                     initialValue={item.initialValue}
+                                    rotate={item.rotate}
                                     onChange={(event) => {
                                         item.onChange(
                                             event.currentTarget.value,
