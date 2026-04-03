@@ -157,6 +157,10 @@ export function createFolderResource(params: {
     userMetadata?: Record<string, MetadataValue>;
     orderIndex?: number;
     special?: boolean;
+    metadataSource?: {
+        isMetadataSource: boolean;
+        metadataInputType?: "select" | "multiselect" | "text";
+    };
 }): Folder {
     const now = new Date().toISOString();
     const id = generateUUID();
@@ -170,6 +174,7 @@ export function createFolderResource(params: {
         userMetadata: params.userMetadata,
         orderIndex: params.orderIndex,
         special: params.special ?? false,
+        metadataSource: params.metadataSource ?? { isMetadataSource: false },
     };
 
     FolderSchema.parse(res);
@@ -181,6 +186,7 @@ export function createFolderResource(params: {
  */
 export interface CreateResourceOpts {
     name: string;
+    slug?: string;
     type: ResourceType;
     folderId?: UUID | null;
     orderIndex?: number;
@@ -209,6 +215,7 @@ export const createResourceOfType = (
 ) => {
     const baseParams = {
         name: opts.name,
+        slug: opts.slug ?? slugify(opts.name),
         folderId: opts.folderId,
         userMetadata: opts.userMetadata,
         orderIndex: opts.orderIndex,

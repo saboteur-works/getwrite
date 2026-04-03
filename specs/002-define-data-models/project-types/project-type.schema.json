@@ -33,6 +33,24 @@
                         "type": "boolean",
                         "description": "Marks that the folder has special application-level semantics (e.g. the Workspace)."
                     },
+                    "metadataSource": {
+                        "type": "object",
+                        "description": "If present, indicates that this folder should be used as a source for project metadata (e.g. characters, tags).",
+                        "properties": {
+                            "isMetadataSource": {
+                                "type": "boolean",
+                                "const": true,
+                                "description": "Must be true to indicate that this folder is a metadata source."
+                            },
+                            "metadataInputType": {
+                                "type": "string",
+                                "enum": ["select", "multiselect", "text"],
+                                "description": "Determines the UI input type for managing metadata entries sourced from this folder."
+                            }
+                        },
+                        "required": ["isMetadataSource"],
+                        "additionalProperties": false
+                    },
                     "defaultResources": {
                         "type": "array",
                         "description": "Optional resources to pre-populate inside this folder when a new project is created.",

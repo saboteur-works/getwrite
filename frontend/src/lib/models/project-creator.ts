@@ -44,7 +44,13 @@ import path from "node:path";
 import { createProject } from "./project";
 import { generateUUID } from "./uuid";
 import { validateProjectTypeFile, validateProjectType } from "./schemas";
-import type { Project, Folder, TextResource, ResourceType } from "./types";
+import type {
+    Project,
+    Folder,
+    TextResource,
+    ResourceType,
+    MetadataSource,
+} from "./types";
 import { createResourceOfType, writeResourceToFile } from "./resource";
 import { writeRevision } from "./revision";
 
@@ -62,6 +68,7 @@ export interface ProjectTypeSpecFolder {
      * may choose to treat `special` folders differently in ordering or UI.
      */
     special?: boolean;
+    metadataSource?: MetadataSource;
 }
 
 /**
@@ -196,12 +203,13 @@ export async function createProjectFromType(options: {
 
     // Ensure project root exists
     await fs.mkdir(projectRoot, { recursive: true });
-
+    const projectName = name ?? specObj.name;
     // Create Project JSON
     const project = createProject({
-        name: name ?? specObj.name,
+        name: projectName,
         projectType: specObj.id,
         rootPath: projectRoot,
+        slug: slugify(projectName),
     });
     const projectJsonPath = path.join(projectRoot, "project.json");
     await fs.writeFile(
@@ -231,6 +239,7 @@ export async function createProjectFromType(options: {
             createdAt: now,
             type: "folder",
             special: f.special,
+            metadataSource: f.metadataSource ?? { isMetadataSource: false },
         };
         folders.push(folderObj);
         // write a small folder descriptor file so the structure is discoverable
@@ -258,6 +267,7 @@ export async function createProjectFromType(options: {
         if (r.type === "text") {
             const typedResource = createResourceOfType("text", {
                 name: r.name,
+                slug: slugify(r.name),
                 type: "text",
                 folderId: folder.id,
                 text: {

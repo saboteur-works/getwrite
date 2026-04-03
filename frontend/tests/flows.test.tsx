@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import StartPage from "../components/Start/StartPage";
-import ResourceTree from "../components/Tree/ResourceTree";
+import ResourceTree from "../components/ResourceTree/ResourceTree";
 import { makeStore } from "../src/store/store";
 import { Provider } from "react-redux";
 import { setProject } from "../src/store/projectsSlice";
@@ -117,10 +117,7 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                             <h2>Project: {currentProject.project.name}</h2>
                             {/* register project in store and render ResourceTree via projectId */}
                             {/* project registered in store via effect above */}
-                            <ResourceTree
-                                projectId={currentProject.project.id}
-                                onSelect={handleSelect}
-                            />
+                            <ResourceTree onResourceAction={handleSelect} />
 
                             <div data-testid="editor-area">
                                 {currentResource ? (

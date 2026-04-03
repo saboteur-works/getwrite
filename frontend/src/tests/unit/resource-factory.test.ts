@@ -55,6 +55,10 @@ describe("models/resource factory regressions (T007)", () => {
             parentFolderId: folderId,
             orderIndex: 0,
             special: true,
+            metadataSource: {
+                isMetadataSource: true,
+                metadataInputType: "select",
+            },
         });
 
         expect(folder.type).toBe("folder");
@@ -62,6 +66,10 @@ describe("models/resource factory regressions (T007)", () => {
         expect(folder.special).toBe(true);
         expect(folder.orderIndex).toBe(0);
         expect(folder.slug).toBe("workspace");
+        expect(folder.metadataSource).toEqual({
+            isMetadataSource: true,
+            metadataInputType: "select",
+        });
         expect(isValidUUID(folder.id)).toBe(true);
         expect(Date.parse(folder.createdAt)).not.toBeNaN();
     });

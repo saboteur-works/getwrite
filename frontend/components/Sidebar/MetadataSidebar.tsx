@@ -4,44 +4,47 @@ import StatusSelector from "./controls/StatusSelector";
 import MultiSelectList from "./controls/MultiSelectList";
 import POVAutocomplete from "./controls/POVAutocomplete";
 import useAppSelector from "../../src/store/hooks";
-import { shallowEqual } from "react-redux";
+import { shallowEqual, useStore } from "react-redux";
 import { selectResource } from "../../src/store/resourcesSlice";
 import { Folder } from "../../src/lib/models";
+import { RootState } from "../../src/store/store";
+import { set } from "lodash";
 
 const EMPTY_LIST: string[] = [];
 
 export interface MetadataSidebarProps {
     onChangeNotes?: (text: string) => void;
     onChangeStatus?: (status: string) => void;
-    onChangeCharacters?: (chars: string[]) => void;
-    onChangeLocations?: (locs: string[]) => void;
-    onChangeItems?: (items: string[]) => void;
     onChangePOV?: (pov: string) => void;
+    onChangeDynamicMetadata?: (metadata: Record<string, string[]>) => void;
     className?: string;
 }
 
 export default function MetadataSidebar({
     onChangeNotes,
     onChangeStatus,
-    onChangeCharacters,
-    onChangeLocations,
-    onChangeItems,
     onChangePOV,
+    onChangeDynamicMetadata,
     className = "",
 }: MetadataSidebarProps): JSX.Element {
+    const store = useStore();
     // TODO: Use this selector to determine what special folders exist in the project,
     // and only show character/location/item selectors if those folders exist.
     // This will make the UI more flexible for different project types and avoid
     // confusion when those folders aren't present.
-    const existingSpecialFolders = useAppSelector((state) => {
+    const metadataSourceFolders = useAppSelector((state) => {
         if (state.projects.selectedProjectId === null) return [];
-        return state.resources.folders?.filter((f) => f.special) as Folder[];
+        return (
+            state.resources.folders
+                ?.filter((f) => f.metadataSource?.isMetadataSource)
+                .map((f) => f) ?? []
+        );
     }, shallowEqual);
 
     const selectedResource = useAppSelector((state) =>
         selectResource(state.resources),
     );
-    // get the character folder id from the project folders
+
     const characterList = useAppSelector((state) => {
         if (state.projects.selectedProjectId === null) return EMPTY_LIST;
 
@@ -57,60 +60,59 @@ export default function MetadataSidebar({
         }, []);
     }, shallowEqual);
 
-    const locationList = useAppSelector((state) => {
-        if (state.projects.selectedProjectId === null) return EMPTY_LIST;
-        const locationFolderId = state.projects.projects[
-            state.projects.selectedProjectId
-        ].folders?.find((f) => f.name?.toLowerCase() === "locations")?.id;
+    /**
+     * Retrieves the children of a given folder and maps them to a list of strings for use in the multiselect inputs.
+     * This is necessary to support dynamic metadata source folders, where the options for the multiselects are based on the resources within those folders.
+     * @param folderName
+     */
+    const getMetadataForFolder = (folderName: string) => {
+        const state = store.getState() as RootState;
+        const folderId = state.resources.folders?.find(
+            (f) => f.name?.toLowerCase() === folderName.toLowerCase(),
+        )?.id;
+        if (!folderId) return [];
         return state.resources.resources.reduce((acc: string[], r) => {
-            if (r.folderId === locationFolderId && r.name) {
+            if (r.folderId === folderId && r.name) {
                 acc.push(r.name);
             }
             return acc;
         }, []);
-    }, shallowEqual);
+    };
 
-    const itemList = useAppSelector((state) => {
-        if (state.projects.selectedProjectId === null) return EMPTY_LIST;
-        const itemFolderId = state.projects.projects[
-            state.projects.selectedProjectId
-        ].folders?.find((f) => f.name?.toLowerCase() === "items")?.id;
-        return state.resources.resources.reduce((acc: string[], r) => {
-            if (r.folderId === itemFolderId && r.name) {
-                acc.push(r.name);
-            }
-            return acc;
-        }, []);
-    }, shallowEqual);
     const [notes, setNotes] = React.useState<string>(
         (selectedResource?.userMetadata?.notes as any) ?? "",
     );
     const [status, setStatus] = React.useState<string>(
         (selectedResource?.userMetadata?.status as any) ?? "draft",
     );
-    const [characters, setCharacters] = React.useState<string[]>(
-        (selectedResource?.userMetadata?.characters as any) ?? [],
-    );
-    const [locations, setLocations] = React.useState<string[]>(
-        (selectedResource?.userMetadata?.locations as any) ?? [],
-    );
-    const [items, setItems] = React.useState<string[]>(
-        (selectedResource?.userMetadata?.items as any) ?? [],
-    );
     const [pov, setPOV] = React.useState<string | null>(
         (selectedResource?.userMetadata?.pov as any) ?? null,
     );
 
+    const [dynamicMetadataSelections, setDynamicMetadataSelections] =
+        React.useState({
+            // This state will hold the current selections for each metadata source folder, keyed by folder name. This will allow us to support dynamic metadata source folders without hardcoding state for characters/locations/items.
+        } as Record<string, string[]>);
     React.useEffect(() => {
         setNotes((selectedResource?.userMetadata?.notes as any) ?? "");
         setStatus((selectedResource?.userMetadata?.status as any) ?? "draft");
-        setCharacters(
-            (selectedResource?.userMetadata?.characters as any) ?? [],
-        );
-        setLocations((selectedResource?.userMetadata?.locations as any) ?? []);
-        setItems((selectedResource?.userMetadata?.items as any) ?? []);
         setPOV((selectedResource?.userMetadata?.pov as any) ?? null);
+        setDynamicMetadataSelections((prev) => {
+            const newSelections: Record<string, string[]> = {};
+            metadataSourceFolders.forEach((folder) => {
+                const key = folder.slug;
+                newSelections[key] =
+                    (selectedResource?.userMetadata?.[key] as any) ?? [];
+            });
+            return {
+                ...prev,
+                ...newSelections,
+            };
+        });
     }, [selectedResource]);
+
+    // TODO: Rewrite the above lists to be more dynamic based on what metadataSourceFolders exist in the project,
+    // rather than hardcoding characters/locations/items. This will allow for more flexible project types and custom metadata sources.
 
     return (
         <aside
@@ -154,43 +156,6 @@ export default function MetadataSidebar({
                             }}
                         />
                     </div>
-                    <div className="mb-6">
-                        <MultiSelectList
-                            label="Characters"
-                            className="text-brand-mid"
-                            items={characterList}
-                            selected={characters}
-                            onChange={(next) => {
-                                setCharacters(next);
-                                onChangeCharacters && onChangeCharacters(next);
-                            }}
-                        />
-                    </div>
-
-                    <div className="mb-6">
-                        <MultiSelectList
-                            label="Locations"
-                            className="text-brand-mid"
-                            items={locationList}
-                            selected={locations}
-                            onChange={(next) => {
-                                setLocations(next);
-                                onChangeLocations && onChangeLocations(next);
-                            }}
-                        />
-                    </div>
-                    <div className="mb-6">
-                        <MultiSelectList
-                            label="Items"
-                            className="text-brand-mid"
-                            items={itemList}
-                            selected={items}
-                            onChange={(next) => {
-                                setItems(next);
-                                onChangeItems && onChangeItems(next);
-                            }}
-                        />
-                    </div>
                     <div>
                         <POVAutocomplete
                             className="text-brand-mid"
@@ -201,6 +166,41 @@ export default function MetadataSidebar({
                                 onChangePOV && onChangePOV(v);
                             }}
                         />
+                    </div>
+                    <div id="sidebar-dynamic-test">
+                        {metadataSourceFolders.map((folder) => (
+                            <div key={folder.name} className="mb-6">
+                                {folder.metadataSource?.metadataInputType ===
+                                "multiselect" ? (
+                                    <MultiSelectList
+                                        label={folder.name}
+                                        className="text-brand-mid"
+                                        items={(() =>
+                                            getMetadataForFolder(
+                                                folder.name,
+                                            ))()}
+                                        selected={
+                                            dynamicMetadataSelections[
+                                                folder.name
+                                            ] ?? []
+                                        }
+                                        onChange={(next) => {
+                                            setDynamicMetadataSelections(
+                                                (prev) => ({
+                                                    ...prev,
+                                                    [folder.name]: next,
+                                                }),
+                                            );
+                                            onChangeDynamicMetadata &&
+                                                onChangeDynamicMetadata({
+                                                    ...dynamicMetadataSelections,
+                                                    [folder.name]: next,
+                                                });
+                                        }}
+                                    />
+                                ) : null}
+                            </div>
+                        ))}
                     </div>
                 </React.Fragment>
             ) : (
