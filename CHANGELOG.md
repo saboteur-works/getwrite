@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.3](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.2...getwrite-v0.2.3) (2026-04-03)
+
+
+### Features
+
+* made resource-related metadata dynamic in sidebar ([cb709fe](https://github.com/saboteur-works/getwrite/commit/cb709fea84486afce33269d401abffbf2830354d))
+* made resource-related metadata dynamic in sidebar ([0094c97](https://github.com/saboteur-works/getwrite/commit/0094c971a50434e295bedd37947008c7753d44fe))
+
 ## [0.2.2](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.1...getwrite-v0.2.2) (2026-04-02)
 
 
