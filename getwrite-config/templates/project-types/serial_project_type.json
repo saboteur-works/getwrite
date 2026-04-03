@@ -4,13 +4,39 @@
     "description": "Serialized fiction project type for episodes or installments.",
     "folders": [
         { "name": "Workspace", "special": true },
-        { "name": "Episodes" },
-        { "name": "Characters" },
+        {
+            "name": "Episodes",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "Characters",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "Locations",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "Items",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
         { "name": "Assets" }
     ],
     "defaultResources": [
         {
-            "folder": "Workspace",
+            "folder": "Assets",
             "name": "Episode Template",
             "type": "text",
             "template": "# Episode Title\\n\\n"

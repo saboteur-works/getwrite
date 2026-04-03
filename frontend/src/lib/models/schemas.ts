@@ -86,7 +86,7 @@ export const ProjectSchema = z.object({
  */
 export const FolderSchema = z.object({
     id: UUID,
-    slug: z.string().optional(),
+    slug: z.string(),
     name: z.string(),
     type: z.literal("folder"),
     parentId: UUID.nullable().optional(),
@@ -94,6 +94,14 @@ export const FolderSchema = z.object({
     createdAt: IsoDateString,
     updatedAt: IsoDateString.optional(),
     special: z.boolean().optional(),
+    metadataSource: z
+        .object({
+            isMetadataSource: z.boolean(),
+            metadataInputType: z
+                .enum(["select", "multiselect", "text"])
+                .optional(),
+        })
+        .optional(),
 });
 
 /**
@@ -125,7 +133,7 @@ export const TipTapDocumentSchema: z.ZodTypeAny = z.object({
  */
 export const ResourceBaseSchema = z.object({
     id: UUID,
-    slug: z.string().optional(),
+    slug: z.string(),
     name: z.string(),
     type: ResourceTypeSchema,
     folderId: UUID.nullable().optional(),
@@ -241,6 +249,14 @@ export const ProjectTypeResourceSchema = z.object({
 export const ProjectTypeFolderSchema = z.object({
     name: z.string(),
     special: z.boolean().optional(),
+    metadataSource: z
+        .object({
+            isMetadataSource: z.boolean(),
+            metadataInputType: z
+                .enum(["select", "multiselect", "text"])
+                .optional(),
+        })
+        .optional(),
     defaultResources: z.array(ProjectTypeResourceSchema).optional(),
 });
 

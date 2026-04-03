@@ -75,12 +75,17 @@ export type ResourceType = "text" | "image" | "audio" | "folder";
  */
 export type ViewName = "edit" | "organizer" | "data" | "diff" | "timeline";
 
+export type MetadataSource = {
+    isMetadataSource: boolean;
+    metadataInputType?: "autocomplete" | "multiselect" | "text";
+};
+
 /** Base attributes common to all resource types (text/image/audio). */
 export interface ResourceBase {
     /** Resource UUID (immutable identity independent of path). */
     id: UUID;
-    /** Optional human-friendly slug, unique per-project when present. */
-    slug?: string;
+    /** Human-friendly slug, unique per-project. */
+    slug: string;
     /** Display name (without extension). */
     name: string;
     /** Resource media type. */
@@ -110,6 +115,7 @@ export interface Folder extends ResourceBase {
     /** Parent folder UUID; null or undefined for top-level. */
     parentId?: UUID | null;
     special?: boolean;
+    metadataSource?: MetadataSource;
 }
 
 // Minimal TipTap AST-safe types used for editor persistence.

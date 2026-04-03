@@ -418,6 +418,16 @@ export default function Home(): JSX.Element {
         }));
     };
 
+    const handleChangeDynamicMetadata = (
+        metadata: Record<string, string[]>,
+        resourceId: string,
+    ) => {
+        updateResource(resourceId, (r) => ({
+            ...r,
+            userMetadata: { ...r.userMetadata, ...metadata },
+        }));
+    };
+
     /**
      * Updates the point-of-view (POV) character field in a resource's metadata.
      *
@@ -653,6 +663,7 @@ export default function Home(): JSX.Element {
             onChangeCharacters={handleChangeCharacters}
             onChangeLocations={handleChangeLocations}
             onChangeItems={handleChangeItems}
+            onChangeDynamicMetadata={handleChangeDynamicMetadata}
             onChangePOV={handleChangePOV}
         >
             {!selectedProject ? (

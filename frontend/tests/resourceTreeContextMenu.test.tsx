@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import ResourceTree from "../components/Tree/ResourceTree";
+import ResourceTree from "../components/ResourceTree/ResourceTree";
 import { Provider } from "react-redux";
 import { setProject } from "../src/store/projectsSlice";
 import { makeStore } from "../src/store/store";
@@ -46,10 +46,7 @@ describe("ResourceTree context menu", () => {
 
         render(
             <Provider store={testStore}>
-                <ResourceTree
-                    projectId={project.id}
-                    onResourceAction={onResourceAction}
-                />
+                <ResourceTree onResourceAction={onResourceAction} />
             </Provider>,
         );
 

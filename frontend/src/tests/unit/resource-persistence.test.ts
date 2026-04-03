@@ -12,6 +12,7 @@ import {
 } from "../../lib/models/resource";
 import { readSidecar } from "../../lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
+import { meta } from "zod/v4/core";
 
 const folderId = "11111111-1111-4111-8111-111111111111";
 
@@ -98,6 +99,10 @@ describe("models/resource persistence regressions (T007)", () => {
             const folder = createFolderResource({
                 name: "Reference Folder",
                 special: true,
+                metadataSource: {
+                    isMetadataSource: true,
+                    metadataInputType: "select",
+                },
             });
 
             await writeResourceToFile(projectRoot, folder);
@@ -118,6 +123,10 @@ describe("models/resource persistence regressions (T007)", () => {
                 name: "Reference Folder",
                 type: "folder",
                 special: true,
+                metadataSource: {
+                    isMetadataSource: true,
+                    metadataInputType: "select",
+                },
             });
         } finally {
             await removeDirRetry(projectRoot);

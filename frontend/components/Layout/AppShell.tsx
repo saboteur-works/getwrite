@@ -128,14 +128,13 @@ export interface AppShellProps {
         status: "draft" | "in-review" | "published",
         resourceId: string,
     ) => void;
-    /** Metadata callback for character associations. */
-    onChangeCharacters?: (chars: string[], resourceId: string) => void;
-    /** Metadata callback for location associations. */
-    onChangeLocations?: (locs: string[], resourceId: string) => void;
-    /** Metadata callback for item associations. */
-    onChangeItems?: (items: string[], resourceId: string) => void;
     /** Metadata callback for point-of-view updates. */
     onChangePOV?: (pov: string | null, resourceId: string) => void;
+    /** Metadata callback for dynamic metadata updates. */
+    onChangeDynamicMetadata?: (
+        metadata: Record<string, string[]>,
+        resourceId: string,
+    ) => void;
     /**
      * General resource action handler used by tree and modal flows.
      *
@@ -170,10 +169,8 @@ export default function AppShell({
     selectedResourceId,
     onChangeNotes,
     onChangeStatus,
-    onChangeCharacters,
-    onChangeLocations,
-    onChangeItems,
     onChangePOV,
+    onChangeDynamicMetadata,
     onResourceAction,
     onCloseProject,
     project,
@@ -1180,31 +1177,17 @@ export default function AppShell({
                                                 selectedResource.id,
                                             )
                                         }
-                                        onChangeCharacters={(chars) =>
-                                            selectedResource &&
-                                            onChangeCharacters?.(
-                                                chars,
-                                                selectedResource.id,
-                                            )
-                                        }
-                                        onChangeLocations={(locs) =>
-                                            selectedResource &&
-                                            onChangeLocations?.(
-                                                locs,
-                                                selectedResource.id,
-                                            )
-                                        }
-                                        onChangeItems={(items) =>
-                                            selectedResource &&
-                                            onChangeItems?.(
-                                                items,
-                                                selectedResource.id,
-                                            )
-                                        }
                                         onChangePOV={(pov) =>
                                             selectedResource &&
                                             onChangePOV?.(
                                                 pov,
+                                                selectedResource.id,
+                                            )
+                                        }
+                                        onChangeDynamicMetadata={(metadata) =>
+                                            selectedResource &&
+                                            onChangeDynamicMetadata?.(
+                                                metadata,
                                                 selectedResource.id,
                                             )
                                         }

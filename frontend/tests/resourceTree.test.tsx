@@ -19,6 +19,7 @@ describe("ResourceTree", () => {
             name: "Folder A",
             parentFolderId: null,
             orderIndex: 0,
+            metadataSource: { isMetadataSource: false },
         });
         const folderId = folder.id;
 
