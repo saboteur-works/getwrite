@@ -207,7 +207,7 @@ export default function EditorMenuInput({
                     data-tooltip-id="my-tooltip"
                     id={controlId}
                     disabled={disabled}
-                    className={`editor-menu-input-control ${activeClass} ${disabledClass}`}
+                    className={`editor-menu-input-control w-fit ${activeClass} ${disabledClass}`}
                     data-tooltip-content={tooltipContent}
                     aria-label={tooltipContent || Icon}
                     value={value}
