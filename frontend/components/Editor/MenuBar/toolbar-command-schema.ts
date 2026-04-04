@@ -6,6 +6,8 @@ import type {
 } from "./EditorMenuInput";
 import type { EditorMenuIconName } from "./EditorMenuIcon";
 import type { MenuBarState } from "./menuBarState";
+import { FONT_OPTIONS } from "../../../src/lib/fonts/fonts";
+import { loadGoogleFont } from "../../../src/lib/fonts/loadGoogleFont";
 
 export interface ToolbarCommandContext {
     editor: Editor;
@@ -134,16 +136,27 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
                 },
             },
             {
-                id: "font-style",
+                id: "font-family",
                 kind: "input",
                 icon: "fontStyle",
                 inputType: "select",
-                tooltipContent: "Font Style",
-                options: ["Domine", "Arial", "Times New Roman", "Georgia"],
+                tooltipContent: "Font Family",
+                options: FONT_OPTIONS.map((option) => option.label),
                 getValue: ({ editor }) =>
                     editor.getAttributes("textStyle").fontFamily ?? "Domine",
                 onChange: ({ editor }, value) => {
-                    editor.chain().focus().setFontFamily(value).run();
+                    // editor.chain().focus().setFontFamily(value).run();
+                    const selected = FONT_OPTIONS.find(
+                        (f) => f.label === value,
+                    );
+                    if (!selected) return;
+
+                    loadGoogleFont(
+                        selected.value.replace(/\+/g, " "),
+                        selected.weights,
+                    );
+
+                    editor.chain().focus().setFontFamily(selected.label).run();
                 },
             },
         ],

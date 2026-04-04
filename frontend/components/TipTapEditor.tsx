@@ -23,11 +23,7 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
-import {
-    TextStyleKit,
-    FontSize,
-    FontFamily,
-} from "@tiptap/extension-text-style";
+import { FontSize, FontFamily, TextStyle } from "@tiptap/extension-text-style";
 import Blockquote from "@tiptap/extension-blockquote";
 import { BulletList, ListItem } from "@tiptap/extension-list";
 import CodeBlock from "@tiptap/extension-code-block";
@@ -66,7 +62,7 @@ export interface TipTapEditorProps {
  */
 const extensions = [
     StarterKit,
-    TextStyleKit,
+    TextStyle,
     FontSize,
     Blockquote,
     BulletList,
