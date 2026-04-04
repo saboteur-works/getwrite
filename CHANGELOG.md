@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.5](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.4...getwrite-v0.2.5) (2026-04-04)
+
+
+### Features
+
+* implemented dynamic font family loading for the editor ([45e4f2f](https://github.com/saboteur-works/getwrite/commit/45e4f2f7dae70a276ef1687a8ad6ac4018af79be))
+
 ## [0.2.4](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.3...getwrite-v0.2.4) (2026-04-03)
 
 
