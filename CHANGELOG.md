@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.6](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.5...getwrite-v0.2.6) (2026-04-06)
+
+
+### Bug Fixes
+
+* fixed dependencies ([10bab0e](https://github.com/saboteur-works/getwrite/commit/10bab0e745ec1fac74be7fdd61876f060f5a4cfb))
+* fixed dependencies ([ccd4029](https://github.com/saboteur-works/getwrite/commit/ccd40293a8c10486b6411a7912cac8aaa897bbb1))
+
 ## [0.2.5](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.4...getwrite-v0.2.5) (2026-04-04)
 
 
