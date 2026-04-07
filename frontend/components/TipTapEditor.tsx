@@ -89,7 +89,6 @@ const extensions = [
     }),
     FontFamily,
     GetWriteParagraphLeading,
-    CustomHeading,
 ];
 
 /**
@@ -136,6 +135,31 @@ export default function TipTapEditor({
         shouldRerenderOnTransaction: true,
         extensions: [
             ...extensions,
+            CustomHeading.configure({
+                customStyles: {
+                    h1: {
+                        fontSize: "20px",
+                        fontFamily: "Inter, sans-serif",
+                        fontWeight: "700",
+                        letterSpacing: "0.14em",
+                        color: "red",
+                    },
+                    h2: {
+                        fontSize: "16px",
+                        fontFamily: "Times, serif",
+                        fontWeight: "700",
+                        letterSpacing: "0.14em",
+                        color: "green",
+                    },
+                    h3: {
+                        fontSize: "14px",
+                        fontFamily: "Inter, sans-serif",
+                        fontWeight: "700",
+                        letterSpacing: "0.14em",
+                        color: "blue",
+                    },
+                },
+            }),
             Math.configure({
                 blockOptions: {
                     /**
