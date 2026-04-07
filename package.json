@@ -10,5 +10,8 @@
     "keywords": [],
     "author": "",
     "license": "ISC",
-    "packageManager": "pnpm@10.28.0"
+    "packageManager": "pnpm@10.28.0",
+    "dependencies": {
+        "@tiptap/extension-heading": "^3.22.2"
+    }
 }
