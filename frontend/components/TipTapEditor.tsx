@@ -34,6 +34,7 @@ import Typography from "@tiptap/extension-typography";
 import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import TextAlign from "@tiptap/extension-text-align";
 import GetWriteParagraphLeading from "./Editor/Extensions/GetWriteParagraphLeading";
+import CustomHeading from "./Editor/Extensions/CustomHeading";
 /**
  * Props accepted by {@link TipTapEditor}.
  */
@@ -61,7 +62,9 @@ export interface TipTapEditorProps {
  * Shared base extension list for all runtime editor instances.
  */
 const extensions = [
-    StarterKit,
+    StarterKit.configure({
+        heading: false, // disable default heading to use CustomHeading
+    }),
     TextStyle,
     FontSize,
     Blockquote,
@@ -86,6 +89,7 @@ const extensions = [
     }),
     FontFamily,
     GetWriteParagraphLeading,
+    CustomHeading,
 ];
 
 /**
