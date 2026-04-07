@@ -50,6 +50,8 @@ import type {
     TextResource,
     ResourceType,
     MetadataSource,
+    EditorHeadings,
+    EditorHeading,
 } from "./types";
 import { createResourceOfType, writeResourceToFile } from "./resource";
 import { writeRevision } from "./revision";
@@ -112,6 +114,12 @@ export interface ProjectTypeSpec {
     folders: ProjectTypeSpecFolder[];
     /** Optional list of default resources to scaffold inside the folders. */
     defaultResources?: ProjectTypeSpecResource[];
+    /** Optional default project configuration to apply when creating a project. */
+    editorConfig?: {
+        headings?: {
+            [index in EditorHeadings]?: EditorHeading;
+        };
+    };
 }
 
 /**
@@ -183,6 +191,7 @@ export async function createProjectFromType(options: {
     let specObj: ProjectTypeSpec;
     if (typeof spec === "string") {
         const res = await validateProjectTypeFile(spec);
+
         if (!res.success || !("value" in res))
             throw new Error(
                 `Invalid project-type spec file: ${JSON.stringify(res.errors)}`,
@@ -200,6 +209,7 @@ export async function createProjectFromType(options: {
             throw new Error("Invalid project-type spec object: missing value");
         specObj = res.value;
     }
+    console.log("SPEC", specObj);
 
     // Ensure project root exists
     await fs.mkdir(projectRoot, { recursive: true });
@@ -210,7 +220,11 @@ export async function createProjectFromType(options: {
         projectType: specObj.id,
         rootPath: projectRoot,
         slug: slugify(projectName),
+        config: {
+            editorConfig: specObj.editorConfig ?? {},
+        },
     });
+
     const projectJsonPath = path.join(projectRoot, "project.json");
     await fs.writeFile(
         projectJsonPath,
