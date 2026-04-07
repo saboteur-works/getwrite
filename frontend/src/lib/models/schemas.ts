@@ -98,7 +98,7 @@ export const FolderSchema = z.object({
         .object({
             isMetadataSource: z.boolean(),
             metadataInputType: z
-                .enum(["select", "multiselect", "text"])
+                .enum(["text", "multiselect", "autocomplete"])
                 .optional(),
         })
         .optional(),
@@ -253,7 +253,7 @@ export const ProjectTypeFolderSchema = z.object({
         .object({
             isMetadataSource: z.boolean(),
             metadataInputType: z
-                .enum(["select", "multiselect", "text"])
+                .enum(["text", "multiselect", "autocomplete"])
                 .optional(),
         })
         .optional(),

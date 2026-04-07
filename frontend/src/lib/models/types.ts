@@ -75,9 +75,15 @@ export type ResourceType = "text" | "image" | "audio" | "folder";
  */
 export type ViewName = "edit" | "organizer" | "data" | "diff" | "timeline";
 
+/** Input types for metadata collection. */
+export type MetadataInputType = "text" | "multiselect" | "autocomplete";
+
+/** Metadata source configuration for a folder or resource. */
 export type MetadataSource = {
+    /** `true` if this folder or resource is a metadata source. */
     isMetadataSource: boolean;
-    metadataInputType?: "autocomplete" | "multiselect" | "text";
+    /** Type of input used for metadata collection. Should only be set if `isMetadataSource` is true. */
+    metadataInputType?: MetadataInputType;
 };
 
 /** Base attributes common to all resource types (text/image/audio). */
