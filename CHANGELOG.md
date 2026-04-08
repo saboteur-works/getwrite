@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.7](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.6...getwrite-v0.2.7) (2026-04-08)
+
+
+### Features
+
+* added editorConfigSlice and read store in TipTapEditor for custom heading styles ([19dd60c](https://github.com/saboteur-works/getwrite/commit/19dd60c10d5b67ba499cea0626dae5fe54f399b6))
+* added project heading editor menu ([879893b](https://github.com/saboteur-works/getwrite/commit/879893b0a9f4d813768aec551f04d22f44f44754))
+* implement CustomHeading extension ([97f7835](https://github.com/saboteur-works/getwrite/commit/97f78353435c65a6106c66aa6ffb7e3e87d00ca5))
+* pass template config to created project ([d8967e3](https://github.com/saboteur-works/getwrite/commit/d8967e32c4cb6d218570aa568d12cce0f0cc63c0))
+* started heading settings panel ([323cb38](https://github.com/saboteur-works/getwrite/commit/323cb38045e1496152c673f1aa536cd72fe9523e))
+
+
+### Bug Fixes
+
+* fixed FolderSchema and  ProjectTypeFolderSchema metadataInputType enums ([c8fd265](https://github.com/saboteur-works/getwrite/commit/c8fd265e0bee9fe6b6e908215500996dad8d342c))
+
 ## [0.2.6](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.5...getwrite-v0.2.6) (2026-04-06)
 
 
