@@ -1,5 +1,6 @@
 import { mergeAttributes } from "@tiptap/core";
 import Heading from "@tiptap/extension-heading";
+import { buildHeadingStyleAttribute } from "../../../src/lib/editor-heading-settings";
 
 type HeadingAttribute = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
@@ -71,12 +72,16 @@ const CustomHeading = Heading.extend<CustomHeadingOptions>(() => {
             if (!style) {
                 return ["h1", mergeAttributes(HTMLAttributes), 0];
             }
+
+            const styleAttribute = buildHeadingStyleAttribute(style);
+
             return [
                 headingAttr,
-                // TODO: Refactor this to use a utility function that merges custom styles with any existing styles on the node, rather than overwriting them completely. This will ensure that any additional styles applied to the heading (e.g., from other extensions or user input) are preserved.
-                mergeAttributes(HTMLAttributes, {
-                    style: `font-size: ${style.fontSize}; font-family: ${style.fontFamily}; font-weight: ${style.fontWeight}; letter-spacing: ${style.letterSpacing}; color: ${style.color};`,
-                }),
+                styleAttribute
+                    ? mergeAttributes(HTMLAttributes, {
+                          style: styleAttribute,
+                      })
+                    : mergeAttributes(HTMLAttributes),
                 0,
             ];
         },

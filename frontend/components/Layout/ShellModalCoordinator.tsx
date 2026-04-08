@@ -13,10 +13,12 @@ import ResourceCommandPalette from "../common/ResourceCommandPalette";
 import CreateResourceModal from "../ResourceTree/CreateResourceModal";
 import ExportPreviewModal from "../common/ExportPreviewModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
+import HeadingSettingsModal from "../preferences/HeadingSettingsModal";
 import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import HelpPage from "../help/HelpPage";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
+import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 
 export interface ShellContextActionState {
     open: boolean;
@@ -55,6 +57,9 @@ export interface ShellModalCoordinatorProps {
     setExportModal: (state: ShellExportModalState) => void;
     compileModal: ShellCompileModalState;
     setCompileModal: (state: ShellCompileModalState) => void;
+    isHeadingSettingsModalOpen: boolean;
+    setIsHeadingSettingsModalOpen: (open: boolean) => void;
+    initialHeadingSettings?: EditorHeadingMap;
     isPreferencesModalOpen: boolean;
     setIsPreferencesModalOpen: (open: boolean) => void;
     isHelpModalOpen: boolean;
@@ -72,6 +77,7 @@ export interface ShellModalCoordinatorProps {
     hasUnsavedEditorChanges: boolean;
     onDeleteConfirm: (resourceId: string) => Promise<void>;
     onCloseProjectConfirm: () => void;
+    onSaveHeadingSettings: (headings: EditorHeadingMap) => Promise<void>;
     onCreateConfirmed: (
         payload: {
             title: string;
@@ -97,6 +103,9 @@ export default function ShellModalCoordinator({
     setExportModal,
     compileModal,
     setCompileModal,
+    isHeadingSettingsModalOpen,
+    setIsHeadingSettingsModalOpen,
+    initialHeadingSettings,
     isPreferencesModalOpen,
     setIsPreferencesModalOpen,
     isHelpModalOpen,
@@ -114,6 +123,7 @@ export default function ShellModalCoordinator({
     hasUnsavedEditorChanges,
     onDeleteConfirm,
     onCloseProjectConfirm,
+    onSaveHeadingSettings,
     onCreateConfirmed,
     onExportConfirmed,
     onSelectResource,
@@ -211,6 +221,22 @@ export default function ShellModalCoordinator({
                     setCompileModal({ open: false });
                 }}
             />
+
+            {isHeadingSettingsModalOpen ? (
+                <div className="appshell-modal-root">
+                    <div
+                        className="appshell-modal-backdrop"
+                        onClick={() => setIsHeadingSettingsModalOpen(false)}
+                    />
+                    <div className="appshell-modal-panel appshell-modal-panel--preferences">
+                        <HeadingSettingsModal
+                            initialHeadings={initialHeadingSettings}
+                            onClose={() => setIsHeadingSettingsModalOpen(false)}
+                            onSave={onSaveHeadingSettings}
+                        />
+                    </div>
+                </div>
+            ) : null}
 
             {isPreferencesModalOpen ? (
                 <div className="appshell-modal-root">
