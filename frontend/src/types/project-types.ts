@@ -4,6 +4,8 @@
  * Shared TypeScript models for project type template management.
  */
 
+import { EditorHeading } from "../lib/models";
+
 /**
  * Supported resource content types for default project resources.
  */
@@ -77,6 +79,9 @@ export interface ProjectTypeDefinition {
      * Optional top-level default resources.
      */
     defaultResources?: ProjectTypeDefaultResource[];
+    editorConfig?: {
+        headings?: Record<string, EditorHeading>;
+    };
 }
 
 /**
