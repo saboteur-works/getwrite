@@ -18,6 +18,15 @@ export type MetadataValue =
     | boolean[]
     | { [key: string]: MetadataValue };
 
+export type EditorHeadings = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+export type EditorHeading = {
+    fontSize?: string;
+    fontFamily?: string;
+    fontWeight?: string;
+    letterSpacing?: string;
+    color?: string;
+};
+
 /**
  * Project-level configuration persisted with the project (project.json).
  * Contains user-editable preferences that affect model behavior.
@@ -36,6 +45,12 @@ export interface ProjectConfig {
     tags?: Tag[];
     /** Optional map of resourceId -> tagId[] assignments persisted in project config. */
     tagAssignments?: Record<string, string[]>;
+    /** Editor configuration for the project. */
+    editorConfig: {
+        headings?: {
+            [index in EditorHeadings]?: EditorHeading;
+        };
+    };
 }
 
 /** Simple Tag type for project-scoped tagging. */
@@ -75,9 +90,15 @@ export type ResourceType = "text" | "image" | "audio" | "folder";
  */
 export type ViewName = "edit" | "organizer" | "data" | "diff" | "timeline";
 
+/** Input types for metadata collection. */
+export type MetadataInputType = "text" | "multiselect" | "autocomplete";
+
+/** Metadata source configuration for a folder or resource. */
 export type MetadataSource = {
+    /** `true` if this folder or resource is a metadata source. */
     isMetadataSource: boolean;
-    metadataInputType?: "autocomplete" | "multiselect" | "text";
+    /** Type of input used for metadata collection. Should only be set if `isMetadataSource` is true. */
+    metadataInputType?: MetadataInputType;
 };
 
 /** Base attributes common to all resource types (text/image/audio). */

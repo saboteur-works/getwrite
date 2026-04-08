@@ -22,6 +22,7 @@ import type {
 } from "../../src/lib/models/types";
 import { shallowEqual } from "react-redux";
 import { removeResource } from "../../src/store/projectsSlice";
+import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import ResourceTree from "../ResourceTree/ResourceTree";
 import ShellLayoutController from "./ShellLayoutController";
 import ShellSettingsMenu from "./ShellSettingsMenu";
@@ -57,6 +58,7 @@ import {
     saveGlobalColorMode,
 } from "../../src/lib/user-preferences";
 import type { MetadataValue } from "../../src/lib/models/types";
+import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 
 /**
  * Optional payload bag forwarded to `onResourceAction` callbacks.
@@ -179,6 +181,8 @@ export default function AppShell({
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] =
         useState<boolean>(false);
     const [isPreferencesModalOpen, setIsPreferencesModalOpen] =
+        useState<boolean>(false);
+    const [isHeadingSettingsModalOpen, setIsHeadingSettingsModalOpen] =
         useState<boolean>(false);
     const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
         useState<boolean>(false);
@@ -582,6 +586,11 @@ export default function AppShell({
         setIsPreferencesModalOpen(true);
     };
 
+    const handleOpenHeadingSettings = (): void => {
+        setIsSettingsMenuOpen(false);
+        setIsHeadingSettingsModalOpen(true);
+    };
+
     const handleOpenHelp = (): void => {
         setIsSettingsMenuOpen(false);
         setIsHelpModalOpen(true);
@@ -589,6 +598,7 @@ export default function AppShell({
 
     const handleCloseProject = (): void => {
         setIsSettingsMenuOpen(false);
+        setIsHeadingSettingsModalOpen(false);
         setIsPreferencesModalOpen(false);
         setIsProjectTypesModalOpen(false);
         setIsHelpModalOpen(false);
@@ -608,6 +618,37 @@ export default function AppShell({
         onCloseProject?.();
     };
 
+    const handleSaveHeadingSettings = async (
+        headings: EditorHeadingMap,
+    ): Promise<void> => {
+        if (!project?.rootPath) {
+            throw new Error("Project path unavailable for heading settings.");
+        }
+
+        const response = await fetch("/api/project/editor-config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                projectPath: project.rootPath,
+                headings,
+            }),
+        });
+        const body = (await response.json().catch(() => null)) as {
+            editorConfig?: { headings?: EditorHeadingMap };
+            error?: string;
+        } | null;
+
+        if (!response.ok) {
+            throw new Error(body?.error ?? "Failed to save heading settings.");
+        }
+
+        dispatch(
+            setEditorConfig({
+                headings: body?.editorConfig?.headings ?? {},
+            }),
+        );
+    };
+
     return (
         <div
             className={`appshell-shell ${isDarkMode ? "appshell-theme-dark" : ""}`}
@@ -619,6 +660,7 @@ export default function AppShell({
                 menuRef={settingsMenuRef}
                 onToggleOpen={() => setIsSettingsMenuOpen((prev) => !prev)}
                 onOpenPreferences={handleOpenPreferences}
+                onOpenHeadingSettings={handleOpenHeadingSettings}
                 onOpenProjectTypeManager={handleOpenProjectTypeManager}
                 onToggleColorMode={handleToggleColorMode}
                 onOpenHelp={handleOpenHelp}
@@ -712,6 +754,15 @@ export default function AppShell({
                                     setExportModal={setExportModal}
                                     compileModal={compileModal}
                                     setCompileModal={setCompileModal}
+                                    isHeadingSettingsModalOpen={
+                                        isHeadingSettingsModalOpen
+                                    }
+                                    setIsHeadingSettingsModalOpen={
+                                        setIsHeadingSettingsModalOpen
+                                    }
+                                    initialHeadingSettings={
+                                        project?.config?.editorConfig?.headings
+                                    }
                                     isPreferencesModalOpen={
                                         isPreferencesModalOpen
                                     }
@@ -744,6 +795,9 @@ export default function AppShell({
                                     project={project}
                                     hasUnsavedEditorChanges={
                                         hasUnsavedEditorChanges
+                                    }
+                                    onSaveHeadingSettings={
+                                        handleSaveHeadingSettings
                                     }
                                     onDeleteConfirm={async (resourceId) => {
                                         if (project) {

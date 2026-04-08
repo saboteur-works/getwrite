@@ -8,6 +8,7 @@ import {
     SlidersHorizontal,
     HelpCircle,
     LogOut,
+    Type,
 } from "lucide-react";
 
 export interface ShellSettingsMenuProps {
@@ -17,6 +18,7 @@ export interface ShellSettingsMenuProps {
     menuRef: React.RefObject<HTMLDivElement | null>;
     onToggleOpen: () => void;
     onOpenPreferences: () => void;
+    onOpenHeadingSettings: () => void;
     onOpenProjectTypeManager: () => void;
     onToggleColorMode: () => void;
     onOpenHelp: () => void;
@@ -31,6 +33,7 @@ export default function ShellSettingsMenu({
     menuRef,
     onToggleOpen,
     onOpenPreferences,
+    onOpenHeadingSettings,
     onOpenProjectTypeManager,
     onToggleColorMode,
     onOpenHelp,
@@ -73,6 +76,17 @@ export default function ShellSettingsMenu({
                             <Settings size={14} aria-hidden="true" />
                             User Preferences
                         </button>
+                        {hasProject ? (
+                            <button
+                                type="button"
+                                className="appshell-topbar-dropdown-item"
+                                role="menuitem"
+                                onClick={onOpenHeadingSettings}
+                            >
+                                <Type size={14} aria-hidden="true" />
+                                Heading Settings
+                            </button>
+                        ) : null}
                         <button
                             type="button"
                             className="appshell-topbar-dropdown-item"

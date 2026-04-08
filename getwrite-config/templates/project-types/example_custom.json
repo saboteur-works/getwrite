@@ -8,6 +8,22 @@
         { "name": "Back Matter", "special": true },
         { "name": "Characters", "special": true }
     ],
+    "editorConfig": {
+        "headings": {
+            "h1": {
+                "fontSize": "40px",
+                "fontWeight": "700"
+            },
+            "h2": {
+                "fontSize": "32px",
+                "fontWeight": "700"
+            },
+            "h3": {
+                "fontSize": "24px",
+                "fontWeight": "500"
+            }
+        }
+    },
     "defaultResources": [
         {
             "folder": "Front Matter",

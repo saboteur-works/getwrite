@@ -34,6 +34,9 @@ import Typography from "@tiptap/extension-typography";
 import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import TextAlign from "@tiptap/extension-text-align";
 import GetWriteParagraphLeading from "./Editor/Extensions/GetWriteParagraphLeading";
+import CustomHeading from "./Editor/Extensions/CustomHeading";
+import { useSelector } from "react-redux";
+import { selectEditorConfig } from "../src/store/editorConfigSlice";
 /**
  * Props accepted by {@link TipTapEditor}.
  */
@@ -61,7 +64,9 @@ export interface TipTapEditorProps {
  * Shared base extension list for all runtime editor instances.
  */
 const extensions = [
-    StarterKit,
+    StarterKit.configure({
+        heading: false, // disable default heading to use CustomHeading
+    }),
     TextStyle,
     FontSize,
     Blockquote,
@@ -114,6 +119,8 @@ export default function TipTapEditor({
     id,
     readonly = false,
 }: TipTapEditorProps) {
+    const editorProjectConfig = useSelector(selectEditorConfig);
+    console.log("Editor config from store:", editorProjectConfig);
     /** True when executing in browser context (guards SSR/hydration paths). */
     const isClient = typeof window !== "undefined";
 
@@ -132,6 +139,9 @@ export default function TipTapEditor({
         shouldRerenderOnTransaction: true,
         extensions: [
             ...extensions,
+            CustomHeading.configure({
+                customStyles: editorProjectConfig.headings || {},
+            }),
             Math.configure({
                 blockOptions: {
                     /**

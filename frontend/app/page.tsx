@@ -52,6 +52,7 @@ import {
 } from "../src/store/resourcesSlice";
 import { shallowEqual } from "react-redux";
 import { toastService } from "../src/lib/toast-service";
+import { setEditorConfig } from "../src/store/editorConfigSlice";
 
 /**
  * Flat representation of a project that has been opened in the current session.
@@ -258,6 +259,11 @@ export default function Home(): JSX.Element {
                           }))
                         : [],
                     metadata: p.project.metadata,
+                }),
+            );
+            dispatch(
+                setEditorConfig({
+                    headings: p.project.config.editorConfig?.headings ?? {},
                 }),
             );
 

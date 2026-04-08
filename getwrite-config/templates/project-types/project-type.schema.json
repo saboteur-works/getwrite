@@ -74,6 +74,24 @@
                 }
             }
         },
+        "editorConfig": {
+            "type": "object",
+            "description": "Default editor configuration for projects of this type.",
+            "properties": {
+                "headings": {
+                    "type": "object",
+                    "description": "Default styles for editor headings.",
+                    "properties": {
+                        "h1": { "$ref": "#/$defs/editorHeading" },
+                        "h2": { "$ref": "#/$defs/editorHeading" },
+                        "h3": { "$ref": "#/$defs/editorHeading" },
+                        "h4": { "$ref": "#/$defs/editorHeading" },
+                        "h5": { "$ref": "#/$defs/editorHeading" },
+                        "h6": { "$ref": "#/$defs/editorHeading" }
+                    }
+                }
+            }
+        },
         "defaultResources": {
             "type": "array",
             "items": {
@@ -81,5 +99,14 @@
             }
         }
     },
-    "additionalProperties": false
+    "additionalProperties": false,
+    "$defs": {
+        "editorHeading": {
+            "type": "object",
+            "properties": {
+                "fontSize": { "type": "string" },
+                "fontWeight": { "type": "string" }
+            }
+        }
+    }
 }

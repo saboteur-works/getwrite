@@ -16,6 +16,7 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
         maxRevisions: config?.maxRevisions ?? DEFAULT_MAX_REVISIONS,
         statuses: config?.statuses ?? [],
         autoPrune: config?.autoPrune ?? DEFAULT_AUTO_PRUNE,
+        editorConfig: config?.editorConfig ?? {},
     };
 }
 

@@ -35,12 +35,6 @@
 .tiptap h4,
 .tiptap h5,
 .tiptap h6 {
-    font-family: var(--font-serif);
-    font-weight: 700;
-    font-size: 13px; /* one step below body — structural, not dominant */
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--color-gw-red); /* chapter headings in red — STYLING.md S7 */
     margin-top: 32px;
     margin-bottom: 16px;
     line-height: 1.3;

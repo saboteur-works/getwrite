@@ -16,6 +16,7 @@ import type {
     ProjectTypeFolder,
     ProjectTypeResourceKind,
 } from "../../src/types/project-types";
+import { Pipette } from "lucide-react";
 
 /**
  * Props accepted by {@link ProjectTypeEditorForm}.
@@ -257,6 +258,148 @@ export default function ProjectTypeEditorForm({
                     )}
                 </div>
             </section>
+
+            <section className="project-type-editor-section">
+                <div className="project-type-editor-section-header">
+                    <h2 className="project-type-editor-section-title">
+                        Editor Settings
+                    </h2>
+                    {/* <button
+                        type="button"
+                        onClick={onAddResource}
+                        className="project-type-editor-action-button"
+                    >
+                        Add Resource
+                    </button> */}
+                </div>
+
+                <div className="project-type-editor-stack">
+                    <h3>Heading Styles</h3>
+                    <p className="project-type-editor-helper-text">
+                        Define custom styles for heading levels.
+                    </p>
+                    <div>
+                        <p className="project-type-editor-subsection-title">
+                            Heading 1
+                        </p>
+                        <div className="flex gap-4">
+                            <LabeledInput
+                                label="Font Family"
+                                value={
+                                    definition.editorConfig?.headings?.h1
+                                        ?.fontFamily ?? ""
+                                }
+                                placeholder="e.g. 'Georgia, serif'"
+                                onChange={(value) => {
+                                    patchDefinition({
+                                        editorConfig: {
+                                            ...definition.editorConfig,
+                                            headings: {
+                                                ...definition.editorConfig
+                                                    ?.headings,
+                                                h1: {
+                                                    ...definition.editorConfig
+                                                        ?.headings?.h1,
+                                                    fontFamily: value,
+                                                },
+                                            },
+                                        },
+                                    });
+                                }}
+                            />
+                            <LabeledNumberInput
+                                label="Font Size (px)"
+                                value={
+                                    definition.editorConfig?.headings?.h1
+                                        ?.fontSize
+                                        ? String(
+                                              definition.editorConfig.headings
+                                                  .h1.fontSize,
+                                          )
+                                        : ""
+                                }
+                                placeholder="e.g. 24"
+                                onChange={(value) => {
+                                    const fontSize = parseInt(value, 10);
+                                    if (isNaN(fontSize)) {
+                                        return;
+                                    }
+
+                                    patchDefinition({
+                                        editorConfig: {
+                                            ...definition.editorConfig,
+                                            headings: {
+                                                ...definition.editorConfig
+                                                    ?.headings,
+                                                h1: {
+                                                    ...definition.editorConfig
+                                                        ?.headings?.h1,
+                                                    fontSize:
+                                                        fontSize.toString() +
+                                                        "px",
+                                                },
+                                            },
+                                        },
+                                    });
+                                }}
+                            />
+                            <label className="project-type-editor-field">
+                                <span className="project-type-editor-field-label">
+                                    Font Weight
+                                </span>
+                                <select className="project-type-editor-field-control">
+                                    <option value="normal">Normal</option>
+                                    <option value="bold">Bold</option>
+                                    <option value="lighter">Lighter</option>
+                                    <option value="bolder">Bolder</option>
+                                </select>
+                            </label>
+                            <LabeledInput
+                                label="Letter Spacing"
+                                value={
+                                    definition.editorConfig?.headings?.h1
+                                        ?.letterSpacing ?? ""
+                                }
+                                placeholder="e.g. 0.5px"
+                                onChange={(value) => {
+                                    patchDefinition({
+                                        editorConfig: {
+                                            ...definition.editorConfig,
+                                            headings: {
+                                                ...definition.editorConfig
+                                                    ?.headings,
+                                                h1: {
+                                                    ...definition.editorConfig
+                                                        ?.headings?.h1,
+                                                    letterSpacing: value,
+                                                },
+                                            },
+                                        },
+                                    });
+                                }}
+                            />
+                            <label className="project-type-editor-field">
+                                <span className="project-type-editor-field-label">
+                                    Color
+                                </span>
+                                <Pipette
+                                    fill={
+                                        definition.editorConfig?.headings?.h1
+                                            ?.color ?? "#000000"
+                                    }
+                                    className="text-gw-dim"
+                                    size={24}
+                                    enableBackground={
+                                        definition.editorConfig?.headings?.h1
+                                            ?.color
+                                    }
+                                />
+                                <input type="color" className="hidden" />
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 }
@@ -278,6 +421,26 @@ function LabeledInput({
         <label className="project-type-editor-field">
             <span className="project-type-editor-field-label">{label}</span>
             <input
+                value={value}
+                placeholder={placeholder}
+                onChange={(event) => onChange(event.target.value)}
+                className="project-type-editor-field-control"
+            />
+        </label>
+    );
+}
+
+function LabeledNumberInput({
+    label,
+    value,
+    placeholder,
+    onChange,
+}: LabeledInputProps): JSX.Element {
+    return (
+        <label className="project-type-editor-field">
+            <span className="project-type-editor-field-label">{label}</span>
+            <input
+                type="number"
                 value={value}
                 placeholder={placeholder}
                 onChange={(event) => onChange(event.target.value)}

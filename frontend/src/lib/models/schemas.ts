@@ -47,6 +47,27 @@ export const MetadataValue: z.ZodTypeAny = z.lazy(() =>
     ]),
 );
 
+const EditorHeadingSchema = z.object({
+    fontSize: z.string().optional(),
+    fontFamily: z.string().optional(),
+    fontWeight: z.string().optional(),
+    letterSpacing: z.string().optional(),
+    color: z.string().optional(),
+});
+
+export const EditorConfigSchema = z.object({
+    headings: z
+        .object({
+            h1: EditorHeadingSchema.optional(),
+            h2: EditorHeadingSchema.optional(),
+            h3: EditorHeadingSchema.optional(),
+            h4: EditorHeadingSchema.optional(),
+            h5: EditorHeadingSchema.optional(),
+            h6: EditorHeadingSchema.optional(),
+        })
+        .optional(),
+});
+
 /**
  * Project-level configuration schema persisted in `project.json`.
  */
@@ -64,6 +85,7 @@ export const ProjectConfigSchema = z.object({
         )
         .optional(),
     tagAssignments: z.record(z.string(), z.array(UUID)).optional(),
+    editorConfig: EditorConfigSchema.optional(),
 });
 
 /**
@@ -98,7 +120,7 @@ export const FolderSchema = z.object({
         .object({
             isMetadataSource: z.boolean(),
             metadataInputType: z
-                .enum(["select", "multiselect", "text"])
+                .enum(["text", "multiselect", "autocomplete"])
                 .optional(),
         })
         .optional(),
@@ -253,7 +275,7 @@ export const ProjectTypeFolderSchema = z.object({
         .object({
             isMetadataSource: z.boolean(),
             metadataInputType: z
-                .enum(["select", "multiselect", "text"])
+                .enum(["text", "multiselect", "autocomplete"])
                 .optional(),
         })
         .optional(),
@@ -275,6 +297,7 @@ export const ProjectTypeSchema = z
         description: z.string().optional(),
         folders: z.array(ProjectTypeFolderSchema).min(1),
         defaultResources: z.array(ProjectTypeResourceSchema).optional(),
+        editorConfig: EditorConfigSchema.optional(),
     })
     .strict()
     .refine((val) => val.folders.some((f) => f.name === "Workspace"), {
