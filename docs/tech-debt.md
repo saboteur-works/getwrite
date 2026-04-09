@@ -82,6 +82,28 @@ Table of contents
     - Description: Refactors touching `revisionsSlice`, `projectsSlice`, `resource-templates`, or `ResourceTree` risk breaking canonical invariants if done without tests/verification gates.
     - Suggested remediation: Treat these as guarded refactors: add verification gates, unit tests, and small incremental PRs that preserve behavior.
 
+### High-Priority Action Items (Stage 3)
+
+- `fix/revision-canonical-guards` — Owner: TBD — Priority: P0
+    - Description: Add unit and integration tests that exercise canonical selection, promotion, deletion, and prune flows. Harden guard helpers so the `isCanonical` invariant (exactly one canonical revision per resource) cannot be violated by slice operations or transport races.
+    - Example files: frontend/src/store/revision-canonical-guards.ts, frontend/src/store/revisionsSlice.ts, frontend/src/lib/models/revision.ts
+    - Suggested remediation: Add focused tests, implement small guard helpers, and release a narrow patch that fails CI if invariant is broken. Draft PR: `fix/revision-canonical-guards`.
+
+- `feat/indexer-wait-drain` — Owner: TBD — Priority: P0
+    - Description: Replace any polling-based flush semantics with a deterministic, promise-based `waitForDrain()` on the indexer queue. Add durable write options and a CLI reindex/repair command.
+    - Example files: frontend/src/lib/models/indexer-queue.ts, frontend/src/lib/models/inverted-index.ts, frontend/src/lib/models/backlinks.ts
+    - Suggested remediation: Implement `waitForDrain(): Promise<void>`, expose graceful shutdown integration, add tests for crash/restart semantics, and add `getwrite reindex` CLI. Draft PR: `feat/indexer-wait-drain`.
+
+- `chore/toolbar-consolidation` — Owner: TBD — Priority: P1
+    - Description: Consolidate toolbar/menu wiring into a typed `CommandDescriptor` and central generator to eliminate duplicated wiring and submenu scaffolding.
+    - Example files: frontend/components/Editor/MenuBar/MenuBar.tsx, frontend/components/Editor/MenuBar/EditorMenuInput.tsx, frontend/components/Editor/MenuBar/EditorMenuColorSubmenu.tsx, frontend/components/Editor/MenuBar/toolbar-command-schema.ts
+    - Suggested remediation: Extract declarative config, migrate incremental tests, and open PR `chore/toolbar-consolidation`.
+
+- `chore/lodash-import-cleanup` — Owner: TBD — Priority: P1
+    - Description: Audit and replace non-path lodash imports with path imports (e.g. `lodash/debounce`) or native methods to reduce bundle pressure and match the repo policy.
+    - Example files: frontend/components/ResourceTree/ResourceTree.tsx, frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx, frontend/components/workarea/useCanonicalAutosave.ts
+    - Suggested remediation: Add an ESLint rule/CI check, perform automated codemod for common cases, and open PR `chore/lodash-import-cleanup`.
+
 ---
 
 Seeded from discovery run on 2026-04-08. Add new entries as issues and link them here.
