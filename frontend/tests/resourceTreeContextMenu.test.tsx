@@ -3,7 +3,8 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ResourceTree from "../components/ResourceTree/ResourceTree";
 import { Provider } from "react-redux";
-import { setProject } from "../src/store/projectsSlice";
+import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
+import { setFolders, setResources } from "../src/store/resourcesSlice";
 import { makeStore } from "../src/store/store";
 import type { AnyResource } from "../src/lib/models/types";
 import { generateUUID } from "../src/lib/models/uuid";
@@ -18,9 +19,10 @@ describe("ResourceTree context menu", () => {
         const rootId = generateUUID();
         const root: AnyResource = {
             id: rootId,
+            slug: "root",
             name: "Root",
-            title: "Root",
             type: "folder",
+            folderId: null,
             createdAt: now,
             updatedAt: now,
             userMetadata: {},
@@ -43,6 +45,9 @@ describe("ResourceTree context menu", () => {
                 resources,
             } as any),
         );
+        testStore.dispatch(setSelectedProjectId(project.id));
+        testStore.dispatch(setFolders([root as any]));
+        testStore.dispatch(setResources([scene as any]));
 
         render(
             <Provider store={testStore}>

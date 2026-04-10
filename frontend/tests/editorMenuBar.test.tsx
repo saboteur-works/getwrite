@@ -238,9 +238,9 @@ describe("MenuBar", () => {
         );
 
         fireEvent.change(
-            screen.getByRole("combobox", { name: /Font Style/i }),
+            screen.getByRole("combobox", { name: /Font Family/i }),
             {
-                target: { value: "Georgia" },
+                target: { value: "Merriweather" },
             },
         );
 
@@ -248,7 +248,7 @@ describe("MenuBar", () => {
             expect.arrayContaining([
                 expect.objectContaining({
                     name: "setFontFamily",
-                    payload: "Georgia",
+                    payload: "Merriweather",
                 }),
             ]),
         );

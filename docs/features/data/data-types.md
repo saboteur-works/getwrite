@@ -111,7 +111,7 @@ Storage layout (convention)
 Validation & Runtime Schemas
 
 - The authoritative runtime validation lives in `frontend/src/lib/models/schemas.ts` and uses Zod.
-- When updating types or adding fields, update the Zod schema and corresponding unit tests under `frontend/src/tests/unit`.
+- When updating types or adding fields, update the Zod schema and corresponding unit tests under `frontend/tests/unit`.
 
 Examples
 
