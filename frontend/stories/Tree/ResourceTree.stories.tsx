@@ -1,6 +1,6 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import ResourceTree from "../../components/Tree/ResourceTree";
+import ResourceTree from "../../components/ResourceTree/ResourceTree";
 
 const meta = {
     title: "Tree/ResourceTree",
