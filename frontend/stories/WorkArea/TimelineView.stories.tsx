@@ -69,3 +69,30 @@ export const SingleProject: Story = {
         project: project,
     },
 };
+
+export const Interactive: Story = {
+    render: (args) => {
+        const [selectedResourceId, setSelectedResourceId] =
+            React.useState<string | null>(null);
+        return (
+            <div>
+                <TimelineView
+                    {...args}
+                    onSelectResource={(id) => setSelectedResourceId(id)}
+                />
+                <div
+                    data-testid="selected-resource-id"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {selectedResourceId}
+                </div>
+            </div>
+        );
+    },
+    args: {
+        project: project,
+        folders: folders,
+        resources: resources,
+    },
+};

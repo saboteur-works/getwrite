@@ -60,3 +60,30 @@ export const Empty: Story = {
         revisions: [],
     },
 };
+
+export const Interactive: Story = {
+    render: (args) => {
+        const [selectedRevision, setSelectedRevision] =
+            React.useState<string | null>(null);
+        return (
+            <div>
+                <DiffView
+                    {...args}
+                    onSelectRevision={(id) => setSelectedRevision(id)}
+                />
+                <div
+                    data-testid="selected-revision-id"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {selectedRevision}
+                </div>
+            </div>
+        );
+    },
+    args: {
+        leftContent: sampleLeft,
+        rightContent: sampleRight,
+        revisions,
+    },
+};

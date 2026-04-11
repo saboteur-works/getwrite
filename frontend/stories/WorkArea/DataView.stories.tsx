@@ -56,3 +56,32 @@ export const WithResources: Story = {
         resources: resources,
     },
 };
+
+export const Interactive: Story = {
+    render: (args: DataViewProps) => {
+        const [selectedId, setSelectedId] = React.useState<string | null>(null);
+        return (
+            <div>
+                <DataView {...args} onSelectResource={(id) => setSelectedId(id)} />
+                <div
+                    data-testid="selected-resource-id"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {selectedId}
+                </div>
+                <div
+                    data-testid="resource-count"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {args.resources?.length ?? 0}
+                </div>
+            </div>
+        );
+    },
+    args: {
+        project,
+        resources: resources,
+    },
+};

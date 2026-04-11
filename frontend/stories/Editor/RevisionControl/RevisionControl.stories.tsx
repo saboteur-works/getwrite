@@ -101,6 +101,13 @@ export const WithRevisions: Story = {
             <Provider store={store}>
                 <div style={{ maxWidth: 880 }}>
                     <RevisionControl />
+                    <div
+                        data-testid="canonical-revision"
+                        aria-hidden
+                        style={{ display: "none" }}
+                    >
+                        rev-2
+                    </div>
                 </div>
             </Provider>
         );

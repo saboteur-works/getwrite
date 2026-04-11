@@ -60,6 +60,7 @@ export const Interactive: Story = {
     render: (args: React.ComponentProps<typeof SearchBar>) => {
         const Wrapper = () => {
             const [selected, setSelected] = React.useState<string | null>(null);
+            const [query, setQuery] = React.useState<string>("");
             return (
                 <div>
                     <SearchBar
@@ -67,11 +68,18 @@ export const Interactive: Story = {
                         onSelect={(id: string) => setSelected(id)}
                     />
                     <div
-                        data-testid="search-last-selected"
+                        data-testid="search-selected-id"
                         aria-hidden
                         style={{ display: "none" }}
                     >
                         {selected}
+                    </div>
+                    <div
+                        data-testid="search-query"
+                        aria-hidden
+                        style={{ display: "none" }}
+                    >
+                        {query}
                     </div>
                 </div>
             );

@@ -247,3 +247,49 @@ export const ActiveFormatting: Story = {
         },
     },
 };
+
+export const Interactive: Story = {
+    render: (args) => {
+        const [lastAction, setLastAction] = React.useState<string | null>(null);
+        const [actionCount, setActionCount] = React.useState(0);
+
+        // Create an editor double that tracks actions
+        const { editor, actions } = createEditorDouble();
+        const originalChain = editor.chain;
+        let previousActionCount = 0;
+
+        const chainProxy = new Proxy(originalChain.bind(editor), {
+            apply() {
+                const result = originalChain.call(editor);
+                const newAction = actions[actions.length - 1];
+                if (newAction) {
+                    setLastAction(newAction.name);
+                    setActionCount(actions.length);
+                }
+                return result;
+            },
+        });
+
+        editor.chain = chainProxy as any;
+
+        return (
+            <div>
+                <MenuBar {...args} editor={editor} stateOverride={defaultState} />
+                <div
+                    data-testid="last-action"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {lastAction}
+                </div>
+                <div
+                    data-testid="action-count"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {actionCount}
+                </div>
+            </div>
+        );
+    },
+};

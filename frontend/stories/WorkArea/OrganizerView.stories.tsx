@@ -50,16 +50,36 @@ export const Default: Story = {
 export const Interactive: Story = {
     render: (args: OrganizerViewProps) => {
         const [show, setShow] = React.useState(!!args.showBody);
+        const [selectedId, setSelectedId] = React.useState<string | null>(null);
         return (
-            <OrganizerView
-                {...args}
-                resources={args.resources}
-                showBody={show}
-                onToggleBody={(s) => {
-                    setShow(s);
-                    if (args.onToggleBody) args.onToggleBody(s);
-                }}
-            />
+            <div>
+                <OrganizerView
+                    {...args}
+                    resources={args.resources}
+                    showBody={show}
+                    onToggleBody={(s) => {
+                        setShow(s);
+                        if (args.onToggleBody) args.onToggleBody(s);
+                    }}
+                    onSelectResource={(id) => {
+                        setSelectedId(id);
+                    }}
+                />
+                <div
+                    data-testid="show-body"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {String(show)}
+                </div>
+                <div
+                    data-testid="selected-resource-id"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {selectedId}
+                </div>
+            </div>
         );
     },
     args: {

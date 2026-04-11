@@ -18,3 +18,33 @@ export const Default: Story = {
         onChange: (value: string) => console.log("pov", value),
     },
 };
+
+export const Interactive: Story = {
+    render: (args) => {
+        const [value, setValue] = React.useState(args.value);
+        return (
+            <div>
+                <POVAutocomplete
+                    {...args}
+                    value={value}
+                    onChange={(v) => {
+                        setValue(v);
+                        args.onChange?.(v);
+                    }}
+                />
+                <div
+                    data-testid="current-pov"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {value}
+                </div>
+            </div>
+        );
+    },
+    args: {
+        options: ["Alice", "Bob", "Narrator"],
+        value: "Alice",
+        onChange: (value: string) => console.log("pov", value),
+    },
+};

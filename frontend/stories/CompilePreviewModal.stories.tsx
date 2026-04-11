@@ -66,3 +66,46 @@ export const ResourcePreview: Story = {
         resource: sampleResources[1],
     } as any,
 };
+
+export const Interactive: Story = {
+    render: (args) => {
+        const [isOpen, setIsOpen] = React.useState(true);
+        const [lastAction, setLastAction] = React.useState<string | null>(null);
+        return (
+            <div>
+                <CompilePreviewModal
+                    {...args}
+                    isOpen={isOpen}
+                    onClose={() => {
+                        setIsOpen(false);
+                        setLastAction("close");
+                        args.onClose?.();
+                    }}
+                    onExport={() => {
+                        setLastAction("export");
+                        args.onExport?.();
+                    }}
+                />
+                <div
+                    data-testid="is-open"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {String(isOpen)}
+                </div>
+                <div
+                    data-testid="last-action"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {lastAction}
+                </div>
+            </div>
+        );
+    },
+    args: {
+        isOpen: true,
+        projectId: "proj-1",
+        resources: sampleResources,
+    },
+};
