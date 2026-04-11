@@ -3,6 +3,7 @@ import { MoreHorizontal, Pencil, Trash2, Package } from "lucide-react";
 import ConfirmDialog from "../common/ConfirmDialog";
 import RenameProjectModal from "./RenameProjectModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
+import MenuItemButton from "../common/MenuItemButton";
 import type { AnyResource } from "../../src/lib/models/types";
 import {
     deleteProject as deleteProjectInStore,
@@ -138,35 +139,24 @@ export default function ManageProjectMenu({
                 >
                     <div className="p-2">
                         <>
-                            <button
-                                type="button"
-                                role="menuitem"
+                            <MenuItemButton
+                                icon={<Pencil size={14} aria-hidden="true" />}
+                                label="Rename"
                                 onClick={() => setRenameOpen(true)}
-                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm text-gw-secondary hover:bg-gw-chrome2 hover:text-gw-primary rounded transition-colors duration-150"
-                            >
-                                <Pencil size={14} aria-hidden="true" />
-                                Rename
-                            </button>
+                            />
 
-                            <button
-                                type="button"
-                                role="menuitem"
+                            <MenuItemButton
+                                icon={<Trash2 size={14} aria-hidden="true" />}
+                                label="Delete"
+                                danger
                                 onClick={() => setConfirmDeleteOpen(true)}
-                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm text-gw-red hover:bg-gw-chrome2 rounded transition-colors duration-150"
-                            >
-                                <Trash2 size={14} aria-hidden="true" />
-                                Delete
-                            </button>
+                            />
 
-                            <button
-                                type="button"
-                                role="menuitem"
+                            <MenuItemButton
+                                icon={<Package size={14} aria-hidden="true" />}
+                                label="Package"
                                 onClick={() => setCompileOpen(true)}
-                                className="w-full text-left flex items-center gap-2 px-2 py-2 text-sm text-gw-secondary hover:bg-gw-chrome2 hover:text-gw-primary rounded transition-colors duration-150"
-                            >
-                                <Package size={14} aria-hidden="true" />
-                                Package
-                            </button>
+                            />
                         </>
                     </div>
                 </div>

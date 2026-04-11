@@ -1,4 +1,6 @@
 import React from "react";
+import LabeledField from "./LabeledField";
+import useSyncedControlledValue from "./useSyncedControlledValue";
 
 export interface POVAutocompleteProps {
     options?: string[];
@@ -13,27 +15,22 @@ export default function POVAutocomplete({
     onChange,
     className = "",
 }: POVAutocompleteProps) {
-    const [val, setVal] = React.useState(value);
-    React.useEffect(() => setVal(value), [value]);
+    const [val, setVal] = useSyncedControlledValue(value, onChange);
 
     return (
-        <div className={className}>
-            <label className="text-sm font-medium">POV</label>
+        <LabeledField label="POV" className={className}>
             <input
                 list="pov-options"
                 aria-label="pov-input"
                 className="w-full mt-2 p-2 border border-brand-mid text-sm"
                 value={val}
-                onChange={(e) => {
-                    setVal(e.target.value);
-                    onChange && onChange(e.target.value);
-                }}
+                onChange={(e) => setVal(e.target.value)}
             />
             <datalist id="pov-options">
                 {options.map((o) => (
                     <option key={o} value={o} />
                 ))}
             </datalist>
-        </div>
+        </LabeledField>
     );
 }

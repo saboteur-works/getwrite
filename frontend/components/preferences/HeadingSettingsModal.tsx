@@ -12,6 +12,7 @@ import {
     type EditorHeadingFieldKey,
     type EditorHeadingMap,
 } from "../../src/lib/editor-heading-settings";
+import HeadingStyleField from "./HeadingStyleField";
 
 interface HeadingSettingsModalProps {
     initialHeadings?: EditorHeadingMap;
@@ -223,13 +224,10 @@ export default function HeadingSettingsModal({
                             </div>
 
                             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                                <label
-                                    htmlFor={`${level}-fontSize`}
-                                    className="flex flex-col gap-2"
+                                <HeadingStyleField
+                                    id={`${level}-fontSize`}
+                                    label="Font Size"
                                 >
-                                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
-                                        Font Size
-                                    </span>
                                     <input
                                         id={`${level}-fontSize`}
                                         aria-label={`${getHeadingLabel(level)} Font Size`}
@@ -251,15 +249,12 @@ export default function HeadingSettingsModal({
                                         }}
                                         className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
                                     />
-                                </label>
+                                </HeadingStyleField>
 
-                                <label
-                                    htmlFor={`${level}-fontFamily`}
-                                    className="flex flex-col gap-2"
+                                <HeadingStyleField
+                                    id={`${level}-fontFamily`}
+                                    label="Font Family"
                                 >
-                                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
-                                        Font Family
-                                    </span>
                                     <input
                                         id={`${level}-fontFamily`}
                                         aria-label={`${getHeadingLabel(level)} Font Family`}
@@ -274,15 +269,12 @@ export default function HeadingSettingsModal({
                                         }
                                         className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
                                     />
-                                </label>
+                                </HeadingStyleField>
 
-                                <label
-                                    htmlFor={`${level}-fontWeight`}
-                                    className="flex flex-col gap-2"
+                                <HeadingStyleField
+                                    id={`${level}-fontWeight`}
+                                    label="Font Weight"
                                 >
-                                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
-                                        Font Weight
-                                    </span>
                                     <select
                                         id={`${level}-fontWeight`}
                                         aria-label={`${getHeadingLabel(level)} Font Weight`}
@@ -308,15 +300,12 @@ export default function HeadingSettingsModal({
                                             </option>
                                         ))}
                                     </select>
-                                </label>
+                                </HeadingStyleField>
 
-                                <label
-                                    htmlFor={`${level}-letterSpacing`}
-                                    className="flex flex-col gap-2"
+                                <HeadingStyleField
+                                    id={`${level}-letterSpacing`}
+                                    label="Letter Spacing"
                                 >
-                                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
-                                        Letter Spacing
-                                    </span>
                                     <input
                                         id={`${level}-letterSpacing`}
                                         aria-label={`${getHeadingLabel(level)} Letter Spacing`}
@@ -338,12 +327,9 @@ export default function HeadingSettingsModal({
                                         }}
                                         className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
                                     />
-                                </label>
+                                </HeadingStyleField>
 
-                                <label className="flex flex-col gap-2">
-                                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
-                                        Color
-                                    </span>
+                                <HeadingStyleField label="Color">
                                     <div className="flex items-center gap-3 rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2">
                                         <button
                                             type="button"
@@ -383,7 +369,7 @@ export default function HeadingSettingsModal({
                                             className="hidden"
                                         />
                                     </div>
-                                </label>
+                                </HeadingStyleField>
                             </div>
                         </section>
                     );

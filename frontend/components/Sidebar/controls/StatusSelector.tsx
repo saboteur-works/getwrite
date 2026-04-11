@@ -1,4 +1,6 @@
 import React from "react";
+import LabeledField from "./LabeledField";
+import useSyncedControlledValue from "./useSyncedControlledValue";
 
 export interface StatusSelectorProps {
     value?: string;
@@ -13,25 +15,20 @@ export default function StatusSelector({
     className = "",
     ariaLabel = "status-select",
 }: StatusSelectorProps) {
-    const [status, setStatus] = React.useState(value);
-    React.useEffect(() => setStatus(value), [value]);
+    const [status, setStatus] = useSyncedControlledValue(value, onChange);
 
     return (
-        <div className={className}>
-            <label className="text-sm font-medium">Status</label>
+        <LabeledField label="Status" className={className}>
             <select
                 aria-label={ariaLabel}
                 className="w-full mt-2 p-2 border rounded text-sm"
                 value={status}
-                onChange={(e) => {
-                    setStatus(e.target.value);
-                    onChange && onChange(e.target.value);
-                }}
+                onChange={(e) => setStatus(e.target.value)}
             >
                 <option value="draft">Draft</option>
                 <option value="review">In review</option>
                 <option value="published">Published</option>
             </select>
-        </div>
+        </LabeledField>
     );
 }

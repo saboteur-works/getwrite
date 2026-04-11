@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { X, FolderPlus } from "lucide-react";
 import type { Project as CanonicalProject } from "../../src/lib/models/types";
+import ProjectModalFrame from "../common/ProjectModalFrame";
 
 export interface CreateProjectPayload {
     name: string;
@@ -205,18 +206,10 @@ export default function CreateProjectModal({
     };
 
     return (
-        <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-project-title"
-            className="project-modal-root"
+        <ProjectModalFrame
+            onClose={onClose}
+            ariaLabelledBy="create-project-title"
         >
-            <div
-                className="project-modal-backdrop"
-                onClick={onClose}
-                aria-hidden="true"
-            />
-
             <form
                 onSubmit={handleSubmit}
                 className="project-modal-panel"
@@ -366,6 +359,6 @@ export default function CreateProjectModal({
                     </button>
                 </div>
             </form>
-        </div>
+        </ProjectModalFrame>
     );
 }

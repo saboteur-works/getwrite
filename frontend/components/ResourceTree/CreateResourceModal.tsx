@@ -5,6 +5,7 @@ import type {
     ResourceType as CanonicalResourceType,
     Folder,
 } from "../../src/lib/models/types";
+import ProjectModalFrame from "../common/ProjectModalFrame";
 
 type ResourceType = CanonicalResourceType | string;
 
@@ -74,13 +75,7 @@ export default function CreateResourceModal({
     if (!isOpen) return null;
 
     return (
-        <div className="project-modal-root">
-            <div
-                className="project-modal-backdrop"
-                onClick={onClose}
-                aria-hidden="true"
-            />
-
+        <ProjectModalFrame onClose={onClose}>
             <div className="project-modal-panel">
                 <h3 className="project-modal-title">
                     {initialTitle ? "Create resource" : "New resource"}
@@ -172,6 +167,6 @@ export default function CreateResourceModal({
                     </button>
                 </div>
             </div>
-        </div>
+        </ProjectModalFrame>
     );
 }
