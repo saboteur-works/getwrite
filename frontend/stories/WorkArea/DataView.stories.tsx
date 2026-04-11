@@ -62,7 +62,10 @@ export const Interactive: Story = {
         const [selectedId, setSelectedId] = React.useState<string | null>(null);
         return (
             <div>
-                <DataView {...args} onSelectResource={(id) => setSelectedId(id)} />
+                <DataView
+                    {...args}
+                    onSelectResource={(id) => setSelectedId(id)}
+                />
                 <div
                     data-testid="selected-resource-id"
                     aria-hidden

@@ -49,9 +49,8 @@ export const Open: Story = {
 export const Interactive: Story = {
     render: (args) => {
         const [open, setOpen] = React.useState(true);
-        const [created, setCreated] = React.useState<CreateResourcePayload | null>(
-            null,
-        );
+        const [created, setCreated] =
+            React.useState<CreateResourcePayload | null>(null);
         return (
             <div>
                 <CreateResourceModal

@@ -72,8 +72,9 @@ export const SingleProject: Story = {
 
 export const Interactive: Story = {
     render: (args) => {
-        const [selectedResourceId, setSelectedResourceId] =
-            React.useState<string | null>(null);
+        const [selectedResourceId, setSelectedResourceId] = React.useState<
+            string | null
+        >(null);
         return (
             <div>
                 <TimelineView

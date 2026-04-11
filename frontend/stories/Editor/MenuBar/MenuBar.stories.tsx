@@ -274,7 +274,11 @@ export const Interactive: Story = {
 
         return (
             <div>
-                <MenuBar {...args} editor={editor} stateOverride={defaultState} />
+                <MenuBar
+                    {...args}
+                    editor={editor}
+                    stateOverride={defaultState}
+                />
                 <div
                     data-testid="last-action"
                     aria-hidden

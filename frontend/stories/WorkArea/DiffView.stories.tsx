@@ -63,8 +63,9 @@ export const Empty: Story = {
 
 export const Interactive: Story = {
     render: (args) => {
-        const [selectedRevision, setSelectedRevision] =
-            React.useState<string | null>(null);
+        const [selectedRevision, setSelectedRevision] = React.useState<
+            string | null
+        >(null);
         return (
             <div>
                 <DiffView
