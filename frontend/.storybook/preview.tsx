@@ -6,6 +6,12 @@ import projectReducer, { StoredProject } from "../src/store/projectsSlice";
 import resourcesReducer from "../src/store/resourcesSlice";
 import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
+import {
+    APPEARANCE_CHANGED_EVENT,
+    GLOBAL_APPEARANCE_STORAGE_KEY,
+    type AppearancePreferences,
+} from "../src/lib/user-preferences";
+// @ts-ignore Storybook side-effect CSS import is resolved by bundler at runtime.
 import "../app/globals.css";
 import { AnyResource, Folder, Project } from "../src/lib/models";
 
@@ -118,14 +124,74 @@ const mockStore = configureStore({
     },
 });
 
-const withStore = (Story: any) => (
-    <Provider store={mockStore}>
-        <div style={{ padding: 16 }}>
-            <Story />
-        </div>
-    </Provider>
-);
+type StorybookColorMode = "light" | "dark";
+
+function getColorModeFromGlobals(
+    globals: Record<string, unknown>,
+): StorybookColorMode {
+    return globals.colorMode === "dark" ? "dark" : "light";
+}
+
+function applyStorybookAppearance(colorMode: StorybookColorMode): void {
+    if (typeof document === "undefined" || typeof window === "undefined") {
+        return;
+    }
+
+    const root = document.documentElement;
+    root.classList.toggle("gw-theme-dark", colorMode === "dark");
+    root.classList.toggle("gw-theme-light", colorMode === "light");
+
+    const appearance: AppearancePreferences = {
+        colorModePreference: colorMode,
+        density: "comfortable",
+        reducedMotion: false,
+    };
+
+    window.localStorage.setItem(
+        GLOBAL_APPEARANCE_STORAGE_KEY,
+        JSON.stringify(appearance),
+    );
+    window.dispatchEvent(new Event(APPEARANCE_CHANGED_EVENT));
+}
+
+const withStore = (
+    Story: React.ComponentType,
+    context: { globals: Record<string, unknown> },
+) => {
+    const colorMode = getColorModeFromGlobals(
+        context.globals as Record<string, unknown>,
+    );
+
+    applyStorybookAppearance(colorMode);
+
+    return (
+        <Provider store={mockStore}>
+            <div
+                className={`appshell-shell ${colorMode === "dark" ? "appshell-theme-dark" : ""}`}
+                style={{ padding: 16 }}
+            >
+                <Story />
+            </div>
+        </Provider>
+    );
+};
+
 const preview: Preview = {
+    globalTypes: {
+        colorMode: {
+            name: "Color mode",
+            description: "Preview color mode",
+            defaultValue: "light",
+            toolbar: {
+                icon: "mirror",
+                dynamicTitle: true,
+                items: [
+                    { value: "light", title: "Light" },
+                    { value: "dark", title: "Dark" },
+                ],
+            },
+        },
+    },
     parameters: {
         nextjs: {
             appDirectory: true,
@@ -141,13 +207,6 @@ const preview: Preview = {
         },
     },
     decorators: [withStore],
-    // decorators: [
-    //     (Story) => (
-    //         <div style={{ padding: 16 }}>
-    //             <Story />
-    //         </div>
-    //     ),
-    // ],
 };
 
 export default preview;
