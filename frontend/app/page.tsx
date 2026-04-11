@@ -666,9 +666,6 @@ export default function Home(): JSX.Element {
             selectedResourceId={selectedResource?.id ?? null}
             onChangeNotes={handleChangeNotes}
             onChangeStatus={handleChangeStatus}
-            onChangeCharacters={handleChangeCharacters}
-            onChangeLocations={handleChangeLocations}
-            onChangeItems={handleChangeItems}
             onChangeDynamicMetadata={handleChangeDynamicMetadata}
             onChangePOV={handleChangePOV}
         >

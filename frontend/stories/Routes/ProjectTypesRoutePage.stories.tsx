@@ -23,10 +23,7 @@ const initialTemplates: ProjectTypeTemplateFile[] = [
             id: "script",
             name: "Script",
             description: "Screenplay-focused layout",
-            folders: [
-                { name: "Workspace", special: true },
-                { name: "Scenes" },
-            ],
+            folders: [{ name: "Workspace", special: true }, { name: "Scenes" }],
         },
     },
 ];

@@ -119,9 +119,10 @@ export async function createTag(
 ): Promise<Tag> {
     const project = await readProject(projectRoot);
     const tag: Tag = { id: generateUUID(), name, color };
-    project.config = project.config ?? {};
-    project.config.tags = project.config.tags ?? [];
-    project.config.tags.push(tag);
+    const config = project.config ?? { editorConfig: {} };
+    config.tags = config.tags ?? [];
+    config.tags.push(tag);
+    project.config = config;
     await writeProject(projectRoot, project);
     return tag;
 }
@@ -187,13 +188,13 @@ export async function assignTagToResource(
     tagId: string,
 ): Promise<void> {
     const project = await readProject(projectRoot);
-    project.config = project.config ?? {};
-    project.config.tagAssignments = project.config.tagAssignments ?? {};
-    project.config.tagAssignments[resourceId] =
-        project.config.tagAssignments[resourceId] ?? [];
-    if (!project.config.tagAssignments[resourceId].includes(tagId)) {
-        project.config.tagAssignments[resourceId].push(tagId);
+    const config = project.config ?? { editorConfig: {} };
+    config.tagAssignments = config.tagAssignments ?? {};
+    config.tagAssignments[resourceId] = config.tagAssignments[resourceId] ?? [];
+    if (!config.tagAssignments[resourceId].includes(tagId)) {
+        config.tagAssignments[resourceId].push(tagId);
     }
+    project.config = config;
     await writeProject(projectRoot, project);
 }
 

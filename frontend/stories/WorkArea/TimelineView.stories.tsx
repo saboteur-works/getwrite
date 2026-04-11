@@ -21,6 +21,7 @@ const project: Project = {
 const folders: Folder[] = [
     {
         id: "folder-1",
+        slug: "folder-1",
         name: "Folder 1",
         orderIndex: 0,
         type: "folder",
@@ -32,6 +33,7 @@ const folders: Folder[] = [
 const resources: AnyResource[] = [
     {
         id: "res-1",
+        slug: "resource-1",
         name: "Resource 1",
         type: "text",
         folderId: "folder-1",
@@ -39,6 +41,7 @@ const resources: AnyResource[] = [
     },
     {
         id: "res-2",
+        slug: "resource-2",
         name: "Resource 2",
         type: "image",
         folderId: "folder-1",
@@ -46,6 +49,7 @@ const resources: AnyResource[] = [
     },
     {
         id: "res-3",
+        slug: "resource-3",
         name: "Resource 3",
         type: "audio",
         createdAt: new Date().toISOString(),

@@ -44,9 +44,11 @@ export const Default: Story = {
         onSelectKey: () => undefined,
         onCreateProjectType: () => undefined,
     },
-    render: (args) => {
+    render: (args: React.ComponentProps<typeof ProjectTypeListPane>) => {
         const Wrapper = () => {
-            const [selectedKey, setSelectedKey] = React.useState(args.selectedKey);
+            const [selectedKey, setSelectedKey] = React.useState(
+                args.selectedKey,
+            );
             return (
                 <ProjectTypeListPane
                     {...args}

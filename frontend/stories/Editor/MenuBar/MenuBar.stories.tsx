@@ -9,7 +9,9 @@ interface EditorDoubleResult {
     actions: Array<{ name: string; payload?: unknown }>;
 }
 
-function createEditorDouble(activeMap: Record<string, boolean> = {}): EditorDoubleResult {
+function createEditorDouble(
+    activeMap: Record<string, boolean> = {},
+): EditorDoubleResult {
     const actions: Array<{ name: string; payload?: unknown }> = [];
 
     const chainApi = {
@@ -224,9 +226,9 @@ export const Default: Story = {
 const { editor: activeEditor } = createEditorDouble({
     bold: true,
     italic: true,
-    "heading:{\"level\":1}": true,
-    "textStyle:{\"fontFamily\":\"Domine\"}": true,
-    "{\"textAlign\":\"center\"}": true,
+    'heading:{"level":1}': true,
+    'textStyle:{"fontFamily":"Domine"}': true,
+    '{"textAlign":"center"}': true,
 });
 
 export const ActiveFormatting: Story = {

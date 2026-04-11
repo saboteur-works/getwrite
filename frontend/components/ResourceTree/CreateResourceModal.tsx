@@ -75,7 +75,7 @@ export default function CreateResourceModal({
     if (!isOpen) return null;
 
     return (
-        <ProjectModalFrame onClose={onClose}>
+        <ProjectModalFrame onClose={onClose ?? (() => {})}>
             <div className="project-modal-panel">
                 <h3 className="project-modal-title">
                     {initialTitle ? "Create resource" : "New resource"}

@@ -1,6 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import ResourceTree from "../../components/ResourceTree/ResourceTree";
+import type { ResourceContextAction } from "../../components/ResourceTree/ResourceContextMenu";
 
 const meta = {
     title: "Tree/ResourceTree",
@@ -13,24 +14,16 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
     args: {
-        projectId: "test-proj-1",
-        onSelect: (id: string) => console.log("selected", id),
+        onResourceAction: (
+            action: ResourceContextAction,
+            resourceId?: string,
+        ) => console.log("action", action, resourceId),
     },
 } satisfies Story;
 
 export const Reorderable: Story = {
     render: (args: React.ComponentProps<typeof ResourceTree>) => {
         const Wrapper = () => {
-            const handleReorder = (ids: string[]) => {
-                const probe = document.querySelector(
-                    '[data-testid="reorder-probe"]',
-                );
-                if (probe) probe.textContent = ids.join(",");
-                // also expose on window for debugging
-                // @ts-ignore
-                window.__lastReorder = ids;
-            };
-
             const simulateReorder = () => {
                 const nav = document.querySelector(
                     'nav[aria-label="Resource tree"]',
@@ -47,7 +40,10 @@ export const Reorderable: Story = {
                     const next = [...ids];
                     const first = next.shift();
                     if (first) next.splice(1, 0, first);
-                    handleReorder(next as string[]);
+                    const probe = document.querySelector(
+                        '[data-testid="reorder-probe"]',
+                    );
+                    if (probe) probe.textContent = next.join(",");
                 }
             };
 
@@ -57,11 +53,7 @@ export const Reorderable: Story = {
 
             return (
                 <div>
-                    <ResourceTree
-                        {...args}
-                        reorderable
-                        onReorder={handleReorder}
-                    />
+                    <ResourceTree {...args} />
                     <button
                         data-testid="reorder-simulate"
                         onClick={simulateReorder}
@@ -80,6 +72,9 @@ export const Reorderable: Story = {
         return <Wrapper />;
     },
     args: {
-        projectId: "test-proj-1",
+        onResourceAction: (
+            action: ResourceContextAction,
+            resourceId?: string,
+        ) => console.log("action", action, resourceId),
     },
 };

@@ -39,11 +39,10 @@ export const Interactive: Story = {
         onAddResource: () => undefined,
         onRemoveResource: () => undefined,
     },
-    render: (args) => {
+    render: (args: React.ComponentProps<typeof ProjectTypeEditorForm>) => {
         const Wrapper = () => {
-            const [definition, setDefinition] = React.useState<ProjectTypeDefinition>(
-                args.definition,
-            );
+            const [definition, setDefinition] =
+                React.useState<ProjectTypeDefinition>(args.definition);
 
             return (
                 <ProjectTypeEditorForm
@@ -52,7 +51,10 @@ export const Interactive: Story = {
                     onAddFolder={() => {
                         setDefinition((prev) => ({
                             ...prev,
-                            folders: [...prev.folders, { name: "", special: false }],
+                            folders: [
+                                ...prev.folders,
+                                { name: "", special: false },
+                            ],
                         }));
                     }}
                     onRemoveFolder={(index: number) => {
@@ -73,9 +75,9 @@ export const Interactive: Story = {
                     onRemoveResource={(index: number) => {
                         setDefinition((prev) => ({
                             ...prev,
-                            defaultResources: (prev.defaultResources ?? []).filter(
-                                (_, i) => i !== index,
-                            ),
+                            defaultResources: (
+                                prev.defaultResources ?? []
+                            ).filter((_, i) => i !== index),
                         }));
                     }}
                 />

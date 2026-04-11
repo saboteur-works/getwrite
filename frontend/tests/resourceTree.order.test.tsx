@@ -42,7 +42,7 @@ describe("ResourceTree ordering and defaults", () => {
         testStore.dispatch(setResources(created.resources as any));
         render(
             <Provider store={testStore}>
-                <ResourceTree projectId={project.id} />
+                <ResourceTree />
             </Provider>,
         );
 

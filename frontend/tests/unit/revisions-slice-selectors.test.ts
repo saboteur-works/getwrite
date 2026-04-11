@@ -69,6 +69,9 @@ function createRootState(overrides?: {
             errorMessage: "warning",
             ...overrides?.revisions,
         },
+        editorConfig: {
+            headings: {},
+        },
     } as RootState;
 }
 

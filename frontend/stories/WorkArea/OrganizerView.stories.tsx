@@ -16,6 +16,7 @@ type Story = StoryObj<typeof OrganizerView>;
 const sample: AnyResource[] = [
     {
         id: "res-1",
+        slug: "resource-1",
         name: "Resource 1",
         type: "text",
         folderId: "folder-1",
@@ -23,6 +24,7 @@ const sample: AnyResource[] = [
     },
     {
         id: "res-2",
+        slug: "resource-2",
         name: "Resource 2",
         type: "image",
         folderId: "folder-1",
@@ -30,6 +32,7 @@ const sample: AnyResource[] = [
     },
     {
         id: "res-3",
+        slug: "resource-3",
         name: "Resource 3",
         type: "audio",
         createdAt: new Date().toISOString(),

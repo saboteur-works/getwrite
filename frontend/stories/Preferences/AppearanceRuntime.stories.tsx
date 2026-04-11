@@ -33,7 +33,9 @@ export const Interactive: Story = {
 
         return (
             <div style={{ display: "grid", gap: 8 }}>
-                <p>Applies classes to document root based on saved appearance.</p>
+                <p>
+                    Applies classes to document root based on saved appearance.
+                </p>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
                         type="button"
@@ -45,13 +47,17 @@ export const Interactive: Story = {
                     </button>
                     <button
                         type="button"
-                        onClick={() => updateAppearance("dark", "compact", false)}
+                        onClick={() =>
+                            updateAppearance("dark", "compact", false)
+                        }
                     >
                         Dark Compact
                     </button>
                     <button
                         type="button"
-                        onClick={() => updateAppearance("system", "compact", true)}
+                        onClick={() =>
+                            updateAppearance("system", "compact", true)
+                        }
                     >
                         System Compact Reduced Motion
                     </button>

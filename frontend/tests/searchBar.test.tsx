@@ -13,6 +13,7 @@ describe("SearchBar", () => {
         const resources: AnyResource[] = [
             {
                 id: "r1",
+                slug: "alpha",
                 name: "Alpha",
                 type: "text",
                 plainText: "",
@@ -22,6 +23,7 @@ describe("SearchBar", () => {
             },
             {
                 id: "r2",
+                slug: "beta",
                 name: "Beta",
                 type: "text",
                 plainText: "",
@@ -31,6 +33,7 @@ describe("SearchBar", () => {
             },
             {
                 id: "r3",
+                slug: "gamma",
                 name: "Gamma",
                 type: "text",
                 plainText: "",
