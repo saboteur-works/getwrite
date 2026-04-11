@@ -1,4 +1,6 @@
 import React from "react";
+import LabeledField from "./LabeledField";
+import useSyncedControlledValue from "./useSyncedControlledValue";
 
 export interface MultiSelectListProps {
     items: string[];
@@ -15,20 +17,20 @@ export default function MultiSelectList({
     className = "",
     label = "Items",
 }: MultiSelectListProps) {
-    const [sel, setSel] = React.useState<string[]>(selected);
-    React.useEffect(() => setSel(selected), [selected]);
+    const [sel, setSel] = useSyncedControlledValue<string[]>(
+        selected,
+        onChange,
+    );
 
     const toggle = (item: string) => {
         const next = sel.includes(item)
             ? sel.filter((s) => s !== item)
             : [...sel, item];
         setSel(next);
-        onChange && onChange(next);
     };
 
     return (
-        <div className={className}>
-            <label className="text-sm font-medium">{label}</label>
+        <LabeledField label={label} className={className}>
             {items.length === 0 && (
                 <p className="text-sm text-gw-secondary">
                     To select {label.toLowerCase()}, add text files to the{" "}
@@ -48,6 +50,6 @@ export default function MultiSelectList({
                     </label>
                 ))}
             </div>
-        </div>
+        </LabeledField>
     );
 }

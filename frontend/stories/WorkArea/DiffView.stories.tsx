@@ -46,6 +46,25 @@ const revisions: Revision[] = [
 ];
 
 export const Default: Story = {
+    render: (args) => (
+        <div>
+            <DiffView {...args} />
+            <div
+                data-testid="revision-count"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {String(args.revisions?.length ?? 0)}
+            </div>
+            <div
+                data-testid="has-content"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {args.leftContent ? "true" : "false"}
+            </div>
+        </div>
+    ),
     args: {
         leftContent: sampleLeft,
         rightContent: sampleRight,
@@ -54,9 +73,56 @@ export const Default: Story = {
 };
 
 export const Empty: Story = {
+    render: (args) => (
+        <div>
+            <DiffView {...args} />
+            <div
+                data-testid="revision-count"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {String(args.revisions?.length ?? 0)}
+            </div>
+            <div
+                data-testid="has-content"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {args.leftContent ? "true" : "false"}
+            </div>
+        </div>
+    ),
     args: {
         leftContent: "",
         rightContent: "",
         revisions: [],
+    },
+};
+
+export const Interactive: Story = {
+    render: (args) => {
+        const [selectedRevision, setSelectedRevision] = React.useState<
+            string | null
+        >(null);
+        return (
+            <div>
+                <DiffView
+                    {...args}
+                    onSelectRevision={(id) => setSelectedRevision(id)}
+                />
+                <div
+                    data-testid="selected-revision-id"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {selectedRevision}
+                </div>
+            </div>
+        );
+    },
+    args: {
+        leftContent: sampleLeft,
+        rightContent: sampleRight,
+        revisions,
     },
 };

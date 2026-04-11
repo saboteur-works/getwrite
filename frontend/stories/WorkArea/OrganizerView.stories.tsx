@@ -16,6 +16,7 @@ type Story = StoryObj<typeof OrganizerView>;
 const sample: AnyResource[] = [
     {
         id: "res-1",
+        slug: "resource-1",
         name: "Resource 1",
         type: "text",
         folderId: "folder-1",
@@ -23,6 +24,7 @@ const sample: AnyResource[] = [
     },
     {
         id: "res-2",
+        slug: "resource-2",
         name: "Resource 2",
         type: "image",
         folderId: "folder-1",
@@ -30,6 +32,7 @@ const sample: AnyResource[] = [
     },
     {
         id: "res-3",
+        slug: "resource-3",
         name: "Resource 3",
         type: "audio",
         createdAt: new Date().toISOString(),
@@ -37,6 +40,18 @@ const sample: AnyResource[] = [
 ];
 
 export const Default: Story = {
+    render: (args: OrganizerViewProps) => (
+        <div>
+            <OrganizerView {...args} />
+            <div
+                data-testid="resource-count"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {String(args.resources?.length ?? 0)}
+            </div>
+        </div>
+    ),
     args: {
         resources: sample,
         showBody: true,
@@ -47,16 +62,36 @@ export const Default: Story = {
 export const Interactive: Story = {
     render: (args: OrganizerViewProps) => {
         const [show, setShow] = React.useState(!!args.showBody);
+        const [selectedId, setSelectedId] = React.useState<string | null>(null);
         return (
-            <OrganizerView
-                {...args}
-                resources={args.resources}
-                showBody={show}
-                onToggleBody={(s) => {
-                    setShow(s);
-                    if (args.onToggleBody) args.onToggleBody(s);
-                }}
-            />
+            <div>
+                <OrganizerView
+                    {...args}
+                    resources={args.resources}
+                    showBody={show}
+                    onToggleBody={(s) => {
+                        setShow(s);
+                        if (args.onToggleBody) args.onToggleBody(s);
+                    }}
+                    onSelectResource={(id) => {
+                        setSelectedId(id);
+                    }}
+                />
+                <div
+                    data-testid="show-body"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {String(show)}
+                </div>
+                <div
+                    data-testid="selected-resource-id"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {selectedId}
+                </div>
+            </div>
         );
     },
     args: {

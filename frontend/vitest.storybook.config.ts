@@ -18,8 +18,6 @@ export default defineConfig({
     test: {
         environment: "jsdom",
         globals: true,
-        // only run story files with the Storybook Vitest plugin
-        include: ["stories/**/*.stories.@(tsx|mdx)"],
         // explicitly exclude the e2e folder and Playwright artifacts
         exclude: ["**/e2e/**", "playwright-report/**"],
         projects: [

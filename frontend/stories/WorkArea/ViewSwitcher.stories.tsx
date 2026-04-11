@@ -24,6 +24,17 @@ export const Interactive: Story = {
         const [view, setView] = React.useState<
             "edit" | "organizer" | "data" | "diff" | "timeline"
         >("edit");
-        return <ViewSwitcher view={view} onChange={setView} />;
+        return (
+            <div>
+                <ViewSwitcher view={view} onChange={setView} />
+                <div
+                    data-testid="active-view"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {view}
+                </div>
+            </div>
+        );
     },
 };

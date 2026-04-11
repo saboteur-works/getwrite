@@ -10,6 +10,7 @@ import {
     LogOut,
     Type,
 } from "lucide-react";
+import MenuItemButton from "../common/MenuItemButton";
 
 export interface ShellSettingsMenuProps {
     projectName?: string;
@@ -67,73 +68,65 @@ export default function ShellSettingsMenu({
                         role="menu"
                         aria-label="Project settings menu"
                     >
-                        <button
-                            type="button"
+                        <MenuItemButton
                             className="appshell-topbar-dropdown-item"
-                            role="menuitem"
+                            icon={<Settings size={14} aria-hidden="true" />}
+                            label="User Preferences"
                             onClick={onOpenPreferences}
-                        >
-                            <Settings size={14} aria-hidden="true" />
-                            User Preferences
-                        </button>
+                        />
                         {hasProject ? (
-                            <button
-                                type="button"
+                            <MenuItemButton
                                 className="appshell-topbar-dropdown-item"
-                                role="menuitem"
+                                icon={<Type size={14} aria-hidden="true" />}
+                                label="Heading Settings"
                                 onClick={onOpenHeadingSettings}
-                            >
-                                <Type size={14} aria-hidden="true" />
-                                Heading Settings
-                            </button>
+                            />
                         ) : null}
-                        <button
-                            type="button"
+                        <MenuItemButton
                             className="appshell-topbar-dropdown-item"
-                            role="menuitem"
+                            icon={
+                                <SlidersHorizontal
+                                    size={14}
+                                    aria-hidden="true"
+                                />
+                            }
+                            label="Project Type Manager"
                             onClick={onOpenProjectTypeManager}
-                        >
-                            <SlidersHorizontal size={14} aria-hidden="true" />
-                            Project Type Manager
-                        </button>
+                        />
                         <hr className="appshell-topbar-dropdown-separator" />
-                        <button
-                            type="button"
+                        <MenuItemButton
                             className="appshell-topbar-dropdown-item"
                             role="menuitemcheckbox"
                             aria-checked={isDarkMode}
                             aria-pressed={isDarkMode}
+                            icon={
+                                isDarkMode ? (
+                                    <Sun size={14} aria-hidden="true" />
+                                ) : (
+                                    <Moon size={14} aria-hidden="true" />
+                                )
+                            }
+                            label={
+                                isDarkMode
+                                    ? "Switch to light mode"
+                                    : "Switch to dark mode"
+                            }
                             onClick={onToggleColorMode}
-                        >
-                            {isDarkMode ? (
-                                <Sun size={14} aria-hidden="true" />
-                            ) : (
-                                <Moon size={14} aria-hidden="true" />
-                            )}
-                            {isDarkMode
-                                ? "Switch to light mode"
-                                : "Switch to dark mode"}
-                        </button>
+                        />
                         <hr className="appshell-topbar-dropdown-separator" />
-                        <button
-                            type="button"
+                        <MenuItemButton
                             className="appshell-topbar-dropdown-item"
-                            role="menuitem"
+                            icon={<HelpCircle size={14} aria-hidden="true" />}
+                            label="Help"
                             onClick={onOpenHelp}
-                        >
-                            <HelpCircle size={14} aria-hidden="true" />
-                            Help
-                        </button>
+                        />
                         {hasProject ? (
-                            <button
-                                type="button"
+                            <MenuItemButton
                                 className="appshell-topbar-dropdown-item"
-                                role="menuitem"
+                                icon={<LogOut size={14} aria-hidden="true" />}
+                                label="Close Project"
                                 onClick={onCloseProject}
-                            >
-                                <LogOut size={14} aria-hidden="true" />
-                                Close Project
-                            </button>
+                            />
                         ) : null}
                     </div>
                 ) : null}

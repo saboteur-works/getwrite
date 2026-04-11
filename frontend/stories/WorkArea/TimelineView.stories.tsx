@@ -21,6 +21,7 @@ const project: Project = {
 const folders: Folder[] = [
     {
         id: "folder-1",
+        slug: "folder-1",
         name: "Folder 1",
         orderIndex: 0,
         type: "folder",
@@ -32,6 +33,7 @@ const folders: Folder[] = [
 const resources: AnyResource[] = [
     {
         id: "res-1",
+        slug: "resource-1",
         name: "Resource 1",
         type: "text",
         folderId: "folder-1",
@@ -39,6 +41,7 @@ const resources: AnyResource[] = [
     },
     {
         id: "res-2",
+        slug: "resource-2",
         name: "Resource 2",
         type: "image",
         folderId: "folder-1",
@@ -46,6 +49,7 @@ const resources: AnyResource[] = [
     },
     {
         id: "res-3",
+        slug: "resource-3",
         name: "Resource 3",
         type: "audio",
         createdAt: new Date().toISOString(),
@@ -53,6 +57,25 @@ const resources: AnyResource[] = [
 ];
 
 export const Default: Story = {
+    render: (args) => (
+        <div>
+            <TimelineView {...args} />
+            <div
+                data-testid="project-name"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {args.project?.name ?? ""}
+            </div>
+            <div
+                data-testid="resource-count"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {String(args.resources?.length ?? 0)}
+            </div>
+        </div>
+    ),
     args: {
         project: project,
         folders: folders,
@@ -61,7 +84,54 @@ export const Default: Story = {
 };
 
 export const SingleProject: Story = {
+    render: (args) => (
+        <div>
+            <TimelineView {...args} />
+            <div
+                data-testid="project-name"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {args.project?.name ?? ""}
+            </div>
+            <div
+                data-testid="resource-count"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {String(args.resources?.length ?? 0)}
+            </div>
+        </div>
+    ),
     args: {
         project: project,
+    },
+};
+
+export const Interactive: Story = {
+    render: (args) => {
+        const [selectedResourceId, setSelectedResourceId] = React.useState<
+            string | null
+        >(null);
+        return (
+            <div>
+                <TimelineView
+                    {...args}
+                    onSelectResource={(id) => setSelectedResourceId(id)}
+                />
+                <div
+                    data-testid="selected-resource-id"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {selectedResourceId}
+                </div>
+            </div>
+        );
+    },
+    args: {
+        project: project,
+        folders: folders,
+        resources: resources,
     },
 };

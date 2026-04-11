@@ -58,18 +58,18 @@
 
 ## Extending
 
-- Additional optional fields may be added later (e.g., metadata, per-folder ordering). If you extend the spec, update the Zod schema in `frontend/src/lib/models/schemas.ts` and corresponding unit tests in `frontend/src/tests/unit`.
+- Additional optional fields may be added later (e.g., metadata, per-folder ordering). If you extend the spec, update the Zod schema in `frontend/src/lib/models/schemas.ts` and corresponding unit tests in `frontend/tests/unit`.
 
 ## Bundled Project Types
 
 The following project types ship with GetWrite in `getwrite-config/templates/project-types/`:
 
-| File | ID | Name | Use Case |
-| --- | --- | --- | --- |
-| `blank_project_type.json` | `blank` | Blank | Empty project with a single Workspace folder and one placeholder document. Starting point for custom workflows. |
-| `novel_project_type.json` | `novel` | Novel | Long-form fiction with Front Matter, Workspace (Chapters), and Back Matter folders and a Title Page placeholder. |
-| `serial_project_type.json` | `serial` | Serial / Series | Episodic or serial fiction with folder structure suited to numbered parts or episodes. |
-| `article_project_type.json` | `article` | Article | Non-fiction article or essay with research and draft folders. |
+| File                        | ID        | Name            | Use Case                                                                                                         |
+| --------------------------- | --------- | --------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `blank_project_type.json`   | `blank`   | Blank           | Empty project with a single Workspace folder and one placeholder document. Starting point for custom workflows.  |
+| `novel_project_type.json`   | `novel`   | Novel           | Long-form fiction with Front Matter, Workspace (Chapters), and Back Matter folders and a Title Page placeholder. |
+| `serial_project_type.json`  | `serial`  | Serial / Series | Episodic or serial fiction with folder structure suited to numbered parts or episodes.                           |
+| `article_project_type.json` | `article` | Article         | Non-fiction article or essay with research and draft folders.                                                    |
 
 For detailed folder structure and default resources, see each JSON file directly. The project-type selection UI reads these at runtime via `GET /api/project-types`.
 

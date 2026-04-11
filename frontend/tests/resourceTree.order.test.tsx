@@ -1,12 +1,13 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
-import ResourceTree from "../components/Tree/ResourceTree";
+import ResourceTree from "../components/ResourceTree/ResourceTree";
 import { createProjectFromType } from "../src/lib/models/project-creator";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { setProject } from "../src/store/projectsSlice";
+import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
+import { setFolders, setResources } from "../src/store/resourcesSlice";
 import { makeStore } from "../src/store/store";
 import { Provider } from "react-redux";
 
@@ -36,9 +37,12 @@ describe("ResourceTree ordering and defaults", () => {
         // register project in a test-local store and render using `projectId`
         const testStore = makeStore();
         testStore.dispatch(setProject(project as any));
+        testStore.dispatch(setSelectedProjectId(project.id));
+        testStore.dispatch(setFolders(created.folders as any));
+        testStore.dispatch(setResources(created.resources as any));
         render(
             <Provider store={testStore}>
-                <ResourceTree projectId={project.id} />
+                <ResourceTree />
             </Provider>,
         );
 

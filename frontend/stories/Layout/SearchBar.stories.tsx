@@ -6,6 +6,7 @@ import type { AnyResource } from "../../src/lib/models/types";
 const resources: AnyResource[] = [
     {
         id: "res-1",
+        slug: "resource-1",
         name: "Resource 1",
         type: "text",
         folderId: "folder-1",
@@ -13,6 +14,7 @@ const resources: AnyResource[] = [
     },
     {
         id: "res-2",
+        slug: "resource-2",
         name: "Resource 2",
         type: "image",
         folderId: "folder-1",
@@ -20,6 +22,7 @@ const resources: AnyResource[] = [
     },
     {
         id: "res-3",
+        slug: "resource-3",
         name: "Resource 3",
         type: "audio",
         createdAt: new Date().toISOString(),
@@ -47,6 +50,18 @@ export const Default: Story = {
 };
 
 export const WithResults: Story = {
+    render: (args) => (
+        <div>
+            <SearchBar {...args} />
+            <div
+                data-testid="result-count"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {String(args.resources?.length ?? 0)}
+            </div>
+        </div>
+    ),
     args: {
         resources,
         placeholder: "Search resources...",
@@ -57,6 +72,7 @@ export const Interactive: Story = {
     render: (args: React.ComponentProps<typeof SearchBar>) => {
         const Wrapper = () => {
             const [selected, setSelected] = React.useState<string | null>(null);
+            const [query, setQuery] = React.useState<string>("");
             return (
                 <div>
                     <SearchBar
@@ -64,11 +80,18 @@ export const Interactive: Story = {
                         onSelect={(id: string) => setSelected(id)}
                     />
                     <div
-                        data-testid="search-last-selected"
+                        data-testid="search-selected-id"
                         aria-hidden
                         style={{ display: "none" }}
                     >
                         {selected}
+                    </div>
+                    <div
+                        data-testid="search-query"
+                        aria-hidden
+                        style={{ display: "none" }}
+                    >
+                        {query}
                     </div>
                 </div>
             );

@@ -17,6 +17,7 @@ import HeadingSettingsModal from "../preferences/HeadingSettingsModal";
 import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import HelpPage from "../help/HelpPage";
+import ModalOverlayShell from "../common/ModalOverlayShell";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 
@@ -222,79 +223,61 @@ export default function ShellModalCoordinator({
                 }}
             />
 
-            {isHeadingSettingsModalOpen ? (
-                <div className="appshell-modal-root">
-                    <div
-                        className="appshell-modal-backdrop"
-                        onClick={() => setIsHeadingSettingsModalOpen(false)}
-                    />
-                    <div className="appshell-modal-panel appshell-modal-panel--preferences">
-                        <HeadingSettingsModal
-                            initialHeadings={initialHeadingSettings}
-                            onClose={() => setIsHeadingSettingsModalOpen(false)}
-                            onSave={onSaveHeadingSettings}
-                        />
-                    </div>
-                </div>
-            ) : null}
+            <ModalOverlayShell
+                isOpen={isHeadingSettingsModalOpen}
+                onClose={() => setIsHeadingSettingsModalOpen(false)}
+                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            >
+                <HeadingSettingsModal
+                    initialHeadings={initialHeadingSettings}
+                    onClose={() => setIsHeadingSettingsModalOpen(false)}
+                    onSave={onSaveHeadingSettings}
+                />
+            </ModalOverlayShell>
 
-            {isPreferencesModalOpen ? (
-                <div className="appshell-modal-root">
-                    <div
-                        className="appshell-modal-backdrop"
-                        onClick={() => setIsPreferencesModalOpen(false)}
-                    />
-                    <div className="appshell-modal-panel appshell-modal-panel--preferences">
-                        <UserPreferencesPage
-                            renderInModal
-                            onClose={() => setIsPreferencesModalOpen(false)}
-                        />
-                    </div>
-                </div>
-            ) : null}
+            <ModalOverlayShell
+                isOpen={isPreferencesModalOpen}
+                onClose={() => setIsPreferencesModalOpen(false)}
+                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            >
+                <UserPreferencesPage
+                    renderInModal
+                    onClose={() => setIsPreferencesModalOpen(false)}
+                />
+            </ModalOverlayShell>
 
-            {isHelpModalOpen ? (
-                <div className="appshell-modal-root">
-                    <div
-                        className="appshell-modal-backdrop"
-                        onClick={() => setIsHelpModalOpen(false)}
-                    />
-                    <div className="appshell-modal-panel appshell-modal-panel--help">
-                        <HelpPage
-                            renderInModal
-                            onClose={() => setIsHelpModalOpen(false)}
-                        />
-                    </div>
-                </div>
-            ) : null}
+            <ModalOverlayShell
+                isOpen={isHelpModalOpen}
+                onClose={() => setIsHelpModalOpen(false)}
+                panelClassName="appshell-modal-panel appshell-modal-panel--help"
+            >
+                <HelpPage
+                    renderInModal
+                    onClose={() => setIsHelpModalOpen(false)}
+                />
+            </ModalOverlayShell>
 
-            {isProjectTypesModalOpen ? (
-                <div className="appshell-modal-root">
-                    <div
-                        className="appshell-modal-backdrop"
-                        onClick={() => setIsProjectTypesModalOpen(false)}
-                    />
-                    <div className="appshell-modal-panel appshell-modal-panel--project-types">
-                        {isProjectTypesLoading ? (
-                            <div className="appshell-modal-message">
-                                Loading project types...
-                            </div>
-                        ) : projectTypesLoadError ? (
-                            <div className="appshell-modal-message appshell-modal-message--error">
-                                {projectTypesLoadError}
-                            </div>
-                        ) : (
-                            <ProjectTypesManagerPage
-                                initialTemplates={projectTypeTemplates}
-                                renderInModal
-                                onClose={() =>
-                                    setIsProjectTypesModalOpen(false)
-                                }
-                            />
-                        )}
+            <ModalOverlayShell
+                isOpen={isProjectTypesModalOpen}
+                onClose={() => setIsProjectTypesModalOpen(false)}
+                panelClassName="appshell-modal-panel appshell-modal-panel--project-types"
+            >
+                {isProjectTypesLoading ? (
+                    <div className="appshell-modal-message">
+                        Loading project types...
                     </div>
-                </div>
-            ) : null}
+                ) : projectTypesLoadError ? (
+                    <div className="appshell-modal-message appshell-modal-message--error">
+                        {projectTypesLoadError}
+                    </div>
+                ) : (
+                    <ProjectTypesManagerPage
+                        initialTemplates={projectTypeTemplates}
+                        renderInModal
+                        onClose={() => setIsProjectTypesModalOpen(false)}
+                    />
+                )}
+            </ModalOverlayShell>
 
             {hasUnsavedEditorChanges ? null : null}
         </>

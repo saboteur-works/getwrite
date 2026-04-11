@@ -21,11 +21,20 @@ export const Interactive: Story = {
     render: (args: EditViewProps) => {
         const [content, setContent] = React.useState(args.initialContent ?? "");
         return (
-            <EditView
-                {...args}
-                initialContent={content}
-                onChange={setContent}
-            />
+            <div>
+                <EditView
+                    {...args}
+                    initialContent={content}
+                    onChange={setContent}
+                />
+                <div
+                    data-testid="editor-content"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {content}
+                </div>
+            </div>
         );
     },
 };

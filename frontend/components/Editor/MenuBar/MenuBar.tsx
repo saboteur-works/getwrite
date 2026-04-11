@@ -16,6 +16,7 @@ import EditorMenuColorSubmenu from "./EditorMenuColorSubmenu";
 import EditorMenuIcon from "./EditorMenuIcon";
 import EditorMenuIconGroup from "./EditorMenuIconGroup";
 import EditorMenuInput from "./EditorMenuInput";
+import type { MenuBarState } from "./menuBarState";
 import { useToolbarCommands } from "./useToolbarCommand";
 
 /** Standard icon size (px) used by all menu controls for visual consistency. */
@@ -27,6 +28,11 @@ const ICON_SIZE = 16;
 export interface MenuBarProps {
     /** Active TipTap editor instance used to execute toolbar commands. */
     editor: Editor;
+    /**
+     * Optional state snapshot override used by Storybook/tests to render
+     * deterministic toolbar active/disabled states without editor subscriptions.
+     */
+    stateOverride?: MenuBarState;
 }
 
 /**
@@ -44,11 +50,12 @@ export interface MenuBarProps {
  * @example
  * <MenuBar editor={editor} />
  */
-export const MenuBar = ({ editor }: MenuBarProps) => {
-    const editorState = useEditorState({
+export const MenuBar = ({ editor, stateOverride }: MenuBarProps) => {
+    const selectedEditorState = useEditorState({
         editor,
         selector: menuBarStateSelector,
     });
+    const editorState = stateOverride ?? selectedEditorState;
 
     const toolbarGroups = useToolbarCommands(editor, editorState);
 
@@ -75,7 +82,6 @@ export const MenuBar = ({ editor }: MenuBarProps) => {
                                     active={item.active}
                                     iconSize={ICON_SIZE}
                                     tooltipContent={item.tooltipContent}
-                                    rotate={item.rotate}
                                 />
                             );
                         }

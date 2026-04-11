@@ -4,8 +4,9 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import StartPage from "../components/Start/StartPage";
 import ResourceTree from "../components/ResourceTree/ResourceTree";
 import { makeStore } from "../src/store/store";
-import { Provider } from "react-redux";
+import { Provider, useSelector } from "react-redux";
 import { setProject } from "../src/store/projectsSlice";
+import { setFolders, setResources } from "../src/store/resourcesSlice";
 import EditView from "../components/WorkArea/EditView";
 import ExportPreviewModal from "../components/common/ExportPreviewModal";
 import CompilePreviewModal from "../components/common/CompilePreviewModal";
@@ -64,6 +65,9 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
             const [currentResourceId, setCurrentResourceId] = React.useState<
                 string | null
             >(null);
+            const selectedResourceId = useSelector(
+                (s: any) => s.resources.selectedResourceId,
+            ) as string | null;
 
             const handleOpen = (id?: string | null) => {
                 // StartPage passes `project.rootPath` for Open; fall back to first project when undefined.
@@ -84,12 +88,26 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                             folders: (p as any).folders ?? [],
                         } as any),
                     );
+                    testStore.dispatch(
+                        setFolders(((p as any).folders ?? []) as any),
+                    );
+                    testStore.dispatch(
+                        setResources((p.resources ?? []) as any),
+                    );
                 }
             };
 
-            const handleSelect = (id: string) => {
-                setCurrentResourceId(id);
+            const handleSelect = (_action: string, id?: string) => {
+                if (id) {
+                    setCurrentResourceId(id);
+                }
             };
+
+            React.useEffect(() => {
+                if (selectedResourceId) {
+                    setCurrentResourceId(selectedResourceId);
+                }
+            }, [selectedResourceId]);
 
             const currentResource =
                 currentProject?.resources.find(
@@ -104,6 +122,14 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
                             name: currentProject.project.name,
                             resources: currentProject.resources,
                         } as any),
+                    );
+                    testStore.dispatch(
+                        setFolders(
+                            ((currentProject as any).folders ?? []) as any,
+                        ),
+                    );
+                    testStore.dispatch(
+                        setResources((currentProject.resources ?? []) as any),
                     );
                 }
             }, [currentProject]);

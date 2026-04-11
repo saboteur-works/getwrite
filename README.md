@@ -82,7 +82,7 @@ See `docs/features` for more detailed docs on project types, sidecars, and data 
 
 - Examples and tests reference `specs/002-define-data-models/project-types/`.
 - Runtime-discoverable templates belong in `getwrite-config/templates/project-types/`.
-- When adding or changing project-type schemas, update `frontend/src/lib/models/schemas.ts` and add unit tests under `frontend/src/tests/unit`.
+- When adding or changing project-type schemas, update `frontend/src/lib/models/schemas.ts` and add unit tests under `frontend/tests/unit`.
 
 ## Tests
 

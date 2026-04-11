@@ -159,7 +159,7 @@ export function createFolderResource(params: {
     special?: boolean;
     metadataSource?: {
         isMetadataSource: boolean;
-        metadataInputType?: "select" | "multiselect" | "text";
+        metadataInputType?: "multiselect" | "text";
     };
 }): Folder {
     const now = new Date().toISOString();

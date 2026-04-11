@@ -1,3 +1,6 @@
+// This module should be deleted. frontend/stories/CompilePreviewModal.stories.tsx is the only consumer.
+// CompilePreviewModal.stories.tsx should be updated to import directly from src/lib/models/types so this can be safely removed without affecting any other code.
+
 import {
     Project as CanonicalProject,
     Folder,

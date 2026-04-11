@@ -11,6 +11,7 @@ describe("CompilePreviewModal", () => {
 
         const resource: AnyResource = {
             id: "r1",
+            slug: "test-doc",
             name: "Test Doc",
             type: "text",
             plainText: "",

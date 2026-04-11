@@ -12,6 +12,7 @@ describe("CreateResourceModal", () => {
         const parents: Folder[] = [
             {
                 id: "parent_1",
+                slug: "folder-a",
                 name: "Folder A",
                 type: "folder",
                 createdAt: "",
@@ -20,6 +21,7 @@ describe("CreateResourceModal", () => {
             },
             {
                 id: "parent_2",
+                slug: "folder-b",
                 name: "Folder B",
                 type: "folder",
                 createdAt: "",

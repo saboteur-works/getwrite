@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Plus, Copy, Files, Trash2, Download } from "lucide-react";
+import MenuItemButton from "../common/MenuItemButton";
 
 /** Allowed context menu actions exposed to callers; UI-only signals. */
 export type ResourceContextAction =
@@ -131,74 +132,69 @@ export default function ResourceContextMenu({
 
             <ul className="resource-context-menu-list">
                 <li>
-                    <button
-                        type="button"
-                        role="menuitem"
+                    <MenuItemButton
                         className="resource-context-menu-item"
+                        icon={
+                            <Plus
+                                size={14}
+                                className="resource-context-menu-item-icon"
+                            />
+                        }
+                        label="Create"
                         onClick={() => handle("create")}
-                    >
-                        <Plus
-                            size={14}
-                            className="resource-context-menu-item-icon"
-                        />
-                        Create
-                    </button>
+                    />
                 </li>
                 <li>
-                    <button
-                        type="button"
-                        role="menuitem"
+                    <MenuItemButton
                         className="resource-context-menu-item"
+                        icon={
+                            <Copy
+                                size={14}
+                                className="resource-context-menu-item-icon"
+                            />
+                        }
+                        label="Copy"
                         onClick={() => handle("copy")}
-                    >
-                        <Copy
-                            size={14}
-                            className="resource-context-menu-item-icon"
-                        />
-                        Copy
-                    </button>
+                    />
                 </li>
                 <li>
-                    <button
-                        type="button"
-                        role="menuitem"
+                    <MenuItemButton
                         className="resource-context-menu-item"
+                        icon={
+                            <Files
+                                size={14}
+                                className="resource-context-menu-item-icon"
+                            />
+                        }
+                        label="Duplicate"
                         onClick={() => handle("duplicate")}
-                    >
-                        <Files
-                            size={14}
-                            className="resource-context-menu-item-icon"
-                        />
-                        Duplicate
-                    </button>
+                    />
                 </li>
                 <li>
-                    <button
-                        type="button"
-                        role="menuitem"
+                    <MenuItemButton
                         className="resource-context-menu-item resource-context-menu-item-danger"
+                        icon={
+                            <Trash2
+                                size={14}
+                                className="resource-context-menu-item-icon"
+                            />
+                        }
+                        label="Delete"
                         onClick={() => handle("delete")}
-                    >
-                        <Trash2
-                            size={14}
-                            className="resource-context-menu-item-icon"
-                        />
-                        Delete
-                    </button>
+                    />
                 </li>
                 <li>
-                    <button
-                        type="button"
-                        role="menuitem"
+                    <MenuItemButton
                         className="resource-context-menu-item"
+                        icon={
+                            <Download
+                                size={14}
+                                className="resource-context-menu-item-icon"
+                            />
+                        }
+                        label="Export"
                         onClick={() => handle("export")}
-                    >
-                        <Download
-                            size={14}
-                            className="resource-context-menu-item-icon"
-                        />
-                        Export
-                    </button>
+                    />
                 </li>
             </ul>
         </div>

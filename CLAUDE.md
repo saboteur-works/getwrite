@@ -135,7 +135,7 @@ Detailed styling guidance exists in STYLING.md
 
 ## Testing Notes
 
-- Unit tests live in `tests/` and `src/tests/unit/`
+- Unit, integration, component, and a11y tests live in `tests/`
 - E2E tests run against a Storybook server (start with `pnpm storybook` first)
 - Playwright config: Chromium only, test dir `e2e/`, captures screenshots/video/trace on failure
 - Accessibility tests use `@storybook/addon-a11y`
