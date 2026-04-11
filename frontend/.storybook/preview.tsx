@@ -4,6 +4,8 @@ import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import projectReducer, { StoredProject } from "../src/store/projectsSlice";
 import resourcesReducer from "../src/store/resourcesSlice";
+import revisionsReducer from "../src/store/revisionsSlice";
+import editorConfigReducer from "../src/store/editorConfigSlice";
 import "../app/globals.css";
 import { AnyResource, Folder, Project } from "../src/lib/models";
 
@@ -16,6 +18,7 @@ const project: Project = {
 const folders: Folder[] = [
     {
         id: "folder-1",
+        slug: "folder-1",
         name: "Folder 1",
         orderIndex: 0,
         type: "folder",
@@ -24,6 +27,7 @@ const folders: Folder[] = [
     },
     {
         id: "folder-2",
+        slug: "folder-2",
         name: "Folder 2",
         orderIndex: 1,
         type: "folder",
@@ -35,6 +39,7 @@ const folders: Folder[] = [
 const resources: AnyResource[] = [
     {
         id: "res-1",
+        slug: "resource-1",
         name: "Resource 1",
         orderIndex: 0,
         type: "text",
@@ -43,6 +48,7 @@ const resources: AnyResource[] = [
     },
     {
         id: "res-2",
+        slug: "resource-2",
         name: "Resource 2",
         orderIndex: 1,
         type: "image",
@@ -51,6 +57,7 @@ const resources: AnyResource[] = [
     },
     {
         id: "res-3",
+        slug: "resource-3",
         name: "Resource 3",
         orderIndex: 2,
         type: "text",
@@ -59,6 +66,7 @@ const resources: AnyResource[] = [
     },
     {
         id: "res-4",
+        slug: "resource-4",
         name: "Resource 4",
         orderIndex: 0,
         type: "text",
@@ -71,6 +79,8 @@ const mockStore = configureStore({
     reducer: {
         projects: projectReducer,
         resources: resourcesReducer,
+        revisions: revisionsReducer,
+        editorConfig: editorConfigReducer,
     },
     preloadedState: {
         projects: {
@@ -90,6 +100,21 @@ const mockStore = configureStore({
             resources,
             folders,
         },
+        revisions: {
+            resourceId: null,
+            requestedResourceId: null,
+            currentRevisionId: null,
+            currentRevisionContent: null,
+            revisions: [],
+            isLoading: false,
+            isSaving: false,
+            fetchingRevisionId: null,
+            deletingRevisionId: null,
+            errorMessage: "",
+        },
+        editorConfig: {
+            headings: {},
+        },
     },
 });
 
@@ -102,6 +127,9 @@ const withStore = (Story: any) => (
 );
 const preview: Preview = {
     parameters: {
+        nextjs: {
+            appDirectory: true,
+        },
         actions: { argTypesRegex: "^on[A-Z].*" },
         controls: { expanded: true },
 

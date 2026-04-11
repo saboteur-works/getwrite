@@ -128,6 +128,8 @@ function createEditorDouble(
     const editorDouble = {
         chain: () => chainApi,
         can: () => ({ chain: () => chainApi }),
+        on: () => editorDouble,
+        off: () => editorDouble,
         getAttributes: (name: string) => {
             if (name === "textStyle") {
                 return {

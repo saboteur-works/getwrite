@@ -14,7 +14,7 @@
         "test": "vitest",
         "test:ci": "vitest run",
         "test:watch": "vitest --watch",
-        "test-storybook": "vitest --config=vitest.storybook.config.ts",
+        "test-storybook": "vitest run --config=vitest.storybook.config.ts --configLoader runner",
         "test:e2e": "playwright test",
         "test:policy:check": "node ./scripts/check-test-policy.mjs",
         "test:refactor:resource-templates": "pnpm exec vitest run --passWithNoTests tests/unit/resource.test.ts tests/unit/resource-factory.test.ts tests/unit/resource-persistence.test.ts tests/unit/project-view-adapter.test.ts tests/unit/template-service.test.ts tests/unit/resource-templates.test.ts tests/unit/resource-templates-export.test.ts tests/unit/resource-templates-list.test.ts tests/unit/uuid.test.ts tests/unit/project-type-validation.test.ts",
