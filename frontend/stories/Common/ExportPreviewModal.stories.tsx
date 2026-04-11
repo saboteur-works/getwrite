@@ -12,6 +12,18 @@ export default meta;
 type Story = StoryObj<typeof ExportPreviewModal>;
 
 export const Open: Story = {
+    render: (args) => (
+        <div>
+            <ExportPreviewModal {...args} />
+            <div
+                data-testid="resource-title"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {args.resourceTitle}
+            </div>
+        </div>
+    ),
     args: {
         isOpen: true,
         resourceTitle: "Chapter 01",

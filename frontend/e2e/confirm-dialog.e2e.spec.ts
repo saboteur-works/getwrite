@@ -58,13 +58,15 @@ test("confirm dialog closes on escape", async ({ page }) => {
 test("confirm dialog displays title and description", async ({ page }) => {
     await page.goto("/iframe.html?id=common-confirmdialog--open");
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/confirmdialog--open/);
+    const dialogTitle = page.locator('[data-testid="dialog-title"]');
+    await expect(dialogTitle).toHaveText("Delete resource");
 });
 
 test("confirm dialog without description variant renders", async ({ page }) => {
-    await page.goto("/iframe.html?id=common-confirmdialog--withoutdescription");
+    await page.goto(
+        "/iframe.html?id=common-confirmdialog--without-description",
+    );
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/confirmdialog--withoutdescription/);
+    const dialogTitle = page.locator('[data-testid="dialog-title"]');
+    await expect(dialogTitle).toHaveText("Confirm action");
 });

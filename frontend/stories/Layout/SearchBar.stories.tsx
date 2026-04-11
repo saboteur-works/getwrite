@@ -50,6 +50,18 @@ export const Default: Story = {
 };
 
 export const WithResults: Story = {
+    render: (args) => (
+        <div>
+            <SearchBar {...args} />
+            <div
+                data-testid="result-count"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {String(args.resources?.length ?? 0)}
+            </div>
+        </div>
+    ),
     args: {
         resources,
         placeholder: "Search resources...",

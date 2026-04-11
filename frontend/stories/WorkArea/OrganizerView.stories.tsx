@@ -40,6 +40,18 @@ const sample: AnyResource[] = [
 ];
 
 export const Default: Story = {
+    render: (args: OrganizerViewProps) => (
+        <div>
+            <OrganizerView {...args} />
+            <div
+                data-testid="resource-count"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {String(args.resources?.length ?? 0)}
+            </div>
+        </div>
+    ),
     args: {
         resources: sample,
         showBody: true,

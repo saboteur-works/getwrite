@@ -33,13 +33,8 @@ test("organizer view interactive variant tracks body toggle", async ({
 test("organizer view displays resource cards", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-organizerview--default");
 
-    // Look for cards or items
-    const cardButtons = page.locator("button, [role='button']");
-    const cardCount = await cardButtons.count();
-
-    // Sample project should have at least one resource
-    // Verify page loaded
-    await expect(page).toHaveURL(/organizerview--default/);
+    const resourceCount = page.locator('[data-testid="resource-count"]');
+    await expect(resourceCount).toHaveText("3");
 });
 
 test("organizer view interactive tracks selected resource", async ({

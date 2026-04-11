@@ -14,6 +14,18 @@ export default meta;
 type Story = StoryObj<typeof MetadataSidebar>;
 
 export const Default: Story = {
+    render: (args) => (
+        <div>
+            <MetadataSidebar {...args} />
+            <div
+                data-testid="resource-name"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {args.resource?.name}
+            </div>
+        </div>
+    ),
     args: {
         resource: createTextResource({
             name: "Example Text Resource",

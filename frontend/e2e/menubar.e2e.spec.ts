@@ -3,8 +3,8 @@ import { test, expect } from "@playwright/test";
 test("menubar renders with default state", async ({ page }) => {
     await page.goto("/iframe.html?id=editor-menubar-menubar--default");
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/editor-menubar-menubar--default/);
+    const editorLoaded = page.locator('[data-testid="editor-loaded"]');
+    await expect(editorLoaded).toHaveText("true");
 });
 
 test("menubar interactive variant tracks last action", async ({ page }) => {

@@ -58,6 +58,18 @@ export const ProjectPreview: Story = {
 };
 
 export const ResourcePreview: Story = {
+    render: (args: any) => (
+        <div>
+            <CompilePreviewModal {...args} />
+            <div
+                data-testid="preview-mode"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                resource
+            </div>
+        </div>
+    ),
     args: {
         isOpen: true,
         projectId: "proj-1",

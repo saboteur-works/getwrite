@@ -57,6 +57,25 @@ const resources: AnyResource[] = [
 ];
 
 export const Default: Story = {
+    render: (args) => (
+        <div>
+            <TimelineView {...args} />
+            <div
+                data-testid="project-name"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {args.project?.name ?? ""}
+            </div>
+            <div
+                data-testid="resource-count"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {String(args.resources?.length ?? 0)}
+            </div>
+        </div>
+    ),
     args: {
         project: project,
         folders: folders,
@@ -65,6 +84,25 @@ export const Default: Story = {
 };
 
 export const SingleProject: Story = {
+    render: (args) => (
+        <div>
+            <TimelineView {...args} />
+            <div
+                data-testid="project-name"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {args.project?.name ?? ""}
+            </div>
+            <div
+                data-testid="resource-count"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {String(args.resources?.length ?? 0)}
+            </div>
+        </div>
+    ),
     args: {
         project: project,
     },

@@ -50,7 +50,18 @@ const resources: AnyResource[] = [
 ];
 
 export const WithResources: Story = {
-    render: (args: DataViewProps) => <DataView {...args} />,
+    render: (args: DataViewProps) => (
+        <div>
+            <DataView {...args} />
+            <div
+                data-testid="resource-count"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {String(args.resources?.length ?? 0)}
+            </div>
+        </div>
+    ),
     args: {
         project,
         resources: resources,

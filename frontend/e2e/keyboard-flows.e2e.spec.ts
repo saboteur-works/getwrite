@@ -24,5 +24,6 @@ test("create project modal keyboard submit and Escape closes", async ({
 }) => {
     await page.goto("/iframe.html?id=start-createprojectmodal--open");
 
-    await expect(page).toHaveURL(/createprojectmodal--open/);
+    const nameInput = page.locator("input").first();
+    await expect(nameInput).toBeVisible();
 });

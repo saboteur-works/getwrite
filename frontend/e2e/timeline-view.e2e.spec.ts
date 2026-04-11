@@ -10,15 +10,15 @@ test("timeline view interactive variant renders", async ({ page }) => {
 test("timeline view default displays project info", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-timelineview--default");
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/timelineview--default/);
+    const projectName = page.locator('[data-testid="project-name"]');
+    await expect(projectName).toHaveText("Example Project");
 });
 
 test("timeline view single project variant renders", async ({ page }) => {
-    await page.goto("/iframe.html?id=workarea-timelineview--singleproject");
+    await page.goto("/iframe.html?id=workarea-timelineview--single-project");
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/timelineview--singleproject/);
+    const projectName = page.locator('[data-testid="project-name"]');
+    await expect(projectName).toHaveText("Example Project");
 });
 
 test("timeline view interactive tracks selected resource", async ({ page }) => {

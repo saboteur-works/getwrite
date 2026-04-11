@@ -8,10 +8,10 @@ test("data view interactive variant renders", async ({ page }) => {
 });
 
 test("data view displays resource count", async ({ page }) => {
-    await page.goto("/iframe.html?id=workarea-dataview--withresources");
+    await page.goto("/iframe.html?id=workarea-dataview--with-resources");
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/dataview--withresources/);
+    const resourceCount = page.locator('[data-testid="resource-count"]');
+    await expect(resourceCount).toHaveText("3");
 });
 
 test("data view interactive tracks selected resource", async ({ page }) => {
@@ -33,7 +33,7 @@ test("data view interactive tracks selected resource", async ({ page }) => {
 });
 
 test("data view withresources shows resource list", async ({ page }) => {
-    await page.goto("/iframe.html?id=workarea-dataview--withresources");
+    await page.goto("/iframe.html?id=workarea-dataview--with-resources");
 
     // Look for text resources
     const heading = page.getByRole("heading", { name: /resources/i });

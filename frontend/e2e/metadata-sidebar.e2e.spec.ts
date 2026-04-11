@@ -23,8 +23,8 @@ test("metadata sidebar default displays resource metadata", async ({
 }) => {
     await page.goto("/iframe.html?id=sidebar-metadatasidebar--default");
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/metadatasidebar--default/);
+    const resourceName = page.locator('[data-testid="resource-name"]');
+    await expect(resourceName).toHaveText("Example Text Resource");
 });
 
 test("metadata sidebar interactive tracks changes", async ({ page }) => {

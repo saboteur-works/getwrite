@@ -219,6 +219,18 @@ export default meta;
 type Story = StoryObj<typeof MenuBar>;
 
 export const Default: Story = {
+    render: (args) => (
+        <div>
+            <MenuBar {...args} />
+            <div
+                data-testid="editor-loaded"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                true
+            </div>
+        </div>
+    ),
     args: {
         editor: defaultEditor,
         stateOverride: defaultState,

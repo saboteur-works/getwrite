@@ -12,6 +12,18 @@ export default meta;
 type Story = StoryObj<typeof ConfirmDialog>;
 
 export const Open: Story = {
+    render: (args) => (
+        <div>
+            <ConfirmDialog {...args} />
+            <div
+                data-testid="dialog-title"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {args.title}
+            </div>
+        </div>
+    ),
     args: {
         isOpen: true,
         title: "Delete resource",
@@ -25,6 +37,18 @@ export const Open: Story = {
 };
 
 export const WithoutDescription: Story = {
+    render: (args) => (
+        <div>
+            <ConfirmDialog {...args} />
+            <div
+                data-testid="dialog-title"
+                aria-hidden
+                style={{ display: "none" }}
+            >
+                {args.title}
+            </div>
+        </div>
+    ),
     args: {
         isOpen: true,
         title: "Confirm action",

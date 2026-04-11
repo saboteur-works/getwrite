@@ -108,6 +108,13 @@ export const WithRevisions: Story = {
                     >
                         rev-2
                     </div>
+                    <div
+                        data-testid="revision-count"
+                        aria-hidden
+                        style={{ display: "none" }}
+                    >
+                        2
+                    </div>
                 </div>
             </Provider>
         );

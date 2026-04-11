@@ -2,43 +2,46 @@ import { test, expect } from "@playwright/test";
 
 test("revision control interactive renders revision list", async ({ page }) => {
     await page.goto(
-        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--withrevisions",
+        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--with-revisions",
     );
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/revisioncontrol--withrevisions/);
+    const revisionCount = page.locator('[data-testid="revision-count"]');
+    await expect(revisionCount).toHaveText("2");
 });
 
 test("revision control shows canonical revision probe", async ({ page }) => {
     await page.goto(
-        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--withrevisions",
+        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--with-revisions",
     );
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/revisioncontrol--withrevisions/);
+    const canonicalProbe = page.locator('[data-testid="canonical-revision"]');
+    await expect(canonicalProbe).toHaveText("rev-2");
 });
 
 test("revision control displays revision items", async ({ page }) => {
     await page.goto(
-        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--withrevisions",
+        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--with-revisions",
     );
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/revisioncontrol--withrevisions/);
+    const revisionCount = page.locator('[data-testid="revision-count"]');
+    const countText = await revisionCount.textContent();
+    expect(parseInt(countText ?? "0", 10)).toBeGreaterThanOrEqual(1);
 });
 
 test("revision control displays revision names", async ({ page }) => {
     await page.goto(
-        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--withrevisions",
+        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--with-revisions",
     );
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/revisioncontrol--withrevisions/);
+    const canonicalProbe = page.locator('[data-testid="canonical-revision"]');
+    await expect(canonicalProbe).toHaveText("rev-2");
+    const revisionCount = page.locator('[data-testid="revision-count"]');
+    await expect(revisionCount).toHaveText("2");
 });
 
 test("revision control allows revision selection", async ({ page }) => {
     await page.goto(
-        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--withrevisions",
+        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--with-revisions",
     );
 
     // Click a revision item to select it

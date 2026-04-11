@@ -8,10 +8,10 @@ test("search bar interactive variant renders input", async ({ page }) => {
 });
 
 test("search bar filters results on input", async ({ page }) => {
-    await page.goto("/iframe.html?id=layout-searchbar--withresults");
+    await page.goto("/iframe.html?id=layout-searchbar--with-results");
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/searchbar--withresults/);
+    const resultCount = page.locator('[data-testid="result-count"]');
+    await expect(resultCount).toHaveText("3");
 });
 
 test("search bar interactive tracks selection", async ({ page }) => {

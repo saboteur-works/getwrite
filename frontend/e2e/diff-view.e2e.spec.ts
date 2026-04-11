@@ -9,16 +9,15 @@ test("diff view interactive variant renders", async ({ page }) => {
 test("diff view default displays both sides", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-diffview--default");
 
-    // Verify page loaded
-    const body = page.locator("body");
-    await expect(body).toBeTruthy();
+    const hasContent = page.locator('[data-testid="has-content"]');
+    await expect(hasContent).toHaveText("true");
 });
 
 test("diff view empty variant renders without error", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-diffview--empty");
 
-    // Verify page loaded
-    await expect(page).toHaveURL(/diffview--empty/);
+    const revisionCount = page.locator('[data-testid="revision-count"]');
+    await expect(revisionCount).toHaveText("0");
 });
 
 test("diff view interactive tracks selected revision", async ({ page }) => {
@@ -44,5 +43,6 @@ test("diff view interactive tracks selected revision", async ({ page }) => {
 test("diff view shows comparison content", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-diffview--default");
 
-    await expect(page).toHaveURL(/diffview--default/);
+    const revisionCount = page.locator('[data-testid="revision-count"]');
+    await expect(revisionCount).toHaveText("2");
 });
