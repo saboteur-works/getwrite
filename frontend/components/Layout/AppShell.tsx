@@ -854,13 +854,57 @@ export default function AppShell({
                                             )
                                         );
                                     }}
-                                    onCompileConfirm={(resourceId) => {
-                                        if (resourceId) {
-                                            void onResourceAction?.(
-                                                "export",
-                                                resourceId,
-                                            );
-                                        }
+                                    onConfirmCompile={async (
+                                        selectedIds,
+                                        options,
+                                    ) => {
+                                        if (!project?.rootPath) return;
+                                        const response = await fetch(
+                                            "/api/compile/text",
+                                            {
+                                                method: "POST",
+                                                headers: {
+                                                    "Content-Type":
+                                                        "application/json",
+                                                },
+                                                body: JSON.stringify({
+                                                    projectPath:
+                                                        project.rootPath,
+                                                    resourceIds: selectedIds,
+                                                    resources: (
+                                                        resources ?? []
+                                                    ).map((r) => ({
+                                                        id: r.id,
+                                                        name: r.name,
+                                                        type: r.type,
+                                                    })),
+                                                    includeHeaders:
+                                                        options.includeHeaders,
+                                                    projectName:
+                                                        project.name ??
+                                                        "project",
+                                                }),
+                                            },
+                                        );
+                                        if (!response.ok) return;
+                                        const { text, filename } =
+                                            (await response.json()) as {
+                                                text: string;
+                                                filename: string;
+                                            };
+                                        const blob = new Blob([text], {
+                                            type: "text/plain;charset=utf-8",
+                                        });
+                                        const url =
+                                            URL.createObjectURL(blob);
+                                        const a =
+                                            document.createElement("a");
+                                        a.href = url;
+                                        a.download = filename;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                        URL.revokeObjectURL(url);
                                     }}
                                 />
                             )}

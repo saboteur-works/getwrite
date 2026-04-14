@@ -333,13 +333,48 @@ export default function StartPage({
                 projectId={compileTargetProjectId ?? undefined}
                 resources={compileResources}
                 onClose={() => setCompileTargetProjectId(null)}
-                onConfirmCompile={(selectedIds) => {
-                    const project = localProjects.find(
+                onConfirmCompile={(selectedIds, options) => {
+                    const entry = localProjects.find(
                         (p) => p.project.id === compileTargetProjectId,
                     );
-                    toastService.info(
-                        `Package ${project?.project.name ?? compileTargetProjectId} (${selectedIds.length} resource${selectedIds.length === 1 ? "" : "s"} selected)`,
-                    );
+                    if (!entry?.project.rootPath) {
+                        toastService.error("Cannot compile", "Project path not found");
+                        setCompileTargetProjectId(null);
+                        return;
+                    }
+                    void fetch("/api/compile/text", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            projectPath: entry.project.rootPath,
+                            resourceIds: selectedIds,
+                            resources: compileResources.map((r) => ({
+                                id: r.id,
+                                name: r.name,
+                                type: r.type,
+                            })),
+                            includeHeaders: options.includeHeaders,
+                            projectName: entry.project.name ?? "project",
+                        }),
+                    }).then(async (response) => {
+                        if (!response.ok) {
+                            toastService.error("Compile failed", "Could not generate output file");
+                            return;
+                        }
+                        const { text, filename } = (await response.json()) as {
+                            text: string;
+                            filename: string;
+                        };
+                        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    });
                     setCompileTargetProjectId(null);
                 }}
             />

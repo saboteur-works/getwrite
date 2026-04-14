@@ -4,7 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import { X, PackageCheck } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
 import CompileResourceTree from "./CompileResourceTree";
-import { buildCompileTree, initAllChecked } from "./compileSelection";
+import {
+    buildCompileTree,
+    initAllChecked,
+    getDescendantLeafIds,
+    ROOT_ITEM_ID,
+} from "./compileSelection";
+
+export interface CompileOptions {
+    includeHeaders: boolean;
+}
 
 export interface CompilePreviewModalProps {
     isOpen: boolean;
@@ -12,8 +21,8 @@ export interface CompilePreviewModalProps {
     resources?: AnyResource[];
     preview?: string;
     onClose?: () => void;
-    /** Called with selected resource ids to include in the package. */
-    onConfirmCompile?: (selectedIds: string[]) => void;
+    /** Called with tree-ordered selected resource ids and compile options. */
+    onConfirmCompile?: (selectedIds: string[], options: CompileOptions) => void;
 }
 
 export default function CompilePreviewModal(
@@ -35,6 +44,7 @@ export default function CompilePreviewModal(
     const [checkedIds, setCheckedIds] = useState<Set<string>>(() =>
         initAllChecked(tree),
     );
+    const [includeHeaders, setIncludeHeaders] = useState(true);
 
     // Reset selection when modal opens or resource list changes.
     useEffect(() => {
@@ -77,6 +87,22 @@ export default function CompilePreviewModal(
                     {checkedIds.size} resource(s) selected
                 </div>
 
+                <div className="mt-3 flex items-center gap-2">
+                    <input
+                        id="compile-include-headers"
+                        type="checkbox"
+                        checked={includeHeaders}
+                        onChange={(e) => setIncludeHeaders(e.target.checked)}
+                        className="cursor-pointer"
+                    />
+                    <label
+                        htmlFor="compile-include-headers"
+                        className="compile-modal-meta-text cursor-pointer select-none"
+                    >
+                        Include section headers
+                    </label>
+                </div>
+
                 <div className="mt-4 flex justify-end gap-3">
                     <button
                         type="button"
@@ -89,7 +115,11 @@ export default function CompilePreviewModal(
                     <button
                         type="button"
                         onClick={() => {
-                            onConfirmCompile?.([...checkedIds]);
+                            const orderedIds = getDescendantLeafIds(
+                                ROOT_ITEM_ID,
+                                tree,
+                            ).filter((id) => checkedIds.has(id));
+                            onConfirmCompile?.(orderedIds, { includeHeaders });
                             onConfirm?.();
                             onClose?.();
                         }}
