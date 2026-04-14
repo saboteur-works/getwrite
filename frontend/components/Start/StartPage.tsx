@@ -20,6 +20,7 @@ import CreateProjectModal, {
     type CreateProjectPayload,
 } from "./CreateProjectModal";
 import ManageProjectMenu from "./ManageProjectMenu";
+import CompilePreviewModal from "../common/CompilePreviewModal";
 import { toastService } from "../../src/lib/toast-service";
 
 /**
@@ -193,6 +194,8 @@ export default function StartPage({
         useState<StartPageProjectEntry[]>(projects);
     /** Controls the create-project modal visibility. */
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    /** ID of the project currently open in the compile modal, or null when closed. */
+    const [compileTargetProjectId, setCompileTargetProjectId] = useState<string | null>(null);
     /** Tick used to keep relative timestamps fresh while the page is open. */
     const [timestampTick, setTimestampTick] = useState<number>(Date.now());
 
@@ -279,6 +282,26 @@ export default function StartPage({
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onCreate={handleModalCreate}
+            />
+
+            <CompilePreviewModal
+                isOpen={compileTargetProjectId !== null}
+                projectId={compileTargetProjectId ?? undefined}
+                resources={
+                    localProjects.find(
+                        (p) => p.project.id === compileTargetProjectId,
+                    )?.resources ?? []
+                }
+                onClose={() => setCompileTargetProjectId(null)}
+                onConfirmCompile={(selectedIds) => {
+                    const project = localProjects.find(
+                        (p) => p.project.id === compileTargetProjectId,
+                    );
+                    toastService.info(
+                        `Package ${project?.project.name ?? compileTargetProjectId} (${selectedIds.length} resource${selectedIds.length === 1 ? "" : "s"} selected)`,
+                    );
+                    setCompileTargetProjectId(null);
+                }}
             />
 
             <div className="max-content-width mx-auto">
@@ -472,24 +495,11 @@ export default function StartPage({
                                                     ),
                                                 );
                                             }}
-                                            onPackage={(id, selectedIds) => {
-                                                const selectedProject =
-                                                    localProjects.find(
-                                                        (projectItem) =>
-                                                            projectItem.project
-                                                                .id === id,
-                                                    );
-                                                const selectedText =
-                                                    selectedIds &&
-                                                    selectedIds.length > 0
-                                                        ? `\nSelected: ${selectedIds.join(", ")}`
-                                                        : "";
-
-                                                toastService.info(
-                                                    `Package ${selectedProject?.project.name ?? id}${selectedText ? " (" + selectedIds?.length + " selected)" : " (all resources)"}`,
-                                                );
-                                            }}
-                                            resources={resourceList}
+                                            onRequestCompile={() =>
+                                                setCompileTargetProjectId(
+                                                    projectEntry.project.id,
+                                                )
+                                            }
                                         />
                                     </div>
 

@@ -267,7 +267,7 @@ describe("AppShell modal-trigger parity (T028)", () => {
             />,
         );
 
-        expect(screen.queryByText("Compile Preview")).not.toBeInTheDocument();
+        expect(screen.queryByText("Compile Project")).not.toBeInTheDocument();
 
         rerender(
             <CompilePreviewModal
@@ -279,9 +279,9 @@ describe("AppShell modal-trigger parity (T028)", () => {
             />,
         );
 
-        expect(screen.getByText("Compile Preview")).toBeInTheDocument();
+        expect(screen.getByText("Compile Project")).toBeInTheDocument();
         expect(
-            screen.getByRole("button", { name: /Generate preview/i }),
+            screen.getByTestId("compile-resource-tree"),
         ).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: /close/i }));
