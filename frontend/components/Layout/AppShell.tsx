@@ -859,6 +859,18 @@ export default function AppShell({
                                         options,
                                     ) => {
                                         if (!project?.rootPath) return;
+
+                                        if (options.format === "pdf") {
+                                            // TODO: implement PDF compilation
+                                            console.warn("PDF compilation not yet implemented");
+                                            return;
+                                        }
+                                        if (options.format === "docx") {
+                                            // TODO: implement DOCX compilation
+                                            console.warn("DOCX compilation not yet implemented");
+                                            return;
+                                        }
+
                                         const response = await fetch(
                                             "/api/compile/text",
                                             {
@@ -900,7 +912,12 @@ export default function AppShell({
                                         const a =
                                             document.createElement("a");
                                         a.href = url;
-                                        a.download = filename;
+                                        const rawName = options.compilationName.trim();
+                                        if (rawName) {
+                                            a.download = rawName.endsWith(".txt") ? rawName : `${rawName}.txt`;
+                                        } else {
+                                            a.download = filename;
+                                        }
                                         document.body.appendChild(a);
                                         a.click();
                                         document.body.removeChild(a);

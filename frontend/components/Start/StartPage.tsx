@@ -342,6 +342,20 @@ export default function StartPage({
                         setCompileTargetProjectId(null);
                         return;
                     }
+
+                    if (options.format === "pdf") {
+                        // TODO: implement PDF compilation
+                        console.warn("PDF compilation not yet implemented");
+                        setCompileTargetProjectId(null);
+                        return;
+                    }
+                    if (options.format === "docx") {
+                        // TODO: implement DOCX compilation
+                        console.warn("DOCX compilation not yet implemented");
+                        setCompileTargetProjectId(null);
+                        return;
+                    }
+
                     void fetch("/api/compile/text", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -369,7 +383,12 @@ export default function StartPage({
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement("a");
                         a.href = url;
-                        a.download = filename;
+                        const rawName = options.compilationName.trim();
+                        if (rawName) {
+                            a.download = rawName.endsWith(".txt") ? rawName : `${rawName}.txt`;
+                        } else {
+                            a.download = filename;
+                        }
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
