@@ -196,6 +196,50 @@ export default function StartPage({
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     /** ID of the project currently open in the compile modal, or null when closed. */
     const [compileTargetProjectId, setCompileTargetProjectId] = useState<string | null>(null);
+
+    /**
+     * Resources reconstructed for the compile modal.
+     *
+     * `buildProjectViewAdapter` converts API resources to `UIResource[]` (title not
+     * name, no folderId). We rebuild a proper `AnyResource[]` from the folder entries
+     * which retain the original data and group resources by folder.
+     */
+    const compileResources = useMemo((): AnyResource[] => {
+        const entry = localProjects.find(p => p.project.id === compileTargetProjectId);
+        if (!entry) return [];
+        const result: AnyResource[] = [];
+        for (const folder of entry.folders as any[]) {
+            result.push({
+                id: folder.id,
+                name: folder.name ?? '',
+                slug: folder.slug ?? folder.id,
+                type: 'folder' as const,
+                // buildResourceTree uses folderId for parent lookup; folders store parent in parentId
+                folderId: folder.parentId ?? null,
+                parentId: folder.parentId ?? null,
+                orderIndex: folder.orderIndex ?? 0,
+                createdAt: folder.createdAt ?? '',
+                updatedAt: folder.updatedAt ?? '',
+                userMetadata: folder.userMetadata ?? {},
+            } as AnyResource);
+            for (const r of (folder.resources as any[]) ?? []) {
+                result.push({
+                    id: r.id,
+                    // UIResource has title instead of name
+                    name: r.title ?? r.name ?? '',
+                    slug: r.slug ?? r.id,
+                    type: r.type ?? 'text',
+                    folderId: folder.id,
+                    orderIndex: r._orderIndex ?? r.orderIndex ?? 0,
+                    createdAt: r.createdAt ?? '',
+                    updatedAt: r.updatedAt ?? '',
+                    userMetadata: r.userMetadata ?? {},
+                    plainText: r.content ?? '',
+                } as AnyResource);
+            }
+        }
+        return result;
+    }, [localProjects, compileTargetProjectId]);
     /** Tick used to keep relative timestamps fresh while the page is open. */
     const [timestampTick, setTimestampTick] = useState<number>(Date.now());
 
@@ -287,11 +331,7 @@ export default function StartPage({
             <CompilePreviewModal
                 isOpen={compileTargetProjectId !== null}
                 projectId={compileTargetProjectId ?? undefined}
-                resources={
-                    localProjects.find(
-                        (p) => p.project.id === compileTargetProjectId,
-                    )?.resources ?? []
-                }
+                resources={compileResources}
                 onClose={() => setCompileTargetProjectId(null)}
                 onConfirmCompile={(selectedIds) => {
                     const project = localProjects.find(
