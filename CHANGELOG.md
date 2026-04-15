@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.8](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.7...getwrite-v0.2.8) (2026-04-15)
+
+
+### Features
+
+* Add basic PDF export with font fallback ([0059ac8](https://github.com/saboteur-works/getwrite/commit/0059ac8823e0c6d99455bfc2cf83521b7d60f69f))
+* Add docx support ([57ae423](https://github.com/saboteur-works/getwrite/commit/57ae423e2b9ffadfeaffa68663b131de7b96d635))
+* added export functionality with headers ([9737552](https://github.com/saboteur-works/getwrite/commit/9737552111d592a9dec2de70a55d341e7e784031))
+* added project settings menu button and compile option ([a608461](https://github.com/saboteur-works/getwrite/commit/a608461e0c3fee967914ab3faaa50a37f58fc3ab))
+* added selection, type, and naming controls to compile ([2308e28](https://github.com/saboteur-works/getwrite/commit/2308e281960e6c4f59e71d90170bdcc66cbfc57f))
+* implement new compile resource tree and UI ([b12fa5b](https://github.com/saboteur-works/getwrite/commit/b12fa5bf527a6f0601a638cc9b526a064fbf4a71))
+
+
+### Bug Fixes
+
+* updated resource collection handling to prevent undefined titles or parents ([d6fa486](https://github.com/saboteur-works/getwrite/commit/d6fa486b627c9aa8aab0d4b86d4b67d4bbf1121a))
+
 ## [0.2.7](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.6...getwrite-v0.2.7) (2026-04-08)
 
 
