@@ -12,8 +12,7 @@ describe("ExportPreviewModal", () => {
             <ExportPreviewModal
                 isOpen={true}
                 resourceTitle={"My Resource"}
-                resourceIds={["r1"]}
-                allResources={[{ id: "r1", name: "My Resource" }]}
+                resourceNames={["My Resource"]}
                 onConfirmExport={onConfirmExport}
                 onClose={onClose}
             />,
@@ -43,8 +42,7 @@ describe("ExportPreviewModal — AppShell parity (T028)", () => {
             <ExportPreviewModal
                 isOpen={true}
                 resourceTitle={"Chapter One"}
-                resourceIds={["r1"]}
-                allResources={[{ id: "r1", name: "Chapter One" }]}
+                resourceNames={["Chapter One"]}
                 onConfirmExport={vi.fn()}
                 onClose={onClose}
             />,
@@ -61,8 +59,7 @@ describe("ExportPreviewModal — AppShell parity (T028)", () => {
             <ExportPreviewModal
                 isOpen={false}
                 resourceTitle={"Hidden"}
-                resourceIds={["r1"]}
-                allResources={[{ id: "r1", name: "Hidden" }]}
+                resourceNames={["Hidden"]}
                 onConfirmExport={vi.fn()}
                 onClose={vi.fn()}
             />,
@@ -78,11 +75,7 @@ describe("ExportPreviewModal — resource list display", () => {
             <ExportPreviewModal
                 isOpen={true}
                 resourceTitle="Act One"
-                resourceIds={["r1", "r2"]}
-                allResources={[
-                    { id: "r1", name: "Chapter 01" },
-                    { id: "r2", name: "Chapter 02" },
-                ]}
+                resourceNames={["Chapter 01", "Chapter 02"]}
                 onConfirmExport={vi.fn()}
                 onClose={vi.fn()}
             />,
@@ -98,8 +91,7 @@ describe("ExportPreviewModal — resource list display", () => {
             <ExportPreviewModal
                 isOpen={true}
                 resourceTitle="Chapter 01"
-                resourceIds={["r1"]}
-                allResources={[{ id: "r1", name: "Chapter 01" }]}
+                resourceNames={["Chapter 01"]}
                 onConfirmExport={vi.fn()}
                 onClose={vi.fn()}
             />,
@@ -108,13 +100,12 @@ describe("ExportPreviewModal — resource list display", () => {
         expect(screen.getByText(/Exporting 1 resource:/)).toBeInTheDocument();
     });
 
-    it("shows fallback message when resourceIds is empty", () => {
+    it("shows fallback message when resourceNames is empty", () => {
         render(
             <ExportPreviewModal
                 isOpen={true}
                 resourceTitle="Empty Folder"
-                resourceIds={[]}
-                allResources={[]}
+                resourceNames={[]}
                 onConfirmExport={vi.fn()}
                 onClose={vi.fn()}
             />,
@@ -123,20 +114,5 @@ describe("ExportPreviewModal — resource list display", () => {
         expect(
             screen.getByText("No resources selected for export."),
         ).toBeInTheDocument();
-    });
-
-    it("shows resource ID as fallback when name is not in allResources", () => {
-        render(
-            <ExportPreviewModal
-                isOpen={true}
-                resourceTitle="Chapter 01"
-                resourceIds={["unknown-id"]}
-                allResources={[]}
-                onConfirmExport={vi.fn()}
-                onClose={vi.fn()}
-            />,
-        );
-
-        expect(screen.getByText(/unknown-id/)).toBeInTheDocument();
     });
 });

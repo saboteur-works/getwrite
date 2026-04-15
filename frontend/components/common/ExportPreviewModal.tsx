@@ -4,33 +4,25 @@ import ConfirmDialog from "./ConfirmDialog";
 export interface ExportPreviewModalProps {
     isOpen: boolean;
     resourceTitle?: string;
-    /** IDs of the leaf resources that will be exported. */
-    resourceIds?: string[];
-    /** Full resource list used to look up display names in the preview. */
-    allResources?: Array<{ id: string; name: string }>;
+    /** Pre-resolved display names of the resources that will be exported. */
+    resourceNames?: string[];
     onClose?: () => void;
     onConfirmExport?: () => void;
     onShowCompile?: () => void;
 }
 
-function buildDescription(
-    resourceIds: string[] | undefined,
-    allResources: Array<{ id: string; name: string }> | undefined,
-): string {
-    if (!resourceIds || resourceIds.length === 0) {
+function buildDescription(resourceNames: string[] | undefined): string {
+    if (!resourceNames || resourceNames.length === 0) {
         return "No resources selected for export.";
     }
-    const nameMap = new Map((allResources ?? []).map((r) => [r.id, r.name]));
-    const lines = resourceIds.map((id) => `• ${nameMap.get(id) ?? id}`);
-    const label = resourceIds.length === 1 ? "resource" : "resources";
-    return `Exporting ${resourceIds.length} ${label}:\n\n${lines.join("\n")}`;
+    const label = resourceNames.length === 1 ? "resource" : "resources";
+    return `Exporting ${resourceNames.length} ${label}:\n\n${resourceNames.map((n) => `• ${n}`).join("\n")}`;
 }
 
 export default function ExportPreviewModal({
     isOpen,
     resourceTitle,
-    resourceIds,
-    allResources,
+    resourceNames,
     onClose,
     onConfirmExport,
     onShowCompile,
@@ -42,7 +34,7 @@ export default function ExportPreviewModal({
             <ConfirmDialog
                 isOpen={isOpen}
                 title={resourceTitle ? `Export ${resourceTitle}` : "Export"}
-                description={buildDescription(resourceIds, allResources)}
+                description={buildDescription(resourceNames)}
                 confirmLabel="Export"
                 cancelLabel="Cancel"
                 onConfirm={() => {

@@ -27,8 +27,7 @@ export const SingleResourceExport: Story = {
     args: {
         isOpen: true,
         resourceTitle: "Chapter 01",
-        resourceIds: ["res-1"],
-        allResources: [{ id: "res-1", name: "Chapter 01" }],
+        resourceNames: ["Chapter 01"],
         onClose: () => console.log("close"),
         onConfirmExport: () => console.log("export"),
         onShowCompile: () => console.log("show compile"),
@@ -39,12 +38,7 @@ export const FolderExport: Story = {
     args: {
         isOpen: true,
         resourceTitle: "Act One",
-        resourceIds: ["res-1", "res-2", "res-3"],
-        allResources: [
-            { id: "res-1", name: "Chapter 01" },
-            { id: "res-2", name: "Chapter 02" },
-            { id: "res-3", name: "Chapter 03" },
-        ],
+        resourceNames: ["Chapter 01", "Chapter 02", "Chapter 03"],
         onClose: () => console.log("close"),
         onConfirmExport: () => console.log("export"),
     },
@@ -54,8 +48,7 @@ export const EmptyFolder: Story = {
     args: {
         isOpen: true,
         resourceTitle: "Empty Folder",
-        resourceIds: [],
-        allResources: [],
+        resourceNames: [],
         onClose: () => console.log("close"),
         onConfirmExport: () => console.log("export"),
     },
@@ -104,11 +97,7 @@ export const Interactive: Story = {
     args: {
         isOpen: true,
         resourceTitle: "Act One",
-        resourceIds: ["res-1", "res-2"],
-        allResources: [
-            { id: "res-1", name: "Chapter 01" },
-            { id: "res-2", name: "Chapter 02" },
-        ],
+        resourceNames: ["Chapter 01", "Chapter 02"],
         onClose: () => console.log("close"),
         onConfirmExport: () => console.log("export"),
         onShowCompile: () => console.log("show compile"),

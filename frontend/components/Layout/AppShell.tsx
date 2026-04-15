@@ -99,6 +99,7 @@ interface ExportModalState {
     resourceId?: string;
     resourceTitle?: string;
     resourceIds?: string[];
+    resourceNames?: string[];
 }
 
 /**
@@ -353,17 +354,27 @@ export default function AppShell({
         }
 
         if (action === "export") {
+            const allItems = [...(resources ?? []), ...(folders ?? [])];
+            const nameById = new Map(allItems.map((r) => [r.id, r.name]));
             const isFolder = (folders ?? []).some((f) => f.id === resourceId);
             let resolvedIds: string[] = [];
             if (resourceId) {
                 if (isFolder) {
-                    const tree = buildCompileTree([...(resources ?? []), ...(folders ?? [])]);
+                    const tree = buildCompileTree(allItems);
                     resolvedIds = getDescendantLeafIds(resourceId, tree);
                 } else {
                     resolvedIds = [resourceId];
                 }
             }
-            setExportModal({ open: true, resourceId, resourceTitle, resourceIds: resolvedIds });
+            const resolvedTitle = nameById.get(resourceId ?? "") ?? resourceTitle;
+            const resolvedNames = resolvedIds.map((id) => nameById.get(id) ?? id);
+            setExportModal({
+                open: true,
+                resourceId,
+                resourceTitle: resolvedTitle,
+                resourceIds: resolvedIds,
+                resourceNames: resolvedNames,
+            });
             return;
         }
 

@@ -40,6 +40,7 @@ export interface ShellExportModalState {
     resourceId?: string;
     resourceTitle?: string;
     resourceIds?: string[];
+    resourceNames?: string[];
 }
 
 export interface ShellCompileModalState {
@@ -188,8 +189,7 @@ export default function ShellModalCoordinator({
             <ExportPreviewModal
                 isOpen={exportModal.open}
                 resourceTitle={exportModal.resourceTitle}
-                resourceIds={exportModal.resourceIds ?? (exportModal.resourceId ? [exportModal.resourceId] : [])}
-                allResources={[...(resources ?? []), ...(folders ?? [])]}
+                resourceNames={exportModal.resourceNames}
                 onClose={() => setExportModal({ open: false })}
                 onConfirmExport={() =>
                     onExportConfirmed(
