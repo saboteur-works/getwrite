@@ -476,6 +476,8 @@ export default function Home(): JSX.Element {
             title?: string;
             /** Parent folder ID for the new resource. */
             folderId?: string;
+            /** Resolved leaf resource IDs to export (used by the export action). */
+            resourceIds?: string[];
         },
     ) => {
         if (!selectedProject) return;
@@ -636,11 +638,56 @@ export default function Home(): JSX.Element {
         }
 
         if (action === "export") {
-            if (!resourceId) return;
-            const r = selectedProject.resources.find(
-                (x) => x.id === resourceId,
-            );
-            toastService.info(`Export preview for: ${r?.name ?? resourceId}`);
+            const resolvedIds: string[] = opts?.resourceIds ?? (resourceId ? [resourceId] : []);
+            if (resolvedIds.length === 0) return;
+
+            const exportNode =
+                selectedProject.resources.find((x) => x.id === resourceId) ??
+                selectedProject.folders.find((x) => x.id === resourceId);
+            const exportName = exportNode?.name ?? "export";
+
+            try {
+                const res = await fetch("/api/export/text", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        projectPath: selectedProject.rootPath,
+                        resourceIds: resolvedIds,
+                        resources: [
+                            ...selectedProject.resources,
+                            ...selectedProject.folders,
+                        ].map((r) => ({ id: r.id, name: r.name, type: r.type })),
+                        exportName,
+                    }),
+                });
+
+                if (!res.ok) {
+                    toastService.error("Export failed", `Server returned ${res.status}`);
+                    return;
+                }
+
+                const { text, filename } = (await res.json()) as {
+                    text: string;
+                    filename: string;
+                };
+
+                const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                toastService.success("Exported", filename);
+            } catch (err) {
+                toastService.error(
+                    "Export failed",
+                    err instanceof Error ? err.message : String(err),
+                );
+            }
             return;
         }
     };

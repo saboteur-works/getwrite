@@ -39,7 +39,7 @@ export interface ShellExportModalState {
     open: boolean;
     resourceId?: string;
     resourceTitle?: string;
-    preview?: string;
+    resourceIds?: string[];
 }
 
 export interface ShellCompileModalState {
@@ -88,7 +88,7 @@ export interface ShellModalCoordinatorProps {
         },
         parentId?: string,
     ) => Promise<void>;
-    onExportConfirmed: (resourceId?: string) => Promise<void>;
+    onExportConfirmed: (resourceIds: string[], resourceId?: string) => Promise<void>;
     onSelectResource?: (resourceId: string) => void;
     onBuildCompilePreview: (resourceId?: string) => string;
     onConfirmCompile: (selectedIds: string[], options: CompileOptions) => Promise<void>;
@@ -188,10 +188,14 @@ export default function ShellModalCoordinator({
             <ExportPreviewModal
                 isOpen={exportModal.open}
                 resourceTitle={exportModal.resourceTitle}
-                preview={exportModal.preview}
+                resourceIds={exportModal.resourceIds ?? (exportModal.resourceId ? [exportModal.resourceId] : [])}
+                allResources={[...(resources ?? []), ...(folders ?? [])]}
                 onClose={() => setExportModal({ open: false })}
                 onConfirmExport={() =>
-                    onExportConfirmed(exportModal.resourceId)
+                    onExportConfirmed(
+                        exportModal.resourceIds ?? (exportModal.resourceId ? [exportModal.resourceId] : []),
+                        exportModal.resourceId,
+                    )
                 }
                 onShowCompile={() => {
                     const preview = onBuildCompilePreview(

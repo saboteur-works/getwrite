@@ -226,7 +226,8 @@ describe("AppShell modal-trigger parity (T028)", () => {
             <ExportPreviewModal
                 isOpen={false}
                 resourceTitle="Act One"
-                preview="Preview text"
+                resourceIds={["r1"]}
+                allResources={[{ id: "r1", name: "Act One" }]}
                 onConfirmExport={vi.fn()}
                 onClose={onClose}
             />,
@@ -240,7 +241,8 @@ describe("AppShell modal-trigger parity (T028)", () => {
             <ExportPreviewModal
                 isOpen={true}
                 resourceTitle="Act One"
-                preview="Preview text"
+                resourceIds={["r1"]}
+                allResources={[{ id: "r1", name: "Act One" }]}
                 onConfirmExport={vi.fn()}
                 onClose={onClose}
             />,

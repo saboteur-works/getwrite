@@ -11,7 +11,7 @@ export default meta;
 
 type Story = StoryObj<typeof ExportPreviewModal>;
 
-export const Open: Story = {
+export const SingleResourceExport: Story = {
     render: (args) => (
         <div>
             <ExportPreviewModal {...args} />
@@ -27,19 +27,35 @@ export const Open: Story = {
     args: {
         isOpen: true,
         resourceTitle: "Chapter 01",
-        preview:
-            "Chapter 01\n\nThe rain started just as the train crossed the valley.",
+        resourceIds: ["res-1"],
+        allResources: [{ id: "res-1", name: "Chapter 01" }],
         onClose: () => console.log("close"),
         onConfirmExport: () => console.log("export"),
         onShowCompile: () => console.log("show compile"),
     },
 };
 
-export const WithoutCompileShortcut: Story = {
+export const FolderExport: Story = {
     args: {
         isOpen: true,
-        resourceTitle: "Workspace",
-        preview: "Compiled manuscript preview will appear here.",
+        resourceTitle: "Act One",
+        resourceIds: ["res-1", "res-2", "res-3"],
+        allResources: [
+            { id: "res-1", name: "Chapter 01" },
+            { id: "res-2", name: "Chapter 02" },
+            { id: "res-3", name: "Chapter 03" },
+        ],
+        onClose: () => console.log("close"),
+        onConfirmExport: () => console.log("export"),
+    },
+};
+
+export const EmptyFolder: Story = {
+    args: {
+        isOpen: true,
+        resourceTitle: "Empty Folder",
+        resourceIds: [],
+        allResources: [],
         onClose: () => console.log("close"),
         onConfirmExport: () => console.log("export"),
     },
@@ -87,9 +103,12 @@ export const Interactive: Story = {
     },
     args: {
         isOpen: true,
-        resourceTitle: "Chapter 01",
-        preview:
-            "Chapter 01\n\nThe rain started just as the train crossed the valley.",
+        resourceTitle: "Act One",
+        resourceIds: ["res-1", "res-2"],
+        allResources: [
+            { id: "res-1", name: "Chapter 01" },
+            { id: "res-2", name: "Chapter 02" },
+        ],
         onClose: () => console.log("close"),
         onConfirmExport: () => console.log("export"),
         onShowCompile: () => console.log("show compile"),
