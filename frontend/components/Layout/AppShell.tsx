@@ -59,6 +59,7 @@ import {
 } from "../../src/lib/user-preferences";
 import type { MetadataValue } from "../../src/lib/models/types";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
+import { toastService } from "../../src/lib/toast-service";
 
 /**
  * Optional payload bag forwarded to `onResourceAction` callbacks.
@@ -861,8 +862,77 @@ export default function AppShell({
                                         if (!project?.rootPath) return;
 
                                         if (options.format === "pdf") {
-                                            // TODO: implement PDF compilation
-                                            console.warn("PDF compilation not yet implemented");
+                                            const pdfResponse = await fetch(
+                                                "/api/compile/pdf",
+                                                {
+                                                    method: "POST",
+                                                    headers: {
+                                                        "Content-Type":
+                                                            "application/json",
+                                                    },
+                                                    body: JSON.stringify({
+                                                        projectPath:
+                                                            project.rootPath,
+                                                        resourceIds: selectedIds,
+                                                        resources: (
+                                                            resources ?? []
+                                                        ).map((r) => ({
+                                                            id: r.id,
+                                                            name: r.name,
+                                                            type: r.type,
+                                                        })),
+                                                        includeHeaders:
+                                                            options.includeHeaders,
+                                                        projectName:
+                                                            project.name ??
+                                                            "project",
+                                                    }),
+                                                },
+                                            );
+                                            if (!pdfResponse.ok) {
+                                                toastService.error("Compile failed", "Could not generate PDF");
+                                                return;
+                                            }
+                                            if (pdfResponse.headers.get("X-Compile-Warning") === "font-fallback") {
+                                                toastService.info("PDF compiled with fallback fonts — IBM Plex fonts were unreachable");
+                                            }
+                                            const arrayBuffer =
+                                                await pdfResponse.arrayBuffer();
+                                            const blob = new Blob(
+                                                [arrayBuffer],
+                                                {
+                                                    type: "application/pdf",
+                                                },
+                                            );
+                                            const url =
+                                                URL.createObjectURL(blob);
+                                            const a =
+                                                document.createElement("a");
+                                            a.href = url;
+                                            const rawName =
+                                                options.compilationName.trim();
+                                            const disposition =
+                                                pdfResponse.headers.get(
+                                                    "Content-Disposition",
+                                                ) ?? "";
+                                            const serverFilename =
+                                                disposition
+                                                    .match(
+                                                        /filename="([^"]+)"/,
+                                                    )?.[1] ?? "project.pdf";
+                                            if (rawName) {
+                                                a.download = rawName.endsWith(
+                                                    ".pdf",
+                                                )
+                                                    ? rawName
+                                                    : `${rawName}.pdf`;
+                                            } else {
+                                                a.download = serverFilename;
+                                            }
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            URL.revokeObjectURL(url);
                                             return;
                                         }
                                         if (options.format === "docx") {

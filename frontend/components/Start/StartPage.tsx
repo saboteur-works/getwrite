@@ -344,8 +344,46 @@ export default function StartPage({
                     }
 
                     if (options.format === "pdf") {
-                        // TODO: implement PDF compilation
-                        console.warn("PDF compilation not yet implemented");
+                        void fetch("/api/compile/pdf", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                projectPath: entry.project.rootPath,
+                                resourceIds: selectedIds,
+                                resources: compileResources.map((r) => ({
+                                    id: r.id,
+                                    name: r.name,
+                                    type: r.type,
+                                })),
+                                includeHeaders: options.includeHeaders,
+                                projectName: entry.project.name ?? "project",
+                            }),
+                        }).then(async (response) => {
+                            if (!response.ok) {
+                                toastService.error("Compile failed", "Could not generate PDF");
+                                return;
+                            }
+                            if (response.headers.get("X-Compile-Warning") === "font-fallback") {
+                                toastService.info("PDF compiled with fallback fonts — IBM Plex fonts were unreachable");
+                            }
+                            const arrayBuffer = await response.arrayBuffer();
+                            const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            const rawName = options.compilationName.trim();
+                            const disposition = response.headers.get("Content-Disposition") ?? "";
+                            const serverFilename = disposition.match(/filename="([^"]+)"/)?.[1] ?? "project.pdf";
+                            if (rawName) {
+                                a.download = rawName.endsWith(".pdf") ? rawName : `${rawName}.pdf`;
+                            } else {
+                                a.download = serverFilename;
+                            }
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        });
                         setCompileTargetProjectId(null);
                         return;
                     }
