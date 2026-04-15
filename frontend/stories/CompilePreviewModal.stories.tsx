@@ -1,44 +1,89 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import CompilePreviewModal from "../components/common/CompilePreviewModal";
-import adapter from "../src/lib/adapters/placeholderAdapter";
 import type { AnyResource } from "../src/lib/models/types";
 
-const legacyResources = [
+const sampleResources: AnyResource[] = [
     {
         id: "f1",
-        projectId: "proj-1",
-        title: "Folder A",
+        slug: "chapter-1",
+        name: "Chapter 1",
         type: "folder",
         createdAt: "",
         updatedAt: "",
         userMetadata: {},
+        orderIndex: 0,
     },
     {
         id: "r1",
-        projectId: "proj-1",
-        title: "Test Doc",
-        type: "document",
-        parentId: "f1",
+        slug: "scene-1",
+        name: "Scene 1",
+        type: "text",
+        plainText: "",
         createdAt: "",
         updatedAt: "",
         userMetadata: {},
+        folderId: "f1",
+        orderIndex: 0,
     },
     {
         id: "r2",
-        projectId: "proj-1",
-        title: "Another Doc",
-        type: "document",
-        parentId: "f1",
+        slug: "scene-2",
+        name: "Scene 2",
+        type: "text",
+        plainText: "",
         createdAt: "",
         updatedAt: "",
         userMetadata: {},
+        folderId: "f1",
+        orderIndex: 1,
     },
-];
-
-const sampleResources: AnyResource[] = legacyResources.map((r) =>
-    adapter.migrateResource(r),
-);
+    {
+        id: "f2",
+        slug: "chapter-2",
+        name: "Chapter 2",
+        type: "folder",
+        createdAt: "",
+        updatedAt: "",
+        userMetadata: {},
+        orderIndex: 1,
+    },
+    {
+        id: "r3",
+        slug: "scene-3",
+        name: "Scene 3",
+        type: "text",
+        plainText: "",
+        createdAt: "",
+        updatedAt: "",
+        userMetadata: {},
+        folderId: "f2",
+        orderIndex: 0,
+    },
+    {
+        id: "r4",
+        slug: "scene-4",
+        name: "Scene 4",
+        type: "text",
+        plainText: "",
+        createdAt: "",
+        updatedAt: "",
+        userMetadata: {},
+        folderId: "f2",
+        orderIndex: 1,
+    },
+    {
+        id: "img1",
+        slug: "cover-image",
+        name: "Cover Image",
+        type: "image",
+        filePath: "",
+        createdAt: "",
+        updatedAt: "",
+        userMetadata: {},
+        orderIndex: 2,
+    },
+] as AnyResource[];
 
 const meta: Meta<typeof CompilePreviewModal> = {
     title: "Common/CompilePreviewModal",
@@ -54,6 +99,7 @@ export const ProjectPreview: Story = {
         isOpen: true,
         projectId: "proj-1",
         resources: sampleResources,
+        onConfirmCompile: (ids: string[]) => console.log("compile", ids),
     },
 };
 
@@ -74,13 +120,13 @@ export const ResourcePreview: Story = {
         isOpen: true,
         projectId: "proj-1",
         resources: sampleResources,
-        // pass `resource` to demonstrate legacy single-resource flow
+        // pass `resource` to demonstrate legacy single-resource pre-selection
         resource: sampleResources[1],
     } as any,
 };
 
 export const Interactive: Story = {
-    render: (args) => {
+    render: (args: any) => {
         const [isOpen, setIsOpen] = React.useState(true);
         const [lastAction, setLastAction] = React.useState<string | null>(null);
         return (
@@ -93,9 +139,9 @@ export const Interactive: Story = {
                         setLastAction("close");
                         args.onClose?.();
                     }}
-                    onExport={() => {
-                        setLastAction("export");
-                        args.onExport?.();
+                    onConfirmCompile={(ids) => {
+                        setLastAction("compile");
+                        args.onConfirmCompile?.(ids);
                     }}
                 />
                 <div

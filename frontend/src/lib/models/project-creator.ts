@@ -55,6 +55,7 @@ import type {
 } from "./types";
 import { createResourceOfType, writeResourceToFile } from "./resource";
 import { writeRevision } from "./revision";
+import { slugify } from "../utils";
 
 /**
  * Minimal spec types for project-type JSON files.
@@ -120,25 +121,6 @@ export interface ProjectTypeSpec {
             [index in EditorHeadings]?: EditorHeading;
         };
     };
-}
-
-/**
- * Slugify a string for use in file and folder names.
- *
- * Converts a human-friendly folder name into a file-system-friendly slug by
- * lowercasing, replacing whitespace with hyphens and removing non-alphanumeric
- * characters. This same transformation is used when matching a `folder` name
- * from `ProjectTypeSpecResource` to the created folder directory.
- *
- * @example
- * const slug = slugify("Chapter 1: The Beginning") // "chapter-1-the-beginning"
- */
-function slugify(s: string): string {
-    return s
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9\-]/g, "");
 }
 
 /**

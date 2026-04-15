@@ -59,6 +59,7 @@ import {
 } from "../../src/lib/user-preferences";
 import type { MetadataValue } from "../../src/lib/models/types";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
+import { toastService } from "../../src/lib/toast-service";
 
 /**
  * Optional payload bag forwarded to `onResourceAction` callbacks.
@@ -180,6 +181,8 @@ export default function AppShell({
     const [view, setView] = useState<ViewName>("edit");
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] =
         useState<boolean>(false);
+    const [isProjectMenuOpen, setIsProjectMenuOpen] =
+        useState<boolean>(false);
     const [isPreferencesModalOpen, setIsPreferencesModalOpen] =
         useState<boolean>(false);
     const [isHeadingSettingsModalOpen, setIsHeadingSettingsModalOpen] =
@@ -195,6 +198,7 @@ export default function AppShell({
     const [isCloseProjectConfirmOpen, setIsCloseProjectConfirmOpen] =
         useState<boolean>(false);
     const settingsMenuRef = useRef<HTMLDivElement | null>(null);
+    const projectMenuRef = useRef<HTMLDivElement | null>(null);
     const latestEditorEditVersionRef = useRef<number>(0);
     const combined = React.useMemo(() => {
         return [...(resources ?? []), ...(folders ?? [])];
@@ -495,9 +499,18 @@ export default function AppShell({
 
     useEffect(() => {
         const onDocumentMouseDown = (event: MouseEvent) => {
-            if (!settingsMenuRef.current) return;
-            if (settingsMenuRef.current.contains(event.target as Node)) return;
-            setIsSettingsMenuOpen(false);
+            if (
+                settingsMenuRef.current &&
+                !settingsMenuRef.current.contains(event.target as Node)
+            ) {
+                setIsSettingsMenuOpen(false);
+            }
+            if (
+                projectMenuRef.current &&
+                !projectMenuRef.current.contains(event.target as Node)
+            ) {
+                setIsProjectMenuOpen(false);
+            }
         };
 
         const onDocumentKeyDown = (event: KeyboardEvent) => {
@@ -514,6 +527,7 @@ export default function AppShell({
 
             if (event.key === "Escape") {
                 setIsSettingsMenuOpen(false);
+                setIsProjectMenuOpen(false);
                 setIsPreferencesModalOpen(false);
                 setIsProjectTypesModalOpen(false);
                 setIsHelpModalOpen(false);
@@ -596,6 +610,11 @@ export default function AppShell({
         setIsHelpModalOpen(true);
     };
 
+    const handleOpenCompile = (): void => {
+        setIsProjectMenuOpen(false);
+        setCompileModal({ open: true });
+    };
+
     const handleCloseProject = (): void => {
         setIsSettingsMenuOpen(false);
         setIsHeadingSettingsModalOpen(false);
@@ -666,6 +685,12 @@ export default function AppShell({
                 onOpenHelp={handleOpenHelp}
                 onCloseProject={handleCloseProject}
                 hasProject={Boolean(project)}
+                isProjectMenuOpen={isProjectMenuOpen}
+                projectMenuRef={projectMenuRef}
+                onToggleProjectMenuOpen={() =>
+                    setIsProjectMenuOpen((prev) => !prev)
+                }
+                onOpenCompile={handleOpenCompile}
             />
 
             <ShellLayoutController>
@@ -854,12 +879,212 @@ export default function AppShell({
                                             )
                                         );
                                     }}
-                                    onCompileConfirm={(resourceId) => {
-                                        if (resourceId) {
-                                            void onResourceAction?.(
-                                                "export",
-                                                resourceId,
+                                    onConfirmCompile={async (
+                                        selectedIds,
+                                        options,
+                                    ) => {
+                                        if (!project?.rootPath) return;
+                                        try {
+
+                                        if (options.format === "pdf") {
+                                            const pdfResponse = await fetch(
+                                                "/api/compile/pdf",
+                                                {
+                                                    method: "POST",
+                                                    headers: {
+                                                        "Content-Type":
+                                                            "application/json",
+                                                    },
+                                                    body: JSON.stringify({
+                                                        projectPath:
+                                                            project.rootPath,
+                                                        resourceIds: selectedIds,
+                                                        resources: (
+                                                            resources ?? []
+                                                        ).map((r) => ({
+                                                            id: r.id,
+                                                            name: r.name,
+                                                            type: r.type,
+                                                        })),
+                                                        includeHeaders:
+                                                            options.includeHeaders,
+                                                        projectName:
+                                                            project.name ??
+                                                            "project",
+                                                    }),
+                                                },
                                             );
+                                            if (!pdfResponse.ok) {
+                                                toastService.error("Compile failed", "Could not generate PDF");
+                                                return;
+                                            }
+                                            if (pdfResponse.headers.get("X-Compile-Warning") === "font-fallback") {
+                                                toastService.info("PDF compiled with fallback fonts — IBM Plex fonts were unreachable");
+                                            }
+                                            const arrayBuffer =
+                                                await pdfResponse.arrayBuffer();
+                                            const blob = new Blob(
+                                                [arrayBuffer],
+                                                {
+                                                    type: "application/pdf",
+                                                },
+                                            );
+                                            const url =
+                                                URL.createObjectURL(blob);
+                                            const a =
+                                                document.createElement("a");
+                                            a.href = url;
+                                            const rawName =
+                                                options.compilationName.trim();
+                                            const disposition =
+                                                pdfResponse.headers.get(
+                                                    "Content-Disposition",
+                                                ) ?? "";
+                                            const serverFilename =
+                                                disposition
+                                                    .match(
+                                                        /filename="([^"]+)"/,
+                                                    )?.[1] ?? "project.pdf";
+                                            if (rawName) {
+                                                a.download = rawName.endsWith(
+                                                    ".pdf",
+                                                )
+                                                    ? rawName
+                                                    : `${rawName}.pdf`;
+                                            } else {
+                                                a.download = serverFilename;
+                                            }
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            URL.revokeObjectURL(url);
+                                            return;
+                                        }
+                                        if (options.format === "docx") {
+                                            const docxResponse = await fetch(
+                                                "/api/compile/docx",
+                                                {
+                                                    method: "POST",
+                                                    headers: {
+                                                        "Content-Type":
+                                                            "application/json",
+                                                    },
+                                                    body: JSON.stringify({
+                                                        projectPath:
+                                                            project.rootPath,
+                                                        resourceIds: selectedIds,
+                                                        resources: (
+                                                            resources ?? []
+                                                        ).map((r) => ({
+                                                            id: r.id,
+                                                            name: r.name,
+                                                            type: r.type,
+                                                        })),
+                                                        includeHeaders:
+                                                            options.includeHeaders,
+                                                        projectName:
+                                                            project.name ??
+                                                            "project",
+                                                    }),
+                                                },
+                                            );
+                                            if (!docxResponse.ok) {
+                                                toastService.error("Compile failed", "Could not generate DOCX");
+                                                return;
+                                            }
+                                            const arrayBuffer =
+                                                await docxResponse.arrayBuffer();
+                                            const blob = new Blob(
+                                                [arrayBuffer],
+                                                {
+                                                    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                                },
+                                            );
+                                            const url =
+                                                URL.createObjectURL(blob);
+                                            const a =
+                                                document.createElement("a");
+                                            a.href = url;
+                                            const rawName =
+                                                options.compilationName.trim();
+                                            const disposition =
+                                                docxResponse.headers.get(
+                                                    "Content-Disposition",
+                                                ) ?? "";
+                                            const serverFilename =
+                                                disposition
+                                                    .match(
+                                                        /filename="([^"]+)"/,
+                                                    )?.[1] ?? "project.docx";
+                                            if (rawName) {
+                                                a.download = rawName.endsWith(
+                                                    ".docx",
+                                                )
+                                                    ? rawName
+                                                    : `${rawName}.docx`;
+                                            } else {
+                                                a.download = serverFilename;
+                                            }
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            URL.revokeObjectURL(url);
+                                            return;
+                                        }
+
+                                        const response = await fetch(
+                                            "/api/compile/text",
+                                            {
+                                                method: "POST",
+                                                headers: {
+                                                    "Content-Type":
+                                                        "application/json",
+                                                },
+                                                body: JSON.stringify({
+                                                    projectPath:
+                                                        project.rootPath,
+                                                    resourceIds: selectedIds,
+                                                    resources: (
+                                                        resources ?? []
+                                                    ).map((r) => ({
+                                                        id: r.id,
+                                                        name: r.name,
+                                                        type: r.type,
+                                                    })),
+                                                    includeHeaders:
+                                                        options.includeHeaders,
+                                                    projectName:
+                                                        project.name ??
+                                                        "project",
+                                                }),
+                                            },
+                                        );
+                                        if (!response.ok) return;
+                                        const { text, filename } =
+                                            (await response.json()) as {
+                                                text: string;
+                                                filename: string;
+                                            };
+                                        const blob = new Blob([text], {
+                                            type: "text/plain;charset=utf-8",
+                                        });
+                                        const url =
+                                            URL.createObjectURL(blob);
+                                        const a =
+                                            document.createElement("a");
+                                        a.href = url;
+                                        const rawName = options.compilationName.trim();
+                                        if (rawName) {
+                                            a.download = rawName.endsWith(".txt") ? rawName : `${rawName}.txt`;
+                                        } else {
+                                            a.download = filename;
+                                        }
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                        URL.revokeObjectURL(url);
+                                        } catch (err) {
+                                            toastService.error("Compile failed", err instanceof Error ? err.message : String(err));
                                         }
                                     }}
                                 />

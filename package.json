@@ -11,7 +11,10 @@
     "author": "",
     "license": "ISC",
     "packageManager": "pnpm@10.28.0",
-    "dependencies": {
-        "@tiptap/extension-heading": "^3.22.2"
+    "pnpm": {
+        "overrides": {
+            "@react-pdf/layout": "4.5.1",
+            "@react-pdf/image": "3.0.4"
+        }
     }
 }

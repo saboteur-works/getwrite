@@ -28,19 +28,28 @@ test("compile preview modal displays resource preview", async ({ page }) => {
     await expect(previewMode).toHaveText("resource");
 });
 
-test("compile preview modal interactive tracks export action", async ({
+test("compile preview modal shows resource tree", async ({ page }) => {
+    await page.goto(
+        "/iframe.html?id=common-compilepreviewmodal--project-preview",
+    );
+
+    const tree = page.locator('[data-testid="compile-resource-tree"]');
+    await expect(tree).toBeVisible();
+});
+
+test("compile preview modal interactive tracks compile action", async ({
     page,
 }) => {
     await page.goto("/iframe.html?id=common-compilepreviewmodal--interactive");
 
     const lastActionProbe = page.locator('[data-testid="last-action"]');
-    const exportButton = page.getByRole("button", { name: /export/i });
+    const compileButton = page.getByRole("button", { name: /compile/i }).first();
 
-    if (await exportButton.isVisible()) {
-        await exportButton.click();
+    if (await compileButton.isVisible()) {
+        await compileButton.click();
 
-        // Verify export action was tracked
-        await expect(lastActionProbe).toHaveText("export", { timeout: 1000 });
+        // Verify compile action was tracked
+        await expect(lastActionProbe).toHaveText("compile", { timeout: 1000 });
     }
 });
 

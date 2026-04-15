@@ -20,6 +20,7 @@ import CreateProjectModal, {
     type CreateProjectPayload,
 } from "./CreateProjectModal";
 import ManageProjectMenu from "./ManageProjectMenu";
+import CompilePreviewModal from "../common/CompilePreviewModal";
 import { toastService } from "../../src/lib/toast-service";
 
 /**
@@ -193,6 +194,52 @@ export default function StartPage({
         useState<StartPageProjectEntry[]>(projects);
     /** Controls the create-project modal visibility. */
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    /** ID of the project currently open in the compile modal, or null when closed. */
+    const [compileTargetProjectId, setCompileTargetProjectId] = useState<string | null>(null);
+
+    /**
+     * Resources reconstructed for the compile modal.
+     *
+     * `buildProjectViewAdapter` converts API resources to `UIResource[]` (title not
+     * name, no folderId). We rebuild a proper `AnyResource[]` from the folder entries
+     * which retain the original data and group resources by folder.
+     */
+    const compileResources = useMemo((): AnyResource[] => {
+        const entry = localProjects.find(p => p.project.id === compileTargetProjectId);
+        if (!entry) return [];
+        const result: AnyResource[] = [];
+        for (const folder of entry.folders as any[]) {
+            result.push({
+                id: folder.id,
+                name: folder.name ?? '',
+                slug: folder.slug ?? folder.id,
+                type: 'folder' as const,
+                // buildResourceTree uses folderId for parent lookup; folders store parent in parentId
+                folderId: folder.parentId ?? null,
+                parentId: folder.parentId ?? null,
+                orderIndex: folder.orderIndex ?? 0,
+                createdAt: folder.createdAt ?? '',
+                updatedAt: folder.updatedAt ?? '',
+                userMetadata: folder.userMetadata ?? {},
+            } as AnyResource);
+            for (const r of (folder.resources as any[]) ?? []) {
+                result.push({
+                    id: r.id,
+                    // UIResource has title instead of name
+                    name: r.title ?? r.name ?? '',
+                    slug: r.slug ?? r.id,
+                    type: r.type ?? 'text',
+                    folderId: folder.id,
+                    orderIndex: r._orderIndex ?? r.orderIndex ?? 0,
+                    createdAt: r.createdAt ?? '',
+                    updatedAt: r.updatedAt ?? '',
+                    userMetadata: r.userMetadata ?? {},
+                    plainText: r.content ?? '',
+                } as AnyResource);
+            }
+        }
+        return result;
+    }, [localProjects, compileTargetProjectId]);
     /** Tick used to keep relative timestamps fresh while the page is open. */
     const [timestampTick, setTimestampTick] = useState<number>(Date.now());
 
@@ -279,6 +326,151 @@ export default function StartPage({
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onCreate={handleModalCreate}
+            />
+
+            <CompilePreviewModal
+                isOpen={compileTargetProjectId !== null}
+                projectId={compileTargetProjectId ?? undefined}
+                resources={compileResources}
+                onClose={() => setCompileTargetProjectId(null)}
+                onConfirmCompile={(selectedIds, options) => {
+                    const entry = localProjects.find(
+                        (p) => p.project.id === compileTargetProjectId,
+                    );
+                    if (!entry?.project.rootPath) {
+                        toastService.error("Cannot compile", "Project path not found");
+                        setCompileTargetProjectId(null);
+                        return;
+                    }
+
+                    if (options.format === "pdf") {
+                        void fetch("/api/compile/pdf", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                projectPath: entry.project.rootPath,
+                                resourceIds: selectedIds,
+                                resources: compileResources.map((r) => ({
+                                    id: r.id,
+                                    name: r.name,
+                                    type: r.type,
+                                })),
+                                includeHeaders: options.includeHeaders,
+                                projectName: entry.project.name ?? "project",
+                            }),
+                        }).then(async (response) => {
+                            if (!response.ok) {
+                                toastService.error("Compile failed", "Could not generate PDF");
+                                return;
+                            }
+                            if (response.headers.get("X-Compile-Warning") === "font-fallback") {
+                                toastService.info("PDF compiled with fallback fonts — IBM Plex fonts were unreachable");
+                            }
+                            const arrayBuffer = await response.arrayBuffer();
+                            const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            const rawName = options.compilationName.trim();
+                            const disposition = response.headers.get("Content-Disposition") ?? "";
+                            const serverFilename = disposition.match(/filename="([^"]+)"/)?.[1] ?? "project.pdf";
+                            if (rawName) {
+                                a.download = rawName.endsWith(".pdf") ? rawName : `${rawName}.pdf`;
+                            } else {
+                                a.download = serverFilename;
+                            }
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        });
+                        setCompileTargetProjectId(null);
+                        return;
+                    }
+                    if (options.format === "docx") {
+                        void fetch("/api/compile/docx", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                projectPath: entry.project.rootPath,
+                                resourceIds: selectedIds,
+                                resources: compileResources.map((r) => ({
+                                    id: r.id,
+                                    name: r.name,
+                                    type: r.type,
+                                })),
+                                includeHeaders: options.includeHeaders,
+                                projectName: entry.project.name ?? "project",
+                            }),
+                        }).then(async (response) => {
+                            if (!response.ok) {
+                                toastService.error("Compile failed", "Could not generate DOCX");
+                                return;
+                            }
+                            const arrayBuffer = await response.arrayBuffer();
+                            const blob = new Blob([arrayBuffer], {
+                                type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            const rawName = options.compilationName.trim();
+                            const disposition = response.headers.get("Content-Disposition") ?? "";
+                            const serverFilename = disposition.match(/filename="([^"]+)"/)?.[1] ?? "project.docx";
+                            if (rawName) {
+                                a.download = rawName.endsWith(".docx") ? rawName : `${rawName}.docx`;
+                            } else {
+                                a.download = serverFilename;
+                            }
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        });
+                        setCompileTargetProjectId(null);
+                        return;
+                    }
+
+                    void fetch("/api/compile/text", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            projectPath: entry.project.rootPath,
+                            resourceIds: selectedIds,
+                            resources: compileResources.map((r) => ({
+                                id: r.id,
+                                name: r.name,
+                                type: r.type,
+                            })),
+                            includeHeaders: options.includeHeaders,
+                            projectName: entry.project.name ?? "project",
+                        }),
+                    }).then(async (response) => {
+                        if (!response.ok) {
+                            toastService.error("Compile failed", "Could not generate output file");
+                            return;
+                        }
+                        const { text, filename } = (await response.json()) as {
+                            text: string;
+                            filename: string;
+                        };
+                        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        const rawName = options.compilationName.trim();
+                        if (rawName) {
+                            a.download = rawName.endsWith(".txt") ? rawName : `${rawName}.txt`;
+                        } else {
+                            a.download = filename;
+                        }
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    });
+                    setCompileTargetProjectId(null);
+                }}
             />
 
             <div className="max-content-width mx-auto">
@@ -472,24 +664,11 @@ export default function StartPage({
                                                     ),
                                                 );
                                             }}
-                                            onPackage={(id, selectedIds) => {
-                                                const selectedProject =
-                                                    localProjects.find(
-                                                        (projectItem) =>
-                                                            projectItem.project
-                                                                .id === id,
-                                                    );
-                                                const selectedText =
-                                                    selectedIds &&
-                                                    selectedIds.length > 0
-                                                        ? `\nSelected: ${selectedIds.join(", ")}`
-                                                        : "";
-
-                                                toastService.info(
-                                                    `Package ${selectedProject?.project.name ?? id}${selectedText ? " (" + selectedIds?.length + " selected)" : " (all resources)"}`,
-                                                );
-                                            }}
-                                            resources={resourceList}
+                                            onRequestCompile={() =>
+                                                setCompileTargetProjectId(
+                                                    projectEntry.project.id,
+                                                )
+                                            }
                                         />
                                     </div>
 

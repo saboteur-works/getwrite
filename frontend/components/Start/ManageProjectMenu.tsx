@@ -2,9 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { MoreHorizontal, Pencil, Trash2, Package } from "lucide-react";
 import ConfirmDialog from "../common/ConfirmDialog";
 import RenameProjectModal from "./RenameProjectModal";
-import CompilePreviewModal from "../common/CompilePreviewModal";
 import MenuItemButton from "../common/MenuItemButton";
-import type { AnyResource } from "../../src/lib/models/types";
 import {
     deleteProject as deleteProjectInStore,
     renameProject as renameProjectInStore,
@@ -21,7 +19,8 @@ export interface ManageProjectMenuProps {
     onDelete?: (projectId: string) => void;
     /** Called when the project packaging flow completes. Receives projectId and optional selected resource ids. */
     onPackage?: (projectId: string, selectedIds?: string[]) => void;
-    resources?: AnyResource[];
+    /** Called when the user triggers the compile/package flow. The modal is rendered by the caller. */
+    onRequestCompile?: () => void;
 }
 
 /**
@@ -33,7 +32,7 @@ export default function ManageProjectMenu({
     onRename,
     onDelete,
     onPackage,
-    resources = [],
+    onRequestCompile,
 }: ManageProjectMenuProps): JSX.Element {
     const dispatch = useAppDispatch();
     const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
@@ -44,7 +43,6 @@ export default function ManageProjectMenu({
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
     const [confirmPackageOpen, setConfirmPackageOpen] =
         useState<boolean>(false);
-    const [compileOpen, setCompileOpen] = useState<boolean>(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -107,15 +105,6 @@ export default function ManageProjectMenu({
         toastService.info("Package created");
     };
 
-    const handleConfirmCompile = (selectedIds: string[]) => {
-        if (onPackage) onPackage(projectId, selectedIds);
-        setCompileOpen(false);
-        setOpen(false);
-        toastService.info(
-            `Package created (${selectedIds.length || "all"} resources)`,
-        );
-    };
-
     // Implementation notes: `menuRef` ensures outside-click detection. Rename only
     // fires `onRename` when value is non-empty.
 
@@ -155,7 +144,10 @@ export default function ManageProjectMenu({
                             <MenuItemButton
                                 icon={<Package size={14} aria-hidden="true" />}
                                 label="Package"
-                                onClick={() => setCompileOpen(true)}
+                                onClick={() => {
+                                    setOpen(false);
+                                    onRequestCompile?.();
+                                }}
                             />
                         </>
                     </div>
@@ -180,14 +172,6 @@ export default function ManageProjectMenu({
                 cancelLabel="Cancel"
                 onConfirm={handlePackageConfirm}
                 onCancel={() => setConfirmPackageOpen(false)}
-            />
-
-            <CompilePreviewModal
-                isOpen={compileOpen}
-                projectId={projectId}
-                resources={resources}
-                onClose={() => setCompileOpen(false)}
-                onConfirmCompile={handleConfirmCompile}
             />
 
             <RenameProjectModal

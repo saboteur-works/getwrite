@@ -20,6 +20,7 @@ import HelpPage from "../help/HelpPage";
 import ModalOverlayShell from "../common/ModalOverlayShell";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
+import type { CompileOptions } from "../common/CompilePreviewModal";
 
 export interface ShellContextActionState {
     open: boolean;
@@ -90,7 +91,7 @@ export interface ShellModalCoordinatorProps {
     onExportConfirmed: (resourceId?: string) => Promise<void>;
     onSelectResource?: (resourceId: string) => void;
     onBuildCompilePreview: (resourceId?: string) => string;
-    onCompileConfirm: (resourceId?: string) => void;
+    onConfirmCompile: (selectedIds: string[], options: CompileOptions) => Promise<void>;
 }
 
 export default function ShellModalCoordinator({
@@ -129,7 +130,7 @@ export default function ShellModalCoordinator({
     onExportConfirmed,
     onSelectResource,
     onBuildCompilePreview,
-    onCompileConfirm,
+    onConfirmCompile,
 }: ShellModalCoordinatorProps): JSX.Element {
     return (
         <>
@@ -213,12 +214,12 @@ export default function ShellModalCoordinator({
                           )
                         : undefined
                 }
-                resources={resources}
+                resources={[...(resources ?? []), ...(folders ?? [])]}
                 projectId={project?.id}
                 preview={compileModal.preview}
                 onClose={() => setCompileModal({ open: false })}
-                onConfirm={() => {
-                    onCompileConfirm(compileModal.resourceId);
+                onConfirmCompile={(selectedIds, options) => {
+                    void onConfirmCompile(selectedIds, options);
                     setCompileModal({ open: false });
                 }}
             />
