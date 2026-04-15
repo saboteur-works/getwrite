@@ -388,8 +388,45 @@ export default function StartPage({
                         return;
                     }
                     if (options.format === "docx") {
-                        // TODO: implement DOCX compilation
-                        console.warn("DOCX compilation not yet implemented");
+                        void fetch("/api/compile/docx", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                projectPath: entry.project.rootPath,
+                                resourceIds: selectedIds,
+                                resources: compileResources.map((r) => ({
+                                    id: r.id,
+                                    name: r.name,
+                                    type: r.type,
+                                })),
+                                includeHeaders: options.includeHeaders,
+                                projectName: entry.project.name ?? "project",
+                            }),
+                        }).then(async (response) => {
+                            if (!response.ok) {
+                                toastService.error("Compile failed", "Could not generate DOCX");
+                                return;
+                            }
+                            const arrayBuffer = await response.arrayBuffer();
+                            const blob = new Blob([arrayBuffer], {
+                                type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            const rawName = options.compilationName.trim();
+                            const disposition = response.headers.get("Content-Disposition") ?? "";
+                            const serverFilename = disposition.match(/filename="([^"]+)"/)?.[1] ?? "project.docx";
+                            if (rawName) {
+                                a.download = rawName.endsWith(".docx") ? rawName : `${rawName}.docx`;
+                            } else {
+                                a.download = serverFilename;
+                            }
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        });
                         setCompileTargetProjectId(null);
                         return;
                     }

@@ -860,6 +860,7 @@ export default function AppShell({
                                         options,
                                     ) => {
                                         if (!project?.rootPath) return;
+                                        try {
 
                                         if (options.format === "pdf") {
                                             const pdfResponse = await fetch(
@@ -936,8 +937,74 @@ export default function AppShell({
                                             return;
                                         }
                                         if (options.format === "docx") {
-                                            // TODO: implement DOCX compilation
-                                            console.warn("DOCX compilation not yet implemented");
+                                            const docxResponse = await fetch(
+                                                "/api/compile/docx",
+                                                {
+                                                    method: "POST",
+                                                    headers: {
+                                                        "Content-Type":
+                                                            "application/json",
+                                                    },
+                                                    body: JSON.stringify({
+                                                        projectPath:
+                                                            project.rootPath,
+                                                        resourceIds: selectedIds,
+                                                        resources: (
+                                                            resources ?? []
+                                                        ).map((r) => ({
+                                                            id: r.id,
+                                                            name: r.name,
+                                                            type: r.type,
+                                                        })),
+                                                        includeHeaders:
+                                                            options.includeHeaders,
+                                                        projectName:
+                                                            project.name ??
+                                                            "project",
+                                                    }),
+                                                },
+                                            );
+                                            if (!docxResponse.ok) {
+                                                toastService.error("Compile failed", "Could not generate DOCX");
+                                                return;
+                                            }
+                                            const arrayBuffer =
+                                                await docxResponse.arrayBuffer();
+                                            const blob = new Blob(
+                                                [arrayBuffer],
+                                                {
+                                                    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                                },
+                                            );
+                                            const url =
+                                                URL.createObjectURL(blob);
+                                            const a =
+                                                document.createElement("a");
+                                            a.href = url;
+                                            const rawName =
+                                                options.compilationName.trim();
+                                            const disposition =
+                                                docxResponse.headers.get(
+                                                    "Content-Disposition",
+                                                ) ?? "";
+                                            const serverFilename =
+                                                disposition
+                                                    .match(
+                                                        /filename="([^"]+)"/,
+                                                    )?.[1] ?? "project.docx";
+                                            if (rawName) {
+                                                a.download = rawName.endsWith(
+                                                    ".docx",
+                                                )
+                                                    ? rawName
+                                                    : `${rawName}.docx`;
+                                            } else {
+                                                a.download = serverFilename;
+                                            }
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            URL.revokeObjectURL(url);
                                             return;
                                         }
 
@@ -992,6 +1059,9 @@ export default function AppShell({
                                         a.click();
                                         document.body.removeChild(a);
                                         URL.revokeObjectURL(url);
+                                        } catch (err) {
+                                            toastService.error("Compile failed", err instanceof Error ? err.message : String(err));
+                                        }
                                     }}
                                 />
                             )}
