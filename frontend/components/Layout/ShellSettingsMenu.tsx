@@ -9,6 +9,8 @@ import {
     HelpCircle,
     LogOut,
     Type,
+    BookOpen,
+    Archive,
 } from "lucide-react";
 import MenuItemButton from "../common/MenuItemButton";
 
@@ -25,6 +27,10 @@ export interface ShellSettingsMenuProps {
     onOpenHelp: () => void;
     onCloseProject: () => void;
     hasProject: boolean;
+    isProjectMenuOpen: boolean;
+    projectMenuRef: React.RefObject<HTMLDivElement | null>;
+    onToggleProjectMenuOpen: () => void;
+    onOpenCompile: () => void;
 }
 
 export default function ShellSettingsMenu({
@@ -40,6 +46,10 @@ export default function ShellSettingsMenu({
     onOpenHelp,
     onCloseProject,
     hasProject,
+    isProjectMenuOpen,
+    projectMenuRef,
+    onToggleProjectMenuOpen,
+    onOpenCompile,
 }: ShellSettingsMenuProps): JSX.Element {
     return (
         <header className="appshell-topbar">
@@ -49,6 +59,36 @@ export default function ShellSettingsMenu({
             >
                 {projectName ?? "Untitled Project"}
             </div>
+
+            {hasProject ? (
+                <div className="appshell-topbar-menu" ref={projectMenuRef}>
+                    <button
+                        type="button"
+                        className="appshell-topbar-button"
+                        aria-haspopup="menu"
+                        aria-expanded={isProjectMenuOpen}
+                        aria-label="Open project menu"
+                        onClick={onToggleProjectMenuOpen}
+                    >
+                        <BookOpen size={18} aria-hidden="true" />
+                    </button>
+
+                    {isProjectMenuOpen ? (
+                        <div
+                            className="appshell-topbar-dropdown"
+                            role="menu"
+                            aria-label="Project menu"
+                        >
+                            <MenuItemButton
+                                className="appshell-topbar-dropdown-item"
+                                icon={<Archive size={14} aria-hidden="true" />}
+                                label="Compile Project"
+                                onClick={onOpenCompile}
+                            />
+                        </div>
+                    ) : null}
+                </div>
+            ) : null}
 
             <div className="appshell-topbar-menu" ref={menuRef}>
                 <button

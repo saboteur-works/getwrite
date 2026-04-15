@@ -214,7 +214,7 @@ export default function ShellModalCoordinator({
                           )
                         : undefined
                 }
-                resources={resources}
+                resources={[...(resources ?? []), ...(folders ?? [])]}
                 projectId={project?.id}
                 preview={compileModal.preview}
                 onClose={() => setCompileModal({ open: false })}

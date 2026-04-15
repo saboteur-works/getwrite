@@ -181,6 +181,8 @@ export default function AppShell({
     const [view, setView] = useState<ViewName>("edit");
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] =
         useState<boolean>(false);
+    const [isProjectMenuOpen, setIsProjectMenuOpen] =
+        useState<boolean>(false);
     const [isPreferencesModalOpen, setIsPreferencesModalOpen] =
         useState<boolean>(false);
     const [isHeadingSettingsModalOpen, setIsHeadingSettingsModalOpen] =
@@ -196,6 +198,7 @@ export default function AppShell({
     const [isCloseProjectConfirmOpen, setIsCloseProjectConfirmOpen] =
         useState<boolean>(false);
     const settingsMenuRef = useRef<HTMLDivElement | null>(null);
+    const projectMenuRef = useRef<HTMLDivElement | null>(null);
     const latestEditorEditVersionRef = useRef<number>(0);
     const combined = React.useMemo(() => {
         return [...(resources ?? []), ...(folders ?? [])];
@@ -496,9 +499,18 @@ export default function AppShell({
 
     useEffect(() => {
         const onDocumentMouseDown = (event: MouseEvent) => {
-            if (!settingsMenuRef.current) return;
-            if (settingsMenuRef.current.contains(event.target as Node)) return;
-            setIsSettingsMenuOpen(false);
+            if (
+                settingsMenuRef.current &&
+                !settingsMenuRef.current.contains(event.target as Node)
+            ) {
+                setIsSettingsMenuOpen(false);
+            }
+            if (
+                projectMenuRef.current &&
+                !projectMenuRef.current.contains(event.target as Node)
+            ) {
+                setIsProjectMenuOpen(false);
+            }
         };
 
         const onDocumentKeyDown = (event: KeyboardEvent) => {
@@ -515,6 +527,7 @@ export default function AppShell({
 
             if (event.key === "Escape") {
                 setIsSettingsMenuOpen(false);
+                setIsProjectMenuOpen(false);
                 setIsPreferencesModalOpen(false);
                 setIsProjectTypesModalOpen(false);
                 setIsHelpModalOpen(false);
@@ -597,6 +610,11 @@ export default function AppShell({
         setIsHelpModalOpen(true);
     };
 
+    const handleOpenCompile = (): void => {
+        setIsProjectMenuOpen(false);
+        setCompileModal({ open: true });
+    };
+
     const handleCloseProject = (): void => {
         setIsSettingsMenuOpen(false);
         setIsHeadingSettingsModalOpen(false);
@@ -667,6 +685,12 @@ export default function AppShell({
                 onOpenHelp={handleOpenHelp}
                 onCloseProject={handleCloseProject}
                 hasProject={Boolean(project)}
+                isProjectMenuOpen={isProjectMenuOpen}
+                projectMenuRef={projectMenuRef}
+                onToggleProjectMenuOpen={() =>
+                    setIsProjectMenuOpen((prev) => !prev)
+                }
+                onOpenCompile={handleOpenCompile}
             />
 
             <ShellLayoutController>
