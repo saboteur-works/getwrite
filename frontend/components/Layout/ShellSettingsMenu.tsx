@@ -60,116 +60,124 @@ export default function ShellSettingsMenu({
                 {projectName ?? "Untitled Project"}
             </div>
 
-            {hasProject ? (
-                <div className="appshell-topbar-menu" ref={projectMenuRef}>
+            <div className="flex items-center gap-1">
+                {hasProject ? (
+                    <div className="appshell-topbar-menu" ref={projectMenuRef}>
+                        <button
+                            type="button"
+                            className="appshell-topbar-button"
+                            aria-haspopup="menu"
+                            aria-expanded={isProjectMenuOpen}
+                            aria-label="Open project menu"
+                            onClick={onToggleProjectMenuOpen}
+                        >
+                            <BookOpen size={18} aria-hidden="true" />
+                        </button>
+
+                        {isProjectMenuOpen ? (
+                            <div
+                                className="appshell-topbar-dropdown"
+                                role="menu"
+                                aria-label="Project menu"
+                            >
+                                <MenuItemButton
+                                    className="appshell-topbar-dropdown-item"
+                                    icon={
+                                        <Archive size={14} aria-hidden="true" />
+                                    }
+                                    label="Compile Project"
+                                    onClick={onOpenCompile}
+                                />
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
+
+                <div className="appshell-topbar-menu" ref={menuRef}>
                     <button
                         type="button"
                         className="appshell-topbar-button"
                         aria-haspopup="menu"
-                        aria-expanded={isProjectMenuOpen}
-                        aria-label="Open project menu"
-                        onClick={onToggleProjectMenuOpen}
+                        aria-expanded={isOpen}
+                        aria-label="Open project settings menu"
+                        onClick={onToggleOpen}
                     >
-                        <BookOpen size={18} aria-hidden="true" />
+                        <Settings size={18} aria-hidden="true" />
                     </button>
 
-                    {isProjectMenuOpen ? (
+                    {isOpen ? (
                         <div
                             className="appshell-topbar-dropdown"
                             role="menu"
-                            aria-label="Project menu"
+                            aria-label="Project settings menu"
                         >
                             <MenuItemButton
                                 className="appshell-topbar-dropdown-item"
-                                icon={<Archive size={14} aria-hidden="true" />}
-                                label="Compile Project"
-                                onClick={onOpenCompile}
+                                icon={<Settings size={14} aria-hidden="true" />}
+                                label="User Preferences"
+                                onClick={onOpenPreferences}
                             />
+                            {hasProject ? (
+                                <MenuItemButton
+                                    className="appshell-topbar-dropdown-item"
+                                    icon={<Type size={14} aria-hidden="true" />}
+                                    label="Heading Settings"
+                                    onClick={onOpenHeadingSettings}
+                                />
+                            ) : null}
+                            <MenuItemButton
+                                className="appshell-topbar-dropdown-item"
+                                icon={
+                                    <SlidersHorizontal
+                                        size={14}
+                                        aria-hidden="true"
+                                    />
+                                }
+                                label="Project Type Manager"
+                                onClick={onOpenProjectTypeManager}
+                            />
+                            <hr className="appshell-topbar-dropdown-separator" />
+                            <MenuItemButton
+                                className="appshell-topbar-dropdown-item"
+                                role="menuitemcheckbox"
+                                aria-checked={isDarkMode}
+                                aria-pressed={isDarkMode}
+                                icon={
+                                    isDarkMode ? (
+                                        <Sun size={14} aria-hidden="true" />
+                                    ) : (
+                                        <Moon size={14} aria-hidden="true" />
+                                    )
+                                }
+                                label={
+                                    isDarkMode
+                                        ? "Switch to light mode"
+                                        : "Switch to dark mode"
+                                }
+                                onClick={onToggleColorMode}
+                            />
+                            <hr className="appshell-topbar-dropdown-separator" />
+                            <MenuItemButton
+                                className="appshell-topbar-dropdown-item"
+                                icon={
+                                    <HelpCircle size={14} aria-hidden="true" />
+                                }
+                                label="Help"
+                                onClick={onOpenHelp}
+                            />
+                            {hasProject ? (
+                                <MenuItemButton
+                                    className="appshell-topbar-dropdown-item"
+                                    icon={
+                                        <LogOut size={14} aria-hidden="true" />
+                                    }
+                                    label="Close Project"
+                                    onClick={onCloseProject}
+                                />
+                            ) : null}
                         </div>
                     ) : null}
                 </div>
-            ) : null}
-
-            <div className="appshell-topbar-menu" ref={menuRef}>
-                <button
-                    type="button"
-                    className="appshell-topbar-button"
-                    aria-haspopup="menu"
-                    aria-expanded={isOpen}
-                    aria-label="Open project settings menu"
-                    onClick={onToggleOpen}
-                >
-                    <Settings size={18} aria-hidden="true" />
-                </button>
-
-                {isOpen ? (
-                    <div
-                        className="appshell-topbar-dropdown"
-                        role="menu"
-                        aria-label="Project settings menu"
-                    >
-                        <MenuItemButton
-                            className="appshell-topbar-dropdown-item"
-                            icon={<Settings size={14} aria-hidden="true" />}
-                            label="User Preferences"
-                            onClick={onOpenPreferences}
-                        />
-                        {hasProject ? (
-                            <MenuItemButton
-                                className="appshell-topbar-dropdown-item"
-                                icon={<Type size={14} aria-hidden="true" />}
-                                label="Heading Settings"
-                                onClick={onOpenHeadingSettings}
-                            />
-                        ) : null}
-                        <MenuItemButton
-                            className="appshell-topbar-dropdown-item"
-                            icon={
-                                <SlidersHorizontal
-                                    size={14}
-                                    aria-hidden="true"
-                                />
-                            }
-                            label="Project Type Manager"
-                            onClick={onOpenProjectTypeManager}
-                        />
-                        <hr className="appshell-topbar-dropdown-separator" />
-                        <MenuItemButton
-                            className="appshell-topbar-dropdown-item"
-                            role="menuitemcheckbox"
-                            aria-checked={isDarkMode}
-                            aria-pressed={isDarkMode}
-                            icon={
-                                isDarkMode ? (
-                                    <Sun size={14} aria-hidden="true" />
-                                ) : (
-                                    <Moon size={14} aria-hidden="true" />
-                                )
-                            }
-                            label={
-                                isDarkMode
-                                    ? "Switch to light mode"
-                                    : "Switch to dark mode"
-                            }
-                            onClick={onToggleColorMode}
-                        />
-                        <hr className="appshell-topbar-dropdown-separator" />
-                        <MenuItemButton
-                            className="appshell-topbar-dropdown-item"
-                            icon={<HelpCircle size={14} aria-hidden="true" />}
-                            label="Help"
-                            onClick={onOpenHelp}
-                        />
-                        {hasProject ? (
-                            <MenuItemButton
-                                className="appshell-topbar-dropdown-item"
-                                icon={<LogOut size={14} aria-hidden="true" />}
-                                label="Close Project"
-                                onClick={onCloseProject}
-                            />
-                        ) : null}
-                    </div>
-                ) : null}
             </div>
         </header>
     );
