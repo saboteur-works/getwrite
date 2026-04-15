@@ -5,23 +5,13 @@ import {
     type CompileSection,
 } from "../../../../src/lib/export/compile-text";
 import { slugify } from "../../../../src/lib/utils";
-
-interface ResourceMeta {
-    id: string;
-    name: string;
-    type: string;
-}
-
-interface CompileTextBody {
-    projectPath: string;
-    resourceIds: string[];
-    resources: ResourceMeta[];
-    includeHeaders: boolean;
-    projectName: string;
-}
+import type {
+    CompileBody,
+    ResourceMeta,
+} from "../../../../src/lib/export/types";
 
 export async function POST(req: NextRequest) {
-    const body = (await req.json()) as CompileTextBody;
+    const body = (await req.json()) as CompileBody;
     const { projectPath, resourceIds, resources, includeHeaders, projectName } =
         body;
 
