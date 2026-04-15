@@ -8,6 +8,7 @@ import {
 } from "../../../../src/lib/export/CompilePDFDocument";
 import { CompilePDFFallbackDocument } from "../../../../src/lib/export/CompilePDFFallbackDocument";
 import type { CompileSection } from "../../../../src/lib/export/compile-text";
+import { slugify } from "../../../../src/lib/utils";
 
 interface ResourceMeta {
     id: string;
@@ -21,17 +22,6 @@ interface CompilePDFBody {
     resources: ResourceMeta[];
     includeHeaders: boolean;
     projectName: string;
-}
-
-function slugify(name: string): string {
-    return (
-        name
-            .toLowerCase()
-            .replace(/\s+/g, "-")
-            .replace(/[^a-z0-9-]/g, "")
-            .replace(/-+/g, "-")
-            .replace(/^-|-$/g, "") || "project"
-    );
 }
 
 function isFontError(err: unknown): boolean {
@@ -68,19 +58,19 @@ export async function POST(req: NextRequest) {
     try {
         registerIBMPlexFonts();
         buffer = await renderToBuffer(
-            React.createElement(
-                CompilePDFDocument,
-                { sections, includeHeaders },
-            ) as React.ReactElement<DocumentProps>,
+            React.createElement(CompilePDFDocument, {
+                sections,
+                includeHeaders,
+            }) as React.ReactElement<DocumentProps>,
         );
     } catch (err) {
         if (!isFontError(err)) throw err;
         fontFallback = true;
         buffer = await renderToBuffer(
-            React.createElement(
-                CompilePDFFallbackDocument,
-                { sections, includeHeaders },
-            ) as React.ReactElement<DocumentProps>,
+            React.createElement(CompilePDFFallbackDocument, {
+                sections,
+                includeHeaders,
+            }) as React.ReactElement<DocumentProps>,
         );
     }
 

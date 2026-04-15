@@ -5,6 +5,7 @@ import { withMetaLock } from "./meta-locks";
 import { loadResourceContent } from "../tiptap-utils";
 import { readSidecar } from "./sidecar";
 import type { UUID } from "./types";
+import { slugify } from "../utils";
 
 const UUID_REGEX =
     /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi;
@@ -12,14 +13,6 @@ const UUID_REGEX =
 const WIKI_LINK_REGEX = /\[\[([^\]]+)\]\]/g;
 
 export type BacklinkIndex = Record<string, string[]>;
-
-function slugify(s: string): string {
-    return s
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9\-]/g, "");
-}
 
 /** List resource ids present under projectRoot/resources/ */
 export async function listResourceIds(projectRoot: string): Promise<string[]> {

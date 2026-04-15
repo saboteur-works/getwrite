@@ -4,6 +4,7 @@ import {
     compileToText,
     type CompileSection,
 } from "../../../../src/lib/export/compile-text";
+import { slugify } from "../../../../src/lib/utils";
 
 interface ResourceMeta {
     id: string;
@@ -17,15 +18,6 @@ interface CompileTextBody {
     resources: ResourceMeta[];
     includeHeaders: boolean;
     projectName: string;
-}
-
-function slugify(name: string): string {
-    return name
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "") || "project";
 }
 
 export async function POST(req: NextRequest) {
