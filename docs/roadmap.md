@@ -8,10 +8,10 @@ This document is a living stub collecting known future work items and product di
 
 Features actively in development or nearing completion:
 
-- [ ] **Compile / Export** — Manuscript compilation to PDF, DOCX, and plain text; export preview modal (`CompilePreviewModal`, `ExportPreviewModal`)
+- [x] **Compile / Export** — Manuscript compilation to PDF, DOCX, and plain text; export preview modal (`CompilePreviewModal`, `ExportPreviewModal`)
 - [ ] **Full-text search** — Cross-resource search with filtering by folder, status, and tags (currently backed by the inverted index; UI search bar exists)
 - [ ] **Timeline view completion** — Timeline visualization of resources by `timeframe` userMetadata
-- [ ] **Diff view polish** — Side-by-side revision diff view; currently renders but needs UX refinement
+- [x] **Diff view polish** — Side-by-side revision diff view; currently renders but needs UX refinement
 - [ ] **Tags UI** — Full tag management flow (create, rename, delete, assign); underlying `tags.ts` model is complete
 
 ### Stage 3 — Immediate Remediation & Tech-debt Work

@@ -42,7 +42,18 @@ function extractPlainText(raw: string): string {
     return raw;
 }
 
+const BLOCK_TYPES = new Set([
+    "paragraph",
+    "heading",
+    "blockquote",
+    "listItem",
+    "bulletList",
+    "orderedList",
+    "codeBlock",
+]);
+
 function collectText(node: Record<string, unknown>): string {
+    if (node.type === "hardBreak") return "\n";
     if (node.type === "text" && typeof node.text === "string") {
         return node.text;
     }
@@ -50,9 +61,11 @@ function collectText(node: Record<string, unknown>): string {
     const content = node.content;
     if (!Array.isArray(content)) return "";
 
-    return (content as Record<string, unknown>[])
+    const text = (content as Record<string, unknown>[])
         .map((child) => collectText(child))
         .join("");
+
+    return BLOCK_TYPES.has(node.type as string) ? text + "\n\n" : text;
 }
 
 /**

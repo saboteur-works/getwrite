@@ -657,6 +657,8 @@
         color: var(--color-gw-secondary);
         font-size: 13px;
         line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
     }
 
     .workarea-section-title {
