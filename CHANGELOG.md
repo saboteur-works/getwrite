@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.9](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.8...getwrite-v0.2.9) (2026-04-16)
+
+
+### Features
+
+* rework resource export flow ([e9fb245](https://github.com/saboteur-works/getwrite/commit/e9fb245bf7ce4510a77429978d7d7c8c34f24715))
+
 ## [0.2.8](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.7...getwrite-v0.2.8) (2026-04-15)
 
 
