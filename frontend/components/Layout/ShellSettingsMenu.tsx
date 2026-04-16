@@ -11,6 +11,7 @@ import {
     Type,
     BookOpen,
     Archive,
+    Tag,
 } from "lucide-react";
 import MenuItemButton from "../common/MenuItemButton";
 
@@ -23,6 +24,7 @@ export interface ShellSettingsMenuProps {
     onOpenPreferences: () => void;
     onOpenHeadingSettings: () => void;
     onOpenProjectTypeManager: () => void;
+    onOpenTagsManager: () => void;
     onToggleColorMode: () => void;
     onOpenHelp: () => void;
     onCloseProject: () => void;
@@ -42,6 +44,7 @@ export default function ShellSettingsMenu({
     onOpenPreferences,
     onOpenHeadingSettings,
     onOpenProjectTypeManager,
+    onOpenTagsManager,
     onToggleColorMode,
     onOpenHelp,
     onCloseProject,
@@ -123,6 +126,14 @@ export default function ShellSettingsMenu({
                                     icon={<Type size={14} aria-hidden="true" />}
                                     label="Heading Settings"
                                     onClick={onOpenHeadingSettings}
+                                />
+                            ) : null}
+                            {hasProject ? (
+                                <MenuItemButton
+                                    className="appshell-topbar-dropdown-item"
+                                    icon={<Tag size={14} aria-hidden="true" />}
+                                    label="Manage Tags"
+                                    onClick={onOpenTagsManager}
                                 />
                             ) : null}
                             <MenuItemButton

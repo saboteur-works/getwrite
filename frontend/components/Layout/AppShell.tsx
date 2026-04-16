@@ -195,6 +195,8 @@ export default function AppShell({
     const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
         useState<boolean>(false);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
+    const [isTagsManagerOpen, setIsTagsManagerOpen] =
+        useState<boolean>(false);
     const [isResourcePaletteOpen, setIsResourcePaletteOpen] =
         useState<boolean>(false);
     const [colorMode, setColorMode] = useState<ColorMode>("light");
@@ -626,6 +628,11 @@ export default function AppShell({
         setIsHeadingSettingsModalOpen(true);
     };
 
+    const handleOpenTagsManager = (): void => {
+        setIsSettingsMenuOpen(false);
+        setIsTagsManagerOpen(true);
+    };
+
     const handleOpenHelp = (): void => {
         setIsSettingsMenuOpen(false);
         setIsHelpModalOpen(true);
@@ -702,6 +709,7 @@ export default function AppShell({
                 onOpenPreferences={handleOpenPreferences}
                 onOpenHeadingSettings={handleOpenHeadingSettings}
                 onOpenProjectTypeManager={handleOpenProjectTypeManager}
+                onOpenTagsManager={handleOpenTagsManager}
                 onToggleColorMode={handleToggleColorMode}
                 onOpenHelp={handleOpenHelp}
                 onCloseProject={handleCloseProject}
@@ -823,6 +831,9 @@ export default function AppShell({
                                     setIsProjectTypesModalOpen={
                                         setIsProjectTypesModalOpen
                                     }
+                                    isTagsManagerOpen={isTagsManagerOpen}
+                                    setIsTagsManagerOpen={setIsTagsManagerOpen}
+                                    projectPath={project?.rootPath}
                                     isResourcePaletteOpen={
                                         isResourcePaletteOpen
                                     }

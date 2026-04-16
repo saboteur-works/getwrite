@@ -17,6 +17,7 @@ import HeadingSettingsModal from "../preferences/HeadingSettingsModal";
 import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import HelpPage from "../help/HelpPage";
+import TagsManagerModal from "../common/TagsManagerModal";
 import ModalOverlayShell from "../common/ModalOverlayShell";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
@@ -69,6 +70,10 @@ export interface ShellModalCoordinatorProps {
     setIsHelpModalOpen: (open: boolean) => void;
     isProjectTypesModalOpen: boolean;
     setIsProjectTypesModalOpen: (open: boolean) => void;
+    isTagsManagerOpen: boolean;
+    setIsTagsManagerOpen: (open: boolean) => void;
+    /** Root path of the active project — required to render TagsManagerModal. */
+    projectPath?: string;
     isResourcePaletteOpen: boolean;
     setIsResourcePaletteOpen: (open: boolean) => void;
     isProjectTypesLoading: boolean;
@@ -115,6 +120,9 @@ export default function ShellModalCoordinator({
     setIsHelpModalOpen,
     isProjectTypesModalOpen,
     setIsProjectTypesModalOpen,
+    isTagsManagerOpen,
+    setIsTagsManagerOpen,
+    projectPath,
     isResourcePaletteOpen,
     setIsResourcePaletteOpen,
     isProjectTypesLoading,
@@ -282,6 +290,19 @@ export default function ShellModalCoordinator({
                         onClose={() => setIsProjectTypesModalOpen(false)}
                     />
                 )}
+            </ModalOverlayShell>
+
+            <ModalOverlayShell
+                isOpen={isTagsManagerOpen && Boolean(projectPath)}
+                onClose={() => setIsTagsManagerOpen(false)}
+                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            >
+                {projectPath ? (
+                    <TagsManagerModal
+                        projectPath={projectPath}
+                        onClose={() => setIsTagsManagerOpen(false)}
+                    />
+                ) : null}
             </ModalOverlayShell>
 
             {hasUnsavedEditorChanges ? null : null}

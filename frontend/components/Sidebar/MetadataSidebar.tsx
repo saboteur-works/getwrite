@@ -3,6 +3,7 @@ import NotesInput from "./controls/NotesInput";
 import StatusSelector from "./controls/StatusSelector";
 import MultiSelectList from "./controls/MultiSelectList";
 import POVAutocomplete from "./controls/POVAutocomplete";
+import TagsSection from "./TagsSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual, useStore } from "react-redux";
 import { selectResource } from "../../src/store/resourcesSlice";
@@ -202,6 +203,7 @@ export default function MetadataSidebar({
                             </div>
                         ))}
                     </div>
+                    <TagsSection />
                 </React.Fragment>
             ) : (
                 <div className="metadata-sidebar-empty">
