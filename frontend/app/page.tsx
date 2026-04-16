@@ -324,19 +324,25 @@ export default function Home(): JSX.Element {
         const resource = selectedProject.resources.find(
             (r) => r.id === resourceId,
         );
+        if (!resource) {
+            console.warn(
+                `updateResource: resource ${resourceId} not found in selectedProject`,
+            );
+            return;
+        }
 
         fetch(`/api/resource/${resourceId}/sidecar`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 projectRoot: selectedProject.rootPath,
-                updatedResource: updater(resource!),
+                updatedResource: updater(resource),
             }),
         }).catch((err) => {
             console.error("Error updating resource metadata:", err);
         });
 
-        dispatch(updateResourceInStore(updater(resource!)));
+        dispatch(updateResourceInStore(updater(resource)));
 
         setProjects((prev) =>
             prev.map((p) => {
@@ -533,7 +539,11 @@ export default function Home(): JSX.Element {
             const res: AnyResource = resBody.resource;
             dispatch(addResourceInStore(res));
             if (opts?.type === "folder") {
-                console.log(res);
+                setSelectedProject((prev) =>
+                    prev
+                        ? { ...prev, folders: [...prev.folders, res as Folder] }
+                        : prev,
+                );
             } else {
                 // update redux store
                 dispatch(
@@ -547,6 +557,17 @@ export default function Home(): JSX.Element {
                             folderId: res.folderId ?? null,
                         } as any,
                     }),
+                );
+                setSelectedProject((prev) =>
+                    prev
+                        ? {
+                              ...prev,
+                              resources: [
+                                  ...prev.resources,
+                                  res,
+                              ] as AnyResource[],
+                          }
+                        : prev,
                 );
             }
 
