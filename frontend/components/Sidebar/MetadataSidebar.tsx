@@ -218,20 +218,20 @@ export default function MetadataSidebar({
                                             ))()}
                                         selected={
                                             dynamicMetadataSelections[
-                                                folder.name
+                                                folder.slug
                                             ] ?? []
                                         }
                                         onChange={(next) => {
                                             setDynamicMetadataSelections(
                                                 (prev) => ({
                                                     ...prev,
-                                                    [folder.name]: next,
+                                                    [folder.slug]: next,
                                                 }),
                                             );
                                             onChangeDynamicMetadata &&
                                                 onChangeDynamicMetadata({
                                                     ...dynamicMetadataSelections,
-                                                    [folder.name]: next,
+                                                    [folder.slug]: next,
                                                 });
                                         }}
                                     />
