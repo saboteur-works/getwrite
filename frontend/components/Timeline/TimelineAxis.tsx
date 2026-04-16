@@ -1,5 +1,5 @@
 import React from "react";
-import { dateToPercent, formatTick } from "./utils";
+import { dateToPercent, formatTick, getAdaptiveFormat } from "./utils";
 
 export interface TimelineAxisProps {
     ticks: number[];
@@ -14,6 +14,12 @@ export default function TimelineAxis({
     locale,
     dateFormat,
 }: TimelineAxisProps): JSX.Element {
+    const resolvedFormat = React.useMemo(() => {
+        if (dateFormat) return dateFormat;
+        const intervalMs = ticks.length > 1 ? ticks[1] - ticks[0] : axisBounds.end - axisBounds.start;
+        return getAdaptiveFormat(intervalMs);
+    }, [dateFormat, ticks, axisBounds]);
+
     return (
         <div
             style={{
@@ -47,7 +53,7 @@ export default function TimelineAxis({
                                 userSelect: "none",
                             }}
                         >
-                            {formatTick(tick, locale, dateFormat)}
+                            {formatTick(tick, locale, resolvedFormat)}
                         </span>
                         <span
                             style={{

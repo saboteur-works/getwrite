@@ -54,6 +54,23 @@ export function buildTicks(start: number, end: number, count: number): number[] 
     return Array.from({ length: count }, (_, i) => start + i * step);
 }
 
+const MS = {
+    hour: 3_600_000,
+    day: 86_400_000,
+    year: 365 * 86_400_000,
+};
+
+/** Choose an axis tick format based on the time interval between ticks. */
+export function getAdaptiveFormat(tickIntervalMs: number): Intl.DateTimeFormatOptions {
+    if (tickIntervalMs < MS.day)
+        return { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" };
+    if (tickIntervalMs < 90 * MS.day)
+        return { month: "short", day: "numeric" };
+    if (tickIntervalMs < 2 * MS.year)
+        return { year: "numeric", month: "short", day: "numeric" };
+    return { year: "numeric", month: "short" };
+}
+
 const DEFAULT_DATE_FORMAT: Intl.DateTimeFormatOptions = {
     month: "short",
     day: "numeric",

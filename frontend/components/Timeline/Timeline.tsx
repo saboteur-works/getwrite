@@ -51,14 +51,14 @@ export default function Timeline({
         [items, config],
     );
 
+    const effectiveTickCount = React.useMemo(
+        () => Math.min(Math.round((config?.tickCount ?? DEFAULT_TICK_COUNT) * zoom), 24),
+        [config?.tickCount, zoom],
+    );
+
     const ticks = React.useMemo(
-        () =>
-            buildTicks(
-                axisBounds.start,
-                axisBounds.end,
-                config?.tickCount ?? DEFAULT_TICK_COUNT,
-            ),
-        [axisBounds, config?.tickCount],
+        () => buildTicks(axisBounds.start, axisBounds.end, effectiveTickCount),
+        [axisBounds, effectiveTickCount],
     );
 
     const rows = React.useMemo(() => {
