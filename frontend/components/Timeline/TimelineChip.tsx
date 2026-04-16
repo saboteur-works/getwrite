@@ -22,6 +22,7 @@ export default function TimelineChip({
                 position: "absolute",
                 left: `${leftPercent}%`,
                 width: `${widthPercent}%`,
+                minWidth: "var(--timeline-item-min-width)",
                 height: "var(--timeline-item-height)",
                 backgroundColor: "var(--timeline-item-bg)",
                 color: "var(--timeline-item-color)",

@@ -45,6 +45,11 @@ export interface TimelineConfig {
      * Defaults to { month: "short", day: "numeric" }.
      */
     dateFormat?: Intl.DateTimeFormatOptions;
+    /**
+     * Initial zoom level (1 = 100%, maximum 10).
+     * Defaults to 1. The user can still zoom in/out via the controls after mount.
+     */
+    initialZoom?: number;
 }
 
 /** Props for the pure <Timeline> component. */

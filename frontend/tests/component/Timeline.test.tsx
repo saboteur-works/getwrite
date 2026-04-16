@@ -82,6 +82,38 @@ describe("Timeline", () => {
         expect(ticks).toHaveLength(5);
     });
 
+    it("renders zoom in and zoom out controls", () => {
+        render(<Timeline items={[makeItem("1", "Scene", "2024-01-01")]} />);
+        expect(screen.getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Zoom out" })).toBeInTheDocument();
+    });
+
+    it("zoom out button is disabled at minimum zoom (100%)", () => {
+        render(<Timeline items={[makeItem("1", "Scene", "2024-01-01")]} />);
+        const zoomOut = screen.getByRole("button", { name: "Zoom out" });
+        expect(zoomOut).toBeDisabled();
+    });
+
+    it("zoom in button is disabled at maximum zoom", async () => {
+        const user = userEvent.setup();
+        render(
+            <Timeline
+                items={[makeItem("1", "Scene", "2024-01-01")]}
+                config={{ initialZoom: 10 }}
+            />,
+        );
+        const zoomIn = screen.getByRole("button", { name: "Zoom in" });
+        expect(zoomIn).toBeDisabled();
+    });
+
+    it("clicking zoom in increments the zoom level", async () => {
+        const user = userEvent.setup();
+        render(<Timeline items={[makeItem("1", "Scene", "2024-01-01")]} />);
+        const zoomIn = screen.getByRole("button", { name: "Zoom in" });
+        await user.click(zoomIn);
+        expect(screen.getByText("150%")).toBeInTheDocument();
+    });
+
     it("items without a groupId render in an ungrouped row when groups are provided", () => {
         const groups: TimelineGroup[] = [{ id: "g1", label: "Characters" }];
         const items: TimelineItem[] = [

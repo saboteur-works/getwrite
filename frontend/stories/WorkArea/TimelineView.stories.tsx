@@ -1,4 +1,3 @@
-import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
