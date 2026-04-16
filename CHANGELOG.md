@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.10](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.9...getwrite-v0.2.10) (2026-04-16)
+
+
+### Features
+
+* implemented full diff view ([e504117](https://github.com/saboteur-works/getwrite/commit/e50411740e550acdb1314ed1bc8d196d717ae01e))
+
 ## [0.2.9](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.8...getwrite-v0.2.9) (2026-04-16)
 
 
