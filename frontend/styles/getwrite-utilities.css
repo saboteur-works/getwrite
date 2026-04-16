@@ -1415,13 +1415,14 @@
         cursor: pointer;
         transition:
             border-color 150ms ease,
-            color 150ms ease;
+            color 150ms ease,
+            background-color 150ms ease;
     }
 
     .metadata-sidebar-tag--active {
         border-color: var(--color-gw-red-border);
-        color: var(--color-gw-red);
-        opacity: 0.8;
+        background-color: var(--color-gw-red);
+        color: #fff;
     }
 
     /* ── REVISION CONTROL ── */
