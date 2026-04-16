@@ -11,7 +11,7 @@ export default meta;
 
 type Story = StoryObj<typeof ExportPreviewModal>;
 
-export const Open: Story = {
+export const SingleResourceExport: Story = {
     render: (args) => (
         <div>
             <ExportPreviewModal {...args} />
@@ -27,19 +27,28 @@ export const Open: Story = {
     args: {
         isOpen: true,
         resourceTitle: "Chapter 01",
-        preview:
-            "Chapter 01\n\nThe rain started just as the train crossed the valley.",
+        resourceNames: ["Chapter 01"],
         onClose: () => console.log("close"),
         onConfirmExport: () => console.log("export"),
         onShowCompile: () => console.log("show compile"),
     },
 };
 
-export const WithoutCompileShortcut: Story = {
+export const FolderExport: Story = {
     args: {
         isOpen: true,
-        resourceTitle: "Workspace",
-        preview: "Compiled manuscript preview will appear here.",
+        resourceTitle: "Act One",
+        resourceNames: ["Chapter 01", "Chapter 02", "Chapter 03"],
+        onClose: () => console.log("close"),
+        onConfirmExport: () => console.log("export"),
+    },
+};
+
+export const EmptyFolder: Story = {
+    args: {
+        isOpen: true,
+        resourceTitle: "Empty Folder",
+        resourceNames: [],
         onClose: () => console.log("close"),
         onConfirmExport: () => console.log("export"),
     },
@@ -87,9 +96,8 @@ export const Interactive: Story = {
     },
     args: {
         isOpen: true,
-        resourceTitle: "Chapter 01",
-        preview:
-            "Chapter 01\n\nThe rain started just as the train crossed the valley.",
+        resourceTitle: "Act One",
+        resourceNames: ["Chapter 01", "Chapter 02"],
         onClose: () => console.log("close"),
         onConfirmExport: () => console.log("export"),
         onShowCompile: () => console.log("show compile"),

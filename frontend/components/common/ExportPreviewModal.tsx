@@ -4,16 +4,25 @@ import ConfirmDialog from "./ConfirmDialog";
 export interface ExportPreviewModalProps {
     isOpen: boolean;
     resourceTitle?: string;
-    preview?: string;
+    /** Pre-resolved display names of the resources that will be exported. */
+    resourceNames?: string[];
     onClose?: () => void;
     onConfirmExport?: () => void;
     onShowCompile?: () => void;
 }
 
+function buildDescription(resourceNames: string[] | undefined): string {
+    if (!resourceNames || resourceNames.length === 0) {
+        return "No resources selected for export.";
+    }
+    const label = resourceNames.length === 1 ? "resource" : "resources";
+    return `Exporting ${resourceNames.length} ${label}:\n\n${resourceNames.map((n) => `• ${n}`).join("\n")}`;
+}
+
 export default function ExportPreviewModal({
     isOpen,
     resourceTitle,
-    preview,
+    resourceNames,
     onClose,
     onConfirmExport,
     onShowCompile,
@@ -25,7 +34,7 @@ export default function ExportPreviewModal({
             <ConfirmDialog
                 isOpen={isOpen}
                 title={resourceTitle ? `Export ${resourceTitle}` : "Export"}
-                description={preview ?? "Preview of export (placeholder)"}
+                description={buildDescription(resourceNames)}
                 confirmLabel="Export"
                 cancelLabel="Cancel"
                 onConfirm={() => {

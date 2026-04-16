@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import ExportPreviewModal from "../components/common/ExportPreviewModal";
 
 describe("ExportPreviewModal", () => {
-    it("shows preview and calls onConfirmExport when Export clicked", () => {
+    it("shows resource name and calls onConfirmExport when Export clicked", () => {
         const onConfirmExport = vi.fn();
         const onClose = vi.fn();
 
@@ -12,14 +12,14 @@ describe("ExportPreviewModal", () => {
             <ExportPreviewModal
                 isOpen={true}
                 resourceTitle={"My Resource"}
-                preview={"Preview content"}
+                resourceNames={["My Resource"]}
                 onConfirmExport={onConfirmExport}
                 onClose={onClose}
             />,
         );
 
         expect(screen.getByText("Export My Resource")).toBeInTheDocument();
-        expect(screen.getByText("Preview content")).toBeInTheDocument();
+        expect(screen.getByText(/Exporting 1 resource/)).toBeInTheDocument();
 
         const exportBtn = screen.getByText("Export");
         fireEvent.click(exportBtn);
@@ -42,7 +42,7 @@ describe("ExportPreviewModal — AppShell parity (T028)", () => {
             <ExportPreviewModal
                 isOpen={true}
                 resourceTitle={"Chapter One"}
-                preview={"Some preview text"}
+                resourceNames={["Chapter One"]}
                 onConfirmExport={vi.fn()}
                 onClose={onClose}
             />,
@@ -59,12 +59,60 @@ describe("ExportPreviewModal — AppShell parity (T028)", () => {
             <ExportPreviewModal
                 isOpen={false}
                 resourceTitle={"Hidden"}
-                preview={"Hidden preview"}
+                resourceNames={["Hidden"]}
                 onConfirmExport={vi.fn()}
                 onClose={vi.fn()}
             />,
         );
 
         expect(screen.queryByText("Hidden")).not.toBeInTheDocument();
+    });
+});
+
+describe("ExportPreviewModal — resource list display", () => {
+    it("lists resource names for folder export", () => {
+        render(
+            <ExportPreviewModal
+                isOpen={true}
+                resourceTitle="Act One"
+                resourceNames={["Chapter 01", "Chapter 02"]}
+                onConfirmExport={vi.fn()}
+                onClose={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText(/Chapter 01/)).toBeInTheDocument();
+        expect(screen.getByText(/Chapter 02/)).toBeInTheDocument();
+        expect(screen.getByText(/Exporting 2 resources/)).toBeInTheDocument();
+    });
+
+    it("uses singular label for single resource export", () => {
+        render(
+            <ExportPreviewModal
+                isOpen={true}
+                resourceTitle="Chapter 01"
+                resourceNames={["Chapter 01"]}
+                onConfirmExport={vi.fn()}
+                onClose={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText(/Exporting 1 resource:/)).toBeInTheDocument();
+    });
+
+    it("shows fallback message when resourceNames is empty", () => {
+        render(
+            <ExportPreviewModal
+                isOpen={true}
+                resourceTitle="Empty Folder"
+                resourceNames={[]}
+                onConfirmExport={vi.fn()}
+                onClose={vi.fn()}
+            />,
+        );
+
+        expect(
+            screen.getByText("No resources selected for export."),
+        ).toBeInTheDocument();
     });
 });

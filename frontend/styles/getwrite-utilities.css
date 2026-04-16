@@ -973,6 +973,60 @@
         color: var(--color-gw-primary);
     }
 
+    /* ── CONFIRM DIALOG ── */
+    .confirm-dialog-root {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .confirm-dialog-backdrop {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(2, 6, 23, 0.4);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+    }
+
+    .confirm-dialog-panel {
+        position: relative;
+        z-index: 10;
+        width: min(94vw, 480px);
+        max-height: 88vh;
+        overflow-y: auto;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-xl);
+        background-color: var(--color-gw-chrome);
+        padding: 24px;
+    }
+
+    .confirm-dialog-title {
+        font-family: var(--font-sans);
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--color-gw-primary);
+        margin-bottom: 8px;
+    }
+
+    .confirm-dialog-description {
+        font-family: var(--font-sans);
+        font-size: 13px;
+        color: var(--color-gw-secondary);
+        margin-bottom: 16px;
+        white-space: pre-wrap;
+    }
+
+    .confirm-dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 20px;
+    }
+
     /* ── COMPILE RESOURCE TREE ── */
     .compile-tree-root {
         border: 0.5px solid var(--color-gw-border);

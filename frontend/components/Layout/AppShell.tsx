@@ -51,6 +51,10 @@ import {
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
 import {
+    buildCompileTree,
+    getDescendantLeafIds,
+} from "../common/compileSelection";
+import {
     getStoredGlobalAppearancePreferences,
     type ColorMode,
     resolvePreferredColorMode,
@@ -94,7 +98,8 @@ interface ExportModalState {
     open: boolean;
     resourceId?: string;
     resourceTitle?: string;
-    preview?: string;
+    resourceIds?: string[];
+    resourceNames?: string[];
 }
 
 /**
@@ -349,11 +354,26 @@ export default function AppShell({
         }
 
         if (action === "export") {
+            const allItems = [...(resources ?? []), ...(folders ?? [])];
+            const nameById = new Map(allItems.map((r) => [r.id, r.name]));
+            const isFolder = (folders ?? []).some((f) => f.id === resourceId);
+            let resolvedIds: string[] = [];
+            if (resourceId) {
+                if (isFolder) {
+                    const tree = buildCompileTree(allItems);
+                    resolvedIds = getDescendantLeafIds(resourceId, tree);
+                } else {
+                    resolvedIds = [resourceId];
+                }
+            }
+            const resolvedTitle = nameById.get(resourceId ?? "") ?? resourceTitle;
+            const resolvedNames = resolvedIds.map((id) => nameById.get(id) ?? id);
             setExportModal({
                 open: true,
                 resourceId,
-                resourceTitle,
-                preview: "Export preview (placeholder)",
+                resourceTitle: resolvedTitle,
+                resourceIds: resolvedIds,
+                resourceNames: resolvedNames,
             });
             return;
         }
@@ -396,10 +416,11 @@ export default function AppShell({
     /**
      * Handles export preview confirmation and forwards export action upstream.
      *
-     * @param resourceId - Optional resource id to export; when omitted exports project context.
+     * @param resourceIds - Resolved leaf resource IDs to export.
+     * @param resourceId - The original right-clicked node (folder or leaf).
      */
-    const handleExportConfirmed = async (resourceId?: string) => {
-        await onResourceAction?.("export", resourceId);
+    const handleExportConfirmed = async (resourceIds: string[], resourceId?: string) => {
+        await onResourceAction?.("export", resourceId, { resourceIds });
         setExportModal({ open: false });
     };
 
@@ -850,8 +871,8 @@ export default function AppShell({
                                             parentId,
                                         );
                                     }}
-                                    onExportConfirmed={async (resourceId) => {
-                                        await handleExportConfirmed(resourceId);
+                                    onExportConfirmed={async (resourceIds, resourceId) => {
+                                        await handleExportConfirmed(resourceIds, resourceId);
                                     }}
                                     onSelectResource={onResourceSelect}
                                     onBuildCompilePreview={(resourceId) => {
