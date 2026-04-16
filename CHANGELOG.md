@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.11](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.10...getwrite-v0.2.11) (2026-04-16)
+
+
+### Features
+
+* implemented tag UI and stories; wired tag workflow into sidebar ([47a2a7e](https://github.com/saboteur-works/getwrite/commit/47a2a7e82ed209017c4c30dcbf83fe1e7268bbda))
+* implemented tag UI and stories; wired tag workflow into sidebar ([7178be4](https://github.com/saboteur-works/getwrite/commit/7178be4c94ee088a0130c940e2bfe13172c2bb79))
+
 ## [0.2.10](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.9...getwrite-v0.2.10) (2026-04-16)
 
 
