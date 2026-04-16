@@ -452,6 +452,23 @@ export default function Home(): JSX.Element {
         }));
     };
 
+    const handleChangeStoryDate = (date: string, resourceId: string) => {
+        updateResource(resourceId, (r) => ({
+            ...r,
+            userMetadata: { ...r.userMetadata, storyDate: date },
+        }));
+    };
+
+    const handleChangeStoryDuration = (
+        duration: number | null,
+        resourceId: string,
+    ) => {
+        updateResource(resourceId, (r) => ({
+            ...r,
+            userMetadata: { ...r.userMetadata, storyDuration: duration },
+        }));
+    };
+
     /**
      * Dispatches a CRUD or utility action on a resource.
      *
@@ -717,6 +734,8 @@ export default function Home(): JSX.Element {
             onChangeStatus={handleChangeStatus}
             onChangeDynamicMetadata={handleChangeDynamicMetadata}
             onChangePOV={handleChangePOV}
+            onChangeStoryDate={handleChangeStoryDate}
+            onChangeStoryDuration={handleChangeStoryDuration}
         >
             {!selectedProject ? (
                 <StartPage
