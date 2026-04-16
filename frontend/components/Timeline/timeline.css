@@ -1,0 +1,80 @@
+/*
+ * timeline.css
+ * CSS custom property defaults for the portable Timeline component.
+ *
+ * These are the standalone defaults — suitable for light-mode environments
+ * with no additional theming setup. Host applications override these by
+ * redefining the --timeline-* variables in their own stylesheet.
+ *
+ * All Timeline styling uses only these variables. No framework classes
+ * (Tailwind, Bootstrap, etc.) are used inside the component.
+ */
+
+:root {
+    /* Surfaces */
+    --timeline-bg:                  #ffffff;
+    --timeline-track-bg:            #f5f5f5;
+
+    /* Axis */
+    --timeline-axis-color:          #e0e0e0;
+    --timeline-axis-label-size:     10px;
+    --timeline-axis-label-color:    #9e9e9e;
+
+    /* Item chips */
+    --timeline-item-bg:             #1976d2;
+    --timeline-item-color:          #ffffff;
+    --timeline-item-radius:         3px;
+    --timeline-item-height:         22px;
+    /* Minimum chip width — ensures point-in-time items (no duration) are always readable */
+    --timeline-item-min-width:      120px;
+
+    /* Group label column */
+    --timeline-group-label-color:   #616161;
+    --timeline-group-label-width:   120px;
+
+    /* Layout */
+    --timeline-row-height:          36px;
+    --timeline-font-family:         system-ui, sans-serif;
+}
+
+/* ── Zoom controls ──
+ * Scoped under .timeline-root so styles don't bleed into host app.
+ * Uses only --timeline-* variables for full portability.
+ */
+.timeline-root .timeline-zoom-btn {
+    background: transparent;
+    border: 1px solid var(--timeline-axis-color);
+    color: var(--timeline-axis-label-color);
+    font-family: var(--timeline-font-family);
+    font-size: var(--timeline-axis-label-size);
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--timeline-item-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+    transition: background 0.1s, color 0.1s;
+    flex-shrink: 0;
+}
+
+.timeline-root .timeline-zoom-btn:hover:not(:disabled) {
+    background: var(--timeline-track-bg);
+    color: var(--timeline-item-color);
+}
+
+.timeline-root .timeline-zoom-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.timeline-root .timeline-zoom-label {
+    color: var(--timeline-axis-label-color);
+    font-family: var(--timeline-font-family);
+    font-size: var(--timeline-axis-label-size);
+    min-width: 38px;
+    text-align: center;
+    user-select: none;
+}

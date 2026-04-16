@@ -82,8 +82,21 @@ export function buildResourceTree(
         }
     }
 
-    resources.forEach((resource) => {
+    // Process root-level resources first. Folders recursively process their own
+    // children, so all properly-parented items are handled in correct top-down
+    // order without the warning firing for valid parent/child relationships.
+    const rootResources = resources.filter((r) => !r.folderId);
+    rootResources.forEach((resource) => {
         addResourceToDataObject(resource);
+    });
+
+    // Second pass: catch any resources whose parent folder was not in the tree
+    // (genuinely orphaned — folderId set but parent not present in resources).
+    // These will still trigger the warning, which is now a true positive.
+    resources.forEach((resource) => {
+        if (!dataObject[resource.id]) {
+            addResourceToDataObject(resource);
+        }
     });
 
     return dataObject;

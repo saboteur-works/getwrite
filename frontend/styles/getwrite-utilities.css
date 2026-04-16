@@ -28,6 +28,35 @@
     --color-gw-editor: var(--color-gw-paper);
     --color-gw-diff-added: rgba(80, 160, 100, 0.18);
     --color-gw-diff-removed: rgba(80, 130, 180, 0.18);
+
+    /* ── Timeline overrides ──
+     * Placed here (not :root) so this class-selector wins over the :root defaults
+     * in the component-scoped timeline.css, regardless of stylesheet load order.
+     * var(--color-gw-*) references lazy-resolve to whichever mode is active. */
+    --timeline-bg:               var(--color-gw-editor);
+    --timeline-track-bg:         var(--color-gw-chrome2);
+    --timeline-axis-color:       var(--color-gw-border);
+    --timeline-axis-label-size:  var(--font-size-gw-micro);
+    --timeline-axis-label-color: var(--color-gw-secondary);
+    --timeline-item-bg:          var(--color-gw-chrome3);
+    --timeline-item-color:       var(--color-gw-primary);
+    --timeline-item-radius:      2px;
+    --timeline-item-height:      22px;
+    --timeline-item-min-width:   120px;
+    --timeline-group-label-color: var(--color-gw-secondary);
+    --timeline-group-label-width: 120px;
+    --timeline-row-height:       var(--height-gw-tree-item);
+    --timeline-font-family:      var(--font-sans);
+
+    /* POV chip palette — deeper for contrast on the light paper surface */
+    --timeline-pov-0: #4A6E94;
+    --timeline-pov-1: #5A8060;
+    --timeline-pov-2: #8A7040;
+    --timeline-pov-3: #6A5080;
+    --timeline-pov-4: #3E8082;
+    --timeline-pov-5: #7A5040;
+    --timeline-pov-6: #5E6A4E;
+    --timeline-pov-7: #7A5A6E;
 }
 
 /* Dark mode: restore @theme defaults */
@@ -47,6 +76,16 @@
     ); /* Dark mode: editor body text = light primary */
     --color-gw-diff-added: rgba(80, 160, 100, 0.24);
     --color-gw-diff-removed: rgba(80, 130, 180, 0.24);
+
+    /* POV palette — original softer values for dark surfaces */
+    --timeline-pov-0: #6B8CAE;
+    --timeline-pov-1: #7A9E7E;
+    --timeline-pov-2: #A89060;
+    --timeline-pov-3: #8B6E9E;
+    --timeline-pov-4: #5E9EA0;
+    --timeline-pov-5: #A07060;
+    --timeline-pov-6: #7E8A6E;
+    --timeline-pov-7: #9E7A8E;
 }
 
 /* ── REDUCED MOTION ── (only permitted !important blocks in this file) */
