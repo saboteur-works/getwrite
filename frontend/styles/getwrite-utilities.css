@@ -26,6 +26,8 @@
     --color-gw-border-md: #b0ada8;
     --color-gw-rule: var(--color-gw-rule-light);
     --color-gw-editor: var(--color-gw-paper);
+    --color-gw-diff-added: rgba(80, 160, 100, 0.18);
+    --color-gw-diff-removed: rgba(80, 130, 180, 0.18);
 }
 
 /* Dark mode: restore @theme defaults */
@@ -43,6 +45,8 @@
     --color-gw-ink: var(
         --color-gw-primary
     ); /* Dark mode: editor body text = light primary */
+    --color-gw-diff-added: rgba(80, 160, 100, 0.24);
+    --color-gw-diff-removed: rgba(80, 130, 180, 0.24);
 }
 
 /* ── REDUCED MOTION ── (only permitted !important blocks in this file) */
@@ -735,6 +739,34 @@
         background-color: var(--color-gw-chrome2);
         color: var(--color-gw-primary);
         border-color: var(--color-gw-border-md);
+    }
+
+    /* ── DIFF HIGHLIGHT ── */
+    .diff-added {
+        background-color: var(--color-gw-diff-added);
+        border-radius: 2px;
+    }
+
+    .diff-removed {
+        background-color: var(--color-gw-diff-removed);
+        border-radius: 2px;
+        text-decoration: line-through;
+        text-decoration-color: currentColor;
+        opacity: 0.7;
+    }
+
+    .diff-unchanged {
+        /* inherits — no visual treatment */
+    }
+
+    .diff-pane-placeholder {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        color: var(--color-gw-secondary);
+        padding: 24px 0;
+        text-align: center;
+        opacity: 0.6;
     }
 
     /* ── EDITVIEW DOC HEADER ── */

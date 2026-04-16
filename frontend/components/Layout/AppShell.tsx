@@ -31,7 +31,7 @@ import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import ViewSwitcher from "../WorkArea/ViewSwitcher";
 import EditView from "../WorkArea/EditView";
-import DiffView from "../WorkArea/DiffView";
+import DiffViewController from "../WorkArea/DiffViewController";
 import OrganizerView from "../WorkArea/Views/OrganizerView/OrganizerView";
 import DataView from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/TimelineView";
@@ -1216,12 +1216,7 @@ export default function AppShell({
                                                           );
                                                       case "diff":
                                                           return (
-                                                              <DiffView
-                                                                  leftContent=""
-                                                                  rightContent={getResourceContent(
-                                                                      selectedResource,
-                                                                  )}
-                                                              />
+                                                              <DiffViewController />
                                                           );
                                                       case "organizer":
                                                           return (
