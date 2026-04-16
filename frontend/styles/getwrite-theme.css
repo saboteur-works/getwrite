@@ -119,25 +119,10 @@
 /*
  * ── TIMELINE COMPONENT OVERRIDES ──
  * Maps --timeline-* variables to GetWrite brand tokens.
- * This block is the only GetWrite-specific coupling for the portable Timeline component.
+ * These are placed on .appshell-shell (not :root) in getwrite-utilities.css so
+ * they take precedence over the defaults in timeline.css, which also uses :root.
+ * See getwrite-utilities.css for the actual declarations.
  */
-
-:root {
-    --timeline-bg:                  var(--color-gw-editor);
-    --timeline-track-bg:            var(--color-gw-chrome2);
-    --timeline-axis-color:          var(--color-gw-border);
-    --timeline-axis-label-size:     var(--font-size-gw-micro);
-    --timeline-axis-label-color:    var(--color-gw-secondary);
-    --timeline-item-bg:             var(--color-gw-chrome3);
-    --timeline-item-color:          var(--color-gw-primary);
-    --timeline-item-radius:         2px;
-    --timeline-item-height:         22px;
-    --timeline-item-min-width:      120px;
-    --timeline-group-label-color:   var(--color-gw-secondary);
-    --timeline-group-label-width:   120px;
-    --timeline-row-height:          var(--height-gw-tree-item);
-    --timeline-font-family:         var(--font-sans);
-}
 
 /*
  * ── UTILITY NOTES FOR AI ASSISTANTS ──

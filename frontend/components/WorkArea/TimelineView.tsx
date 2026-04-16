@@ -6,9 +6,32 @@ import type { TimelineItem, TimelineGroup } from "../Timeline";
 
 export interface TimelineViewProps {
     className?: string;
+    /**
+     * POV chip color palette. Each entry is any valid CSS color value or
+     * `var(--some-token)` reference. Defaults to the `--timeline-pov-*` CSS
+     * custom properties defined by the host stylesheet, which automatically
+     * respond to light/dark mode. Pass explicit hex values here when using
+     * TimelineView outside the GetWrite app (e.g., as a standalone package
+     * without the host CSS loaded).
+     */
+    colors?: string[];
 }
 
-export default function TimelineView({ className = "" }: TimelineViewProps) {
+const DEFAULT_POV_PALETTE = [
+    "var(--timeline-pov-0)",
+    "var(--timeline-pov-1)",
+    "var(--timeline-pov-2)",
+    "var(--timeline-pov-3)",
+    "var(--timeline-pov-4)",
+    "var(--timeline-pov-5)",
+    "var(--timeline-pov-6)",
+    "var(--timeline-pov-7)",
+];
+
+export default function TimelineView({
+    className = "",
+    colors = DEFAULT_POV_PALETTE,
+}: TimelineViewProps) {
     const dispatch = useAppDispatch();
 
     const projectName = useAppSelector(
@@ -30,12 +53,8 @@ export default function TimelineView({ className = "" }: TimelineViewProps) {
                     .filter((p): p is string => !!p),
             ),
         ];
-        const palette = [
-            "#6B8CAE", "#7A9E7E", "#A89060", "#8B6E9E",
-            "#5E9EA0", "#A07060", "#7E8A6E", "#9E7A8E",
-        ];
-        return Object.fromEntries(povs.map((p, i) => [p, palette[i % palette.length]]));
-    }, [resources]);
+        return Object.fromEntries(povs.map((p, i) => [p, colors[i % colors.length]]));
+    }, [resources, colors]);
 
     const items = React.useMemo((): TimelineItem[] => {
         return resources
