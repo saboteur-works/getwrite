@@ -1,6 +1,6 @@
 import React from "react";
 import type { TimelineItem, TimelineGroup } from "./types";
-import { parseDateString, dateToPercent } from "./utils";
+import { parseDateString, dateToPercent, formatDuration } from "./utils";
 import TimelineChip from "./TimelineChip";
 
 export interface TimelineRowProps {
@@ -77,6 +77,52 @@ export default function TimelineRow({
                         />
                     );
                 })}
+                {(() => {
+                    const axisSpan = axisBounds.end - axisBounds.start;
+                    const threshold = axisSpan * 0.05;
+                    const sorted = [...items].sort(
+                        (a, b) => parseDateString(a.startDate) - parseDateString(b.startDate),
+                    );
+                    return sorted.flatMap((item, i) => {
+                        if (i === 0) return [];
+                        const prevEnd = sorted[i - 1].endDate
+                            ? parseDateString(sorted[i - 1].endDate!)
+                            : parseDateString(sorted[i - 1].startDate);
+                        const nextStart = parseDateString(item.startDate);
+                        const gapMs = nextStart - prevEnd;
+                        if (gapMs <= threshold) return [];
+                        const midMs = prevEnd + gapMs / 2;
+                        const leftPct = dateToPercent(midMs, axisBounds.start, axisBounds.end);
+                        return [(
+                            <div
+                                key={`gap-${i}`}
+                                style={{
+                                    position: "absolute",
+                                    left: `${leftPct}%`,
+                                    transform: "translateX(-50%)",
+                                    top: 0,
+                                    height: "100%",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    pointerEvents: "none",
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        fontSize: "var(--timeline-axis-label-size)",
+                                        color: "var(--timeline-axis-label-color)",
+                                        opacity: 0.55,
+                                        whiteSpace: "nowrap",
+                                        userSelect: "none",
+                                    }}
+                                >
+                                    ↔ {formatDuration(gapMs)}
+                                </span>
+                            </div>
+                        )];
+                    });
+                })()}
             </div>
         </div>
     );

@@ -16,7 +16,7 @@ export default function TimelineChip({
         <button
             role="listitem"
             aria-label={item.label}
-            title={item.label}
+            title={item.tooltip ?? item.label}
             onClick={() => item.onClick?.(item.id)}
             style={{
                 position: "absolute",
@@ -24,7 +24,7 @@ export default function TimelineChip({
                 width: `${widthPercent}%`,
                 minWidth: "var(--timeline-item-min-width)",
                 height: "var(--timeline-item-height)",
-                backgroundColor: "var(--timeline-item-bg)",
+                backgroundColor: item.color ?? "var(--timeline-item-bg)",
                 color: "var(--timeline-item-color)",
                 borderRadius: "var(--timeline-item-radius)",
                 fontFamily: "var(--timeline-font-family)",

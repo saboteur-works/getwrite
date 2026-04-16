@@ -7,9 +7,16 @@ let fakeState: any = {
     resources: { resources: [], folders: [] },
 };
 
+const mockDispatch = vi.fn();
+
 vi.mock("../src/store/hooks", () => ({
     __esModule: true,
     default: (selector: any) => selector(fakeState),
+    useAppDispatch: () => mockDispatch,
+}));
+
+vi.mock("../src/store/resourcesSlice", () => ({
+    setSelectedResourceId: (id: string) => ({ type: "resources/setSelectedResourceId", payload: id }),
 }));
 
 import TimelineView from "../components/WorkArea/TimelineView";

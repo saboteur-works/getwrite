@@ -76,6 +76,17 @@ const DEFAULT_DATE_FORMAT: Intl.DateTimeFormatOptions = {
     day: "numeric",
 };
 
+/** Format a millisecond duration to a short human-readable string. */
+export function formatDuration(ms: number): string {
+    const days = ms / 86_400_000;
+    if (days >= 365) return `${Math.round(days / 365)}y`;
+    if (days >= 30) return `${Math.round(days / 30)}mo`;
+    if (days >= 1) return `${Math.round(days)}d`;
+    const hours = ms / 3_600_000;
+    if (hours >= 1) return `${Math.round(hours)}h`;
+    return `${Math.round(ms / 60_000)}min`;
+}
+
 /** Format a millisecond timestamp to a human-readable tick label. */
 export function formatTick(
     ms: number,

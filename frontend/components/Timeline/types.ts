@@ -12,6 +12,10 @@ export interface TimelineItem {
     groupId?: string;
     /** Fired when the user clicks the item chip. */
     onClick?: (id: string) => void;
+    /** Human-readable tooltip shown on chip hover (date, time, duration). */
+    tooltip?: string;
+    /** Background color for the chip, derived from POV character or other grouping. */
+    color?: string;
     /** Arbitrary consumer metadata — passed through, not rendered. */
     metadata?: Record<string, unknown>;
 }
