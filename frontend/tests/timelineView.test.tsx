@@ -1,60 +1,95 @@
 import React from "react";
-import { describe, test, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-// Provide a controllable fake Redux state for components that use `useAppSelector`.
 let fakeState: any = {
     projects: { selectedProjectId: null, projects: {} },
-    resources: { resources: [] },
+    resources: { resources: [], folders: [] },
 };
 
-vi.mock("../src/store/hooks", () => {
-    return {
-        __esModule: true,
-        default: (selector: any) => selector(fakeState),
-    };
-});
+const mockDispatch = vi.fn();
+
+vi.mock("../src/store/hooks", () => ({
+    __esModule: true,
+    default: (selector: any) => selector(fakeState),
+    useAppDispatch: () => mockDispatch,
+}));
+
+vi.mock("../src/store/resourcesSlice", () => ({
+    setSelectedResourceId: (id: string) => ({ type: "resources/setSelectedResourceId", payload: id }),
+}));
 
 import TimelineView from "../components/WorkArea/TimelineView";
 import { createTextResource } from "../src/lib/models/resource";
 
+beforeEach(() => {
+    fakeState = {
+        projects: { selectedProjectId: "proj1", projects: { proj1: { id: "proj1", name: "My Novel" } } },
+        resources: { resources: [], folders: [] },
+    };
+});
+
 describe("TimelineView", () => {
-    test("renders dated sections and undated section", () => {
-        const now = new Date().toISOString();
-        const projectId = "proj_timeline_1";
-        const project = {
-            project: {
-                id: projectId,
-                name: "Timeline Project",
-                createdAt: now,
-                updatedAt: now,
-            },
-            resources: [
-                createTextResource({
-                    name: "Entry A",
-                    plainText: "Entry A body",
-                    folderId: null,
-                } as any),
-            ],
-            folders: [],
-        };
-
-        // Inject into the mocked selector state so the component sees these values.
-        fakeState.projects.projects[project.project.id] = project.project;
-        fakeState.projects.selectedProjectId = project.project.id;
-        fakeState.resources.resources = project.resources;
-
+    it("shows empty state when no resources have storyDate", () => {
+        fakeState.resources.resources = [
+            createTextResource({ name: "Undated Scene", plainText: "" }),
+        ];
         render(<TimelineView />);
+        expect(
+            screen.getByText(/no scenes have story dates yet/i),
+        ).toBeInTheDocument();
+    });
 
-        // At least one dated section (createdAt present on placeholders)
-        const headings = screen.getAllByRole("heading", { level: 3 });
-        expect(headings.length).toBeGreaterThanOrEqual(1);
-
-        // Resource titles should appear
-        project.resources.forEach((r) => {
-            expect(screen.getAllByText(r.name).length).toBeGreaterThanOrEqual(
-                1,
-            );
+    it("renders item chips for resources with storyDate", () => {
+        const res = createTextResource({
+            name: "Opening Scene",
+            plainText: "",
+            userMetadata: { storyDate: "2024-01-15" },
         });
+        fakeState.resources.resources = [res];
+        render(<TimelineView />);
+        expect(screen.getByRole("listitem", { name: "Opening Scene" })).toBeInTheDocument();
+    });
+
+    it("renders multiple items from multiple resources", () => {
+        fakeState.resources.resources = [
+            createTextResource({ name: "Scene A", plainText: "", userMetadata: { storyDate: "2024-01-01" } }),
+            createTextResource({ name: "Scene B", plainText: "", userMetadata: { storyDate: "2024-02-01" } }),
+            createTextResource({ name: "Scene C", plainText: "", userMetadata: { storyDate: "2024-03-01" } }),
+        ];
+        render(<TimelineView />);
+        expect(screen.getByRole("listitem", { name: "Scene A" })).toBeInTheDocument();
+        expect(screen.getByRole("listitem", { name: "Scene B" })).toBeInTheDocument();
+        expect(screen.getByRole("listitem", { name: "Scene C" })).toBeInTheDocument();
+    });
+
+    it("shows group labels for folders referenced by dated items", () => {
+        const folderId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+        fakeState.resources.folders = [{ id: folderId, name: "Act One", type: "folder" }];
+        fakeState.resources.resources = [
+            createTextResource({
+                name: "Inciting Incident",
+                plainText: "",
+                folderId,
+                userMetadata: { storyDate: "2024-01-10" },
+            }),
+        ];
+        render(<TimelineView />);
+        expect(screen.getByText("Act One")).toBeInTheDocument();
+    });
+
+    it("includes the project name in the heading", () => {
+        render(<TimelineView />);
+        expect(screen.getByText(/Timeline — My Novel/i)).toBeInTheDocument();
+    });
+
+    it("omits resources without storyDate from the timeline", () => {
+        fakeState.resources.resources = [
+            createTextResource({ name: "Dated", plainText: "", userMetadata: { storyDate: "2024-06-01" } }),
+            createTextResource({ name: "Undated", plainText: "" }),
+        ];
+        render(<TimelineView />);
+        expect(screen.getByRole("listitem", { name: "Dated" })).toBeInTheDocument();
+        expect(screen.queryByRole("listitem", { name: "Undated" })).not.toBeInTheDocument();
     });
 });

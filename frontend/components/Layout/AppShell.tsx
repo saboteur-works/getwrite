@@ -143,6 +143,13 @@ export interface AppShellProps {
         metadata: Record<string, string[]>,
         resourceId: string,
     ) => void;
+    /** Metadata callback for story date/time updates. */
+    onChangeStoryDate?: (date: string, resourceId: string) => void;
+    /** Metadata callback for story duration updates. */
+    onChangeStoryDuration?: (
+        duration: number | null,
+        resourceId: string,
+    ) => void;
     /**
      * General resource action handler used by tree and modal flows.
      *
@@ -179,6 +186,8 @@ export default function AppShell({
     onChangeStatus,
     onChangePOV,
     onChangeDynamicMetadata,
+    onChangeStoryDate,
+    onChangeStoryDuration,
     onResourceAction,
     onCloseProject,
     project,
@@ -1494,6 +1503,20 @@ export default function AppShell({
                                             selectedResource &&
                                             onChangeDynamicMetadata?.(
                                                 metadata,
+                                                selectedResource.id,
+                                            )
+                                        }
+                                        onChangeStoryDate={(date) =>
+                                            selectedResource &&
+                                            onChangeStoryDate?.(
+                                                date,
+                                                selectedResource.id,
+                                            )
+                                        }
+                                        onChangeStoryDuration={(duration) =>
+                                            selectedResource &&
+                                            onChangeStoryDuration?.(
+                                                duration,
                                                 selectedResource.id,
                                             )
                                         }

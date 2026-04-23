@@ -1,91 +1,143 @@
 import React from "react";
-import type { AnyResource } from "../../src/lib/models/types";
-import useAppSelector from "../../src/store/hooks";
+import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
+import { setSelectedResourceId } from "../../src/store/resourcesSlice";
+import { Timeline } from "../Timeline";
+import type { TimelineItem, TimelineGroup } from "../Timeline";
 
 export interface TimelineViewProps {
     className?: string;
+    /**
+     * POV chip color palette. Each entry is any valid CSS color value or
+     * `var(--some-token)` reference. Defaults to the `--timeline-pov-*` CSS
+     * custom properties defined by the host stylesheet, which automatically
+     * respond to light/dark mode. Pass explicit hex values here when using
+     * TimelineView outside the GetWrite app (e.g., as a standalone package
+     * without the host CSS loaded).
+     */
+    colors?: string[];
 }
 
-function groupByDate(resources: AnyResource[]) {
-    const dated: Record<string, AnyResource[]> = {};
-    const undated: AnyResource[] = [];
-    resources.forEach((r) => {
-        const date = r.createdAt ? r.createdAt.split("T")[0] : null;
-        if (date) {
-            dated[date] = dated[date] || [];
-            dated[date].push(r);
-        } else {
-            undated.push(r);
-        }
-    });
-    // Sort dates descending
-    const dates = Object.keys(dated).sort((a, b) => (a < b ? 1 : -1));
-    return { dates, dated, undated };
-}
+const DEFAULT_POV_PALETTE = [
+    "var(--timeline-pov-0)",
+    "var(--timeline-pov-1)",
+    "var(--timeline-pov-2)",
+    "var(--timeline-pov-3)",
+    "var(--timeline-pov-4)",
+    "var(--timeline-pov-5)",
+    "var(--timeline-pov-6)",
+    "var(--timeline-pov-7)",
+];
 
-export default function TimelineView({ className = "" }: TimelineViewProps) {
-    const projectFromStore = useAppSelector(
+export default function TimelineView({
+    className = "",
+    colors = DEFAULT_POV_PALETTE,
+}: TimelineViewProps) {
+    const dispatch = useAppDispatch();
+
+    const projectName = useAppSelector(
         (state) =>
-            state.projects.projects[state.projects.selectedProjectId ?? ""],
-    );
-    const resourcesFromStore = useAppSelector(
-        (state) => state.resources.resources,
+            state.projects.projects[state.projects.selectedProjectId ?? ""]
+                ?.name ?? "",
     );
 
-    const { dates, dated, undated } = React.useMemo(
-        () => groupByDate(resourcesFromStore),
-        [resourcesFromStore],
+    const resources = useAppSelector((state) => state.resources.resources);
+    const folders = useAppSelector(
+        (state) => state.resources.folders ?? [],
     );
+
+    const povColorMap = React.useMemo(() => {
+        const povs = [
+            ...new Set(
+                resources
+                    .map((r) => r.userMetadata?.pov as string | undefined)
+                    .filter((p): p is string => !!p),
+            ),
+        ];
+        return Object.fromEntries(povs.map((p, i) => [p, colors[i % colors.length]]));
+    }, [resources, colors]);
+
+    const items = React.useMemo((): TimelineItem[] => {
+        return resources
+            .filter(
+                (r) => typeof r.userMetadata?.storyDate === "string" && r.userMetadata.storyDate !== "",
+            )
+            .map((r) => {
+                const storyDate = r.userMetadata!.storyDate as string;
+                const storyTime = r.userMetadata?.storyTime as string | undefined;
+                const storyDuration = r.userMetadata?.storyDuration as
+                    | number
+                    | undefined;
+
+                const startDate = storyTime
+                    ? `${storyDate}T${storyTime}`
+                    : storyDate;
+
+                const endDate =
+                    storyDuration != null
+                        ? new Date(
+                              Date.parse(startDate) + storyDuration * 60000,
+                          ).toISOString()
+                        : undefined;
+
+                const tooltipParts: string[] = [];
+                tooltipParts.push(
+                    new Intl.DateTimeFormat(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        ...(storyTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+                    }).format(new Date(Date.parse(startDate))),
+                );
+                if (storyDuration != null) {
+                    tooltipParts.push(
+                        storyDuration >= 60
+                            ? `${Math.round(storyDuration / 60)}h`
+                            : `${storyDuration} min`,
+                    );
+                }
+
+                const pov = r.userMetadata?.pov as string | undefined;
+
+                return {
+                    id: r.id,
+                    label: r.name ?? r.id,
+                    startDate,
+                    endDate,
+                    groupId: r.folderId ?? undefined,
+                    tooltip: tooltipParts.join(" · "),
+                    color: pov ? povColorMap[pov] : undefined,
+                    onClick: (id: string) => dispatch(setSelectedResourceId(id)),
+                };
+            });
+    }, [resources, povColorMap, dispatch]);
+
+    const groups = React.useMemo((): TimelineGroup[] => {
+        const groupIds = new Set(
+            items.map((i) => i.groupId).filter(Boolean) as string[],
+        );
+        return folders
+            .filter((f) => groupIds.has(f.id))
+            .map((f) => ({ id: f.id, label: f.name ?? f.id }));
+    }, [items, folders]);
 
     return (
-        <div className={`${className}`}>
+        <div className={className}>
             <div className="workarea-section">
                 <h2 className="workarea-section-title">
-                    Timeline — {projectFromStore?.name}
+                    Timeline{projectName ? ` — ${projectName}` : ""}
                 </h2>
             </div>
 
-            <div className="space-y-6">
-                {dates.map((d) => (
-                    <section key={d} className="workarea-section">
-                        <h3 className="workarea-section-title text-base">
-                            {d}
-                        </h3>
-                        <ul className="workarea-list">
-                            {dated[d].map((r) => (
-                                <li key={r.id} className="workarea-list-item">
-                                    <div className="workarea-list-item-label">
-                                        {r.name ?? (r as any).title}
-                                    </div>
-                                    <div className="workarea-list-item-meta">
-                                        {r.type}
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                ))}
-
-                {undated.length > 0 && (
-                    <section className="workarea-section">
-                        <h3 className="workarea-section-title text-base">
-                            Undated
-                        </h3>
-                        <ul className="workarea-list">
-                            {undated.map((r) => (
-                                <li key={r.id} className="workarea-list-item">
-                                    <div className="workarea-list-item-label">
-                                        {r.name ?? (r as any).title}
-                                    </div>
-                                    <div className="workarea-list-item-meta">
-                                        {r.type}
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                )}
-            </div>
+            {items.length === 0 ? (
+                <div className="workarea-section">
+                    <p className="text-gw-secondary text-sm">
+                        No scenes have story dates yet. Select a scene and set a
+                        Story Date in the metadata sidebar.
+                    </p>
+                </div>
+            ) : (
+                <Timeline items={items} groups={groups} />
+            )}
         </div>
     );
 }

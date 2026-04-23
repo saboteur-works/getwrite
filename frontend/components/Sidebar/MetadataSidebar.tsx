@@ -3,6 +3,8 @@ import NotesInput from "./controls/NotesInput";
 import StatusSelector from "./controls/StatusSelector";
 import MultiSelectList from "./controls/MultiSelectList";
 import POVAutocomplete from "./controls/POVAutocomplete";
+import DateTimeInput from "./controls/DateTimeInput";
+import DurationInput from "./controls/DurationInput";
 import TagsSection from "./TagsSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual, useStore } from "react-redux";
@@ -18,6 +20,8 @@ export interface MetadataSidebarProps {
     onChangeStatus?: (status: string) => void;
     onChangePOV?: (pov: string) => void;
     onChangeDynamicMetadata?: (metadata: Record<string, string[]>) => void;
+    onChangeStoryDate?: (value: string) => void;
+    onChangeStoryDuration?: (value: number | null) => void;
     className?: string;
 }
 
@@ -26,6 +30,8 @@ export default function MetadataSidebar({
     onChangeStatus,
     onChangePOV,
     onChangeDynamicMetadata,
+    onChangeStoryDate,
+    onChangeStoryDuration,
     className = "",
 }: MetadataSidebarProps): JSX.Element {
     const store = useStore();
@@ -89,6 +95,12 @@ export default function MetadataSidebar({
     const [pov, setPOV] = React.useState<string | null>(
         (selectedResource?.userMetadata?.pov as any) ?? null,
     );
+    const [storyDate, setStoryDate] = React.useState<string>(
+        (selectedResource?.userMetadata?.storyDate as string) ?? "",
+    );
+    const [storyDuration, setStoryDuration] = React.useState<number | null>(
+        (selectedResource?.userMetadata?.storyDuration as number) ?? null,
+    );
 
     const [dynamicMetadataSelections, setDynamicMetadataSelections] =
         React.useState({
@@ -98,6 +110,10 @@ export default function MetadataSidebar({
         setNotes((selectedResource?.userMetadata?.notes as any) ?? "");
         setStatus((selectedResource?.userMetadata?.status as any) ?? "draft");
         setPOV((selectedResource?.userMetadata?.pov as any) ?? null);
+        setStoryDate((selectedResource?.userMetadata?.storyDate as string) ?? "");
+        setStoryDuration(
+            (selectedResource?.userMetadata?.storyDuration as number) ?? null,
+        );
         setDynamicMetadataSelections((prev) => {
             const newSelections: Record<string, string[]> = {};
             metadataSourceFolders.forEach((folder) => {
@@ -168,6 +184,26 @@ export default function MetadataSidebar({
                             }}
                         />
                     </div>
+                    <div className="mb-6">
+                        <DateTimeInput
+                            className="text-brand-mid"
+                            value={storyDate}
+                            onChange={(v) => {
+                                setStoryDate(v);
+                                onChangeStoryDate?.(v);
+                            }}
+                        />
+                    </div>
+                    <div className="mb-6">
+                        <DurationInput
+                            className="text-brand-mid"
+                            value={storyDuration}
+                            onChange={(v) => {
+                                setStoryDuration(v);
+                                onChangeStoryDuration?.(v);
+                            }}
+                        />
+                    </div>
                     <div id="sidebar-dynamic-test">
                         {metadataSourceFolders.map((folder) => (
                             <div key={folder.name} className="mb-6">
@@ -182,20 +218,20 @@ export default function MetadataSidebar({
                                             ))()}
                                         selected={
                                             dynamicMetadataSelections[
-                                                folder.name
+                                                folder.slug
                                             ] ?? []
                                         }
                                         onChange={(next) => {
                                             setDynamicMetadataSelections(
                                                 (prev) => ({
                                                     ...prev,
-                                                    [folder.name]: next,
+                                                    [folder.slug]: next,
                                                 }),
                                             );
                                             onChangeDynamicMetadata &&
                                                 onChangeDynamicMetadata({
                                                     ...dynamicMetadataSelections,
-                                                    [folder.name]: next,
+                                                    [folder.slug]: next,
                                                 });
                                         }}
                                     />

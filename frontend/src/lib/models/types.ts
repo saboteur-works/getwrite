@@ -101,6 +101,15 @@ export type MetadataSource = {
     metadataInputType?: MetadataInputType;
 };
 
+/**
+ * Reserved `userMetadata` keys used by the story timeline feature.
+ * These are stored as plain values in the `userMetadata` record — no schema change required.
+ *
+ * - `storyDate`     string  ISO date "YYYY-MM-DD" — places the resource on the story timeline
+ * - `storyTime`     string  Optional "HH:mm" time-of-day; combined with storyDate as "YYYY-MM-DDTHH:mm"
+ * - `storyDuration` number  Optional duration in minutes; used to compute an endDate for the timeline item
+ */
+
 /** Base attributes common to all resource types (text/image/audio). */
 export interface ResourceBase {
     /** Resource UUID (immutable identity independent of path). */

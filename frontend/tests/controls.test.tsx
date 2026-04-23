@@ -8,6 +8,8 @@ import NotesInput from "../components/Sidebar/controls/NotesInput";
 import StatusSelector from "../components/Sidebar/controls/StatusSelector";
 import MultiSelectList from "../components/Sidebar/controls/MultiSelectList";
 import POVAutocomplete from "../components/Sidebar/controls/POVAutocomplete";
+import DateTimeInput from "../components/Sidebar/controls/DateTimeInput";
+import DurationInput from "../components/Sidebar/controls/DurationInput";
 
 describe("Sidebar Controls", () => {
     it("NotesInput calls onChange", () => {
@@ -94,6 +96,46 @@ describe("Sidebar Controls", () => {
         );
 
         expect(onChange).toHaveBeenCalled();
+    });
+
+    it("DateTimeInput fires onChange with date-only string", () => {
+        const onChange = vi.fn();
+        render(<DateTimeInput onChange={onChange} />);
+        const dateInput = screen.getByLabelText("story-date-input");
+        fireEvent.change(dateInput, { target: { value: "2024-06-15" } });
+        expect(onChange).toHaveBeenCalledWith("2024-06-15");
+    });
+
+    it("DateTimeInput fires onChange with combined datetime string when time is set", () => {
+        const onChange = vi.fn();
+        render(<DateTimeInput value="2024-06-15" onChange={onChange} />);
+        const timeInput = screen.getByLabelText("story-date-input-time");
+        fireEvent.change(timeInput, { target: { value: "14:30" } });
+        expect(onChange).toHaveBeenCalledWith("2024-06-15T14:30");
+    });
+
+    it("DateTimeInput syncs to external value prop change", () => {
+        const { rerender } = render(<DateTimeInput value="2024-01-01" />);
+        const dateInput = screen.getByLabelText("story-date-input") as HTMLInputElement;
+        expect(dateInput.value).toBe("2024-01-01");
+        rerender(<DateTimeInput value="2024-12-31" />);
+        expect(dateInput.value).toBe("2024-12-31");
+    });
+
+    it("DurationInput calls onChange with parsed integer", () => {
+        const onChange = vi.fn();
+        render(<DurationInput onChange={onChange} />);
+        const input = screen.getByLabelText("story-duration-input");
+        fireEvent.change(input, { target: { value: "60" } });
+        expect(onChange).toHaveBeenCalledWith(60);
+    });
+
+    it("DurationInput calls onChange(null) when input is cleared", () => {
+        const onChange = vi.fn();
+        render(<DurationInput value={60} onChange={onChange} />);
+        const input = screen.getByLabelText("story-duration-input");
+        fireEvent.change(input, { target: { value: "" } });
+        expect(onChange).toHaveBeenCalledWith(null);
     });
 
     it("EditorMenuColorSubmenu opens and forwards the chosen color", async () => {

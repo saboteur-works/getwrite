@@ -117,6 +117,14 @@
 }
 
 /*
+ * ── TIMELINE COMPONENT OVERRIDES ──
+ * Maps --timeline-* variables to GetWrite brand tokens.
+ * These are placed on .appshell-shell (not :root) in getwrite-utilities.css so
+ * they take precedence over the defaults in timeline.css, which also uses :root.
+ * See getwrite-utilities.css for the actual declarations.
+ */
+
+/*
  * ── UTILITY NOTES FOR AI ASSISTANTS ──
  *
  * WORDMARK CONSTRUCTION
