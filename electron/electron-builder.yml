@@ -1,0 +1,34 @@
+appId: works.saboteur.getwrite
+npmRebuild: false
+productName: GetWrite
+directories:
+    output: ../dist-electron
+    buildResources: assets
+files:
+    - dist/**
+extraResources:
+    - from: ../frontend/.next/standalone
+      to: frontend/.next/standalone
+      filter:
+          - "**/*"
+    - from: ../frontend/.next/static
+      to: frontend/.next/standalone/frontend/.next/static
+      filter:
+          - "**/*"
+    - from: ../frontend/public
+      to: frontend/.next/standalone/frontend/public
+      filter:
+          - "**/*"
+    - from: ../getwrite-config
+      to: getwrite-config
+      filter:
+          - "**/*"
+    - from: ../projects
+      to: projects
+      filter:
+          - "**/*"
+mac:
+    category: public.app-category.productivity
+    target: dmg
+win:
+    target: nsis

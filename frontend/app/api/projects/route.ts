@@ -6,8 +6,12 @@ import { generateUUID } from "../../../src/lib/models/uuid";
 import fs from "node:fs/promises";
 import { getLocalResources } from "../../../src/lib/models";
 
+const resolveProjectsDir = () =>
+    process.env.GETWRITE_PROJECTS_DIR ??
+    path.join(process.cwd(), "..", "projects");
+
 const getProject = async (id: string) => {
-    const projectDirPath = path.join(process.cwd(), "..", "projects", id);
+    const projectDirPath = path.join(resolveProjectsDir(), id);
     const projectDirectory = await fs.readdir(projectDirPath);
 
     return NextResponse.json(projectDirectory);
@@ -19,7 +23,7 @@ const getProject = async (id: string) => {
 export async function GET(req: Request) {
     try {
         // get all projects from local
-        const projectsDir = path.join(process.cwd(), "..", "projects");
+        const projectsDir = resolveProjectsDir();
         const projectIds = await fs.readdir(projectsDir);
         const projects = await Promise.all(
             projectIds.map(async (id) => {
@@ -87,7 +91,7 @@ export async function POST(req: Request) {
         }
 
         const id = generateUUID();
-        const projectRoot = path.join(process.cwd(), "..", "projects", id);
+        const projectRoot = path.join(resolveProjectsDir(), id);
 
         const result = await createProjectFromType({
             projectRoot,

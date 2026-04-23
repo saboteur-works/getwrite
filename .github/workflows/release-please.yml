@@ -23,7 +23,7 @@ jobs:
                   config-file: .release-please-config.json
                   manifest-file: .release-please-manifest.json
 
-    sync-frontend-version:
+    sync-package-versions:
         needs: release-please
         if: ${{ needs.release-please.outputs.release_created }}
         runs-on: ubuntu-latest
@@ -41,18 +41,20 @@ jobs:
                   node-version: 22
                   cache: pnpm
 
-            - name: Sync frontend/package.json version
+            - name: Sync package versions
               run: |
                   ROOT_VERSION=$(node -p "require('./package.json').version")
                   ROOT_VERSION=$ROOT_VERSION node -e "
                     const fs = require('fs');
-                    const pkg = JSON.parse(fs.readFileSync('frontend/package.json', 'utf8'));
-                    pkg.version = process.env.ROOT_VERSION;
-                    fs.writeFileSync('frontend/package.json', JSON.stringify(pkg, null, 4) + '\n');
+                    for (const path of ['frontend/package.json', 'electron/package.json']) {
+                      const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+                      pkg.version = process.env.ROOT_VERSION;
+                      fs.writeFileSync(path, JSON.stringify(pkg, null, 4) + '\n');
+                    }
                   "
 
-            - name: Commit synced version
+            - name: Commit synced versions
               uses: stefanzweifel/git-auto-commit-action@v5
               with:
-                  commit_message: "chore: sync frontend version to ${{ needs.release-please.outputs.tag_name }}"
-                  file_pattern: frontend/package.json
+                  commit_message: "chore: sync package versions to ${{ needs.release-please.outputs.tag_name }}"
+                  file_pattern: frontend/package.json electron/package.json

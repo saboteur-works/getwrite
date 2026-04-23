@@ -5,7 +5,10 @@
     "main": "index.js",
     "scripts": {
         "start-dev": "pnpm --filter getwrite-frontend dev",
-        "test": "pnpm --filter getwrite-frontend exec vitest"
+        "test": "pnpm --filter getwrite-frontend exec vitest",
+        "electron:dev": "pnpm --filter getwrite-electron dev",
+        "electron:build": "pnpm --filter getwrite-frontend build && pnpm --filter getwrite-electron build",
+        "electron:package": "pnpm electron:build && pnpm --filter getwrite-electron package"
     },
     "keywords": [],
     "author": "",
@@ -15,6 +18,7 @@
         "overrides": {
             "@react-pdf/layout": "4.5.1",
             "@react-pdf/image": "3.0.4"
-        }
+        },
+        "onlyBuiltDependencies": ["electron"]
     }
 }

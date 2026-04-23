@@ -44,8 +44,10 @@ export async function POST(
         orderIndex: number;
         folderId?: string | null;
     }> = body.resourceOrder ?? [];
-    // locate projects directory (assume repo layout: frontend/ -> ../projects)
-    const projectsDir = path.resolve(process.cwd(), "..", "projects");
+    // locate projects directory
+    const projectsDir =
+        process.env.GETWRITE_PROJECTS_DIR ??
+        path.resolve(process.cwd(), "..", "projects");
     const projectRoot =
         body.projectRoot ?? (await findProjectRoot(projectsDir, projectId));
     if (!projectRoot) {

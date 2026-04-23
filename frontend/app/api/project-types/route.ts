@@ -6,14 +6,9 @@ import {
     validateProjectType,
 } from "../../../src/lib/models/schemas";
 
-// frontend dev server's cwd is the `frontend` folder; templates live at repo root
-const TEMPLATES_DIR = path.join(
-    process.cwd(),
-    "..",
-    "getwrite-config",
-    "templates",
-    "project-types",
-);
+const TEMPLATES_DIR =
+    process.env.GETWRITE_TEMPLATES_DIR ??
+    path.join(process.cwd(), "..", "getwrite-config", "templates", "project-types");
 
 export async function GET() {
     try {
