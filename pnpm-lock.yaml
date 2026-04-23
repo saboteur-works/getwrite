@@ -13,14 +13,13 @@ importers:
   .: {}
 
   electron:
-    dependencies:
-      electron:
-        specifier: ^34.0.0
-        version: 34.5.8
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.17
+      electron:
+        specifier: ^34.0.0
+        version: 34.5.8
       electron-builder:
         specifier: ^25.0.0
         version: 25.1.8(electron-builder-squirrel-windows@25.1.8)

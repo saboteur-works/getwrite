@@ -36,6 +36,7 @@
         "../node_modules",
         "**/.pnpm/**",
         ".next",
-        "dist"
+        "dist",
+        "stories"
     ]
 }

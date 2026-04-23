@@ -1,0 +1,59 @@
+name: Build Electron
+
+on:
+    release:
+        types: [published]
+
+permissions:
+    contents: write
+
+jobs:
+    build:
+        strategy:
+            matrix:
+                include:
+                    - os: macos-14
+                      eb_args: --mac --arm64
+                      artifact_glob: dist-electron/*.dmg
+                    - os: macos-13
+                      eb_args: --mac --x64
+                      artifact_glob: dist-electron/*.dmg
+                    - os: windows-latest
+                      eb_args: --win --x64
+                      artifact_glob: dist-electron/*.exe
+
+        runs-on: ${{ matrix.os }}
+
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event.release.tag_name }}
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v2
+
+            - name: Use Node.js 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build frontend
+              run: pnpm --filter getwrite-frontend build
+
+            - name: Compile electron TypeScript
+              run: pnpm --filter getwrite-electron build
+
+            - name: Package with electron-builder
+              run: |
+                  VERSION=$(node -p "require('./package.json').version")
+                  cd electron
+                  npx electron-builder ${{ matrix.eb_args }} --config electron-builder.yml --em.version=$VERSION
+
+            - name: Upload artifacts to release
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: gh release upload ${{ github.event.release.tag_name }} ${{ matrix.artifact_glob }}
