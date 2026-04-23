@@ -56,7 +56,7 @@ jobs:
               run: |
                   VERSION=$(node -p "require('./package.json').version")
                   cd electron
-                  npx electron-builder ${{ matrix.eb_args }} --config electron-builder.yml --em.version=$VERSION
+                  npx electron-builder ${{ matrix.eb_args }} --config electron-builder.yml -c.extraMetadata.version=$VERSION
 
             - name: Upload artifacts to release
               env:
