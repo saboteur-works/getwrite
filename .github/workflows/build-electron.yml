@@ -53,6 +53,7 @@ jobs:
               run: pnpm --filter getwrite-electron build
 
             - name: Package with electron-builder
+              shell: bash
               run: |
                   VERSION=$(node -p "require('./package.json').version")
                   cd electron
