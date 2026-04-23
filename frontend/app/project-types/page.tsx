@@ -20,12 +20,9 @@ import type {
  * @returns Absolute filesystem path.
  */
 function resolveProjectTypesDirectory(): string {
-    return path.join(
-        process.cwd(),
-        "..",
-        "getwrite-config",
-        "templates",
-        "project-types",
+    return (
+        process.env.GETWRITE_TEMPLATES_DIR ??
+        path.join(process.cwd(), "..", "getwrite-config", "templates", "project-types")
     );
 }
 
