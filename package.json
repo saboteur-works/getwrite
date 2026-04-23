@@ -1,6 +1,6 @@
 {
     "name": "getwrite",
-    "version": "0.2.12",
+    "version": "0.2.13",
     "description": "",
     "main": "index.js",
     "scripts": {
@@ -19,6 +19,8 @@
             "@react-pdf/layout": "4.5.1",
             "@react-pdf/image": "3.0.4"
         },
-        "onlyBuiltDependencies": ["electron"]
+        "onlyBuiltDependencies": [
+            "electron"
+        ]
     }
 }

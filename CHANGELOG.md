@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.13](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.12...getwrite-v0.2.13) (2026-04-23)
+
+
+### Features
+
+* implement electron ([f56778f](https://github.com/saboteur-works/getwrite/commit/f56778f0049f1f78a7ba475f49bac08fb5d321a3))
+
 ## [0.2.12](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.11...getwrite-v0.2.12) (2026-04-23)
 
 
