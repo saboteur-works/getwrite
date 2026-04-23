@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.12](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.11...getwrite-v0.2.12) (2026-04-23)
+
+
+### Features
+
+* implement new timeline view ([86f9371](https://github.com/saboteur-works/getwrite/commit/86f93713a686a9c802ec8e4c34352e5336952e58))
+
+
+### Bug Fixes
+
+* fixed error on updating metadata with new resources before reload ([f3df451](https://github.com/saboteur-works/getwrite/commit/f3df451bc2f0cba13a061e1509b386a6628781a1))
+* fixed sidebar metadata regression ([156acee](https://github.com/saboteur-works/getwrite/commit/156acee28fdead1f74b40f9ff9cc703b06e9ae05))
+
 ## [0.2.11](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.10...getwrite-v0.2.11) (2026-04-16)
 
 
