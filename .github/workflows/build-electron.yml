@@ -3,6 +3,11 @@ name: Build Electron
 on:
     release:
         types: [published]
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: Release tag to build and upload artifacts for (e.g. getwrite-v0.2.13)
+                required: true
 
 permissions:
     contents: write
@@ -27,7 +32,7 @@ jobs:
         steps:
             - uses: actions/checkout@v4
               with:
-                  ref: ${{ github.event.release.tag_name }}
+                  ref: ${{ github.event.release.tag_name || inputs.tag }}
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v2
@@ -56,4 +61,4 @@ jobs:
             - name: Upload artifacts to release
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: gh release upload ${{ github.event.release.tag_name }} ${{ matrix.artifact_glob }}
+              run: gh release upload ${{ github.event.release.tag_name || inputs.tag }} ${{ matrix.artifact_glob }}
