@@ -9,6 +9,55 @@ import { removeDirRetry } from "./helpers/fs-utils";
 import { listRevisions } from "../../src/lib/models/revision";
 
 describe("models/project-creator", () => {
+    it("propagates metadataSource and special from defaultFolders to persisted folder.json", async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-sf-meta-"));
+        try {
+            const spec = {
+                id: "test-metadata-subfolder",
+                name: "Metadata Subfolder Test",
+                folders: [
+                    { name: "Workspace", special: true },
+                    { name: "Research" },
+                ],
+                defaultFolders: [
+                    {
+                        folder: "Research",
+                        name: "Characters",
+                        special: true,
+                        metadataSource: {
+                            isMetadataSource: true,
+                            metadataInputType: "multiselect",
+                        },
+                    },
+                ],
+            };
+            const { folders } = await createAndAssertProject(
+                spec as Parameters<typeof createAndAssertProject>[0],
+                { projectRoot: tmp, name: "Metadata Subfolder Project" },
+            );
+
+            const charFolder = folders.find((f) => f.name === "Characters");
+            expect(charFolder).toBeDefined();
+            expect(charFolder?.special).toBe(true);
+            expect(charFolder?.metadataSource?.isMetadataSource).toBe(true);
+            expect(charFolder?.metadataSource?.metadataInputType).toBe("multiselect");
+
+            // verify the value is also persisted to folder.json on disk
+            const folderJson = JSON.parse(
+                await fs.readFile(
+                    path.join(tmp, "folders", "research", "characters", "folder.json"),
+                    "utf8",
+                ),
+            );
+            expect(folderJson.metadataSource?.isMetadataSource).toBe(true);
+            expect(folderJson.special).toBe(true);
+
+            await flushIndexer();
+        } finally {
+            await removeDirRetry(tmp);
+        }
+    });
+
     it("creates subfolders from defaultFolders declarations", async () => {
         const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-sf-"));
         try {

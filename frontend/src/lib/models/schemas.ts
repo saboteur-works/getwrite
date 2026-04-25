@@ -290,6 +290,15 @@ export const ProjectTypeFolderSchema = z.object({
 export const ProjectTypeDefaultFolderSchema = z.object({
     folder: z.string(),
     name: z.string(),
+    special: z.boolean().optional(),
+    metadataSource: z
+        .object({
+            isMetadataSource: z.boolean(),
+            metadataInputType: z
+                .enum(["text", "multiselect", "autocomplete"])
+                .optional(),
+        })
+        .optional(),
 });
 
 export type ProjectTypeDefaultFolder = z.infer<

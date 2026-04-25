@@ -238,4 +238,31 @@ describe("project-type Workspace-invariant guardrails (T027)", () => {
         expect(res.success).toBe(false);
         expect(JSON.stringify(res.errors)).toContain("unknownKey");
     });
+
+    it("retains metadataSource and special fields on defaultFolders entries after validation", () => {
+        const spec = {
+            id: "df-metadata",
+            name: "DF Metadata",
+            folders: [{ name: "Workspace" }, { name: "Research" }],
+            defaultFolders: [
+                {
+                    folder: "Research",
+                    name: "Characters",
+                    special: true,
+                    metadataSource: {
+                        isMetadataSource: true,
+                        metadataInputType: "multiselect",
+                    },
+                },
+            ],
+        };
+        const res = validateProjectType(spec);
+        expect(res.success).toBe(true);
+        if (res.success && "value" in res && res.value) {
+            const entry = res.value.defaultFolders![0];
+            expect(entry?.special).toBe(true);
+            expect(entry?.metadataSource?.isMetadataSource).toBe(true);
+            expect(entry?.metadataSource?.metadataInputType).toBe("multiselect");
+        }
+    });
 });

@@ -106,6 +106,8 @@ export interface ProjectTypeSpecResource {
 export interface ProjectTypeSpecDefaultFolder {
     folder: string;
     name: string;
+    special?: boolean;
+    metadataSource?: MetadataSource;
 }
 
 /**
@@ -285,8 +287,8 @@ export async function createProjectFromType(options: {
             orderIndex,
             createdAt: now,
             type: "folder",
-            special: undefined,
-            metadataSource: { isMetadataSource: false },
+            special: sf.special,
+            metadataSource: sf.metadataSource ?? { isMetadataSource: false },
         };
         folders.push(subFolder);
         await fs.writeFile(
