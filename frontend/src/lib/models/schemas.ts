@@ -55,6 +55,13 @@ const EditorHeadingSchema = z.object({
     color: z.string().optional(),
 });
 
+const EditorBodySchema = z.object({
+    fontFamily: z.string().optional(),
+    fontSize: z.string().optional(),
+    lineHeight: z.string().optional(),
+    paragraphSpacing: z.string().optional(),
+});
+
 export const EditorConfigSchema = z.object({
     headings: z
         .object({
@@ -66,6 +73,7 @@ export const EditorConfigSchema = z.object({
             h6: EditorHeadingSchema.optional(),
         })
         .optional(),
+    body: EditorBodySchema.optional(),
 });
 
 /**
@@ -73,6 +81,7 @@ export const EditorConfigSchema = z.object({
  */
 export const ProjectConfigSchema = z.object({
     maxRevisions: z.number().int().nonnegative().optional(),
+    wordCountGoal: z.number().int().nonnegative().optional(),
     statuses: z.array(z.string()).optional(),
     autoPrune: z.boolean().optional(),
     tags: z
@@ -259,6 +268,7 @@ export const Schemas = {
  * Project-type default resource schema used inside project-type specs.
  */
 export const ProjectTypeResourceSchema = z.object({
+    folder: z.string().optional(),
     name: z.string(),
     type: ResourceTypeSchema,
     template: z.string().optional(),
@@ -283,6 +293,28 @@ export const ProjectTypeFolderSchema = z.object({
 });
 
 /**
+ * Project-type default subfolder declaration.
+ * Each entry declares one subfolder under a named parent folder.
+ */
+export const ProjectTypeDefaultFolderSchema = z.object({
+    folder: z.string(),
+    name: z.string(),
+    special: z.boolean().optional(),
+    metadataSource: z
+        .object({
+            isMetadataSource: z.boolean(),
+            metadataInputType: z
+                .enum(["text", "multiselect", "autocomplete"])
+                .optional(),
+        })
+        .optional(),
+});
+
+export type ProjectTypeDefaultFolder = z.infer<
+    typeof ProjectTypeDefaultFolderSchema
+>;
+
+/**
  * Project-type specification schema.
  *
  * Constraints:
@@ -297,7 +329,10 @@ export const ProjectTypeSchema = z
         description: z.string().optional(),
         folders: z.array(ProjectTypeFolderSchema).min(1),
         defaultResources: z.array(ProjectTypeResourceSchema).optional(),
+        defaultFolders: z.array(ProjectTypeDefaultFolderSchema).optional(),
         editorConfig: EditorConfigSchema.optional(),
+        statuses: z.array(z.string()).optional(),
+        wordCountGoal: z.number().int().nonnegative().optional(),
     })
     .strict()
     .refine((val) => val.folders.some((f) => f.name === "Workspace"), {

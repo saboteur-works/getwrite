@@ -4,10 +4,67 @@
     "description": "Short-form article project type with drafts and references.",
     "folders": [
         { "name": "Workspace", "special": true },
-        { "name": "Drafts" },
-        { "name": "References" },
-        { "name": "Assets" }
+        {
+            "name": "References",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        { "name": "Sources" },
+        { "name": "Ideas" }
     ],
+    "defaultFolders": [
+        {
+            "name": "Articles",
+            "folder": "Workspace",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "Article 1",
+            "folder": "Articles"
+        },
+        {
+            "name": "Fact Checking",
+            "folder": "References",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "Interviews & Transcripts",
+            "folder": "Sources",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        }
+    ],
+    "statuses": ["Pitch", "Drafting", "Revision", "Filed"],
+    "wordCountGoal": 1500,
+    "editorConfig": {
+        "headings": {
+            "h1": {
+                "fontSize": "40px",
+                "fontWeight": "700"
+            },
+            "h2": {
+                "fontSize": "32px",
+                "fontWeight": "700"
+            },
+            "h3": {
+                "fontSize": "24px",
+                "fontWeight": "500"
+            }
+        },
+        "body": {
+            "lineHeight": "1.8"
+        }
+    },
     "defaultResources": [
         {
             "folder": "Workspace",

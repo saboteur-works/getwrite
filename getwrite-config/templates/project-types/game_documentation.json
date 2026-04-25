@@ -1,0 +1,99 @@
+{
+    "id": "game_writing",
+    "name": "Game Writing",
+    "description": "Project type optimized for game writing (video game or tabletop RPG). Includes folders for lore, characters, quests, and dialogue.",
+    "folders": [
+        {
+            "name": "Workspace",
+            "special": true
+        },
+        {
+            "name": "Research",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "Notes",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        }
+    ],
+    "defaultFolders": [
+        {
+            "name": "Lore",
+            "folder": "Workspace"
+        },
+        {
+            "name": "Factions",
+            "folder": "Lore",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "History",
+            "folder": "Lore",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "Geography & Worldbuilding",
+            "folder": "Lore",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "Characters",
+            "folder": "Lore",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "Quests & Story Arcs",
+            "folder": "Workspace",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "Dialogue & Scripts",
+            "folder": "Workspace",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        }
+    ],
+    "statuses": ["Draft", "Review", "Final"],
+    "editorConfig": {
+        "headings": {
+            "h1": {
+                "fontSize": "40px",
+                "fontWeight": "700"
+            },
+            "h2": {
+                "fontSize": "32px",
+                "fontWeight": "700"
+            },
+            "h3": {
+                "fontSize": "24px",
+                "fontWeight": "500"
+            }
+        },
+        "body": {
+            "lineHeight": "1.8"
+        }
+    }
+}

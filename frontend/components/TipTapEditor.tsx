@@ -247,9 +247,16 @@ export default function TipTapEditor({
 
     if (!editor) return <div>Loading editor...</div>;
 
+    const bodyStyle = {
+        "--gw-body-font-family": editorProjectConfig.body?.fontFamily,
+        "--gw-body-font-size": editorProjectConfig.body?.fontSize,
+        "--gw-body-line-height": editorProjectConfig.body?.lineHeight,
+        "--gw-paragraph-spacing": editorProjectConfig.body?.paragraphSpacing,
+    } as React.CSSProperties;
+
     return (
         <EditorContext.Provider value={{ editor }}>
-            <div className="tiptap-editor-shell">
+            <div className="tiptap-editor-shell" style={bodyStyle}>
                 <MenuBar editor={editor} />
                 <EditorContent
                     editor={editor}

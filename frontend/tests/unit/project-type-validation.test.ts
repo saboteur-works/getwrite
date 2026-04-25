@@ -183,10 +183,86 @@ describe("project-type Workspace-invariant guardrails (T027)", () => {
                 { name: "Scene 1", type: "text", folder: "Workspace" },
             ],
         };
-        // folder is not part of ProjectTypeResourceSchema — should still pass if name+type present
         const res = validateProjectType(spec);
-        // If extra keys are stripped, success; if strict, failure. Let spec drive.
-        // We just ensure no runtime exception occurs.
-        expect(typeof res.success).toBe("boolean");
+        expect(res.success).toBe(true);
+    });
+
+    it("accepts a valid defaultFolders declaration", () => {
+        const spec = {
+            id: "default-folders",
+            name: "Default Folders",
+            folders: [{ name: "Workspace" }, { name: "Drafts" }],
+            defaultFolders: [{ folder: "Drafts", name: "Act 1" }],
+        };
+        const res = validateProjectType(spec);
+        expect(res.success).toBe(true);
+        if (res.success && "value" in res && res.value) {
+            expect(res.value.defaultFolders).toHaveLength(1);
+            expect(res.value.defaultFolders![0]?.name).toBe("Act 1");
+        }
+    });
+
+    it("rejects a defaultFolders entry missing name", () => {
+        const spec = {
+            id: "df-no-name",
+            name: "DF No Name",
+            folders: [{ name: "Workspace" }],
+            defaultFolders: [{ folder: "Workspace" }],
+        };
+        const res = validateProjectType(spec);
+        expect(res.success).toBe(false);
+        expect(JSON.stringify(res.errors)).toContain("name");
+    });
+
+    it("rejects a defaultFolders entry missing folder", () => {
+        const spec = {
+            id: "df-no-folder",
+            name: "DF No Folder",
+            folders: [{ name: "Workspace" }],
+            defaultFolders: [{ name: "Act 1" }],
+        };
+        const res = validateProjectType(spec);
+        expect(res.success).toBe(false);
+        expect(JSON.stringify(res.errors)).toContain("folder");
+    });
+
+    it("still rejects unknown top-level keys when defaultFolders is present", () => {
+        const spec = {
+            id: "df-strict",
+            name: "DF Strict",
+            folders: [{ name: "Workspace" }],
+            defaultFolders: [{ folder: "Workspace", name: "Sub" }],
+            unknownKey: true,
+        };
+        const res = validateProjectType(spec);
+        expect(res.success).toBe(false);
+        expect(JSON.stringify(res.errors)).toContain("unknownKey");
+    });
+
+    it("retains metadataSource and special fields on defaultFolders entries after validation", () => {
+        const spec = {
+            id: "df-metadata",
+            name: "DF Metadata",
+            folders: [{ name: "Workspace" }, { name: "Research" }],
+            defaultFolders: [
+                {
+                    folder: "Research",
+                    name: "Characters",
+                    special: true,
+                    metadataSource: {
+                        isMetadataSource: true,
+                        metadataInputType: "multiselect",
+                    },
+                },
+            ],
+        };
+        const res = validateProjectType(spec);
+        expect(res.success).toBe(true);
+        if (res.success && "value" in res && res.value) {
+            const entry = res.value.defaultFolders![0];
+            expect(entry?.special).toBe(true);
+            expect(entry?.metadataSource?.isMetadataSource).toBe(true);
+            expect(entry?.metadataSource?.metadataInputType).toBe("multiselect");
+        }
     });
 });

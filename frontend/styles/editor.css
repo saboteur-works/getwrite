@@ -10,13 +10,15 @@
     margin-bottom: 0;
 }
 
-/* Paragraph — editor body */
+/* Paragraph — editor body.
+   CSS custom properties (--gw-body-*) are set by TipTapEditor when project body
+   config is present, and fall back to the design-token defaults when absent. */
 .tiptap p {
-    margin-top: 16px;
-    margin-bottom: 16px;
-    font-family: var(--font-serif); /* IBM Plex Serif — editor body only */
-    font-size: var(--font-size-gw-editor); /* 15px */
-    line-height: 1.8; /* --leading-relaxed — non-negotiable */
+    margin-top: var(--gw-paragraph-spacing, 16px);
+    margin-bottom: var(--gw-paragraph-spacing, 16px);
+    font-family: var(--gw-body-font-family, var(--font-serif));
+    font-size: var(--gw-body-font-size, var(--font-size-gw-editor));
+    line-height: var(--gw-body-line-height, 1.8);
     color: var(--color-gw-ink);
 }
 

@@ -10,6 +10,36 @@ const resolveProjectsDir = () =>
     process.env.GETWRITE_PROJECTS_DIR ??
     path.join(process.cwd(), "..", "projects");
 
+async function readFolderTree(dir: string): Promise<unknown[]> {
+    const result: unknown[] = [];
+    let names: string[];
+    try {
+        names = (await fs.readdir(dir)).filter((n) => n !== ".DS_Store");
+    } catch {
+        return result;
+    }
+    for (const name of names) {
+        const subDir = path.join(dir, name);
+        try {
+            const stat = await fs.stat(subDir);
+            if (!stat.isDirectory()) continue;
+        } catch {
+            continue;
+        }
+        try {
+            const data = await fs.readFile(
+                path.join(subDir, "folder.json"),
+                "utf-8",
+            );
+            result.push(JSON.parse(data));
+        } catch {
+            // no folder.json, skip
+        }
+        result.push(...(await readFolderTree(subDir)));
+    }
+    return result;
+}
+
 const getProject = async (id: string) => {
     const projectDirPath = path.join(resolveProjectsDir(), id);
     const projectDirectory = await fs.readdir(projectDirPath);
@@ -24,7 +54,9 @@ export async function GET(req: Request) {
     try {
         // get all projects from local
         const projectsDir = resolveProjectsDir();
-        const projectIds = await fs.readdir(projectsDir);
+        const projectIds = (await fs.readdir(projectsDir)).filter(
+            (file) => file !== ".DS_Store",
+        );
         const projects = await Promise.all(
             projectIds.map(async (id) => {
                 const projectPath = path.join(projectsDir, id, "project.json");
@@ -32,25 +64,7 @@ export async function GET(req: Request) {
                 const project = JSON.parse(projectData);
 
                 const foldersPath = path.join(projectsDir, id, "folders");
-                const folderNames = await fs.readdir(foldersPath);
-                let folders: any[] = [];
-                try {
-                    for (const folderName of folderNames) {
-                        const folderMetaPath = path.join(
-                            foldersPath,
-                            folderName,
-                            "folder.json",
-                        );
-                        const folderData = await fs.readFile(
-                            folderMetaPath,
-                            "utf-8",
-                        );
-                        folders.push(JSON.parse(folderData));
-                    }
-                } catch (err) {
-                    // if no folders file, just use empty array
-                    console.warn(err);
-                }
+                const folders = await readFolderTree(foldersPath);
 
                 const resources = getLocalResources(path.join(projectsDir, id));
                 return {

@@ -26,6 +26,12 @@ export type EditorHeading = {
     letterSpacing?: string;
     color?: string;
 };
+export type EditorBodyConfig = {
+    fontFamily?: string;
+    fontSize?: string;
+    lineHeight?: string;
+    paragraphSpacing?: string;
+};
 
 /**
  * Project-level configuration persisted with the project (project.json).
@@ -34,6 +40,8 @@ export type EditorHeading = {
 export interface ProjectConfig {
     /** Maximum revisions to retain per resource. Defaults to 50 when omitted. */
     maxRevisions?: number;
+    /** Target word count for the project (e.g. 80000 for a novel). */
+    wordCountGoal?: number;
     /** Custom status values available to the project (e.g., ["Draft","Complete"]). */
     statuses?: string[];
     /**
@@ -50,6 +58,7 @@ export interface ProjectConfig {
         headings?: {
             [index in EditorHeadings]?: EditorHeading;
         };
+        body?: EditorBodyConfig;
     };
 }
 

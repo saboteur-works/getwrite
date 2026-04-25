@@ -1,0 +1,55 @@
+{
+    "id": "poetry_and_lyrics",
+    "name": "Poetry and Lyrics",
+    "description": "Project type optimized for poetry and song lyrics. Includes drafts, research, and assets.",
+    "folders": [
+        {
+            "name": "Workspace",
+            "special": true
+        },
+        {
+            "name": "Inspiration"
+        },
+        {
+            "name": "Experiments"
+        }
+    ],
+    "defaultFolders": [
+        {
+            "name": "Phrases & Fragments",
+            "folder": "Inspiration",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        {
+            "name": "Influences",
+            "folder": "Inspiration",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        }
+    ],
+    "statuses": ["Draft", "Polished"],
+    "editorConfig": {
+        "headings": {
+            "h1": {
+                "fontSize": "40px",
+                "fontWeight": "700"
+            },
+            "h2": {
+                "fontSize": "32px",
+                "fontWeight": "700"
+            },
+            "h3": {
+                "fontSize": "24px",
+                "fontWeight": "500"
+            }
+        },
+        "body": {
+            "lineHeight": "1.8"
+        }
+    }
+}

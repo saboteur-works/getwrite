@@ -23,6 +23,7 @@ export interface ShellSettingsMenuProps {
     onToggleOpen: () => void;
     onOpenPreferences: () => void;
     onOpenHeadingSettings: () => void;
+    onOpenBodySettings: () => void;
     onOpenProjectTypeManager: () => void;
     onOpenTagsManager: () => void;
     onToggleColorMode: () => void;
@@ -43,6 +44,7 @@ export default function ShellSettingsMenu({
     onToggleOpen,
     onOpenPreferences,
     onOpenHeadingSettings,
+    onOpenBodySettings,
     onOpenProjectTypeManager,
     onOpenTagsManager,
     onToggleColorMode,
@@ -124,8 +126,16 @@ export default function ShellSettingsMenu({
                                 <MenuItemButton
                                     className="appshell-topbar-dropdown-item"
                                     icon={<Type size={14} aria-hidden="true" />}
-                                    label="Heading Settings"
+                                    label="Heading Styles"
                                     onClick={onOpenHeadingSettings}
+                                />
+                            ) : null}
+                            {hasProject ? (
+                                <MenuItemButton
+                                    className="appshell-topbar-dropdown-item"
+                                    icon={<Type size={14} aria-hidden="true" />}
+                                    label="Body Text Styles"
+                                    onClick={onOpenBodySettings}
                                 />
                             ) : null}
                             {hasProject ? (

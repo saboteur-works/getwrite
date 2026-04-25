@@ -52,6 +52,7 @@ import type {
     MetadataSource,
     EditorHeadings,
     EditorHeading,
+    EditorBodyConfig,
 } from "./types";
 import { createResourceOfType, writeResourceToFile } from "./resource";
 import { writeRevision } from "./revision";
@@ -98,6 +99,19 @@ export interface ProjectTypeSpecResource {
 }
 
 /**
+ * Minimal spec type for a subfolder declared in a project-type template.
+ *
+ * - `folder` is the name of the parent folder (matched by slug).
+ * - `name` is the human-friendly name for the subfolder.
+ */
+export interface ProjectTypeSpecDefaultFolder {
+    folder: string;
+    name: string;
+    special?: boolean;
+    metadataSource?: MetadataSource;
+}
+
+/**
  * Minimal project-type specification.
  *
  * These files describe a project scaffold (folders and optional default
@@ -115,12 +129,19 @@ export interface ProjectTypeSpec {
     folders: ProjectTypeSpecFolder[];
     /** Optional list of default resources to scaffold inside the folders. */
     defaultResources?: ProjectTypeSpecResource[];
+    /** Optional list of subfolders to scaffold under named parent folders. */
+    defaultFolders?: ProjectTypeSpecDefaultFolder[];
     /** Optional default project configuration to apply when creating a project. */
     editorConfig?: {
         headings?: {
             [index in EditorHeadings]?: EditorHeading;
         };
+        body?: EditorBodyConfig;
     };
+    /** Default project-scoped status values to seed on creation. */
+    statuses?: string[];
+    /** Target word count for the project. */
+    wordCountGoal?: number;
 }
 
 /**
@@ -204,6 +225,8 @@ export async function createProjectFromType(options: {
         slug: slugify(projectName),
         config: {
             editorConfig: specObj.editorConfig ?? {},
+            statuses: specObj.statuses,
+            wordCountGoal: specObj.wordCountGoal,
         },
     });
 
@@ -242,6 +265,43 @@ export async function createProjectFromType(options: {
         await fs.writeFile(
             path.join(dir, "folder.json"),
             JSON.stringify(folderObj, null, 2),
+            "utf8",
+        );
+    }
+
+    // Create subfolders declared via defaultFolders
+    const subfolderOrderCounters = new Map<string, number>();
+    for (const sf of specObj.defaultFolders ?? []) {
+        const parentSlug = slugify(sf.folder);
+        const parentFolder = folders.find((f) => f.slug === parentSlug);
+        if (!parentFolder) {
+            console.warn(
+                `defaultFolders: parent "${sf.folder}" not found, skipping`,
+            );
+            continue;
+        }
+        const orderIndex = subfolderOrderCounters.get(parentFolder.id) ?? 0;
+        subfolderOrderCounters.set(parentFolder.id, orderIndex + 1);
+        const subId = generateUUID();
+        const subSlug = slugify(sf.name);
+        const subDir = path.join(foldersDir, parentFolder.slug, subSlug);
+        await fs.mkdir(subDir, { recursive: true });
+        const now = new Date().toISOString();
+        const subFolder: Folder = {
+            id: subId,
+            slug: subSlug,
+            name: sf.name,
+            parentId: parentFolder.id,
+            orderIndex,
+            createdAt: now,
+            type: "folder",
+            special: sf.special,
+            metadataSource: sf.metadataSource ?? { isMetadataSource: false },
+        };
+        folders.push(subFolder);
+        await fs.writeFile(
+            path.join(subDir, "folder.json"),
+            JSON.stringify(subFolder, null, 2),
             "utf8",
         );
     }
