@@ -4,7 +4,12 @@
     "description": "Project type optimized for long-form fiction. Includes drafts, research, and assets.",
     "folders": [
         { "name": "Workspace", "special": true },
+        { "name": "Foo" },
+        { "name": "Research" }
+    ],
+    "defaultFolders": [
         {
+            "folder": "Foo",
             "name": "Characters",
             "special": true,
             "metadataSource": {
@@ -13,6 +18,7 @@
             }
         },
         {
+            "folder": "Foo",
             "name": "Items",
             "special": true,
             "metadataSource": {
@@ -21,15 +27,31 @@
             }
         },
         {
+            "folder": "Foo",
             "name": "Locations",
             "special": true,
             "metadataSource": {
                 "isMetadataSource": true,
                 "metadataInputType": "multiselect"
             }
-        },
-        { "name": "Research" }
+        }
     ],
+    "editorConfig": {
+        "headings": {
+            "h1": {
+                "fontSize": "40px",
+                "fontWeight": "700"
+            },
+            "h2": {
+                "fontSize": "32px",
+                "fontWeight": "700"
+            },
+            "h3": {
+                "fontSize": "24px",
+                "fontWeight": "500"
+            }
+        }
+    },
     "defaultResources": [
         {
             "folder": "Workspace",

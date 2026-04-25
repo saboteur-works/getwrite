@@ -9,6 +9,42 @@ import { removeDirRetry } from "./helpers/fs-utils";
 import { listRevisions } from "../../src/lib/models/revision";
 
 describe("models/project-creator", () => {
+    it("creates subfolders from defaultFolders declarations", async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-sf-"));
+        try {
+            const spec = {
+                id: "test-subfolder",
+                name: "Subfolder Test",
+                folders: [
+                    { name: "Workspace", special: true },
+                    { name: "Drafts" },
+                ],
+                defaultFolders: [
+                    { folder: "Drafts", name: "Act 1" },
+                    { folder: "Drafts", name: "Act 2" },
+                ],
+            };
+            const { folders } = await createAndAssertProject(
+                spec as Parameters<typeof createAndAssertProject>[0],
+                { projectRoot: tmp, name: "Subfolder Test Project" },
+            );
+
+            // 2 top-level + 2 subfolders
+            expect(folders.length).toBe(4);
+            const subs = folders.filter((f) => f.parentId != null);
+            expect(subs.length).toBe(2);
+            expect(subs.map((f) => f.name).sort()).toEqual(["Act 1", "Act 2"]);
+
+            // directories exist on disk
+            const act1Dir = path.join(tmp, "folders", "drafts", "act-1");
+            await expect(fs.access(act1Dir)).resolves.toBeUndefined();
+
+            await flushIndexer();
+        } finally {
+            await removeDirRetry(tmp);
+        }
+    });
+
     it("creates project structure and resource placeholders from spec", async () => {
         const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-pc-"));
         try {

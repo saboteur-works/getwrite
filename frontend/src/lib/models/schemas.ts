@@ -259,6 +259,7 @@ export const Schemas = {
  * Project-type default resource schema used inside project-type specs.
  */
 export const ProjectTypeResourceSchema = z.object({
+    folder: z.string().optional(),
     name: z.string(),
     type: ResourceTypeSchema,
     template: z.string().optional(),
@@ -283,6 +284,19 @@ export const ProjectTypeFolderSchema = z.object({
 });
 
 /**
+ * Project-type default subfolder declaration.
+ * Each entry declares one subfolder under a named parent folder.
+ */
+export const ProjectTypeDefaultFolderSchema = z.object({
+    folder: z.string(),
+    name: z.string(),
+});
+
+export type ProjectTypeDefaultFolder = z.infer<
+    typeof ProjectTypeDefaultFolderSchema
+>;
+
+/**
  * Project-type specification schema.
  *
  * Constraints:
@@ -297,6 +311,7 @@ export const ProjectTypeSchema = z
         description: z.string().optional(),
         folders: z.array(ProjectTypeFolderSchema).min(1),
         defaultResources: z.array(ProjectTypeResourceSchema).optional(),
+        defaultFolders: z.array(ProjectTypeDefaultFolderSchema).optional(),
         editorConfig: EditorConfigSchema.optional(),
     })
     .strict()

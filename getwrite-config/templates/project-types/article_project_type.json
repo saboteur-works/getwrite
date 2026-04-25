@@ -5,9 +5,25 @@
     "folders": [
         { "name": "Workspace", "special": true },
         { "name": "Drafts" },
-        { "name": "References" },
-        { "name": "Assets" }
+        { "name": "Scheduled" },
+        { "name": "Published" }
     ],
+    "editorConfig": {
+        "headings": {
+            "h1": {
+                "fontSize": "40px",
+                "fontWeight": "700"
+            },
+            "h2": {
+                "fontSize": "32px",
+                "fontWeight": "700"
+            },
+            "h3": {
+                "fontSize": "24px",
+                "fontWeight": "500"
+            }
+        }
+    },
     "defaultResources": [
         {
             "folder": "Workspace",
