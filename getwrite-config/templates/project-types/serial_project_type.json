@@ -4,22 +4,27 @@
     "description": "Serialized fiction project type for episodes or installments.",
     "folders": [
         { "name": "Workspace", "special": true },
+        { "name": "Story Elements" },
+        { "name": "Outline" },
+        { "name": "Notes" }
+    ],
+    "defaultFolders": [
         {
-            "name": "Episodes",
+            "name": "Parts",
+            "folder": "Workspace",
             "metadataSource": {
                 "isMetadataSource": true,
                 "metadataInputType": "multiselect"
             }
+        },
+        {
+            "name": "Part 1",
+            "folder": "Parts"
         },
         {
             "name": "Characters",
-            "metadataSource": {
-                "isMetadataSource": true,
-                "metadataInputType": "multiselect"
-            }
-        },
-        {
-            "name": "Locations",
+            "folder": "Story Elements",
+            "special": true,
             "metadataSource": {
                 "isMetadataSource": true,
                 "metadataInputType": "multiselect"
@@ -27,12 +32,22 @@
         },
         {
             "name": "Items",
+            "folder": "Story Elements",
+            "special": true,
             "metadataSource": {
                 "isMetadataSource": true,
                 "metadataInputType": "multiselect"
             }
         },
-        { "name": "Assets" }
+        {
+            "name": "Locations",
+            "folder": "Story Elements",
+            "special": true,
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        }
     ],
     "editorConfig": {
         "headings": {
@@ -52,10 +67,10 @@
     },
     "defaultResources": [
         {
-            "folder": "Assets",
-            "name": "Episode Template",
+            "folder": "Part 1",
+            "name": "Scene 1",
             "type": "text",
-            "template": "# Episode Title\\n\\n"
+            "template": ""
         }
     ]
 }
