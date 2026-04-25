@@ -247,14 +247,12 @@ export default function TipTapEditor({
 
     if (!editor) return <div>Loading editor...</div>;
 
-    const bodyStyle: React.CSSProperties & { "--paragraph-spacing"?: string } =
-        {
-            fontFamily: editorProjectConfig.body?.fontFamily,
-            fontSize: editorProjectConfig.body?.fontSize,
-            lineHeight: editorProjectConfig.body?.lineHeight,
-            "--paragraph-spacing":
-                editorProjectConfig.body?.paragraphSpacing,
-        };
+    const bodyStyle = {
+        "--gw-body-font-family": editorProjectConfig.body?.fontFamily,
+        "--gw-body-font-size": editorProjectConfig.body?.fontSize,
+        "--gw-body-line-height": editorProjectConfig.body?.lineHeight,
+        "--gw-paragraph-spacing": editorProjectConfig.body?.paragraphSpacing,
+    } as React.CSSProperties;
 
     return (
         <EditorContext.Provider value={{ editor }}>

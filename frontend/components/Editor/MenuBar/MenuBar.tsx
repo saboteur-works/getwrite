@@ -10,6 +10,8 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import React from "react";
+import { useSelector } from "react-redux";
+import { selectEditorConfig } from "../../../src/store/editorConfigSlice";
 import { Tooltip } from "react-tooltip";
 import { menuBarStateSelector } from "./menuBarState";
 import EditorMenuColorSubmenu from "./EditorMenuColorSubmenu";
@@ -56,8 +58,9 @@ export const MenuBar = ({ editor, stateOverride }: MenuBarProps) => {
         selector: menuBarStateSelector,
     });
     const editorState = stateOverride ?? selectedEditorState;
+    const editorProjectConfig = useSelector(selectEditorConfig);
 
-    const toolbarGroups = useToolbarCommands(editor, editorState);
+    const toolbarGroups = useToolbarCommands(editor, editorState, editorProjectConfig);
 
     if (!editor) {
         return null;

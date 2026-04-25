@@ -12,6 +12,7 @@ import {
     type ToolbarCommandContext,
     type ToolbarCommandGroup,
 } from "./toolbar-command-schema";
+import type { EditorBodyConfig, EditorHeading, EditorHeadings } from "../../../src/lib/models/types";
 
 interface ResolvedToolbarItemBase {
     id: string;
@@ -117,11 +118,15 @@ function resolveGroup(
 export function useToolbarCommands(
     editor: Editor,
     state: MenuBarState,
+    editorConfig?: {
+        headings: { [key in EditorHeadings]?: EditorHeading };
+        body?: EditorBodyConfig;
+    },
 ): ResolvedToolbarGroup[] {
     return useMemo(() => {
-        const context: ToolbarCommandContext = { editor, state };
+        const context: ToolbarCommandContext = { editor, state, editorConfig };
         return toolbarCommandSchema.map((group) =>
             resolveGroup(group, context),
         );
-    }, [editor, state]);
+    }, [editor, state, editorConfig]);
 }

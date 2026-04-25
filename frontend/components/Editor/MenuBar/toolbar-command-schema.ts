@@ -6,12 +6,21 @@ import type {
 } from "./EditorMenuInput";
 import type { EditorMenuIconName } from "./EditorMenuIcon";
 import type { MenuBarState } from "./menuBarState";
+import type {
+    EditorBodyConfig,
+    EditorHeading,
+    EditorHeadings,
+} from "../../../src/lib/models/types";
 import { FONT_OPTIONS } from "../../../src/lib/fonts/fonts";
 import { loadGoogleFont } from "../../../src/lib/fonts/loadGoogleFont";
 
 export interface ToolbarCommandContext {
     editor: Editor;
     state: MenuBarState;
+    editorConfig?: {
+        headings: { [key in EditorHeadings]?: EditorHeading };
+        body?: EditorBodyConfig;
+    };
 }
 
 export interface ToolbarCommandGroup {
@@ -123,10 +132,38 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
                 icon: "fontSize",
                 inputType: "number",
                 tooltipContent: "Font Size",
-                getValue: ({ editor }) =>
-                    editor
-                        .getAttributes("textStyle")
-                        .fontSize?.replace("px", "") ?? "14",
+                getValue: ({ editor, state, editorConfig }) => {
+                    const explicit =
+                        editor.getAttributes("textStyle").fontSize;
+                    if (explicit) return explicit.replace("px", "");
+
+                    const activeLevel =
+                        state.isHeading1
+                            ? 1
+                            : state.isHeading2
+                              ? 2
+                              : state.isHeading3
+                                ? 3
+                                : state.isHeading4
+                                  ? 4
+                                  : state.isHeading5
+                                    ? 5
+                                    : state.isHeading6
+                                      ? 6
+                                      : null;
+
+                    if (activeLevel !== null) {
+                        const key = `h${activeLevel}` as EditorHeadings;
+                        const size =
+                            editorConfig?.headings?.[key]?.fontSize;
+                        if (size) return size.replace("px", "");
+                    }
+
+                    return (
+                        editorConfig?.body?.fontSize?.replace("px", "") ??
+                        "15"
+                    );
+                },
                 onChange: ({ editor }, value) => {
                     if (!value) {
                         return;
