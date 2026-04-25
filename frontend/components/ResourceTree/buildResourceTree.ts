@@ -1,6 +1,14 @@
-import type { AnyResource } from "../../src/lib/models";
+import type { AnyResource, Folder } from "../../src/lib/models";
 
 export const ROOT_ITEM_ID = "root";
+
+// Folders use parentId (from FolderSchema); regular resources use folderId.
+function getEffectiveParentId(resource: AnyResource): string | null | undefined {
+    if (resource.type === "folder") {
+        return (resource as Folder).parentId ?? resource.folderId;
+    }
+    return resource.folderId;
+}
 
 export interface ResourceItemData {
     name: string;
@@ -33,7 +41,7 @@ export function buildResourceTree(
 
     function addResourceToDataObject(currentResource: AnyResource): void {
         const id = currentResource.id;
-        const parentId = currentResource.folderId || ROOT_ITEM_ID;
+        const parentId = getEffectiveParentId(currentResource) || ROOT_ITEM_ID;
 
         dataObject[id] = {
             resourceId: id,
@@ -74,7 +82,8 @@ export function buildResourceTree(
 
         if (currentResource.type === "folder") {
             const childResources = resources.filter(
-                (resource) => resource.folderId === currentResource.id,
+                (resource) =>
+                    getEffectiveParentId(resource) === currentResource.id,
             );
             childResources.forEach((childResource) => {
                 addResourceToDataObject(childResource);
@@ -85,7 +94,7 @@ export function buildResourceTree(
     // Process root-level resources first. Folders recursively process their own
     // children, so all properly-parented items are handled in correct top-down
     // order without the warning firing for valid parent/child relationships.
-    const rootResources = resources.filter((r) => !r.folderId);
+    const rootResources = resources.filter((r) => !getEffectiveParentId(r));
     rootResources.forEach((resource) => {
         addResourceToDataObject(resource);
     });
