@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.14](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.13...getwrite-v0.2.14) (2026-04-25)
+
+
+### Features
+
+* added body and word count goal config ([32bfbdb](https://github.com/saboteur-works/getwrite/commit/32bfbdb080b57d6a9c6cb02683387e42791feaa3))
+* added subfolders to templates ([0ab51a5](https://github.com/saboteur-works/getwrite/commit/0ab51a538c1d03f364327af70520d4bd764edc8e))
+
 ## [0.2.13](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.12...getwrite-v0.2.13) (2026-04-23)
 
 
