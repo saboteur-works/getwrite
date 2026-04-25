@@ -14,6 +14,7 @@ const DEFAULT_AUTO_PRUNE = true;
 export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
     return {
         maxRevisions: config?.maxRevisions ?? DEFAULT_MAX_REVISIONS,
+        wordCountGoal: config?.wordCountGoal,
         statuses: config?.statuses ?? [],
         autoPrune: config?.autoPrune ?? DEFAULT_AUTO_PRUNE,
         editorConfig: config?.editorConfig ?? {},

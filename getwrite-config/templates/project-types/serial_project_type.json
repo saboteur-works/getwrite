@@ -49,6 +49,8 @@
             }
         }
     ],
+    "statuses": ["Outline", "Draft", "Revised", "Polished"],
+    "wordCountGoal": 80000,
     "editorConfig": {
         "headings": {
             "h1": {
@@ -63,6 +65,9 @@
                 "fontSize": "24px",
                 "fontWeight": "500"
             }
+        },
+        "body": {
+            "lineHeight": "1.8"
         }
     },
     "defaultResources": [

@@ -12,10 +12,15 @@ import {
     sanitizeEditorHeadingMap,
     type EditorHeadingMap,
 } from "../../../../src/lib/editor-heading-settings";
+import {
+    sanitizeEditorBody,
+    type EditorBodyConfig,
+} from "../../../../src/lib/editor-body-settings";
 
 interface UpdateProjectEditorConfigBody {
     projectPath: string;
     headings?: EditorHeadingMap;
+    body?: EditorBodyConfig;
 }
 
 interface UpdateProjectEditorConfigSuccess {
@@ -35,7 +40,7 @@ export async function POST(
 > {
     try {
         const body = (await req.json()) as UpdateProjectEditorConfigBody;
-        const { projectPath, headings } = body;
+        const { projectPath, headings, body: bodyConfig } = body;
 
         if (!projectPath) {
             return NextResponse.json(
@@ -50,6 +55,9 @@ export async function POST(
         const nextEditorConfig: ProjectConfig["editorConfig"] = {
             ...(parsedProject.config?.editorConfig ?? {}),
             headings: sanitizeEditorHeadingMap(headings),
+            body: bodyConfig !== undefined
+                ? sanitizeEditorBody(bodyConfig)
+                : parsedProject.config?.editorConfig?.body,
         };
         const nextConfig: ProjectConfig = {
             ...(parsedProject.config ?? {}),

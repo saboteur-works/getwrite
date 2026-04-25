@@ -269,6 +269,7 @@ export default function Home(): JSX.Element {
             dispatch(
                 setEditorConfig({
                     headings: p.project.config.editorConfig?.headings ?? {},
+                    body: p.project.config.editorConfig?.body,
                 }),
             );
 

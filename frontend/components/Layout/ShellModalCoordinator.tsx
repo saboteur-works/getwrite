@@ -14,6 +14,7 @@ import CreateResourceModal from "../ResourceTree/CreateResourceModal";
 import ExportPreviewModal from "../common/ExportPreviewModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import HeadingSettingsModal from "../preferences/HeadingSettingsModal";
+import BodySettingsModal from "../preferences/BodySettingsModal";
 import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import HelpPage from "../help/HelpPage";
@@ -21,6 +22,7 @@ import TagsManagerModal from "../common/TagsManagerModal";
 import ModalOverlayShell from "../common/ModalOverlayShell";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
+import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 import type { CompileOptions } from "../common/CompilePreviewModal";
 
 export interface ShellContextActionState {
@@ -64,6 +66,10 @@ export interface ShellModalCoordinatorProps {
     isHeadingSettingsModalOpen: boolean;
     setIsHeadingSettingsModalOpen: (open: boolean) => void;
     initialHeadingSettings?: EditorHeadingMap;
+    isBodySettingsModalOpen: boolean;
+    setIsBodySettingsModalOpen: (open: boolean) => void;
+    initialBodySettings?: EditorBodyConfig;
+    onSaveBodySettings: (body: EditorBodyConfig) => Promise<void>;
     isPreferencesModalOpen: boolean;
     setIsPreferencesModalOpen: (open: boolean) => void;
     isHelpModalOpen: boolean;
@@ -114,6 +120,10 @@ export default function ShellModalCoordinator({
     isHeadingSettingsModalOpen,
     setIsHeadingSettingsModalOpen,
     initialHeadingSettings,
+    isBodySettingsModalOpen,
+    setIsBodySettingsModalOpen,
+    initialBodySettings,
+    onSaveBodySettings,
     isPreferencesModalOpen,
     setIsPreferencesModalOpen,
     isHelpModalOpen,
@@ -245,6 +255,18 @@ export default function ShellModalCoordinator({
                     initialHeadings={initialHeadingSettings}
                     onClose={() => setIsHeadingSettingsModalOpen(false)}
                     onSave={onSaveHeadingSettings}
+                />
+            </ModalOverlayShell>
+
+            <ModalOverlayShell
+                isOpen={isBodySettingsModalOpen}
+                onClose={() => setIsBodySettingsModalOpen(false)}
+                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            >
+                <BodySettingsModal
+                    initialBody={initialBodySettings}
+                    onClose={() => setIsBodySettingsModalOpen(false)}
+                    onSave={onSaveBodySettings}
                 />
             </ModalOverlayShell>
 

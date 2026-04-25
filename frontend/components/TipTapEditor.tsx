@@ -247,9 +247,18 @@ export default function TipTapEditor({
 
     if (!editor) return <div>Loading editor...</div>;
 
+    const bodyStyle: React.CSSProperties & { "--paragraph-spacing"?: string } =
+        {
+            fontFamily: editorProjectConfig.body?.fontFamily,
+            fontSize: editorProjectConfig.body?.fontSize,
+            lineHeight: editorProjectConfig.body?.lineHeight,
+            "--paragraph-spacing":
+                editorProjectConfig.body?.paragraphSpacing,
+        };
+
     return (
         <EditorContext.Provider value={{ editor }}>
-            <div className="tiptap-editor-shell">
+            <div className="tiptap-editor-shell" style={bodyStyle}>
                 <MenuBar editor={editor} />
                 <EditorContent
                     editor={editor}

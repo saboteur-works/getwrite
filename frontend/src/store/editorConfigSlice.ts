@@ -1,12 +1,11 @@
-createSlice;
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { EditorHeading, EditorHeadings } from "../lib/models";
-import { initial } from "lodash";
+import { EditorBodyConfig, EditorHeading, EditorHeadings } from "../lib/models";
 
 type EditorConfigState = {
     headings: {
         [key in EditorHeadings]?: EditorHeading;
     };
+    body?: EditorBodyConfig;
 };
 
 const initialState: EditorConfigState = {
@@ -19,6 +18,7 @@ const editorConfigSlice = createSlice({
     reducers: {
         setEditorConfig(state, action: PayloadAction<EditorConfigState>) {
             state.headings = action.payload.headings;
+            state.body = action.payload.body;
             return state;
         },
     },

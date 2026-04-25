@@ -52,6 +52,7 @@ import type {
     MetadataSource,
     EditorHeadings,
     EditorHeading,
+    EditorBodyConfig,
 } from "./types";
 import { createResourceOfType, writeResourceToFile } from "./resource";
 import { writeRevision } from "./revision";
@@ -135,7 +136,12 @@ export interface ProjectTypeSpec {
         headings?: {
             [index in EditorHeadings]?: EditorHeading;
         };
+        body?: EditorBodyConfig;
     };
+    /** Default project-scoped status values to seed on creation. */
+    statuses?: string[];
+    /** Target word count for the project. */
+    wordCountGoal?: number;
 }
 
 /**
@@ -219,6 +225,8 @@ export async function createProjectFromType(options: {
         slug: slugify(projectName),
         config: {
             editorConfig: specObj.editorConfig ?? {},
+            statuses: specObj.statuses,
+            wordCountGoal: specObj.wordCountGoal,
         },
     });
 

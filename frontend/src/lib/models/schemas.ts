@@ -55,6 +55,13 @@ const EditorHeadingSchema = z.object({
     color: z.string().optional(),
 });
 
+const EditorBodySchema = z.object({
+    fontFamily: z.string().optional(),
+    fontSize: z.string().optional(),
+    lineHeight: z.string().optional(),
+    paragraphSpacing: z.string().optional(),
+});
+
 export const EditorConfigSchema = z.object({
     headings: z
         .object({
@@ -66,6 +73,7 @@ export const EditorConfigSchema = z.object({
             h6: EditorHeadingSchema.optional(),
         })
         .optional(),
+    body: EditorBodySchema.optional(),
 });
 
 /**
@@ -73,6 +81,7 @@ export const EditorConfigSchema = z.object({
  */
 export const ProjectConfigSchema = z.object({
     maxRevisions: z.number().int().nonnegative().optional(),
+    wordCountGoal: z.number().int().nonnegative().optional(),
     statuses: z.array(z.string()).optional(),
     autoPrune: z.boolean().optional(),
     tags: z
@@ -322,6 +331,8 @@ export const ProjectTypeSchema = z
         defaultResources: z.array(ProjectTypeResourceSchema).optional(),
         defaultFolders: z.array(ProjectTypeDefaultFolderSchema).optional(),
         editorConfig: EditorConfigSchema.optional(),
+        statuses: z.array(z.string()).optional(),
+        wordCountGoal: z.number().int().nonnegative().optional(),
     })
     .strict()
     .refine((val) => val.folders.some((f) => f.name === "Workspace"), {

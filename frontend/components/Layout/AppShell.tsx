@@ -14,6 +14,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import type {
     AnyResource,
+    EditorBodyConfig,
     ViewName,
     Project as CanonicalProject,
     ResourceType,
@@ -200,6 +201,8 @@ export default function AppShell({
     const [isPreferencesModalOpen, setIsPreferencesModalOpen] =
         useState<boolean>(false);
     const [isHeadingSettingsModalOpen, setIsHeadingSettingsModalOpen] =
+        useState<boolean>(false);
+    const [isBodySettingsModalOpen, setIsBodySettingsModalOpen] =
         useState<boolean>(false);
     const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
         useState<boolean>(false);
@@ -637,6 +640,11 @@ export default function AppShell({
         setIsHeadingSettingsModalOpen(true);
     };
 
+    const handleOpenBodySettings = (): void => {
+        setIsSettingsMenuOpen(false);
+        setIsBodySettingsModalOpen(true);
+    };
+
     const handleOpenTagsManager = (): void => {
         setIsSettingsMenuOpen(false);
         setIsTagsManagerOpen(true);
@@ -690,7 +698,7 @@ export default function AppShell({
             }),
         });
         const body = (await response.json().catch(() => null)) as {
-            editorConfig?: { headings?: EditorHeadingMap };
+            editorConfig?: { headings?: EditorHeadingMap; body?: EditorBodyConfig };
             error?: string;
         } | null;
 
@@ -701,6 +709,39 @@ export default function AppShell({
         dispatch(
             setEditorConfig({
                 headings: body?.editorConfig?.headings ?? {},
+                body: body?.editorConfig?.body,
+            }),
+        );
+    };
+
+    const handleSaveBodySettings = async (
+        bodyConfig: EditorBodyConfig,
+    ): Promise<void> => {
+        if (!project?.rootPath) {
+            throw new Error("Project path unavailable for body settings.");
+        }
+
+        const response = await fetch("/api/project/editor-config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                projectPath: project.rootPath,
+                body: bodyConfig,
+            }),
+        });
+        const responseBody = (await response.json().catch(() => null)) as {
+            editorConfig?: { headings?: EditorHeadingMap; body?: EditorBodyConfig };
+            error?: string;
+        } | null;
+
+        if (!response.ok) {
+            throw new Error(responseBody?.error ?? "Failed to save body settings.");
+        }
+
+        dispatch(
+            setEditorConfig({
+                headings: responseBody?.editorConfig?.headings ?? {},
+                body: responseBody?.editorConfig?.body,
             }),
         );
     };
@@ -717,6 +758,7 @@ export default function AppShell({
                 onToggleOpen={() => setIsSettingsMenuOpen((prev) => !prev)}
                 onOpenPreferences={handleOpenPreferences}
                 onOpenHeadingSettings={handleOpenHeadingSettings}
+                onOpenBodySettings={handleOpenBodySettings}
                 onOpenProjectTypeManager={handleOpenProjectTypeManager}
                 onOpenTagsManager={handleOpenTagsManager}
                 onToggleColorMode={handleToggleColorMode}
@@ -826,6 +868,16 @@ export default function AppShell({
                                     initialHeadingSettings={
                                         project?.config?.editorConfig?.headings
                                     }
+                                    isBodySettingsModalOpen={
+                                        isBodySettingsModalOpen
+                                    }
+                                    setIsBodySettingsModalOpen={
+                                        setIsBodySettingsModalOpen
+                                    }
+                                    initialBodySettings={
+                                        project?.config?.editorConfig?.body
+                                    }
+                                    onSaveBodySettings={handleSaveBodySettings}
                                     isPreferencesModalOpen={
                                         isPreferencesModalOpen
                                     }

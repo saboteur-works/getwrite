@@ -76,6 +76,7 @@
             }
         }
     ],
+    "statuses": ["Draft", "Review", "Final"],
     "editorConfig": {
         "headings": {
             "h1": {
@@ -90,6 +91,9 @@
                 "fontSize": "24px",
                 "fontWeight": "500"
             }
+        },
+        "body": {
+            "lineHeight": "1.8"
         }
     }
 }
