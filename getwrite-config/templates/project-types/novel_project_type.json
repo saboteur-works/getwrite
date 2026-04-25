@@ -4,13 +4,27 @@
     "description": "Project type optimized for long-form fiction. Includes drafts, research, and assets.",
     "folders": [
         { "name": "Workspace", "special": true },
-        { "name": "Foo" },
-        { "name": "Research" }
+        { "name": "Research" },
+        { "name": "Outline" },
+        { "name": "Drafts" },
+        { "name": "Notes" },
+        { "name": "Assets" }
     ],
     "defaultFolders": [
+        { "name": "Front Matter", "folder": "Workspace" },
+        { "name": "Prologue", "folder": "Workspace" },
         {
-            "folder": "Foo",
+            "name": "Chapters",
+            "folder": "Workspace",
+            "metadataSource": {
+                "isMetadataSource": true,
+                "metadataInputType": "multiselect"
+            }
+        },
+        { "name": "Epilogue", "folder": "Workspace" },
+        {
             "name": "Characters",
+            "folder": "Research",
             "special": true,
             "metadataSource": {
                 "isMetadataSource": true,
@@ -18,8 +32,8 @@
             }
         },
         {
-            "folder": "Foo",
             "name": "Items",
+            "folder": "Research",
             "special": true,
             "metadataSource": {
                 "isMetadataSource": true,
@@ -27,8 +41,8 @@
             }
         },
         {
-            "folder": "Foo",
             "name": "Locations",
+            "folder": "Research",
             "special": true,
             "metadataSource": {
                 "isMetadataSource": true,
@@ -58,6 +72,24 @@
             "name": "Manuscript Start",
             "type": "text",
             "template": "# Chapter 1\n\n"
+        },
+        {
+            "folder": "Characters",
+            "name": "Character Profile",
+            "type": "text",
+            "template": "# Character Name\n\n- Description\n- Significance\n"
+        },
+        {
+            "folder": "Items",
+            "name": "Item Profile",
+            "type": "text",
+            "template": "# Item Name\n\n- Description\n- Significance\n"
+        },
+        {
+            "folder": "Locations",
+            "name": "Location Profile",
+            "type": "text",
+            "template": "# Location Name\n\n- Description\n- Significance\n"
         }
     ]
 }
