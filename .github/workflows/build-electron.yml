@@ -26,6 +26,9 @@ jobs:
                     - os: windows-latest
                       eb_args: --win --x64
                       artifact_glob: dist-electron/*.exe
+                    - os: ubuntu-latest
+                      eb_args: --linux --x64
+                      artifact_glob: "dist-electron/*.AppImage dist-electron/*.deb"
 
         runs-on: ${{ matrix.os }}
 
@@ -62,4 +65,4 @@ jobs:
             - name: Upload artifacts to release
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: gh release upload ${{ github.event.release.tag_name || inputs.tag }} ${{ matrix.artifact_glob }}
+              run: gh release upload ${{ github.event.release.tag_name || inputs.tag }} ${{ matrix.artifact_glob }} --clobber
