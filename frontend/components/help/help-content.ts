@@ -53,7 +53,7 @@ export const HELP_TABS: HelpTabDefinition[] = [
             {
                 type: "paragraph",
                 content: [
-                    "GetWrite is a web-based writing application for creative projects - novels, serial fiction, poetry, scripts, and more. Everything lives inside a ",
+                    "GetWrite is a writing application for creative projects — novels, serial fiction, poetry, scripts, and more. Everything lives inside a ",
                     strong("project"),
                     ", which organises your content into folders and files called ",
                     strong("resources"),
@@ -304,6 +304,32 @@ export const HELP_TABS: HelpTabDefinition[] = [
                     "Selecting a folder containing only text resources renders all documents sequentially with dividers. Each document saves independently.",
                 ],
             },
+            {
+                type: "heading",
+                content: ["Data view"],
+            },
+            {
+                type: "paragraph",
+                content: [
+                    "Switch to ",
+                    strong("Data View"),
+                    " from the view switcher to see project statistics — resource count and total word count — plus a flat list of all resources.",
+                ],
+            },
+            {
+                type: "heading",
+                content: ["Timeline view"],
+            },
+            {
+                type: "paragraph",
+                content: [
+                    "Switch to ",
+                    strong("Timeline View"),
+                    " to see a visual timeline of resources that have a ",
+                    strong("Story Date"),
+                    " set in the Metadata Panel. Resources are colour-coded by POV. Clicking a timeline item selects that resource.",
+                ],
+            },
         ],
     },
     {
@@ -364,7 +390,7 @@ export const HELP_TABS: HelpTabDefinition[] = [
                 type: "paragraph",
                 content: [
                     strong("Project Types"),
-                    " are templates that define the initial folder structure created when a new project is started. Examples include Novel, Serial Fiction, or Script.",
+                    " are templates that define the initial folder structure and editor settings created when a new project is started. Bundled types include Blank, Novel, Serial, Article, Poetry and Lyrics, and Game Writing.",
                 ],
             },
             {
@@ -389,6 +415,21 @@ export const HELP_TABS: HelpTabDefinition[] = [
                     ],
                     [
                         "Default top-level folders and their contents created automatically for new projects.",
+                    ],
+                    [
+                        "Default subfolders seeded under a parent folder when a project is first created.",
+                    ],
+                    [
+                        strong("Statuses"),
+                        " — custom status labels (e.g. Draft, Revised) that can be assigned to resources.",
+                    ],
+                    [
+                        strong("Word Count Goal"),
+                        " — an optional target word count for the project.",
+                    ],
+                    [
+                        strong("Editor Settings"),
+                        " — custom heading styles and body typography applied in the editor.",
                     ],
                 ],
             },
@@ -434,7 +475,7 @@ export const HELP_TABS: HelpTabDefinition[] = [
             {
                 type: "paragraph",
                 content: [
-                    "Preferences are stored globally in your browser and, when a project is open, also saved to the project's own configuration file so the same settings apply on every device you use to open that project.",
+                    "Preferences are stored locally on your device and, when a project is open, also saved to the project's own configuration file so the same settings apply on every device you use to open that project.",
                 ],
             },
         ],

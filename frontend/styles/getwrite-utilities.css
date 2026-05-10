@@ -607,6 +607,59 @@
         box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
     }
 
+    .project-type-editor-helper-text {
+        font-family: var(--font-sans);
+        font-size: 12px;
+        color: var(--color-gw-secondary);
+        line-height: 1.5;
+    }
+
+    .project-type-editor-subsection-title {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--color-gw-secondary);
+    }
+
+    .project-type-editor-form-grid--four-column {
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+    }
+
+    .project-type-editor-form-grid--headings-row {
+        grid-template-columns: 2fr 1fr 1fr 1fr 100px;
+    }
+
+    .project-type-editor-status-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .project-type-editor-color-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 30px;
+    }
+
+    .project-type-editor-color-input {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: var(--radius-md);
+        background: none;
+        cursor: pointer;
+    }
+
+    .project-type-editor-color-value {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--color-gw-secondary);
+        letter-spacing: 0.08em;
+    }
+
     /* ── WORKAREA ── */
     .workarea-container {
         flex: 1;
