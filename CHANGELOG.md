@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.15](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.14...getwrite-v0.2.15) (2026-05-10)
+
+
+### Features
+
+* enhance project type editor with word count goal and status management ([30eb075](https://github.com/saboteur-works/getwrite/commit/30eb075e0db6a81c58bab539d06b797b8dff3fd6))
+
 ## [0.2.14](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.13...getwrite-v0.2.14) (2026-04-25)
 
 
