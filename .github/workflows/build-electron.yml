@@ -28,7 +28,7 @@ jobs:
                       artifact_glob: dist-electron/*.exe
                     - os: ubuntu-latest
                       eb_args: --linux --x64
-                      artifact_glob: "dist-electron/*.AppImage dist-electron/*.deb"
+                      artifact_glob: dist-electron/*.AppImage
 
         runs-on: ${{ matrix.os }}
 
