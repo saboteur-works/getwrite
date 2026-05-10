@@ -88,6 +88,12 @@ export default function ProjectTypesManagerPage({
         handleRemoveFolder,
         handleAddResource,
         handleRemoveResource,
+        handleWordCountGoalChange,
+        handleAddStatus,
+        handleRemoveStatus,
+        handleUpdateStatus,
+        handleAddDefaultFolder,
+        handleRemoveDefaultFolder,
     } = useProjectTypeDraftService(initialTemplates);
 
     const handleCloseManager = (): void => {
@@ -150,9 +156,11 @@ export default function ProjectTypesManagerPage({
             </header>
 
             {workspaceGuardErrors.length > 0 ? (
-                <section className="rounded-md border border-gw-border p-3 text-sm text-gw-red">
-                    <p className="font-semibold">Workspace guardrail warning</p>
-                    <ul className="mt-2 list-disc pl-5">
+                <section className="rounded-md border border-gw-border bg-gw-chrome2 p-3 text-sm">
+                    <p className="font-semibold text-gw-primary">
+                        Workspace guardrail warning
+                    </p>
+                    <ul className="mt-2 list-disc pl-5 text-gw-secondary">
                         {workspaceGuardErrors.map((error) => (
                             <li key={error}>{error}</li>
                         ))}
@@ -179,6 +187,12 @@ export default function ProjectTypesManagerPage({
                             onRemoveFolder={handleRemoveFolder}
                             onAddResource={handleAddResource}
                             onRemoveResource={handleRemoveResource}
+                            onWordCountGoalChange={handleWordCountGoalChange}
+                            onAddStatus={handleAddStatus}
+                            onRemoveStatus={handleRemoveStatus}
+                            onUpdateStatus={handleUpdateStatus}
+                            onAddDefaultFolder={handleAddDefaultFolder}
+                            onRemoveDefaultFolder={handleRemoveDefaultFolder}
                         />
                     ) : (
                         <div className="rounded-md border border-dashed border-gw-border p-6 text-sm text-gw-secondary">

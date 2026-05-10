@@ -21,6 +21,7 @@ import { validateProjectType } from "../../src/lib/models/schemas";
 import type {
     ProjectTypeDefinition,
     ProjectTypeDefaultResource,
+    ProjectTypeDefaultFolder,
     ProjectTypeFolder,
     ProjectTypeTemplateFile,
 } from "../../src/types/project-types";
@@ -57,7 +58,9 @@ export function createEmptyProjectType(): ProjectTypeDefinition {
         name: "",
         description: "",
         folders: [{ name: "Workspace", special: true }],
+        defaultFolders: [],
         defaultResources: [],
+        statuses: [],
     };
 }
 
@@ -95,7 +98,9 @@ export function normalizeDefinition(
     return {
         ...definition,
         folders: definition.folders ?? [],
+        defaultFolders: definition.defaultFolders ?? [],
         defaultResources: definition.defaultResources ?? [],
+        statuses: definition.statuses ?? [],
     };
 }
 
@@ -165,6 +170,12 @@ export interface ProjectTypeDraftServiceState {
     handleRemoveFolder: (index: number) => void;
     handleAddResource: () => void;
     handleRemoveResource: (index: number) => void;
+    handleWordCountGoalChange: (value: number | undefined) => void;
+    handleAddStatus: () => void;
+    handleRemoveStatus: (index: number) => void;
+    handleUpdateStatus: (index: number, value: string) => void;
+    handleAddDefaultFolder: () => void;
+    handleRemoveDefaultFolder: (index: number) => void;
 }
 
 /**
@@ -282,6 +293,61 @@ export function useProjectTypeDraftService(
         }));
     };
 
+    const handleWordCountGoalChange = (value: number | undefined): void => {
+        updateSelectedDefinition((current) => ({
+            ...current,
+            wordCountGoal: value,
+        }));
+    };
+
+    const handleAddStatus = (): void => {
+        updateSelectedDefinition((current) => ({
+            ...current,
+            statuses: [...(current.statuses ?? []), ""],
+        }));
+    };
+
+    const handleRemoveStatus = (index: number): void => {
+        updateSelectedDefinition((current) => ({
+            ...current,
+            statuses: (current.statuses ?? []).filter(
+                (_, statusIndex) => statusIndex !== index,
+            ),
+        }));
+    };
+
+    const handleUpdateStatus = (index: number, value: string): void => {
+        updateSelectedDefinition((current) => ({
+            ...current,
+            statuses: (current.statuses ?? []).map((status, statusIndex) =>
+                statusIndex === index ? value : status,
+            ),
+        }));
+    };
+
+    const handleAddDefaultFolder = (): void => {
+        updateSelectedDefinition((current) => ({
+            ...current,
+            defaultFolders: [
+                ...(current.defaultFolders ?? []),
+                {
+                    folder: "Workspace",
+                    name: "",
+                    special: false,
+                } satisfies ProjectTypeDefaultFolder,
+            ],
+        }));
+    };
+
+    const handleRemoveDefaultFolder = (index: number): void => {
+        updateSelectedDefinition((current) => ({
+            ...current,
+            defaultFolders: (current.defaultFolders ?? []).filter(
+                (_, folderIndex) => folderIndex !== index,
+            ),
+        }));
+    };
+
     return {
         items,
         selectedKey,
@@ -293,5 +359,11 @@ export function useProjectTypeDraftService(
         handleRemoveFolder,
         handleAddResource,
         handleRemoveResource,
+        handleWordCountGoalChange,
+        handleAddStatus,
+        handleRemoveStatus,
+        handleUpdateStatus,
+        handleAddDefaultFolder,
+        handleRemoveDefaultFolder,
     };
 }

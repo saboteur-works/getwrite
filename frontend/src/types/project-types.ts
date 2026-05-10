@@ -38,6 +38,15 @@ export interface ProjectTypeDefaultResource {
 }
 
 /**
+ * Metadata source configuration for a folder — controls how resource metadata
+ * is gathered from resources within this folder.
+ */
+export interface ProjectTypeFolderMetadataSource {
+    isMetadataSource: boolean;
+    metadataInputType?: "text" | "multiselect" | "autocomplete";
+}
+
+/**
  * Folder definition within a project type.
  */
 export interface ProjectTypeFolder {
@@ -50,9 +59,36 @@ export interface ProjectTypeFolder {
      */
     special?: boolean;
     /**
+     * Optional metadata source configuration.
+     */
+    metadataSource?: ProjectTypeFolderMetadataSource;
+    /**
      * Optional default resources scoped to this folder.
      */
     defaultResources?: ProjectTypeDefaultResource[];
+}
+
+/**
+ * Declaration of a subfolder to be created under a parent folder when a
+ * project of this type is initialized.
+ */
+export interface ProjectTypeDefaultFolder {
+    /**
+     * Parent folder name (must match a folder in `ProjectTypeDefinition.folders`).
+     */
+    folder: string;
+    /**
+     * Display name for the subfolder.
+     */
+    name: string;
+    /**
+     * Marks that the subfolder is special to application semantics.
+     */
+    special?: boolean;
+    /**
+     * Optional metadata source configuration.
+     */
+    metadataSource?: ProjectTypeFolderMetadataSource;
 }
 
 /**
@@ -79,6 +115,18 @@ export interface ProjectTypeDefinition {
      * Optional top-level default resources.
      */
     defaultResources?: ProjectTypeDefaultResource[];
+    /**
+     * Subfolders to create under parent folders when a project is initialized.
+     */
+    defaultFolders?: ProjectTypeDefaultFolder[];
+    /**
+     * Available status values for resources in this project type.
+     */
+    statuses?: string[];
+    /**
+     * Target word count goal for the project (e.g. 80000 for a novel).
+     */
+    wordCountGoal?: number;
     editorConfig?: {
         headings?: Record<string, EditorHeading>;
         body?: EditorBodyConfig;
