@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.20](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.19...getwrite-v0.2.20) (2026-05-10)
+
+
+### Bug Fixes
+
+* remove deb target from Linux electron build ([57e114d](https://github.com/saboteur-works/getwrite/commit/57e114d171a9fe2bef4813acb9aba2925593d4be))
+
 ## [0.2.19](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.18...getwrite-v0.2.19) (2026-05-10)
 
 
