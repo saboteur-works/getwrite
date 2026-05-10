@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.17](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.16...getwrite-v0.2.17) (2026-05-10)
+
+
+### Bug Fixes
+
+* include Linux builds in releases ([b1e9e49](https://github.com/saboteur-works/getwrite/commit/b1e9e49761c26a358a5412c3dde9252f4d1ba5df))
+
 ## [0.2.16](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.15...getwrite-v0.2.16) (2026-05-10)
 
 
