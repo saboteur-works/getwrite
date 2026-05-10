@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.19](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.18...getwrite-v0.2.19) (2026-05-10)
+
+
+### Bug Fixes
+
+* trigger electron release build ([18185f9](https://github.com/saboteur-works/getwrite/commit/18185f9a6a07528432003a7a5bb0c89ae6e6424e))
+
 ## [0.2.18](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.17...getwrite-v0.2.18) (2026-05-10)
 
 
