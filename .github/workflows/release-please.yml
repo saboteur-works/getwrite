@@ -24,6 +24,19 @@ jobs:
                   config-file: .release-please-config.json
                   manifest-file: .release-please-manifest.json
 
+    build-electron:
+        needs: release-please
+        if: ${{ needs.release-please.outputs.release_created }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Trigger electron build
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh workflow run build-electron.yml \
+                    --repo ${{ github.repository }} \
+                    --field tag=${{ needs.release-please.outputs.tag_name }}
+
     sync-package-versions:
         needs: release-please
         if: ${{ needs.release-please.outputs.release_created }}
