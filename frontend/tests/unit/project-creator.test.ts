@@ -141,4 +141,84 @@ describe("models/project-creator", () => {
             await removeDirRetry(tmp);
         }
     });
+
+    it("places deeply nested subfolders at the correct on-disk path (no orphan top-level dirs)", async () => {
+        // Regression: when a defaultFolder names another defaultFolder as its
+        // parent (3-level nesting), the path must be resolved using the full
+        // relative path from foldersDir — not just the parent's bare slug.
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-3level-"));
+        try {
+            const spec = {
+                id: "test-3level",
+                name: "Three-Level Nesting Test",
+                folders: [{ name: "Workspace", special: true }],
+                defaultFolders: [
+                    { folder: "Workspace", name: "Chapters" },
+                    { folder: "Chapters", name: "Chapter 1" },
+                ],
+            };
+            const { folders } = await createAndAssertProject(
+                spec as Parameters<typeof createAndAssertProject>[0],
+                { projectRoot: tmp, name: "Three-Level Project" },
+            );
+
+            const foldersDir = path.join(tmp, "folders");
+
+            // Chapter 1 must live under workspace/chapters/, not a top-level chapters/
+            await expect(
+                fs.access(path.join(foldersDir, "workspace", "chapters", "chapter-1", "folder.json")),
+            ).resolves.toBeUndefined();
+
+            // No orphan top-level "chapters" directory should exist
+            await expect(
+                fs.access(path.join(foldersDir, "chapters")),
+            ).rejects.toThrow();
+
+            // Returned Chapter 1 folder has the correct parentId (Chapters folder)
+            const chaptersFolder = folders.find((f) => f.name === "Chapters");
+            const chapter1Folder = folders.find((f) => f.name === "Chapter 1");
+            expect(chaptersFolder).toBeDefined();
+            expect(chapter1Folder).toBeDefined();
+            expect(chapter1Folder?.parentId).toBe(chaptersFolder?.id);
+
+            await flushIndexer();
+        } finally {
+            await removeDirRetry(tmp);
+        }
+    });
+
+    it("novel template creates correct nested folder structure without orphan directories", async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-novel-struct-"));
+        try {
+            const specPath = path.join(
+                process.cwd(),
+                "..",
+                "getwrite-config",
+                "templates",
+                "project-types",
+                "novel_project_type.json",
+            );
+
+            await createAndAssertProject(specPath, {
+                projectRoot: tmp,
+                name: "Novel Regression Test",
+            });
+
+            const foldersDir = path.join(tmp, "folders");
+
+            // chapter-1 must be nested under workspace/chapters/, not a top-level chapters/
+            await expect(
+                fs.access(path.join(foldersDir, "workspace", "chapters", "chapter-1", "folder.json")),
+            ).resolves.toBeUndefined();
+
+            // No orphan top-level "chapters" directory
+            await expect(
+                fs.access(path.join(foldersDir, "chapters")),
+            ).rejects.toThrow();
+
+            await flushIndexer();
+        } finally {
+            await removeDirRetry(tmp);
+        }
+    });
 });

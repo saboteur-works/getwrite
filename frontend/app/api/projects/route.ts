@@ -5,40 +5,8 @@ import { createProjectFromType } from "../../../src/lib/models/project-creator";
 import { generateUUID } from "../../../src/lib/models/uuid";
 import fs from "node:fs/promises";
 import { getLocalResources } from "../../../src/lib/models";
-
-const resolveProjectsDir = () =>
-    process.env.GETWRITE_PROJECTS_DIR ??
-    path.join(process.cwd(), "..", "projects");
-
-async function readFolderTree(dir: string): Promise<unknown[]> {
-    const result: unknown[] = [];
-    let names: string[];
-    try {
-        names = (await fs.readdir(dir)).filter((n) => n !== ".DS_Store");
-    } catch {
-        return result;
-    }
-    for (const name of names) {
-        const subDir = path.join(dir, name);
-        try {
-            const stat = await fs.stat(subDir);
-            if (!stat.isDirectory()) continue;
-        } catch {
-            continue;
-        }
-        try {
-            const data = await fs.readFile(
-                path.join(subDir, "folder.json"),
-                "utf-8",
-            );
-            result.push(JSON.parse(data));
-        } catch {
-            // no folder.json, skip
-        }
-        result.push(...(await readFolderTree(subDir)));
-    }
-    return result;
-}
+import { readFolderTree } from "../../../src/lib/models/folder-utils";
+import { resolveProjectsDir } from "../../../src/lib/models/projects-dir";
 
 /**
  * Get all projects from the local filesystem. Each project includes its metadata, folders, and resources.

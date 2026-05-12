@@ -6,6 +6,7 @@ import {
     writeSidecar,
 } from "../../../../../src/lib/models/sidecar";
 import { withMetaLock } from "../../../../../src/lib/models/meta-locks";
+import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
 
 async function findProjectRoot(projectsDir: string, projectId: string) {
     try {
@@ -45,9 +46,7 @@ export async function POST(
         folderId?: string | null;
     }> = body.resourceOrder ?? [];
     // locate projects directory
-    const projectsDir =
-        process.env.GETWRITE_PROJECTS_DIR ??
-        path.resolve(process.cwd(), "..", "projects");
+    const projectsDir = resolveProjectsDir();
     const projectRoot =
         body.projectRoot ?? (await findProjectRoot(projectsDir, projectId));
     if (!projectRoot) {

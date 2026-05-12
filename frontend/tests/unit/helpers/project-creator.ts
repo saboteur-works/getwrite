@@ -21,6 +21,7 @@ import {
 import { readSidecar } from "../../../src/lib/models/sidecar";
 import { validateProject } from "../../../src/lib/models/project";
 import type {
+    Project,
     Folder as FolderType,
     TextResource,
 } from "../../../src/lib/models/types";
@@ -31,6 +32,8 @@ import type {
 export interface CreateAndAssertResult {
     /** Absolute path to the created project root directory. */
     projectPath: string;
+    /** Parsed project model returned by `createProjectFromType`. */
+    project: Project;
     /** Folder models created while scaffolding the project. */
     folders: FolderType[];
     /** Text resources created while scaffolding the project. */
@@ -127,7 +130,7 @@ export async function createAndAssertProject(
         }
     }
 
-    return { projectPath: projectRoot, folders, resources };
+    return { projectPath: projectRoot, project, folders, resources };
 }
 
 export default { createAndAssertProject };
