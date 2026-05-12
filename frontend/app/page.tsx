@@ -146,15 +146,6 @@ export default function Home(): JSX.Element {
         fetchProjects()
             .then((data) => {
                 if (Array.isArray(data)) {
-                    // const projectsForState = data.map((view) => {
-                    //     return {
-                    //         id: view.project.id,
-                    //         name: view.project.name,
-                    //         rootPath: view.project.rootPath,
-                    //         folders: view.folders,
-                    //         resources: view.resources,
-                    //     };
-                    // });
                     dispatch(setProjectsInStore(data));
                     setProjects(data);
                 }
@@ -682,7 +673,8 @@ export default function Home(): JSX.Element {
         }
 
         if (action === "export") {
-            const resolvedIds: string[] = opts?.resourceIds ?? (resourceId ? [resourceId] : []);
+            const resolvedIds: string[] =
+                opts?.resourceIds ?? (resourceId ? [resourceId] : []);
             if (resolvedIds.length === 0) return;
 
             const exportNode =
@@ -706,7 +698,9 @@ export default function Home(): JSX.Element {
 
             // Only include text resources in the exported output.
             const textIds = resolvedIds.filter(
-                (id) => (selectedProject.resources.find((r) => r.id === id) as any)?.type === "text",
+                (id) =>
+                    (selectedProject.resources.find((r) => r.id === id) as any)
+                        ?.type === "text",
             );
 
             const sections: CompileSection[] = textIds.map((id) => ({
