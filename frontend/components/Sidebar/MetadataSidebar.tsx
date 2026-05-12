@@ -9,9 +9,7 @@ import TagsSection from "./TagsSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual, useStore } from "react-redux";
 import { selectResource } from "../../src/store/resourcesSlice";
-import { Folder } from "../../src/lib/models";
 import { RootState } from "../../src/store/store";
-import { set } from "lodash";
 
 const EMPTY_LIST: string[] = [];
 
@@ -110,7 +108,9 @@ export default function MetadataSidebar({
         setNotes((selectedResource?.userMetadata?.notes as any) ?? "");
         setStatus((selectedResource?.userMetadata?.status as any) ?? "draft");
         setPOV((selectedResource?.userMetadata?.pov as any) ?? null);
-        setStoryDate((selectedResource?.userMetadata?.storyDate as string) ?? "");
+        setStoryDate(
+            (selectedResource?.userMetadata?.storyDate as string) ?? "",
+        );
         setStoryDuration(
             (selectedResource?.userMetadata?.storyDuration as number) ?? null,
         );

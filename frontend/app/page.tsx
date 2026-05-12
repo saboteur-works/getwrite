@@ -20,7 +20,7 @@
  * {@link AppShell} with the open project's data otherwise.
  */
 "use client";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import useAppSelector, { useAppDispatch } from "../src/store/hooks";
 import {
     setProject,
@@ -34,12 +34,7 @@ import StartPage, {
     type StartPageProjectEntry,
     type StartPageCreateResult,
 } from "../components/Start/StartPage";
-import type {
-    Folder,
-    Project,
-    AnyResource,
-    ResourceBase,
-} from "../src/lib/models";
+import type { Folder, AnyResource, ResourceBase } from "../src/lib/models";
 import type { MetadataValue } from "../src/lib/models/types";
 import { buildProjectView } from "../src/lib/models/project-view";
 import {
@@ -102,10 +97,6 @@ export default function Home(): JSX.Element {
     const [selectedProject, setSelectedProject] =
         useState<SelectedProjectState | null>(null);
 
-    /** ID of the resource that currently has editor focus. */
-    const [selectedResourceId, setSelectedResourceId] = useState<string | null>(
-        null,
-    );
     const selectedResource = useAppSelector(
         (state) => selectResource(state.resources),
         shallowEqual,
@@ -283,14 +274,13 @@ export default function Home(): JSX.Element {
     /**
      * Marks a resource as selected in both the Redux store and local state.
      *
-     * Dispatches `setSelectedResourceId` so that the sidebar, editor, and other
+     * Dispatches `setResourceId` so that the sidebar, editor, and other
      * resource-aware components can display the chosen resource.
      *
      * @param id - The ID of the resource to select.
      */
     const handleResourceSelect = (id: string) => {
         dispatch(setResourceId(id));
-        setSelectedResourceId(id);
     };
 
     /**
@@ -385,45 +375,6 @@ export default function Home(): JSX.Element {
         updateResource(resourceId, (r) => ({
             ...r,
             userMetadata: { ...r.userMetadata, status },
-        }));
-    };
-
-    /**
-     * Updates the character tag list in a resource's metadata.
-     *
-     * @param chars      - New array of character name strings.
-     * @param resourceId - ID of the target resource.
-     */
-    const handleChangeCharacters = (chars: string[], resourceId: string) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, characters: chars },
-        }));
-    };
-
-    /**
-     * Updates the location tag list in a resource's metadata.
-     *
-     * @param locs       - New array of location name strings.
-     * @param resourceId - ID of the target resource.
-     */
-    const handleChangeLocations = (locs: string[], resourceId: string) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, locations: locs },
-        }));
-    };
-
-    /**
-     * Updates the items/props tag list in a resource's metadata.
-     *
-     * @param items      - New array of item name strings.
-     * @param resourceId - ID of the target resource.
-     */
-    const handleChangeItems = (items: string[], resourceId: string) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, items },
         }));
     };
 
@@ -563,8 +514,6 @@ export default function Home(): JSX.Element {
                 );
             }
 
-            setSelectedResourceId(res.id);
-
             toastService.success(
                 "Resource created",
                 `${opts?.title ?? "New Resource"} created`,
@@ -613,7 +562,6 @@ export default function Home(): JSX.Element {
                       }
                     : prev,
             );
-            setSelectedResourceId(copy.id);
             dispatch(
                 addResource({
                     projectId: selectedProject.id,
@@ -729,7 +677,6 @@ export default function Home(): JSX.Element {
 
     const handleCloseProject = (): void => {
         setSelectedProject(null);
-        setSelectedResourceId(null);
         dispatch(setSelectedProjectId(null));
         dispatch(setResourceId(null));
         dispatch(setResources([]));

@@ -6,7 +6,7 @@
  * UI for editing persisted user preferences.
  */
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAppSelector from "../../src/store/hooks";
 import {

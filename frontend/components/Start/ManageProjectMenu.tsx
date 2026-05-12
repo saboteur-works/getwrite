@@ -37,12 +37,9 @@ export default function ManageProjectMenu({
     const dispatch = useAppDispatch();
     const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
     const [open, setOpen] = useState<boolean>(false);
-    const [editing, setEditing] = useState<boolean>(false);
     const [name, setName] = useState<string>(projectName);
     const [renameOpen, setRenameOpen] = useState<boolean>(false);
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
-    const [confirmPackageOpen, setConfirmPackageOpen] =
-        useState<boolean>(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -67,15 +64,6 @@ export default function ManageProjectMenu({
         setName(projectName);
     }, [projectName]);
 
-    const handleRenameSave = (): void => {
-        const trimmed = name.trim();
-        if (!trimmed) return;
-        if (onRename) onRename(projectId, trimmed);
-        setEditing(false);
-        setOpen(false);
-        toastService.success("Project renamed", trimmed);
-    };
-
     const handleDeleteConfirm = (): void => {
         void projectActionsController
             .deleteProject({
@@ -95,14 +83,6 @@ export default function ManageProjectMenu({
         setConfirmDeleteOpen(false);
         setOpen(false);
         toastService.success("Project deleted", projectName);
-    };
-
-    const handlePackageConfirm = (): void => {
-        // Legacy confirm path: call package without selected ids
-        if (onPackage) onPackage(projectId);
-        setConfirmPackageOpen(false);
-        setOpen(false);
-        toastService.info("Package created");
     };
 
     // Implementation notes: `menuRef` ensures outside-click detection. Rename only
@@ -162,16 +142,6 @@ export default function ManageProjectMenu({
                 cancelLabel="Cancel"
                 onConfirm={handleDeleteConfirm}
                 onCancel={() => setConfirmDeleteOpen(false)}
-            />
-
-            <ConfirmDialog
-                isOpen={confirmPackageOpen}
-                title="Package project"
-                description="Create a downloadable package of this project (placeholder). Proceed?"
-                confirmLabel="Package"
-                cancelLabel="Cancel"
-                onConfirm={handlePackageConfirm}
-                onCancel={() => setConfirmPackageOpen(false)}
             />
 
             <RenameProjectModal

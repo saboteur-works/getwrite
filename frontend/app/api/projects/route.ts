@@ -40,17 +40,10 @@ async function readFolderTree(dir: string): Promise<unknown[]> {
     return result;
 }
 
-const getProject = async (id: string) => {
-    const projectDirPath = path.join(resolveProjectsDir(), id);
-    const projectDirectory = await fs.readdir(projectDirPath);
-
-    return NextResponse.json(projectDirectory);
-};
-
 /**
  * Get all projects from the local filesystem. Each project includes its metadata, folders, and resources.
  */
-export async function GET(req: Request) {
+export async function GET() {
     try {
         // get all projects from local
         const projectsDir = resolveProjectsDir();

@@ -1,6 +1,5 @@
 import "./globals.css";
 import "react-tooltip/dist/react-tooltip.css";
-const { version } = require("./package.json");
 import React from "react";
 import ClientProvider from "../src/store/ClientProvider";
 import AppToaster from "../components/notifications/Toaster";
@@ -8,7 +7,7 @@ import AppearanceRuntime from "../components/preferences/AppearanceRuntime";
 
 /** Page metadata for Next.js layout — basic title for dev/storybook. */
 export const metadata = {
-    title: `GetWrite v${version}`,
+    title: `GetWrite`,
 };
 
 /** Application root layout wrapping `children` with global background and font color; imports global CSS. */
