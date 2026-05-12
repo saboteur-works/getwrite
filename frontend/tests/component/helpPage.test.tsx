@@ -11,7 +11,7 @@ describe("HelpPage", () => {
         render(<HelpPage />);
 
         expect(
-            screen.getByText(/GetWrite is a web-based writing application/i),
+            screen.getByText(/GetWrite is a writing application/i),
         ).toBeInTheDocument();
 
         await user.click(screen.getByRole("tab", { name: /Projects/i }));

@@ -2,6 +2,8 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Provider } from "react-redux";
+import { makeStore } from "../src/store/store";
 import { MenuBar } from "../components/Editor/MenuBar/MenuBar";
 
 const mockUseEditorState = vi.fn();
@@ -203,7 +205,11 @@ describe("MenuBar", () => {
         const user = userEvent.setup();
         const { editor, actions } = createEditorDouble();
 
-        render(<MenuBar editor={editor as never} />);
+        render(
+            <Provider store={makeStore()}>
+                <MenuBar editor={editor as never} />
+            </Provider>,
+        );
 
         await user.click(screen.getByRole("button", { name: /Bold/i }));
 
@@ -219,7 +225,11 @@ describe("MenuBar", () => {
     it("keeps typography inputs wired to the same editor commands", () => {
         const { editor, actions } = createEditorDouble();
 
-        render(<MenuBar editor={editor as never} />);
+        render(
+            <Provider store={makeStore()}>
+                <MenuBar editor={editor as never} />
+            </Provider>,
+        );
 
         fireEvent.change(
             screen.getByRole("spinbutton", { name: /Font Size/i }),
@@ -258,7 +268,11 @@ describe("MenuBar", () => {
         const user = userEvent.setup();
         const { editor, actions } = createEditorDouble();
 
-        render(<MenuBar editor={editor as never} />);
+        render(
+            <Provider store={makeStore()}>
+                <MenuBar editor={editor as never} />
+            </Provider>,
+        );
 
         await user.click(screen.getByRole("button", { name: /Text Color/i }));
         await user.click(
