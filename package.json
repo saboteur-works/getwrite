@@ -9,7 +9,8 @@
         "test": "pnpm --filter getwrite-frontend exec vitest",
         "electron:dev": "pnpm --filter getwrite-electron dev",
         "electron:build": "pnpm --filter getwrite-frontend build && pnpm --filter getwrite-electron build",
-        "electron:package": "pnpm electron:build && pnpm --filter getwrite-electron package"
+        "electron:package": "pnpm electron:build && pnpm --filter getwrite-electron package",
+        "knip": "knip"
     },
     "keywords": [],
     "author": "",
@@ -23,5 +24,10 @@
         "onlyBuiltDependencies": [
             "electron"
         ]
+    },
+    "devDependencies": {
+        "@types/node": "^25.7.0",
+        "knip": "^6.12.2",
+        "typescript": "^6.0.3"
     }
 }
