@@ -12,7 +12,7 @@ description: >
     variant or Storybook story.
 license: MIT
 compatibility: >
-    Requires Node 22.16.0 and pnpm. Run from frontend/ directory.
+    Requires Node 24 and pnpm. Run from frontend/ directory.
     Typecheck: pnpm typecheck. Storybook: pnpm storybook (port 6006).
 metadata:
     author: saboteur-labs
@@ -78,23 +78,24 @@ export default function ComponentName({
 
 **Use `gw-` Tailwind tokens for everything color-related.** Never use raw hex values or Tailwind built-in color utilities (no `blue-*`, `gray-*`, `green-*`, `red-500`, etc.):
 
-| Purpose | Token class |
-|---|---|
-| App background | `bg-gw-bg` |
-| Panel / sidebar | `bg-gw-chrome` |
-| Nested card / input | `bg-gw-chrome2` |
-| Writing surface (dark) | `bg-gw-editor` |
-| Writing surface (light) | `bg-gw-paper` |
-| Primary UI text | `text-gw-primary` |
-| Muted labels, metadata | `text-gw-secondary` |
-| Near-invisible (folders) | `text-gw-dim` |
-| Signal red | `text-gw-red` |
-| Default border | `border-gw-border` |
+| Purpose                   | Token class            |
+| ------------------------- | ---------------------- |
+| App background            | `bg-gw-bg`             |
+| Panel / sidebar           | `bg-gw-chrome`         |
+| Nested card / input       | `bg-gw-chrome2`        |
+| Writing surface (dark)    | `bg-gw-editor`         |
+| Writing surface (light)   | `bg-gw-paper`          |
+| Primary UI text           | `text-gw-primary`      |
+| Muted labels, metadata    | `text-gw-secondary`    |
+| Near-invisible (folders)  | `text-gw-dim`          |
+| Signal red                | `text-gw-red`          |
+| Default border            | `border-gw-border`     |
 | Active / canonical border | `border-gw-red-border` |
 
 Dark/light mode is handled automatically by CSS variable overrides — do not write `dark:` prefixed utilities.
 
 **Red is a position marker, not an action indicator.** Use `text-gw-red` / `border-gw-red-border` only for:
+
 - Active file left border in resource tree
 - Active tab underline
 - Canonical revision badge (border + text, never fill)
@@ -104,6 +105,7 @@ Dark/light mode is handled automatically by CSS variable overrides — do not wr
 Red is NOT for: buttons, CTAs, hover states, alerts, warnings, icons, progress indicators, decorative elements. If you're about to use red for any of these, stop and use `text-gw-secondary` → `text-gw-primary` hover instead.
 
 **Typography:**
+
 - All UI chrome defaults to `font-sans` (IBM Plex Sans) — no need to specify unless overriding
 - Labels, timestamps, tab names, keyboard shortcuts, revision names, metadata values: `font-mono` (IBM Plex Mono)
 - Editor body text (and only editor body text): `font-serif` (IBM Plex Serif) — never in navigation, sidebars, modals, metadata panels, or any chrome
@@ -167,6 +169,7 @@ export const Default: Story = {
 ```
 
 **Rules:**
+
 - Always import from `@storybook/nextjs-vite` — never `@storybook/react`
 - Every named story export on a component (not page) story **must** have `args` — this is required, not optional
 - Cover the key visual states: at minimum `Default`, plus named variants for significant states (e.g., `Danger`, `Disabled`, `Active`, `Selected`, `Loading`)
@@ -178,6 +181,7 @@ export const Default: Story = {
 ## Step 5: Typecheck
 
 From `frontend/`:
+
 ```bash
 pnpm typecheck
 ```

@@ -12,7 +12,7 @@ description: >
     verb handler added to it.
 license: MIT
 compatibility: >
-    Requires Node 22.16.0 and pnpm. Run typecheck from frontend/ with
+    Requires Node 24 and pnpm. Run typecheck from frontend/ with
     `pnpm typecheck`. Routes live under frontend/app/api/ and are served by
     Next.js App Router.
 metadata:
@@ -99,7 +99,7 @@ Named interfaces at the top of the file:
 
 ```ts
 interface CreateFooBody {
-    projectPath: string;  // always: absolute path to project root
+    projectPath: string; // always: absolute path to project root
     name: string;
     // ...
 }
@@ -124,7 +124,10 @@ export async function POST(
     try {
         body = (await req.json()) as CreateFooBody;
     } catch {
-        return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+        return NextResponse.json(
+            { error: "Invalid JSON body." },
+            { status: 400 },
+        );
     }
 
     const { projectPath, name } = body;
@@ -140,7 +143,8 @@ export async function POST(
         const foo = await createFoo(projectPath, name);
         return NextResponse.json({ foo }, { status: 201 });
     } catch (error) {
-        const message = error instanceof Error ? error.message : "Operation failed.";
+        const message =
+            error instanceof Error ? error.message : "Operation failed.";
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
@@ -209,12 +213,21 @@ export async function POST(req: NextRequest) {
     try {
         const body = (await req.json()) as RequestBody;
 
-        if (body.action === "list") { /* ... */ }
-        if (body.action === "create") { /* ... */ }
-        if (body.action === "delete") { /* ... */ }
+        if (body.action === "list") {
+            /* ... */
+        }
+        if (body.action === "create") {
+            /* ... */
+        }
+        if (body.action === "delete") {
+            /* ... */
+        }
 
         return NextResponse.json(
-            { error: "Invalid action", details: "Expected 'list', 'create', or 'delete'" },
+            {
+                error: "Invalid action",
+                details: "Expected 'list', 'create', or 'delete'",
+            },
             { status: 400 },
         );
     } catch (error) {
@@ -238,15 +251,15 @@ const resolveProjectsDir = () =>
 
 ### Status codes
 
-| Situation | Status |
-|---|---|
-| Successful read | 200 |
-| Successful create | 201 |
-| Successful update / operation | 200 |
-| Successful delete | 200 (with deleted entity) |
-| Missing required field or invalid action | 400 |
-| Entity not found | 404 |
-| Filesystem / logic failure | 500 |
+| Situation                                | Status                    |
+| ---------------------------------------- | ------------------------- |
+| Successful read                          | 200                       |
+| Successful create                        | 201                       |
+| Successful update / operation            | 200                       |
+| Successful delete                        | 200 (with deleted entity) |
+| Missing required field or invalid action | 400                       |
+| Entity not found                         | 404                       |
+| Filesystem / logic failure               | 500                       |
 
 Map "not found" errors from the model layer: if `error.message.includes("not found")` → 404, else → 500.
 
@@ -255,6 +268,7 @@ Map "not found" errors from the model layer: if `error.message.includes("not fou
 ## Step 4: Typecheck
 
 From `frontend/`:
+
 ```bash
 pnpm typecheck
 ```

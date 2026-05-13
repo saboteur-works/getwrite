@@ -15,7 +15,7 @@ description: >
     rather than improvising.
 license: MIT
 compatibility: >
-    Requires Node 22.16.0 and pnpm. Run typecheck from frontend/ with
+    Requires Node 24 and pnpm. Run typecheck from frontend/ with
     `pnpm typecheck`. Store files live in frontend/src/store/.
 metadata:
     author: saboteur-labs
@@ -35,6 +35,7 @@ You are adding a Redux slice to the GetWrite writing workspace. GetWrite uses a 
 Before writing anything, read the most complete example of the pattern: `frontend/src/store/revisionsSlice.ts` and its companion files `revision-transport-service.ts`, `revision-canonical-guards.ts`, and `revision-normalization.ts`. Also read `frontend/src/store/store.ts` and `frontend/src/store/hooks.ts`.
 
 Then ask yourself:
+
 - Does the existing slice you're modelling most closely resemble `revisionsSlice` (complex, async, multiple in-flight operations) or `resourcesSlice` (moderate, mostly sync) or `projectsSlice` / `editorConfigSlice` (simple, sync only)?
 - How many concurrent async operations can be in flight simultaneously? Each one that can overlap needs its own loading flag.
 - Is there a risk of stale responses? (User navigates away while a request is pending.) If yes, you need dual-ID tracking.
@@ -50,6 +51,7 @@ The right answer determines how many files you create.
 **Slice with async, no stale risk:** Two files: `yourDomainSlice.ts` + `yourDomain-transport-service.ts`. The transport service keeps fetch calls out of the thunk body.
 
 **Full pattern (async + stale risk + derived data):** Three or four files:
+
 - `yourDomainSlice.ts` — state shape, thunks, reducers, selectors
 - `yourDomain-transport-service.ts` — pure HTTP functions + context resolver
 - `yourDomain-normalization.ts` — API-to-Redux data transforms (only if the API shape differs from what Redux stores)
@@ -75,7 +77,7 @@ export interface YourDomainState {
      * The domain entity currently being requested — used to ignore stale
      * responses if the user navigates to a different entity while loading.
      */
-    requestedDomainId: string | null;  // only if stale risk exists
+    requestedDomainId: string | null; // only if stale risk exists
     /** Currently loaded items. */
     items: YourItem[];
     /** True while the initial list is loading. */
@@ -83,13 +85,14 @@ export interface YourDomainState {
     /** True while a create operation is in flight. */
     isCreating: boolean;
     /** ID of the item currently being deleted, or null. */
-    deletingItemId: string | null;  // per-item op: null-able ID, not boolean
+    deletingItemId: string | null; // per-item op: null-able ID, not boolean
     /** Latest error surfaced to the UI. Empty string when none. */
-    errorMessage: string;  // always string, never null
+    errorMessage: string; // always string, never null
 }
 ```
 
 Rules:
+
 - One `isLoading`-style flag **per distinct concurrent operation** (list load, save, delete are separate)
 - Per-item operations (delete one, fetch one) use a nullable ID (`deletingItemId: string | null`) rather than a boolean
 - `errorMessage` is always `string`, never `string | null` — initialize to `""`
@@ -120,11 +123,14 @@ export function resolveYourDomainRequestContext(
 
     if (!selectedProjectId) return { error: "No project selected." };
     if (!selectedResourceId || selectedResourceId !== expectedResourceId) {
-        return { error: "Selected resource changed before operation completed." };
+        return {
+            error: "Selected resource changed before operation completed.",
+        };
     }
 
     const project = state.projects.projects[selectedProjectId];
-    if (!project?.rootPath) return { error: "Selected project is missing a root path." };
+    if (!project?.rootPath)
+        return { error: "Selected project is missing a root path." };
 
     return { projectPath: project.rootPath, resourceId: selectedResourceId };
 }
@@ -155,7 +161,10 @@ export async function fetchYourItems(
     const response = await fetch("/api/your-endpoint", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectPath: context.projectPath, resourceId: context.resourceId }),
+        body: JSON.stringify({
+            projectPath: context.projectPath,
+            resourceId: context.resourceId,
+        }),
     });
 
     if (!response.ok) {
@@ -174,14 +183,18 @@ The transport service imports only `RootState` from the store — it has zero Re
 ## Step 5: Write guard and normalization files (if needed)
 
 **Guards** (`yourDomain-guards.ts`) contain pure functions that enforce state invariants:
+
 - Accept and return plain values (no Redux state, no side effects)
 - Use immutable patterns — return new arrays/objects, never mutate the input
 - Named `applyXxx` (applies a rule) or `isStaleXxx` (returns boolean)
 
 ```typescript
 // Only create this file when there's a business rule like "exactly one item can be canonical"
-export function applyActiveItem(items: YourItem[], activeId: string): YourItem[] {
-    return items.map(item => ({ ...item, isActive: item.id === activeId }));
+export function applyActiveItem(
+    items: YourItem[],
+    activeId: string,
+): YourItem[] {
+    return items.map((item) => ({ ...item, isActive: item.id === activeId }));
 }
 
 export function isStaleResponse(
@@ -193,6 +206,7 @@ export function isStaleResponse(
 ```
 
 **Normalization** (`yourDomain-normalization.ts`) contains data transforms between API shapes and Redux shapes:
+
 - Define the Redux-side type separately from the API/persisted type if they differ
 - Use type guards (`isYourItem(value: unknown): value is YourItem`) for parsing arrays from API responses
 - Provide merge helpers (`mergeItem`, `removeItem`) that return sorted arrays
@@ -211,11 +225,11 @@ Define named interfaces for every async thunk's input and return value at the to
 
 ```typescript
 interface DomainScopedPayload {
-    domainId: string;  // matches what the context resolver expects
+    domainId: string; // matches what the context resolver expects
 }
 
 interface LoadItemsResult {
-    domainId: string;  // always echo back so stale checks work
+    domainId: string; // always echo back so stale checks work
     items: YourItem[];
 }
 ```
@@ -229,29 +243,29 @@ export const loadItemsForSelectedDomain = createAsyncThunk<
     LoadItemsResult,
     DomainScopedPayload,
     { state: RootState; rejectValue: string }
->(
-    "yourDomain/loadItemsForSelectedDomain",
-    async ({ domainId }, thunkApi) => {
-        // 1. Validate context first — before any await
-        const context = resolveYourDomainRequestContext(thunkApi.getState(), domainId);
-        if ("error" in context) {
-            return thunkApi.rejectWithValue(context.error);
-        }
+>("yourDomain/loadItemsForSelectedDomain", async ({ domainId }, thunkApi) => {
+    // 1. Validate context first — before any await
+    const context = resolveYourDomainRequestContext(
+        thunkApi.getState(),
+        domainId,
+    );
+    if ("error" in context) {
+        return thunkApi.rejectWithValue(context.error);
+    }
 
-        // 2. Call transport, wrap in try/catch
-        try {
-            const data = await fetchYourItems(context);
-            return {
-                domainId,
-                items: parseItems(data),
-            };
-        } catch (error) {
-            return thunkApi.rejectWithValue(
-                getErrorMessage(error, "Unable to load items."),
-            );
-        }
-    },
-);
+    // 2. Call transport, wrap in try/catch
+    try {
+        const data = await fetchYourItems(context);
+        return {
+            domainId,
+            items: parseItems(data),
+        };
+    } catch (error) {
+        return thunkApi.rejectWithValue(
+            getErrorMessage(error, "Unable to load items."),
+        );
+    }
+});
 ```
 
 Include this local helper in the slice file (not the transport service):
@@ -306,10 +320,11 @@ extraReducers: (builder) => {
         state.errorMessage = action.payload ?? "Unable to load items.";
         return state;
     });
-}
+};
 ```
 
 **Critical stale-check rule:**
+
 - Use `state.requestedDomainId !== action.payload.domainId` (payload comparison) in `fulfilled`
 - Use `state.requestedDomainId !== action.meta.arg.domainId` (arg comparison) in `rejected` — rejected payloads don't carry domain IDs
 - For per-item operations (deleteItem, fetchItemContent): use `state.deletingItemId !== action.meta.arg.itemId` in both `fulfilled` and `rejected`
@@ -326,9 +341,15 @@ export const selectYourDomainState = (state: RootState): YourDomainState =>
 
 // Guarded selector: only returns data for the currently selected domain
 export const selectVisibleItems = createSelector(
-    [selectYourDomainState, (state: RootState) => state.resources.selectedResourceId],
+    [
+        selectYourDomainState,
+        (state: RootState) => state.resources.selectedResourceId,
+    ],
     (domainState, selectedResourceId) => {
-        if (!selectedResourceId || domainState.domainId !== selectedResourceId) {
+        if (
+            !selectedResourceId ||
+            domainState.domainId !== selectedResourceId
+        ) {
             return [];
         }
         return domainState.items;
@@ -368,17 +389,20 @@ reducer: {
 ## Step 8: Export and type-check
 
 From the slice file, export:
+
 - The slice actions: `export const { syncAction1, syncAction2 } = yourDomainSlice.actions;`
 - The reducer as default: `export default yourDomainSlice.reducer;`
 - Any types that consumers need: `export type { YourItem } from "./yourDomain-normalization";`
 - All selectors named `select*`
 
 Run typecheck:
+
 ```bash
 cd frontend && pnpm typecheck
 ```
 
 Fix all errors before reporting done. The most common issues are:
+
 - Missing `{ state: RootState; rejectValue: string }` in the thunk generic
 - Forgetting `rejectValue` forces the thunk's error type to `unknown` instead of `string`
 - Using `action.payload` in `.rejected` when the rejection was from context validation (the payload is the rejectValue string, access it via `action.payload`)
@@ -398,7 +422,7 @@ Fix all errors before reporting done. The most common issues are:
 
 **Skipping the context resolver.** Don't inline `state.projects.selectedProjectId` checks directly in thunk bodies. Put them in the context resolver so they're reusable and testable.
 
-**Using `boolean` flags for per-item operations.** `isDeletingItem: boolean` can't tell you *which* item is being deleted, which means UI can't show a spinner on the right row. Use `deletingItemId: string | null`.
+**Using `boolean` flags for per-item operations.** `isDeletingItem: boolean` can't tell you _which_ item is being deleted, which means UI can't show a spinner on the right row. Use `deletingItemId: string | null`.
 
 ---
 
