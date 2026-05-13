@@ -18,47 +18,24 @@ test("revision control shows canonical revision probe", async ({ page }) => {
     await expect(canonicalProbe).toHaveText("rev-2");
 });
 
-test("revision control displays revision items", async ({ page }) => {
-    await page.goto(
-        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--with-revisions",
+test("revision control allows revision selection and updates active state", async ({ page }) => {
+    await page.route("**/api/resource/revision/**", (route) =>
+        route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ content: "Mock revision content" }),
+        }),
     );
 
-    const revisionCount = page.locator('[data-testid="revision-count"]');
-    const countText = await revisionCount.textContent();
-    expect(parseInt(countText ?? "0", 10)).toBeGreaterThanOrEqual(1);
-});
-
-test("revision control displays revision names", async ({ page }) => {
     await page.goto(
-        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--with-revisions",
+        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--interactive",
     );
 
-    const canonicalProbe = page.locator('[data-testid="canonical-revision"]');
-    await expect(canonicalProbe).toHaveText("rev-2");
-    const revisionCount = page.locator('[data-testid="revision-count"]');
-    await expect(revisionCount).toHaveText("2");
-});
+    // rev-1 is the non-canonical revision; its card has a "View Revision" button
+    const viewBtn = page.getByRole("button", { name: /view revision/i });
+    await expect(viewBtn).toBeVisible();
+    await viewBtn.click();
 
-test("revision control allows revision selection", async ({ page }) => {
-    await page.goto(
-        "/iframe.html?id=editor-revisioncontrol-revisioncontrol--with-revisions",
-    );
-
-    // Click a revision item to select it
-    const revisionButtons = page.locator('button, [role="button"]');
-    const buttonCount = await revisionButtons.count();
-
-    if (buttonCount > 0) {
-        // Click a revision (skip first if it's a general button)
-        const revisionButton = revisionButtons.nth(
-            Math.min(1, buttonCount - 1),
-        );
-        if (await revisionButton.isVisible()) {
-            await revisionButton.click();
-            await page.waitForTimeout(100);
-
-            // Revision should be selected (visual feedback)
-            await expect(revisionButton).toBeVisible();
-        }
-    }
+    const activeProbe = page.locator('[data-testid="active-revision-id"]');
+    await expect(activeProbe).toHaveText("rev-1", { timeout: 2000 });
 });

@@ -1,5 +1,6 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { Provider } from "react-redux";
+import { Provider, useSelector } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import TimelineView from "../../components/WorkArea/TimelineView";
 import projectReducer from "../../src/store/projectsSlice";
@@ -116,6 +117,46 @@ export const SingleItem: Story = {
                 <div className="p-4 bg-gw-editor min-h-screen">
                     <TimelineView />
                 </div>
+            </Provider>
+        );
+    },
+};
+
+export const Interactive: Story = {
+    render: () => {
+        const store = makeStore(
+            [
+                baseResource(SCENE_1, "Prologue: The Storm", "2024-01-03", FOLDER_A),
+                baseResource(SCENE_2, "Chapter 1: Arrival", "2024-01-10", FOLDER_A),
+                baseResource(SCENE_3, "Chapter 2: The Market", "2024-01-18", FOLDER_B),
+            ],
+            [
+                { id: FOLDER_A, slug: "act-one", name: "Act One", type: "folder" as const, createdAt: new Date().toISOString() } as Folder,
+                { id: FOLDER_B, slug: "act-two", name: "Act Two", type: "folder" as const, createdAt: new Date().toISOString() } as Folder,
+            ],
+        );
+
+        const Wrapper = () => {
+            const selectedId = useSelector(
+                (state: any) => state.resources.selectedResourceId,
+            );
+            return (
+                <div className="p-4 bg-gw-editor min-h-screen">
+                    <TimelineView />
+                    <div
+                        data-testid="selected-resource-id"
+                        aria-hidden
+                        style={{ display: "none" }}
+                    >
+                        {selectedId ?? ""}
+                    </div>
+                </div>
+            );
+        };
+
+        return (
+            <Provider store={store}>
+                <Wrapper />
             </Provider>
         );
     },

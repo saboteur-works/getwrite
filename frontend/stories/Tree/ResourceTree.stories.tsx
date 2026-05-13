@@ -26,16 +26,18 @@ export const Reorderable: Story = {
         const Wrapper = () => {
             const simulateReorder = () => {
                 const nav = document.querySelector(
-                    'nav[aria-label="Resource tree"]',
+                    '[aria-label="Resource tree"]',
                 );
                 if (!nav) return;
                 const items = Array.from(
-                    nav.querySelectorAll('[role="tree"] > li'),
+                    nav.querySelectorAll(".resource-tree-item"),
                 ) as HTMLElement[];
                 const ids = items.map(
                     (it) =>
-                        it.querySelector("button")?.textContent?.trim() || "",
-                );
+                        it
+                            .querySelector("button.resource-tree-button")
+                            ?.textContent?.trim() || "",
+                ).filter(Boolean);
                 if (ids.length >= 2) {
                     const next = [...ids];
                     const first = next.shift();

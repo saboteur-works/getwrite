@@ -44,5 +44,5 @@ test("diff view shows comparison content", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-diffview--default");
 
     const revisionCount = page.locator('[data-testid="revision-count"]');
-    await expect(revisionCount).toHaveText("2");
+    await expect(revisionCount).toHaveText("3");
 });

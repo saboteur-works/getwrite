@@ -68,7 +68,7 @@ export const Interactive: Story = {
         );
     },
     args: {
-        projectId: "proj_1",
+        projectId: "test-proj-1",
         projectName: "Sample Project",
         onRename: (id: string, name: string) => console.log("rename", id, name),
         onDelete: (id: string) => console.log("delete", id),

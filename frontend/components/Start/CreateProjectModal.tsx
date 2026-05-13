@@ -228,6 +228,12 @@ export default function CreateProjectModal({
                         ref={nameRef}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                void handleSubmit();
+                            }
+                        }}
                         className="project-modal-input"
                         aria-required
                         disabled={creating}

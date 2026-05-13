@@ -10,35 +10,28 @@ test("timeline view interactive variant renders", async ({ page }) => {
 test("timeline view default displays project info", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-timelineview--default");
 
-    const projectName = page.locator('[data-testid="project-name"]');
-    await expect(projectName).toHaveText("Example Project");
+    const projectName = page.getByText("The Clockwork King");
+    await expect(projectName).toBeVisible();
 });
 
-test("timeline view single project variant renders", async ({ page }) => {
-    await page.goto("/iframe.html?id=workarea-timelineview--single-project");
+test("timeline view single item variant renders", async ({ page }) => {
+    await page.goto("/iframe.html?id=workarea-timelineview--single-item");
 
-    const projectName = page.locator('[data-testid="project-name"]');
-    await expect(projectName).toHaveText("Example Project");
+    const resourceName = page.getByText("The Only Scene");
+    await expect(resourceName).toBeVisible();
 });
 
-test("timeline view interactive tracks selected resource", async ({ page }) => {
-    await page.goto("/iframe.html?id=workarea-timelineview--interactive");
-
-    const selectedProbe = page.locator('[data-testid="selected-resource-id"]');
-
-    // Try clicking a resource
-    const resourceLinks = page.getByRole("link");
-    const resourceCount = await resourceLinks.count();
-
-    if (resourceCount > 0) {
-        await resourceLinks.first().click();
-        await page.waitForTimeout(200);
-
-        const selectedId = await selectedProbe.textContent();
-        // In a real implementation, this would be populated
-        expect(selectedId).toBeDefined();
-    }
-});
+test(
+    "timeline view interactive tracks selected resource",
+    async ({ page }) => {
+        await page.goto("/iframe.html?id=workarea-timelineview--interactive");
+        const selectedProbe = page.locator('[data-testid="selected-resource-id"]');
+        const resourceChips = page.locator('button[role="listitem"]');
+        await expect(resourceChips.first()).toBeVisible();
+        await resourceChips.first().click();
+        await expect(selectedProbe).not.toBeEmpty({ timeout: 2000 });
+    },
+);
 
 test("timeline view displays multiple resources", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-timelineview--default");
