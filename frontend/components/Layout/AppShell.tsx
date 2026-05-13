@@ -50,7 +50,7 @@ import {
     Plus,
 } from "lucide-react";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
-import { selectResource } from "../../src/store/resourcesSlice";
+import { selectResource, updateResource, updateFolder } from "../../src/store/resourcesSlice";
 import {
     buildCompileTree,
     getDescendantLeafIds,
@@ -110,6 +110,15 @@ interface CompileModalState {
     open: boolean;
     resourceId?: string;
     preview?: string;
+}
+
+/**
+ * Local modal state for resource rename flow.
+ */
+interface RenameModalState {
+    open: boolean;
+    resourceId?: string;
+    resourceTitle?: string;
 }
 
 /**
@@ -367,6 +376,11 @@ export default function AppShell({
             return;
         }
 
+        if (action === "rename") {
+            setRenameModal({ open: true, resourceId, resourceTitle });
+            return;
+        }
+
         if (action === "export") {
             const allItems = [...(resources ?? []), ...(folders ?? [])];
             const nameById = new Map(allItems.map((r) => [r.id, r.name]));
@@ -405,6 +419,34 @@ export default function AppShell({
     const [compileModal, setCompileModal] = useState<CompileModalState>({
         open: false,
     });
+    const [renameModal, setRenameModal] = useState<RenameModalState>({
+        open: false,
+    });
+
+    const handleRenameConfirm = async (newName: string): Promise<void> => {
+        if (!renameModal.resourceId || !project?.rootPath) return;
+        const resourceId = renameModal.resourceId;
+        const isFolder = (folders ?? []).some((f) => f.id === resourceId);
+        try {
+            const res = await fetch(`/api/resource/${resourceId}/rename`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    projectRoot: project.rootPath,
+                    newName,
+                    resourceType: isFolder ? "folder" : "resource",
+                }),
+            });
+            if (!res.ok) return;
+            if (isFolder) {
+                dispatch(updateFolder({ id: resourceId, name: newName }));
+            } else {
+                dispatch(updateResource({ id: resourceId, name: newName }));
+            }
+        } finally {
+            setRenameModal({ open: false });
+        }
+    };
 
     /**
      * Handles create-modal confirmation and forwards creation payload upstream.
@@ -859,6 +901,9 @@ export default function AppShell({
                                     setExportModal={setExportModal}
                                     compileModal={compileModal}
                                     setCompileModal={setCompileModal}
+                                    renameModal={renameModal}
+                                    setRenameModal={setRenameModal}
+                                    onRenameConfirm={handleRenameConfirm}
                                     isHeadingSettingsModalOpen={
                                         isHeadingSettingsModalOpen
                                     }

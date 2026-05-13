@@ -40,8 +40,9 @@ test("keyboard navigation and activation fires action and closes", async ({
     const firstItem = page.getByRole("menuitem", { name: "Create" });
     await firstItem.focus();
 
-    // Focus is now on the first item; press ArrowDown until we reach Delete (4th item)
-    // Items: Create, Copy, Duplicate, Delete, Export
+    // Focus is now on the first item; press ArrowDown until we reach Delete (5th item)
+    // Items: Create, Rename, Copy, Duplicate, Delete, Export
+    await page.keyboard.press("ArrowDown"); // to Rename
     await page.keyboard.press("ArrowDown"); // to Copy
     await page.keyboard.press("ArrowDown"); // to Duplicate
     await page.keyboard.press("ArrowDown"); // to Delete
@@ -66,6 +67,21 @@ test("clicking Delete button triggers action and closes (mouse)", async ({
     await deleteBtn.click();
     const lastAction = page.locator('[data-testid="last-action"]');
     await expect(lastAction).toHaveText(/delete/i);
+
+    await expect(menu).toHaveCount(0);
+});
+
+test("clicking Rename button triggers action and closes (mouse)", async ({
+    page,
+}) => {
+    await page.goto("/iframe.html?id=tree-resourcecontextmenu--interactive");
+    const menu = page.locator('[role="menu"]');
+    await expect(menu).toBeVisible();
+
+    const renameBtn = page.getByRole("menuitem", { name: "Rename" });
+    await renameBtn.click();
+    const lastAction = page.locator('[data-testid="last-action"]');
+    await expect(lastAction).toHaveText(/rename/i);
 
     await expect(menu).toHaveCount(0);
 });

@@ -438,7 +438,7 @@ export default function Home(): JSX.Element {
      *   - `folderId` — ID of the parent folder, if any.
      */
     const handleResourceAction = async (
-        action: "create" | "copy" | "duplicate" | "delete" | "export",
+        action: "create" | "rename" | "copy" | "duplicate" | "delete" | "export",
         resourceId?: string,
         opts?: {
             /** Resource type to create (e.g. `"text"` or `"folder"`). */

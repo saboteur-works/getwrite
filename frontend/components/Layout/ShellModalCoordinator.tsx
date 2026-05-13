@@ -8,6 +8,7 @@ import type {
     ResourceType,
 } from "../../src/lib/models/types";
 import type { ProjectTypeTemplateFile } from "../../src/types/project-types";
+import RenameResourceModal from "../ResourceTree/RenameResourceModal";
 import ConfirmDialog from "../common/ConfirmDialog";
 import ResourceCommandPalette from "../common/ResourceCommandPalette";
 import CreateResourceModal from "../ResourceTree/CreateResourceModal";
@@ -52,6 +53,12 @@ export interface ShellCompileModalState {
     preview?: string;
 }
 
+export interface ShellRenameModalState {
+    open: boolean;
+    resourceId?: string;
+    resourceTitle?: string;
+}
+
 export interface ShellModalCoordinatorProps {
     contextAction: ShellContextActionState;
     setContextAction: (state: ShellContextActionState) => void;
@@ -63,6 +70,9 @@ export interface ShellModalCoordinatorProps {
     setExportModal: (state: ShellExportModalState) => void;
     compileModal: ShellCompileModalState;
     setCompileModal: (state: ShellCompileModalState) => void;
+    renameModal: ShellRenameModalState;
+    setRenameModal: (state: ShellRenameModalState) => void;
+    onRenameConfirm: (newName: string) => Promise<void>;
     isHeadingSettingsModalOpen: boolean;
     setIsHeadingSettingsModalOpen: (open: boolean) => void;
     initialHeadingSettings?: EditorHeadingMap;
@@ -117,6 +127,9 @@ export default function ShellModalCoordinator({
     setExportModal,
     compileModal,
     setCompileModal,
+    renameModal,
+    setRenameModal,
+    onRenameConfirm,
     isHeadingSettingsModalOpen,
     setIsHeadingSettingsModalOpen,
     initialHeadingSettings,
@@ -172,6 +185,13 @@ export default function ShellModalCoordinator({
                     setContextAction({ open: false });
                 }}
                 onCancel={() => setContextAction({ open: false })}
+            />
+
+            <RenameResourceModal
+                isOpen={renameModal.open}
+                initialName={renameModal.resourceTitle ?? ""}
+                onClose={() => setRenameModal({ open: false })}
+                onConfirm={onRenameConfirm}
             />
 
             <ConfirmDialog
