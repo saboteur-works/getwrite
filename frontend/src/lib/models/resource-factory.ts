@@ -73,7 +73,7 @@ export function createTextResource(params: {
         charCount,
         paragraphCount,
         userMetadata: params.userMetadata,
-        orderIndex: params.orderIndex,
+        orderIndex: params.orderIndex ?? 0,
     };
 
     TextResourceSchema.parse(res);
@@ -90,6 +90,7 @@ export function createImageResource(params: {
     height?: number;
     exif?: Record<string, MetadataValue>;
     slug?: string;
+    orderIndex?: number;
     userMetadata?: Record<string, MetadataValue>;
 }): ImageResource {
     const now = new Date().toISOString();
@@ -104,6 +105,7 @@ export function createImageResource(params: {
         width: params.width,
         height: params.height,
         exif: params.exif,
+        orderIndex: params.orderIndex ?? 0,
         userMetadata: params.userMetadata,
     };
 
@@ -120,6 +122,7 @@ export function createAudioResource(params: {
     durationSeconds?: number;
     format?: string;
     slug?: string;
+    orderIndex?: number;
     userMetadata?: Record<string, MetadataValue>;
 }): AudioResource {
     const now = new Date().toISOString();
@@ -133,6 +136,7 @@ export function createAudioResource(params: {
         createdAt: now,
         durationSeconds: params.durationSeconds,
         format: params.format,
+        orderIndex: params.orderIndex ?? 0,
         userMetadata: params.userMetadata,
     };
 
@@ -172,7 +176,7 @@ export function createFolderResource(params: {
         folderId: params.parentFolderId,
         createdAt: now,
         userMetadata: params.userMetadata,
-        orderIndex: params.orderIndex,
+        orderIndex: params.orderIndex ?? 0,
         special: params.special ?? false,
         metadataSource: params.metadataSource ?? { isMetadataSource: false },
     };

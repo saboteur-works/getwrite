@@ -79,7 +79,7 @@ export async function writeResourceToFile(
         name: resource.name,
         type: resource.type,
         createdAt: resource.createdAt,
-        orderIndex: resource.userMetadata?.orderIndex || 0,
+        orderIndex: resource.orderIndex,
         folderId: resource.folderId || null,
         slug: resource.slug || null,
         userMetadata: resource.userMetadata || {},
@@ -98,7 +98,7 @@ export const getLocalResources = (projectPath: string): AnyResource[] => {
         return [];
     }
 
-    const metaFiles = fs.readdirSync(metaDir);
+    const metaFiles = fs.readdirSync(metaDir).sort();
     const resources: AnyResource[] = [];
     for (const metaFile of metaFiles) {
         if (!metaFile.endsWith(".json")) {

@@ -136,7 +136,7 @@ export interface ResourceBase {
     /** User-editable notes. */
     notes?: string;
     /** Ordering index used for tree ordering within a parent. */
-    orderIndex?: number;
+    orderIndex: number;
     /** Status tags (project-scoped values). */
     statuses?: string[];
     /** User-set key/value metadata stored in sidecar (distinct from system fields like sizeBytes, createdAt, orderIndex). */
