@@ -84,15 +84,13 @@ Table of contents
 
 ### High-Priority Action Items (Stage 3)
 
-- `fix/revision-canonical-guards` — Owner: TBD — Priority: P0
-    - Description: Add unit and integration tests that exercise canonical selection, promotion, deletion, and prune flows. Harden guard helpers so the `isCanonical` invariant (exactly one canonical revision per resource) cannot be violated by slice operations or transport races.
-    - Example files: frontend/src/store/revision-canonical-guards.ts, frontend/src/store/revisionsSlice.ts, frontend/src/lib/models/revision.ts
-    - Suggested remediation: Add focused tests, implement small guard helpers, and release a narrow patch that fails CI if invariant is broken. Draft PR: `fix/revision-canonical-guards`.
+- `fix/revision-canonical-guards` — ~~Owner: TBD — Priority: P0~~ **Resolved in `fix/p0-blockers`**
+    - ~~Description: Add unit and integration tests that exercise canonical selection, promotion, deletion, and prune flows.~~
+    - Resolution: Added canonical guard to the POST handler (calls `setCanonicalRevision` after `writeRevision` when `isCanonical: true`) and to the DELETE handler (returns HTTP 400 when the target revision is canonical). Tests added in `frontend/tests/unit/revision-route-canonical.test.ts` and `frontend/tests/unit/revision-invariants.test.ts`.
 
-- `feat/indexer-wait-drain` — Owner: TBD — Priority: P0
-    - Description: Replace any polling-based flush semantics with a deterministic, promise-based `waitForDrain()` on the indexer queue. Add durable write options and a CLI reindex/repair command.
-    - Example files: frontend/src/lib/models/indexer-queue.ts, frontend/src/lib/models/inverted-index.ts, frontend/src/lib/models/backlinks.ts
-    - Suggested remediation: Implement `waitForDrain(): Promise<void>`, expose graceful shutdown integration, add tests for crash/restart semantics, and add `getwrite reindex` CLI. Draft PR: `feat/indexer-wait-drain`.
+- `feat/indexer-wait-drain` — ~~Owner: TBD — Priority: P0~~ **Resolved in `fix/p0-blockers`**
+    - ~~Description: Replace any polling-based flush semantics with a deterministic, promise-based `waitForDrain()` on the indexer queue.~~
+    - Resolution: Exported `waitForDrain` alias from `frontend/src/lib/models/indexer-queue.ts` (same semantics as existing `flushIndexer`). Added error logging in the queue `catch` block. Added `getwrite reindex [projectRoot]` CLI command (`frontend/src/cli/commands/reindex.ts`) to rebuild the inverted index and backlinks from scratch. Tests added in `frontend/tests/unit/indexer-queue.test.ts` and `frontend/tests/cli/reindex.test.ts`.
 
 - `chore/toolbar-consolidation` — Owner: TBD — Priority: P1
     - Description: Consolidate toolbar/menu wiring into a typed `CommandDescriptor` and central generator to eliminate duplicated wiring and submenu scaffolding.

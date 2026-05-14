@@ -3,6 +3,7 @@ import registerPrune from "./commands/prune";
 import registerTemplates from "./commands/templates";
 import registerScreenshots from "./commands/screenshots";
 import registerProject from "./commands/project";
+import registerReindex from "./commands/reindex";
 
 const program = new Command("getwrite-cli");
 
@@ -13,6 +14,7 @@ registerPrune(program);
 registerTemplates(program);
 registerScreenshots(program);
 registerProject(program);
+registerReindex(program);
 
 export async function main(argv: string[]): Promise<number> {
     // commander expects process.argv-like array

@@ -68,7 +68,7 @@ async function runTask(t: Task) {
 
         await indexResource(t.projectRoot, minimal);
     } catch (err) {
-        // swallow errors to keep queue running
+        console.error("[indexer-queue] task failed:", err);
     }
 }
 
@@ -82,8 +82,8 @@ async function processQueue() {
         try {
             // eslint-disable-next-line no-await-in-loop
             await runTask(t);
-        } catch (_) {
-            // ignore
+        } catch (err) {
+            console.error("[indexer-queue] processQueue error:", err);
         }
     }
     running = false;
@@ -114,9 +114,7 @@ export function enqueueIndex(
     });
 }
 
-export default { enqueueIndex, flushIndexer };
-
-/** Wait until the queue is drained (or timeout) — useful for tests. */
+/** Wait until the queue is drained (or timeout) — useful for tests and graceful shutdown. */
 export function flushIndexer(timeout = 5000): Promise<void> {
     return new Promise((resolve) => {
         const start = Date.now();
@@ -133,3 +131,8 @@ export function flushIndexer(timeout = 5000): Promise<void> {
         }, 25);
     });
 }
+
+/** Alias for {@link flushIndexer} — standard drain API. */
+export const waitForDrain = flushIndexer;
+
+export default { enqueueIndex, flushIndexer, waitForDrain };

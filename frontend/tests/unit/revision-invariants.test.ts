@@ -153,3 +153,50 @@ describe("revision invariants (T014)", () => {
         expect(await listRevisions(projectRoot, resourceId)).toHaveLength(2);
     });
 });
+
+describe("revision POST/DELETE invariant edges (T014-D)", () => {
+    beforeEach(() => {
+        const mem = createMemoryAdapter();
+        setStorageAdapter(mem);
+    });
+
+    it("writeRevision with isCanonical:true does NOT clear previous canonical (demonstrates the unfixed gap)", async () => {
+        const projectRoot = "/proj-" + generateUUID();
+        const resourceId = generateUUID();
+
+        await writeRevision(projectRoot, resourceId, 1, "one", {
+            isCanonical: true,
+        });
+        // Simulate what the POST handler did before the fix: writeRevision only
+        await writeRevision(projectRoot, resourceId, 2, "two", {
+            isCanonical: true,
+        });
+
+        const revisions = await listRevisions(projectRoot, resourceId);
+        // Without setCanonicalRevision, both revisions have isCanonical: true
+        // This test documents the underlying model behavior (no invariant enforcement in writeRevision)
+        // The route handler fix calls setCanonicalRevision to compensate
+        const canonicals = revisions.filter((r) => r.isCanonical);
+        expect(canonicals).toHaveLength(2);
+    });
+
+    it("setCanonicalRevision after writeRevision restores single-canonical invariant", async () => {
+        const projectRoot = "/proj-" + generateUUID();
+        const resourceId = generateUUID();
+
+        await writeRevision(projectRoot, resourceId, 1, "one", {
+            isCanonical: true,
+        });
+        await writeRevision(projectRoot, resourceId, 2, "two", {
+            isCanonical: true,
+        });
+
+        // This is what the fixed POST handler does after writeRevision
+        await setCanonicalRevision(projectRoot, resourceId, 2);
+
+        const revisions = await listRevisions(projectRoot, resourceId);
+        const canonicals = revisions.filter((r) => r.isCanonical);
+        expect(canonicals).toHaveLength(1);
+        expect(canonicals[0]?.versionNumber).toBe(2);
+    });
+});
