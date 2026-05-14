@@ -20,3 +20,4 @@ This directory contains Architectural Decision Records (ADRs) for GetWrite.
 12. [Revision Normalization and Transport Service Separation](./adr-012-revision-normalization-and-transport-service.md)
 13. [Memoized and Composed Selectors for Performance](./adr-013-memoized-composed-selectors-for-performance.md)
 14. [Centralized Project Actions Controller](./adr-014-centralized-project-actions-controller.md)
+15. [Project-Scoped Metadata Schema with Resource-Reference Fields](./adr-015-metadata-schema-system.md)
