@@ -213,6 +213,10 @@ export default function AppShell({
         useState<boolean>(false);
     const [isBodySettingsModalOpen, setIsBodySettingsModalOpen] =
         useState<boolean>(false);
+    const [
+        isDefaultRevisionNameModalOpen,
+        setIsDefaultRevisionNameModalOpen,
+    ] = useState<boolean>(false);
     const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
         useState<boolean>(false);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
@@ -687,6 +691,11 @@ export default function AppShell({
         setIsBodySettingsModalOpen(true);
     };
 
+    const handleOpenDefaultRevisionNameSettings = (): void => {
+        setIsSettingsMenuOpen(false);
+        setIsDefaultRevisionNameModalOpen(true);
+    };
+
     const handleOpenTagsManager = (): void => {
         setIsSettingsMenuOpen(false);
         setIsTagsManagerOpen(true);
@@ -788,6 +797,31 @@ export default function AppShell({
         );
     };
 
+    const handleSaveDefaultRevisionName = async (
+        name: string,
+    ): Promise<void> => {
+        if (!project?.rootPath) {
+            throw new Error("Project path unavailable.");
+        }
+        const response = await fetch("/api/project/revision-settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                projectPath: project.rootPath,
+                defaultRevisionName: name,
+            }),
+        });
+        const body = (await response.json().catch(() => null)) as {
+            defaultRevisionName?: string;
+            error?: string;
+        } | null;
+        if (!response.ok) {
+            throw new Error(
+                body?.error ?? "Failed to save default revision name.",
+            );
+        }
+    };
+
     return (
         <div
             className={`appshell-shell ${isDarkMode ? "appshell-theme-dark" : ""}`}
@@ -801,6 +835,9 @@ export default function AppShell({
                 onOpenPreferences={handleOpenPreferences}
                 onOpenHeadingSettings={handleOpenHeadingSettings}
                 onOpenBodySettings={handleOpenBodySettings}
+                onOpenDefaultRevisionNameSettings={
+                    handleOpenDefaultRevisionNameSettings
+                }
                 onOpenProjectTypeManager={handleOpenProjectTypeManager}
                 onOpenTagsManager={handleOpenTagsManager}
                 onToggleColorMode={handleToggleColorMode}
@@ -923,6 +960,19 @@ export default function AppShell({
                                         project?.config?.editorConfig?.body
                                     }
                                     onSaveBodySettings={handleSaveBodySettings}
+                                    isDefaultRevisionNameModalOpen={
+                                        isDefaultRevisionNameModalOpen
+                                    }
+                                    setIsDefaultRevisionNameModalOpen={
+                                        setIsDefaultRevisionNameModalOpen
+                                    }
+                                    initialDefaultRevisionName={
+                                        project?.config?.defaultRevisionName ??
+                                        "Initial Draft"
+                                    }
+                                    onSaveDefaultRevisionName={
+                                        handleSaveDefaultRevisionName
+                                    }
                                     isPreferencesModalOpen={
                                         isPreferencesModalOpen
                                     }

@@ -20,6 +20,7 @@ import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import HelpPage from "../help/HelpPage";
 import TagsManagerModal from "../common/TagsManagerModal";
+import DefaultRevisionNameModal from "../preferences/DefaultRevisionNameModal";
 import ModalOverlayShell from "../common/ModalOverlayShell";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
@@ -80,6 +81,10 @@ export interface ShellModalCoordinatorProps {
     setIsBodySettingsModalOpen: (open: boolean) => void;
     initialBodySettings?: EditorBodyConfig;
     onSaveBodySettings: (body: EditorBodyConfig) => Promise<void>;
+    isDefaultRevisionNameModalOpen: boolean;
+    setIsDefaultRevisionNameModalOpen: (open: boolean) => void;
+    initialDefaultRevisionName: string;
+    onSaveDefaultRevisionName: (name: string) => Promise<void>;
     isPreferencesModalOpen: boolean;
     setIsPreferencesModalOpen: (open: boolean) => void;
     isHelpModalOpen: boolean;
@@ -137,6 +142,10 @@ export default function ShellModalCoordinator({
     setIsBodySettingsModalOpen,
     initialBodySettings,
     onSaveBodySettings,
+    isDefaultRevisionNameModalOpen,
+    setIsDefaultRevisionNameModalOpen,
+    initialDefaultRevisionName,
+    onSaveDefaultRevisionName,
     isPreferencesModalOpen,
     setIsPreferencesModalOpen,
     isHelpModalOpen,
@@ -287,6 +296,18 @@ export default function ShellModalCoordinator({
                     initialBody={initialBodySettings}
                     onClose={() => setIsBodySettingsModalOpen(false)}
                     onSave={onSaveBodySettings}
+                />
+            </ModalOverlayShell>
+
+            <ModalOverlayShell
+                isOpen={isDefaultRevisionNameModalOpen}
+                onClose={() => setIsDefaultRevisionNameModalOpen(false)}
+                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            >
+                <DefaultRevisionNameModal
+                    initialName={initialDefaultRevisionName}
+                    onClose={() => setIsDefaultRevisionNameModalOpen(false)}
+                    onSave={onSaveDefaultRevisionName}
                 />
             </ModalOverlayShell>
 

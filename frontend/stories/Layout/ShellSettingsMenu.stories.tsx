@@ -45,6 +45,7 @@ export const Default: Story = {
                 onOpenPreferences={noop}
                 onOpenHeadingSettings={noop}
                 onOpenBodySettings={noop}
+                onOpenDefaultRevisionNameSettings={noop}
                 onOpenProjectTypeManager={noop}
                 onOpenTagsManager={noop}
                 onToggleColorMode={noop}
@@ -69,6 +70,7 @@ export const NoProject: Story = {
                 onOpenPreferences={noop}
                 onOpenHeadingSettings={noop}
                 onOpenBodySettings={noop}
+                onOpenDefaultRevisionNameSettings={noop}
                 onOpenProjectTypeManager={noop}
                 onOpenTagsManager={noop}
                 onToggleColorMode={noop}
@@ -82,7 +84,7 @@ export const NoProject: Story = {
 
 export const SettingsMenuOpen: Story = {
     render: () => (
-        <div className="bg-gw-chrome min-h-[280px]">
+        <div className="bg-gw-chrome min-h-[320px]">
             <Wrapper
                 projectName="The Long Winter"
                 isDarkMode={false}
@@ -94,6 +96,7 @@ export const SettingsMenuOpen: Story = {
                 onOpenPreferences={noop}
                 onOpenHeadingSettings={noop}
                 onOpenBodySettings={noop}
+                onOpenDefaultRevisionNameSettings={noop}
                 onOpenProjectTypeManager={noop}
                 onOpenTagsManager={noop}
                 onToggleColorMode={noop}
@@ -119,6 +122,7 @@ export const ProjectMenuOpen: Story = {
                 onOpenPreferences={noop}
                 onOpenHeadingSettings={noop}
                 onOpenBodySettings={noop}
+                onOpenDefaultRevisionNameSettings={noop}
                 onOpenProjectTypeManager={noop}
                 onOpenTagsManager={noop}
                 onToggleColorMode={noop}
@@ -132,7 +136,7 @@ export const ProjectMenuOpen: Story = {
 
 export const DarkMode: Story = {
     render: () => (
-        <div className="bg-gw-chrome min-h-[280px]">
+        <div className="bg-gw-chrome min-h-[320px]">
             <Wrapper
                 projectName="A Dark Tale"
                 isDarkMode={true}
@@ -144,6 +148,7 @@ export const DarkMode: Story = {
                 onOpenPreferences={noop}
                 onOpenHeadingSettings={noop}
                 onOpenBodySettings={noop}
+                onOpenDefaultRevisionNameSettings={noop}
                 onOpenProjectTypeManager={noop}
                 onOpenTagsManager={noop}
                 onToggleColorMode={noop}
@@ -153,4 +158,58 @@ export const DarkMode: Story = {
             />
         </div>
     ),
+};
+
+export const Interactive: Story = {
+    render: () => {
+        const menuRef = React.useRef<HTMLDivElement | null>(null);
+        const projectMenuRef = React.useRef<HTMLDivElement | null>(null);
+        const [isOpen, setIsOpen] = React.useState(true);
+        const [lastAction, setLastAction] = React.useState("");
+        return (
+            <div className="bg-gw-chrome min-h-[320px]">
+                <ShellSettingsMenu
+                    projectName="The Long Winter"
+                    isDarkMode={false}
+                    isOpen={isOpen}
+                    menuRef={menuRef}
+                    projectMenuRef={projectMenuRef}
+                    isProjectMenuOpen={false}
+                    hasProject={true}
+                    onToggleOpen={() => setIsOpen((p) => !p)}
+                    onToggleProjectMenuOpen={noop}
+                    onOpenPreferences={() => setLastAction("preferences")}
+                    onOpenHeadingSettings={() =>
+                        setLastAction("heading-settings")
+                    }
+                    onOpenBodySettings={() => setLastAction("body-settings")}
+                    onOpenDefaultRevisionNameSettings={() =>
+                        setLastAction("default-revision-name")
+                    }
+                    onOpenProjectTypeManager={() =>
+                        setLastAction("project-types")
+                    }
+                    onOpenTagsManager={() => setLastAction("tags-manager")}
+                    onToggleColorMode={() => setLastAction("color-mode")}
+                    onOpenHelp={() => setLastAction("help")}
+                    onCloseProject={() => setLastAction("close-project")}
+                    onOpenCompile={() => setLastAction("compile")}
+                />
+                <div
+                    data-testid="last-action"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {lastAction}
+                </div>
+                <div
+                    data-testid="is-open"
+                    aria-hidden
+                    style={{ display: "none" }}
+                >
+                    {String(isOpen)}
+                </div>
+            </div>
+        );
+    },
 };

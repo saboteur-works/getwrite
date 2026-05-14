@@ -60,6 +60,8 @@ export interface ProjectConfig {
         };
         body?: EditorBodyConfig;
     };
+    /** Default name applied to the initial canonical revision when a new text resource is created. */
+    defaultRevisionName?: string;
 }
 
 /** Simple Tag type for project-scoped tagging. */

@@ -95,6 +95,7 @@ export const ProjectConfigSchema = z.object({
         .optional(),
     tagAssignments: z.record(z.string(), z.array(UUID)).optional(),
     editorConfig: EditorConfigSchema.optional(),
+    defaultRevisionName: z.string().optional(),
 });
 
 /**
