@@ -160,6 +160,11 @@ export interface AppShellProps {
         duration: number | null,
         resourceId: string,
     ) => void;
+    /** Metadata callback for story end date override updates. */
+    onChangeStoryEndDate?: (
+        endDate: string | null,
+        resourceId: string,
+    ) => void;
     /**
      * General resource action handler used by tree and modal flows.
      *
@@ -198,6 +203,7 @@ export default function AppShell({
     onChangeDynamicMetadata,
     onChangeStoryDate,
     onChangeStoryDuration,
+    onChangeStoryEndDate,
     onResourceAction,
     onCloseProject,
     project,
@@ -1664,6 +1670,13 @@ export default function AppShell({
                                             selectedResource &&
                                             onChangeStoryDuration?.(
                                                 duration,
+                                                selectedResource.id,
+                                            )
+                                        }
+                                        onChangeStoryEndDate={(endDate) =>
+                                            selectedResource &&
+                                            onChangeStoryEndDate?.(
+                                                endDate,
                                                 selectedResource.id,
                                             )
                                         }

@@ -10,6 +10,7 @@ import MultiSelectList from "../components/Sidebar/controls/MultiSelectList";
 import POVAutocomplete from "../components/Sidebar/controls/POVAutocomplete";
 import DateTimeInput from "../components/Sidebar/controls/DateTimeInput";
 import DurationInput from "../components/Sidebar/controls/DurationInput";
+import EndDateInput from "../components/Sidebar/controls/EndDateInput";
 
 describe("Sidebar Controls", () => {
     it("NotesInput calls onChange", () => {
@@ -122,20 +123,70 @@ describe("Sidebar Controls", () => {
         expect(dateInput.value).toBe("2024-12-31");
     });
 
-    it("DurationInput calls onChange with parsed integer", () => {
+    it("DurationInput renders quantity field and unit select", () => {
+        render(<DurationInput />);
+        expect(screen.getByLabelText("story-duration-quantity")).toBeInTheDocument();
+        expect(screen.getByLabelText("story-duration-unit")).toBeInTheDocument();
+    });
+
+    it("DurationInput defaults to minutes unit when no value is passed", () => {
+        render(<DurationInput />);
+        const unitSelect = screen.getByLabelText("story-duration-unit") as HTMLSelectElement;
+        expect(unitSelect.value).toBe("minutes");
+    });
+
+    it("DurationInput emits minutes when entering quantity in minutes", () => {
         const onChange = vi.fn();
         render(<DurationInput onChange={onChange} />);
-        const input = screen.getByLabelText("story-duration-input");
-        fireEvent.change(input, { target: { value: "60" } });
+        fireEvent.change(screen.getByLabelText("story-duration-quantity"), { target: { value: "60" } });
         expect(onChange).toHaveBeenCalledWith(60);
     });
 
-    it("DurationInput calls onChange(null) when input is cleared", () => {
+    it("DurationInput emits correct minutes when unit is hours", () => {
+        const onChange = vi.fn();
+        render(<DurationInput onChange={onChange} />);
+        fireEvent.change(screen.getByLabelText("story-duration-unit"), { target: { value: "hours" } });
+        fireEvent.change(screen.getByLabelText("story-duration-quantity"), { target: { value: "2" } });
+        expect(onChange).toHaveBeenCalledWith(120);
+    });
+
+    it("DurationInput emits correct minutes when unit is days", () => {
+        const onChange = vi.fn();
+        render(<DurationInput onChange={onChange} />);
+        fireEvent.change(screen.getByLabelText("story-duration-unit"), { target: { value: "days" } });
+        fireEvent.change(screen.getByLabelText("story-duration-quantity"), { target: { value: "1" } });
+        expect(onChange).toHaveBeenCalledWith(1440);
+    });
+
+    it("DurationInput emits correct minutes when unit is years", () => {
+        const onChange = vi.fn();
+        render(<DurationInput onChange={onChange} />);
+        fireEvent.change(screen.getByLabelText("story-duration-unit"), { target: { value: "years" } });
+        fireEvent.change(screen.getByLabelText("story-duration-quantity"), { target: { value: "1" } });
+        expect(onChange).toHaveBeenCalledWith(525960);
+    });
+
+    it("DurationInput calls onChange(null) when quantity is cleared", () => {
         const onChange = vi.fn();
         render(<DurationInput value={60} onChange={onChange} />);
-        const input = screen.getByLabelText("story-duration-input");
-        fireEvent.change(input, { target: { value: "" } });
+        fireEvent.change(screen.getByLabelText("story-duration-quantity"), { target: { value: "" } });
         expect(onChange).toHaveBeenCalledWith(null);
+    });
+
+    it("DurationInput initialises to 2 hours when value=120 (smart unit detection)", () => {
+        render(<DurationInput value={120} />);
+        const qty = screen.getByLabelText("story-duration-quantity") as HTMLInputElement;
+        const unit = screen.getByLabelText("story-duration-unit") as HTMLSelectElement;
+        expect(qty.value).toBe("2");
+        expect(unit.value).toBe("hours");
+    });
+
+    it("DurationInput initialises to 90 minutes when value=90 (no clean unit divisor)", () => {
+        render(<DurationInput value={90} />);
+        const qty = screen.getByLabelText("story-duration-quantity") as HTMLInputElement;
+        const unit = screen.getByLabelText("story-duration-unit") as HTMLSelectElement;
+        expect(qty.value).toBe("90");
+        expect(unit.value).toBe("minutes");
     });
 
     it("EditorMenuColorSubmenu opens and forwards the chosen color", async () => {
@@ -165,5 +216,57 @@ describe("Sidebar Controls", () => {
                 name: /Select color #111827/i,
             }),
         ).not.toBeInTheDocument();
+    });
+});
+
+describe("EndDateInput", () => {
+    it("shows computed end date as read-only text when no override is active", () => {
+        render(<EndDateInput computedEndDate="2024-06-01T02:00:00.000Z" />);
+        expect(screen.queryByLabelText("story-end-date-input")).not.toBeInTheDocument();
+        expect(screen.getByLabelText("end-date-override-toggle")).toBeInTheDocument();
+    });
+
+    it("shows em-dash when neither computed nor override value is present", () => {
+        render(<EndDateInput />);
+        expect(screen.getByText("—")).toBeInTheDocument();
+    });
+
+    it("renders Override button", () => {
+        render(<EndDateInput computedEndDate="2024-06-01T02:00:00.000Z" />);
+        expect(screen.getByLabelText("end-date-override-toggle")).toBeInTheDocument();
+    });
+
+    it("clicking Override shows datetime-local input pre-filled with computed value", () => {
+        render(<EndDateInput computedEndDate="2024-06-01T02:00:00.000Z" />);
+        fireEvent.click(screen.getByLabelText("end-date-override-toggle"));
+        const input = screen.getByLabelText("story-end-date-input") as HTMLInputElement;
+        expect(input).toBeInTheDocument();
+        expect(input.value).toBe("2024-06-01T02:00");
+    });
+
+    it("changing datetime-local input fires onChange with ISO string", () => {
+        const onChange = vi.fn();
+        render(<EndDateInput computedEndDate="2024-06-01T02:00:00.000Z" onChange={onChange} />);
+        fireEvent.click(screen.getByLabelText("end-date-override-toggle"));
+        fireEvent.change(screen.getByLabelText("story-end-date-input"), {
+            target: { value: "2024-06-01T04:00" },
+        });
+        expect(onChange).toHaveBeenCalledWith("2024-06-01T04:00");
+    });
+
+    it("clicking Clear override fires onChange(null) and returns to read-only", () => {
+        const onChange = vi.fn();
+        render(<EndDateInput overrideValue="2024-06-01T04:00" onChange={onChange} />);
+        expect(screen.getByLabelText("story-end-date-input")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /clear override/i }));
+        expect(onChange).toHaveBeenCalledWith(null);
+        expect(screen.queryByLabelText("story-end-date-input")).not.toBeInTheDocument();
+    });
+
+    it("shows editable input by default when overrideValue prop is provided", () => {
+        render(<EndDateInput overrideValue="2024-06-01T04:00" />);
+        const input = screen.getByLabelText("story-end-date-input") as HTMLInputElement;
+        expect(input).toBeInTheDocument();
+        expect(input.value).toBe("2024-06-01T04:00");
     });
 });

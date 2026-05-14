@@ -1,9 +1,29 @@
 import React from "react";
 import LabeledField from "./LabeledField";
-import useSyncedControlledValue from "./useSyncedControlledValue";
+
+type DurationUnit = "minutes" | "hours" | "days" | "years";
+
+const MULTIPLIERS: Record<DurationUnit, number> = {
+    minutes: 1,
+    hours: 60,
+    days: 1440,
+    years: 525960,
+};
+
+const UNIT_ORDER: DurationUnit[] = ["years", "days", "hours", "minutes"];
+
+function detectUnit(minutes: number): { quantity: string; unit: DurationUnit } {
+    if (minutes <= 0) return { quantity: String(minutes), unit: "minutes" };
+    for (const unit of UNIT_ORDER) {
+        if (minutes % MULTIPLIERS[unit] === 0) {
+            return { quantity: String(minutes / MULTIPLIERS[unit]), unit };
+        }
+    }
+    return { quantity: String(minutes), unit: "minutes" };
+}
 
 export interface DurationInputProps {
-    value?: number | null; // minutes
+    value?: number | null;
     onChange?: (value: number | null) => void;
     className?: string;
     ariaLabel?: string;
@@ -13,31 +33,63 @@ export default function DurationInput({
     value = null,
     onChange,
     className = "",
-    ariaLabel = "story-duration-input",
 }: DurationInputProps) {
-    const [displayValue, setDisplayValue] = useSyncedControlledValue<string>(
-        value !== null && value !== undefined ? String(value) : "",
-        (next) => {
-            if (next === "") {
-                onChange?.(null);
-            } else {
-                const parsed = parseInt(next, 10);
-                if (!isNaN(parsed)) onChange?.(parsed);
-            }
-        },
-    );
+    const init =
+        value != null ? detectUnit(value) : { quantity: "", unit: "minutes" as DurationUnit };
+
+    const [quantity, setQuantity] = React.useState<string>(init.quantity);
+    const [unit, setUnit] = React.useState<DurationUnit>(init.unit);
+
+    React.useEffect(() => {
+        if (value == null) {
+            setQuantity("");
+            setUnit("minutes");
+        } else {
+            const next = detectUnit(value);
+            setQuantity(next.quantity);
+            setUnit(next.unit);
+        }
+    }, [value]);
+
+    const emit = (q: string, u: DurationUnit) => {
+        if (q === "") {
+            onChange?.(null);
+        } else {
+            const parsed = parseFloat(q);
+            if (!isNaN(parsed)) onChange?.(parsed * MULTIPLIERS[u]);
+        }
+    };
 
     return (
-        <LabeledField label="Duration (min)" className={className}>
-            <input
-                type="number"
-                aria-label={ariaLabel}
-                className="w-full mt-2 p-2 border rounded text-sm"
-                min={0}
-                step={5}
-                value={displayValue}
-                onChange={(e) => setDisplayValue(e.target.value)}
-            />
+        <LabeledField label="Duration" className={className}>
+            <div className="flex gap-2 mt-2">
+                <input
+                    type="number"
+                    aria-label="story-duration-quantity"
+                    className="w-full p-2 border rounded text-sm"
+                    min={0}
+                    value={quantity}
+                    onChange={(e) => {
+                        setQuantity(e.target.value);
+                        emit(e.target.value, unit);
+                    }}
+                />
+                <select
+                    aria-label="story-duration-unit"
+                    className="p-2 border rounded text-sm"
+                    value={unit}
+                    onChange={(e) => {
+                        const u = e.target.value as DurationUnit;
+                        setUnit(u);
+                        emit(quantity, u);
+                    }}
+                >
+                    <option value="minutes">min</option>
+                    <option value="hours">hr</option>
+                    <option value="days">day</option>
+                    <option value="years">yr</option>
+                </select>
+            </div>
         </LabeledField>
     );
 }

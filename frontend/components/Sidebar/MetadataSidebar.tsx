@@ -5,6 +5,7 @@ import MultiSelectList from "./controls/MultiSelectList";
 import POVAutocomplete from "./controls/POVAutocomplete";
 import DateTimeInput from "./controls/DateTimeInput";
 import DurationInput from "./controls/DurationInput";
+import EndDateInput from "./controls/EndDateInput";
 import TagsSection from "./TagsSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual, useStore } from "react-redux";
@@ -20,6 +21,7 @@ export interface MetadataSidebarProps {
     onChangeDynamicMetadata?: (metadata: Record<string, string[]>) => void;
     onChangeStoryDate?: (value: string) => void;
     onChangeStoryDuration?: (value: number | null) => void;
+    onChangeStoryEndDate?: (value: string | null) => void;
     className?: string;
 }
 
@@ -30,6 +32,7 @@ export default function MetadataSidebar({
     onChangeDynamicMetadata,
     onChangeStoryDate,
     onChangeStoryDuration,
+    onChangeStoryEndDate,
     className = "",
 }: MetadataSidebarProps): JSX.Element {
     const store = useStore();
@@ -99,6 +102,9 @@ export default function MetadataSidebar({
     const [storyDuration, setStoryDuration] = React.useState<number | null>(
         (selectedResource?.userMetadata?.storyDuration as number) ?? null,
     );
+    const [storyEndDate, setStoryEndDate] = React.useState<string | null>(
+        (selectedResource?.userMetadata?.storyEndDate as string) ?? null,
+    );
 
     const [dynamicMetadataSelections, setDynamicMetadataSelections] =
         React.useState({
@@ -114,6 +120,9 @@ export default function MetadataSidebar({
         setStoryDuration(
             (selectedResource?.userMetadata?.storyDuration as number) ?? null,
         );
+        setStoryEndDate(
+            (selectedResource?.userMetadata?.storyEndDate as string) ?? null,
+        );
         setDynamicMetadataSelections((prev) => {
             const newSelections: Record<string, string[]> = {};
             metadataSourceFolders.forEach((folder) => {
@@ -127,6 +136,11 @@ export default function MetadataSidebar({
             };
         });
     }, [selectedResource]);
+
+    const computedEndDate = React.useMemo(() => {
+        if (!storyDate || storyDuration == null) return undefined;
+        return new Date(Date.parse(storyDate) + storyDuration * 60000).toISOString();
+    }, [storyDate, storyDuration]);
 
     // TODO: Rewrite the above lists to be more dynamic based on what metadataSourceFolders exist in the project,
     // rather than hardcoding characters/locations/items. This will allow for more flexible project types and custom metadata sources.
@@ -201,6 +215,17 @@ export default function MetadataSidebar({
                             onChange={(v) => {
                                 setStoryDuration(v);
                                 onChangeStoryDuration?.(v);
+                            }}
+                        />
+                    </div>
+                    <div className="mb-6">
+                        <EndDateInput
+                            className="text-brand-mid"
+                            computedEndDate={computedEndDate}
+                            overrideValue={storyEndDate ?? undefined}
+                            onChange={(v) => {
+                                setStoryEndDate(v);
+                                onChangeStoryEndDate?.(v);
                             }}
                         />
                     </div>

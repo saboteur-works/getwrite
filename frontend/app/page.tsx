@@ -418,6 +418,16 @@ export default function Home(): JSX.Element {
         }));
     };
 
+    const handleChangeStoryEndDate = (
+        endDate: string | null,
+        resourceId: string,
+    ) => {
+        updateResource(resourceId, (r) => ({
+            ...r,
+            userMetadata: { ...r.userMetadata, storyEndDate: endDate },
+        }));
+    };
+
     /**
      * Dispatches a CRUD or utility action on a resource.
      *
@@ -699,6 +709,7 @@ export default function Home(): JSX.Element {
             onChangePOV={handleChangePOV}
             onChangeStoryDate={handleChangeStoryDate}
             onChangeStoryDuration={handleChangeStoryDuration}
+            onChangeStoryEndDate={handleChangeStoryEndDate}
         >
             {!selectedProject ? (
                 <StartPage

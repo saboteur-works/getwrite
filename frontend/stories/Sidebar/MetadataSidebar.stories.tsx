@@ -104,6 +104,9 @@ export const Interactive: Story = {
                         onChangeStoryDuration={(val) =>
                             markChanged(String(val ?? ""))
                         }
+                        onChangeStoryEndDate={(val) =>
+                            markChanged(val ?? "(cleared)")
+                        }
                     />
                     <div
                         data-testid="current-resource-name"
@@ -126,6 +129,87 @@ export const Interactive: Story = {
         return (
             <Provider store={store}>
                 <Wrapper />
+            </Provider>
+        );
+    },
+};
+
+function makeStoreWithResource(resource: ReturnType<typeof createTextResource>) {
+    const store = configureStore({
+        reducer: {
+            projects: projectReducer,
+            resources: resourcesReducer,
+            revisions: revisionsReducer,
+            editorConfig: editorConfigReducer,
+        },
+        preloadedState: {
+            projects: {
+                selectedProjectId: "story-proj",
+                projects: {
+                    "story-proj": {
+                        id: "story-proj",
+                        name: "Story Project",
+                        rootPath: "/story",
+                        folders: [],
+                        resources: [{ id: resource.id, name: resource.name }],
+                    } as StoredProject,
+                },
+            },
+            resources: {
+                selectedResourceId: resource.id,
+                resources: [resource],
+                folders: [],
+            },
+            revisions: {
+                resourceId: null,
+                requestedResourceId: null,
+                currentRevisionId: null,
+                currentRevisionContent: null,
+                revisions: [],
+                isLoading: false,
+                isSaving: false,
+                fetchingRevisionId: null,
+                deletingRevisionId: null,
+                errorMessage: "",
+            },
+            editorConfig: { headings: {} },
+        },
+    });
+    return store;
+}
+
+export const WithEndDate: Story = {
+    render: () => {
+        const resource = createTextResource({
+            name: "Chapter One",
+            plainText: "",
+            userMetadata: {
+                storyDate: "2024-06-01",
+                storyDuration: 120,
+            },
+        });
+        return (
+            <Provider store={makeStoreWithResource(resource)}>
+                <MetadataSidebar />
+            </Provider>
+        );
+    },
+};
+
+export const WithEndDateOverride: Story = {
+    render: () => {
+        const resource = createTextResource({
+            name: "Chapter Two",
+            plainText: "",
+            userMetadata: {
+                storyDate: "2024-06-01",
+                storyDuration: 120,
+                storyEndDate: "2024-06-01T06:00",
+            },
+        });
+        return (
+            <Provider store={makeStoreWithResource(resource)}>
+                <MetadataSidebar />
             </Provider>
         );
     },
