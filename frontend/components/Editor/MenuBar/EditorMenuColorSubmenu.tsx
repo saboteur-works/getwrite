@@ -45,10 +45,6 @@ export default function EditorMenuColorSubmenu({
     );
     const Icon = iconName ? ColorIconTypes[iconName] : icon;
 
-    if (!Icon) {
-        return null;
-    }
-
     useEffect(() => {
         if (!open || !buttonRef.current) {
             return;
@@ -100,6 +96,10 @@ export default function EditorMenuColorSubmenu({
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, []);
+
+    if (!Icon) {
+        return null;
+    }
 
     return (
         <div className="editor-menu-color-root" ref={rootRef}>

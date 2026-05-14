@@ -46,7 +46,7 @@ describe("tags (T023)", () => {
         const tag = await createTag(dir, "baz");
         await assignTagToResource(dir, "res-x", tag.id);
         await unassignTagFromResource(dir, "res-x", tag.id);
-        let res = await listResourcesByTag(dir, tag.id);
+        const res = await listResourcesByTag(dir, tag.id);
         expect(res).toEqual([]);
 
         const deleted = await deleteTag(dir, tag.id);

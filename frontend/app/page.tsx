@@ -472,7 +472,7 @@ export default function Home(): JSX.Element {
 
         if (action === "create") {
             const title = opts?.title ?? "New Resource";
-            let payload = {
+            const payload = {
                 name: title,
                 folderId: opts?.folderId ?? null,
                 type: opts?.type ?? "text",

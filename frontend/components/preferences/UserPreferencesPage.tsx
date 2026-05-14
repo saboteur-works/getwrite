@@ -149,7 +149,7 @@ export default function UserPreferencesPage({
                         User Preferences
                     </h1>
                     <p className="text-sm text-gw-secondary">
-                        Personal settings stored in the selected project's
+                        Personal settings stored in the selected project&apos;s
                         metadata.
                     </p>
                 </div>
