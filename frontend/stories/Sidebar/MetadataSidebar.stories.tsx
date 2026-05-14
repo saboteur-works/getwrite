@@ -1,5 +1,5 @@
 import React from "react";
-import { Meta, StoryObj } from "@storybook/react";
+import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider, useSelector } from "react-redux";
 import MetadataSidebar from "../../components/Sidebar/MetadataSidebar";
@@ -229,4 +229,83 @@ export const WithEndDateOverride: Story = {
             </Provider>
         );
     },
+};
+
+export const AllExpanded: Story = {
+    render: () => {
+        const resource = createTextResource({
+            name: "Chapter One",
+            plainText: "",
+            userMetadata: {
+                synopsis: "A duel at dawn resolves the tension.",
+                notes: "Research fencing terminology.",
+                status: "draft",
+                storyDate: "2024-06-01",
+                storyDuration: 120,
+            },
+        });
+        return (
+            <Provider store={makeStoreWithResource(resource)}>
+                <MetadataSidebar />
+            </Provider>
+        );
+    },
+    args: {},
+};
+
+export const AllCollapsed: Story = {
+    render: () => {
+        const resource = createTextResource({
+            name: "Chapter One",
+            plainText: "",
+            userMetadata: {
+                synopsis: "A duel at dawn.",
+                notes: "Check the pacing.",
+                status: "draft",
+                storyDate: "2024-06-01",
+                storyDuration: 60,
+            },
+        });
+        return (
+            <Provider store={makeStoreWithResource(resource)}>
+                <div data-testid="sidebar-wrapper">
+                    <MetadataSidebar />
+                </div>
+            </Provider>
+        );
+    },
+    args: {},
+};
+
+export const InteractiveCollapse: Story = {
+    render: () => {
+        const resource = createTextResource({
+            name: "Chapter One",
+            plainText: "",
+            userMetadata: {
+                synopsis: "A duel at dawn.",
+                notes: "Check the pacing.",
+                status: "draft",
+                storyDate: "2024-06-01",
+                storyDuration: 120,
+            },
+        });
+
+        const store = makeStoreWithResource(resource);
+
+        return (
+            <Provider store={store}>
+                <MetadataSidebar
+                    onChangeSynopsis={() => {}}
+                    onChangeNotes={() => {}}
+                    onChangeStatus={() => {}}
+                    onChangePOV={() => {}}
+                    onChangeStoryDate={() => {}}
+                    onChangeStoryDuration={() => {}}
+                    onChangeStoryEndDate={() => {}}
+                />
+            </Provider>
+        );
+    },
+    args: {},
 };

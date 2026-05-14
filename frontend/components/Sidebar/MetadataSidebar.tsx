@@ -8,6 +8,7 @@ import DateTimeInput from "./controls/DateTimeInput";
 import DurationInput from "./controls/DurationInput";
 import EndDateInput from "./controls/EndDateInput";
 import TagsSection from "./TagsSection";
+import SidebarSection from "./SidebarSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual, useStore } from "react-redux";
 import { selectResource } from "../../src/store/resourcesSlice";
@@ -164,7 +165,7 @@ export default function MetadataSidebar({
                             {selectedResource.name}
                         </h3>
                     </div>
-                    <div className="mb-6">
+                    <SidebarSection label="Synopsis">
                         <SynopsisInput
                             ariaLabel="synopsis"
                             value={synopsis}
@@ -174,8 +175,8 @@ export default function MetadataSidebar({
                                 onChangeSynopsis?.(v);
                             }}
                         />
-                    </div>
-                    <div className="mb-6">
+                    </SidebarSection>
+                    <SidebarSection label="Notes">
                         <NotesInput
                             ariaLabel="notes"
                             value={notes}
@@ -185,27 +186,17 @@ export default function MetadataSidebar({
                                 onChangeNotes && onChangeNotes(v);
                             }}
                         />
-                    </div>
-
-                    <div className="mb-6">
+                    </SidebarSection>
+                    <SidebarSection label="Status & POV">
                         <StatusSelector
                             ariaLabel="status"
                             className="text-brand-mid"
                             value={status}
                             onChange={(s) => {
-                                const updated = {
-                                    ...selectedResource,
-                                    userMetadata: {
-                                        ...selectedResource?.userMetadata,
-                                        status: s,
-                                    },
-                                };
                                 setStatus(s);
                                 onChangeStatus && onChangeStatus(s);
                             }}
                         />
-                    </div>
-                    <div>
                         <POVAutocomplete
                             className="text-brand-mid"
                             options={characterList}
@@ -215,8 +206,8 @@ export default function MetadataSidebar({
                                 onChangePOV && onChangePOV(v);
                             }}
                         />
-                    </div>
-                    <div className="mb-6">
+                    </SidebarSection>
+                    <SidebarSection label="Story Timeline">
                         <DateTimeInput
                             className="text-brand-mid"
                             value={storyDate}
@@ -225,8 +216,6 @@ export default function MetadataSidebar({
                                 onChangeStoryDate?.(v);
                             }}
                         />
-                    </div>
-                    <div className="mb-6">
                         <DurationInput
                             className="text-brand-mid"
                             value={storyDuration}
@@ -235,8 +224,6 @@ export default function MetadataSidebar({
                                 onChangeStoryDuration?.(v);
                             }}
                         />
-                    </div>
-                    <div className="mb-6">
                         <EndDateInput
                             className="text-brand-mid"
                             computedEndDate={computedEndDate}
@@ -246,31 +233,23 @@ export default function MetadataSidebar({
                                 onChangeStoryEndDate?.(v);
                             }}
                         />
-                    </div>
+                    </SidebarSection>
                     <div id="sidebar-dynamic-test">
                         {metadataSourceFolders.map((folder) => (
-                            <div key={folder.name} className="mb-6">
-                                {folder.metadataSource?.metadataInputType ===
-                                "multiselect" ? (
+                            folder.metadataSource?.metadataInputType === "multiselect" ? (
+                                <SidebarSection key={folder.name} label={folder.name}>
                                     <MultiSelectList
                                         label={folder.name}
                                         className="text-brand-mid"
-                                        items={(() =>
-                                            getMetadataForFolder(
-                                                folder.name,
-                                            ))()}
+                                        items={getMetadataForFolder(folder.name)}
                                         selected={
-                                            dynamicMetadataSelections[
-                                                folder.slug
-                                            ] ?? []
+                                            dynamicMetadataSelections[folder.slug] ?? []
                                         }
                                         onChange={(next) => {
-                                            setDynamicMetadataSelections(
-                                                (prev) => ({
-                                                    ...prev,
-                                                    [folder.slug]: next,
-                                                }),
-                                            );
+                                            setDynamicMetadataSelections((prev) => ({
+                                                ...prev,
+                                                [folder.slug]: next,
+                                            }));
                                             onChangeDynamicMetadata &&
                                                 onChangeDynamicMetadata({
                                                     ...dynamicMetadataSelections,
@@ -278,11 +257,13 @@ export default function MetadataSidebar({
                                                 });
                                         }}
                                     />
-                                ) : null}
-                            </div>
+                                </SidebarSection>
+                            ) : null
                         ))}
                     </div>
-                    <TagsSection />
+                    <SidebarSection label="Tags">
+                        <TagsSection />
+                    </SidebarSection>
                 </React.Fragment>
             ) : (
                 <div className="metadata-sidebar-empty">

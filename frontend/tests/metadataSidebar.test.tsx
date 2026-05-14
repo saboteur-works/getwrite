@@ -170,6 +170,84 @@ describe("MetadataSidebar", () => {
         expect(onSynopsis).toHaveBeenCalledWith("A new synopsis.");
     });
 
+    it("renders collapsible section headings", () => {
+        const res = createTextResource({ name: "Scene", plainText: "" });
+        const testStore = makeStore();
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+
+        expect(screen.getByRole("button", { name: /synopsis/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /notes/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /status/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /story timeline/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /tags/i })).toBeInTheDocument();
+    });
+
+    it("collapses synopsis section and hides the textarea", () => {
+        const res = createTextResource({
+            name: "Scene",
+            plainText: "",
+            userMetadata: { synopsis: "A duel at dawn." },
+        });
+        const testStore = makeStore();
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+
+        expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /synopsis/i }));
+        expect(screen.queryByLabelText("synopsis")).not.toBeInTheDocument();
+    });
+
+    it("expands a collapsed section when header is clicked again", () => {
+        const res = createTextResource({ name: "Scene", plainText: "" });
+        const testStore = makeStore();
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+
+        const notesBtn = screen.getByRole("button", { name: /notes/i });
+        fireEvent.click(notesBtn);
+        expect(screen.queryByLabelText("notes")).not.toBeInTheDocument();
+        fireEvent.click(notesBtn);
+        expect(screen.getByLabelText("notes")).toBeInTheDocument();
+    });
+
+    it("collapses story timeline and hides all three inputs", () => {
+        const res = createTextResource({
+            name: "Scene",
+            plainText: "",
+            userMetadata: { storyDate: "2024-06-01", storyDuration: 90 },
+        });
+        const testStore = makeStore();
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+
+        expect(screen.getByLabelText("story-date-input")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /story timeline/i }));
+        expect(screen.queryByLabelText("story-date-input")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("story-duration-quantity")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("end-date-override-toggle")).not.toBeInTheDocument();
+    });
+
     it("renders notes and status and invokes callbacks", () => {
         const res = createTextResource({
             name: "Notes",
