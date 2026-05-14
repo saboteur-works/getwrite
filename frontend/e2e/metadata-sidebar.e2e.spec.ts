@@ -117,15 +117,15 @@ test("collapse: clicking synopsis header again restores the textarea", async ({ 
 test("collapse: clicking story timeline header hides all three timeline inputs", async ({ page }) => {
     await page.goto("/iframe.html?id=sidebar-metadatasidebar--interactive-collapse");
 
-    await expect(page.getByLabel("story-date-input")).toBeVisible();
-    await expect(page.getByLabel("story-duration-quantity")).toBeVisible();
-    await expect(page.getByLabel("end-date-override-toggle")).toBeVisible();
+    await expect(page.getByLabel("story-date-input", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("story-duration-quantity", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("end-date-override-toggle", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: /story timeline/i }).click();
 
-    await expect(page.getByLabel("story-date-input")).not.toBeAttached();
-    await expect(page.getByLabel("story-duration-quantity")).not.toBeAttached();
-    await expect(page.getByLabel("end-date-override-toggle")).not.toBeAttached();
+    await expect(page.getByLabel("story-date-input", { exact: true })).not.toBeAttached();
+    await expect(page.getByLabel("story-duration-quantity", { exact: true })).not.toBeAttached();
+    await expect(page.getByLabel("end-date-override-toggle", { exact: true })).not.toBeAttached();
 });
 
 test("collapse: notes section collapses and expands independently", async ({ page }) => {

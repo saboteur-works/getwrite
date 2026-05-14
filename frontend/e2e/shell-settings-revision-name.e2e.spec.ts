@@ -37,7 +37,7 @@ test("DefaultRevisionNameModal renders with the initial name in the input", asyn
     page,
 }) => {
     await page.goto(
-        "/iframe.html?id=preferences-defaultrevisionnammodal--default",
+        "/iframe.html?id=preferences-defaultrevisionnamemodal--default",
     );
     const input = page.getByRole("textbox");
     await expect(input).toHaveValue("Initial Draft");
@@ -47,7 +47,7 @@ test("DefaultRevisionNameModal shows a validation error for an empty name", asyn
     page,
 }) => {
     await page.goto(
-        "/iframe.html?id=preferences-defaultrevisionnammodal--default",
+        "/iframe.html?id=preferences-defaultrevisionnamemodal--default",
     );
     await page.getByRole("textbox").fill("");
     await page.getByRole("button", { name: /save/i }).click();
@@ -59,7 +59,7 @@ test("DefaultRevisionNameModal cancel button does not call save", async ({
     page,
 }) => {
     await page.goto(
-        "/iframe.html?id=preferences-defaultrevisionnammodal--default",
+        "/iframe.html?id=preferences-defaultrevisionnamemodal--default",
     );
     await page.getByRole("button", { name: /cancel/i }).click();
     // Modal component is still rendered in the story after cancel (story doesn't dismiss).
