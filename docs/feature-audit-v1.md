@@ -36,7 +36,7 @@ Right Sidebar (metadata)
 
 Revisions and invariants
 
-- **Revision model & invariants**: Partial — core guards and normalization are implemented in [frontend/src/store/revision-canonical-guards.ts](frontend/src/store/revision-canonical-guards.ts) and [frontend/src/store/revision-normalization.ts](frontend/src/store/revision-normalization.ts). The Redux slice is [frontend/src/store/revisionsSlice.ts](frontend/src/store/revisionsSlice.ts). Unit tests exist, but additional integration tests for concurrent canonical updates, deletes, and recovery are high priority.
+- **Revision model & invariants**: Implemented — core guards and normalization are implemented in [frontend/src/store/revision-canonical-guards.ts](frontend/src/store/revision-canonical-guards.ts) and [frontend/src/store/revision-normalization.ts](frontend/src/store/revision-normalization.ts). The Redux slice is [frontend/src/store/revisionsSlice.ts](frontend/src/store/revisionsSlice.ts). Route-level canonical guards added to POST handler (single-canonical invariant on create) and DELETE handler (blocks deletion of canonical revision, HTTP 400). Tests in `frontend/tests/unit/revision-route-canonical.test.ts` and `frontend/tests/unit/revision-invariants.test.ts`.
 
 - **Revision UI flows**: Implemented — Revision selection, canonical toggle, create/delete flows wired to transport service ([frontend/src/store/revision-transport-service.ts]). Edge-case UX (editing old revision then saving) requires clearer e2e test coverage.
 
@@ -48,7 +48,7 @@ Search & Indexing
 
 - **Search UI**: Implemented — [frontend/components/SearchBar/SearchBar.tsx] with filters UI.
 
-- **Indexing & inverted index**: Partial — core index implementation at [frontend/src/lib/models/inverted-index.ts] and queueing at [frontend/src/lib/models/indexer-queue.ts]. Missing a stable drain/completion API (`waitForDrain()` recommended) for deterministic tests and tooling.
+- **Indexing & inverted index**: Implemented — core index at [frontend/src/lib/models/inverted-index.ts] and queueing at [frontend/src/lib/models/indexer-queue.ts]. `waitForDrain()` exported as a named function (alias for `flushIndexer`). Error logging added to the queue. `getwrite reindex [projectRoot]` CLI command added for index corruption recovery (`frontend/src/cli/commands/reindex.ts`).
 
 - **Search across revisions & result behavior**: Partial — UI supports cross-revision searches; behavior to open diff view on revision-match exists but needs more integration tests to ensure the latest matching revision is selected consistently.
 

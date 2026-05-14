@@ -363,6 +363,10 @@ export async function POST(
             },
         );
 
+        if (isCanonical) {
+            await setCanonicalRevision(projectPath, resourceId, versionNumber);
+        }
+
         return NextResponse.json(revision, { status: 201 });
     } catch (error) {
         const message =
@@ -419,6 +423,25 @@ export async function DELETE(
     }
 
     try {
+        const revisions = await listRevisions(projectPath, resourceId);
+        const target = revisions.find((r) => r.id === revisionId);
+
+        if (!target) {
+            return NextResponse.json(
+                { error: `Revision ${revisionId} not found.` },
+                { status: 404 },
+            );
+        }
+
+        if (target.isCanonical) {
+            return NextResponse.json(
+                {
+                    error: "Cannot delete the canonical revision; promote another revision first.",
+                },
+                { status: 400 },
+            );
+        }
+
         const deletedRevision = await deleteRevisionById(
             projectPath,
             resourceId,

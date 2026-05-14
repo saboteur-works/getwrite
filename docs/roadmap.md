@@ -16,9 +16,9 @@ Features actively in development or nearing completion:
 
 ### Stage 3 — Immediate Remediation & Tech-debt Work
 
-- Priority P0: `fix/revision-canonical-guards` — add unit + integration tests for canonical revision invariants; small guard fixes to prevent multi-canonical states. See the tech-debt inventory for details: [docs/tech-debt.md](docs/tech-debt.md).
+- ~~Priority P0: `fix/revision-canonical-guards`~~ — **Done in `fix/p0-blockers`**. POST and DELETE route handlers now enforce the single-canonical invariant. Tests added.
 
-- Priority P0: `feat/indexer-wait-drain` — add a promise-based `waitForDrain()` API, durable writes, and a reindex/repair CLI. See indexing audit in [docs/feature-audit-v1.md](docs/feature-audit-v1.md).
+- ~~Priority P0: `feat/indexer-wait-drain`~~ — **Done in `fix/p0-blockers`**. `waitForDrain()` exported from indexer-queue, error logging added, `getwrite reindex` CLI command added. Tests added.
 
 - Priority P1: `chore/toolbar-consolidation` — centralize toolbar command descriptors and migrate menu wiring to a config-driven renderer. See Editor Toolbar section below and tech-debt entry.
 
@@ -123,8 +123,8 @@ Known improvements to internal systems:
 
 ### Next 90 days — Priorities
 
-- P0: `fix/revision-canonical-guards` — owner: TBD — Goal: close invariant test gaps and land the canonical guard patch.
-- P0: `feat/indexer-wait-drain` — owner: TBD — Goal: deterministic drain API and durable writes merged; add reindex CLI.
+- ~~P0: `fix/revision-canonical-guards`~~ — **Done in `fix/p0-blockers`**.
+- ~~P0: `feat/indexer-wait-drain`~~ — **Done in `fix/p0-blockers`**.
 - P1: `chore/toolbar-consolidation` — owner: TBD — Goal: migrate one major toolbar group and prove parity via tests.
 - P1: `chore/lodash-import-cleanup` — owner: TBD — Goal: codemod common lodash cases and add lint rule.
 
