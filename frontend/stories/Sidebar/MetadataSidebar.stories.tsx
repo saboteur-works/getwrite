@@ -97,6 +97,7 @@ export const Interactive: Story = {
             return (
                 <div>
                     <MetadataSidebar
+                        onChangeSynopsis={(text) => markChanged(text)}
                         onChangeNotes={(text) => markChanged(text)}
                         onChangeStatus={(status) => markChanged(status)}
                         onChangePOV={(pov) => markChanged(pov)}
@@ -177,6 +178,21 @@ function makeStoreWithResource(resource: ReturnType<typeof createTextResource>) 
     });
     return store;
 }
+
+export const WithSynopsis: Story = {
+    render: () => {
+        const resource = createTextResource({
+            name: "Chapter One",
+            plainText: "",
+            userMetadata: { synopsis: "A duel at dawn resolves the tension." },
+        });
+        return (
+            <Provider store={makeStoreWithResource(resource)}>
+                <MetadataSidebar />
+            </Provider>
+        );
+    },
+};
 
 export const WithEndDate: Story = {
     render: () => {

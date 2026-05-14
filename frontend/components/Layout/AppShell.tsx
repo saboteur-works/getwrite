@@ -139,6 +139,8 @@ export interface AppShellProps {
     onResourceSelect?: (id: string) => void;
     /** ID of currently selected resource (if any). */
     selectedResourceId?: string | null;
+    /** Metadata callback for synopsis field updates. */
+    onChangeSynopsis?: (text: string, resourceId: string) => void;
     /** Metadata callback for notes field updates. */
     onChangeNotes?: (text: string, resourceId: string) => void;
     /** Metadata callback for status updates. */
@@ -197,6 +199,7 @@ export default function AppShell({
     folders,
     onResourceSelect,
     selectedResourceId,
+    onChangeSynopsis,
     onChangeNotes,
     onChangeStatus,
     onChangePOV,
@@ -1631,6 +1634,13 @@ export default function AppShell({
                                 </div>
                                 <div className="appshell-sidebar-content p-4 pt-3">
                                     <MetadataSidebar
+                                        onChangeSynopsis={(text) =>
+                                            selectedResource &&
+                                            onChangeSynopsis?.(
+                                                text,
+                                                selectedResource.id,
+                                            )
+                                        }
                                         onChangeNotes={(text) =>
                                             selectedResource &&
                                             onChangeNotes?.(

@@ -353,6 +353,13 @@ export default function Home(): JSX.Element {
      * @param text       - New notes content.
      * @param resourceId - ID of the target resource.
      */
+    const handleChangeSynopsis = (text: string, resourceId: string) => {
+        updateResource(resourceId, (r) => ({
+            ...r,
+            userMetadata: { ...r.userMetadata, synopsis: text },
+        }));
+    };
+
     const handleChangeNotes = (text: string, resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
@@ -703,6 +710,7 @@ export default function Home(): JSX.Element {
             onResourceAction={handleResourceAction}
             onCloseProject={handleCloseProject}
             selectedResourceId={selectedResource?.id ?? null}
+            onChangeSynopsis={handleChangeSynopsis}
             onChangeNotes={handleChangeNotes}
             onChangeStatus={handleChangeStatus}
             onChangeDynamicMetadata={handleChangeDynamicMetadata}

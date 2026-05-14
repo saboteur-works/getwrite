@@ -1,4 +1,5 @@
 import React from "react";
+import SynopsisInput from "./controls/SynopsisInput";
 import NotesInput from "./controls/NotesInput";
 import StatusSelector from "./controls/StatusSelector";
 import MultiSelectList from "./controls/MultiSelectList";
@@ -15,6 +16,7 @@ import { RootState } from "../../src/store/store";
 const EMPTY_LIST: string[] = [];
 
 export interface MetadataSidebarProps {
+    onChangeSynopsis?: (text: string) => void;
     onChangeNotes?: (text: string) => void;
     onChangeStatus?: (status: string) => void;
     onChangePOV?: (pov: string) => void;
@@ -26,6 +28,7 @@ export interface MetadataSidebarProps {
 }
 
 export default function MetadataSidebar({
+    onChangeSynopsis,
     onChangeNotes,
     onChangeStatus,
     onChangePOV,
@@ -87,6 +90,9 @@ export default function MetadataSidebar({
         }, []);
     };
 
+    const [synopsis, setSynopsis] = React.useState<string>(
+        (selectedResource?.userMetadata?.synopsis as string) ?? "",
+    );
     const [notes, setNotes] = React.useState<string>(
         (selectedResource?.userMetadata?.notes as any) ?? "",
     );
@@ -111,6 +117,7 @@ export default function MetadataSidebar({
             // This state will hold the current selections for each metadata source folder, keyed by folder name. This will allow us to support dynamic metadata source folders without hardcoding state for characters/locations/items.
         } as Record<string, string[]>);
     React.useEffect(() => {
+        setSynopsis((selectedResource?.userMetadata?.synopsis as string) ?? "");
         setNotes((selectedResource?.userMetadata?.notes as any) ?? "");
         setStatus((selectedResource?.userMetadata?.status as any) ?? "draft");
         setPOV((selectedResource?.userMetadata?.pov as any) ?? null);
@@ -156,6 +163,17 @@ export default function MetadataSidebar({
                         <h3 className="metadata-sidebar-title text-gw-secondary-light font-bold">
                             {selectedResource.name}
                         </h3>
+                    </div>
+                    <div className="mb-6">
+                        <SynopsisInput
+                            ariaLabel="synopsis"
+                            value={synopsis}
+                            className="text-brand-mid"
+                            onChange={(v) => {
+                                setSynopsis(v);
+                                onChangeSynopsis?.(v);
+                            }}
+                        />
                     </div>
                     <div className="mb-6">
                         <NotesInput

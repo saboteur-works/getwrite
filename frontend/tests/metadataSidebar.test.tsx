@@ -127,6 +127,49 @@ describe("MetadataSidebar", () => {
         expect(input.value).toBe("2024-06-01T04:00");
     });
 
+    it("renders synopsis input with initial value from userMetadata", () => {
+        const res = createTextResource({
+            name: "Scene",
+            plainText: "",
+            userMetadata: { synopsis: "A duel at dawn." },
+        });
+
+        const testStore = makeStore();
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+
+        const synopsis = screen.getByLabelText("synopsis") as HTMLTextAreaElement;
+        expect(synopsis).toBeInTheDocument();
+        expect(synopsis.value).toBe("A duel at dawn.");
+    });
+
+    it("calls onChangeSynopsis when synopsis changes", () => {
+        const res = createTextResource({
+            name: "Scene",
+            plainText: "",
+            userMetadata: { synopsis: "" },
+        });
+        const onSynopsis = vi.fn();
+
+        const testStore = makeStore();
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar onChangeSynopsis={onSynopsis} />
+            </Provider>,
+        );
+
+        const synopsis = screen.getByLabelText("synopsis") as HTMLTextAreaElement;
+        fireEvent.change(synopsis, { target: { value: "A new synopsis." } });
+        expect(onSynopsis).toHaveBeenCalledWith("A new synopsis.");
+    });
+
     it("renders notes and status and invokes callbacks", () => {
         const res = createTextResource({
             name: "Notes",

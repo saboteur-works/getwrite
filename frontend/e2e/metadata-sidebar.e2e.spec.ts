@@ -63,6 +63,19 @@ test("metadata sidebar end date override can be set", async ({ page }) => {
     await expect(lastChangeProbe).not.toBeEmpty({ timeout: 2000 });
 });
 
+test("metadata sidebar synopsis input is visible and accepts input", async ({ page }) => {
+    await page.goto("/iframe.html?id=sidebar-metadatasidebar--interactive");
+
+    const synopsis = page.getByLabel("synopsis");
+    await expect(synopsis).toBeVisible();
+
+    await synopsis.fill("A duel at dawn resolves the tension.");
+    await synopsis.blur();
+
+    const lastChangeProbe = page.locator('[data-testid="last-change"]');
+    await expect(lastChangeProbe).not.toBeEmpty({ timeout: 2000 });
+});
+
 test("metadata sidebar duration unit selector works", async ({ page }) => {
     await page.goto("/iframe.html?id=sidebar-metadatasidebar--interactive");
 
