@@ -59,6 +59,36 @@ export const WithoutDescription: Story = {
     },
 };
 
+export const CloseProjectWithBlockers: Story = {
+    render: (args) => (
+        <div>
+            <ConfirmDialog {...args} />
+        </div>
+    ),
+    args: {
+        isOpen: true,
+        title: "Close project?",
+        description:
+            "You have unsaved changes that may still be syncing. Close the project anyway and return to Start Page?",
+        confirmLabel: "Close Project",
+        cancelLabel: "Keep Editing",
+        details: (
+            <ul className="sync-blockers-list">
+                <li className="sync-blocker">
+                    <span className="sync-blocker-label">Editor content</span>
+                </li>
+                <li className="sync-blocker sync-blocker--error">
+                    <span className="sync-blocker-label">Saving revision</span>
+                    <span aria-hidden="true" className="sync-blocker-error-icon">⚠</span>
+                    <span className="sr-only">error</span>
+                </li>
+            </ul>
+        ),
+        onConfirm: () => console.log("confirmed"),
+        onCancel: () => console.log("canceled"),
+    },
+};
+
 export const Interactive: Story = {
     render: (args) => {
         const [isOpen, setIsOpen] = React.useState(true);

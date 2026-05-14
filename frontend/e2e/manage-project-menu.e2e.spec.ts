@@ -1,62 +1,52 @@
 import { test, expect } from "@playwright/test";
 
-test("manage project menu interactive renders menu items", async ({ page }) => {
+test("manage project menu opens on trigger click", async ({ page }) => {
     await page.goto("/iframe.html?id=start-manageprojectmenu--interactive");
 
-    // Menu should have buttons for actions
-    const buttons = page.locator("button");
-    const buttonCount = await buttons.count();
-    expect(buttonCount).toBeGreaterThan(0);
+    await page.locator('[aria-haspopup="menu"]').click();
+
+    const deleteMenuItem = page.getByRole("menuitem", { name: /delete/i });
+    const renameMenuItem = page.getByRole("menuitem", { name: /rename/i });
+    await expect(deleteMenuItem).toBeVisible();
+    await expect(renameMenuItem).toBeVisible();
 });
 
-test("manage project menu interactive tracks last action", async ({ page }) => {
-    await page.goto("/iframe.html?id=start-manageprojectmenu--interactive");
-
-    const lastActionProbe = page.locator('[data-testid="last-action"]');
-    const actionPayloadProbe = page.locator('[data-testid="action-payload"]');
-
-    // Click delete action (if available)
-    const deleteButton = page.getByRole("button", { name: /delete/i });
-    if (await deleteButton.isVisible()) {
-        await deleteButton.click();
-
-        // Verify action was tracked
-        const action = await lastActionProbe.textContent();
-        expect(action).toContain("delete");
-    }
-});
-
-test("manage project menu interactive tracks rename action", async ({
+test("manage project menu delete item opens confirm dialog", async ({
     page,
 }) => {
     await page.goto("/iframe.html?id=start-manageprojectmenu--interactive");
 
-    const lastActionProbe = page.locator('[data-testid="last-action"]');
+    await page.locator('[aria-haspopup="menu"]').click();
+    await page.getByRole("menuitem", { name: /delete/i }).click();
 
-    // Click rename action (if available)
-    const renameButton = page.getByRole("button", { name: /rename/i });
-    if (await renameButton.isVisible()) {
-        await renameButton.click();
-
-        // Verify action was tracked
-        const action = await lastActionProbe.textContent();
-        expect(action).toContain("rename");
-    }
+    const confirmButton = page.getByRole("button", { name: /delete/i }).first();
+    await expect(confirmButton).toBeVisible();
 });
 
-test("manage project menu records action payload", async ({ page }) => {
+test("manage project menu rename item opens rename modal", async ({ page }) => {
     await page.goto("/iframe.html?id=start-manageprojectmenu--interactive");
 
-    const actionPayloadProbe = page.locator('[data-testid="action-payload"]');
+    await page.locator('[aria-haspopup="menu"]').click();
+    await page.getByRole("menuitem", { name: /rename/i }).click();
 
-    // Click any action button
-    const actionButton = page.locator("button").nth(1);
-    if (await actionButton.isVisible()) {
-        await actionButton.click();
-        await page.waitForTimeout(100);
+    const nameInput = page.locator("input").first();
+    await expect(nameInput).toBeVisible();
 
-        // Payload should contain project ID
-        const payload = await actionPayloadProbe.textContent();
-        expect(payload).toBeTruthy();
-    }
+    const saveButton = page.getByRole("button", { name: /save/i });
+    await expect(saveButton).toBeVisible();
 });
+
+test(
+    "manage project menu tracks delete action via probe",
+    async ({ page }) => {
+        await page.route("**/api/project/delete", (route) =>
+            route.fulfill({ status: 200, body: "{}" }),
+        );
+        await page.goto("/iframe.html?id=start-manageprojectmenu--interactive");
+        const lastActionProbe = page.locator('[data-testid="last-action"]');
+        await page.locator('[aria-haspopup="menu"]').click();
+        await page.getByRole("menuitem", { name: /delete/i }).click();
+        await page.getByRole("button", { name: /delete/i }).first().click();
+        await expect(lastActionProbe).toContainText("delete");
+    },
+);

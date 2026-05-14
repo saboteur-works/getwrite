@@ -50,6 +50,10 @@ export default function RenameProjectModal({
                         ref={inputRef}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSave();
+                            else if (e.key === "Escape") onClose?.();
+                        }}
                         className="w-full border border-gw-border rounded px-2 py-1 mt-1 bg-gw-chrome text-gw-primary"
                         aria-label="rename-project-input"
                     />

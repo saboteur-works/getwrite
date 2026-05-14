@@ -6,6 +6,7 @@ import MultiSelectList from "../../../components/Sidebar/controls/MultiSelectLis
 import POVAutocomplete from "../../../components/Sidebar/controls/POVAutocomplete";
 import DateTimeInput from "../../../components/Sidebar/controls/DateTimeInput";
 import DurationInput from "../../../components/Sidebar/controls/DurationInput";
+import EndDateInput from "../../../components/Sidebar/controls/EndDateInput";
 
 const meta: Meta = {
     title: "Sidebar/Controls",
@@ -35,6 +36,9 @@ export const Default: StoryObj = {
             <div className="mt-4">
                 <DurationInput />
             </div>
+            <div className="mt-4">
+                <EndDateInput computedEndDate="2024-06-01T02:00:00.000Z" />
+            </div>
         </div>
     ),
 };
@@ -60,6 +64,36 @@ export const StoryDurationInput: StoryObj = {
                 <p className="mt-3 text-sm text-gw-secondary">
                     Value: {value !== null ? `${value} min` : "(none)"}
                 </p>
+            </div>
+        );
+    },
+};
+
+export const StoryEndDateInput: StoryObj = {
+    render: () => {
+        const [override, setOverride] = React.useState<string | null>(null);
+        const computedEndDate = "2024-06-01T14:00:00.000Z";
+        return (
+            <div className="p-4 w-96 bg-gw-chrome space-y-4">
+                <div>
+                    <p className="text-xs text-gw-secondary mb-2">Read-only (computed):</p>
+                    <EndDateInput computedEndDate={computedEndDate} />
+                </div>
+                <div>
+                    <p className="text-xs text-gw-secondary mb-2">With override:</p>
+                    <EndDateInput
+                        computedEndDate={computedEndDate}
+                        overrideValue={override ?? undefined}
+                        onChange={setOverride}
+                    />
+                    <p className="mt-2 text-sm text-gw-secondary">
+                        Override: {override ?? "(none — using computed)"}
+                    </p>
+                </div>
+                <div>
+                    <p className="text-xs text-gw-secondary mb-2">No dates set:</p>
+                    <EndDateInput />
+                </div>
             </div>
         );
     },

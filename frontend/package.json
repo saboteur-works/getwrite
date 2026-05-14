@@ -8,7 +8,7 @@
         "build:cli": "esbuild src/cli/getwrite-cli.ts --bundle --platform=node --target=node16 --outfile=dist-cli/bin/getwrite-cli.cjs --banner:js=\"#!/usr/bin/env node\" --format=cjs --external:playwright --external:playwright-core --external:chromium-bidi",
         "start": "next start",
         "typecheck": "tsc --noEmit",
-        "lint": "next lint",
+        "lint": "eslint .",
         "storybook": "storybook dev -p 6006",
         "build-storybook": "storybook build",
         "test": "vitest",
@@ -28,11 +28,8 @@
         "test:refactor:help-page": "pnpm exec vitest run --passWithNoTests tests/component/helpPage.test.tsx tests/a11y/helpPage.a11y.test.tsx"
     },
     "dependencies": {
-        "@dnd-kit/react": "^0.3.2",
-        "@floating-ui/react": "^0.27.19",
         "@headless-tree/core": "^1.6.3",
         "@headless-tree/react": "^1.6.3",
-        "@radix-ui/react-dropdown-menu": "^2.1.16",
         "@react-pdf/renderer": "4.4.1",
         "@reduxjs/toolkit": "^2.11.2",
         "@tiptap/core": "^3.20.1",
@@ -59,7 +56,6 @@
         "react": "19.2.4",
         "react-dom": "19.2.4",
         "react-hot-toast": "^2.6.0",
-        "react-hotkeys-hook": "^5.2.4",
         "react-redux": "^9.2.0",
         "react-tooltip": "^5.30.0",
         "redux": "5.0.1",
@@ -67,6 +63,7 @@
         "zod": "^4.3.6"
     },
     "devDependencies": {
+        "@eslint/eslintrc": "^3.3.5",
         "@playwright/test": "^1.58.2",
         "@storybook/addon-a11y": "^10.2.17",
         "@storybook/addon-vitest": "^10.2.17",
@@ -80,9 +77,10 @@
         "@types/react": "19.2.14",
         "@vitest/browser-playwright": "4.0.18",
         "@vitest/coverage-v8": "4.0.18",
-        "autoprefixer": "10.4.14",
         "commander": "^14.0.3",
         "esbuild": "0.27.3",
+        "eslint": "^9.39.4",
+        "eslint-config-next": "^16.2.6",
         "jsdom": "^28.1.0",
         "playwright": "^1.58.2",
         "postcss": "8.5.6",

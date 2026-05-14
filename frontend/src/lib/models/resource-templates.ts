@@ -463,11 +463,7 @@ export async function duplicateResource(
             if (st.isDirectory()) {
                 // Resource stored as a directory (newer layout); copy recursively
                 // `fs.cp` supports recursive copy on Node >=16.7
-                // Use the promises API's cp if available
-                // @ts-ignore - cp exists on Node 16+
                 if (typeof (fs as any).cp === "function") {
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
                     await (fs as any).cp(src, dest, { recursive: true });
                 } else {
                     // Fallback: create dest dir and copy individual entries

@@ -67,17 +67,21 @@ export default function TimelineView({
                 const storyDuration = r.userMetadata?.storyDuration as
                     | number
                     | undefined;
+                const storyEndDate = r.userMetadata?.storyEndDate as
+                    | string
+                    | undefined;
 
                 const startDate = storyTime
                     ? `${storyDate}T${storyTime}`
                     : storyDate;
 
                 const endDate =
-                    storyDuration != null
+                    storyEndDate ??
+                    (storyDuration != null
                         ? new Date(
                               Date.parse(startDate) + storyDuration * 60000,
                           ).toISOString()
-                        : undefined;
+                        : undefined);
 
                 const tooltipParts: string[] = [];
                 tooltipParts.push(

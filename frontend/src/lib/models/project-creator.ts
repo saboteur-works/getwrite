@@ -241,6 +241,10 @@ export async function createProjectFromType(options: {
     const foldersDir = path.join(projectRoot, "folders");
     await fs.mkdir(foldersDir, { recursive: true });
     const folders: Folder[] = [];
+    // Tracks the relative path from foldersDir to each folder (keyed by folder ID).
+    // Needed so subfolders of subfolders resolve the correct on-disk path rather
+    // than collapsing to the bare slug at the top level.
+    const folderRelPaths = new Map<string, string>();
 
     for (let i = 0; i < specObj.folders.length; i += 1) {
         const f = specObj.folders[i];
@@ -261,6 +265,7 @@ export async function createProjectFromType(options: {
             metadataSource: f.metadataSource ?? { isMetadataSource: false },
         };
         folders.push(folderObj);
+        folderRelPaths.set(id, slug);
         // write a small folder descriptor file so the structure is discoverable
         await fs.writeFile(
             path.join(dir, "folder.json"),
@@ -284,7 +289,9 @@ export async function createProjectFromType(options: {
         subfolderOrderCounters.set(parentFolder.id, orderIndex + 1);
         const subId = generateUUID();
         const subSlug = slugify(sf.name);
-        const subDir = path.join(foldersDir, parentFolder.slug, subSlug);
+        const parentRelPath = folderRelPaths.get(parentFolder.id) ?? parentFolder.slug;
+        const relPath = `${parentRelPath}/${subSlug}`;
+        const subDir = path.join(foldersDir, relPath);
         await fs.mkdir(subDir, { recursive: true });
         const now = new Date().toISOString();
         const subFolder: Folder = {
@@ -299,6 +306,7 @@ export async function createProjectFromType(options: {
             metadataSource: sf.metadataSource ?? { isMetadataSource: false },
         };
         folders.push(subFolder);
+        folderRelPaths.set(subId, relPath);
         await fs.writeFile(
             path.join(subDir, "folder.json"),
             JSON.stringify(subFolder, null, 2),
@@ -330,7 +338,6 @@ export async function createProjectFromType(options: {
                     plainText: r.template ?? "",
                 },
                 orderIndex: j,
-                userMetadata: { orderIndex: j },
             });
             const seededTextResource = typedResource as TextResource;
 

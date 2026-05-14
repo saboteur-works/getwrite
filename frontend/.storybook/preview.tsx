@@ -11,7 +11,7 @@ import {
     GLOBAL_APPEARANCE_STORAGE_KEY,
     type AppearancePreferences,
 } from "../src/lib/user-preferences";
-// @ts-ignore Storybook side-effect CSS import is resolved by bundler at runtime.
+// @ts-expect-error Storybook side-effect CSS import is resolved by bundler at runtime.
 import "../app/globals.css";
 import { AnyResource, Folder, Project } from "../src/lib/models";
 

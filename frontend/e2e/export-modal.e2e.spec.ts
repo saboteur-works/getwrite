@@ -37,7 +37,9 @@ test("export preview modal displays resource title", async ({ page }) => {
 });
 
 test("export preview modal shows preview content", async ({ page }) => {
-    await page.goto("/iframe.html?id=common-exportpreviewmodal--open");
+    await page.goto(
+        "/iframe.html?id=common-exportpreviewmodal--single-resource-export",
+    );
 
     const resourceTitle = page.locator('[data-testid="resource-title"]');
     await expect(resourceTitle).toHaveText("Chapter 01");

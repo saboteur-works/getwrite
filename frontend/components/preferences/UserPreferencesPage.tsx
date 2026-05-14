@@ -6,7 +6,7 @@
  * UI for editing persisted user preferences.
  */
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAppSelector from "../../src/store/hooks";
 import {
@@ -149,7 +149,7 @@ export default function UserPreferencesPage({
                         User Preferences
                     </h1>
                     <p className="text-sm text-gw-secondary">
-                        Personal settings stored in the selected project's
+                        Personal settings stored in the selected project&apos;s
                         metadata.
                     </p>
                 </div>

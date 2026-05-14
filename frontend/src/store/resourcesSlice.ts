@@ -170,22 +170,3 @@ export const selectFoldersAndResources = createSelector(
     [selectFolders, selectResources],
     (folders, resources) => [...folders, ...resources],
 );
-
-/**
- * Select a resource by its ID.
- * @param state The current state of the resources slice.
- * @param id The ID of the resource to select.
- * @returns The resource with the specified ID, or null if not found.
- */
-export const selectResourceById = (state: ResourcesState, id: string) => {
-    return state.resources.find((resource) => resource.id === id) || null;
-};
-
-export const selectFolderById = (state: ResourcesState, id: string) => {
-    return state.folders.find((folder) => folder.id === id) || null;
-};
-
-export const selectItemById = createSelector(
-    [selectFoldersAndResources, (state: ResourcesState, id: string) => id],
-    (items, id) => items.find((item) => item.id === id) || null,
-);

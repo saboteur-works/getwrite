@@ -6,7 +6,6 @@ This document applies when running or writing tests.
 
 ## 1. Environment
 
-- Run `nvm use 22.16.0` before any test command
 - Working directory must be the repo root for all test commands
 
 ---

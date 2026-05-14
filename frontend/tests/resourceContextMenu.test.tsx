@@ -64,4 +64,27 @@ describe("ResourceContextMenu", () => {
         fireEvent.mouseDown(createBtn);
         expect(onClose).not.toHaveBeenCalled();
     });
+
+    it("renders Rename item and calls onAction with 'rename'", () => {
+        const onAction = vi.fn();
+        const onClose = vi.fn();
+        render(
+            <ResourceContextMenu
+                open
+                x={10}
+                y={10}
+                resourceId="res_test"
+                resourceTitle="Test Resource"
+                onAction={onAction}
+                onClose={onClose}
+            />,
+        );
+
+        const renameBtn = screen.getByText("Rename");
+        expect(renameBtn).toBeTruthy();
+
+        fireEvent.click(renameBtn);
+        expect(onAction).toHaveBeenCalledWith("rename", "res_test");
+        expect(onClose).toHaveBeenCalled();
+    });
 });

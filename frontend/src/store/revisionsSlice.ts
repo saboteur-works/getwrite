@@ -85,7 +85,7 @@ interface DeleteRevisionPayload extends ResourceScopedPayload {
 /**
  * Fetch payload for loading preview content for a specific revision.
  */
-interface FetchRevisionContentPayload extends DeleteRevisionPayload {}
+type FetchRevisionContentPayload = DeleteRevisionPayload;
 
 /**
  * Fulfilled payload for loading a resource's revisions.

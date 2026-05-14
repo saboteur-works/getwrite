@@ -2,6 +2,14 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import ResourceTree from "../../components/ResourceTree/ResourceTree";
 import type { ResourceContextAction } from "../../components/ResourceTree/ResourceContextMenu";
+import {
+    ChevronDown,
+    ChevronRight,
+    FileTextIcon,
+    ImageIcon,
+    AudioIcon,
+    FolderIcon,
+} from "../../components/ResourceTree/ResourceTreeIcons";
 
 const meta = {
     title: "Tree/ResourceTree",
@@ -26,16 +34,18 @@ export const Reorderable: Story = {
         const Wrapper = () => {
             const simulateReorder = () => {
                 const nav = document.querySelector(
-                    'nav[aria-label="Resource tree"]',
+                    '[aria-label="Resource tree"]',
                 );
                 if (!nav) return;
                 const items = Array.from(
-                    nav.querySelectorAll('[role="tree"] > li'),
+                    nav.querySelectorAll(".resource-tree-item"),
                 ) as HTMLElement[];
                 const ids = items.map(
                     (it) =>
-                        it.querySelector("button")?.textContent?.trim() || "",
-                );
+                        it
+                            .querySelector("button.resource-tree-button")
+                            ?.textContent?.trim() || "",
+                ).filter(Boolean);
                 if (ids.length >= 2) {
                     const next = [...ids];
                     const first = next.shift();
@@ -76,5 +86,37 @@ export const Reorderable: Story = {
             action: ResourceContextAction,
             resourceId?: string,
         ) => console.log("action", action, resourceId),
+    },
+};
+
+export const Icons: Story = {
+    render: () => (
+        <div className="p-6 bg-gw-chrome">
+            <p className="text-xs text-gw-secondary font-mono mb-4 uppercase tracking-widest">
+                ResourceTreeIcons
+            </p>
+            <div className="flex flex-col gap-3">
+                {(
+                    [
+                        ["ChevronDown", <ChevronDown key="cd" />],
+                        ["ChevronRight", <ChevronRight key="cr" />],
+                        ["FileTextIcon", <FileTextIcon key="ft" />],
+                        ["ImageIcon", <ImageIcon key="img" />],
+                        ["AudioIcon", <AudioIcon key="audio" />],
+                        ["FolderIcon", <FolderIcon key="folder" />],
+                    ] as [string, React.ReactNode][]
+                ).map(([name, icon]) => (
+                    <div key={name} className="flex items-center gap-3">
+                        <span className="text-gw-primary">{icon}</span>
+                        <span className="font-mono text-xs text-gw-secondary">
+                            {name}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    ),
+    args: {
+        onResourceAction: () => {},
     },
 };

@@ -3,7 +3,6 @@ import fs from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import {
     saveResourceTemplate,
-    loadResourceTemplate,
     createResourceFromTemplate,
     duplicateResource,
     scaffoldResourcesFromTemplate,
@@ -27,24 +26,6 @@ function usage(): string {
     pnpm ts-node src/cli/templates.ts validate <projectRoot> <templateId>
     pnpm ts-node src/cli/templates.ts preview <projectRoot> <templateId> [--vars '{}'] [--out <file>]
 `;
-}
-
-async function listTemplates(projectRoot: string): Promise<void> {
-    const dir = path.join(projectRoot, "meta", "templates");
-    try {
-        const entries = await fs.readdir(dir);
-        for (const e of entries) {
-            if (e.endsWith(".json")) {
-                const raw = await fs.readFile(path.join(dir, e), "utf8");
-                const parsed = JSON.parse(raw);
-                console.log(
-                    parsed.id + "\t" + parsed.name + "\t" + parsed.type,
-                );
-            }
-        }
-    } catch (err) {
-        console.error("No templates found or cannot read templates directory.");
-    }
 }
 
 async function main(argv: Argv): Promise<number> {

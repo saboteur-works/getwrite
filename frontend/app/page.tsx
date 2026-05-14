@@ -20,7 +20,7 @@
  * {@link AppShell} with the open project's data otherwise.
  */
 "use client";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import useAppSelector, { useAppDispatch } from "../src/store/hooks";
 import {
     setProject,
@@ -34,12 +34,7 @@ import StartPage, {
     type StartPageProjectEntry,
     type StartPageCreateResult,
 } from "../components/Start/StartPage";
-import type {
-    Folder,
-    Project,
-    AnyResource,
-    ResourceBase,
-} from "../src/lib/models";
+import type { Folder, AnyResource, ResourceBase } from "../src/lib/models";
 import type { MetadataValue } from "../src/lib/models/types";
 import { buildProjectView } from "../src/lib/models/project-view";
 import {
@@ -102,10 +97,6 @@ export default function Home(): JSX.Element {
     const [selectedProject, setSelectedProject] =
         useState<SelectedProjectState | null>(null);
 
-    /** ID of the resource that currently has editor focus. */
-    const [selectedResourceId, setSelectedResourceId] = useState<string | null>(
-        null,
-    );
     const selectedResource = useAppSelector(
         (state) => selectResource(state.resources),
         shallowEqual,
@@ -146,15 +137,6 @@ export default function Home(): JSX.Element {
         fetchProjects()
             .then((data) => {
                 if (Array.isArray(data)) {
-                    // const projectsForState = data.map((view) => {
-                    //     return {
-                    //         id: view.project.id,
-                    //         name: view.project.name,
-                    //         rootPath: view.project.rootPath,
-                    //         folders: view.folders,
-                    //         resources: view.resources,
-                    //     };
-                    // });
                     dispatch(setProjectsInStore(data));
                     setProjects(data);
                 }
@@ -292,14 +274,13 @@ export default function Home(): JSX.Element {
     /**
      * Marks a resource as selected in both the Redux store and local state.
      *
-     * Dispatches `setSelectedResourceId` so that the sidebar, editor, and other
+     * Dispatches `setResourceId` so that the sidebar, editor, and other
      * resource-aware components can display the chosen resource.
      *
      * @param id - The ID of the resource to select.
      */
     const handleResourceSelect = (id: string) => {
         dispatch(setResourceId(id));
-        setSelectedResourceId(id);
     };
 
     /**
@@ -372,6 +353,13 @@ export default function Home(): JSX.Element {
      * @param text       - New notes content.
      * @param resourceId - ID of the target resource.
      */
+    const handleChangeSynopsis = (text: string, resourceId: string) => {
+        updateResource(resourceId, (r) => ({
+            ...r,
+            userMetadata: { ...r.userMetadata, synopsis: text },
+        }));
+    };
+
     const handleChangeNotes = (text: string, resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
@@ -394,45 +382,6 @@ export default function Home(): JSX.Element {
         updateResource(resourceId, (r) => ({
             ...r,
             userMetadata: { ...r.userMetadata, status },
-        }));
-    };
-
-    /**
-     * Updates the character tag list in a resource's metadata.
-     *
-     * @param chars      - New array of character name strings.
-     * @param resourceId - ID of the target resource.
-     */
-    const handleChangeCharacters = (chars: string[], resourceId: string) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, characters: chars },
-        }));
-    };
-
-    /**
-     * Updates the location tag list in a resource's metadata.
-     *
-     * @param locs       - New array of location name strings.
-     * @param resourceId - ID of the target resource.
-     */
-    const handleChangeLocations = (locs: string[], resourceId: string) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, locations: locs },
-        }));
-    };
-
-    /**
-     * Updates the items/props tag list in a resource's metadata.
-     *
-     * @param items      - New array of item name strings.
-     * @param resourceId - ID of the target resource.
-     */
-    const handleChangeItems = (items: string[], resourceId: string) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, items },
         }));
     };
 
@@ -476,6 +425,16 @@ export default function Home(): JSX.Element {
         }));
     };
 
+    const handleChangeStoryEndDate = (
+        endDate: string | null,
+        resourceId: string,
+    ) => {
+        updateResource(resourceId, (r) => ({
+            ...r,
+            userMetadata: { ...r.userMetadata, storyEndDate: endDate },
+        }));
+    };
+
     /**
      * Dispatches a CRUD or utility action on a resource.
      *
@@ -496,7 +455,7 @@ export default function Home(): JSX.Element {
      *   - `folderId` — ID of the parent folder, if any.
      */
     const handleResourceAction = async (
-        action: "create" | "copy" | "duplicate" | "delete" | "export",
+        action: "create" | "rename" | "copy" | "duplicate" | "delete" | "export",
         resourceId?: string,
         opts?: {
             /** Resource type to create (e.g. `"text"` or `"folder"`). */
@@ -513,7 +472,7 @@ export default function Home(): JSX.Element {
 
         if (action === "create") {
             const title = opts?.title ?? "New Resource";
-            let payload = {
+            const payload = {
                 name: title,
                 folderId: opts?.folderId ?? null,
                 type: opts?.type ?? "text",
@@ -572,8 +531,6 @@ export default function Home(): JSX.Element {
                 );
             }
 
-            setSelectedResourceId(res.id);
-
             toastService.success(
                 "Resource created",
                 `${opts?.title ?? "New Resource"} created`,
@@ -622,7 +579,6 @@ export default function Home(): JSX.Element {
                       }
                     : prev,
             );
-            setSelectedResourceId(copy.id);
             dispatch(
                 addResource({
                     projectId: selectedProject.id,
@@ -682,7 +638,8 @@ export default function Home(): JSX.Element {
         }
 
         if (action === "export") {
-            const resolvedIds: string[] = opts?.resourceIds ?? (resourceId ? [resourceId] : []);
+            const resolvedIds: string[] =
+                opts?.resourceIds ?? (resourceId ? [resourceId] : []);
             if (resolvedIds.length === 0) return;
 
             const exportNode =
@@ -706,7 +663,9 @@ export default function Home(): JSX.Element {
 
             // Only include text resources in the exported output.
             const textIds = resolvedIds.filter(
-                (id) => (selectedProject.resources.find((r) => r.id === id) as any)?.type === "text",
+                (id) =>
+                    (selectedProject.resources.find((r) => r.id === id) as any)
+                        ?.type === "text",
             );
 
             const sections: CompileSection[] = textIds.map((id) => ({
@@ -735,7 +694,6 @@ export default function Home(): JSX.Element {
 
     const handleCloseProject = (): void => {
         setSelectedProject(null);
-        setSelectedResourceId(null);
         dispatch(setSelectedProjectId(null));
         dispatch(setResourceId(null));
         dispatch(setResources([]));
@@ -752,12 +710,14 @@ export default function Home(): JSX.Element {
             onResourceAction={handleResourceAction}
             onCloseProject={handleCloseProject}
             selectedResourceId={selectedResource?.id ?? null}
+            onChangeSynopsis={handleChangeSynopsis}
             onChangeNotes={handleChangeNotes}
             onChangeStatus={handleChangeStatus}
             onChangeDynamicMetadata={handleChangeDynamicMetadata}
             onChangePOV={handleChangePOV}
             onChangeStoryDate={handleChangeStoryDate}
             onChangeStoryDuration={handleChangeStoryDuration}
+            onChangeStoryEndDate={handleChangeStoryEndDate}
         >
             {!selectedProject ? (
                 <StartPage

@@ -19,7 +19,6 @@ const deleteResource = async (projectRoot: string, resourceId: string) => {
 };
 
 const copyResource = async (projectRoot: string, resourceId: string) => {
-    // const resourcePath = path.join(projectRoot, "resources", resourceId);
     const sidecar = await readSidecar(projectRoot, resourceId);
     console.log(sidecar);
 };

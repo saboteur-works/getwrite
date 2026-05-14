@@ -8,6 +8,7 @@ import type {
     ResourceType,
 } from "../../src/lib/models/types";
 import type { ProjectTypeTemplateFile } from "../../src/types/project-types";
+import RenameResourceModal from "../ResourceTree/RenameResourceModal";
 import ConfirmDialog from "../common/ConfirmDialog";
 import ResourceCommandPalette from "../common/ResourceCommandPalette";
 import CreateResourceModal from "../ResourceTree/CreateResourceModal";
@@ -19,11 +20,18 @@ import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import HelpPage from "../help/HelpPage";
 import TagsManagerModal from "../common/TagsManagerModal";
+import DefaultRevisionNameModal from "../preferences/DefaultRevisionNameModal";
 import ModalOverlayShell from "../common/ModalOverlayShell";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 import type { CompileOptions } from "../common/CompilePreviewModal";
+
+export interface SyncBlocker {
+    id: string;
+    label: string;
+    isError?: boolean;
+}
 
 export interface ShellContextActionState {
     open: boolean;
@@ -52,6 +60,12 @@ export interface ShellCompileModalState {
     preview?: string;
 }
 
+export interface ShellRenameModalState {
+    open: boolean;
+    resourceId?: string;
+    resourceTitle?: string;
+}
+
 export interface ShellModalCoordinatorProps {
     contextAction: ShellContextActionState;
     setContextAction: (state: ShellContextActionState) => void;
@@ -63,6 +77,9 @@ export interface ShellModalCoordinatorProps {
     setExportModal: (state: ShellExportModalState) => void;
     compileModal: ShellCompileModalState;
     setCompileModal: (state: ShellCompileModalState) => void;
+    renameModal: ShellRenameModalState;
+    setRenameModal: (state: ShellRenameModalState) => void;
+    onRenameConfirm: (newName: string) => Promise<void>;
     isHeadingSettingsModalOpen: boolean;
     setIsHeadingSettingsModalOpen: (open: boolean) => void;
     initialHeadingSettings?: EditorHeadingMap;
@@ -70,6 +87,10 @@ export interface ShellModalCoordinatorProps {
     setIsBodySettingsModalOpen: (open: boolean) => void;
     initialBodySettings?: EditorBodyConfig;
     onSaveBodySettings: (body: EditorBodyConfig) => Promise<void>;
+    isDefaultRevisionNameModalOpen: boolean;
+    setIsDefaultRevisionNameModalOpen: (open: boolean) => void;
+    initialDefaultRevisionName: string;
+    onSaveDefaultRevisionName: (name: string) => Promise<void>;
     isPreferencesModalOpen: boolean;
     setIsPreferencesModalOpen: (open: boolean) => void;
     isHelpModalOpen: boolean;
@@ -89,6 +110,7 @@ export interface ShellModalCoordinatorProps {
     folders?: Folder[];
     project?: CanonicalProject | null;
     hasUnsavedEditorChanges: boolean;
+    syncBlockers?: SyncBlocker[];
     onDeleteConfirm: (resourceId: string) => Promise<void>;
     onCloseProjectConfirm: () => void;
     onSaveHeadingSettings: (headings: EditorHeadingMap) => Promise<void>;
@@ -117,6 +139,9 @@ export default function ShellModalCoordinator({
     setExportModal,
     compileModal,
     setCompileModal,
+    renameModal,
+    setRenameModal,
+    onRenameConfirm,
     isHeadingSettingsModalOpen,
     setIsHeadingSettingsModalOpen,
     initialHeadingSettings,
@@ -124,6 +149,10 @@ export default function ShellModalCoordinator({
     setIsBodySettingsModalOpen,
     initialBodySettings,
     onSaveBodySettings,
+    isDefaultRevisionNameModalOpen,
+    setIsDefaultRevisionNameModalOpen,
+    initialDefaultRevisionName,
+    onSaveDefaultRevisionName,
     isPreferencesModalOpen,
     setIsPreferencesModalOpen,
     isHelpModalOpen,
@@ -142,6 +171,7 @@ export default function ShellModalCoordinator({
     folders,
     project,
     hasUnsavedEditorChanges,
+    syncBlockers,
     onDeleteConfirm,
     onCloseProjectConfirm,
     onSaveHeadingSettings,
@@ -174,12 +204,39 @@ export default function ShellModalCoordinator({
                 onCancel={() => setContextAction({ open: false })}
             />
 
+            <RenameResourceModal
+                isOpen={renameModal.open}
+                initialName={renameModal.resourceTitle ?? ""}
+                onClose={() => setRenameModal({ open: false })}
+                onConfirm={onRenameConfirm}
+            />
+
             <ConfirmDialog
                 isOpen={isCloseProjectConfirmOpen}
                 title="Close project?"
                 description="You have unsaved changes that may still be syncing. Close the project anyway and return to Start Page?"
                 confirmLabel="Close Project"
                 cancelLabel="Keep Editing"
+                details={
+                    syncBlockers && syncBlockers.length > 0 ? (
+                        <ul className="sync-blockers-list">
+                            {syncBlockers.map((blocker) => (
+                                <li
+                                    key={blocker.id}
+                                    className={`sync-blocker${blocker.isError ? " sync-blocker--error" : ""}`}
+                                >
+                                    <span className="sync-blocker-label">{blocker.label}</span>
+                                    {blocker.isError ? (
+                                        <>
+                                            <span aria-hidden="true" className="sync-blocker-error-icon">⚠</span>
+                                            <span className="sr-only">error</span>
+                                        </>
+                                    ) : null}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : undefined
+                }
                 onConfirm={onCloseProjectConfirm}
                 onCancel={() => setIsCloseProjectConfirmOpen(false)}
             />
@@ -267,6 +324,18 @@ export default function ShellModalCoordinator({
                     initialBody={initialBodySettings}
                     onClose={() => setIsBodySettingsModalOpen(false)}
                     onSave={onSaveBodySettings}
+                />
+            </ModalOverlayShell>
+
+            <ModalOverlayShell
+                isOpen={isDefaultRevisionNameModalOpen}
+                onClose={() => setIsDefaultRevisionNameModalOpen(false)}
+                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            >
+                <DefaultRevisionNameModal
+                    initialName={initialDefaultRevisionName}
+                    onClose={() => setIsDefaultRevisionNameModalOpen(false)}
+                    onSave={onSaveDefaultRevisionName}
                 />
             </ModalOverlayShell>
 

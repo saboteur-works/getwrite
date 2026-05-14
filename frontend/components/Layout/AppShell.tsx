@@ -50,7 +50,13 @@ import {
     Plus,
 } from "lucide-react";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
-import { selectResource } from "../../src/store/resourcesSlice";
+import { selectResource, updateResource, updateFolder } from "../../src/store/resourcesSlice";
+import {
+    selectIsSavingRevision,
+    selectDeletingRevisionId,
+    selectFetchingRevisionId,
+} from "../../src/store/revisionsSlice";
+import type { SyncBlocker } from "./ShellModalCoordinator";
 import {
     buildCompileTree,
     getDescendantLeafIds,
@@ -113,6 +119,15 @@ interface CompileModalState {
 }
 
 /**
+ * Local modal state for resource rename flow.
+ */
+interface RenameModalState {
+    open: boolean;
+    resourceId?: string;
+    resourceTitle?: string;
+}
+
+/**
  * Props accepted by {@link AppShell}.
  */
 export interface AppShellProps {
@@ -130,6 +145,8 @@ export interface AppShellProps {
     onResourceSelect?: (id: string) => void;
     /** ID of currently selected resource (if any). */
     selectedResourceId?: string | null;
+    /** Metadata callback for synopsis field updates. */
+    onChangeSynopsis?: (text: string, resourceId: string) => void;
     /** Metadata callback for notes field updates. */
     onChangeNotes?: (text: string, resourceId: string) => void;
     /** Metadata callback for status updates. */
@@ -149,6 +166,11 @@ export interface AppShellProps {
     /** Metadata callback for story duration updates. */
     onChangeStoryDuration?: (
         duration: number | null,
+        resourceId: string,
+    ) => void;
+    /** Metadata callback for story end date override updates. */
+    onChangeStoryEndDate?: (
+        endDate: string | null,
         resourceId: string,
     ) => void;
     /**
@@ -183,12 +205,14 @@ export default function AppShell({
     folders,
     onResourceSelect,
     selectedResourceId,
+    onChangeSynopsis,
     onChangeNotes,
     onChangeStatus,
     onChangePOV,
     onChangeDynamicMetadata,
     onChangeStoryDate,
     onChangeStoryDuration,
+    onChangeStoryEndDate,
     onResourceAction,
     onCloseProject,
     project,
@@ -204,6 +228,10 @@ export default function AppShell({
         useState<boolean>(false);
     const [isBodySettingsModalOpen, setIsBodySettingsModalOpen] =
         useState<boolean>(false);
+    const [
+        isDefaultRevisionNameModalOpen,
+        setIsDefaultRevisionNameModalOpen,
+    ] = useState<boolean>(false);
     const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
         useState<boolean>(false);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
@@ -226,6 +254,9 @@ export default function AppShell({
         (state) => selectResource(state.resources),
         shallowEqual,
     );
+    const isSavingRevision = useAppSelector(selectIsSavingRevision);
+    const deletingRevisionId = useAppSelector(selectDeletingRevisionId);
+    const fetchingRevisionId = useAppSelector(selectFetchingRevisionId);
     const [recentTimestampTick, setRecentTimestampTick] = useState<number>(
         Date.now(),
     );
@@ -255,6 +286,15 @@ export default function AppShell({
             })
             .slice(0, 6);
     }, [resources]);
+
+    const syncBlockers = React.useMemo<SyncBlocker[]>(() => {
+        const blockers: SyncBlocker[] = [];
+        if (hasUnsavedEditorChanges) blockers.push({ id: "editor-content", label: "Editor content" });
+        if (isSavingRevision) blockers.push({ id: "revision-save", label: "Saving revision" });
+        if (deletingRevisionId) blockers.push({ id: "revision-delete", label: "Deleting revision" });
+        if (fetchingRevisionId) blockers.push({ id: "revision-fetch", label: "Loading revision preview" });
+        return blockers;
+    }, [hasUnsavedEditorChanges, isSavingRevision, deletingRevisionId, fetchingRevisionId]);
 
     const formatRelativeTimestamp = React.useCallback(
         (timestamp: string | undefined): string => {
@@ -367,6 +407,11 @@ export default function AppShell({
             return;
         }
 
+        if (action === "rename") {
+            setRenameModal({ open: true, resourceId, resourceTitle });
+            return;
+        }
+
         if (action === "export") {
             const allItems = [...(resources ?? []), ...(folders ?? [])];
             const nameById = new Map(allItems.map((r) => [r.id, r.name]));
@@ -405,6 +450,34 @@ export default function AppShell({
     const [compileModal, setCompileModal] = useState<CompileModalState>({
         open: false,
     });
+    const [renameModal, setRenameModal] = useState<RenameModalState>({
+        open: false,
+    });
+
+    const handleRenameConfirm = async (newName: string): Promise<void> => {
+        if (!renameModal.resourceId || !project?.rootPath) return;
+        const resourceId = renameModal.resourceId;
+        const isFolder = (folders ?? []).some((f) => f.id === resourceId);
+        try {
+            const res = await fetch(`/api/resource/${resourceId}/rename`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    projectRoot: project.rootPath,
+                    newName,
+                    resourceType: isFolder ? "folder" : "resource",
+                }),
+            });
+            if (!res.ok) return;
+            if (isFolder) {
+                dispatch(updateFolder({ id: resourceId, name: newName }));
+            } else {
+                dispatch(updateResource({ id: resourceId, name: newName }));
+            }
+        } finally {
+            setRenameModal({ open: false });
+        }
+    };
 
     /**
      * Handles create-modal confirmation and forwards creation payload upstream.
@@ -645,6 +718,11 @@ export default function AppShell({
         setIsBodySettingsModalOpen(true);
     };
 
+    const handleOpenDefaultRevisionNameSettings = (): void => {
+        setIsSettingsMenuOpen(false);
+        setIsDefaultRevisionNameModalOpen(true);
+    };
+
     const handleOpenTagsManager = (): void => {
         setIsSettingsMenuOpen(false);
         setIsTagsManagerOpen(true);
@@ -667,7 +745,7 @@ export default function AppShell({
         setIsProjectTypesModalOpen(false);
         setIsHelpModalOpen(false);
 
-        if (hasUnsavedEditorChanges) {
+        if (syncBlockers.length > 0) {
             setIsCloseProjectConfirmOpen(true);
             return;
         }
@@ -746,6 +824,31 @@ export default function AppShell({
         );
     };
 
+    const handleSaveDefaultRevisionName = async (
+        name: string,
+    ): Promise<void> => {
+        if (!project?.rootPath) {
+            throw new Error("Project path unavailable.");
+        }
+        const response = await fetch("/api/project/revision-settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                projectPath: project.rootPath,
+                defaultRevisionName: name,
+            }),
+        });
+        const body = (await response.json().catch(() => null)) as {
+            defaultRevisionName?: string;
+            error?: string;
+        } | null;
+        if (!response.ok) {
+            throw new Error(
+                body?.error ?? "Failed to save default revision name.",
+            );
+        }
+    };
+
     return (
         <div
             className={`appshell-shell ${isDarkMode ? "appshell-theme-dark" : ""}`}
@@ -759,6 +862,9 @@ export default function AppShell({
                 onOpenPreferences={handleOpenPreferences}
                 onOpenHeadingSettings={handleOpenHeadingSettings}
                 onOpenBodySettings={handleOpenBodySettings}
+                onOpenDefaultRevisionNameSettings={
+                    handleOpenDefaultRevisionNameSettings
+                }
                 onOpenProjectTypeManager={handleOpenProjectTypeManager}
                 onOpenTagsManager={handleOpenTagsManager}
                 onToggleColorMode={handleToggleColorMode}
@@ -859,6 +965,9 @@ export default function AppShell({
                                     setExportModal={setExportModal}
                                     compileModal={compileModal}
                                     setCompileModal={setCompileModal}
+                                    renameModal={renameModal}
+                                    setRenameModal={setRenameModal}
+                                    onRenameConfirm={handleRenameConfirm}
                                     isHeadingSettingsModalOpen={
                                         isHeadingSettingsModalOpen
                                     }
@@ -878,6 +987,19 @@ export default function AppShell({
                                         project?.config?.editorConfig?.body
                                     }
                                     onSaveBodySettings={handleSaveBodySettings}
+                                    isDefaultRevisionNameModalOpen={
+                                        isDefaultRevisionNameModalOpen
+                                    }
+                                    setIsDefaultRevisionNameModalOpen={
+                                        setIsDefaultRevisionNameModalOpen
+                                    }
+                                    initialDefaultRevisionName={
+                                        project?.config?.defaultRevisionName ??
+                                        "Initial Draft"
+                                    }
+                                    onSaveDefaultRevisionName={
+                                        handleSaveDefaultRevisionName
+                                    }
                                     isPreferencesModalOpen={
                                         isPreferencesModalOpen
                                     }
@@ -914,6 +1036,7 @@ export default function AppShell({
                                     hasUnsavedEditorChanges={
                                         hasUnsavedEditorChanges
                                     }
+                                    syncBlockers={syncBlockers}
                                     onSaveHeadingSettings={
                                         handleSaveHeadingSettings
                                     }
@@ -1530,6 +1653,13 @@ export default function AppShell({
                                 </div>
                                 <div className="appshell-sidebar-content p-4 pt-3">
                                     <MetadataSidebar
+                                        onChangeSynopsis={(text) =>
+                                            selectedResource &&
+                                            onChangeSynopsis?.(
+                                                text,
+                                                selectedResource.id,
+                                            )
+                                        }
                                         onChangeNotes={(text) =>
                                             selectedResource &&
                                             onChangeNotes?.(
@@ -1569,6 +1699,13 @@ export default function AppShell({
                                             selectedResource &&
                                             onChangeStoryDuration?.(
                                                 duration,
+                                                selectedResource.id,
+                                            )
+                                        }
+                                        onChangeStoryEndDate={(endDate) =>
+                                            selectedResource &&
+                                            onChangeStoryEndDate?.(
+                                                endDate,
                                                 selectedResource.id,
                                             )
                                         }

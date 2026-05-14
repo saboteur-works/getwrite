@@ -4,6 +4,7 @@ export interface ConfirmDialogProps {
     isOpen: boolean;
     title: string;
     description?: string;
+    details?: React.ReactNode;
     confirmLabel?: string;
     cancelLabel?: string;
     onConfirm: () => void;
@@ -17,6 +18,7 @@ export default function ConfirmDialog({
     isOpen,
     title,
     description,
+    details,
     confirmLabel = "Confirm",
     cancelLabel = "Cancel",
     onConfirm,
@@ -83,6 +85,9 @@ export default function ConfirmDialog({
                 </h3>
                 {description ? (
                     <p className="confirm-dialog-description">{description}</p>
+                ) : null}
+                {details ? (
+                    <div className="confirm-dialog-details">{details}</div>
                 ) : null}
 
                 <div className="confirm-dialog-actions">

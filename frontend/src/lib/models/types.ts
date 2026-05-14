@@ -60,6 +60,8 @@ export interface ProjectConfig {
         };
         body?: EditorBodyConfig;
     };
+    /** Default name applied to the initial canonical revision when a new text resource is created. */
+    defaultRevisionName?: string;
 }
 
 /** Simple Tag type for project-scoped tagging. */
@@ -117,6 +119,7 @@ export type MetadataSource = {
  * - `storyDate`     string  ISO date "YYYY-MM-DD" — places the resource on the story timeline
  * - `storyTime`     string  Optional "HH:mm" time-of-day; combined with storyDate as "YYYY-MM-DDTHH:mm"
  * - `storyDuration` number  Optional duration in minutes; used to compute an endDate for the timeline item
+ * - `storyEndDate`  string  Optional ISO datetime override for the end time; takes precedence over computed (storyDate + storyDuration)
  */
 
 /** Base attributes common to all resource types (text/image/audio). */
@@ -136,7 +139,7 @@ export interface ResourceBase {
     /** User-editable notes. */
     notes?: string;
     /** Ordering index used for tree ordering within a parent. */
-    orderIndex?: number;
+    orderIndex: number;
     /** Status tags (project-scoped values). */
     statuses?: string[];
     /** User-set key/value metadata stored in sidecar (distinct from system fields like sizeBytes, createdAt, orderIndex). */

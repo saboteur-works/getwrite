@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from "react";
-import { Plus, Copy, Files, Trash2, Download } from "lucide-react";
+import { Plus, Copy, Files, Trash2, Download, Pencil } from "lucide-react";
 import MenuItemButton from "../common/MenuItemButton";
 
 /** Allowed context menu actions exposed to callers; UI-only signals. */
 export type ResourceContextAction =
     | "create"
+    | "rename"
     | "copy"
     | "duplicate"
     | "delete"
@@ -142,6 +143,19 @@ export default function ResourceContextMenu({
                         }
                         label="Create"
                         onClick={() => handle("create")}
+                    />
+                </li>
+                <li>
+                    <MenuItemButton
+                        className="resource-context-menu-item"
+                        icon={
+                            <Pencil
+                                size={14}
+                                className="resource-context-menu-item-icon"
+                            />
+                        }
+                        label="Rename"
+                        onClick={() => handle("rename")}
                     />
                 </li>
                 <li>

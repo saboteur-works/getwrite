@@ -19,7 +19,7 @@ export interface UIResource {
     createdAt: string;
     updatedAt?: string;
     userMetadata?: Record<string, MetadataValue>;
-    _orderIndex?: number;
+    _orderIndex: number;
 }
 
 export interface FolderWithResources extends FolderType {
@@ -32,19 +32,7 @@ export interface BuildProjectViewOptions {
     resources: TextResource[];
 }
 
-function getOrderIndex(
-    metadata: Record<string, MetadataValue> | undefined,
-    fallback: number,
-): number {
-    const rawOrder = metadata?.orderIndex;
-    return typeof rawOrder === "number" ? rawOrder : fallback;
-}
-
-function toUIResource(
-    resource: TextResource,
-    projectId: string,
-    fallbackOrderIndex: number,
-): UIResource {
+function toUIResource(resource: TextResource, projectId: string): UIResource {
     return {
         id: resource.id,
         projectId,
@@ -55,7 +43,7 @@ function toUIResource(
         createdAt: resource.createdAt,
         updatedAt: resource.updatedAt,
         userMetadata: resource.userMetadata,
-        _orderIndex: getOrderIndex(resource.userMetadata, fallbackOrderIndex),
+        _orderIndex: resource.orderIndex,
     };
 }
 
@@ -76,8 +64,7 @@ function toFolderEntry(folder: FolderType, projectId: string): UIResource {
 /**
  * Build a UI-friendly project view from canonical `project`, `folders`, and
  * `resources` produced by the scaffolder. This adapter sorts folders by
- * `orderIndex` and resources per-folder by `userMetadata.orderIndex` (fallback to
- * source iteration order).
+ * `orderIndex` and resources per-folder by `resource.orderIndex`.
  */
 export function buildProjectViewAdapter(options: BuildProjectViewOptions): {
     project: ProjectType;
@@ -91,21 +78,21 @@ export function buildProjectViewAdapter(options: BuildProjectViewOptions): {
         folderMap.set(folder.id, { ...folder, resources: [] });
     }
 
-    resources.forEach((resource, index) => {
-        const uiResource = toUIResource(resource, project.id, index);
+    for (const resource of resources) {
+        const uiResource = toUIResource(resource, project.id);
         const targetFolder = folderMap.get(resource.folderId ?? "") ?? null;
         if (targetFolder) {
             targetFolder.resources.push(uiResource);
         }
-    });
+    }
 
     const sortedFolders = Array.from(folderMap.values()).sort(
-        (left, right) => (left.orderIndex ?? 0) - (right.orderIndex ?? 0),
+        (left, right) => left.orderIndex - right.orderIndex,
     );
 
     for (const folder of sortedFolders) {
         folder.resources.sort(
-            (left, right) => (left._orderIndex ?? 0) - (right._orderIndex ?? 0),
+            (left, right) => left._orderIndex - right._orderIndex,
         );
     }
 

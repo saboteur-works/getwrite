@@ -11,11 +11,7 @@ GetWrite is a local-first writing workspace focused on structured projects, reso
 
 ## Requirements
 
-- Node.js >= 22.16.0 (we use nvm in CI/dev). If using nvm:
-
-```bash
-nvm use 22.16.0
-```
+- Node.js >= 24 (we use Volta in CI/dev). If using nvm:
 
 - pnpm (preferred package manager). Install with npm if needed:
 
@@ -97,7 +93,7 @@ See `docs/features` for more detailed docs on project types, sidecars, and data 
 
 ## Troubleshooting
 
-- If tests fail due to Node version mismatch, run `nvm use 22.16.0`.
+- If tests fail due to Node version mismatch, ensure you are running Node v24+.
 - Validation errors for project types include Zod error messages — use `validateProjectTypeFile()` locally to inspect problems.
 
 ## Where to look next

@@ -45,7 +45,6 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import {
     saveResourceTemplate,
-    loadResourceTemplate,
     createResourceFromTemplate,
     duplicateResource,
 } from "../../lib/models/resource-templates";

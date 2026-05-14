@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeSidecar } from "../../../../../src/lib/models/sidecar";
+import {
+    readSidecar,
+    writeSidecar,
+} from "../../../../../src/lib/models/sidecar";
 
 // Updates to resource metadata (notes, status, characters, locations, items, pov)
 export async function POST(
@@ -10,15 +13,28 @@ export async function POST(
     const body = await req.json();
     const { projectRoot, updatedResource } = body as {
         projectRoot: string;
-        updatedResource: any;
+        updatedResource: Record<string, unknown>;
     };
-    console.log(
-        "Received metadata update for resource",
-        resourceId,
-        "with data:",
-        body,
+
+    const existing = await readSidecar(projectRoot, resourceId).catch(
+        () => null,
     );
 
-    await writeSidecar(projectRoot, resourceId, updatedResource);
-    return NextResponse.json({ message: "Hello from sidecar!" });
+    // Merge incoming update with existing sidecar data, preserving structural
+    // fields that only the reorder route may change.
+    const merged = {
+        ...(existing ?? {}),
+        ...updatedResource,
+        orderIndex:
+            existing?.orderIndex ??
+            (updatedResource.orderIndex as number | undefined) ??
+            0,
+        folderId:
+            existing?.folderId ??
+            (updatedResource.folderId as string | null | undefined) ??
+            null,
+    };
+
+    await writeSidecar(projectRoot, resourceId, merged);
+    return NextResponse.json({ message: "Sidecar updated." });
 }

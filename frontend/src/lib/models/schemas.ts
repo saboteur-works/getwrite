@@ -95,6 +95,7 @@ export const ProjectConfigSchema = z.object({
         .optional(),
     tagAssignments: z.record(z.string(), z.array(UUID)).optional(),
     editorConfig: EditorConfigSchema.optional(),
+    defaultRevisionName: z.string().optional(),
 });
 
 /**
@@ -121,7 +122,7 @@ export const FolderSchema = z.object({
     name: z.string(),
     type: z.literal("folder"),
     parentId: UUID.nullable().optional(),
-    orderIndex: z.number().optional(),
+    orderIndex: z.number().default(0),
     createdAt: IsoDateString,
     updatedAt: IsoDateString.optional(),
     special: z.boolean().optional(),
@@ -170,6 +171,7 @@ export const ResourceBaseSchema = z.object({
     folderId: UUID.nullable().optional(),
     sizeBytes: z.number().int().nonnegative().optional(),
     notes: z.string().optional(),
+    orderIndex: z.number().default(0),
     statuses: z.array(z.string()).optional(),
     userMetadata: z.record(z.string(), MetadataValue).optional(),
     createdAt: IsoDateString,

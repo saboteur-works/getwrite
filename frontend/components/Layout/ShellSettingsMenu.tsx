@@ -12,6 +12,7 @@ import {
     BookOpen,
     Archive,
     Tag,
+    PenLine,
 } from "lucide-react";
 import MenuItemButton from "../common/MenuItemButton";
 
@@ -24,6 +25,7 @@ export interface ShellSettingsMenuProps {
     onOpenPreferences: () => void;
     onOpenHeadingSettings: () => void;
     onOpenBodySettings: () => void;
+    onOpenDefaultRevisionNameSettings: () => void;
     onOpenProjectTypeManager: () => void;
     onOpenTagsManager: () => void;
     onToggleColorMode: () => void;
@@ -45,6 +47,7 @@ export default function ShellSettingsMenu({
     onOpenPreferences,
     onOpenHeadingSettings,
     onOpenBodySettings,
+    onOpenDefaultRevisionNameSettings,
     onOpenProjectTypeManager,
     onOpenTagsManager,
     onToggleColorMode,
@@ -60,9 +63,9 @@ export default function ShellSettingsMenu({
         <header className="appshell-topbar">
             <div
                 className="appshell-topbar-project"
-                title={projectName ?? "Untitled Project"}
+                title={projectName}
             >
-                {projectName ?? "Untitled Project"}
+                {projectName}
             </div>
 
             <div className="flex items-center gap-1">
@@ -136,6 +139,16 @@ export default function ShellSettingsMenu({
                                     icon={<Type size={14} aria-hidden="true" />}
                                     label="Body Text Styles"
                                     onClick={onOpenBodySettings}
+                                />
+                            ) : null}
+                            {hasProject ? (
+                                <MenuItemButton
+                                    className="appshell-topbar-dropdown-item"
+                                    icon={
+                                        <PenLine size={14} aria-hidden="true" />
+                                    }
+                                    label="Default Revision Name"
+                                    onClick={onOpenDefaultRevisionNameSettings}
                                 />
                             ) : null}
                             {hasProject ? (

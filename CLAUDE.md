@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-All commands run from `frontend/` unless noted. Use Node 22.16.0 (`nvm use 22.16.0`).
+All commands run from `frontend/` unless noted. The project's Node version is managed by Volta.
 
 ```bash
 # Dev server
