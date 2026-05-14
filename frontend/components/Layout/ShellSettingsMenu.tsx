@@ -63,9 +63,9 @@ export default function ShellSettingsMenu({
         <header className="appshell-topbar">
             <div
                 className="appshell-topbar-project"
-                title={projectName ?? "Untitled Project"}
+                title={projectName}
             >
-                {projectName ?? "Untitled Project"}
+                {projectName}
             </div>
 
             <div className="flex items-center gap-1">
