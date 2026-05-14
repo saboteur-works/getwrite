@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.22](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.21...getwrite-v0.2.22) (2026-05-14)
+
+
+### Bug Fixes
+
+* **p0:** close canonical-guard and indexer-drain data-safety gaps ([c6c96fb](https://github.com/saboteur-works/getwrite/commit/c6c96fb62b6b16e3ae94a12aef1b4aaba1e20042))
+* **p0:** close canonical-guard and indexer-drain data-safety gaps ([88ff1dd](https://github.com/saboteur-works/getwrite/commit/88ff1ddf46e690244dea59462264f1f25382f408))
+
 ## [0.2.21](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.20...getwrite-v0.2.21) (2026-05-14)
 
 
