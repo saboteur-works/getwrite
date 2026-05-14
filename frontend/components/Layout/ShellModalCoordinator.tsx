@@ -27,6 +27,12 @@ import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 import type { CompileOptions } from "../common/CompilePreviewModal";
 
+export interface SyncBlocker {
+    id: string;
+    label: string;
+    isError?: boolean;
+}
+
 export interface ShellContextActionState {
     open: boolean;
     action?: ResourceContextAction;
@@ -104,6 +110,7 @@ export interface ShellModalCoordinatorProps {
     folders?: Folder[];
     project?: CanonicalProject | null;
     hasUnsavedEditorChanges: boolean;
+    syncBlockers?: SyncBlocker[];
     onDeleteConfirm: (resourceId: string) => Promise<void>;
     onCloseProjectConfirm: () => void;
     onSaveHeadingSettings: (headings: EditorHeadingMap) => Promise<void>;
@@ -164,6 +171,7 @@ export default function ShellModalCoordinator({
     folders,
     project,
     hasUnsavedEditorChanges,
+    syncBlockers,
     onDeleteConfirm,
     onCloseProjectConfirm,
     onSaveHeadingSettings,
@@ -209,6 +217,26 @@ export default function ShellModalCoordinator({
                 description="You have unsaved changes that may still be syncing. Close the project anyway and return to Start Page?"
                 confirmLabel="Close Project"
                 cancelLabel="Keep Editing"
+                details={
+                    syncBlockers && syncBlockers.length > 0 ? (
+                        <ul className="sync-blockers-list">
+                            {syncBlockers.map((blocker) => (
+                                <li
+                                    key={blocker.id}
+                                    className={`sync-blocker${blocker.isError ? " sync-blocker--error" : ""}`}
+                                >
+                                    <span className="sync-blocker-label">{blocker.label}</span>
+                                    {blocker.isError ? (
+                                        <>
+                                            <span aria-hidden="true" className="sync-blocker-error-icon">⚠</span>
+                                            <span className="sr-only">error</span>
+                                        </>
+                                    ) : null}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : undefined
+                }
                 onConfirm={onCloseProjectConfirm}
                 onCancel={() => setIsCloseProjectConfirmOpen(false)}
             />

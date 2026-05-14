@@ -52,6 +52,12 @@ import {
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource, updateResource, updateFolder } from "../../src/store/resourcesSlice";
 import {
+    selectIsSavingRevision,
+    selectDeletingRevisionId,
+    selectFetchingRevisionId,
+} from "../../src/store/revisionsSlice";
+import type { SyncBlocker } from "./ShellModalCoordinator";
+import {
     buildCompileTree,
     getDescendantLeafIds,
 } from "../common/compileSelection";
@@ -248,6 +254,9 @@ export default function AppShell({
         (state) => selectResource(state.resources),
         shallowEqual,
     );
+    const isSavingRevision = useAppSelector(selectIsSavingRevision);
+    const deletingRevisionId = useAppSelector(selectDeletingRevisionId);
+    const fetchingRevisionId = useAppSelector(selectFetchingRevisionId);
     const [recentTimestampTick, setRecentTimestampTick] = useState<number>(
         Date.now(),
     );
@@ -277,6 +286,15 @@ export default function AppShell({
             })
             .slice(0, 6);
     }, [resources]);
+
+    const syncBlockers = React.useMemo<SyncBlocker[]>(() => {
+        const blockers: SyncBlocker[] = [];
+        if (hasUnsavedEditorChanges) blockers.push({ id: "editor-content", label: "Editor content" });
+        if (isSavingRevision) blockers.push({ id: "revision-save", label: "Saving revision" });
+        if (deletingRevisionId) blockers.push({ id: "revision-delete", label: "Deleting revision" });
+        if (fetchingRevisionId) blockers.push({ id: "revision-fetch", label: "Loading revision preview" });
+        return blockers;
+    }, [hasUnsavedEditorChanges, isSavingRevision, deletingRevisionId, fetchingRevisionId]);
 
     const formatRelativeTimestamp = React.useCallback(
         (timestamp: string | undefined): string => {
@@ -727,7 +745,7 @@ export default function AppShell({
         setIsProjectTypesModalOpen(false);
         setIsHelpModalOpen(false);
 
-        if (hasUnsavedEditorChanges) {
+        if (syncBlockers.length > 0) {
             setIsCloseProjectConfirmOpen(true);
             return;
         }
@@ -1018,6 +1036,7 @@ export default function AppShell({
                                     hasUnsavedEditorChanges={
                                         hasUnsavedEditorChanges
                                     }
+                                    syncBlockers={syncBlockers}
                                     onSaveHeadingSettings={
                                         handleSaveHeadingSettings
                                     }
