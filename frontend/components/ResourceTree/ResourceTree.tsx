@@ -63,7 +63,7 @@ import {
 import { useResourceReorder } from "./useResourceReorder";
 
 /** Horizontal pixel offset applied per nesting level when rendering tree items. */
-const INDENTATION_WIDTH = 20;
+const INDENTATION_WIDTH = 14;
 
 /**
  * A `@headless-tree` feature plug-in that overrides the default click handler
@@ -322,7 +322,7 @@ export default function ResourceTree({
                 <div
                     key={item.getId()}
                     style={{
-                        paddingLeft: `${item.getItemMeta().level * 20}px`,
+                        paddingLeft: `${item.getItemMeta().level * INDENTATION_WIDTH}px`,
                     }}
                     className="resource-tree-item"
                     onContextMenu={(e) => {
@@ -352,7 +352,7 @@ export default function ResourceTree({
                         >
                             {renderResourceIcon(item)}
                             <div
-                                className={`${item.isSelected() ? "font-bold" : ""}`}
+                                className={`truncate ${item.isSelected() ? "font-bold" : ""}`}
                             >
                                 {item.getItemName()}
                             </div>
