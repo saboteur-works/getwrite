@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.2.21](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.20...getwrite-v0.2.21) (2026-05-14)
+
+
+### Features
+
+* add rename for resources and folders ([37b48e5](https://github.com/saboteur-works/getwrite/commit/37b48e529ace0cfb38797809539a84e18d2902e2))
+* **close-project:** surface sync blockers in close-project confirm dialog ([4802df3](https://github.com/saboteur-works/getwrite/commit/4802df3092b3c1024b00d0900f65b8a0fe2cf322))
+* **metadata:** add synopsis field to MetadataSidebar with full persistence ([1be7fde](https://github.com/saboteur-works/getwrite/commit/1be7fdef4177d18e7a8127428ec04501108ebb67))
+* **metadata:** collapsible sections in MetadataSidebar ([b5fdb36](https://github.com/saboteur-works/getwrite/commit/b5fdb36c1af5ecc82e226c5f26cd63abb4e618f4))
+* **metadata:** flexible duration units and end date/time with user override ([25b9a3b](https://github.com/saboteur-works/getwrite/commit/25b9a3b3c9a12fb0f57d75bd34c673c6272b0036))
+* **revisions:** auto-create named canonical revision on text resource creation and add configurable default revision name setting ([93fcab4](https://github.com/saboteur-works/getwrite/commit/93fcab45024c2e5f9dad985edbbd9fbe9fca576c))
+
+
+### Bug Fixes
+
+* **e2e:** correct two test bugs uncovered by first lint+e2e run ([a1dad8e](https://github.com/saboteur-works/getwrite/commit/a1dad8eff8070a8f5d24f711324bd98a91a84cc9))
+* **ordering:** make orderIndex a required invariant and fix the four-bug chain that caused Resource Tree reordering after metadata saves ([1efc897](https://github.com/saboteur-works/getwrite/commit/1efc897f472271857c259920aed99f6019574a81))
+* **resource-tree:** tighten indentation, use constant, truncate long names ([acf09c7](https://github.com/saboteur-works/getwrite/commit/acf09c743c4eb2f9995ee7e6acf5fd287b43615e))
+* **topbar:** omit project title when no project is loaded ([59d1ac3](https://github.com/saboteur-works/getwrite/commit/59d1ac3c76231c157af5970e7024d1307cce92b8))
+* update tests broken by cleanup refactor ([dfa4579](https://github.com/saboteur-works/getwrite/commit/dfa4579a72337f4df6230bda65262642b3d2a109))
+
 ## [0.2.20](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.19...getwrite-v0.2.20) (2026-05-10)
 
 
