@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.23](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.22...getwrite-v0.2.23) (2026-05-16)
+
+
+### Bug Fixes
+
+* **sidebar:** implement resource copy/duplicate and fix delete store sync ([6c5e0aa](https://github.com/saboteur-works/getwrite/commit/6c5e0aa307a01dcbfe19da6a628c6300c37a307e))
+* **sidebar:** resource copy/duplicate, orphan surfacing, and tree selection ([a5e02ff](https://github.com/saboteur-works/getwrite/commit/a5e02ffacba287306637394a29adaf0451fd3cac))
+* **tree:** also re-parent orphans whose parent is a non-folder resource ([c5d1ba2](https://github.com/saboteur-works/getwrite/commit/c5d1ba24614a206d58fd1ca9fbfd6cc593003f9a))
+* **tree:** guard getItem against undefined during delete/rebuild timing gap ([86bdaaa](https://github.com/saboteur-works/getwrite/commit/86bdaaace7074b2075e0a772e8c388dc84f5933c))
+* **tree:** surface orphaned resources at root and prevent create-on-non-folder orphans ([c7cef68](https://github.com/saboteur-works/getwrite/commit/c7cef68f97875cbc738f91197dca6de7ef0f67f6))
+
 ## [0.2.22](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.21...getwrite-v0.2.22) (2026-05-14)
 
 
