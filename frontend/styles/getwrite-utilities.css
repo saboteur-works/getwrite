@@ -1311,6 +1311,9 @@
     }
 
     .resource-palette-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         padding: 12px 16px;
         border-bottom: 0.5px solid var(--color-gw-border);
     }
@@ -1345,6 +1348,80 @@
     .resource-palette-item:hover {
         background-color: var(--color-gw-chrome3);
         color: var(--color-gw-primary);
+    }
+
+    .resource-palette-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: var(--font-size-gw-small);
+        color: var(--color-gw-secondary);
+    }
+
+    .resource-palette-hint {
+        font-family: var(--font-mono);
+        font-size: var(--font-size-gw-nano);
+        letter-spacing: var(--tracking-label);
+        color: var(--color-gw-secondary);
+        text-transform: uppercase;
+    }
+
+    .resource-palette-input-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-bottom: 0.5px solid var(--color-gw-border);
+    }
+
+    .resource-palette-input-icon {
+        color: var(--color-gw-secondary);
+        flex-shrink: 0;
+    }
+
+    .resource-palette-list {
+        list-style: none;
+        margin: 0;
+        padding: 6px 0;
+        max-height: 320px;
+        overflow-y: auto;
+    }
+
+    .resource-palette-list-item {
+        display: block;
+    }
+
+    .resource-palette-item-active {
+        background-color: var(--color-gw-chrome3);
+        color: var(--color-gw-primary);
+    }
+
+    .resource-palette-item-icon {
+        color: currentColor;
+        flex-shrink: 0;
+    }
+
+    .resource-palette-item-name {
+        flex-grow: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .resource-palette-item-type {
+        font-family: var(--font-mono);
+        font-size: var(--font-size-gw-nano);
+        letter-spacing: var(--tracking-label);
+        color: var(--color-gw-secondary);
+        text-transform: uppercase;
+        flex-shrink: 0;
+    }
+
+    .resource-palette-empty {
+        padding: 24px 16px;
+        text-align: center;
+        font-size: var(--font-size-gw-small);
+        color: var(--color-gw-secondary);
     }
 
     /* ── SEARCHBAR ── */
@@ -2288,6 +2365,10 @@
 
     .appshell-modal-panel--project-types {
         width: min(96vw, 1200px);
+    }
+
+    .appshell-modal-panel--palette {
+        width: min(94vw, 560px);
     }
 
     .appshell-modal-message {

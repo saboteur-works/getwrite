@@ -153,7 +153,7 @@ export default function ResourceCommandPalette({
                 role="dialog"
                 aria-modal="true"
                 aria-label="Open resource command palette"
-                className="resource-palette-panel appshell-modal-panel"
+                className="resource-palette-panel appshell-modal-panel appshell-modal-panel--palette"
             >
                 <div className="resource-palette-header">
                     <div className="resource-palette-title">
