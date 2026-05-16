@@ -6,14 +6,15 @@ import { createTextResource } from "../src/lib/models/resource";
 
 describe("OrganizerCard", () => {
     it("renders title, type, date, body and metadata when showBody is true", () => {
+        const plainText = Array.from({ length: 42 }, (_, i) => `word${i + 1}`).join(" ");
         const res = createTextResource({
             name: "Test Resource",
+            plainText,
             userMetadata: {
-                wordCount: 42,
                 status: "draft",
                 notes: "Placeholder content for Test Resource",
             },
-        } as any);
+        });
 
         render(<OrganizerCard resource={res} showBody={true} />);
 

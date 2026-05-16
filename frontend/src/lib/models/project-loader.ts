@@ -15,6 +15,7 @@ export interface LoadedResource {
     slug?: string | null;
     metadata?: Record<string, unknown>;
     plaintext: string;
+    wordCount?: number;
 }
 
 /** The full project payload loaded from disk. */
@@ -73,7 +74,21 @@ export async function loadProjectFromDisk(
                 path.join(resourcesDir, sidecarId, "content.txt"),
                 { encoding: "utf-8" },
             );
-            return { ...sidecar, plaintext: resourcePlaintext } as LoadedResource;
+            const type =
+                sidecar && typeof sidecar.type === "string"
+                    ? sidecar.type
+                    : "";
+            const wordCount =
+                type === "text"
+                    ? resourcePlaintext.trim() === ""
+                        ? 0
+                        : resourcePlaintext.trim().split(/\s+/).length
+                    : undefined;
+            return {
+                ...sidecar,
+                plaintext: resourcePlaintext,
+                ...(wordCount !== undefined && { wordCount }),
+            } as LoadedResource;
         });
 
     const resources = await Promise.all(resourcePromises);

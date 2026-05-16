@@ -1,5 +1,5 @@
 import React from "react";
-import type { AnyResource } from "../../../../src/lib/models/types";
+import type { AnyResource, TextResource } from "../../../../src/lib/models/types";
 
 /**
  * @module OrganizerCard
@@ -84,9 +84,11 @@ export default function OrganizerCard({
             )}
 
             <footer className="text-xs flex items-center justify-between gap-4 text-gw-secondary">
-                <div>
-                    Words: {(resource.userMetadata as any)?.wordCount ?? "unknown"}
-                </div>
+                {resource.type === "text" && (
+                    <div>
+                        Words: {(resource as TextResource).wordCount ?? "—"}
+                    </div>
+                )}
                 <div className="ml-auto">Status: {status || "unknown"}</div>
                 {onOpen && (
                     <button

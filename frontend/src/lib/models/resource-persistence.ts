@@ -85,6 +85,10 @@ export async function writeResourceToFile(
         userMetadata: resource.userMetadata || {},
     };
 
+    if (isTextResource(resource) && resource.wordCount !== undefined) {
+        sidecarData.wordCount = resource.wordCount;
+    }
+
     await writeSidecar(projectPath, resource.id, sidecarData);
     return resource;
 }
@@ -109,5 +113,18 @@ export const getLocalResources = (projectPath: string): AnyResource[] => {
         const metaData = JSON.parse(fs.readFileSync(metaPath, "utf-8"));
         resources.push(validateResource(metaData));
     }
+
+    for (let i = 0; i < resources.length; i++) {
+        const r = resources[i];
+        if (r.type === "text" && (r as TextResource).wordCount === undefined) {
+            const contentPath = path.join(projectPath, "resources", r.id, "content.txt");
+            if (fs.existsSync(contentPath)) {
+                const plain = fs.readFileSync(contentPath, "utf-8");
+                const wordCount = plain.trim() === "" ? 0 : plain.trim().split(/\s+/).length;
+                resources[i] = { ...r, wordCount } as TextResource;
+            }
+        }
+    }
+
     return resources;
 };
