@@ -51,7 +51,7 @@ import {
     Plus,
 } from "lucide-react";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
-import { selectResource, updateResource, updateFolder } from "../../src/store/resourcesSlice";
+import { selectResource, selectResources, selectFolders, setSelectedResourceId, updateResource, updateFolder } from "../../src/store/resourcesSlice";
 import {
     selectIsSavingRevision,
     selectDeletingRevisionId,
@@ -256,6 +256,8 @@ export default function AppShell({
         (state) => selectResource(state.resources),
         shallowEqual,
     );
+    const liveResources = useAppSelector((s) => selectResources(s.resources));
+    const liveFolders = useAppSelector((s) => selectFolders(s.resources));
 
     useEffect(() => {
         if (selectedResource?.type === "text") {
@@ -1412,15 +1414,19 @@ export default function AppShell({
                                                           return (
                                                               <DataView
                                                                   resources={
-                                                                      resources
+                                                                      liveResources
                                                                   }
                                                                   project={
                                                                       project ??
                                                                       undefined
                                                                   }
                                                                   folders={
-                                                                      folders
+                                                                      liveFolders
                                                                   }
+                                                                  onSelectFolder={(folderId) => {
+                                                                      dispatch(setSelectedResourceId(folderId));
+                                                                      setView("organizer");
+                                                                  }}
                                                               />
                                                           );
                                                       case "timeline":

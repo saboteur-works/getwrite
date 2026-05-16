@@ -31,6 +31,8 @@ export interface DataViewProps {
     resources?: AnyResource[];
     /** Folder list used to group resources in the Breakdown section. */
     folders?: Folder[];
+    /** Called when the user clicks the jump button on a breakdown group row. */
+    onSelectFolder?: (folderId: string) => void;
     className?: string;
 }
 
@@ -47,6 +49,7 @@ export default function DataView({
     view,
     resources,
     folders,
+    onSelectFolder,
     className = "",
 }: DataViewProps): JSX.Element {
     const [sortOrder, setSortOrder] = React.useState<SortOrder>("lastEdited");
@@ -112,6 +115,7 @@ export default function DataView({
                     fid === "__ungrouped__"
                         ? "Ungrouped"
                         : (folderMap.get(fid) ?? "Unknown"),
+                folderId: fid === "__ungrouped__" ? null : fid,
                 resourceCount: rs.length,
                 wordCount: rs.reduce((acc, r) => acc + getWordCount(r), 0),
             }),
@@ -152,7 +156,7 @@ export default function DataView({
 
             {resourceGroups.length >= 2 ? (
                 <CollapsibleSection title="Breakdown">
-                    <ResourceBreakdown groups={resourceGroups} />
+                    <ResourceBreakdown groups={resourceGroups} onSelectFolder={onSelectFolder} />
                 </CollapsibleSection>
             ) : null}
 
