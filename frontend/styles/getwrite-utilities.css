@@ -1335,6 +1335,8 @@
     .resource-palette-item {
         display: flex;
         align-items: center;
+        width: 100%;
+        text-align: left;
         gap: 10px;
         padding: 8px 16px;
         cursor: pointer;
