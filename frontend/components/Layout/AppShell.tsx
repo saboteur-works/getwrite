@@ -96,6 +96,7 @@ interface CreateModalState {
     open: boolean;
     parentId?: string;
     initialTitle?: string;
+    sourceResourceId?: string;
 }
 
 /**
@@ -390,9 +391,14 @@ export default function AppShell({
 
         // For create/copy/duplicate/show modals locally and confirm before forwarding
         if (action === "create") {
+            const clickedItem = combined.find((r) => r.id === resourceId);
+            const isFolder = clickedItem?.type === "folder";
+            const effectiveParentId = isFolder
+                ? resourceId
+                : (clickedItem as AnyResource & { folderId?: string })?.folderId ?? undefined;
             setCreateModal({
                 open: true,
-                parentId: resourceId,
+                parentId: effectiveParentId,
                 initialTitle: "",
             });
             return;
@@ -401,8 +407,8 @@ export default function AppShell({
         if (action === "copy" || action === "duplicate") {
             setCreateModal({
                 open: true,
-                parentId: resourceId,
-                initialTitle: `${resourceTitle ?? "Resource"} (copy)`,
+                sourceResourceId: resourceId,
+                initialTitle: `${resourceTitle ?? "Resource"} (Copy)`,
             });
             return;
         }
@@ -495,8 +501,11 @@ export default function AppShell({
         parentId?: string,
         _opts?: AppShellResourceActionOptions,
     ) => {
-        // forward to page-level handler to mutate project resources
-        await onResourceAction?.("create", parentId, payload);
+        if (createModal.sourceResourceId) {
+            await onResourceAction?.("copy", createModal.sourceResourceId, { title: payload.title });
+        } else {
+            await onResourceAction?.("create", parentId, payload);
+        }
         setCreateModal({ open: false });
     };
 

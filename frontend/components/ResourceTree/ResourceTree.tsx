@@ -113,6 +113,7 @@ interface ResourceTreeProps {
     onResourceAction?: (
         action: ResourceContextAction,
         resourceId?: string,
+        resourceTitle?: string,
     ) => void;
     /**
      * When `true`, enables additional debug logging inside the component.
@@ -144,6 +145,10 @@ export default function ResourceTree({
     const rawResources = useAppSelector(
         (s) => selectFoldersAndResources(s.resources),
         shallowEqual,
+    );
+
+    const selectedResourceId = useAppSelector(
+        (s) => s.resources.selectedResourceId,
     );
 
     const transformedResourceData = useMemo(() => {
@@ -273,7 +278,16 @@ export default function ResourceTree({
         },
         isItemFolder: (item) => item.getItemData().isFolder,
         dataLoader: {
-            getItem: (itemId) => transformedResourceData[itemId],
+            getItem: (itemId) =>
+                transformedResourceData[itemId] ?? {
+                    resourceId: itemId,
+                    name: "",
+                    children: [],
+                    isFolder: false,
+                    parentId: null,
+                    orderIndex: 0,
+                    resourceType: "text" as const,
+                },
             getChildren: (itemId) => {
                 return transformedResourceData[itemId].children.sort((a, b) => {
                     const aData = transformedResourceData[a];
@@ -311,6 +325,10 @@ export default function ResourceTree({
         tree.rebuildTree();
     }, [transformedResourceData]);
 
+    useEffect(() => {
+        tree.setSelectedItems(selectedResourceId ? [selectedResourceId] : []);
+    }, [selectedResourceId]);
+
     const draggedItems = tree.getState().dnd?.draggedItems;
     return (
         <div
@@ -345,7 +363,7 @@ export default function ResourceTree({
                         onClick={(e) => {
                             handleClick(e, item);
                         }}
-                        className="resource-tree-button"
+                        className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""}`}
                     >
                         <div
                             className={`resource-tree-item-row ${item.isDragTarget() ? "resource-tree-item-row--drag-target" : ""}`}
@@ -385,7 +403,7 @@ export default function ResourceTree({
                 resourceTitle={contextMenu.resourceTitle}
                 onClose={() => setContextMenu((s) => ({ ...s, open: false }))}
                 onAction={(action, resourceId) => {
-                    onResourceAction?.(action, resourceId);
+                    onResourceAction?.(action, resourceId, contextMenu.resourceTitle);
                 }}
             />
         </div>

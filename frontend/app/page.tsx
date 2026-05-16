@@ -42,6 +42,7 @@ import {
     setSelectedResourceId as setResourceId,
     updateResource as updateResourceInStore,
     addResource as addResourceInStore,
+    removeResource as removeResourceFromStore,
     setFolders,
     selectResource,
 } from "../src/store/resourcesSlice";
@@ -544,20 +545,20 @@ export default function Home(): JSX.Element {
                 (r) => r.id === resourceId,
             );
             if (!src) return;
-            const newTitle = `${src.name} (copy)`;
-            // Shallow-clone the source resource and override its name; the
-            // real duplication (new ID, disk write) is handled by the API call below.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const copy: any = { ...src, name: newTitle };
+            const newName = opts?.title ?? `${src.name} (Copy)`;
 
-            await fetch(`/api/resource/${resourceId}`, {
+            const resp = await fetch(`/api/resource/${resourceId}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     action: "copy",
+                    newName,
                     projectRoot: selectedProject.rootPath,
                 }),
             });
+            const { resource: newResource } = await resp.json();
+
+            dispatch(addResourceInStore(newResource as AnyResource));
             setProjects((prev) =>
                 prev.map((p) =>
                     p.project.id === selectedProject.id
@@ -565,7 +566,7 @@ export default function Home(): JSX.Element {
                               ...p,
                               resources: [
                                   ...p.resources,
-                                  copy,
+                                  newResource,
                               ] as AnyResource[],
                           }
                         : p,
@@ -575,21 +576,14 @@ export default function Home(): JSX.Element {
                 prev
                     ? {
                           ...prev,
-                          resources: [...prev.resources, copy] as AnyResource[],
+                          resources: [
+                              ...prev.resources,
+                              newResource,
+                          ] as AnyResource[],
                       }
                     : prev,
             );
-            dispatch(
-                addResource({
-                    projectId: selectedProject.id,
-                    resource: {
-                        id: copy.id,
-                        userMetadata: copy.userMetadata,
-                        name: copy.title,
-                    } as any,
-                }),
-            );
-            toastService.success("Resource copied", `${copy.name}`);
+            toastService.success("Resource copied", newResource.name as string);
             return;
         }
 
@@ -630,6 +624,7 @@ export default function Home(): JSX.Element {
             dispatch(
                 removeResource({ projectId: selectedProject.id, resourceId }),
             );
+            dispatch(removeResourceFromStore(resourceId));
             const resourceName =
                 selectedProject.resources.find((r) => r.id === resourceId)
                     ?.name ?? "Resource";

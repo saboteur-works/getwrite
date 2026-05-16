@@ -73,6 +73,6 @@ describe("ResourceTree context menu", () => {
         fireEvent.click(copyBtn);
 
         expect(onResourceAction).toHaveBeenCalledTimes(1);
-        expect(onResourceAction).toHaveBeenCalledWith("copy", scene.id);
+        expect(onResourceAction).toHaveBeenCalledWith("copy", scene.id, "Scene A");
     });
 });

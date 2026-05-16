@@ -44,6 +44,7 @@ export interface ShellCreateModalState {
     open: boolean;
     parentId?: string;
     initialTitle?: string;
+    sourceResourceId?: string;
 }
 
 export interface ShellExportModalState {

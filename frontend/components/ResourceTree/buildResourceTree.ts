@@ -41,7 +41,7 @@ export function buildResourceTree(
 
     function addResourceToDataObject(currentResource: AnyResource): void {
         const id = currentResource.id;
-        const parentId = getEffectiveParentId(currentResource) || ROOT_ITEM_ID;
+        let parentId = getEffectiveParentId(currentResource) || ROOT_ITEM_ID;
 
         dataObject[id] = {
             resourceId: id,
@@ -58,22 +58,16 @@ export function buildResourceTree(
             resourceType: currentResource.type,
         };
 
-        if (!dataObject[parentId]) {
+        if (!dataObject[parentId] || !dataObject[parentId].isFolder) {
             if (process.env.NODE_ENV !== "test") {
                 console.warn(
-                    `Parent resource with ID ${parentId} not found for resource with ID ${id}. Adding placeholder for parent.`,
+                    `Parent ${parentId} not found or is not a folder for resource ${id}. Moving to root.`,
                 );
             }
-            dataObject[parentId] = {
-                resourceId: parentId,
-                name: "Placeholder",
-                children: [],
-                isFolder: true,
-                parentId: null,
-                special: undefined,
-                orderIndex: 0,
-                resourceType: "folder",
-            };
+            // Re-parent to root so the resource remains visible in the tree
+            // and can be dragged to the correct folder by the user.
+            dataObject[id].parentId = ROOT_ITEM_ID;
+            parentId = ROOT_ITEM_ID;
         }
 
         if (!dataObject[parentId].children.includes(id)) {

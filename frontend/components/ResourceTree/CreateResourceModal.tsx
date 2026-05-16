@@ -139,7 +139,7 @@ export default function CreateResourceModal({
                         className="project-modal-select"
                         aria-label="resource-parent"
                     >
-                        <option value="">(root)</option>
+                        <option value="">Project Root</option>
                         {parents.map((p: Folder) => (
                             <option key={p.id} value={p.id}>
                                 {p.name}

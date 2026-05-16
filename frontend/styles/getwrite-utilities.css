@@ -930,6 +930,12 @@
         color: var(--color-gw-primary);
     }
 
+    .resource-tree-button--selected,
+    .resource-tree-button--selected:hover {
+        background-color: var(--color-gw-chrome2);
+        color: var(--color-gw-primary);
+    }
+
     .resource-tree-item-row {
         display: flex;
         align-items: center;

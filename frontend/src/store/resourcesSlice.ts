@@ -130,6 +130,15 @@ const resourcesSlice = createSlice({
             state.folders = Array.from(folderMap.values());
             return state;
         },
+        removeResource(state, action: PayloadAction<string>) {
+            state.resources = state.resources.filter(
+                (r) => r.id !== action.payload,
+            );
+            state.folders = state.folders.filter(
+                (f) => f.id !== action.payload,
+            );
+            return state;
+        },
     },
 });
 
@@ -142,6 +151,7 @@ export const {
     setFolders,
     updateResources,
     updateFolders,
+    removeResource,
 } = resourcesSlice.actions;
 export default resourcesSlice.reducer;
 
