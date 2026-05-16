@@ -4,6 +4,19 @@ import React from "react";
 import type { Project, AnyResource } from "../../src/lib/models/types";
 import WordCountProgressBar from "./WordCountProgressBar";
 import ResourceListItem from "./ResourceListItem";
+import StubResourcesSection from "./StubResourcesSection";
+
+const STUB_WORD_THRESHOLD = 50;
+
+type ResourceWithWordCount = AnyResource & {
+    userMetadata?: { wordCount?: number };
+    wordCount?: number;
+};
+
+function getWordCount(r: AnyResource): number {
+    const rc = r as ResourceWithWordCount;
+    return rc.userMetadata?.wordCount ?? rc.wordCount ?? 0;
+}
 
 export interface DataViewProps {
     /** Optional list of projects to show aggregate statistics for */
@@ -58,12 +71,18 @@ export default function DataView({
 
     const wordCountGoal = project?.config?.wordCountGoal;
 
-    const totalResources = flatResources.length;
-    const totalWords = flatResources.reduce(
-        (acc: number, r: AnyResource) =>
-            acc + ((r as AnyResource & { userMetadata?: { wordCount?: number }; wordCount?: number }).userMetadata?.wordCount ?? (r as AnyResource & { wordCount?: number }).wordCount ?? 0),
-        0,
+    const stubResources = React.useMemo(
+        () => sortedResources.filter((r) => getWordCount(r) <= STUB_WORD_THRESHOLD),
+        [sortedResources],
     );
+
+    const contentResources = React.useMemo(
+        () => sortedResources.filter((r) => getWordCount(r) > STUB_WORD_THRESHOLD),
+        [sortedResources],
+    );
+
+    const totalResources = flatResources.length;
+    const totalWords = flatResources.reduce((acc: number, r: AnyResource) => acc + getWordCount(r), 0);
 
     return (
         <div className={`${className}`}>
@@ -113,17 +132,14 @@ export default function DataView({
                         ))}
                     </div>
                 </div>
+                <StubResourcesSection resources={stubResources} />
                 <ul className="workarea-list">
-                    {sortedResources.map((r: AnyResource) => (
+                    {contentResources.map((r: AnyResource) => (
                         <ResourceListItem
                             key={r.id}
                             name={r.name ?? r.id}
                             type={r.type}
-                            wordCount={
-                                (r as AnyResource & { userMetadata?: { wordCount?: number }; wordCount?: number }).userMetadata?.wordCount ??
-                                (r as AnyResource & { wordCount?: number }).wordCount ??
-                                0
-                            }
+                            wordCount={getWordCount(r)}
                             lastEditedAt={r.updatedAt ?? r.createdAt}
                         />
                     ))}

@@ -187,6 +187,67 @@ export const SortedByLastEdited: Story = {
     },
 };
 
+export const WithStubResources: Story = {
+    args: {
+        project: {
+            id: "abcd-stub",
+            name: "Novel in Progress",
+            createdAt: new Date(now - 60 * 86400000).toISOString(),
+        },
+        resources: [
+            {
+                id: "stub-1",
+                slug: "chapter-3",
+                name: "Chapter 3 — The Turn",
+                type: "text",
+                folderId: undefined,
+                createdAt: new Date(now - 5 * 86400000).toISOString(),
+                updatedAt: new Date(now - 1 * 86400000).toISOString(),
+                wordCount: 0,
+            } as AnyResource,
+            {
+                id: "stub-2",
+                slug: "chapter-4",
+                name: "Chapter 4 — Aftermath",
+                type: "text",
+                folderId: undefined,
+                createdAt: new Date(now - 3 * 86400000).toISOString(),
+                updatedAt: new Date(now - 4 * 3600000).toISOString(),
+                wordCount: 22,
+            } as AnyResource,
+            {
+                id: "stub-3",
+                slug: "epilogue",
+                name: "Epilogue",
+                type: "text",
+                folderId: undefined,
+                createdAt: new Date(now - 1 * 86400000).toISOString(),
+                wordCount: 50,
+            } as AnyResource,
+            {
+                id: "content-1",
+                slug: "chapter-1",
+                name: "Chapter 1 — The Beginning",
+                type: "text",
+                folderId: undefined,
+                createdAt: new Date(now - 20 * 86400000).toISOString(),
+                updatedAt: new Date(now - 2 * 3600000).toISOString(),
+                wordCount: 3200,
+            } as AnyResource,
+            {
+                id: "content-2",
+                slug: "chapter-2",
+                name: "Chapter 2 — Rising Action",
+                type: "text",
+                folderId: undefined,
+                createdAt: new Date(now - 15 * 86400000).toISOString(),
+                updatedAt: new Date(now - 5 * 86400000).toISOString(),
+                wordCount: 2800,
+            } as AnyResource,
+        ],
+    },
+};
+
 export const Interactive: Story = {
     render: (args: DataViewProps) => {
         const [selectedId, setSelectedId] = React.useState<string | null>(null);

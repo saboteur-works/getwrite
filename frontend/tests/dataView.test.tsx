@@ -162,6 +162,65 @@ describe("DataView timestamps and sort", () => {
     });
 });
 
+describe("DataView stub resources", () => {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    const project: Project = { id: "proj_stub", name: "Stub Project", createdAt: now.toISOString() };
+
+    const makeResource = (name: string, updatedAt: string, wordCount = 0): AnyResource =>
+        ({
+            id: `res-${name}`,
+            slug: name,
+            name,
+            type: "text",
+            folderId: null,
+            createdAt: twoDaysAgo,
+            updatedAt,
+            wordCount,
+            orderIndex: 0,
+        }) as unknown as AnyResource;
+
+    it("renders a 'Needs content' label when any resource has ≤ 50 words", () => {
+        const stub = makeResource("Empty Chapter", oneHourAgo, 0);
+        const content = makeResource("Full Chapter", twoDaysAgo, 500);
+        render(<DataView project={project} resources={[stub, content]} />);
+        expect(screen.getByText("Needs content")).toBeDefined();
+    });
+
+    it("does not render 'Needs content' when all resources have > 50 words", () => {
+        const a = makeResource("Chapter 1", oneHourAgo, 100);
+        const b = makeResource("Chapter 2", twoDaysAgo, 500);
+        render(<DataView project={project} resources={[a, b]} />);
+        expect(screen.queryByText("Needs content")).toBeNull();
+    });
+
+    it("places stub resources first in DOM order, before content resources", () => {
+        const stub = makeResource("Stub One", oneHourAgo, 0);
+        const content = makeResource("Full One", twoDaysAgo, 500);
+        render(<DataView project={project} resources={[stub, content]} />);
+        const items = screen.getAllByRole("listitem");
+        expect(items[0].textContent).toContain("Stub One");
+    });
+
+    it("places a resource with exactly 50 words in the stub section (boundary)", () => {
+        const boundary = makeResource("Boundary Chapter", oneHourAgo, 50);
+        render(<DataView project={project} resources={[boundary]} />);
+        expect(screen.getByText("Needs content")).toBeDefined();
+    });
+
+    it("places a resource with exactly 51 words in the main list (boundary)", () => {
+        const content = makeResource("Content Chapter", oneHourAgo, 51);
+        render(<DataView project={project} resources={[content]} />);
+        expect(screen.queryByText("Needs content")).toBeNull();
+    });
+
+    it("does not render 'Needs content' when resources list is empty", () => {
+        render(<DataView project={project} resources={[]} />);
+        expect(screen.queryByText("Needs content")).toBeNull();
+    });
+});
+
 describe("DataView word count goal", () => {
     const now = new Date().toISOString();
 
