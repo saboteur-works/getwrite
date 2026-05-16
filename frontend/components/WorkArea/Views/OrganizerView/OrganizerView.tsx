@@ -1,17 +1,16 @@
 import React from "react";
-import type { AnyResource } from "../../../../src/lib/models/types";
+import type { AnyResource, Folder } from "../../../../src/lib/models/types";
 import OrganizerCard from "./OrganizerCard";
-import useAppSelector from "../../../../src/store/hooks";
+import useAppSelector, { useAppDispatch } from "../../../../src/store/hooks";
 import {
     selectFolders,
     selectResources,
+    setSelectedResourceId,
 } from "../../../../src/store/resourcesSlice";
-import { ChevronRight, ChevronDown, Eye, EyeClosed } from "lucide-react";
+import { Eye, EyeClosed } from "lucide-react";
 import { shallowEqual } from "react-redux";
 
 export interface OrganizerViewProps {
-    /** Resources to display as cards */
-    resources: AnyResource[];
     /** Whether to show the body/content of each resource */
     showBody?: boolean;
     /** Callback when the user toggles body visibility */
@@ -21,20 +20,16 @@ export interface OrganizerViewProps {
 }
 
 /**
- * `OrganizerView` renders a hierarchical grid of resource cards used
- * to visually browse resources organized by folder structure. Each card
- * shows the title, type and a small metadata summary. The parent may control
- * whether the resource body is visible via `showBody` or toggle it with
- * `onToggleBody`.
- *
- * Folders can be nested and are rendered with indentation reflecting
- * their depth in the hierarchy.
+ * `OrganizerView` renders a flat grid of cards for the direct children
+ * (files and subfolders) of the currently selected folder. Clicking a
+ * card's Open button selects that item, allowing navigation into subfolders.
  */
 export default function OrganizerView({
     showBody = true,
     onToggleBody,
     className = "",
 }: OrganizerViewProps): JSX.Element {
+    const dispatch = useAppDispatch();
     const resources = useAppSelector(
         (s) => selectResources(s.resources),
         shallowEqual,
@@ -43,139 +38,92 @@ export default function OrganizerView({
         (s) => selectFolders(s.resources),
         shallowEqual,
     );
-
-    const [expandedFolders, setExpandedFolders] = React.useState<Set<string>>(
-        new Set(),
+    const selectedResourceId = useAppSelector(
+        (s) => s.resources.selectedResourceId,
     );
 
     const [showBodyState, setShowBodyState] = React.useState(showBody);
 
-    const toggleFolderExpansion = (folderId: string) => {
-        setExpandedFolders((prev) => {
-            const newSet = new Set(prev);
-            if (newSet.has(folderId)) newSet.delete(folderId);
-            else newSet.add(folderId);
-            return newSet;
-        });
-    };
-
-    const filterResourcesByFolder = (folderId: string) => {
-        return resources.filter((resource) => resource.folderId === folderId);
-    };
-
-    const getChildFolders = (parentId: string | null) => {
-        return folders.filter((folder) => folder.folderId === parentId);
-    };
-
-    const getRootFolders = () => {
-        return folders.filter((folder) => !folder.folderId);
-    };
-
     const handleToggle = React.useCallback(() => {
-        setShowBodyState((prev) => !prev);
-        if (onToggleBody) onToggleBody(!showBodyState);
-    }, [onToggleBody, showBodyState]);
+        setShowBodyState((prev) => {
+            const next = !prev;
+            if (onToggleBody) onToggleBody(next);
+            return next;
+        });
+    }, [onToggleBody]);
 
-    /**
-     * Recursively renders a folder and its subfolders with proper indentation.
-     *
-     * @param folder - The folder to render
-     * @param depth - The nesting depth (0 for root)
-     * @returns JSX representing the folder and its contents
-     */
-    const renderFolderTree = (folder: AnyResource, depth: number = 0) => {
-        const folderResources = filterResourcesByFolder(folder.id);
-        const childFolders = getChildFolders(folder.id);
-        const isExpanded = expandedFolders.has(folder.id);
-        const paddingLeft = depth * 1.5;
+    const getEffectiveFolderParentId = (folder: Folder) =>
+        folder.parentId ?? folder.folderId ?? null;
 
-        return (
-            <div key={folder.id} style={{ marginLeft: `${paddingLeft}rem` }}>
-                <button
-                    type="button"
-                    className="flex items-center mb-2 group"
-                    onClick={() => toggleFolderExpansion(folder.id)}
-                >
-                    {isExpanded ? (
-                        <ChevronDown
-                            className="mr-1 text-gw-secondary"
-                            size={16}
-                        />
-                    ) : (
-                        <ChevronRight
-                            className="mr-1 text-gw-secondary"
-                            size={16}
-                        />
-                    )}
-                    <h3 className="text-sm font-medium group-hover:underline">
-                        {folder.name} (
-                        {folderResources.length + childFolders.length})
-                    </h3>
-                </button>
+    const selectedFolder =
+        folders.find((f) => f.id === selectedResourceId) ?? null;
 
-                {isExpanded && (
-                    <>
-                        {folderResources.length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
-                                {folderResources.map((r) => (
-                                    <OrganizerCard
-                                        key={r.id}
-                                        resource={r}
-                                        showBody={showBodyState}
-                                    />
-                                ))}
-                            </div>
-                        )}
+    const childFolders = selectedFolder
+        ? folders
+              .filter(
+                  (f) => getEffectiveFolderParentId(f) === selectedFolder.id,
+              )
+              .sort((a, b) => a.orderIndex - b.orderIndex)
+        : [];
 
-                        {childFolders.length > 0 && (
-                            <div className="mt-2 mb-3">
-                                {childFolders.map((childFolder) =>
-                                    renderFolderTree(childFolder, depth + 1),
-                                )}
-                            </div>
-                        )}
+    const childResources = selectedFolder
+        ? resources
+              .filter((r) => r.folderId === selectedFolder.id)
+              .sort((a, b) => a.orderIndex - b.orderIndex)
+        : [];
 
-                        {folderResources.length === 0 &&
-                            childFolders.length === 0 && (
-                                <p className="text-xs mb-2 text-gw-secondary">
-                                    No resources or subfolders
-                                </p>
-                            )}
-                    </>
-                )}
-            </div>
-        );
-    };
+    const allChildren: AnyResource[] = [...childFolders, ...childResources];
+
+    const handleOpen = (id: string) => dispatch(setSelectedResourceId(id));
 
     return (
         <div
             className={`p-4 overflow-y-scroll h-[calc(100vh-12rem)] ${className}`}
         >
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Organizer</h2>
-                <div>
-                    <button
-                        type="button"
-                        onClick={handleToggle}
-                        className="px-3 py-1 text-sm border border-gw-border rounded-md workarea-button bg-gw-chrome"
-                    >
-                        {showBodyState ? (
-                            <EyeClosed
-                                size={16}
-                                className="inline-block mr-1 text-gw-secondary"
-                            />
-                        ) : (
-                            <Eye
-                                size={16}
-                                className="inline-block mr-1 text-gw-secondary"
-                            />
-                        )}{" "}
-                        {showBodyState ? "Hide bodies" : "Show bodies"}
-                    </button>
-                </div>
+                <h2 className="text-lg font-semibold">
+                    {selectedFolder ? selectedFolder.name : "Organizer"}
+                </h2>
+                <button
+                    type="button"
+                    onClick={handleToggle}
+                    className="px-3 py-1 text-sm border border-gw-border rounded-md workarea-button bg-gw-chrome"
+                >
+                    {showBodyState ? (
+                        <EyeClosed
+                            size={16}
+                            className="inline-block mr-1 text-gw-secondary"
+                        />
+                    ) : (
+                        <Eye
+                            size={16}
+                            className="inline-block mr-1 text-gw-secondary"
+                        />
+                    )}{" "}
+                    {showBodyState ? "Hide bodies" : "Show bodies"}
+                </button>
             </div>
 
-            {getRootFolders().map((f) => renderFolderTree(f, 0))}
+            {!selectedFolder ? (
+                <p className="text-sm text-gw-secondary">
+                    Select a folder to view its contents.
+                </p>
+            ) : allChildren.length === 0 ? (
+                <p className="text-sm text-gw-secondary">
+                    This folder is empty.
+                </p>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {allChildren.map((child) => (
+                        <OrganizerCard
+                            key={child.id}
+                            resource={child}
+                            showBody={showBodyState}
+                            onOpen={() => handleOpen(child.id)}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
