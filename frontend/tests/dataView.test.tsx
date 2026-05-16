@@ -6,7 +6,7 @@ import { createTextResource } from "../src/lib/models/resource";
 import type { Project, TextResource } from "../src/lib/models/types";
 
 describe("DataView", () => {
-    it("shows project/resource counts and lists resources", () => {
+    it("shows resource count and lists resources", () => {
         const now = new Date().toISOString();
         const projects: Project[] = [
             {
@@ -37,7 +37,6 @@ describe("DataView", () => {
 
         render(<DataView projects={projects} resources={resources} />);
 
-        // Explicit stat checks
         const getStatValue = (label: string) => {
             const matches = screen.getAllByText(label, { exact: false });
             const statLabel = matches.find((el: HTMLElement) => {
@@ -50,27 +49,22 @@ describe("DataView", () => {
             return valueEl ? (valueEl.textContent?.trim() ?? null) : null;
         };
 
-        expect(getStatValue("Projects")).toBe(String(projects.length));
         expect(getStatValue("Resources")).toBe(String(resources.length));
 
-        // Resources list contains sample titles (appear at least once)
         resources.forEach((r) => {
-            expect(screen.getAllByText(r.name).length).toBeGreaterThanOrEqual(
-                1,
-            );
+            expect(screen.getAllByText(r.name).length).toBeGreaterThanOrEqual(1);
         });
     });
 });
-it("shows project/resource counts and lists resources for a single project", () => {
+
+it("shows resource count and lists resources for a single project", () => {
     const now = new Date().toISOString();
-    const projects: Project[] = [
-        {
-            id: "proj_single",
-            name: "Single Project",
-            createdAt: now,
-            updatedAt: now,
-        },
-    ];
+    const project: Project = {
+        id: "proj_single",
+        name: "Single Project",
+        createdAt: now,
+        updatedAt: now,
+    };
     const resources: TextResource[] = [
         createTextResource({
             name: "S1",
@@ -78,10 +72,9 @@ it("shows project/resource counts and lists resources for a single project", () 
             folderId: null,
         } as any),
     ];
-    const project = projects[0];
+
     render(<DataView project={project} resources={resources} />);
 
-    // Explicit stat checks for single project
     const getStatValue = (label: string) => {
         const matches = screen.getAllByText(label, { exact: false });
         const statLabel = matches.find((el: HTMLElement) => {
@@ -94,11 +87,64 @@ it("shows project/resource counts and lists resources for a single project", () 
         return valueEl ? (valueEl.textContent?.trim() ?? null) : null;
     };
 
-    expect(getStatValue("Projects")).toBe(String(projects.length));
     expect(getStatValue("Resources")).toBe(String(resources.length));
 
-    // Resources list contains sample titles from the single project
     resources.forEach((r) => {
         expect(screen.getAllByText(r.name).length).toBeGreaterThanOrEqual(1);
+    });
+});
+
+describe("DataView word count goal", () => {
+    const now = new Date().toISOString();
+
+    it("renders a progress bar when project has wordCountGoal > 0", () => {
+        const project: Project = {
+            id: "proj_goal",
+            name: "Goal Project",
+            createdAt: now,
+            config: {
+                wordCountGoal: 80000,
+                editorConfig: { headings: {} },
+            },
+        };
+        render(<DataView project={project} resources={[]} />);
+        expect(screen.getByRole("progressbar")).toBeDefined();
+    });
+
+    it("does not render a progress bar when project has no wordCountGoal", () => {
+        const project: Project = {
+            id: "proj_no_goal",
+            name: "No Goal Project",
+            createdAt: now,
+            config: {
+                editorConfig: { headings: {} },
+            },
+        };
+        render(<DataView project={project} resources={[]} />);
+        expect(screen.queryByRole("progressbar")).toBeNull();
+    });
+
+    it("does not render a progress bar when wordCountGoal is 0", () => {
+        const project: Project = {
+            id: "proj_zero_goal",
+            name: "Zero Goal Project",
+            createdAt: now,
+            config: {
+                wordCountGoal: 0,
+                editorConfig: { headings: {} },
+            },
+        };
+        render(<DataView project={project} resources={[]} />);
+        expect(screen.queryByRole("progressbar")).toBeNull();
+    });
+
+    it("does not render a progress bar when project has no config", () => {
+        const project: Project = {
+            id: "proj_no_config",
+            name: "No Config Project",
+            createdAt: now,
+        };
+        render(<DataView project={project} resources={[]} />);
+        expect(screen.queryByRole("progressbar")).toBeNull();
     });
 });

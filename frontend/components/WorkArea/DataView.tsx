@@ -1,5 +1,6 @@
 import React from "react";
 import type { Project, AnyResource } from "../../src/lib/models/types";
+import WordCountProgressBar from "./WordCountProgressBar";
 
 export interface DataViewProps {
     /** Optional list of projects to show aggregate statistics for */
@@ -37,6 +38,8 @@ export default function DataView({
         return [] as AnyResource[];
     }, [resources, view, projects]);
 
+    const wordCountGoal = project?.config?.wordCountGoal;
+
     const totalResources = flatResources.length;
     const totalWords = flatResources.reduce(
         (acc: number, r: AnyResource) =>
@@ -64,6 +67,13 @@ export default function DataView({
                     </div>
                 </div>
             </div>
+
+            {wordCountGoal && wordCountGoal > 0 ? (
+                <div className="workarea-section">
+                    <h3 className="workarea-section-title">Writing Goal</h3>
+                    <WordCountProgressBar current={totalWords} goal={wordCountGoal} />
+                </div>
+            ) : null}
 
             <div className="workarea-section">
                 <h3 className="workarea-section-title">Resources</h3>

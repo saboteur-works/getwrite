@@ -68,6 +68,78 @@ export const WithResources: Story = {
     },
 };
 
+const resourcesWithWords: AnyResource[] = [
+    {
+        id: "res-w1",
+        slug: "chapter-1",
+        name: "Chapter 1",
+        type: "text",
+        folderId: undefined,
+        createdAt: new Date().toISOString(),
+        wordCount: 9200,
+    } as AnyResource,
+    {
+        id: "res-w2",
+        slug: "chapter-2",
+        name: "Chapter 2",
+        type: "text",
+        folderId: undefined,
+        createdAt: new Date().toISOString(),
+        wordCount: 9300,
+    } as AnyResource,
+];
+
+const resourcesAtGoal: AnyResource[] = [
+    {
+        id: "res-g1",
+        slug: "chapter-1-full",
+        name: "Chapter 1",
+        type: "text",
+        folderId: undefined,
+        createdAt: new Date().toISOString(),
+        wordCount: 45000,
+    } as AnyResource,
+    {
+        id: "res-g2",
+        slug: "chapter-2-full",
+        name: "Chapter 2",
+        type: "text",
+        folderId: undefined,
+        createdAt: new Date().toISOString(),
+        wordCount: 40000,
+    } as AnyResource,
+];
+
+export const WithGoal: Story = {
+    args: {
+        project: {
+            id: "abcd-1234-goal",
+            name: "Novel in Progress",
+            createdAt: new Date().toISOString(),
+            config: {
+                wordCountGoal: 80000,
+                editorConfig: { headings: {} },
+            },
+        },
+        resources: resourcesWithWords,
+    },
+};
+
+export const GoalAchieved: Story = {
+    args: {
+        project: {
+            id: "abcd-1234-done",
+            name: "Finished Novel",
+            createdAt: new Date().toISOString(),
+            config: {
+                wordCountGoal: 80000,
+                editorConfig: { headings: {} },
+            },
+        },
+        resources: resourcesAtGoal,
+    },
+};
+
 export const Interactive: Story = {
     render: (args: DataViewProps) => {
         const [selectedId, setSelectedId] = React.useState<string | null>(null);

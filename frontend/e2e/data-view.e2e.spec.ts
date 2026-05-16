@@ -56,3 +56,16 @@ test("data view resource count is non-zero", async ({ page }) => {
 
     expect(count).toBeGreaterThan(0);
 });
+
+test("data view with goal story renders progress bar", async ({ page }) => {
+    await page.goto("/iframe.html?id=workarea-dataview--with-goal");
+    const bar = page.getByRole("progressbar");
+    await expect(bar).toBeVisible();
+});
+
+test("data view with goal story shows word counts in progress bar", async ({ page }) => {
+    await page.goto("/iframe.html?id=workarea-dataview--with-goal");
+    const bar = page.getByRole("progressbar");
+    const max = await bar.getAttribute("aria-valuemax");
+    expect(Number(max)).toBeGreaterThan(0);
+});
