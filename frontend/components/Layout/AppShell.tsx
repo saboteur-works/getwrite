@@ -1353,6 +1353,14 @@ export default function AppShell({
                                                             "diff",
                                                         );
                                                     }
+                                                    if (
+                                                        selectedResource?.type !==
+                                                        "folder"
+                                                    ) {
+                                                        disabled.push(
+                                                            "organizer",
+                                                        );
+                                                    }
                                                     return Array.from(
                                                         new Set(disabled),
                                                     );
