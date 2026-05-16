@@ -26,6 +26,8 @@ export interface OrganizerCardProps {
      * @defaultValue true
      */
     showBody?: boolean;
+    /** Called when the user clicks the Open button on the card. */
+    onOpen?: () => void;
 }
 
 /**
@@ -42,6 +44,7 @@ export interface OrganizerCardProps {
 export default function OrganizerCard({
     resource,
     showBody = true,
+    onOpen,
 }: OrganizerCardProps): JSX.Element {
     /** Best-effort display title fallback chain. */
     const title = (resource as any).title ?? resource.name ?? "Untitled";
@@ -85,6 +88,15 @@ export default function OrganizerCard({
                     Words: {(resource.userMetadata as any)?.wordCount ?? "unknown"}
                 </div>
                 <div className="ml-auto">Status: {status || "unknown"}</div>
+                {onOpen && (
+                    <button
+                        type="button"
+                        onClick={onOpen}
+                        className="ml-2 px-2 py-0.5 rounded border border-gw-border bg-gw-chrome hover:bg-gw-chrome2 text-xs"
+                    >
+                        Open
+                    </button>
+                )}
             </footer>
         </article>
     );

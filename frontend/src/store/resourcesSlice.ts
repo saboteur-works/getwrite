@@ -159,7 +159,11 @@ export const selectResource = (state: ResourcesState) => {
     return (
         state.resources.find(
             (resource) => resource.id === state.selectedResourceId,
-        ) || null
+        ) ||
+        state.folders.find(
+            (folder) => folder.id === state.selectedResourceId,
+        ) ||
+        null
     );
 };
 

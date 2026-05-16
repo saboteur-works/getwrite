@@ -1424,12 +1424,7 @@ export default function AppShell({
                                                           );
                                                       case "organizer":
                                                           return (
-                                                              <OrganizerView
-                                                                  resources={
-                                                                      resources ??
-                                                                      []
-                                                                  }
-                                                              />
+                                                              <OrganizerView />
                                                           );
                                                       case "data":
                                                           return (
