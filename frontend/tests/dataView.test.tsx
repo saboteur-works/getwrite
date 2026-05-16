@@ -1,9 +1,9 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import DataView from "../components/WorkArea/DataView";
 import { createTextResource } from "../src/lib/models/resource";
-import type { Project, TextResource } from "../src/lib/models/types";
+import type { Project, TextResource, AnyResource } from "../src/lib/models/types";
 
 describe("DataView", () => {
     it("shows resource count and lists resources", () => {
@@ -91,6 +91,74 @@ it("shows resource count and lists resources for a single project", () => {
 
     resources.forEach((r) => {
         expect(screen.getAllByText(r.name).length).toBeGreaterThanOrEqual(1);
+    });
+});
+
+describe("DataView timestamps and sort", () => {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    const project: Project = { id: "proj_sort", name: "Sort Project", createdAt: now.toISOString() };
+
+    const makeResource = (name: string, updatedAt: string): AnyResource =>
+        ({
+            id: `res-${name}`,
+            slug: name,
+            name,
+            type: "text",
+            folderId: null,
+            createdAt: twoDaysAgo,
+            updatedAt,
+            orderIndex: 0,
+        }) as unknown as AnyResource;
+
+    it("renders resources sorted by updatedAt descending by default", () => {
+        const older = makeResource("Older Chapter", twoDaysAgo);
+        const newer = makeResource("Newer Chapter", oneHourAgo);
+        render(<DataView project={project} resources={[older, newer]} />);
+        const items = screen.getAllByRole("listitem");
+        expect(items[0].textContent).toContain("Newer Chapter");
+        expect(items[1].textContent).toContain("Older Chapter");
+    });
+
+    it("shows a timestamp label on each resource row", () => {
+        const res = makeResource("Alpha", oneHourAgo);
+        render(<DataView project={project} resources={[res]} />);
+        // At least one element matching a relative time label should be visible
+        const timeLabels = screen.queryAllByText(/ago|just now/i);
+        expect(timeLabels.length).toBeGreaterThan(0);
+    });
+
+    it("shows 'Updated' prefix in the timestamp cell", () => {
+        const res = makeResource("Beta", oneHourAgo);
+        render(<DataView project={project} resources={[res]} />);
+        expect(screen.getByText(/Updated/i)).toBeDefined();
+    });
+
+    it("clicking Name sort button reorders resources alphabetically", () => {
+        const alpha = makeResource("Alpha", twoDaysAgo);
+        const zeta = makeResource("Zeta", oneHourAgo);
+        render(<DataView project={project} resources={[alpha, zeta]} />);
+
+        // Default: Zeta first (more recent)
+        let items = screen.getAllByRole("listitem");
+        expect(items[0].textContent).toContain("Zeta");
+
+        // Click Name sort
+        fireEvent.click(screen.getByRole("button", { name: /name/i }));
+        items = screen.getAllByRole("listitem");
+        expect(items[0].textContent).toContain("Alpha");
+    });
+
+    it("clicking Last Edited sort button restores temporal order", () => {
+        const alpha = makeResource("Alpha", twoDaysAgo);
+        const zeta = makeResource("Zeta", oneHourAgo);
+        render(<DataView project={project} resources={[alpha, zeta]} />);
+
+        fireEvent.click(screen.getByRole("button", { name: /name/i }));
+        fireEvent.click(screen.getByRole("button", { name: /last edited/i }));
+        const items = screen.getAllByRole("listitem");
+        expect(items[0].textContent).toContain("Zeta");
     });
 });
 

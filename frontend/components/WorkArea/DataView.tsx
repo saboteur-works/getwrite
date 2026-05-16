@@ -1,6 +1,9 @@
+"use client";
+
 import React from "react";
 import type { Project, AnyResource } from "../../src/lib/models/types";
 import WordCountProgressBar from "./WordCountProgressBar";
+import ResourceListItem from "./ResourceListItem";
 
 export interface DataViewProps {
     /** Optional list of projects to show aggregate statistics for */
@@ -8,11 +11,13 @@ export interface DataViewProps {
     /** The single project to display statistics for (used when `projects` is not provided) */
     project?: Project;
     /** Optional adapter view from `buildProjectView` (canonical models). */
-    view?: { project: any; folders: any[]; resources: AnyResource[] };
+    view?: { project: Project; folders: AnyResource[]; resources: AnyResource[] };
     /** Optional override flat list of resources to render (uses project(s).resources by default) */
     resources?: AnyResource[];
     className?: string;
 }
+
+type SortOrder = "lastEdited" | "name";
 
 /**
  * `DataView` renders statistics scoped to a single project and a simple
@@ -26,24 +31,37 @@ export default function DataView({
     resources,
     className = "",
 }: DataViewProps): JSX.Element {
+    const [sortOrder, setSortOrder] = React.useState<SortOrder>("lastEdited");
+
     const flatResources = React.useMemo(() => {
         if (resources) return resources;
         if (view && view.resources) return view.resources;
         if (projects && projects.length > 0)
-            return projects.flatMap(
-                (p) => (p as any).resources as AnyResource[],
-            );
-        if (project && (project as any).resources)
-            return (project as any).resources as AnyResource[];
+            return projects.flatMap((p) => (p as Project & { resources?: AnyResource[] }).resources ?? []);
+        if (project && (project as Project & { resources?: AnyResource[] }).resources)
+            return (project as Project & { resources?: AnyResource[] }).resources as AnyResource[];
         return [] as AnyResource[];
-    }, [resources, view, projects]);
+    }, [resources, view, projects, project]);
+
+    const sortedResources = React.useMemo(() => {
+        return [...flatResources].sort((a, b) => {
+            if (sortOrder === "name") {
+                return (a.name ?? "").localeCompare(b.name ?? "");
+            }
+            const aTime = Date.parse(a.updatedAt ?? a.createdAt ?? "");
+            const bTime = Date.parse(b.updatedAt ?? b.createdAt ?? "");
+            const aSafe = Number.isNaN(aTime) ? 0 : aTime;
+            const bSafe = Number.isNaN(bTime) ? 0 : bTime;
+            return bSafe - aSafe;
+        });
+    }, [flatResources, sortOrder]);
 
     const wordCountGoal = project?.config?.wordCountGoal;
 
     const totalResources = flatResources.length;
     const totalWords = flatResources.reduce(
         (acc: number, r: AnyResource) =>
-            acc + ((r as any).userMetadata?.wordCount ?? (r as any).wordCount ?? 0),
+            acc + ((r as AnyResource & { userMetadata?: { wordCount?: number }; wordCount?: number }).userMetadata?.wordCount ?? (r as AnyResource & { wordCount?: number }).wordCount ?? 0),
         0,
     );
 
@@ -76,30 +94,38 @@ export default function DataView({
             ) : null}
 
             <div className="workarea-section">
-                <h3 className="workarea-section-title">Resources</h3>
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="workarea-section-title">Resources</h3>
+                    <div className="flex gap-3">
+                        {(["lastEdited", "name"] as const).map((key) => (
+                            <button
+                                key={key}
+                                type="button"
+                                onClick={() => setSortOrder(key)}
+                                className={`font-mono text-[10px] uppercase tracking-[0.16em] transition-colors duration-150 ${
+                                    sortOrder === key
+                                        ? "text-gw-primary"
+                                        : "text-gw-secondary hover:text-gw-primary"
+                                }`}
+                            >
+                                {key === "lastEdited" ? "Last Edited" : "Name"}
+                            </button>
+                        ))}
+                    </div>
+                </div>
                 <ul className="workarea-list">
-                    {flatResources.map((r: AnyResource) => (
-                        <li
+                    {sortedResources.map((r: AnyResource) => (
+                        <ResourceListItem
                             key={r.id}
-                            className="workarea-list-item flex items-center justify-between"
-                        >
-                            <div>
-                                <div className="workarea-list-item-label">
-                                    {(r as any).name ??
-                                        (r as any).title ??
-                                        r.id}
-                                </div>
-                                <div className="workarea-list-item-meta">
-                                    {r.type}
-                                </div>
-                            </div>
-                            <div className="workarea-list-item-meta">
-                                {(r as any).userMetadata?.wordCount ??
-                                    (r as any).wordCount ??
-                                    0}{" "}
-                                words
-                            </div>
-                        </li>
+                            name={r.name ?? r.id}
+                            type={r.type}
+                            wordCount={
+                                (r as AnyResource & { userMetadata?: { wordCount?: number }; wordCount?: number }).userMetadata?.wordCount ??
+                                (r as AnyResource & { wordCount?: number }).wordCount ??
+                                0
+                            }
+                            lastEditedAt={r.updatedAt ?? r.createdAt}
+                        />
                     ))}
                 </ul>
             </div>

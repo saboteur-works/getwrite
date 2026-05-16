@@ -23,6 +23,8 @@ export const Default: Story = {
     },
 };
 
+const now = Date.now();
+
 const resources: AnyResource[] = [
     {
         id: "res-1",
@@ -30,7 +32,8 @@ const resources: AnyResource[] = [
         name: "Resource 1",
         type: "text",
         folderId: "folder-1",
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(now - 2 * 86400000).toISOString(),
+        updatedAt: new Date(now - 30 * 60000).toISOString(),
     },
     {
         id: "res-2",
@@ -38,16 +41,18 @@ const resources: AnyResource[] = [
         name: "Resource 2",
         type: "image",
         folderId: "folder-1",
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(now - 5 * 86400000).toISOString(),
+        updatedAt: new Date(now - 3 * 3600000).toISOString(),
     },
     {
         id: "res-3",
         slug: "resource-3",
         name: "Resource 3",
         type: "audio",
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(now - 10 * 86400000).toISOString(),
+        updatedAt: new Date(now - 2 * 86400000).toISOString(),
     },
-];
+] as AnyResource[];
 
 export const WithResources: Story = {
     render: (args: DataViewProps) => (
@@ -137,6 +142,48 @@ export const GoalAchieved: Story = {
             },
         },
         resources: resourcesAtGoal,
+    },
+};
+
+export const SortedByLastEdited: Story = {
+    args: {
+        project: {
+            id: "abcd-sort",
+            name: "In-Progress Novel",
+            createdAt: new Date(now - 30 * 86400000).toISOString(),
+        },
+        resources: [
+            {
+                id: "sort-1",
+                slug: "chapter-1",
+                name: "Chapter 1 — The Beginning",
+                type: "text",
+                folderId: undefined,
+                createdAt: new Date(now - 20 * 86400000).toISOString(),
+                updatedAt: new Date(now - 2 * 3600000).toISOString(),
+                wordCount: 3200,
+            } as AnyResource,
+            {
+                id: "sort-2",
+                slug: "chapter-2",
+                name: "Chapter 2 — Rising Action",
+                type: "text",
+                folderId: undefined,
+                createdAt: new Date(now - 15 * 86400000).toISOString(),
+                updatedAt: new Date(now - 5 * 86400000).toISOString(),
+                wordCount: 2800,
+            } as AnyResource,
+            {
+                id: "sort-3",
+                slug: "research-notes",
+                name: "Research Notes",
+                type: "text",
+                folderId: undefined,
+                createdAt: new Date(now - 30 * 86400000).toISOString(),
+                updatedAt: new Date(now - 20 * 86400000).toISOString(),
+                wordCount: 950,
+            } as AnyResource,
+        ],
     },
 };
 

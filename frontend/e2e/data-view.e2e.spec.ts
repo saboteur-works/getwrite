@@ -69,3 +69,15 @@ test("data view with goal story shows word counts in progress bar", async ({ pag
     const max = await bar.getAttribute("aria-valuemax");
     expect(Number(max)).toBeGreaterThan(0);
 });
+
+test("data view sorted by last edited shows timestamp labels", async ({ page }) => {
+    await page.goto("/iframe.html?id=workarea-dataview--sorted-by-last-edited");
+    const timeLabels = page.getByText(/ago|just now/i);
+    await expect(timeLabels.first()).toBeVisible();
+});
+
+test("data view sorted by last edited has sort toggle buttons", async ({ page }) => {
+    await page.goto("/iframe.html?id=workarea-dataview--sorted-by-last-edited");
+    await expect(page.getByRole("button", { name: /last edited/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /name/i })).toBeVisible();
+});

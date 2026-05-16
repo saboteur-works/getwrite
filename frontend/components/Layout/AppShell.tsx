@@ -39,6 +39,7 @@ import TimelineView from "../WorkArea/TimelineView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import debounce from "lodash/debounce";
+import { formatRelativeTimestamp as _formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 import {
     PanelLeftClose,
     PanelLeftOpen,
@@ -307,44 +308,8 @@ export default function AppShell({
     }, [hasUnsavedEditorChanges, isSavingRevision, deletingRevisionId, fetchingRevisionId]);
 
     const formatRelativeTimestamp = React.useCallback(
-        (timestamp: string | undefined): string => {
-            if (!timestamp) {
-                return "just now";
-            }
-
-            const parsed = Date.parse(timestamp);
-            if (Number.isNaN(parsed)) {
-                return "just now";
-            }
-
-            const elapsedMs = Math.max(0, recentTimestampTick - parsed);
-            const elapsedSeconds = Math.floor(elapsedMs / 1000);
-
-            if (elapsedSeconds < 5) {
-                return "just now";
-            }
-
-            if (elapsedSeconds < 60) {
-                return `${elapsedSeconds}s ago`;
-            }
-
-            const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-            if (elapsedMinutes < 60) {
-                return `${elapsedMinutes}m ago`;
-            }
-
-            const elapsedHours = Math.floor(elapsedMinutes / 60);
-            if (elapsedHours < 24) {
-                return `${elapsedHours}h ago`;
-            }
-
-            const elapsedDays = Math.floor(elapsedHours / 24);
-            if (elapsedDays < 7) {
-                return `${elapsedDays}d ago`;
-            }
-
-            return new Date(parsed).toLocaleDateString();
-        },
+        (timestamp: string | undefined): string =>
+            _formatRelativeTimestamp(timestamp, recentTimestampTick),
         [recentTimestampTick],
     );
 

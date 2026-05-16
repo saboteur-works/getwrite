@@ -22,6 +22,7 @@ import CreateProjectModal, {
 import ManageProjectMenu from "./ManageProjectMenu";
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import { toastService } from "../../src/lib/toast-service";
+import { formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 
 /**
  * Project card data shape displayed on the start page.
@@ -91,55 +92,6 @@ function getProjectLastEditedTimestamp(
     }
 
     return latestTimestamp;
-}
-
-/**
- * Formats a timestamp as a compact relative label.
- *
- * @param timestamp - ISO timestamp to format.
- * @param now - Current time used for relative calculations.
- * @returns Relative label such as `2d ago`.
- */
-function formatRelativeTimestamp(
-    timestamp: string | undefined,
-    now: number,
-): string {
-    if (!timestamp) {
-        return "just now";
-    }
-
-    const parsed = Date.parse(timestamp);
-    if (Number.isNaN(parsed)) {
-        return "just now";
-    }
-
-    const elapsedMs = Math.max(0, now - parsed);
-    const elapsedSeconds = Math.floor(elapsedMs / 1000);
-
-    if (elapsedSeconds < 5) {
-        return "just now";
-    }
-
-    if (elapsedSeconds < 60) {
-        return `${elapsedSeconds}s ago`;
-    }
-
-    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-    if (elapsedMinutes < 60) {
-        return `${elapsedMinutes}m ago`;
-    }
-
-    const elapsedHours = Math.floor(elapsedMinutes / 60);
-    if (elapsedHours < 24) {
-        return `${elapsedHours}h ago`;
-    }
-
-    const elapsedDays = Math.floor(elapsedHours / 24);
-    if (elapsedDays < 7) {
-        return `${elapsedDays}d ago`;
-    }
-
-    return new Date(parsed).toLocaleDateString();
 }
 
 /**
