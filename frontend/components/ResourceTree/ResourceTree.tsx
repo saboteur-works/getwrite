@@ -113,6 +113,7 @@ interface ResourceTreeProps {
     onResourceAction?: (
         action: ResourceContextAction,
         resourceId?: string,
+        resourceTitle?: string,
     ) => void;
     /**
      * When `true`, enables additional debug logging inside the component.
@@ -385,7 +386,7 @@ export default function ResourceTree({
                 resourceTitle={contextMenu.resourceTitle}
                 onClose={() => setContextMenu((s) => ({ ...s, open: false }))}
                 onAction={(action, resourceId) => {
-                    onResourceAction?.(action, resourceId);
+                    onResourceAction?.(action, resourceId, contextMenu.resourceTitle);
                 }}
             />
         </div>

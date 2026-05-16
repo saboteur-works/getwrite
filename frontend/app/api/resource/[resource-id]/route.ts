@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
-import { readSidecar } from "../../../../src/lib/models/sidecar";
+import { readSidecar, writeSidecar } from "../../../../src/lib/models/sidecar";
+import { generateUUID } from "../../../../src/lib/models/uuid";
 
 const deleteResource = async (projectRoot: string, resourceId: string) => {
     const resourcePath = path.join(projectRoot, "resources", resourceId);
@@ -18,9 +19,29 @@ const deleteResource = async (projectRoot: string, resourceId: string) => {
     }
 };
 
-const copyResource = async (projectRoot: string, resourceId: string) => {
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    console.log(sidecar);
+const copyResource = async (
+    projectRoot: string,
+    sourceId: string,
+    newName: string,
+) => {
+    const newId = generateUUID();
+    const srcDir = path.join(projectRoot, "resources", sourceId);
+    const dstDir = path.join(projectRoot, "resources", newId);
+
+    if (fs.existsSync(srcDir)) {
+        fs.cpSync(srcDir, dstDir, { recursive: true });
+    }
+
+    const sourceSidecar = await readSidecar(projectRoot, sourceId);
+    const newSidecar = {
+        ...(sourceSidecar ?? {}),
+        id: newId,
+        name: newName,
+        createdAt: new Date().toISOString(),
+    };
+
+    await writeSidecar(projectRoot, newId, newSidecar);
+    return newSidecar;
 };
 
 // Updates to resource metadata (notes, status, characters, locations, items, pov)
@@ -33,18 +54,22 @@ export async function POST(
     const { projectRoot, action } = body as {
         projectRoot: string;
         action: "delete" | "copy";
+        newName?: string;
     };
 
     switch (action) {
         case "delete":
             await deleteResource(projectRoot, resourceId);
-            break;
-        case "copy":
-            await copyResource(projectRoot, resourceId);
-            break;
+            return NextResponse.json({ message: "Resource deleted successfully" });
+        case "copy": {
+            const newResource = await copyResource(
+                projectRoot,
+                resourceId,
+                body.newName ?? "Copy",
+            );
+            return NextResponse.json({ success: true, resource: newResource });
+        }
         default:
             throw new Error(`Unknown action: ${action}`);
     }
-
-    return NextResponse.json({ message: "Resource deleted successfully" });
 }
