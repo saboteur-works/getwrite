@@ -58,10 +58,10 @@ export function buildResourceTree(
             resourceType: currentResource.type,
         };
 
-        if (!dataObject[parentId]) {
+        if (!dataObject[parentId] || !dataObject[parentId].isFolder) {
             if (process.env.NODE_ENV !== "test") {
                 console.warn(
-                    `Parent resource with ID ${parentId} not found for resource with ID ${id}. Moving to root.`,
+                    `Parent ${parentId} not found or is not a folder for resource ${id}. Moving to root.`,
                 );
             }
             // Re-parent to root so the resource remains visible in the tree
