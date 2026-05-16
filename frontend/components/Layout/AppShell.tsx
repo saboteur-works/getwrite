@@ -255,6 +255,15 @@ export default function AppShell({
         (state) => selectResource(state.resources),
         shallowEqual,
     );
+
+    useEffect(() => {
+        if (selectedResource?.type === "text") {
+            setView("edit");
+        } else if (selectedResource?.type === "folder" && view === "edit") {
+            setView("organizer");
+        }
+    }, [selectedResource?.id, view]);
+
     const isSavingRevision = useAppSelector(selectIsSavingRevision);
     const deletingRevisionId = useAppSelector(selectDeletingRevisionId);
     const fetchingRevisionId = useAppSelector(selectFetchingRevisionId);
@@ -1351,6 +1360,14 @@ export default function AppShell({
                                                         disabled.push(
                                                             "edit",
                                                             "diff",
+                                                        );
+                                                    }
+                                                    if (
+                                                        selectedResource?.type !==
+                                                        "folder"
+                                                    ) {
+                                                        disabled.push(
+                                                            "organizer",
                                                         );
                                                     }
                                                     return Array.from(

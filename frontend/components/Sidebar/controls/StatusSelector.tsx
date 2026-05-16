@@ -7,15 +7,21 @@ export interface StatusSelectorProps {
     onChange?: (value: string) => void;
     className?: string;
     ariaLabel?: string;
+    /** Ordered list of status strings to render as options. Defaults to ["Draft", "In review", "Published"]. */
+    options?: string[];
 }
 
+const DEFAULT_OPTIONS = ["Draft", "In review", "Published"];
+
 export default function StatusSelector({
-    value = "draft",
+    value,
     onChange,
     className = "",
     ariaLabel = "status-select",
+    options = DEFAULT_OPTIONS,
 }: StatusSelectorProps) {
-    const [status, setStatus] = useSyncedControlledValue(value, onChange);
+    const defaultValue = options[0] ?? "";
+    const [status, setStatus] = useSyncedControlledValue(value ?? defaultValue, onChange);
 
     return (
         <LabeledField label="Status" className={className}>
@@ -25,9 +31,11 @@ export default function StatusSelector({
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
             >
-                <option value="draft">Draft</option>
-                <option value="review">In review</option>
-                <option value="published">Published</option>
+                {options.map((opt) => (
+                    <option key={opt} value={opt}>
+                        {opt}
+                    </option>
+                ))}
             </select>
         </LabeledField>
     );
