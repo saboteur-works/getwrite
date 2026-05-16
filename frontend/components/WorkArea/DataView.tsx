@@ -96,7 +96,8 @@ export default function DataView({
     const resourceGroups = React.useMemo<ResourceGroup[]>(() => {
         const byFolder = new Map<string, AnyResource[]>();
         for (const r of flatResources) {
-            const key = r.folderId ?? "__ungrouped__";
+            const knownFolder = r.folderId && folderMap.has(r.folderId);
+            const key = knownFolder ? r.folderId! : "__ungrouped__";
             const existing = byFolder.get(key);
             if (existing) {
                 existing.push(r);
