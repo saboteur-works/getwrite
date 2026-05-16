@@ -278,7 +278,16 @@ export default function ResourceTree({
         },
         isItemFolder: (item) => item.getItemData().isFolder,
         dataLoader: {
-            getItem: (itemId) => transformedResourceData[itemId],
+            getItem: (itemId) =>
+                transformedResourceData[itemId] ?? {
+                    resourceId: itemId,
+                    name: "",
+                    children: [],
+                    isFolder: false,
+                    parentId: null,
+                    orderIndex: 0,
+                    resourceType: "text" as const,
+                },
             getChildren: (itemId) => {
                 return transformedResourceData[itemId].children.sort((a, b) => {
                     const aData = transformedResourceData[a];
