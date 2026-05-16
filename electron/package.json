@@ -1,6 +1,6 @@
 {
     "name": "getwrite-electron",
-    "version": "0.2.23",
+    "version": "0.2.24",
     "private": true,
     "main": "dist/main.js",
     "description": "A local-first writing application",
