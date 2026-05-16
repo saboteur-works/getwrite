@@ -44,8 +44,6 @@ export default function DataView({
         0,
     );
 
-    const projectsCount = projects ? projects.length : project ? 1 : 1;
-
     return (
         <div className={`${className}`}>
             <div className="workarea-section">
@@ -53,13 +51,7 @@ export default function DataView({
                     Data — {project?.name ?? "No Project"}
                 </h2>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                    <div className="workarea-stat-card">
-                        <div className="workarea-stat-label">Projects</div>
-                        <div className="workarea-stat-value text-xl">
-                            {projectsCount}
-                        </div>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                     <div className="workarea-stat-card">
                         <div className="workarea-stat-label">Resources</div>
                         <div className="workarea-stat-value text-xl">

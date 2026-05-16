@@ -1449,6 +1449,10 @@ export default function AppShell({
                                                                   resources={
                                                                       resources
                                                                   }
+                                                                  project={
+                                                                      project ??
+                                                                      undefined
+                                                                  }
                                                               />
                                                           );
                                                       case "timeline":
