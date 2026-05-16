@@ -7,6 +7,7 @@ import {
     selectResources,
     setSelectedResourceId,
 } from "../../../../src/store/resourcesSlice";
+import { selectActiveProjectStatuses } from "../../../../src/store/projectsSlice";
 import { Eye, EyeClosed } from "lucide-react";
 import { shallowEqual } from "react-redux";
 
@@ -41,6 +42,9 @@ export default function OrganizerView({
     const selectedResourceId = useAppSelector(
         (s) => s.resources.selectedResourceId,
     );
+    const defaultStatus = useAppSelector((s) =>
+        selectActiveProjectStatuses(s),
+    )[0] ?? "";
 
     const [showBodyState, setShowBodyState] = React.useState(showBody);
 
@@ -119,6 +123,7 @@ export default function OrganizerView({
                             key={child.id}
                             resource={child}
                             showBody={showBodyState}
+                            defaultStatus={defaultStatus}
                             onOpen={() => handleOpen(child.id)}
                         />
                     ))}

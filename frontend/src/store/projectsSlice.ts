@@ -50,6 +50,8 @@ export interface StoredProject {
     resources?: ResourceMeta[];
     /** Optional project-level metadata persisted in project.json. */
     metadata?: Record<string, MetadataValue>;
+    /** Ordered list of status values configured for this project. */
+    statuses?: string[];
 }
 
 /**
@@ -112,6 +114,7 @@ const projectsSlice = createSlice({
                     folders: p.folders,
                     resources: p.resources,
                     metadata: p.project.metadata,
+                    statuses: p.project.config?.statuses ?? [],
                 };
             });
             return state;
@@ -279,6 +282,17 @@ const selectProjectCache: Map<
  */
 export const selectSelectedProjectId = (state: any): string | null => {
     return state?.projects?.selectedProjectId ?? null;
+};
+
+/**
+ * Selects the ordered statuses array for the currently active project.
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ * @returns Array of status strings configured for the active project, or `[]`.
+ */
+export const selectActiveProjectStatuses = (state: any): string[] => {
+    const id = state?.projects?.selectedProjectId;
+    return state?.projects?.projects?.[id]?.statuses ?? [];
 };
 
 /**

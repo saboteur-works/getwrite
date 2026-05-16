@@ -28,6 +28,8 @@ export interface OrganizerCardProps {
     showBody?: boolean;
     /** Called when the user clicks the Open button on the card. */
     onOpen?: () => void;
+    /** Fallback status shown when the resource has no status set. Defaults to the first project status. */
+    defaultStatus?: string;
 }
 
 /**
@@ -45,6 +47,7 @@ export default function OrganizerCard({
     resource,
     showBody = true,
     onOpen,
+    defaultStatus = "",
 }: OrganizerCardProps): JSX.Element {
     /** Best-effort display title fallback chain. */
     const title = (resource as any).title ?? resource.name ?? "Untitled";
@@ -53,7 +56,7 @@ export default function OrganizerCard({
     /** Most relevant timestamp used for human-readable date display. */
     const updated = resource.updatedAt ?? resource.createdAt ?? "";
     /** Normalized status value shown in the metadata footer. */
-    const status = (resource.userMetadata?.status as string) ?? "unknown";
+    const status = (resource.userMetadata?.status as string) || defaultStatus;
 
     return (
         <article
@@ -89,7 +92,7 @@ export default function OrganizerCard({
                         Words: {(resource as TextResource).wordCount ?? "—"}
                     </div>
                 )}
-                <div className="ml-auto">Status: {status || "unknown"}</div>
+                <div className="ml-auto">Status: {status}</div>
                 {onOpen && (
                     <button
                         type="button"

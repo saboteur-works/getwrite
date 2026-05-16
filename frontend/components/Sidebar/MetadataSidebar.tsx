@@ -12,6 +12,7 @@ import SidebarSection from "./SidebarSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual, useStore } from "react-redux";
 import { selectResource } from "../../src/store/resourcesSlice";
+import { selectActiveProjectStatuses } from "../../src/store/projectsSlice";
 import { RootState } from "../../src/store/store";
 
 const EMPTY_LIST: string[] = [];
@@ -57,6 +58,11 @@ export default function MetadataSidebar({
         selectResource(state.resources),
     );
 
+    const projectStatuses = useAppSelector(
+        (state) => selectActiveProjectStatuses(state),
+        shallowEqual,
+    );
+
     const characterList = useAppSelector((state) => {
         if (state.projects.selectedProjectId === null) return EMPTY_LIST;
 
@@ -98,7 +104,7 @@ export default function MetadataSidebar({
         (selectedResource?.userMetadata?.notes as any) ?? "",
     );
     const [status, setStatus] = React.useState<string>(
-        (selectedResource?.userMetadata?.status as any) ?? "draft",
+        (selectedResource?.userMetadata?.status as any) ?? projectStatuses[0] ?? "",
     );
     const [pov, setPOV] = React.useState<string | null>(
         (selectedResource?.userMetadata?.pov as any) ?? null,
@@ -120,7 +126,7 @@ export default function MetadataSidebar({
     React.useEffect(() => {
         setSynopsis((selectedResource?.userMetadata?.synopsis as string) ?? "");
         setNotes((selectedResource?.userMetadata?.notes as any) ?? "");
-        setStatus((selectedResource?.userMetadata?.status as any) ?? "draft");
+        setStatus((selectedResource?.userMetadata?.status as any) ?? projectStatuses[0] ?? "");
         setPOV((selectedResource?.userMetadata?.pov as any) ?? null);
         setStoryDate(
             (selectedResource?.userMetadata?.storyDate as string) ?? "",
@@ -192,6 +198,7 @@ export default function MetadataSidebar({
                             ariaLabel="status"
                             className="text-brand-mid"
                             value={status}
+                            options={projectStatuses.length > 0 ? projectStatuses : undefined}
                             onChange={(s) => {
                                 setStatus(s);
                                 onChangeStatus && onChangeStatus(s);
