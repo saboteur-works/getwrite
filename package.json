@@ -22,12 +22,14 @@
             "@react-pdf/image": "3.0.4"
         },
         "onlyBuiltDependencies": [
-            "electron"
+            "electron",
+            "esbuild",
+            "unrs-resolver"
         ]
     },
     "devDependencies": {
-        "@types/node": "^25.7.0",
-        "knip": "^6.12.2",
+        "@types/node": "^25.8.0",
+        "knip": "^6.14.1",
         "typescript": "^6.0.3"
     },
     "volta": {

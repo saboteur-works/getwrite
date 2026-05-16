@@ -23,7 +23,7 @@ describe("Sidebar Controls", () => {
 
     it("StatusSelector calls onChange", () => {
         const onChange = vi.fn();
-        render(<StatusSelector onChange={onChange} />);
+        render(<StatusSelector onChange={onChange} options={["draft", "review", "published"]} />);
         const sel = screen.getByLabelText("status-select");
         fireEvent.change(sel, { target: { value: "review" } });
         expect(onChange).toHaveBeenCalledWith("review");
