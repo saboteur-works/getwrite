@@ -391,9 +391,14 @@ export default function AppShell({
 
         // For create/copy/duplicate/show modals locally and confirm before forwarding
         if (action === "create") {
+            const clickedItem = combined.find((r) => r.id === resourceId);
+            const isFolder = clickedItem?.type === "folder";
+            const effectiveParentId = isFolder
+                ? resourceId
+                : (clickedItem as AnyResource & { folderId?: string })?.folderId ?? undefined;
             setCreateModal({
                 open: true,
-                parentId: resourceId,
+                parentId: effectiveParentId,
                 initialTitle: "",
             });
             return;

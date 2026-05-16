@@ -147,6 +147,10 @@ export default function ResourceTree({
         shallowEqual,
     );
 
+    const selectedResourceId = useAppSelector(
+        (s) => s.resources.selectedResourceId,
+    );
+
     const transformedResourceData = useMemo(() => {
         return buildResourceTree(rawResources);
     }, [rawResources]);
@@ -312,6 +316,10 @@ export default function ResourceTree({
         tree.rebuildTree();
     }, [transformedResourceData]);
 
+    useEffect(() => {
+        tree.setSelectedItems(selectedResourceId ? [selectedResourceId] : []);
+    }, [selectedResourceId]);
+
     const draggedItems = tree.getState().dnd?.draggedItems;
     return (
         <div
@@ -346,7 +354,7 @@ export default function ResourceTree({
                         onClick={(e) => {
                             handleClick(e, item);
                         }}
-                        className="resource-tree-button"
+                        className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""}`}
                     >
                         <div
                             className={`resource-tree-item-row ${item.isDragTarget() ? "resource-tree-item-row--drag-target" : ""}`}
