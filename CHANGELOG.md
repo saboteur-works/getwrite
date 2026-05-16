@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.24](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.23...getwrite-v0.2.24) (2026-05-16)
+
+
+### Bug Fixes
+
+* **organizer:** scope view to selected folder and surface folders in selector ([5de3bb2](https://github.com/saboteur-works/getwrite/commit/5de3bb2319d30bb8d889c2a567c20be19eedb19f))
+
 ## [0.2.23](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.22...getwrite-v0.2.23) (2026-05-16)
 
 
