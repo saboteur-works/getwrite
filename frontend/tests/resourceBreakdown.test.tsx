@@ -24,18 +24,6 @@ describe("ResourceBreakdown", () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it("renders the Breakdown section title when there are 2+ groups", () => {
-        render(
-            <ResourceBreakdown
-                groups={[
-                    makeGroup("Chapters", 3, 9200),
-                    makeGroup("Research", 2, 3400),
-                ]}
-            />,
-        );
-        expect(screen.getByText("Breakdown")).toBeDefined();
-    });
-
     it("renders one list item per group", () => {
         render(
             <ResourceBreakdown
@@ -102,7 +90,6 @@ describe("ResourceBreakdown", () => {
                 ]}
             />,
         );
-        expect(screen.getByText("Breakdown")).toBeDefined();
         expect(screen.getAllByRole("listitem")).toHaveLength(2);
     });
 });

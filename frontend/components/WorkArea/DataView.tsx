@@ -6,6 +6,7 @@ import WordCountProgressBar from "./WordCountProgressBar";
 import ResourceListItem from "./ResourceListItem";
 import StubResourcesSection from "./StubResourcesSection";
 import ResourceBreakdown, { type ResourceGroup } from "./ResourceBreakdown";
+import CollapsibleSection from "./CollapsibleSection";
 
 const STUB_WORD_THRESHOLD = 50;
 
@@ -128,11 +129,7 @@ export default function DataView({
 
     return (
         <div className={`${className}`}>
-            <div className="workarea-section">
-                <h2 className="workarea-section-title">
-                    Data — {project?.name ?? "No Project"}
-                </h2>
-
+            <CollapsibleSection title={`Data — ${project?.name ?? "No Project"}`}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                     <div className="workarea-stat-card">
                         <div className="workarea-stat-label">Resources</div>
@@ -145,22 +142,23 @@ export default function DataView({
                         <div className="workarea-stat-value text-xl">{totalWords}</div>
                     </div>
                 </div>
-            </div>
+            </CollapsibleSection>
 
             {wordCountGoal && wordCountGoal > 0 ? (
-                <div className="workarea-section">
-                    <h3 className="workarea-section-title">Writing Goal</h3>
+                <CollapsibleSection title="Writing Goal">
                     <WordCountProgressBar current={totalWords} goal={wordCountGoal} />
-                </div>
+                </CollapsibleSection>
             ) : null}
 
             {resourceGroups.length >= 2 ? (
-                <ResourceBreakdown groups={resourceGroups} />
+                <CollapsibleSection title="Breakdown">
+                    <ResourceBreakdown groups={resourceGroups} />
+                </CollapsibleSection>
             ) : null}
 
-            <div className="workarea-section">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="workarea-section-title">Resources</h3>
+            <CollapsibleSection
+                title="Resources"
+                actions={
                     <div className="flex gap-3">
                         {(["lastEdited", "name"] as const).map((key) => (
                             <button
@@ -177,7 +175,8 @@ export default function DataView({
                             </button>
                         ))}
                     </div>
-                </div>
+                }
+            >
                 <StubResourcesSection resources={stubResources} />
                 <ul className="workarea-list">
                     {contentResources.map((r: AnyResource) => (
@@ -190,7 +189,7 @@ export default function DataView({
                         />
                     ))}
                 </ul>
-            </div>
+            </CollapsibleSection>
         </div>
     );
 }

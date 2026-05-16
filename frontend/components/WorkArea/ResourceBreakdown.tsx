@@ -16,10 +16,8 @@ export default function ResourceBreakdown({
     if (groups.length < 2) return null;
 
     return (
-        <div className="workarea-section">
-            <h3 className="workarea-section-title">Breakdown</h3>
-            <ul>
-                {groups.map((group) => (
+        <ul>
+            {groups.map((group) => (
                     <li
                         key={group.label}
                         className="flex items-center justify-between py-1 border-b border-gw-border last:border-b-0"
@@ -36,7 +34,6 @@ export default function ResourceBreakdown({
                         </span>
                     </li>
                 ))}
-            </ul>
-        </div>
+        </ul>
     );
 }

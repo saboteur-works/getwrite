@@ -383,3 +383,107 @@ describe("DataView breakdown section", () => {
         expect(screen.queryByText("Breakdown")).toBeNull();
     });
 });
+
+describe("DataView collapsible sections", () => {
+    const now = new Date().toISOString();
+    const project: Project = {
+        id: "proj-collapse",
+        name: "Collapse Test Project",
+        createdAt: now,
+    };
+
+    const makeResource = (name: string, wordCount = 500, folderId: string | null = null): AnyResource =>
+        ({
+            id: `res-${name}`,
+            slug: name,
+            name,
+            type: "text",
+            folderId,
+            createdAt: now,
+            updatedAt: now,
+            wordCount,
+            orderIndex: 0,
+        }) as unknown as AnyResource;
+
+    const makeFolder = (id: string, name: string): Folder =>
+        ({
+            id,
+            slug: id,
+            name,
+            type: "folder",
+            folderId: null,
+            createdAt: now,
+            orderIndex: 0,
+        }) as unknown as Folder;
+
+    it("renders all visible section toggle buttons by default", () => {
+        const projectWithGoal: Project = {
+            ...project,
+            config: { wordCountGoal: 80000, editorConfig: { headings: {} } },
+        };
+        const folders = [makeFolder("f1", "Folder A"), makeFolder("f2", "Folder B")];
+        const resources = [
+            makeResource("Chapter 1", 500, null),
+            makeResource("Research Note", 500, "f2"),
+        ];
+        render(
+            <DataView project={projectWithGoal} resources={resources} folders={folders} />,
+        );
+        expect(screen.getByRole("button", { name: /data/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /writing goal/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /breakdown/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /^resources$/i })).toBeInTheDocument();
+    });
+
+    it("collapses the Data section and hides stat content", () => {
+        render(<DataView project={project} resources={[makeResource("Chapter 1")]} />);
+        expect(screen.getByText("Total words")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /data/i }));
+        expect(screen.queryByText("Total words")).not.toBeInTheDocument();
+    });
+
+    it("collapses the Resources section and hides resource names", () => {
+        render(<DataView project={project} resources={[makeResource("Alpha")]} />);
+        expect(screen.getByText("Alpha")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /^resources$/i }));
+        expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+    });
+
+    it("hides sort buttons when the Resources section is collapsed", () => {
+        render(<DataView project={project} resources={[makeResource("Alpha")]} />);
+        expect(screen.getByRole("button", { name: /last edited/i })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /^resources$/i }));
+        expect(screen.queryByRole("button", { name: /last edited/i })).not.toBeInTheDocument();
+    });
+
+    it("collapses the Writing Goal section and hides the progress bar", () => {
+        const projectWithGoal: Project = {
+            ...project,
+            config: { wordCountGoal: 80000, editorConfig: { headings: {} } },
+        };
+        render(<DataView project={projectWithGoal} resources={[]} />);
+        expect(screen.getByRole("progressbar")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /writing goal/i }));
+        expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    });
+
+    it("collapses the Breakdown section and hides folder group labels", () => {
+        const folders = [makeFolder("f1", "Chapters"), makeFolder("f2", "Research")];
+        const resources = [
+            makeResource("C1", 500, "f1"),
+            makeResource("R1", 500, "f2"),
+        ];
+        render(<DataView project={project} resources={resources} folders={folders} />);
+        expect(screen.getByText("Chapters")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /breakdown/i }));
+        expect(screen.queryByText("Chapters")).not.toBeInTheDocument();
+    });
+
+    it("restores Resources content after collapse then expand", () => {
+        render(<DataView project={project} resources={[makeResource("Beta")]} />);
+        const toggle = screen.getByRole("button", { name: /^resources$/i });
+        fireEvent.click(toggle);
+        fireEvent.click(toggle);
+        expect(screen.getByText("Beta")).toBeInTheDocument();
+    });
+});
