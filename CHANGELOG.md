@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.25](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.24...getwrite-v0.2.25) (2026-05-16)
+
+
+### Features
+
+* **organizer:** Organizer v1 ([428448a](https://github.com/saboteur-works/getwrite/commit/428448a929ddb49ac1b5198411756805ac21c38f))
+
 ## [0.2.24](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.23...getwrite-v0.2.24) (2026-05-16)
 
 
