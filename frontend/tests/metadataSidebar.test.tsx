@@ -9,6 +9,10 @@ import {
     setResources,
     setSelectedResourceId,
 } from "../src/store/resourcesSlice";
+import {
+    setProject,
+    setSelectedProjectId,
+} from "../src/store/projectsSlice";
 
 describe("MetadataSidebar", () => {
     it("renders story date/duration controls and invokes callbacks", () => {
@@ -258,6 +262,9 @@ describe("MetadataSidebar", () => {
         const onStatus = vi.fn();
 
         const testStore = makeStore();
+        const projectId = "test-project-id";
+        testStore.dispatch(setProject({ id: projectId, rootPath: "/test", statuses: ["draft", "review", "published"] }));
+        testStore.dispatch(setSelectedProjectId(projectId));
         testStore.dispatch(setResources([res]));
         testStore.dispatch(setSelectedResourceId(res.id));
         render(
