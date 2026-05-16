@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import DataView from "../components/WorkArea/DataView";
 import { createTextResource } from "../src/lib/models/resource";
-import type { Project, TextResource, AnyResource } from "../src/lib/models/types";
+import type { Project, TextResource, AnyResource, Folder } from "../src/lib/models/types";
 
 describe("DataView", () => {
     it("shows resource count and lists resources", () => {
@@ -273,5 +273,113 @@ describe("DataView word count goal", () => {
         };
         render(<DataView project={project} resources={[]} />);
         expect(screen.queryByRole("progressbar")).toBeNull();
+    });
+});
+
+describe("DataView breakdown section", () => {
+    const now = new Date().toISOString();
+    const project: Project = {
+        id: "proj_breakdown",
+        name: "Breakdown Project",
+        createdAt: now,
+    };
+
+    const makeResource = (
+        name: string,
+        folderId: string | null,
+        wordCount = 500,
+    ): AnyResource =>
+        ({
+            id: `res-${name}`,
+            slug: name,
+            name,
+            type: "text",
+            folderId,
+            createdAt: now,
+            updatedAt: now,
+            wordCount,
+            orderIndex: 0,
+        }) as unknown as AnyResource;
+
+    const makeFolder = (id: string, name: string): Folder =>
+        ({
+            id,
+            slug: id,
+            name,
+            type: "folder",
+            folderId: null,
+            createdAt: now,
+            orderIndex: 0,
+        }) as unknown as Folder;
+
+    it("does not render a Breakdown section when no folders prop is provided", () => {
+        const resources = [
+            makeResource("Chapter 1", null, 3000),
+            makeResource("Chapter 2", null, 2000),
+        ];
+        render(<DataView project={project} resources={resources} />);
+        expect(screen.queryByText("Breakdown")).toBeNull();
+    });
+
+    it("does not render a Breakdown section when all resources are in one folder (1 group)", () => {
+        const folder = makeFolder("folder-a", "Chapters");
+        const resources = [
+            makeResource("Chapter 1", "folder-a", 3000),
+            makeResource("Chapter 2", "folder-a", 2000),
+        ];
+        render(
+            <DataView project={project} resources={resources} folders={[folder]} />,
+        );
+        expect(screen.queryByText("Breakdown")).toBeNull();
+    });
+
+    it("renders Breakdown section when resources span 2+ folders", () => {
+        const folders = [
+            makeFolder("folder-a", "Chapters"),
+            makeFolder("folder-b", "Research"),
+        ];
+        const resources = [
+            makeResource("Chapter 1", "folder-a", 3000),
+            makeResource("Chapter 2", "folder-a", 6200),
+            makeResource("Notes", "folder-b", 3400),
+        ];
+        render(
+            <DataView project={project} resources={resources} folders={folders} />,
+        );
+        expect(screen.getByText("Breakdown")).toBeDefined();
+    });
+
+    it("shows folder names in breakdown rows", () => {
+        const folders = [
+            makeFolder("folder-a", "Chapters"),
+            makeFolder("folder-b", "Research"),
+        ];
+        const resources = [
+            makeResource("Chapter 1", "folder-a", 3000),
+            makeResource("Notes", "folder-b", 3400),
+        ];
+        render(
+            <DataView project={project} resources={resources} folders={folders} />,
+        );
+        expect(screen.getByText("Chapters")).toBeDefined();
+        expect(screen.getByText("Research")).toBeDefined();
+    });
+
+    it("shows 'Ungrouped' for resources with no folderId alongside folder-grouped resources", () => {
+        const folders = [makeFolder("folder-a", "Chapters")];
+        const resources = [
+            makeResource("Chapter 1", "folder-a", 3000),
+            makeResource("Stray Note", null, 500),
+        ];
+        render(
+            <DataView project={project} resources={resources} folders={folders} />,
+        );
+        expect(screen.getByText("Ungrouped")).toBeDefined();
+    });
+
+    it("does not render Breakdown when resources array is empty", () => {
+        const folders = [makeFolder("folder-a", "Chapters")];
+        render(<DataView project={project} resources={[]} folders={folders} />);
+        expect(screen.queryByText("Breakdown")).toBeNull();
     });
 });

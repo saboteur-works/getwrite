@@ -1,10 +1,11 @@
 "use client";
 
 import React from "react";
-import type { Project, AnyResource } from "../../src/lib/models/types";
+import type { Project, AnyResource, Folder } from "../../src/lib/models/types";
 import WordCountProgressBar from "./WordCountProgressBar";
 import ResourceListItem from "./ResourceListItem";
 import StubResourcesSection from "./StubResourcesSection";
+import ResourceBreakdown, { type ResourceGroup } from "./ResourceBreakdown";
 
 const STUB_WORD_THRESHOLD = 50;
 
@@ -27,6 +28,8 @@ export interface DataViewProps {
     view?: { project: Project; folders: AnyResource[]; resources: AnyResource[] };
     /** Optional override flat list of resources to render (uses project(s).resources by default) */
     resources?: AnyResource[];
+    /** Folder list used to group resources in the Breakdown section. */
+    folders?: Folder[];
     className?: string;
 }
 
@@ -42,6 +45,7 @@ export default function DataView({
     project,
     view,
     resources,
+    folders,
     className = "",
 }: DataViewProps): JSX.Element {
     const [sortOrder, setSortOrder] = React.useState<SortOrder>("lastEdited");
@@ -81,6 +85,43 @@ export default function DataView({
         [sortedResources],
     );
 
+    const folderMap = React.useMemo(() => {
+        const map = new Map<string, string>();
+        for (const f of folders ?? []) {
+            map.set(f.id, f.name ?? "Unnamed");
+        }
+        return map;
+    }, [folders]);
+
+    const resourceGroups = React.useMemo<ResourceGroup[]>(() => {
+        const byFolder = new Map<string, AnyResource[]>();
+        for (const r of flatResources) {
+            const key = r.folderId ?? "__ungrouped__";
+            const existing = byFolder.get(key);
+            if (existing) {
+                existing.push(r);
+            } else {
+                byFolder.set(key, [r]);
+            }
+        }
+        const groups: ResourceGroup[] = Array.from(byFolder.entries()).map(
+            ([fid, rs]) => ({
+                label:
+                    fid === "__ungrouped__"
+                        ? "Ungrouped"
+                        : (folderMap.get(fid) ?? "Unknown"),
+                resourceCount: rs.length,
+                wordCount: rs.reduce((acc, r) => acc + getWordCount(r), 0),
+            }),
+        );
+        groups.sort((a, b) => {
+            if (a.label === "Ungrouped") return 1;
+            if (b.label === "Ungrouped") return -1;
+            return a.label.localeCompare(b.label);
+        });
+        return groups;
+    }, [flatResources, folderMap]);
+
     const totalResources = flatResources.length;
     const totalWords = flatResources.reduce((acc: number, r: AnyResource) => acc + getWordCount(r), 0);
 
@@ -110,6 +151,10 @@ export default function DataView({
                     <h3 className="workarea-section-title">Writing Goal</h3>
                     <WordCountProgressBar current={totalWords} goal={wordCountGoal} />
                 </div>
+            ) : null}
+
+            {resourceGroups.length >= 2 ? (
+                <ResourceBreakdown groups={resourceGroups} />
             ) : null}
 
             <div className="workarea-section">

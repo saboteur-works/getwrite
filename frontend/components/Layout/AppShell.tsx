@@ -1418,6 +1418,9 @@ export default function AppShell({
                                                                       project ??
                                                                       undefined
                                                                   }
+                                                                  folders={
+                                                                      folders
+                                                                  }
                                                               />
                                                           );
                                                       case "timeline":

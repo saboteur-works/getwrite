@@ -1,7 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import DataView, { DataViewProps } from "../../components/WorkArea/DataView";
-import { AnyResource, Project } from "../../src/lib/models";
+import { AnyResource, Folder, Project } from "../../src/lib/models";
 
 const meta: Meta<typeof DataView> = {
     title: "WorkArea/DataView",
@@ -243,6 +243,80 @@ export const WithStubResources: Story = {
                 createdAt: new Date(now - 15 * 86400000).toISOString(),
                 updatedAt: new Date(now - 5 * 86400000).toISOString(),
                 wordCount: 2800,
+            } as AnyResource,
+        ],
+    },
+};
+
+const folderChapters: Folder = {
+    id: "folder-chapters",
+    slug: "chapters",
+    name: "Chapters",
+    type: "folder",
+    folderId: null,
+    parentId: null,
+    createdAt: new Date().toISOString(),
+    orderIndex: 0,
+} as Folder;
+
+const folderResearch: Folder = {
+    id: "folder-research",
+    slug: "research",
+    name: "Research",
+    type: "folder",
+    folderId: null,
+    parentId: null,
+    createdAt: new Date().toISOString(),
+    orderIndex: 1,
+} as Folder;
+
+export const WithFolders: Story = {
+    args: {
+        project: {
+            id: "abcd-folders",
+            name: "Novel with Folders",
+            createdAt: new Date().toISOString(),
+        },
+        folders: [folderChapters, folderResearch],
+        resources: [
+            {
+                id: "wf-1",
+                slug: "chapter-1",
+                name: "Chapter 1 — The Call",
+                type: "text",
+                folderId: "folder-chapters",
+                createdAt: new Date(now - 10 * 86400000).toISOString(),
+                updatedAt: new Date(now - 2 * 3600000).toISOString(),
+                wordCount: 4200,
+            } as AnyResource,
+            {
+                id: "wf-2",
+                slug: "chapter-2",
+                name: "Chapter 2 — The Road",
+                type: "text",
+                folderId: "folder-chapters",
+                createdAt: new Date(now - 8 * 86400000).toISOString(),
+                updatedAt: new Date(now - 1 * 86400000).toISOString(),
+                wordCount: 5000,
+            } as AnyResource,
+            {
+                id: "wf-3",
+                slug: "research-notes",
+                name: "Research Notes",
+                type: "text",
+                folderId: "folder-research",
+                createdAt: new Date(now - 5 * 86400000).toISOString(),
+                updatedAt: new Date(now - 3 * 86400000).toISOString(),
+                wordCount: 3400,
+            } as AnyResource,
+            {
+                id: "wf-4",
+                slug: "bibliography",
+                name: "Bibliography",
+                type: "text",
+                folderId: "folder-research",
+                createdAt: new Date(now - 4 * 86400000).toISOString(),
+                wordCount: 800,
             } as AnyResource,
         ],
     },
