@@ -17,7 +17,7 @@ export interface TimelineRowProps {
 }
 
 const CHIP_HEIGHT = 28;
-const LANE_SLOT = 40;   // 28px chip + 6px top + 6px bottom
+const LANE_SLOT = 40; // 28px chip + 6px top + 6px bottom
 const ROW_PADDING = 16; // 2 × 8px
 
 interface ChipLayout {
@@ -45,7 +45,11 @@ function computeLayouts(
     const raw = items.map((item) => {
         const startMs = parseDateString(item.startDate);
         const endMs = item.endDate ? parseDateString(item.endDate) : startMs;
-        const leftPct = dateToPercent(startMs, axisBounds.start, axisBounds.end);
+        const leftPct = dateToPercent(
+            startMs,
+            axisBounds.start,
+            axisBounds.end,
+        );
         const rawWidthPct = ((endMs - startMs) / spanMs) * 100;
         const widthPct = Math.max(0.01, rawWidthPct);
         return { item, leftPct, rawWidthPct, widthPct };
@@ -94,9 +98,8 @@ export default function TimelineRow({
         [items, axisBounds, trackWidthPx],
     );
 
-    const numLanes = layouts.length > 0
-        ? Math.max(...layouts.map((c) => c.lane)) + 1
-        : 1;
+    const numLanes =
+        layouts.length > 0 ? Math.max(...layouts.map((c) => c.lane)) + 1 : 1;
     const rowHeight = Math.max(56, numLanes * LANE_SLOT + ROW_PADDING);
 
     const spanMs = axisBounds.end - axisBounds.start;
@@ -154,12 +157,13 @@ export default function TimelineRow({
                                 fontFamily: "var(--timeline-font-family)",
                                 fontSize: "8px",
                                 letterSpacing: "0.08em",
-                                color: "var(--timeline-axis-color)",
+                                color: "var(--color-gw-secondary)",
                                 marginTop: 3,
                                 userSelect: "none",
                             }}
                         >
-                            {items.length} {items.length === 1 ? "scene" : "scenes"}
+                            {items.length}{" "}
+                            {items.length === 1 ? "scene" : "scenes"}
                         </span>
                     </>
                 )}
@@ -194,7 +198,11 @@ export default function TimelineRow({
 
                 {/* Gridlines */}
                 {ticks.map((tick) => {
-                    const leftPct = dateToPercent(tick, axisBounds.start, axisBounds.end);
+                    const leftPct = dateToPercent(
+                        tick,
+                        axisBounds.start,
+                        axisBounds.end,
+                    );
                     return (
                         <div
                             key={tick}
@@ -213,30 +221,41 @@ export default function TimelineRow({
                 })}
 
                 {/* Chips */}
-                {layouts.map(({ item, leftPct, widthPct, variant, topOffset }) => (
-                    <TimelineChip
-                        key={item.id}
-                        item={item}
-                        leftPercent={leftPct}
-                        widthPercent={widthPct}
-                        variant={variant}
-                        topOffset={topOffset + Math.floor(ROW_PADDING / 2)}
-                        rowHeight={rowHeight}
-                        onMouseEnter={(e) => {
-                            const rect = (e.currentTarget.closest(".timeline-root") as HTMLElement)
-                                ?.getBoundingClientRect();
-                            if (!rect) return;
-                            onChipHover(item, e.clientX - rect.left, e.clientY - rect.top);
-                        }}
-                        onMouseLeave={() => onChipHover(null, 0, 0)}
-                    />
-                ))}
+                {layouts.map(
+                    ({ item, leftPct, widthPct, variant, topOffset }) => (
+                        <TimelineChip
+                            key={item.id}
+                            item={item}
+                            leftPercent={leftPct}
+                            widthPercent={widthPct}
+                            variant={variant}
+                            topOffset={topOffset + Math.floor(ROW_PADDING / 2)}
+                            rowHeight={rowHeight}
+                            onMouseEnter={(e) => {
+                                const rect = (
+                                    e.currentTarget.closest(
+                                        ".timeline-root",
+                                    ) as HTMLElement
+                                )?.getBoundingClientRect();
+                                if (!rect) return;
+                                onChipHover(
+                                    item,
+                                    e.clientX - rect.left,
+                                    e.clientY - rect.top,
+                                );
+                            }}
+                            onMouseLeave={() => onChipHover(null, 0, 0)}
+                        />
+                    ),
+                )}
 
                 {/* Gap labels — lane 0 only */}
                 {(() => {
                     const threshold = spanMs * 0.05;
                     const sorted = [...items].sort(
-                        (a, b) => parseDateString(a.startDate) - parseDateString(b.startDate),
+                        (a, b) =>
+                            parseDateString(a.startDate) -
+                            parseDateString(b.startDate),
                     );
                     return sorted.flatMap((item, i) => {
                         if (i === 0) return [];
@@ -247,9 +266,13 @@ export default function TimelineRow({
                         const gapMs = nextStart - prevEnd;
                         if (gapMs <= threshold) return [];
                         const midMs = prevEnd + gapMs / 2;
-                        const leftPct = dateToPercent(midMs, axisBounds.start, axisBounds.end);
+                        const leftPct = dateToPercent(
+                            midMs,
+                            axisBounds.start,
+                            axisBounds.end,
+                        );
                         const laneTop = Math.floor(ROW_PADDING / 2);
-                        return [(
+                        return [
                             <div
                                 key={`gap-${i}`}
                                 style={{
@@ -267,7 +290,8 @@ export default function TimelineRow({
                             >
                                 <span
                                     style={{
-                                        fontFamily: "var(--timeline-font-family)",
+                                        fontFamily:
+                                            "var(--timeline-font-family)",
                                         fontSize: "8px",
                                         letterSpacing: "0.08em",
                                         color: "var(--timeline-axis-color)",
@@ -277,8 +301,8 @@ export default function TimelineRow({
                                 >
                                     {formatGapLabel(gapMs)}
                                 </span>
-                            </div>
-                        )];
+                            </div>,
+                        ];
                     });
                 })()}
             </div>
