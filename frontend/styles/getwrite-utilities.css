@@ -33,37 +33,37 @@
      * Placed here (not :root) so this class-selector wins over the :root defaults
      * in the component-scoped timeline.css, regardless of stylesheet load order.
      * var(--color-gw-*) references lazy-resolve to whichever mode is active. */
-    --timeline-bg:               var(--color-gw-editor);
-    --timeline-track-bg:         #ECEAE3;
-    --timeline-axis-color:       var(--color-gw-border);
-    --timeline-axis-label-size:  9px;
+    --timeline-bg: var(--color-gw-chrom2);
+    --timeline-track-bg: #eceae3;
+    --timeline-axis-color: var(--color-gw-border);
+    --timeline-axis-label-size: 9px;
     --timeline-axis-label-color: var(--color-gw-secondary);
-    --timeline-item-bg:          var(--color-gw-chrome3);
-    --timeline-item-color:       var(--color-gw-primary);
-    --timeline-item-radius:      3px;
-    --timeline-item-height:      28px;
-    --timeline-item-min-width:        120px;
-    --timeline-item-pill-min-width:   44px;
-    --timeline-item-pin-width:        2px;
-    --timeline-outline-stripe:        rgba(0,0,0,0.20);
+    --timeline-item-bg: var(--color-gw-chrome3);
+    --timeline-item-color: var(--color-gw-primary);
+    --timeline-item-radius: 3px;
+    --timeline-item-height: 28px;
+    --timeline-item-min-width: 120px;
+    --timeline-item-pill-min-width: 44px;
+    --timeline-item-pin-width: 2px;
+    --timeline-outline-stripe: rgba(0, 0, 0, 0.2);
     --timeline-group-label-color: var(--color-gw-secondary);
     --timeline-group-label-width: 84px;
-    --timeline-row-height:       56px;
-    --timeline-font-family:      var(--font-mono);
-    --timeline-row-separator:    var(--color-gw-rule);
-    --timeline-focus-ring:       var(--color-gw-focus-ring);
-    --timeline-rule-color:       var(--color-gw-rule);
-    --timeline-row-tint:         rgba(0,0,0,0.011);
+    --timeline-row-height: 56px;
+    --timeline-font-family: var(--font-mono);
+    --timeline-row-separator: var(--color-gw-rule);
+    --timeline-focus-ring: var(--color-gw-focus-ring);
+    --timeline-rule-color: var(--color-gw-rule);
+    --timeline-row-tint: rgba(0, 0, 0, 0.011);
 
     /* POV chip palette — deeper for contrast on the light paper surface */
-    --timeline-pov-0: #4A6E94;
-    --timeline-pov-1: #5A8060;
-    --timeline-pov-2: #8A7040;
-    --timeline-pov-3: #6A5080;
-    --timeline-pov-4: #3E8082;
-    --timeline-pov-5: #7A5040;
-    --timeline-pov-6: #5E6A4E;
-    --timeline-pov-7: #7A5A6E;
+    --timeline-pov-0: #4a6e94;
+    --timeline-pov-1: #5a8060;
+    --timeline-pov-2: #8a7040;
+    --timeline-pov-3: #6a5080;
+    --timeline-pov-4: #3e8082;
+    --timeline-pov-5: #7a5040;
+    --timeline-pov-6: #5e6a4e;
+    --timeline-pov-7: #7a5a6e;
 }
 
 /* Dark mode: restore @theme defaults */
@@ -85,19 +85,19 @@
     --color-gw-diff-removed: rgba(80, 130, 180, 0.24);
 
     /* POV palette — original softer values for dark surfaces */
-    --timeline-pov-0: #6B8CAE;
-    --timeline-pov-1: #7A9E7E;
-    --timeline-pov-2: #A89060;
-    --timeline-pov-3: #8B6E9E;
-    --timeline-pov-4: #5E9EA0;
-    --timeline-pov-5: #A07060;
-    --timeline-pov-6: #7E8A6E;
-    --timeline-pov-7: #9E7A8E;
+    --timeline-pov-0: #6b8cae;
+    --timeline-pov-1: #7a9e7e;
+    --timeline-pov-2: #a89060;
+    --timeline-pov-3: #8b6e9e;
+    --timeline-pov-4: #5e9ea0;
+    --timeline-pov-5: #a07060;
+    --timeline-pov-6: #7e8a6e;
+    --timeline-pov-7: #9e7a8e;
 
     /* Dark-mode timeline overrides */
-    --timeline-track-bg:      #0C0C0B;
-    --timeline-outline-stripe: rgba(0,0,0,0.28);
-    --timeline-row-tint:       rgba(255,255,255,0.011);
+    --timeline-track-bg: #0c0c0b;
+    --timeline-outline-stripe: rgba(0, 0, 0, 0.28);
+    --timeline-row-tint: rgba(255, 255, 255, 0.011);
 }
 
 /* ── REDUCED MOTION ── (only permitted !important blocks in this file) */

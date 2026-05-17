@@ -35,9 +35,7 @@ export default function TimelineView({
     const dispatch = useAppDispatch();
 
     const resources = useAppSelector((state) => state.resources.resources);
-    const folders = useAppSelector(
-        (state) => state.resources.folders ?? [],
-    );
+    const folders = useAppSelector((state) => state.resources.folders ?? []);
 
     const povColorMap = React.useMemo(() => {
         const povs = [
@@ -47,19 +45,29 @@ export default function TimelineView({
                     .filter((p): p is string => !!p),
             ),
         ];
-        return Object.fromEntries(povs.map((p, i) => [p, colors[i % colors.length]]));
+        return Object.fromEntries(
+            povs.map((p, i) => [p, colors[i % colors.length]]),
+        );
     }, [resources, colors]);
 
     const items = React.useMemo((): TimelineItem[] => {
         return resources
             .filter(
-                (r) => typeof r.userMetadata?.storyDate === "string" && r.userMetadata.storyDate !== "",
+                (r) =>
+                    typeof r.userMetadata?.storyDate === "string" &&
+                    r.userMetadata.storyDate !== "",
             )
             .map((r) => {
                 const storyDate = r.userMetadata!.storyDate as string;
-                const storyTime = r.userMetadata?.storyTime as string | undefined;
-                const storyDuration = r.userMetadata?.storyDuration as number | undefined;
-                const storyEndDate = r.userMetadata?.storyEndDate as string | undefined;
+                const storyTime = r.userMetadata?.storyTime as
+                    | string
+                    | undefined;
+                const storyDuration = r.userMetadata?.storyDuration as
+                    | number
+                    | undefined;
+                const storyEndDate = r.userMetadata?.storyEndDate as
+                    | string
+                    | undefined;
 
                 const startDate = storyTime
                     ? `${storyDate}T${storyTime}`
@@ -68,17 +76,24 @@ export default function TimelineView({
                 const endDate =
                     storyEndDate ??
                     (storyDuration != null
-                        ? new Date(Date.parse(startDate) + storyDuration * 60000).toISOString()
+                        ? new Date(
+                              Date.parse(startDate) + storyDuration * 60000,
+                          ).toISOString()
                         : undefined);
 
-                const durationH = storyDuration != null ? storyDuration / 60 : undefined;
+                const durationH =
+                    storyDuration != null ? storyDuration / 60 : undefined;
 
                 const pov = r.userMetadata?.pov as string | undefined;
-                const statusArr = r.userMetadata?.status as string[] | undefined;
-                const status = statusArr?.[0];
-                const rawNotes = typeof r.notes === "string" ? r.notes : undefined;
+                const statusArr = r.userMetadata?.status as
+                    | string[]
+                    | undefined;
+                const status = r.userMetadata?.status as string | undefined;
+                const rawNotes =
+                    typeof r.notes === "string" ? r.notes : undefined;
                 const notes = rawNotes
-                    ? rawNotes.slice(0, 120) + (rawNotes.length > 120 ? "…" : "")
+                    ? rawNotes.slice(0, 120) +
+                      (rawNotes.length > 120 ? "…" : "")
                     : undefined;
                 const folder = folders.find((f) => f.id === r.folderId)?.name;
 
@@ -91,7 +106,8 @@ export default function TimelineView({
                     color: pov ? povColorMap[pov] : undefined,
                     durationH,
                     status,
-                    onClick: (id: string) => dispatch(setSelectedResourceId(id)),
+                    onClick: (id: string) =>
+                        dispatch(setSelectedResourceId(id)),
                     metadata: { pov, status: statusArr, folder, notes },
                 };
             });

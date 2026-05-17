@@ -15,6 +15,8 @@ export interface TimelineChipProps {
 
 const CHIP_HEIGHT = 28;
 const PIN_TOP_PAD = 6;
+const OUTLINE_STATUSES = ["Draft", "Outline", "In Progress"] as const;
+const FINAL_STATUSES = ["Final", "Approved", "Published", "Polished"] as const;
 
 export default function TimelineChip({
     item,
@@ -26,8 +28,12 @@ export default function TimelineChip({
     onMouseLeave,
 }: TimelineChipProps): JSX.Element {
     const status = item.status;
-    const isFinal = status === "Final";
-    const isOutline = status === "Outline";
+    const isFinal = FINAL_STATUSES.includes(
+        status as (typeof FINAL_STATUSES)[number],
+    );
+    const isOutline = OUTLINE_STATUSES.includes(
+        status as (typeof OUTLINE_STATUSES)[number],
+    );
 
     if (variant === "pin") {
         return (

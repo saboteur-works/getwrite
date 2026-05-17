@@ -65,7 +65,8 @@ export default function TimelineTooltip({
                     {/* Scene name */}
                     <div
                         style={{
-                            fontFamily: "var(--font-sans, 'IBM Plex Sans', sans-serif)",
+                            fontFamily:
+                                "var(--font-sans, 'IBM Plex Sans', sans-serif)",
                             fontWeight: 700,
                             fontSize: 12,
                             color: "var(--color-gw-primary, #F5F4F0)",
@@ -88,7 +89,10 @@ export default function TimelineTooltip({
                     />
 
                     {/* Key–value rows */}
-                    <TooltipRow label="DATE" value={formatTooltipDate(Date.parse(item.startDate))} />
+                    <TooltipRow
+                        label="DATE"
+                        value={formatTooltipDate(Date.parse(item.startDate))}
+                    />
                     {item.metadata?.pov && (
                         <TooltipRow label="POV" value={item.metadata.pov} />
                     )}
@@ -97,7 +101,10 @@ export default function TimelineTooltip({
                         value={formatTooltipDuration(item.durationH ?? 0)}
                     />
                     {item.metadata?.folder && (
-                        <TooltipRow label="ACT" value={item.metadata.folder} />
+                        <TooltipRow
+                            label="SOURCE"
+                            value={item.metadata.folder}
+                        />
                     )}
 
                     {/* Status badge */}
@@ -106,13 +113,16 @@ export default function TimelineTooltip({
                             style={{
                                 marginTop: 7,
                                 display: "inline-block",
-                                fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)",
+                                fontFamily:
+                                    "var(--font-mono, 'IBM Plex Mono', monospace)",
                                 fontSize: 8,
                                 letterSpacing: "0.12em",
                                 textTransform: "uppercase",
                                 padding: "2px 7px",
                                 border: `0.5px solid ${isFinal ? "#D44040" : "var(--color-gw-border, #2E2E2C)"}`,
-                                color: isFinal ? "#D44040" : "var(--color-gw-secondary, #6A6864)",
+                                color: isFinal
+                                    ? "#D44040"
+                                    : "var(--color-gw-secondary, #6A6864)",
                             }}
                         >
                             {status}
@@ -124,7 +134,13 @@ export default function TimelineTooltip({
     );
 }
 
-function TooltipRow({ label, value }: { label: string; value: string }): JSX.Element {
+function TooltipRow({
+    label,
+    value,
+}: {
+    label: string;
+    value: string;
+}): JSX.Element {
     return (
         <div
             style={{
