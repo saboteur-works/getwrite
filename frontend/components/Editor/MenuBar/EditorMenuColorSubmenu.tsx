@@ -1,12 +1,12 @@
-import { Baseline, Highlighter } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+    buildButtonClasses,
+    colorIconRegistry,
+    TOOLBAR_TOOLTIP_ID,
+    type EditorMenuColorIconName,
+} from "./editor-toolbar-icons";
 
-const ColorIconTypes = {
-    fontColor: Baseline,
-    highlight: Highlighter,
-};
-
-export type EditorMenuColorIconName = keyof typeof ColorIconTypes;
+export type { EditorMenuColorIconName };
 
 export interface EditorMenuColorSubmenuProps {
     icon?: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
@@ -43,7 +43,7 @@ export default function EditorMenuColorSubmenu({
         () => normalizeColor(activeColor),
         [activeColor],
     );
-    const Icon = iconName ? ColorIconTypes[iconName] : icon;
+    const Icon = iconName ? colorIconRegistry[iconName] : icon;
 
     useEffect(() => {
         if (!open || !buttonRef.current) {
@@ -106,12 +106,10 @@ export default function EditorMenuColorSubmenu({
             <button
                 ref={buttonRef}
                 type="button"
-                data-tooltip-id="my-tooltip"
+                data-tooltip-id={TOOLBAR_TOOLTIP_ID}
                 data-tooltip-content={tooltipContent}
                 disabled={disabled}
-                className={`editor-menu-icon-button ${
-                    disabled ? "editor-menu-icon-button-disabled" : ""
-                }`}
+                className={`editor-menu-icon-button ${buildButtonClasses(false, disabled)}`}
                 onClick={() => {
                     if (disabled) return;
                     setOpen((previous) => !previous);

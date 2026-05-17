@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import type { Editor } from "@tiptap/core";
-import type { EditorMenuColorIconName } from "./EditorMenuColorSubmenu";
 import type {
+    EditorMenuColorIconName,
+    EditorMenuIconName,
     EditorMenuInputIconName,
-    EditorMenuInputType,
-} from "./EditorMenuInput";
-import type { EditorMenuIconName } from "./EditorMenuIcon";
+} from "./editor-toolbar-icons";
+import type { EditorMenuInputType } from "./EditorMenuInput";
 import type { MenuBarState } from "./menuBarState";
 import {
     toolbarCommandSchema,

@@ -1,10 +1,10 @@
 import type { Editor } from "@tiptap/core";
-import type { EditorMenuColorIconName } from "./EditorMenuColorSubmenu";
 import type {
+    EditorMenuColorIconName,
+    EditorMenuIconName,
     EditorMenuInputIconName,
-    EditorMenuInputType,
-} from "./EditorMenuInput";
-import type { EditorMenuIconName } from "./EditorMenuIcon";
+} from "./editor-toolbar-icons";
+import type { EditorMenuInputType } from "./EditorMenuInput";
 import type { MenuBarState } from "./menuBarState";
 import type {
     EditorBodyConfig,
@@ -121,6 +121,42 @@ function insertBlockMath(context: ToolbarCommandContext): boolean {
     return editor.chain().insertBlockMath({ latex }).focus().run();
 }
 
+const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;
+type HeadingLevel = (typeof HEADING_LEVELS)[number];
+
+const headingCommands: ToolbarIconCommand[] = HEADING_LEVELS.map(
+    (level: HeadingLevel) => ({
+        id: `heading-${level}`,
+        kind: "icon" as const,
+        icon: `heading${level}` as EditorMenuIconName,
+        tooltipContent: `Heading ${level}`,
+        isActive: ({ state }: ToolbarCommandContext) =>
+            state[`isHeading${level}` as keyof MenuBarState] as boolean,
+        run: ({ editor }: ToolbarCommandContext) =>
+            editor.chain().focus().toggleHeading({ level }).run(),
+    }),
+);
+
+const ALIGN_OPTIONS = [
+    { dir: "left",    icon: "alignLeft",    label: "Align Left",    stateKey: "isAlignLeft"    },
+    { dir: "center",  icon: "alignCenter",  label: "Align Center",  stateKey: "isAlignCenter"  },
+    { dir: "right",   icon: "alignRight",   label: "Align Right",   stateKey: "isAlignRight"   },
+    { dir: "justify", icon: "alignJustify", label: "Align Justify", stateKey: "isAlignJustify" },
+] as const;
+
+const alignmentCommands: ToolbarIconCommand[] = ALIGN_OPTIONS.map(
+    ({ dir, icon, label, stateKey }) => ({
+        id: `align-${dir}`,
+        kind: "icon" as const,
+        icon: icon as EditorMenuIconName,
+        tooltipContent: label,
+        isActive: ({ state }: ToolbarCommandContext) =>
+            state[stateKey] as boolean,
+        run: ({ editor }: ToolbarCommandContext) =>
+            editor.chain().focus().setTextAlign(dir).run(),
+    }),
+);
+
 export const toolbarCommandSchema: ToolbarCommandGroup[] = [
     {
         groupName: "Typography",
@@ -169,7 +205,7 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
                         return;
                     }
 
-                    editor.chain().focus().setFontSize(`${value}px`).run();
+                    editor.chain().setFontSize(`${value}px`).run();
                 },
             },
             {
@@ -277,44 +313,7 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
     {
         groupName: "Alignment",
         groupId: "alignment-controls",
-        items: [
-            {
-                id: "align-left",
-                kind: "icon",
-                icon: "alignLeft",
-                tooltipContent: "Align Left",
-                isActive: ({ state }) => state.isAlignLeft,
-                run: ({ editor }) =>
-                    editor.chain().focus().setTextAlign("left").run(),
-            },
-            {
-                id: "align-center",
-                kind: "icon",
-                icon: "alignCenter",
-                tooltipContent: "Align Center",
-                isActive: ({ state }) => state.isAlignCenter,
-                run: ({ editor }) =>
-                    editor.chain().focus().setTextAlign("center").run(),
-            },
-            {
-                id: "align-right",
-                kind: "icon",
-                icon: "alignRight",
-                tooltipContent: "Align Right",
-                isActive: ({ state }) => state.isAlignRight,
-                run: ({ editor }) =>
-                    editor.chain().focus().setTextAlign("right").run(),
-            },
-            {
-                id: "align-justify",
-                kind: "icon",
-                icon: "alignJustify",
-                tooltipContent: "Align Justify",
-                isActive: ({ state }) => state.isAlignJustify,
-                run: ({ editor }) =>
-                    editor.chain().focus().setTextAlign("justify").run(),
-            },
-        ],
+        items: alignmentCommands,
     },
     {
         groupName: "Format Type",
@@ -348,7 +347,7 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
                 initialValue: "1.5",
                 getValue: ({ state }) => state.getWriteParagraphLeading,
                 onChange: ({ editor }, value) => {
-                    editor.chain().focus().setParagraphLeading(value).run();
+                    editor.chain().setParagraphLeading(value).run();
                 },
             },
         ],
@@ -365,60 +364,7 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
                 run: ({ editor }) =>
                     editor.chain().focus().setHardBreak().run(),
             },
-            {
-                id: "heading-1",
-                kind: "icon",
-                icon: "heading1",
-                tooltipContent: "Heading 1",
-                isActive: ({ state }) => state.isHeading1,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleHeading({ level: 1 }).run(),
-            },
-            {
-                id: "heading-2",
-                kind: "icon",
-                icon: "heading2",
-                tooltipContent: "Heading 2",
-                isActive: ({ state }) => state.isHeading2,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleHeading({ level: 2 }).run(),
-            },
-            {
-                id: "heading-3",
-                kind: "icon",
-                icon: "heading3",
-                tooltipContent: "Heading 3",
-                isActive: ({ state }) => state.isHeading3,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleHeading({ level: 3 }).run(),
-            },
-            {
-                id: "heading-4",
-                kind: "icon",
-                icon: "heading4",
-                tooltipContent: "Heading 4",
-                isActive: ({ state }) => state.isHeading4,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleHeading({ level: 4 }).run(),
-            },
-            {
-                id: "heading-5",
-                kind: "icon",
-                icon: "heading5",
-                tooltipContent: "Heading 5",
-                isActive: ({ state }) => state.isHeading5,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleHeading({ level: 5 }).run(),
-            },
-            {
-                id: "heading-6",
-                kind: "icon",
-                icon: "heading6",
-                tooltipContent: "Heading 6",
-                isActive: ({ state }) => state.isHeading6,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleHeading({ level: 6 }).run(),
-            },
+            ...headingCommands,
         ],
     },
     {

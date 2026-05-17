@@ -13,7 +13,7 @@
  */
 import "katex/dist/katex.min.css";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
     useEditor,
     EditorContent,
@@ -23,9 +23,20 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
-import { FontSize, FontFamily, TextStyle } from "@tiptap/extension-text-style";
+import {
+    FontSize,
+    FontFamily,
+    TextStyle,
+    Color,
+    BackgroundColor,
+} from "@tiptap/extension-text-style";
 import Blockquote from "@tiptap/extension-blockquote";
-import { BulletList, ListItem } from "@tiptap/extension-list";
+import {
+    BulletList,
+    ListItem,
+    ListKeymap,
+    OrderedList,
+} from "@tiptap/extension-list";
 import CodeBlock from "@tiptap/extension-code-block";
 import Highlight from "@tiptap/extension-highlight";
 import UniqueID from "@tiptap/extension-unique-id";
@@ -63,15 +74,22 @@ export interface TipTapEditorProps {
 /**
  * Shared base extension list for all runtime editor instances.
  */
-const extensions = [
+export const extensions = [
     StarterKit.configure({
-        heading: false, // disable default heading to use CustomHeading
+        heading: false, // disabled — CustomHeading is used instead
+        bulletList: false, // disabled — BulletList registered explicitly below
+        orderedList: false, // disabled — OrderedList registered explicitly below
+        listItem: false, // disabled — ListItem registered explicitly below
     }),
     TextStyle,
+    Color,
+    BackgroundColor,
     FontSize,
     Blockquote,
     BulletList,
+    OrderedList,
     ListItem,
+    ListKeymap,
     Highlight.configure({
         multicolor: true,
     }),
@@ -130,6 +148,13 @@ export default function TipTapEditor({
     const inTestEnv =
         typeof process !== "undefined" &&
         (process.env?.VITEST === "true" || process.env?.NODE_ENV === "test");
+
+    // Tracks the TipTapDocument object most recently emitted by onUpdate so that
+    // the content-sync useEffect can skip setContent when value was produced by
+    // the editor itself (same object reference). Without this guard, every edit
+    // triggers setContent → cursor reset because an object value never equals
+    // the string returned by editor.getHTML().
+    const lastEmittedDocRef = useRef<unknown>(null);
 
     // During unit tests we avoid initializing TipTap (ProseMirror) because the
     // full editor lifecycle and extension loading can be brittle in jsdom.
@@ -190,8 +215,10 @@ export default function TipTapEditor({
          * Emits both HTML and JSON representations for parent persistence flows.
          */
         onUpdate: ({ editor }) => {
-            if (onChange)
-                onChange(editor.getHTML(), editor.getJSON() as TipTapDocument);
+            const html = editor.getHTML();
+            const doc = editor.getJSON() as TipTapDocument;
+            lastEmittedDocRef.current = doc;
+            if (onChange) onChange(html, doc);
         },
         /**
          * Migrates legacy math string representations to node-based format.
@@ -220,10 +247,18 @@ export default function TipTapEditor({
 
     /**
      * Synchronizes externally provided `value` into TipTap when it diverges
-     * from current editor HTML.
+     * from the editor's current content.
+     *
+     * Skip when `value` is the exact object most recently emitted by `onUpdate`
+     * — the editor already has that content, and calling setContent would reset
+     * the cursor. Only call setContent for external changes (loading a revision,
+     * switching resources) where `value` is a different object reference.
      */
     useEffect(() => {
         if (!editor) return;
+        // If value is the same reference we just emitted, the editor already
+        // has this content. Calling setContent would reset the cursor position.
+        if (value === lastEmittedDocRef.current) return;
         const current = editor.getHTML();
         if (value !== current) {
             // Use a minimal, explicit cast to satisfy the Tiptap typing

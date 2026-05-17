@@ -133,6 +133,14 @@ function createEditorDouble(options: MockEditorOptions = {}) {
             actions.push({ name: "insertBlockMath", payload });
             return chainApi;
         },
+        sinkListItem: () => {
+            actions.push({ name: "sinkListItem" });
+            return chainApi;
+        },
+        liftListItem: () => {
+            actions.push({ name: "liftListItem" });
+            return chainApi;
+        },
         run: () => {
             actions.push({ name: "run" });
             return true;
@@ -289,5 +297,147 @@ describe("MenuBar", () => {
                 }),
             ]),
         );
+    });
+
+    it("bullet list button renders with active styling when isBulletList is true", () => {
+        mockUseEditorState.mockReturnValueOnce({
+            canUndo: true, canRedo: true, canBold: true, canItalic: true,
+            canUnderline: true, canStrike: true, canCode: true,
+            isBold: false, isItalic: false, isUnderline: false, isStrike: false,
+            isCode: false, isParagraph: false,
+            isHeading1: false, isHeading2: false, isHeading3: false,
+            isHeading4: false, isHeading5: false, isHeading6: false,
+            isCodeBlock: false,
+            isBulletList: true,
+            isOrderedList: false,
+            isBlockquote: false, isAlignLeft: true, isAlignCenter: false,
+            isAlignRight: false, isAlignJustify: false, isHighlight: false,
+            canHighlight: true, textColor: "#111827", backgroundColor: "#fff8b3",
+            fontSize: "14px", isDomine: true,
+        });
+
+        const { editor } = createEditorDouble();
+        render(
+            <Provider store={makeStore()}>
+                <MenuBar editor={editor as never} />
+            </Provider>,
+        );
+
+        expect(
+            screen.getByRole("button", { name: /Bullet list/i }),
+        ).toHaveClass("editor-menu-icon-button-active");
+    });
+
+    it("ordered list button renders with active styling when isOrderedList is true", () => {
+        mockUseEditorState.mockReturnValueOnce({
+            canUndo: true, canRedo: true, canBold: true, canItalic: true,
+            canUnderline: true, canStrike: true, canCode: true,
+            isBold: false, isItalic: false, isUnderline: false, isStrike: false,
+            isCode: false, isParagraph: false,
+            isHeading1: false, isHeading2: false, isHeading3: false,
+            isHeading4: false, isHeading5: false, isHeading6: false,
+            isCodeBlock: false,
+            isBulletList: false,
+            isOrderedList: true,
+            isBlockquote: false, isAlignLeft: true, isAlignCenter: false,
+            isAlignRight: false, isAlignJustify: false, isHighlight: false,
+            canHighlight: true, textColor: "#111827", backgroundColor: "#fff8b3",
+            fontSize: "14px", isDomine: true,
+        });
+
+        const { editor } = createEditorDouble();
+        render(
+            <Provider store={makeStore()}>
+                <MenuBar editor={editor as never} />
+            </Provider>,
+        );
+
+        expect(
+            screen.getByRole("button", { name: /Ordered list/i }),
+        ).toHaveClass("editor-menu-icon-button-active");
+    });
+
+    it("clicking bullet list button dispatches toggleBulletList", async () => {
+        const user = userEvent.setup();
+        const { editor, actions } = createEditorDouble();
+
+        render(
+            <Provider store={makeStore()}>
+                <MenuBar editor={editor as never} />
+            </Provider>,
+        );
+
+        await user.click(screen.getByRole("button", { name: /Bullet list/i }));
+
+        expect(actions).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ name: "focus" }),
+                expect.objectContaining({ name: "toggleBulletList" }),
+                expect.objectContaining({ name: "run" }),
+            ]),
+        );
+    });
+
+    it("clicking ordered list button dispatches toggleOrderedList", async () => {
+        const user = userEvent.setup();
+        const { editor, actions } = createEditorDouble();
+
+        render(
+            <Provider store={makeStore()}>
+                <MenuBar editor={editor as never} />
+            </Provider>,
+        );
+
+        await user.click(screen.getByRole("button", { name: /Ordered list/i }));
+
+        expect(actions).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ name: "focus" }),
+                expect.objectContaining({ name: "toggleOrderedList" }),
+                expect.objectContaining({ name: "run" }),
+            ]),
+        );
+    });
+});
+
+import { toolbarCommandSchema } from "../components/Editor/MenuBar/toolbar-command-schema";
+
+describe("Schema parity", () => {
+    it("exports exactly 10 top-level command groups", () => {
+        expect(toolbarCommandSchema).toHaveLength(10);
+    });
+
+    it("heading-controls group contains hard-break + all 6 heading levels in order", () => {
+        const group = toolbarCommandSchema.find((g) => g.groupId === "heading-controls")!;
+        expect(group.items).toHaveLength(7);
+        expect(group.items.map((i) => i.id)).toEqual([
+            "hard-break",
+            "heading-1", "heading-2", "heading-3",
+            "heading-4", "heading-5", "heading-6",
+        ]);
+    });
+
+    it("each heading command tooltip matches its level", () => {
+        const group = toolbarCommandSchema.find((g) => g.groupId === "heading-controls")!;
+        [1, 2, 3, 4, 5, 6].forEach((level) => {
+            const item = group.items.find((i) => i.id === `heading-${level}`);
+            expect(item?.tooltipContent).toBe(`Heading ${level}`);
+        });
+    });
+
+    it("alignment-controls group has exactly 4 items in left/center/right/justify order", () => {
+        const group = toolbarCommandSchema.find((g) => g.groupId === "alignment-controls")!;
+        expect(group.items).toHaveLength(4);
+        expect(group.items.map((i) => i.id)).toEqual([
+            "align-left", "align-center", "align-right", "align-justify",
+        ]);
+    });
+
+    it("each alignment command tooltip matches its direction", () => {
+        const group = toolbarCommandSchema.find((g) => g.groupId === "alignment-controls")!;
+        const expected = ["Align Left", "Align Center", "Align Right", "Align Justify"];
+        group.items.forEach((item, i) => {
+            expect(item.tooltipContent).toBe(expected[i]);
+        });
     });
 });
