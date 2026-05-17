@@ -205,7 +205,7 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
                         return;
                     }
 
-                    editor.chain().focus().setFontSize(`${value}px`).run();
+                    editor.chain().setFontSize(`${value}px`).run();
                 },
             },
             {
@@ -347,7 +347,7 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
                 initialValue: "1.5",
                 getValue: ({ state }) => state.getWriteParagraphLeading,
                 onChange: ({ editor }, value) => {
-                    editor.chain().focus().setParagraphLeading(value).run();
+                    editor.chain().setParagraphLeading(value).run();
                 },
             },
         ],

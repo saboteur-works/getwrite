@@ -8,7 +8,7 @@
  * forwards user updates through `onChange`/`onInput` callbacks so parent
  * editor tooling can react to formatting changes.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     buildButtonClasses,
     inputIconRegistry,
@@ -110,12 +110,15 @@ export default function EditorMenuInput({
     maxValue = 100,
 }: EditorMenuInputProps) {
     const [value, setValue] = useState(initialValue);
+    const isFocused = useRef(false);
     const IconComponent = inputIconRegistry[Icon];
     const controlId = `${Icon}-${type ?? "color"}-input`;
     const buttonClasses = buildButtonClasses(active, disabled);
 
     useEffect(() => {
-        setValue(initialValue);
+        if (!isFocused.current) {
+            setValue(initialValue);
+        }
     }, [initialValue]);
 
     const sharedInputProps = {
@@ -170,6 +173,8 @@ export default function EditorMenuInput({
                     min={minValue}
                     max={maxValue}
                     onClick={onClick}
+                    onFocus={() => { isFocused.current = true; }}
+                    onBlur={() => { isFocused.current = false; }}
                     className={`editor-menu-input-control editor-menu-number-input ${buttonClasses}`}
                 />
             )}
