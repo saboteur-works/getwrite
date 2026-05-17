@@ -263,11 +263,13 @@ export default function AppShell({
 
     useEffect(() => {
         if (selectedResource?.type === "text") {
-            setView("edit");
-        } else if (selectedResource?.type === "folder" && view === "edit") {
-            setView("organizer");
+            setView((current) => (current === "organizer" ? "edit" : current));
+        } else if (selectedResource?.type === "folder") {
+            setView((current) =>
+                current === "edit" || current === "diff" ? "organizer" : current,
+            );
         }
-    }, [selectedResource?.id, view]);
+    }, [selectedResource?.id, selectedResource?.type]);
 
     const isSavingRevision = useAppSelector(selectIsSavingRevision);
     const deletingRevisionId = useAppSelector(selectDeletingRevisionId);
