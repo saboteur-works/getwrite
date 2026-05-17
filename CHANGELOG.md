@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.2.26](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.25...getwrite-v0.2.26) (2026-05-17)
+
+
+### Features
+
+* **data-view:** add folder breakdown section to resource stats ([5bdcf65](https://github.com/saboteur-works/getwrite/commit/5bdcf65ef0b16e32e3e271db26d2661a2a900d4b))
+* **data-view:** add folder jump button and fix live data in breakdown ([fe139b7](https://github.com/saboteur-works/getwrite/commit/fe139b7837238fa12fd2b2669c37e5e78b8367f5))
+* **data-view:** add last-edited timestamps and sort toggle to resource list ([359978c](https://github.com/saboteur-works/getwrite/commit/359978ca7c95f6e4be6906ee7e6d35a61c2d3573))
+* **data-view:** add word count goal progress bar ([760e1e4](https://github.com/saboteur-works/getwrite/commit/760e1e49955495b3919f0950a890c39336027521))
+* **data-view:** finalize Data view with stats, breakdown, and resource list ([8ab53b3](https://github.com/saboteur-works/getwrite/commit/8ab53b3b260f77b24e66db9d4a553e88670b8262))
+* **data-view:** make DataView sections collapsible ([35afc91](https://github.com/saboteur-works/getwrite/commit/35afc914226dcaf60cd9f38dfe3cca25e2a646be))
+* **data-view:** make Resources and Breakdown sections scrollable ([b3b8770](https://github.com/saboteur-works/getwrite/commit/b3b8770dbd19168dba400ee4bd89896d0880b816))
+* **data-view:** surface stub resources as 'needs content' in resource list ([49d333a](https://github.com/saboteur-works/getwrite/commit/49d333a127465a0981f6da0410af3a0f05fd14a6))
+* **word-count:** centralise word counting and fix HTML inflation bug ([57f5c00](https://github.com/saboteur-works/getwrite/commit/57f5c007e1b8207448847e1994db96ef85e45d85))
+
+
+### Bug Fixes
+
+* **data-view:** add consistent vertical spacing between sections ([1825e49](https://github.com/saboteur-works/getwrite/commit/1825e49ec2408b3fa78e3478d4e69e9d12300bb8))
+* **data-view:** prevent duplicate 'Unknown' keys in breakdown section ([bcd280d](https://github.com/saboteur-works/getwrite/commit/bcd280dc8b0085e0d87a2d48d237dcabd8b2f2d3))
+
 ## [0.2.25](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.24...getwrite-v0.2.25) (2026-05-16)
 
 
