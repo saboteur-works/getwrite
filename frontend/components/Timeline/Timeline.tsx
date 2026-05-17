@@ -1,4 +1,5 @@
 import React from "react";
+import { Tooltip } from "react-tooltip";
 import "./timeline.css";
 import type { TimelineProps, TimelineGroup, TimelineItem } from "./types";
 import { computeAxisBounds, buildTicks } from "./utils";
@@ -127,6 +128,38 @@ export default function Timeline({
                 </div>
             </div>
 
+            <Tooltip
+                id="timeline-chip-tooltip"
+                place="top"
+                opacity={1}
+                style={{ zIndex: 9999 }}
+                render={({ activeAnchor }) => {
+                    if (!activeAnchor) return null;
+                    const d = activeAnchor.dataset;
+                    return (
+                        <div
+                            style={{
+                                maxWidth: 240,
+                                fontFamily: "var(--timeline-font-family)",
+                                fontSize: 12,
+                                lineHeight: 1.5,
+                            }}
+                        >
+                            <div style={{ fontWeight: 700, marginBottom: 4 }}>{d.label}</div>
+                            {d.dateRange && <div style={{ opacity: 0.8 }}>{d.dateRange}</div>}
+                            {d.pov    && <div>POV · {d.pov}</div>}
+                            {d.status && <div>Status · {d.status}</div>}
+                            {d.folder && <div>Act · {d.folder}</div>}
+                            {d.notes  && (
+                                <div style={{ marginTop: 6, opacity: 0.7, fontStyle: "italic" }}>
+                                    {d.notes}
+                                </div>
+                            )}
+                        </div>
+                    );
+                }}
+            />
+
             {/* Scrollable track */}
             <div ref={scrollRef} style={{ overflowX: "auto" }}>
                 <div
@@ -157,6 +190,7 @@ export default function Timeline({
                             group={row.group}
                             items={row.items}
                             axisBounds={axisBounds}
+                            trackWidthPx={trackWidth}
                         />
                     ))}
                 </div>

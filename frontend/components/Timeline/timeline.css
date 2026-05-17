@@ -27,6 +27,10 @@
     --timeline-item-height:         22px;
     /* Minimum chip width — ensures point-in-time items (no duration) are always readable */
     --timeline-item-min-width:      120px;
+    /* Pill variant — narrow chip for short-duration scenes */
+    --timeline-item-pill-min-width: 44px;
+    /* Pin variant — fixed-width marker for zero-duration events */
+    --timeline-item-pin-width:      4px;
 
     /* Group label column */
     --timeline-group-label-color:   #616161;

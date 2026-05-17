@@ -16,8 +16,13 @@ export interface TimelineItem {
     tooltip?: string;
     /** Background color for the chip, derived from POV character or other grouping. */
     color?: string;
-    /** Arbitrary consumer metadata — passed through, not rendered. */
-    metadata?: Record<string, unknown>;
+    /** Structured metadata for tooltip display. */
+    metadata?: {
+        pov?:    string;
+        status?: string[];
+        folder?: string;
+        notes?:  string;
+    };
 }
 
 /** A row-level group shown in the group label column. */

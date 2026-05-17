@@ -3,23 +3,99 @@ import type { TimelineItem, TimelineGroup } from "./types";
 import { parseDateString, dateToPercent, formatDuration } from "./utils";
 import TimelineChip from "./TimelineChip";
 
+export type ChipVariant = "bar" | "pill" | "pin";
+
 export interface TimelineRowProps {
     group?: TimelineGroup;
     items: TimelineItem[];
     axisBounds: { start: number; end: number };
+    trackWidthPx: number;
+}
+
+const CHIP_HEIGHT = 22;
+const LANE_GAP = 4;
+const ROW_PADDING = 7;
+
+interface ChipLayout {
+    item: TimelineItem;
+    leftPct: number;
+    widthPct: number;
+    variant: ChipVariant;
+    lane: number;
+    topOffset: number;
+}
+
+function computeLayouts(
+    items: TimelineItem[],
+    axisBounds: { start: number; end: number },
+    trackWidthPx: number,
+): ChipLayout[] {
+    const spanMs = axisBounds.end - axisBounds.start;
+
+    const raw = items.map((item) => {
+        const startMs = parseDateString(item.startDate);
+        const endMs = item.endDate ? parseDateString(item.endDate) : startMs;
+        const leftPct = dateToPercent(startMs, axisBounds.start, axisBounds.end);
+        const rawWidthPct = ((endMs - startMs) / spanMs) * 100;
+        const widthPct = Math.max(1, rawWidthPct);
+        return { item, leftPct, rawWidthPct, widthPct };
+    });
+
+    // Sort by left position for greedy lane assignment
+    const sorted = raw.slice().sort((a, b) => a.leftPct - b.leftPct);
+
+    const laneEnds: number[] = [];
+
+    return sorted.map(({ item, leftPct, rawWidthPct, widthPct }) => {
+        const physicalPx = (rawWidthPct / 100) * trackWidthPx;
+
+        const variant: ChipVariant =
+            physicalPx < 10 ? "pin"
+            : physicalPx < 80 ? "pill"
+            : "bar";
+
+        const renderedWidthPx =
+            variant === "bar" ? Math.max(physicalPx, 120)
+            : variant === "pill" ? Math.max(physicalPx, 44)
+            : 4;
+
+        const leftPx = (leftPct / 100) * trackWidthPx;
+        const rightPx = leftPx + renderedWidthPx;
+
+        let lane = laneEnds.findIndex((end) => end <= leftPx);
+        if (lane === -1) lane = laneEnds.length;
+        laneEnds[lane] = rightPx;
+
+        const topOffset = lane * (CHIP_HEIGHT + LANE_GAP) + Math.floor(ROW_PADDING / 2);
+
+        return { item, leftPct, widthPct, variant, lane, topOffset };
+    });
 }
 
 export default function TimelineRow({
     group,
     items,
     axisBounds,
+    trackWidthPx,
 }: TimelineRowProps): JSX.Element {
+    const layouts = React.useMemo(
+        () => computeLayouts(items, axisBounds, trackWidthPx),
+        [items, axisBounds, trackWidthPx],
+    );
+
+    const numLanes = layouts.length > 0
+        ? Math.max(...layouts.map((c) => c.lane)) + 1
+        : 1;
+    const rowHeight = numLanes * CHIP_HEIGHT + (numLanes - 1) * LANE_GAP + ROW_PADDING;
+
+    const spanMs = axisBounds.end - axisBounds.start;
+
     return (
         <div
             style={{
                 display: "flex",
-                height: "var(--timeline-row-height)",
-                alignItems: "center",
+                height: `${rowHeight}px`,
+                alignItems: "flex-start",
                 borderBottom: "0.5px solid var(--timeline-row-separator)",
             }}
         >
@@ -32,6 +108,7 @@ export default function TimelineRow({
                         fontFamily: "var(--timeline-font-family)",
                         fontSize: "var(--timeline-axis-label-size)",
                         paddingRight: "8px",
+                        paddingTop: `${Math.floor(ROW_PADDING / 2)}px`,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -49,38 +126,24 @@ export default function TimelineRow({
                 style={{
                     flex: 1,
                     position: "relative",
-                    height: "var(--timeline-row-height)",
+                    height: `${rowHeight}px`,
                     backgroundColor: "var(--timeline-track-bg)",
                     borderRadius: "2px",
                 }}
             >
-                {items.map((item) => {
-                    const startMs = parseDateString(item.startDate);
-                    const endMs = item.endDate
-                        ? parseDateString(item.endDate)
-                        : startMs;
-                    const spanMs = axisBounds.end - axisBounds.start;
-                    const leftPct = dateToPercent(
-                        startMs,
-                        axisBounds.start,
-                        axisBounds.end,
-                    );
-                    // Minimum 1% width so zero-duration items are visible as a point marker
-                    const rawWidth =
-                        ((endMs - startMs) / spanMs) * 100;
-                    const widthPct = Math.max(1, rawWidth);
-                    return (
-                        <TimelineChip
-                            key={item.id}
-                            item={item}
-                            leftPercent={leftPct}
-                            widthPercent={widthPct}
-                        />
-                    );
-                })}
+                {layouts.map(({ item, leftPct, widthPct, variant, topOffset }) => (
+                    <TimelineChip
+                        key={item.id}
+                        item={item}
+                        leftPercent={leftPct}
+                        widthPercent={widthPct}
+                        variant={variant}
+                        topOffset={topOffset}
+                        rowHeight={rowHeight}
+                    />
+                ))}
                 {(() => {
-                    const axisSpan = axisBounds.end - axisBounds.start;
-                    const threshold = axisSpan * 0.05;
+                    const threshold = spanMs * 0.05;
                     const sorted = [...items].sort(
                         (a, b) => parseDateString(a.startDate) - parseDateString(b.startDate),
                     );

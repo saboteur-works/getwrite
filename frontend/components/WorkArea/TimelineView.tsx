@@ -101,6 +101,12 @@ export default function TimelineView({
                 }
 
                 const pov = r.userMetadata?.pov as string | undefined;
+                const status = r.userMetadata?.status as string[] | undefined;
+                const rawNotes = typeof r.notes === "string" ? r.notes : undefined;
+                const notes = rawNotes
+                    ? rawNotes.slice(0, 120) + (rawNotes.length > 120 ? "…" : "")
+                    : undefined;
+                const folder = folders.find((f) => f.id === r.folderId)?.name;
 
                 return {
                     id: r.id,
@@ -111,9 +117,10 @@ export default function TimelineView({
                     tooltip: tooltipParts.join(" · "),
                     color: pov ? povColorMap[pov] : undefined,
                     onClick: (id: string) => dispatch(setSelectedResourceId(id)),
+                    metadata: { pov, status, folder, notes },
                 };
             });
-    }, [resources, povColorMap, dispatch]);
+    }, [resources, povColorMap, folders, dispatch]);
 
     const groups = React.useMemo((): TimelineGroup[] => {
         const groupIds = new Set(

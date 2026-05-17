@@ -42,7 +42,9 @@
     --timeline-item-color:       var(--color-gw-primary);
     --timeline-item-radius:      2px;
     --timeline-item-height:      22px;
-    --timeline-item-min-width:   120px;
+    --timeline-item-min-width:        120px;
+    --timeline-item-pill-min-width:   44px;
+    --timeline-item-pin-width:        4px;
     --timeline-group-label-color: var(--color-gw-secondary);
     --timeline-group-label-width: 120px;
     --timeline-row-height:       var(--height-gw-tree-item);
