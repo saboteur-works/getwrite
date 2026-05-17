@@ -5,6 +5,16 @@
 export type UUID = string;
 
 /**
+ * A reference to another resource, used as the value shape for `resource-ref`
+ * metadata fields. `id` is null when the referenced resource has been deleted
+ * but the display name is preserved.
+ */
+export type ResourceRef = {
+    id: string | null;
+    name: string;
+};
+
+/**
  * MetadataValue: recursive union representing allowed sidecar metadata values.
  * Designed to be JSON-friendly while allowing nested structured metadata.
  */
@@ -62,6 +72,47 @@ export interface ProjectConfig {
     };
     /** Default name applied to the initial canonical revision when a new text resource is created. */
     defaultRevisionName?: string;
+    /** User-defined (and built-in locked) metadata field schema for the project. */
+    metadataSchema?: MetadataSchema;
+}
+
+/** Allowed field types for user-defined metadata fields. */
+export type MetadataFieldType =
+    | "text"
+    | "number"
+    | "date"
+    | "boolean"
+    | "select"
+    | "multiselect"
+    | "resource-ref";
+
+/** A single metadata field definition within a schema group. */
+export interface MetadataField {
+    /** URL-safe slug (`[a-z0-9-]+`), unique within the project schema. */
+    key: string;
+    /** Display label shown in the sidebar and schema manager. */
+    label: string;
+    type: MetadataFieldType;
+    /** Locked fields cannot be removed or have their key renamed. */
+    locked?: boolean;
+    /** Allowed values for `select` / `multiselect` types. */
+    options?: string[];
+    /** When true, a `resource-ref` field stores an array of refs. */
+    multiple?: boolean;
+}
+
+/** A named group of metadata fields, optionally scoped to one folder. */
+export interface MetadataGroup {
+    id: string;
+    label: string;
+    /** When present, this group is only rendered for resources in this folder. */
+    folderId?: string;
+    fields: MetadataField[];
+}
+
+/** Top-level metadata schema for a project, consisting of ordered groups. */
+export interface MetadataSchema {
+    groups: MetadataGroup[];
 }
 
 /** Simple Tag type for project-scoped tagging. */

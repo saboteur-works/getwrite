@@ -30,9 +30,20 @@ const IsoDateString = z.string().refine((s) => !isNaN(Date.parse(s)), {
 });
 
 /**
+ * Resource reference value shape used for `resource-ref` metadata fields.
+ * Stores both the UUID (or null when the target has been deleted) and the
+ * display name so the UI can render without a secondary lookup.
+ */
+export const ResourceRefValueSchema = z.object({
+    id: z.string().nullable(),
+    name: z.string(),
+});
+
+/**
  * Recursive metadata value validator used for extensible user/project metadata.
  *
- * Supports scalar values, homogeneous primitive arrays, and nested objects.
+ * Supports scalar values, homogeneous primitive arrays, resource references,
+ * and nested objects.
  */
 export const MetadataValue: z.ZodTypeAny = z.lazy(() =>
     z.union([
@@ -43,6 +54,7 @@ export const MetadataValue: z.ZodTypeAny = z.lazy(() =>
         z.array(z.string()),
         z.array(z.number()),
         z.array(z.boolean()),
+        ResourceRefValueSchema,
         z.record(z.string(), MetadataValue),
     ]),
 );
@@ -77,6 +89,55 @@ export const EditorConfigSchema = z.object({
 });
 
 /**
+ * Allowed field types for user-defined metadata fields.
+ */
+export const MetadataFieldTypeSchema = z.enum([
+    "text",
+    "number",
+    "date",
+    "boolean",
+    "select",
+    "multiselect",
+    "resource-ref",
+]);
+
+/**
+ * Single metadata field definition within a schema group.
+ *
+ * - `key` must be a URL-safe slug (`[a-z0-9-]+`).
+ * - `options` is only meaningful for `select` / `multiselect` types.
+ * - `multiple` is only meaningful for `resource-ref` type.
+ * - `locked` fields cannot be removed or have their key changed.
+ */
+export const MetadataFieldSchema = z.object({
+    key: z.string().regex(/^[a-z0-9-]+$/),
+    label: z.string(),
+    type: MetadataFieldTypeSchema,
+    locked: z.boolean().optional(),
+    options: z.array(z.string()).optional(),
+    multiple: z.boolean().optional(),
+});
+
+/**
+ * A named group of metadata fields, optionally scoped to a specific folder.
+ * When `folderId` is present, the group is only rendered for resources in that
+ * folder.
+ */
+export const MetadataGroupSchema = z.object({
+    id: z.string(),
+    label: z.string(),
+    folderId: z.string().optional(),
+    fields: z.array(MetadataFieldSchema),
+});
+
+/**
+ * Top-level metadata schema for a project, consisting of ordered groups.
+ */
+export const MetadataSchemaSchema = z.object({
+    groups: z.array(MetadataGroupSchema),
+});
+
+/**
  * Project-level configuration schema persisted in `project.json`.
  */
 export const ProjectConfigSchema = z.object({
@@ -96,6 +157,7 @@ export const ProjectConfigSchema = z.object({
     tagAssignments: z.record(z.string(), z.array(UUID)).optional(),
     editorConfig: EditorConfigSchema.optional(),
     defaultRevisionName: z.string().optional(),
+    metadataSchema: MetadataSchemaSchema.optional(),
 });
 
 /**
@@ -252,6 +314,11 @@ export const ResourceTemplateSchema = z.object({
 export const Schemas = {
     UUID,
     MetadataValue,
+    ResourceRefValueSchema,
+    MetadataFieldTypeSchema,
+    MetadataFieldSchema,
+    MetadataGroupSchema,
+    MetadataSchemaSchema,
     ProjectConfigSchema,
     ProjectSchema,
     FolderSchema,
