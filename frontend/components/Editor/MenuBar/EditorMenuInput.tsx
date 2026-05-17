@@ -8,24 +8,15 @@
  * forwards user updates through `onChange`/`onInput` callbacks so parent
  * editor tooling can react to formatting changes.
  */
-import { Baseline } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ALargeSmall, RulerDimensionLine } from "lucide-react";
-/**
- * Available icon components keyed by semantic menu input role.
- */
-const IconTypes = {
-    /** Icon used for color-related controls. */
-    fontColor: Baseline,
-    /** Icon used for font-size controls. */
-    fontSize: ALargeSmall,
-    /** Icon used for font-style controls. */
-    fontStyle: ALargeSmall,
-    /** Icon used for line-height controls. */
-    lineHeight: RulerDimensionLine,
-};
+import {
+    buildButtonClasses,
+    inputIconRegistry,
+    TOOLBAR_TOOLTIP_ID,
+    type EditorMenuInputIconName,
+} from "./editor-toolbar-icons";
 
-export type EditorMenuInputIconName = keyof typeof IconTypes;
+export type { EditorMenuInputIconName };
 export type EditorMenuInputType = "color" | "range" | "number" | "select";
 
 /**
@@ -119,15 +110,28 @@ export default function EditorMenuInput({
     maxValue = 100,
 }: EditorMenuInputProps) {
     const [value, setValue] = useState(initialValue);
-    const IconComponent = IconTypes[Icon];
+    const IconComponent = inputIconRegistry[Icon];
     const controlId = `${Icon}-${type ?? "color"}-input`;
-
-    const activeClass = active ? "editor-menu-icon-button-active" : "";
-    const disabledClass = disabled ? "editor-menu-icon-button-disabled" : "";
+    const buttonClasses = buildButtonClasses(active, disabled);
 
     useEffect(() => {
         setValue(initialValue);
     }, [initialValue]);
+
+    const sharedInputProps = {
+        "data-tooltip-id": TOOLBAR_TOOLTIP_ID,
+        id: controlId,
+        disabled,
+        "data-tooltip-content": tooltipContent,
+        "aria-label": tooltipContent || Icon,
+        value,
+        onChange: (
+            e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+        ) => {
+            setValue(e.target.value);
+            onChange?.(e);
+        },
+    };
 
     return (
         <div className="editor-menu-input-root">
@@ -143,80 +147,36 @@ export default function EditorMenuInput({
             {type === "color" && (
                 <input
                     type="color"
-                    data-tooltip-id="my-tooltip"
-                    id={controlId}
+                    {...sharedInputProps}
                     onClick={onClick}
-                    disabled={disabled}
-                    className={`editor-menu-icon-button ${activeClass} ${disabledClass}`}
-                    data-tooltip-content={tooltipContent}
-                    aria-label={tooltipContent || Icon}
-                    value={value}
-                    onChange={(e) => {
-                        setValue(e.target.value);
-                        if (onChange) {
-                            onChange(e);
-                        }
-                    }}
                     onInput={onInput}
+                    className={`editor-menu-icon-button ${buttonClasses}`}
                 />
             )}
             {type === "range" && (
                 <input
                     type="range"
-                    data-tooltip-id="my-tooltip"
-                    id={controlId}
+                    {...sharedInputProps}
                     onClick={onClick}
-                    disabled={disabled}
-                    className={`editor-menu-icon-button ${activeClass} ${disabledClass}`}
-                    data-tooltip-content={tooltipContent}
-                    aria-label={tooltipContent || Icon}
-                    value={value}
-                    onChange={(e) => {
-                        setValue(e.target.value);
-                        if (onChange) {
-                            onChange(e);
-                        }
-                    }}
                     onInput={onInput}
+                    className={`editor-menu-icon-button ${buttonClasses}`}
                 />
             )}
             {type === "number" && (
                 <input
                     type="number"
-                    data-tooltip-id="my-tooltip"
+                    {...sharedInputProps}
                     step="0.1"
                     min={minValue}
                     max={maxValue}
-                    id={controlId}
                     onClick={onClick}
-                    disabled={disabled}
-                    className={`editor-menu-input-control editor-menu-number-input ${activeClass} ${disabledClass}`}
-                    data-tooltip-content={tooltipContent}
-                    aria-label={tooltipContent || Icon}
-                    value={value}
-                    onChange={(e) => {
-                        setValue(e.target.value);
-                        if (onChange) {
-                            onChange(e);
-                        }
-                    }}
+                    className={`editor-menu-input-control editor-menu-number-input ${buttonClasses}`}
                 />
             )}
             {type === "select" && (
                 <select
-                    data-tooltip-id="my-tooltip"
-                    id={controlId}
-                    disabled={disabled}
-                    className={`editor-menu-input-control w-fit ${activeClass} ${disabledClass}`}
-                    data-tooltip-content={tooltipContent}
-                    aria-label={tooltipContent || Icon}
-                    value={value}
-                    onChange={(e) => {
-                        setValue(e.target.value);
-                        if (onChange) {
-                            onChange(e);
-                        }
-                    }}
+                    {...sharedInputProps}
+                    className={`editor-menu-input-control w-fit ${buttonClasses}`}
                 >
                     {options.map((option, index) => (
                         <option

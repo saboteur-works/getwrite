@@ -399,3 +399,45 @@ describe("MenuBar", () => {
         );
     });
 });
+
+import { toolbarCommandSchema } from "../components/Editor/MenuBar/toolbar-command-schema";
+
+describe("Schema parity", () => {
+    it("exports exactly 10 top-level command groups", () => {
+        expect(toolbarCommandSchema).toHaveLength(10);
+    });
+
+    it("heading-controls group contains hard-break + all 6 heading levels in order", () => {
+        const group = toolbarCommandSchema.find((g) => g.groupId === "heading-controls")!;
+        expect(group.items).toHaveLength(7);
+        expect(group.items.map((i) => i.id)).toEqual([
+            "hard-break",
+            "heading-1", "heading-2", "heading-3",
+            "heading-4", "heading-5", "heading-6",
+        ]);
+    });
+
+    it("each heading command tooltip matches its level", () => {
+        const group = toolbarCommandSchema.find((g) => g.groupId === "heading-controls")!;
+        [1, 2, 3, 4, 5, 6].forEach((level) => {
+            const item = group.items.find((i) => i.id === `heading-${level}`);
+            expect(item?.tooltipContent).toBe(`Heading ${level}`);
+        });
+    });
+
+    it("alignment-controls group has exactly 4 items in left/center/right/justify order", () => {
+        const group = toolbarCommandSchema.find((g) => g.groupId === "alignment-controls")!;
+        expect(group.items).toHaveLength(4);
+        expect(group.items.map((i) => i.id)).toEqual([
+            "align-left", "align-center", "align-right", "align-justify",
+        ]);
+    });
+
+    it("each alignment command tooltip matches its direction", () => {
+        const group = toolbarCommandSchema.find((g) => g.groupId === "alignment-controls")!;
+        const expected = ["Align Left", "Align Center", "Align Right", "Align Justify"];
+        group.items.forEach((item, i) => {
+            expect(item.tooltipContent).toBe(expected[i]);
+        });
+    });
+});
