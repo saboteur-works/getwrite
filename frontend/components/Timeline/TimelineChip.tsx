@@ -14,6 +14,7 @@ export default function TimelineChip({
 }: TimelineChipProps): JSX.Element {
     return (
         <button
+            className="timeline-chip"
             role="listitem"
             aria-label={item.label}
             title={item.tooltip ?? item.label}

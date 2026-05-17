@@ -132,6 +132,19 @@ export default function TimelineView({
                 </h2>
             </div>
 
+            {Object.keys(povColorMap).length >= 2 && (
+                <div className="workarea-section">
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px", alignItems: "center" }}>
+                        {Object.entries(povColorMap).map(([pov, color]) => (
+                            <span key={pov} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
+                                <span className="font-mono text-gw-secondary" style={{ fontSize: "var(--font-size-gw-label)" }}>{pov}</span>
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {items.length === 0 ? (
                 <div className="workarea-section">
                     <p className="text-gw-secondary text-sm">

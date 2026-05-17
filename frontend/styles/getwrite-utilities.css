@@ -47,6 +47,8 @@
     --timeline-group-label-width: 120px;
     --timeline-row-height:       var(--height-gw-tree-item);
     --timeline-font-family:      var(--font-sans);
+    --timeline-row-separator:    var(--color-gw-rule);
+    --timeline-focus-ring:       var(--color-gw-focus-ring);
 
     /* POV chip palette — deeper for contrast on the light paper surface */
     --timeline-pov-0: #4A6E94;

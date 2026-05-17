@@ -20,6 +20,7 @@ export default function TimelineRow({
                 display: "flex",
                 height: "var(--timeline-row-height)",
                 alignItems: "center",
+                borderBottom: "0.5px solid var(--timeline-row-separator)",
             }}
         >
             {group && (

@@ -93,33 +93,38 @@ export default function Timeline({
             <div
                 style={{
                     display: "flex",
-                    justifyContent: "flex-end",
+                    justifyContent: "space-between",
                     alignItems: "center",
                     gap: "6px",
                     padding: "4px 8px",
                 }}
             >
-                <button
-                    className="timeline-zoom-btn"
-                    aria-label="Zoom out"
-                    title="Zoom out (Ctrl+scroll)"
-                    onClick={zoomOut}
-                    disabled={zoom <= MIN_ZOOM}
-                >
-                    −
-                </button>
                 <span className="timeline-zoom-label">
-                    {Math.round(zoom * 100)}%
+                    {items.length} {items.length === 1 ? "scene" : "scenes"}
                 </span>
-                <button
-                    className="timeline-zoom-btn"
-                    aria-label="Zoom in"
-                    title="Zoom in (Ctrl+scroll)"
-                    onClick={zoomIn}
-                    disabled={zoom >= MAX_ZOOM}
-                >
-                    +
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <button
+                        className="timeline-zoom-btn"
+                        aria-label="Zoom out"
+                        title="Zoom out (Ctrl+scroll)"
+                        onClick={zoomOut}
+                        disabled={zoom <= MIN_ZOOM}
+                    >
+                        −
+                    </button>
+                    <span className="timeline-zoom-label">
+                        {Math.round(zoom * 100)}%
+                    </span>
+                    <button
+                        className="timeline-zoom-btn"
+                        aria-label="Zoom in"
+                        title="Zoom in (Ctrl+scroll)"
+                        onClick={zoomIn}
+                        disabled={zoom >= MAX_ZOOM}
+                    >
+                        +
+                    </button>
+                </div>
             </div>
 
             {/* Scrollable track */}

@@ -35,6 +35,12 @@
     /* Layout */
     --timeline-row-height:          36px;
     --timeline-font-family:         system-ui, sans-serif;
+
+    /* Row separator */
+    --timeline-row-separator:       #e8e8e8;
+
+    /* Focus ring — standalone default for use outside GetWrite */
+    --timeline-focus-ring:          rgba(0, 0, 0, 0.15);
 }
 
 /* ── Zoom controls ──
@@ -68,6 +74,19 @@
 .timeline-root .timeline-zoom-btn:disabled {
     opacity: 0.3;
     cursor: default;
+}
+
+/* ── Chip interactive states ──
+ * Scoped under .timeline-root so styles don't bleed into host app.
+ */
+.timeline-root .timeline-chip:hover {
+    filter: brightness(1.12);
+    opacity: 0.92;
+}
+
+.timeline-root .timeline-chip:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--timeline-focus-ring);
 }
 
 .timeline-root .timeline-zoom-label {
