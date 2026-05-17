@@ -132,9 +132,9 @@ export default function DataView({
     const totalWords = flatResources.reduce((acc: number, r: AnyResource) => acc + getWordCount(r), 0);
 
     return (
-        <div className={`${className}`}>
+        <div className={`space-y-6 ${className}`}>
             <CollapsibleSection title={`Data — ${project?.name ?? "No Project"}`}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="workarea-stat-card">
                         <div className="workarea-stat-label">Resources</div>
                         <div className="workarea-stat-value text-xl">
