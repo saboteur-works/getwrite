@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.28](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.27...getwrite-v0.2.28) (2026-05-17)
+
+
+### Features
+
+* **timeline:** adaptive chip variants, lane layout, and rich tooltips ([4737ce2](https://github.com/saboteur-works/getwrite/commit/4737ce296ec8dcf57ae08b24159afa1db1d3315a))
+* **timeline:** add POV legend, chip hover/focus, scene count, and row separators ([7451ed7](https://github.com/saboteur-works/getwrite/commit/7451ed7a00da6840a5ec45af569b2a672ef7a9ec))
+* **timeline:** apply STYLE.md spec — chips, toolbar, tooltip, layout ([9206ea9](https://github.com/saboteur-works/getwrite/commit/9206ea939c4831aa2cdbc9df5005cea74e8b3d8d))
+* **timeline:** finalize Timeline View to match STYLE.md spec ([1fdfc14](https://github.com/saboteur-works/getwrite/commit/1fdfc146e14ab6d332af6ac3131e28a90021cfae))
+
 ## [0.2.27](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.26...getwrite-v0.2.27) (2026-05-17)
 
 
