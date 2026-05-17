@@ -24,6 +24,7 @@ interface UseRevisionContentResult {
     content: string;
     tipTapDoc: TipTapDocument | null;
     setContent: React.Dispatch<React.SetStateAction<string>>;
+    setTipTapDoc: React.Dispatch<React.SetStateAction<TipTapDocument | null>>;
     parseTipTapRevisionContent: (value: string) => TipTapDocument | null;
 }
 
@@ -206,6 +207,7 @@ export function useRevisionContent({
         content,
         tipTapDoc,
         setContent,
+        setTipTapDoc,
         parseTipTapRevisionContent,
     };
 }

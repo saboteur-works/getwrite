@@ -1,5 +1,24 @@
+"use client";
+
 import React from "react";
-import type { Project, AnyResource } from "../../src/lib/models/types";
+import type { Project, AnyResource, Folder } from "../../src/lib/models/types";
+import WordCountProgressBar from "./WordCountProgressBar";
+import ResourceListItem from "./ResourceListItem";
+import StubResourcesSection from "./StubResourcesSection";
+import ResourceBreakdown, { type ResourceGroup } from "./ResourceBreakdown";
+import CollapsibleSection from "./CollapsibleSection";
+
+const STUB_WORD_THRESHOLD = 50;
+
+type ResourceWithWordCount = AnyResource & {
+    userMetadata?: { wordCount?: number };
+    wordCount?: number;
+};
+
+function getWordCount(r: AnyResource): number {
+    const rc = r as ResourceWithWordCount;
+    return rc.userMetadata?.wordCount ?? rc.wordCount ?? 0;
+}
 
 export interface DataViewProps {
     /** Optional list of projects to show aggregate statistics for */
@@ -7,11 +26,17 @@ export interface DataViewProps {
     /** The single project to display statistics for (used when `projects` is not provided) */
     project?: Project;
     /** Optional adapter view from `buildProjectView` (canonical models). */
-    view?: { project: any; folders: any[]; resources: AnyResource[] };
+    view?: { project: Project; folders: AnyResource[]; resources: AnyResource[] };
     /** Optional override flat list of resources to render (uses project(s).resources by default) */
     resources?: AnyResource[];
+    /** Folder list used to group resources in the Breakdown section. */
+    folders?: Folder[];
+    /** Called when the user clicks the jump button on a breakdown group row. */
+    onSelectFolder?: (folderId: string) => void;
     className?: string;
 }
+
+type SortOrder = "lastEdited" | "name";
 
 /**
  * `DataView` renders statistics scoped to a single project and a simple
@@ -23,43 +48,93 @@ export default function DataView({
     project,
     view,
     resources,
+    folders,
+    onSelectFolder,
     className = "",
 }: DataViewProps): JSX.Element {
+    const [sortOrder, setSortOrder] = React.useState<SortOrder>("lastEdited");
+
     const flatResources = React.useMemo(() => {
         if (resources) return resources;
         if (view && view.resources) return view.resources;
         if (projects && projects.length > 0)
-            return projects.flatMap(
-                (p) => (p as any).resources as AnyResource[],
-            );
-        if (project && (project as any).resources)
-            return (project as any).resources as AnyResource[];
+            return projects.flatMap((p) => (p as Project & { resources?: AnyResource[] }).resources ?? []);
+        if (project && (project as Project & { resources?: AnyResource[] }).resources)
+            return (project as Project & { resources?: AnyResource[] }).resources as AnyResource[];
         return [] as AnyResource[];
-    }, [resources, view, projects]);
+    }, [resources, view, projects, project]);
 
-    const totalResources = flatResources.length;
-    const totalWords = flatResources.reduce(
-        (acc: number, r: AnyResource) =>
-            acc + ((r as any).userMetadata?.wordCount ?? (r as any).wordCount ?? 0),
-        0,
+    const sortedResources = React.useMemo(() => {
+        return [...flatResources].sort((a, b) => {
+            if (sortOrder === "name") {
+                return (a.name ?? "").localeCompare(b.name ?? "");
+            }
+            const aTime = Date.parse(a.updatedAt ?? a.createdAt ?? "");
+            const bTime = Date.parse(b.updatedAt ?? b.createdAt ?? "");
+            const aSafe = Number.isNaN(aTime) ? 0 : aTime;
+            const bSafe = Number.isNaN(bTime) ? 0 : bTime;
+            return bSafe - aSafe;
+        });
+    }, [flatResources, sortOrder]);
+
+    const wordCountGoal = project?.config?.wordCountGoal;
+
+    const stubResources = React.useMemo(
+        () => sortedResources.filter((r) => getWordCount(r) <= STUB_WORD_THRESHOLD),
+        [sortedResources],
     );
 
-    const projectsCount = projects ? projects.length : project ? 1 : 1;
+    const contentResources = React.useMemo(
+        () => sortedResources.filter((r) => getWordCount(r) > STUB_WORD_THRESHOLD),
+        [sortedResources],
+    );
+
+    const folderMap = React.useMemo(() => {
+        const map = new Map<string, string>();
+        for (const f of folders ?? []) {
+            map.set(f.id, f.name ?? "Unnamed");
+        }
+        return map;
+    }, [folders]);
+
+    const resourceGroups = React.useMemo<ResourceGroup[]>(() => {
+        const byFolder = new Map<string, AnyResource[]>();
+        for (const r of flatResources) {
+            const knownFolder = r.folderId && folderMap.has(r.folderId);
+            const key = knownFolder ? r.folderId! : "__ungrouped__";
+            const existing = byFolder.get(key);
+            if (existing) {
+                existing.push(r);
+            } else {
+                byFolder.set(key, [r]);
+            }
+        }
+        const groups: ResourceGroup[] = Array.from(byFolder.entries()).map(
+            ([fid, rs]) => ({
+                label:
+                    fid === "__ungrouped__"
+                        ? "Ungrouped"
+                        : (folderMap.get(fid) ?? "Unknown"),
+                folderId: fid === "__ungrouped__" ? null : fid,
+                resourceCount: rs.length,
+                wordCount: rs.reduce((acc, r) => acc + getWordCount(r), 0),
+            }),
+        );
+        groups.sort((a, b) => {
+            if (a.label === "Ungrouped") return 1;
+            if (b.label === "Ungrouped") return -1;
+            return a.label.localeCompare(b.label);
+        });
+        return groups;
+    }, [flatResources, folderMap]);
+
+    const totalResources = flatResources.length;
+    const totalWords = flatResources.reduce((acc: number, r: AnyResource) => acc + getWordCount(r), 0);
 
     return (
-        <div className={`${className}`}>
-            <div className="workarea-section">
-                <h2 className="workarea-section-title">
-                    Data — {project?.name ?? "No Project"}
-                </h2>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                    <div className="workarea-stat-card">
-                        <div className="workarea-stat-label">Projects</div>
-                        <div className="workarea-stat-value text-xl">
-                            {projectsCount}
-                        </div>
-                    </div>
+        <div className={`space-y-6 ${className}`}>
+            <CollapsibleSection title={`Data — ${project?.name ?? "No Project"}`}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="workarea-stat-card">
                         <div className="workarea-stat-label">Resources</div>
                         <div className="workarea-stat-value text-xl">
@@ -71,36 +146,58 @@ export default function DataView({
                         <div className="workarea-stat-value text-xl">{totalWords}</div>
                     </div>
                 </div>
-            </div>
+            </CollapsibleSection>
 
-            <div className="workarea-section">
-                <h3 className="workarea-section-title">Resources</h3>
-                <ul className="workarea-list">
-                    {flatResources.map((r: AnyResource) => (
-                        <li
-                            key={r.id}
-                            className="workarea-list-item flex items-center justify-between"
-                        >
-                            <div>
-                                <div className="workarea-list-item-label">
-                                    {(r as any).name ??
-                                        (r as any).title ??
-                                        r.id}
-                                </div>
-                                <div className="workarea-list-item-meta">
-                                    {r.type}
-                                </div>
-                            </div>
-                            <div className="workarea-list-item-meta">
-                                {(r as any).userMetadata?.wordCount ??
-                                    (r as any).wordCount ??
-                                    0}{" "}
-                                words
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+            {wordCountGoal && wordCountGoal > 0 ? (
+                <CollapsibleSection title="Writing Goal">
+                    <WordCountProgressBar current={totalWords} goal={wordCountGoal} />
+                </CollapsibleSection>
+            ) : null}
+
+            {resourceGroups.length >= 2 ? (
+                <CollapsibleSection title="Breakdown">
+                    <div className="max-h-60 overflow-y-auto">
+                        <ResourceBreakdown groups={resourceGroups} onSelectFolder={onSelectFolder} />
+                    </div>
+                </CollapsibleSection>
+            ) : null}
+
+            <CollapsibleSection
+                title="Resources"
+                actions={
+                    <div className="flex gap-3">
+                        {(["lastEdited", "name"] as const).map((key) => (
+                            <button
+                                key={key}
+                                type="button"
+                                onClick={() => setSortOrder(key)}
+                                className={`font-mono text-[10px] uppercase tracking-[0.16em] transition-colors duration-150 ${
+                                    sortOrder === key
+                                        ? "text-gw-primary"
+                                        : "text-gw-secondary hover:text-gw-primary"
+                                }`}
+                            >
+                                {key === "lastEdited" ? "Last Edited" : "Name"}
+                            </button>
+                        ))}
+                    </div>
+                }
+            >
+                <div className="max-h-80 overflow-y-auto">
+                    <StubResourcesSection resources={stubResources} />
+                    <ul className="workarea-list">
+                        {contentResources.map((r: AnyResource) => (
+                            <ResourceListItem
+                                key={r.id}
+                                name={r.name ?? r.id}
+                                type={r.type}
+                                wordCount={getWordCount(r)}
+                                lastEditedAt={r.updatedAt ?? r.createdAt}
+                            />
+                        ))}
+                    </ul>
+                </div>
+            </CollapsibleSection>
         </div>
     );
 }
