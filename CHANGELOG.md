@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.27](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.26...getwrite-v0.2.27) (2026-05-17)
+
+
+### Bug Fixes
+
+* **editor:** added missing editor extensions ([e174fbc](https://github.com/saboteur-works/getwrite/commit/e174fbc2f4f002997864dfd8b2e84aa7c540049f))
+* **editor:** finalize editor for V1 — list bugs, toolbar consolidation, focus fixes, view switching ([e518501](https://github.com/saboteur-works/getwrite/commit/e518501b44ee76d3cb75df8a312395ef6ff73e75))
+* **editor:** fix all bullet/ordered list bugs (V1 blocker) ([23fb7e1](https://github.com/saboteur-works/getwrite/commit/23fb7e141e2100039df4e7c02216c60fae10f326))
+* **editor:** fix immediate focus loss on font-size and line-height inputs ([d1db3e7](https://github.com/saboteur-works/getwrite/commit/d1db3e7c2b19aa83947535a6d610f49678664db3))
+* **workarea:** allow data and timeline views when a text resource is selected ([b756f47](https://github.com/saboteur-works/getwrite/commit/b756f477ce70e5dca72d82014f2c6c15b366f20a))
+
 ## [0.2.26](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.25...getwrite-v0.2.26) (2026-05-17)
 
 
