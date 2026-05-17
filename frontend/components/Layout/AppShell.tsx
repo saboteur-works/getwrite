@@ -35,7 +35,7 @@ import EditView from "../WorkArea/EditView";
 import DiffViewController from "../WorkArea/DiffViewController";
 import OrganizerView from "../WorkArea/Views/OrganizerView/OrganizerView";
 import DataView from "../WorkArea/DataView";
-import TimelineView from "../WorkArea/TimelineView";
+import TimelineView from "../WorkArea/Views/TimelineView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import debounce from "lodash/debounce";

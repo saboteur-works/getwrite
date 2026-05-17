@@ -9,9 +9,12 @@ export interface TimelineChipProps {
     variant: ChipVariant;
     topOffset: number;
     rowHeight: number;
+    onMouseEnter?: (e: React.MouseEvent) => void;
+    onMouseLeave?: () => void;
 }
 
-const PIN_HEIGHT_INSET = 6; // px inset from row top/bottom for pin height
+const CHIP_HEIGHT = 28;
+const PIN_TOP_PAD = 6;
 
 export default function TimelineChip({
     item,
@@ -19,37 +22,30 @@ export default function TimelineChip({
     widthPercent,
     variant,
     topOffset,
-    rowHeight,
+    onMouseEnter,
+    onMouseLeave,
 }: TimelineChipProps): JSX.Element {
-    const sharedTooltipProps = {
-        "data-tooltip-id": "timeline-chip-tooltip",
-        "data-label": item.label,
-        "data-date-range": item.tooltip ?? "",
-        "data-pov": item.metadata?.pov ?? "",
-        "data-status": Array.isArray(item.metadata?.status)
-            ? item.metadata.status.join(", ")
-            : (item.metadata?.status as string | undefined) ?? "",
-        "data-folder": item.metadata?.folder ?? "",
-        "data-notes": item.metadata?.notes ?? "",
-    };
+    const status = item.status;
+    const isFinal = status === "Final";
+    const isOutline = status === "Outline";
 
     if (variant === "pin") {
-        const pinHeight = rowHeight - PIN_HEIGHT_INSET;
         return (
             <button
                 className="timeline-chip"
                 role="listitem"
                 aria-label={item.label}
                 onClick={() => item.onClick?.(item.id)}
-                {...sharedTooltipProps}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
                 style={{
                     position: "absolute",
                     left: `${leftPercent}%`,
-                    top: `${PIN_HEIGHT_INSET / 2}px`,
+                    top: `${topOffset + PIN_TOP_PAD}px`,
                     width: "var(--timeline-item-pin-width)",
-                    height: `${pinHeight}px`,
+                    height: `${CHIP_HEIGHT}px`,
                     backgroundColor: item.color ?? "var(--timeline-item-bg)",
-                    borderRadius: "2px",
+                    borderRadius: "1px",
                     border: "none",
                     cursor: item.onClick ? "pointer" : "default",
                     padding: 0,
@@ -59,78 +55,82 @@ export default function TimelineChip({
         );
     }
 
+    const sharedStyle: React.CSSProperties = {
+        position: "absolute",
+        left: `${leftPercent}%`,
+        top: `${topOffset}px`,
+        width: `${widthPercent}%`,
+        height: "var(--timeline-item-height)",
+        backgroundColor: item.color ?? "var(--timeline-item-bg)",
+        color: "rgba(10,10,10,0.82)",
+        borderRadius: "var(--timeline-item-radius)",
+        fontFamily: "var(--timeline-font-family)",
+        border: "none",
+        cursor: item.onClick ? "pointer" : "default",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        boxSizing: "border-box",
+        display: "flex",
+        alignItems: "center",
+        textAlign: "left",
+        ...(isFinal ? { boxShadow: "inset 2px 0 0 rgba(212,64,64,0.75)" } : {}),
+        ...(isOutline ? { opacity: 0.72 } : {}),
+    };
+
+    const outlineOverlay = isOutline ? (
+        <span
+            style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "var(--timeline-item-radius)",
+                pointerEvents: "none",
+                background:
+                    "repeating-linear-gradient(45deg, var(--timeline-outline-stripe) 0px, var(--timeline-outline-stripe) 1.5px, transparent 1.5px, transparent 5px)",
+            }}
+        />
+    ) : null;
+
     if (variant === "pill") {
-        const firstWord = item.label.split(" ")[0];
         return (
             <button
                 className="timeline-chip"
                 role="listitem"
                 aria-label={item.label}
                 onClick={() => item.onClick?.(item.id)}
-                {...sharedTooltipProps}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
                 style={{
-                    position: "absolute",
-                    left: `${leftPercent}%`,
-                    top: `${topOffset}px`,
-                    width: `${widthPercent}%`,
-                    minWidth: "var(--timeline-item-pill-min-width)",
-                    height: "var(--timeline-item-height)",
-                    backgroundColor: item.color ?? "var(--timeline-item-bg)",
-                    color: "var(--timeline-item-color)",
-                    borderRadius: "var(--timeline-item-radius)",
-                    fontFamily: "var(--timeline-font-family)",
-                    fontSize: "var(--timeline-axis-label-size)",
-                    border: "none",
-                    cursor: item.onClick ? "pointer" : "default",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    ...sharedStyle,
+                    fontSize: "8px",
+                    letterSpacing: "0.04em",
                     padding: "0 5px",
-                    boxSizing: "border-box",
-                    display: "flex",
-                    alignItems: "center",
-                    textAlign: "left",
-                    opacity: 0.9,
                 }}
             >
-                {firstWord}
+                {item.label.split(" ")[0]}
+                {outlineOverlay}
             </button>
         );
     }
 
-    // "bar" variant — full label
+    // "bar" variant
     return (
         <button
             className="timeline-chip"
             role="listitem"
             aria-label={item.label}
             onClick={() => item.onClick?.(item.id)}
-            {...sharedTooltipProps}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
             style={{
-                position: "absolute",
-                left: `${leftPercent}%`,
-                top: `${topOffset}px`,
-                width: `${widthPercent}%`,
-                minWidth: "var(--timeline-item-min-width)",
-                height: "var(--timeline-item-height)",
-                backgroundColor: item.color ?? "var(--timeline-item-bg)",
-                color: "var(--timeline-item-color)",
-                borderRadius: "var(--timeline-item-radius)",
-                fontFamily: "var(--timeline-font-family)",
-                fontSize: "var(--timeline-axis-label-size)",
-                border: "none",
-                cursor: item.onClick ? "pointer" : "default",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                padding: "0 6px",
-                boxSizing: "border-box",
-                display: "flex",
-                alignItems: "center",
-                textAlign: "left",
+                ...sharedStyle,
+                fontSize: "9px",
+                letterSpacing: "0.06em",
+                padding: "0 7px",
             }}
         >
             {item.label}
+            {outlineOverlay}
         </button>
     );
 }

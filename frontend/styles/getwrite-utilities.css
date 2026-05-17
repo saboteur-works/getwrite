@@ -34,23 +34,26 @@
      * in the component-scoped timeline.css, regardless of stylesheet load order.
      * var(--color-gw-*) references lazy-resolve to whichever mode is active. */
     --timeline-bg:               var(--color-gw-editor);
-    --timeline-track-bg:         var(--color-gw-chrome2);
+    --timeline-track-bg:         #ECEAE3;
     --timeline-axis-color:       var(--color-gw-border);
-    --timeline-axis-label-size:  var(--font-size-gw-micro);
+    --timeline-axis-label-size:  9px;
     --timeline-axis-label-color: var(--color-gw-secondary);
     --timeline-item-bg:          var(--color-gw-chrome3);
     --timeline-item-color:       var(--color-gw-primary);
-    --timeline-item-radius:      2px;
-    --timeline-item-height:      22px;
+    --timeline-item-radius:      3px;
+    --timeline-item-height:      28px;
     --timeline-item-min-width:        120px;
     --timeline-item-pill-min-width:   44px;
-    --timeline-item-pin-width:        4px;
+    --timeline-item-pin-width:        2px;
+    --timeline-outline-stripe:        rgba(0,0,0,0.20);
     --timeline-group-label-color: var(--color-gw-secondary);
-    --timeline-group-label-width: 120px;
-    --timeline-row-height:       var(--height-gw-tree-item);
-    --timeline-font-family:      var(--font-sans);
+    --timeline-group-label-width: 84px;
+    --timeline-row-height:       56px;
+    --timeline-font-family:      var(--font-mono);
     --timeline-row-separator:    var(--color-gw-rule);
     --timeline-focus-ring:       var(--color-gw-focus-ring);
+    --timeline-rule-color:       var(--color-gw-rule);
+    --timeline-row-tint:         rgba(0,0,0,0.011);
 
     /* POV chip palette — deeper for contrast on the light paper surface */
     --timeline-pov-0: #4A6E94;
@@ -90,6 +93,11 @@
     --timeline-pov-5: #A07060;
     --timeline-pov-6: #7E8A6E;
     --timeline-pov-7: #9E7A8E;
+
+    /* Dark-mode timeline overrides */
+    --timeline-track-bg:      #0C0C0B;
+    --timeline-outline-stripe: rgba(0,0,0,0.28);
+    --timeline-row-tint:       rgba(255,255,255,0.011);
 }
 
 /* ── REDUCED MOTION ── (only permitted !important blocks in this file) */

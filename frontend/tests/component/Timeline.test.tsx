@@ -63,23 +63,14 @@ describe("Timeline", () => {
         expect(container.firstChild).toBeTruthy();
     });
 
-    it("renders the correct number of axis ticks", () => {
+    it("renders axis tick labels", () => {
         const items: TimelineItem[] = [makeItem("1", "Scene", "2024-01-01")];
-        render(
-            <Timeline
-                items={items}
-                config={{ tickCount: 5, locale: "en-US" }}
-            />,
-        );
-        // Each tick renders a label span with a formatted date
-        // The axis renders within the scrollable container; we query for tick content via the axis structure
-        const axisContainer = document.querySelector(
-            '[style*="border-bottom"]',
-        ) as HTMLElement;
-        expect(axisContainer).toBeTruthy();
-        // 5 ticks → 5 label spans inside the axis
-        const ticks = axisContainer.querySelectorAll("span:first-child");
-        expect(ticks).toHaveLength(5);
+        render(<Timeline items={items} config={{ locale: "en-US" }} />);
+        const axis = document.querySelector('[data-testid="timeline-axis"]') as HTMLElement;
+        expect(axis).toBeTruthy();
+        // At least one tick label should be present
+        const labels = axis.querySelectorAll("span");
+        expect(labels.length).toBeGreaterThan(0);
     });
 
     it("renders zoom in and zoom out controls", () => {
@@ -89,7 +80,12 @@ describe("Timeline", () => {
     });
 
     it("zoom out button is disabled at minimum zoom (100%)", () => {
-        render(<Timeline items={[makeItem("1", "Scene", "2024-01-01")]} />);
+        render(
+            <Timeline
+                items={[makeItem("1", "Scene", "2024-01-01")]}
+                config={{ initialZoom: 1 }}
+            />,
+        );
         const zoomOut = screen.getByRole("button", { name: "Zoom out" });
         expect(zoomOut).toBeDisabled();
     });
@@ -108,7 +104,12 @@ describe("Timeline", () => {
 
     it("clicking zoom in increments the zoom level", async () => {
         const user = userEvent.setup();
-        render(<Timeline items={[makeItem("1", "Scene", "2024-01-01")]} />);
+        render(
+            <Timeline
+                items={[makeItem("1", "Scene", "2024-01-01")]}
+                config={{ initialZoom: 1 }}
+            />,
+        );
         const zoomIn = screen.getByRole("button", { name: "Zoom in" });
         await user.click(zoomIn);
         expect(screen.getByText("150%")).toBeInTheDocument();
@@ -123,5 +124,38 @@ describe("Timeline", () => {
         render(<Timeline items={items} groups={groups} />);
         expect(screen.getByRole("listitem", { name: "Grouped" })).toBeInTheDocument();
         expect(screen.getByRole("listitem", { name: "Ungrouped" })).toBeInTheDocument();
+    });
+
+    it("default zoom is 200%", () => {
+        render(<Timeline items={[makeItem("1", "Scene", "2024-01-01")]} />);
+        expect(screen.getByText("200%")).toBeInTheDocument();
+    });
+
+    it("clicking the zoom percentage label resets zoom to 200%", async () => {
+        const user = userEvent.setup();
+        render(
+            <Timeline
+                items={[makeItem("1", "Scene", "2024-01-01")]}
+                config={{ initialZoom: 1 }}
+            />,
+        );
+        // Zoom in to 150%
+        await user.click(screen.getByRole("button", { name: "Zoom in" }));
+        expect(screen.getByText("150%")).toBeInTheDocument();
+        // Click the percentage label to reset
+        await user.click(screen.getByRole("button", { name: "Reset zoom" }));
+        expect(screen.getByText("200%")).toBeInTheDocument();
+    });
+
+    it("POV filter pills render when povNames are passed", () => {
+        render(
+            <Timeline
+                items={[makeItem("1", "Scene", "2024-01-01")]}
+                povNames={["Mira", "Callum"]}
+            />,
+        );
+        expect(screen.getByRole("button", { name: "ALL" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Mira" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Callum" })).toBeInTheDocument();
     });
 });

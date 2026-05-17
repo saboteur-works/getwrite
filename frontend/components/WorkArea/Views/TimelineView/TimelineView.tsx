@@ -1,8 +1,8 @@
 import React from "react";
-import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
-import { setSelectedResourceId } from "../../src/store/resourcesSlice";
-import { Timeline } from "../Timeline";
-import type { TimelineItem, TimelineGroup } from "../Timeline";
+import useAppSelector, { useAppDispatch } from "../../../../src/store/hooks";
+import { setSelectedResourceId } from "../../../../src/store/resourcesSlice";
+import { Timeline } from "../../../Timeline";
+import type { TimelineItem, TimelineGroup } from "../../../Timeline";
 
 export interface TimelineViewProps {
     className?: string;
@@ -34,12 +34,6 @@ export default function TimelineView({
 }: TimelineViewProps) {
     const dispatch = useAppDispatch();
 
-    const projectName = useAppSelector(
-        (state) =>
-            state.projects.projects[state.projects.selectedProjectId ?? ""]
-                ?.name ?? "",
-    );
-
     const resources = useAppSelector((state) => state.resources.resources);
     const folders = useAppSelector(
         (state) => state.resources.folders ?? [],
@@ -64,12 +58,8 @@ export default function TimelineView({
             .map((r) => {
                 const storyDate = r.userMetadata!.storyDate as string;
                 const storyTime = r.userMetadata?.storyTime as string | undefined;
-                const storyDuration = r.userMetadata?.storyDuration as
-                    | number
-                    | undefined;
-                const storyEndDate = r.userMetadata?.storyEndDate as
-                    | string
-                    | undefined;
+                const storyDuration = r.userMetadata?.storyDuration as number | undefined;
+                const storyEndDate = r.userMetadata?.storyEndDate as string | undefined;
 
                 const startDate = storyTime
                     ? `${storyDate}T${storyTime}`
@@ -78,30 +68,14 @@ export default function TimelineView({
                 const endDate =
                     storyEndDate ??
                     (storyDuration != null
-                        ? new Date(
-                              Date.parse(startDate) + storyDuration * 60000,
-                          ).toISOString()
+                        ? new Date(Date.parse(startDate) + storyDuration * 60000).toISOString()
                         : undefined);
 
-                const tooltipParts: string[] = [];
-                tooltipParts.push(
-                    new Intl.DateTimeFormat(undefined, {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        ...(storyTime ? { hour: "2-digit", minute: "2-digit" } : {}),
-                    }).format(new Date(Date.parse(startDate))),
-                );
-                if (storyDuration != null) {
-                    tooltipParts.push(
-                        storyDuration >= 60
-                            ? `${Math.round(storyDuration / 60)}h`
-                            : `${storyDuration} min`,
-                    );
-                }
+                const durationH = storyDuration != null ? storyDuration / 60 : undefined;
 
                 const pov = r.userMetadata?.pov as string | undefined;
-                const status = r.userMetadata?.status as string[] | undefined;
+                const statusArr = r.userMetadata?.status as string[] | undefined;
+                const status = statusArr?.[0];
                 const rawNotes = typeof r.notes === "string" ? r.notes : undefined;
                 const notes = rawNotes
                     ? rawNotes.slice(0, 120) + (rawNotes.length > 120 ? "…" : "")
@@ -114,10 +88,11 @@ export default function TimelineView({
                     startDate,
                     endDate,
                     groupId: r.folderId ?? undefined,
-                    tooltip: tooltipParts.join(" · "),
                     color: pov ? povColorMap[pov] : undefined,
+                    durationH,
+                    status,
                     onClick: (id: string) => dispatch(setSelectedResourceId(id)),
-                    metadata: { pov, status, folder, notes },
+                    metadata: { pov, status: statusArr, folder, notes },
                 };
             });
     }, [resources, povColorMap, folders, dispatch]);
@@ -131,37 +106,18 @@ export default function TimelineView({
             .map((f) => ({ id: f.id, label: f.name ?? f.id }));
     }, [items, folders]);
 
+    const povNames = React.useMemo(
+        () => Object.keys(povColorMap),
+        [povColorMap],
+    );
+
     return (
-        <div className={className}>
-            <div className="workarea-section">
-                <h2 className="workarea-section-title">
-                    Timeline{projectName ? ` — ${projectName}` : ""}
-                </h2>
-            </div>
-
-            {Object.keys(povColorMap).length >= 2 && (
-                <div className="workarea-section">
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px", alignItems: "center" }}>
-                        {Object.entries(povColorMap).map(([pov, color]) => (
-                            <span key={pov} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
-                                <span className="font-mono text-gw-secondary" style={{ fontSize: "var(--font-size-gw-label)" }}>{pov}</span>
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {items.length === 0 ? (
-                <div className="workarea-section">
-                    <p className="text-gw-secondary text-sm">
-                        No scenes have story dates yet. Select a scene and set a
-                        Story Date in the metadata sidebar.
-                    </p>
-                </div>
-            ) : (
-                <Timeline items={items} groups={groups} />
-            )}
-        </div>
+        <Timeline
+            className={className}
+            items={items}
+            groups={groups}
+            povNames={povNames}
+            config={{ initialZoom: 2 }}
+        />
     );
 }
