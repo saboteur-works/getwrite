@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { validateResource } from "./resource-factory";
+import { countWords } from "../word-count";
 import { writeSidecar } from "./sidecar";
 import type { AnyResource, Folder, MetadataValue, TextResource } from "./types";
 
@@ -120,7 +121,7 @@ export const getLocalResources = (projectPath: string): AnyResource[] => {
             const contentPath = path.join(projectPath, "resources", r.id, "content.txt");
             if (fs.existsSync(contentPath)) {
                 const plain = fs.readFileSync(contentPath, "utf-8");
-                const wordCount = plain.trim() === "" ? 0 : plain.trim().split(/\s+/).length;
+                const wordCount = countWords(plain);
                 resources[i] = { ...r, wordCount } as TextResource;
             }
         }

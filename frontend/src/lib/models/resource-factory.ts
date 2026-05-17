@@ -9,6 +9,7 @@
  * - Dispatching resource creation by `ResourceType`.
  */
 import { generateUUID } from "./uuid";
+import { countWords } from "../word-count";
 import type {
     UUID,
     TextResource,
@@ -55,8 +56,7 @@ export function createTextResource(params: {
     const id = generateUUID();
     const plain = params.plainText ?? "";
 
-    const wordCount =
-        plain.trim() === "" ? 0 : plain.trim().split(/\s+/).length;
+    const wordCount = countWords(plain);
     const charCount = plain.length;
     const paragraphCount =
         plain.split(/\n\s*\n/).filter(Boolean).length || (plain.trim() ? 1 : 0);

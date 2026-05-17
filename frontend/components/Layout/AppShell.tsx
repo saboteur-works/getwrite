@@ -39,6 +39,8 @@ import TimelineView from "../WorkArea/TimelineView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import debounce from "lodash/debounce";
+import { tiptapToPlainText } from "../../src/lib/tiptap-text";
+import { countWords } from "../../src/lib/word-count";
 import { formatRelativeTimestamp as _formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 import {
     PanelLeftClose,
@@ -547,6 +549,9 @@ export default function AppShell({
                     `Failed to persist content (${response.status})`,
                 );
             }
+
+            const wordCount = countWords(tiptapToPlainText(doc));
+            dispatch(updateResource({ id: selectedResourceId, wordCount }));
 
             if (latestEditorEditVersionRef.current === editVersion) {
                 setHasUnsavedEditorChanges(false);

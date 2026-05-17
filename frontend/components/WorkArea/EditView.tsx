@@ -17,6 +17,8 @@ import {
 } from "../../src/lib/user-preferences";
 import { useRevisionContent } from "./useRevisionContent";
 import { useCanonicalAutosave } from "./useCanonicalAutosave";
+import { tiptapToPlainText } from "../../src/lib/tiptap-text";
+import { countWords } from "../../src/lib/word-count";
 
 export interface EditViewProps {
     /** Initial editor content (HTML or plain text) */
@@ -77,7 +79,7 @@ export default function EditView({
         (state) => (projectId ? state.projects.projects[projectId] : null),
         shallowEqual,
     );
-    const { content, tipTapDoc, setContent } = useRevisionContent({
+    const { content, tipTapDoc, setContent, setTipTapDoc } = useRevisionContent({
         initialContent,
         selectedResourceId: selectedResource?.id ?? null,
         projectRootPath: project?.rootPath ?? null,
@@ -101,6 +103,7 @@ export default function EditView({
 
     const handleChange = (next: string, doc: TipTapDocument) => {
         setContent(next);
+        setTipTapDoc(doc);
         if (isViewingNonCanonical) {
             setHasEditsAfterRevisionSwitch(true);
         }
@@ -112,14 +115,11 @@ export default function EditView({
     };
 
     const wordCount = React.useMemo(() => {
-        if (!content) return 0;
-        // strip HTML tags if present, then count words
-        const text = content
-            .replace(/<[^>]+>/g, " ")
-            .replace(/\s+/g, " ")
-            .trim();
-        return text ? text.split(" ").length : 0;
-    }, [content]);
+        if (tipTapDoc && tipTapDoc.content && tipTapDoc.content.length > 0) {
+            return countWords(tiptapToPlainText(tipTapDoc));
+        }
+        return countWords(content);
+    }, [tipTapDoc, content]);
 
     const lastSavedLabel = React.useMemo(() => {
         if (!lastSavedAt) {
