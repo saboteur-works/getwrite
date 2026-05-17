@@ -133,6 +133,14 @@ function createEditorDouble(options: MockEditorOptions = {}) {
             actions.push({ name: "insertBlockMath", payload });
             return chainApi;
         },
+        sinkListItem: () => {
+            actions.push({ name: "sinkListItem" });
+            return chainApi;
+        },
+        liftListItem: () => {
+            actions.push({ name: "liftListItem" });
+            return chainApi;
+        },
         run: () => {
             actions.push({ name: "run" });
             return true;
@@ -287,6 +295,106 @@ describe("MenuBar", () => {
                     name: "setColor",
                     payload: "#2563eb",
                 }),
+            ]),
+        );
+    });
+
+    it("bullet list button renders with active styling when isBulletList is true", () => {
+        mockUseEditorState.mockReturnValueOnce({
+            canUndo: true, canRedo: true, canBold: true, canItalic: true,
+            canUnderline: true, canStrike: true, canCode: true,
+            isBold: false, isItalic: false, isUnderline: false, isStrike: false,
+            isCode: false, isParagraph: false,
+            isHeading1: false, isHeading2: false, isHeading3: false,
+            isHeading4: false, isHeading5: false, isHeading6: false,
+            isCodeBlock: false,
+            isBulletList: true,
+            isOrderedList: false,
+            isBlockquote: false, isAlignLeft: true, isAlignCenter: false,
+            isAlignRight: false, isAlignJustify: false, isHighlight: false,
+            canHighlight: true, textColor: "#111827", backgroundColor: "#fff8b3",
+            fontSize: "14px", isDomine: true,
+        });
+
+        const { editor } = createEditorDouble();
+        render(
+            <Provider store={makeStore()}>
+                <MenuBar editor={editor as never} />
+            </Provider>,
+        );
+
+        expect(
+            screen.getByRole("button", { name: /Bullet list/i }),
+        ).toHaveClass("editor-menu-icon-button-active");
+    });
+
+    it("ordered list button renders with active styling when isOrderedList is true", () => {
+        mockUseEditorState.mockReturnValueOnce({
+            canUndo: true, canRedo: true, canBold: true, canItalic: true,
+            canUnderline: true, canStrike: true, canCode: true,
+            isBold: false, isItalic: false, isUnderline: false, isStrike: false,
+            isCode: false, isParagraph: false,
+            isHeading1: false, isHeading2: false, isHeading3: false,
+            isHeading4: false, isHeading5: false, isHeading6: false,
+            isCodeBlock: false,
+            isBulletList: false,
+            isOrderedList: true,
+            isBlockquote: false, isAlignLeft: true, isAlignCenter: false,
+            isAlignRight: false, isAlignJustify: false, isHighlight: false,
+            canHighlight: true, textColor: "#111827", backgroundColor: "#fff8b3",
+            fontSize: "14px", isDomine: true,
+        });
+
+        const { editor } = createEditorDouble();
+        render(
+            <Provider store={makeStore()}>
+                <MenuBar editor={editor as never} />
+            </Provider>,
+        );
+
+        expect(
+            screen.getByRole("button", { name: /Ordered list/i }),
+        ).toHaveClass("editor-menu-icon-button-active");
+    });
+
+    it("clicking bullet list button dispatches toggleBulletList", async () => {
+        const user = userEvent.setup();
+        const { editor, actions } = createEditorDouble();
+
+        render(
+            <Provider store={makeStore()}>
+                <MenuBar editor={editor as never} />
+            </Provider>,
+        );
+
+        await user.click(screen.getByRole("button", { name: /Bullet list/i }));
+
+        expect(actions).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ name: "focus" }),
+                expect.objectContaining({ name: "toggleBulletList" }),
+                expect.objectContaining({ name: "run" }),
+            ]),
+        );
+    });
+
+    it("clicking ordered list button dispatches toggleOrderedList", async () => {
+        const user = userEvent.setup();
+        const { editor, actions } = createEditorDouble();
+
+        render(
+            <Provider store={makeStore()}>
+                <MenuBar editor={editor as never} />
+            </Provider>,
+        );
+
+        await user.click(screen.getByRole("button", { name: /Ordered list/i }));
+
+        expect(actions).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ name: "focus" }),
+                expect.objectContaining({ name: "toggleOrderedList" }),
+                expect.objectContaining({ name: "run" }),
             ]),
         );
     });

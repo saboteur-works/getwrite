@@ -2621,10 +2621,11 @@
         color: var(--color-gw-primary);
     }
 
-    /* Active (format is on) — surface elevation, no blue (D7) */
+    /* Active (format is on) — bottom border distinguishes from hover (D7) */
     .editor-menu-icon-button-active {
         background-color: var(--color-gw-chrome2);
         color: var(--color-gw-primary);
+        box-shadow: inset 0 -2px 0 0 var(--color-gw-border-md);
     }
 
     .editor-menu-icon-button:focus-visible {
