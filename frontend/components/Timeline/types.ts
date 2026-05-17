@@ -16,8 +16,17 @@ export interface TimelineItem {
     tooltip?: string;
     /** Background color for the chip, derived from POV character or other grouping. */
     color?: string;
-    /** Arbitrary consumer metadata — passed through, not rendered. */
-    metadata?: Record<string, unknown>;
+    /** Duration in hours. 0 = point event (pin variant). Undefined = unknown duration. */
+    durationH?: number;
+    /** Primary workflow status string: "Final" | "Outline" | "Draft" | undefined. */
+    status?: string;
+    /** Structured metadata for tooltip display. */
+    metadata?: {
+        pov?:    string;
+        status?: string[];
+        folder?: string;
+        notes?:  string;
+    };
 }
 
 /** A row-level group shown in the group label column. */
@@ -62,4 +71,6 @@ export interface TimelineProps {
     groups?: TimelineGroup[];
     config?: TimelineConfig;
     className?: string;
+    /** Ordered list of POV character names for the filter pill group. */
+    povNames?: string[];
 }

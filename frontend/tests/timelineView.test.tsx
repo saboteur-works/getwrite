@@ -19,7 +19,7 @@ vi.mock("../src/store/resourcesSlice", () => ({
     setSelectedResourceId: (id: string) => ({ type: "resources/setSelectedResourceId", payload: id }),
 }));
 
-import TimelineView from "../components/WorkArea/TimelineView";
+import TimelineView from "../components/WorkArea/Views/TimelineView";
 import { createTextResource } from "../src/lib/models/resource";
 
 beforeEach(() => {
@@ -36,7 +36,7 @@ describe("TimelineView", () => {
         ];
         render(<TimelineView />);
         expect(
-            screen.getByText(/no scenes have story dates yet/i),
+            screen.getByText(/no dated scenes/i),
         ).toBeInTheDocument();
     });
 
@@ -78,9 +78,13 @@ describe("TimelineView", () => {
         expect(screen.getByText("Act One")).toBeInTheDocument();
     });
 
-    it("includes the project name in the heading", () => {
+    it("shows the scene count in the toolbar", () => {
+        fakeState.resources.resources = [
+            createTextResource({ name: "Scene A", plainText: "", userMetadata: { storyDate: "2024-01-01" } }),
+            createTextResource({ name: "Scene B", plainText: "", userMetadata: { storyDate: "2024-02-01" } }),
+        ];
         render(<TimelineView />);
-        expect(screen.getByText(/Timeline — My Novel/i)).toBeInTheDocument();
+        expect(screen.getByText(/2 SCENES/i)).toBeInTheDocument();
     });
 
     it("omits resources without storyDate from the timeline", () => {

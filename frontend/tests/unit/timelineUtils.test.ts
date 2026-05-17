@@ -5,6 +5,12 @@ import {
     dateToPercent,
     buildTicks,
     formatTick,
+    formatDuration,
+    formatGapLabel,
+    formatTooltipDate,
+    formatTooltipDuration,
+    getAdaptiveTickStrategy,
+    buildAdaptiveTicks,
 } from "../../components/Timeline/utils";
 import type { TimelineItem } from "../../components/Timeline/types";
 
@@ -14,6 +20,9 @@ const item = (startDate: string, endDate?: string): TimelineItem => ({
     startDate,
     endDate,
 });
+
+const DAY = 86_400_000;
+const HOUR = 3_600_000;
 
 describe("parseDateString", () => {
     it("parses a YYYY-MM-DD date", () => {
@@ -79,7 +88,7 @@ describe("computeAxisBounds", () => {
     it("uses item endDate when computing max", () => {
         const bounds = computeAxisBounds([item("2024-01-01", "2024-06-01")]);
         const endMs = parseDateString("2024-06-01");
-        expect(bounds.end).toBeGreaterThan(endMs); // includes padding
+        expect(bounds.end).toBeGreaterThan(endMs);
     });
 
     it("returns a fallback range when items is empty", () => {
@@ -88,7 +97,7 @@ describe("computeAxisBounds", () => {
     });
 });
 
-describe("buildTicks", () => {
+describe("buildTicks (deprecated)", () => {
     it("returns exactly tickCount values", () => {
         const ticks = buildTicks(0, 1000, 8);
         expect(ticks).toHaveLength(8);
@@ -126,5 +135,141 @@ describe("formatTick", () => {
         const ms = parseDateString("2024-07-04");
         const label = formatTick(ms, "en-US", { year: "numeric" });
         expect(label).toContain("2024");
+    });
+});
+
+describe("formatDuration", () => {
+    it("returns minutes for durations under 1 hour", () => {
+        expect(formatDuration(30 * 60_000)).toBe("30m");
+    });
+
+    it("returns hours for durations under 1 day", () => {
+        expect(formatDuration(3 * HOUR)).toBe("3h");
+    });
+
+    it("returns days for durations under 7 days", () => {
+        expect(formatDuration(3 * DAY)).toBe("3d");
+    });
+
+    it("returns weeks for durations 7 days or more", () => {
+        expect(formatDuration(14 * DAY)).toBe("2w");
+    });
+
+    it("uses the largest unit ≥ 1", () => {
+        expect(formatDuration(DAY - 1)).toBe("24h");
+        expect(formatDuration(DAY)).toBe("1d");
+    });
+});
+
+describe("formatGapLabel", () => {
+    it("wraps duration in middle-dot separators", () => {
+        const label = formatGapLabel(DAY);
+        expect(label).toMatch(/·.*1d.*·/);
+    });
+
+    it("uses thin-space around the duration", () => {
+        const label = formatGapLabel(2 * DAY);
+        expect(label).toContain("2d");
+    });
+});
+
+describe("formatTooltipDate", () => {
+    it("returns Mon DD  HH:MM format", () => {
+        const d = new Date("2024-03-05T08:00:00");
+        const result = formatTooltipDate(d.getTime());
+        expect(result).toMatch(/Mar 5\s{2}0[89]:\d{2}/);
+    });
+
+    it("always includes time component (shows 00:00 for date-only inputs)", () => {
+        const d = new Date("2024-03-05");
+        const result = formatTooltipDate(d.getTime());
+        expect(result).toMatch(/\d{2}:\d{2}$/);
+    });
+});
+
+describe("formatTooltipDuration", () => {
+    it("returns 'Point event' for 0 hours", () => {
+        expect(formatTooltipDuration(0)).toBe("Point event");
+    });
+
+    it("returns minutes when less than 1 hour", () => {
+        expect(formatTooltipDuration(0.5)).toBe("30m");
+    });
+
+    it("returns hours when 1 or more", () => {
+        expect(formatTooltipDuration(2)).toBe("2h");
+        expect(formatTooltipDuration(1)).toBe("1h");
+    });
+});
+
+describe("getAdaptiveTickStrategy", () => {
+    const week = 7 * DAY;
+
+    it("uses 24h interval for spans > 7 days", () => {
+        const { intervalMs, includeTime } = getAdaptiveTickStrategy(8 * DAY, 2);
+        expect(intervalMs).toBe(DAY);
+        expect(includeTime).toBe(false);
+    });
+
+    it("uses 12h interval for 2-7 day spans at zoom < 4", () => {
+        const { intervalMs, includeTime } = getAdaptiveTickStrategy(3 * DAY, 2);
+        expect(intervalMs).toBe(12 * HOUR);
+        expect(includeTime).toBe(false);
+    });
+
+    it("uses 3h interval for 2-7 day spans at zoom ≥ 4", () => {
+        const { intervalMs, includeTime } = getAdaptiveTickStrategy(3 * DAY, 4);
+        expect(intervalMs).toBe(3 * HOUR);
+        expect(includeTime).toBe(true);
+    });
+
+    it("uses 1h interval for spans ≤ 12 hours", () => {
+        const { intervalMs, includeTime } = getAdaptiveTickStrategy(6 * HOUR, 2);
+        expect(intervalMs).toBe(HOUR);
+        expect(includeTime).toBe(true);
+    });
+
+    it("uses 3h without time for ≤2 day spans at zoom < 2", () => {
+        const { intervalMs, includeTime } = getAdaptiveTickStrategy(1.5 * DAY, 1);
+        expect(intervalMs).toBe(3 * HOUR);
+        expect(includeTime).toBe(false);
+    });
+
+    it("uses 1h with time for ≤2 day spans at zoom ≥ 2", () => {
+        const { intervalMs, includeTime } = getAdaptiveTickStrategy(1.5 * DAY, 2);
+        expect(intervalMs).toBe(HOUR);
+        expect(includeTime).toBe(true);
+    });
+});
+
+describe("buildAdaptiveTicks", () => {
+    const start = Date.parse("2024-03-01T00:00:00");
+    const end = Date.parse("2024-03-10T00:00:00"); // 9 days
+
+    it("returns at most 10 ticks at zoom < 4", () => {
+        const strategy = getAdaptiveTickStrategy(end - start, 2);
+        const ticks = buildAdaptiveTicks(start, end, strategy, 2);
+        expect(ticks.length).toBeLessThanOrEqual(10);
+    });
+
+    it("returns at most 20 ticks at zoom ≥ 4", () => {
+        const strategy = getAdaptiveTickStrategy(end - start, 4);
+        const ticks = buildAdaptiveTicks(start, end, strategy, 4);
+        expect(ticks.length).toBeLessThanOrEqual(20);
+    });
+
+    it("returns at least 2 ticks", () => {
+        const strategy = getAdaptiveTickStrategy(end - start, 2);
+        const ticks = buildAdaptiveTicks(start, end, strategy, 2);
+        expect(ticks.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("all ticks fall within [start, end]", () => {
+        const strategy = getAdaptiveTickStrategy(end - start, 2);
+        const ticks = buildAdaptiveTicks(start, end, strategy, 2);
+        for (const t of ticks) {
+            expect(t).toBeGreaterThanOrEqual(start);
+            expect(t).toBeLessThanOrEqual(end);
+        }
     });
 });

@@ -17,64 +17,214 @@
 
     /* Axis */
     --timeline-axis-color:          #e0e0e0;
-    --timeline-axis-label-size:     10px;
+    --timeline-axis-label-size:     9px;
     --timeline-axis-label-color:    #9e9e9e;
 
     /* Item chips */
     --timeline-item-bg:             #1976d2;
     --timeline-item-color:          #ffffff;
     --timeline-item-radius:         3px;
-    --timeline-item-height:         22px;
-    /* Minimum chip width — ensures point-in-time items (no duration) are always readable */
+    --timeline-item-height:         28px;
     --timeline-item-min-width:      120px;
+    --timeline-item-pill-min-width: 44px;
+    --timeline-item-pin-width:      2px;
+
+    /* Outline chip hatch stripe color */
+    --timeline-outline-stripe:      rgba(0,0,0,0.28);
 
     /* Group label column */
     --timeline-group-label-color:   #616161;
-    --timeline-group-label-width:   120px;
+    --timeline-group-label-width:   84px;
 
     /* Layout */
-    --timeline-row-height:          36px;
-    --timeline-font-family:         system-ui, sans-serif;
+    --timeline-row-height:          56px;
+    --timeline-font-family:         "IBM Plex Mono", monospace;
+
+    /* Row separator */
+    --timeline-row-separator:       #e8e8e8;
+
+    /* Focus ring — standalone default for use outside GetWrite */
+    --timeline-focus-ring:          rgba(0, 0, 0, 0.15);
+
+    /* Rule color (for disabled zoom button) */
+    --timeline-rule-color:          #d0d0d0;
+
+    /* Alternating row tint */
+    --timeline-row-tint:            rgba(0, 0, 0, 0.011);
 }
 
-/* ── Zoom controls ──
- * Scoped under .timeline-root so styles don't bleed into host app.
- * Uses only --timeline-* variables for full portability.
+/* ── Toolbar ──
+ * Scoped under .timeline-root.
  */
-.timeline-root .timeline-zoom-btn {
-    background: transparent;
-    border: 1px solid var(--timeline-axis-color);
+.timeline-root .timeline-toolbar {
+    display: flex;
+    align-items: center;
+    height: 34px;
+    border-bottom: 0.5px solid var(--timeline-axis-color);
+    flex-shrink: 0;
+}
+
+.timeline-root .timeline-scene-count {
     color: var(--timeline-axis-label-color);
     font-family: var(--timeline-font-family);
-    font-size: var(--timeline-axis-label-size);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    user-select: none;
+    white-space: nowrap;
+}
+
+/* ── POV filter pills ──
+ * Connected button group; no border-radius on any pill.
+ */
+.timeline-root .timeline-pov-pill {
+    background: transparent;
+    border: 0.5px solid var(--timeline-axis-color);
+    color: var(--timeline-axis-label-color);
+    font-family: var(--timeline-font-family);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 0;
     cursor: pointer;
-    width: 22px;
+    margin-left: -0.5px;
+    position: relative;
+    transition: color 0.12s ease, border-color 0.12s ease;
+    line-height: 1;
     height: 22px;
-    border-radius: var(--timeline-item-radius);
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.timeline-root .timeline-pov-pill:first-child {
+    margin-left: 0;
+}
+
+.timeline-root .timeline-pov-pill:hover {
+    color: var(--timeline-item-color);
+}
+
+.timeline-root .timeline-pov-pill.active {
+    color: #D44040;
+    border-color: #D44040;
+    z-index: 1;
+}
+
+/* ── Toolbar divider ── */
+.timeline-root .timeline-toolbar-divider {
+    width: 0.5px;
+    height: 18px;
+    background: var(--timeline-axis-color);
+    flex-shrink: 0;
+    margin: 0 8px;
+}
+
+/* ── Zoom control group ── */
+.timeline-root .timeline-zoom-group {
+    display: flex;
+    align-items: center;
+    border: 0.5px solid var(--timeline-axis-color);
+    flex-shrink: 0;
+}
+
+.timeline-root .timeline-zoom-btn {
+    background: transparent;
+    border: none;
+    color: var(--timeline-axis-label-color);
+    font-family: var(--timeline-font-family);
+    font-size: 13px;
+    cursor: pointer;
+    width: 26px;
+    height: 22px;
+    border-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
     line-height: 1;
-    transition: background 0.1s, color 0.1s;
+    transition: color 0.12s ease, background 0.12s ease;
     flex-shrink: 0;
 }
 
 .timeline-root .timeline-zoom-btn:hover:not(:disabled) {
-    background: var(--timeline-track-bg);
+    background: var(--timeline-axis-color);
     color: var(--timeline-item-color);
 }
 
 .timeline-root .timeline-zoom-btn:disabled {
-    opacity: 0.3;
+    color: var(--timeline-rule-color);
     cursor: default;
 }
 
 .timeline-root .timeline-zoom-label {
     color: var(--timeline-axis-label-color);
     font-family: var(--timeline-font-family);
-    font-size: var(--timeline-axis-label-size);
+    font-size: 9px;
+    letter-spacing: 0.10em;
     min-width: 38px;
+    height: 22px;
     text-align: center;
     user-select: none;
+    border-left: 0.5px solid var(--timeline-axis-color);
+    border-right: 0.5px solid var(--timeline-axis-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    padding: 0 4px;
+    transition: color 0.12s ease;
+}
+
+.timeline-root .timeline-zoom-label:hover {
+    color: var(--timeline-item-color);
+}
+
+/* ── POV legend ── */
+.timeline-root .timeline-legend {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    border-bottom: 0.5px solid var(--timeline-axis-color);
+    flex-shrink: 0;
+    gap: 20px;
+}
+
+.timeline-root .timeline-legend-header {
+    color: var(--timeline-axis-color);
+    font-family: var(--timeline-font-family);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    user-select: none;
+    margin-right: -16px;
+}
+
+.timeline-root .timeline-legend-entry {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--timeline-axis-label-color);
+    font-family: var(--timeline-font-family);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    user-select: none;
+    white-space: nowrap;
+}
+
+/* ── Chip interactive states ──
+ * Scoped under .timeline-root so styles don't bleed into host app.
+ */
+.timeline-root .timeline-chip:hover {
+    filter: brightness(1.3);
+    outline: 1px solid rgba(245, 244, 240, 0.5);
+    outline-offset: -1px;
+    transition: filter 0.1s ease;
+}
+
+.timeline-root .timeline-chip:focus-visible {
+    outline: 1px solid #F5F4F0;
+    outline-offset: 1px;
 }

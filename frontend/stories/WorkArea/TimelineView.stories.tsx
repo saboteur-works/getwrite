@@ -2,7 +2,7 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Provider, useSelector } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-import TimelineView from "../../components/WorkArea/TimelineView";
+import TimelineView from "../../components/WorkArea/Views/TimelineView";
 import projectReducer from "../../src/store/projectsSlice";
 import resourcesReducer from "../../src/store/resourcesSlice";
 import revisionsReducer from "../../src/store/revisionsSlice";
