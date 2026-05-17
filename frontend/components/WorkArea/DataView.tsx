@@ -156,7 +156,9 @@ export default function DataView({
 
             {resourceGroups.length >= 2 ? (
                 <CollapsibleSection title="Breakdown">
-                    <ResourceBreakdown groups={resourceGroups} onSelectFolder={onSelectFolder} />
+                    <div className="max-h-60 overflow-y-auto">
+                        <ResourceBreakdown groups={resourceGroups} onSelectFolder={onSelectFolder} />
+                    </div>
                 </CollapsibleSection>
             ) : null}
 
@@ -181,18 +183,20 @@ export default function DataView({
                     </div>
                 }
             >
-                <StubResourcesSection resources={stubResources} />
-                <ul className="workarea-list">
-                    {contentResources.map((r: AnyResource) => (
-                        <ResourceListItem
-                            key={r.id}
-                            name={r.name ?? r.id}
-                            type={r.type}
-                            wordCount={getWordCount(r)}
-                            lastEditedAt={r.updatedAt ?? r.createdAt}
-                        />
-                    ))}
-                </ul>
+                <div className="max-h-80 overflow-y-auto">
+                    <StubResourcesSection resources={stubResources} />
+                    <ul className="workarea-list">
+                        {contentResources.map((r: AnyResource) => (
+                            <ResourceListItem
+                                key={r.id}
+                                name={r.name ?? r.id}
+                                type={r.type}
+                                wordCount={getWordCount(r)}
+                                lastEditedAt={r.updatedAt ?? r.createdAt}
+                            />
+                        ))}
+                    </ul>
+                </div>
             </CollapsibleSection>
         </div>
     );
