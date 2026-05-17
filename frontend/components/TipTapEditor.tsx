@@ -23,9 +23,20 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
-import { FontSize, FontFamily, TextStyle } from "@tiptap/extension-text-style";
+import {
+    FontSize,
+    FontFamily,
+    TextStyle,
+    Color,
+    BackgroundColor,
+} from "@tiptap/extension-text-style";
 import Blockquote from "@tiptap/extension-blockquote";
-import { BulletList, ListItem, ListKeymap, OrderedList } from "@tiptap/extension-list";
+import {
+    BulletList,
+    ListItem,
+    ListKeymap,
+    OrderedList,
+} from "@tiptap/extension-list";
 import CodeBlock from "@tiptap/extension-code-block";
 import Highlight from "@tiptap/extension-highlight";
 import UniqueID from "@tiptap/extension-unique-id";
@@ -65,12 +76,14 @@ export interface TipTapEditorProps {
  */
 export const extensions = [
     StarterKit.configure({
-        heading: false,    // disabled — CustomHeading is used instead
+        heading: false, // disabled — CustomHeading is used instead
         bulletList: false, // disabled — BulletList registered explicitly below
-        orderedList: false,// disabled — OrderedList registered explicitly below
-        listItem: false,   // disabled — ListItem registered explicitly below
+        orderedList: false, // disabled — OrderedList registered explicitly below
+        listItem: false, // disabled — ListItem registered explicitly below
     }),
     TextStyle,
+    Color,
+    BackgroundColor,
     FontSize,
     Blockquote,
     BulletList,
