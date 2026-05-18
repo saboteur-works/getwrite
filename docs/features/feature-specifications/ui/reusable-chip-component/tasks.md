@@ -20,7 +20,7 @@ Spec: `docs/features/feature-specifications/ui/reusable-chip-component/resuable-
 **Done when:** The component renders with `data-testid` or class-based verification showing: (a) label text appears; (b) `color` prop applies the value as both `borderColor` and `color` inline styles; (c) omitting `color` falls back to `--color-gw-border` / `--color-gw-secondary`; (d) `shape="sharp"` applies `.chip--sharp`, `shape="rounded"` applies `.chip--rounded`; (e) `size` applies the correct modifier class, defaulting to `.chip--md`; (f) passing `onClick` renders a `<button>`, omitting it renders a `<span>`; (g) `pnpm typecheck` passes with no new errors.
 **Depends on:** Task 1
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

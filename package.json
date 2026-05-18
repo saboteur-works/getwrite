@@ -10,6 +10,7 @@
         "electron:dev": "pnpm --filter getwrite-electron dev",
         "electron:build": "pnpm --filter getwrite-frontend build && pnpm --filter getwrite-electron build",
         "electron:package": "pnpm electron:build && pnpm --filter getwrite-electron package",
+        "storybook": "pnpm --filter getwrite-frontend storybook",
         "knip": "knip"
     },
     "keywords": [],
