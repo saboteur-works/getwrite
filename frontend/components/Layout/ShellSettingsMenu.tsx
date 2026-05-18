@@ -13,6 +13,7 @@ import {
     Archive,
     Tag,
     PenLine,
+    LayoutList,
 } from "lucide-react";
 import MenuItemButton from "../common/MenuItemButton";
 
@@ -28,6 +29,7 @@ export interface ShellSettingsMenuProps {
     onOpenDefaultRevisionNameSettings: () => void;
     onOpenProjectTypeManager: () => void;
     onOpenTagsManager: () => void;
+    onOpenMetadataManager: () => void;
     onToggleColorMode: () => void;
     onOpenHelp: () => void;
     onCloseProject: () => void;
@@ -50,6 +52,7 @@ export default function ShellSettingsMenu({
     onOpenDefaultRevisionNameSettings,
     onOpenProjectTypeManager,
     onOpenTagsManager,
+    onOpenMetadataManager,
     onToggleColorMode,
     onOpenHelp,
     onCloseProject,
@@ -157,6 +160,16 @@ export default function ShellSettingsMenu({
                                     icon={<Tag size={14} aria-hidden="true" />}
                                     label="Manage Tags"
                                     onClick={onOpenTagsManager}
+                                />
+                            ) : null}
+                            {hasProject ? (
+                                <MenuItemButton
+                                    className="appshell-topbar-dropdown-item"
+                                    icon={
+                                        <LayoutList size={14} aria-hidden="true" />
+                                    }
+                                    label="Metadata"
+                                    onClick={onOpenMetadataManager}
                                 />
                             ) : null}
                             <MenuItemButton

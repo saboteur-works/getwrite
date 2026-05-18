@@ -152,7 +152,7 @@
 **Depends on:** Task 12
 **Estimate:** 2
 **Notes:** Follow the exact wiring pattern used for "Manage Tags" (`onOpenTagsManager`) — it is the closest structural analogue.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
