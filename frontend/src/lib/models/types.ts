@@ -17,6 +17,7 @@ export type ResourceRef = {
 /**
  * MetadataValue: recursive union representing allowed sidecar metadata values.
  * Designed to be JSON-friendly while allowing nested structured metadata.
+ * Includes ResourceRef and ResourceRef[] to support resource-ref field types.
  */
 export type MetadataValue =
     | string
@@ -26,6 +27,8 @@ export type MetadataValue =
     | string[]
     | number[]
     | boolean[]
+    | ResourceRef
+    | ResourceRef[]
     | { [key: string]: MetadataValue };
 
 export type EditorHeadings = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";

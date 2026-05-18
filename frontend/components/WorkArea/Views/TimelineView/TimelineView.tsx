@@ -17,6 +17,17 @@ export interface TimelineViewProps {
     colors?: string[];
 }
 
+function resolvePovDisplay(
+    pov: unknown,
+): string | undefined {
+    if (!pov) return undefined;
+    if (typeof pov === "string") return pov;
+    if (typeof pov === "object" && pov !== null && "name" in pov) {
+        return (pov as { name: string }).name || undefined;
+    }
+    return undefined;
+}
+
 const DEFAULT_POV_PALETTE = [
     "var(--timeline-pov-0)",
     "var(--timeline-pov-1)",
@@ -41,7 +52,7 @@ export default function TimelineView({
         const povs = [
             ...new Set(
                 resources
-                    .map((r) => r.userMetadata?.pov as string | undefined)
+                    .map((r) => resolvePovDisplay(r.userMetadata?.pov))
                     .filter((p): p is string => !!p),
             ),
         ];
@@ -84,7 +95,7 @@ export default function TimelineView({
                 const durationH =
                     storyDuration != null ? storyDuration / 60 : undefined;
 
-                const pov = r.userMetadata?.pov as string | undefined;
+                const pov = resolvePovDisplay(r.userMetadata?.pov);
                 const statusArr = r.userMetadata?.status as
                     | string[]
                     | undefined;

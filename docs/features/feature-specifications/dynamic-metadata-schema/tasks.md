@@ -116,7 +116,7 @@
 **Depends on:** Tasks 3, 9
 **Estimate:** 5
 **Notes:** Remove the existing `MetadataSidebarProps` callbacks (`onChangeSynopsis`, `onChangePOV`, etc.) and replace with a single generic `onChangeField(key: string, value: MetadataValue): void`. Group rendering by schema group. Folder-scoped groups: only render a group if the current resource's `folderId` matches the group's `folderId`.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

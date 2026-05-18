@@ -3,23 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { readSidecar, writeSidecar } from "../../../../src/lib/models/sidecar";
 import { generateUUID } from "../../../../src/lib/models/uuid";
-import { nullifyResourceRefs } from "../../../../src/lib/models/trash";
+import {
+    nullifyResourceRefs,
+    softDeleteResource,
+} from "../../../../src/lib/models/trash";
 import { getSchema } from "../../../../src/lib/models/metadata-schema";
-
-const deleteResource = async (projectRoot: string, resourceId: string) => {
-    const resourcePath = path.join(projectRoot, "resources", resourceId);
-    if (fs.existsSync(resourcePath)) {
-        fs.rmSync(resourcePath, { recursive: true, force: true });
-    }
-    const metaPath = path.join(
-        projectRoot,
-        "meta",
-        `resource-${resourceId}.meta.json`,
-    );
-    if (fs.existsSync(metaPath)) {
-        fs.rmSync(metaPath, { recursive: true, force: true });
-    }
-};
 
 const copyResource = async (
     projectRoot: string,
@@ -84,7 +72,7 @@ export async function POST(
                 resourceRefKeys,
             );
 
-            await deleteResource(projectRoot, resourceId);
+            await softDeleteResource(projectRoot, resourceId);
             return NextResponse.json({ message: "Resource deleted successfully" });
         }
         case "copy": {

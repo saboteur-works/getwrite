@@ -13,9 +13,10 @@ import {
     setProject,
     setSelectedProjectId,
 } from "../src/store/projectsSlice";
+import type { MetadataSchema } from "../src/lib/models/types";
 
 describe("MetadataSidebar", () => {
-    it("renders story date/duration controls and invokes callbacks", () => {
+    it("renders story date/duration controls and invokes onChangeField", () => {
         const res = createTextResource({
             name: "Scene",
             plainText: "",
@@ -24,18 +25,14 @@ describe("MetadataSidebar", () => {
                 storyDuration: 90,
             },
         });
-        const onDate = vi.fn();
-        const onDuration = vi.fn();
+        const onChangeField = vi.fn();
 
         const testStore = makeStore();
         testStore.dispatch(setResources([res]));
         testStore.dispatch(setSelectedResourceId(res.id));
         render(
             <Provider store={testStore}>
-                <MetadataSidebar
-                    onChangeStoryDate={onDate}
-                    onChangeStoryDuration={onDuration}
-                />
+                <MetadataSidebar onChangeField={onChangeField} />
             </Provider>,
         );
 
@@ -48,10 +45,10 @@ describe("MetadataSidebar", () => {
         expect(durationQty.value).toBe("90");
 
         fireEvent.change(dateInput, { target: { value: "2024-07-15" } });
-        expect(onDate).toHaveBeenCalledWith("2024-07-15");
+        expect(onChangeField).toHaveBeenCalledWith("storyDate", "2024-07-15");
 
         fireEvent.change(durationQty, { target: { value: "120" } });
-        expect(onDuration).toHaveBeenCalledWith(120);
+        expect(onChangeField).toHaveBeenCalledWith("storyDuration", 120);
     });
 
     it("shows computed end date when storyDate and storyDuration are set", () => {
@@ -73,13 +70,11 @@ describe("MetadataSidebar", () => {
             </Provider>,
         );
 
-        // End date section should be present with Override button (read-only mode)
         expect(screen.getByLabelText("end-date-override-toggle")).toBeInTheDocument();
-        // No manual input in read-only mode
         expect(screen.queryByLabelText("story-end-date-input")).not.toBeInTheDocument();
     });
 
-    it("calls onChangeStoryEndDate when user overrides the end date", () => {
+    it("calls onChangeField for storyEndDate when user overrides the end date", () => {
         const res = createTextResource({
             name: "Scene",
             plainText: "",
@@ -88,14 +83,14 @@ describe("MetadataSidebar", () => {
                 storyDuration: 120,
             },
         });
-        const onEndDate = vi.fn();
+        const onChangeField = vi.fn();
 
         const testStore = makeStore();
         testStore.dispatch(setResources([res]));
         testStore.dispatch(setSelectedResourceId(res.id));
         render(
             <Provider store={testStore}>
-                <MetadataSidebar onChangeStoryEndDate={onEndDate} />
+                <MetadataSidebar onChangeField={onChangeField} />
             </Provider>,
         );
 
@@ -103,7 +98,7 @@ describe("MetadataSidebar", () => {
         fireEvent.change(screen.getByLabelText("story-end-date-input"), {
             target: { value: "2024-06-01T06:00" },
         });
-        expect(onEndDate).toHaveBeenCalledWith("2024-06-01T06:00");
+        expect(onChangeField).toHaveBeenCalledWith("storyEndDate", "2024-06-01T06:00");
     });
 
     it("shows editable end date input when storyEndDate override is already set", () => {
@@ -152,29 +147,29 @@ describe("MetadataSidebar", () => {
         expect(synopsis.value).toBe("A duel at dawn.");
     });
 
-    it("calls onChangeSynopsis when synopsis changes", () => {
+    it("calls onChangeField with key 'synopsis' when synopsis changes", () => {
         const res = createTextResource({
             name: "Scene",
             plainText: "",
             userMetadata: { synopsis: "" },
         });
-        const onSynopsis = vi.fn();
+        const onChangeField = vi.fn();
 
         const testStore = makeStore();
         testStore.dispatch(setResources([res]));
         testStore.dispatch(setSelectedResourceId(res.id));
         render(
             <Provider store={testStore}>
-                <MetadataSidebar onChangeSynopsis={onSynopsis} />
+                <MetadataSidebar onChangeField={onChangeField} />
             </Provider>,
         );
 
         const synopsis = screen.getByLabelText("synopsis") as HTMLTextAreaElement;
         fireEvent.change(synopsis, { target: { value: "A new synopsis." } });
-        expect(onSynopsis).toHaveBeenCalledWith("A new synopsis.");
+        expect(onChangeField).toHaveBeenCalledWith("synopsis", "A new synopsis.");
     });
 
-    it("renders collapsible section headings", () => {
+    it("renders schema group sections as collapsible headings", () => {
         const res = createTextResource({ name: "Scene", plainText: "" });
         const testStore = makeStore();
         testStore.dispatch(setResources([res]));
@@ -185,14 +180,12 @@ describe("MetadataSidebar", () => {
             </Provider>,
         );
 
-        expect(screen.getByRole("button", { name: /synopsis/i })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /notes/i })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /status/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /document/i })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /story timeline/i })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /tags/i })).toBeInTheDocument();
     });
 
-    it("collapses synopsis section and hides the textarea", () => {
+    it("collapses the Document section and hides synopsis and notes", () => {
         const res = createTextResource({
             name: "Scene",
             plainText: "",
@@ -208,11 +201,12 @@ describe("MetadataSidebar", () => {
         );
 
         expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: /synopsis/i }));
+        fireEvent.click(screen.getByRole("button", { name: /document/i }));
         expect(screen.queryByLabelText("synopsis")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("notes")).not.toBeInTheDocument();
     });
 
-    it("expands a collapsed section when header is clicked again", () => {
+    it("expands the Document section again when its header is clicked twice", () => {
         const res = createTextResource({ name: "Scene", plainText: "" });
         const testStore = makeStore();
         testStore.dispatch(setResources([res]));
@@ -223,10 +217,10 @@ describe("MetadataSidebar", () => {
             </Provider>,
         );
 
-        const notesBtn = screen.getByRole("button", { name: /notes/i });
-        fireEvent.click(notesBtn);
+        const docBtn = screen.getByRole("button", { name: /document/i });
+        fireEvent.click(docBtn);
         expect(screen.queryByLabelText("notes")).not.toBeInTheDocument();
-        fireEvent.click(notesBtn);
+        fireEvent.click(docBtn);
         expect(screen.getByLabelText("notes")).toBeInTheDocument();
     });
 
@@ -252,14 +246,13 @@ describe("MetadataSidebar", () => {
         expect(screen.queryByLabelText("end-date-override-toggle")).not.toBeInTheDocument();
     });
 
-    it("renders notes and status and invokes callbacks", () => {
+    it("calls onChangeField for notes and status", () => {
         const res = createTextResource({
             name: "Notes",
             plainText: "",
             userMetadata: { notes: "", status: "draft" },
         });
-        const onNotes = vi.fn();
-        const onStatus = vi.fn();
+        const onChangeField = vi.fn();
 
         const testStore = makeStore();
         const projectId = "test-project-id";
@@ -269,10 +262,7 @@ describe("MetadataSidebar", () => {
         testStore.dispatch(setSelectedResourceId(res.id));
         render(
             <Provider store={testStore}>
-                <MetadataSidebar
-                    onChangeNotes={onNotes}
-                    onChangeStatus={onStatus}
-                />
+                <MetadataSidebar onChangeField={onChangeField} />
             </Provider>,
         );
 
@@ -283,9 +273,139 @@ describe("MetadataSidebar", () => {
         expect(status).toBeInTheDocument();
 
         fireEvent.change(notes, { target: { value: "Updated notes" } });
-        expect(onNotes).toHaveBeenCalledWith("Updated notes");
+        expect(onChangeField).toHaveBeenCalledWith("notes", "Updated notes");
 
         fireEvent.change(status, { target: { value: "review" } });
-        expect(onStatus).toHaveBeenCalledWith("review");
+        expect(onChangeField).toHaveBeenCalledWith("status", "review");
+    });
+
+    it("renders a custom text field when present in schema", () => {
+        const customSchema: MetadataSchema = {
+            groups: [
+                {
+                    id: "custom-group",
+                    label: "Custom Group",
+                    fields: [
+                        { key: "my-field", label: "My Custom Field", type: "text" },
+                    ],
+                },
+            ],
+        };
+        const res = createTextResource({ name: "Scene", plainText: "" });
+        const testStore = makeStore();
+        const projectId = "test-project-id";
+        testStore.dispatch(setProject({ id: projectId, rootPath: "/test", metadataSchema: customSchema }));
+        testStore.dispatch(setSelectedProjectId(projectId));
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+
+        expect(screen.getByRole("button", { name: /custom group/i })).toBeInTheDocument();
+        expect(screen.getByLabelText("my-field")).toBeInTheDocument();
+    });
+
+    it("calls onChangeField with custom field key for a custom text field", () => {
+        const customSchema: MetadataSchema = {
+            groups: [
+                {
+                    id: "custom-group",
+                    label: "Custom Group",
+                    fields: [
+                        { key: "my-field", label: "My Custom Field", type: "text" },
+                    ],
+                },
+            ],
+        };
+        const res = createTextResource({
+            name: "Scene",
+            plainText: "",
+            userMetadata: { "my-field": "" },
+        });
+        const onChangeField = vi.fn();
+
+        const testStore = makeStore();
+        const projectId = "test-project-id";
+        testStore.dispatch(setProject({ id: projectId, rootPath: "/test", metadataSchema: customSchema }));
+        testStore.dispatch(setSelectedProjectId(projectId));
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar onChangeField={onChangeField} />
+            </Provider>,
+        );
+
+        const input = screen.getByLabelText("my-field");
+        fireEvent.change(input, { target: { value: "custom value" } });
+        expect(onChangeField).toHaveBeenCalledWith("my-field", "custom value");
+    });
+
+    it("does not render a folder-scoped group when resource folderId does not match", () => {
+        const customSchema: MetadataSchema = {
+            groups: [
+                {
+                    id: "folder-group",
+                    label: "Folder Group",
+                    folderId: "folder-abc",
+                    fields: [
+                        { key: "folder-field", label: "Folder Field", type: "text" },
+                    ],
+                },
+            ],
+        };
+        const res = createTextResource({ name: "Scene", plainText: "" });
+        // Resource has no folderId (root-level), so group should be skipped
+        const testStore = makeStore();
+        const projectId = "test-project-id";
+        testStore.dispatch(setProject({ id: projectId, rootPath: "/test", metadataSchema: customSchema }));
+        testStore.dispatch(setSelectedProjectId(projectId));
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+
+        expect(screen.queryByRole("button", { name: /folder group/i })).not.toBeInTheDocument();
+    });
+
+    it("renders a folder-scoped group when resource folderId matches", () => {
+        const customSchema: MetadataSchema = {
+            groups: [
+                {
+                    id: "folder-group",
+                    label: "Folder Group",
+                    folderId: "folder-abc",
+                    fields: [
+                        { key: "folder-field", label: "Folder Field", type: "text" },
+                    ],
+                },
+            ],
+        };
+        const res = createTextResource({
+            name: "Scene",
+            plainText: "",
+        });
+        const resWithFolder = { ...res, folderId: "folder-abc" };
+
+        const testStore = makeStore();
+        const projectId = "test-project-id";
+        testStore.dispatch(setProject({ id: projectId, rootPath: "/test", metadataSchema: customSchema }));
+        testStore.dispatch(setSelectedProjectId(projectId));
+        testStore.dispatch(setResources([resWithFolder as any]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+
+        expect(screen.getByRole("button", { name: /folder group/i })).toBeInTheDocument();
+        expect(screen.getByLabelText("folder-field")).toBeInTheDocument();
     });
 });

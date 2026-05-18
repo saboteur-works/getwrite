@@ -97,16 +97,14 @@ export const Interactive: Story = {
             return (
                 <div>
                     <MetadataSidebar
-                        onChangeSynopsis={(text) => markChanged(text)}
-                        onChangeNotes={(text) => markChanged(text)}
-                        onChangeStatus={(status) => markChanged(status)}
-                        onChangePOV={(pov) => markChanged(pov.name)}
-                        onChangeStoryDate={(val) => markChanged(val)}
-                        onChangeStoryDuration={(val) =>
-                            markChanged(String(val ?? ""))
-                        }
-                        onChangeStoryEndDate={(val) =>
-                            markChanged(val ?? "(cleared)")
+                        onChangeField={(_key, value) =>
+                            markChanged(
+                                value === null
+                                    ? "(cleared)"
+                                    : typeof value === "object"
+                                      ? ("name" in value ? String(value.name) : String(value))
+                                      : String(value),
+                            )
                         }
                     />
                     <div
@@ -295,15 +293,7 @@ export const InteractiveCollapse: Story = {
 
         return (
             <Provider store={store}>
-                <MetadataSidebar
-                    onChangeSynopsis={() => {}}
-                    onChangeNotes={() => {}}
-                    onChangeStatus={() => {}}
-                    onChangePOV={() => {}}
-                    onChangeStoryDate={() => {}}
-                    onChangeStoryDuration={() => {}}
-                    onChangeStoryEndDate={() => {}}
-                />
+                <MetadataSidebar onChangeField={() => {}} />
             </Provider>
         );
     },

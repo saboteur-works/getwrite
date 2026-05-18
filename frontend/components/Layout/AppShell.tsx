@@ -1660,62 +1660,20 @@ export default function AppShell({
                                 </div>
                                 <div className="appshell-sidebar-content p-4 pt-3">
                                     <MetadataSidebar
-                                        onChangeSynopsis={(text) =>
-                                            selectedResource &&
-                                            onChangeSynopsis?.(
-                                                text,
-                                                selectedResource.id,
-                                            )
-                                        }
-                                        onChangeNotes={(text) =>
-                                            selectedResource &&
-                                            onChangeNotes?.(
-                                                text,
-                                                selectedResource.id,
-                                            )
-                                        }
-                                        onChangeStatus={(status) =>
-                                            selectedResource &&
-                                            onChangeStatus?.(
-                                                status as any,
-                                                selectedResource.id,
-                                            )
-                                        }
-                                        onChangePOV={(pov) =>
-                                            selectedResource &&
-                                            onChangePOV?.(
-                                                pov,
-                                                selectedResource.id,
-                                            )
-                                        }
-                                        onChangeDynamicMetadata={(metadata) =>
-                                            selectedResource &&
-                                            onChangeDynamicMetadata?.(
-                                                metadata,
-                                                selectedResource.id,
-                                            )
-                                        }
-                                        onChangeStoryDate={(date) =>
-                                            selectedResource &&
-                                            onChangeStoryDate?.(
-                                                date,
-                                                selectedResource.id,
-                                            )
-                                        }
-                                        onChangeStoryDuration={(duration) =>
-                                            selectedResource &&
-                                            onChangeStoryDuration?.(
-                                                duration,
-                                                selectedResource.id,
-                                            )
-                                        }
-                                        onChangeStoryEndDate={(endDate) =>
-                                            selectedResource &&
-                                            onChangeStoryEndDate?.(
-                                                endDate,
-                                                selectedResource.id,
-                                            )
-                                        }
+                                        onChangeField={(key, value) => {
+                                            if (!selectedResource) return;
+                                            const id = selectedResource.id;
+                                            switch (key) {
+                                                case "synopsis": onChangeSynopsis?.(value as string, id); break;
+                                                case "notes": onChangeNotes?.(value as string, id); break;
+                                                case "status": onChangeStatus?.(value as any, id); break;
+                                                case "pov": onChangePOV?.(value as ResourceRef, id); break;
+                                                case "storyDate": onChangeStoryDate?.(value as string, id); break;
+                                                case "storyDuration": onChangeStoryDuration?.(value as number | null, id); break;
+                                                case "storyEndDate": onChangeStoryEndDate?.(value as string | null, id); break;
+                                                default: onChangeDynamicMetadata?.({ [key]: value as string[] }, id); break;
+                                            }
+                                        }}
                                     />
                                 </div>
                             </aside>

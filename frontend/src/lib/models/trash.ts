@@ -21,7 +21,7 @@ function isEnoent(err: unknown): boolean {
  * Recursively patches a value: if it is a ResourceRef object whose `id`
  * matches `deletedId`, replaces `id` with `null`. Handles arrays of
  * ResourceRef objects (resource-ref fields with `multiple: true`).
- * Works in `unknown` space to avoid the MetadataValue array-of-objects gap.
+ * Works in `unknown` space so callers need not narrow the value first.
  */
 function patchRef(
     raw: unknown,

@@ -23,34 +23,27 @@ All eight schema CRUD thunks return `{ projectId, schema }` on fulfillment, and 
 
 ---
 
-## Timeline components must handle `ResourceRef` POV values
+## ~~Timeline components must handle `ResourceRef` POV values~~ — RESOLVED
 
 **Discovered during:** Task 7 (`ResourceRef` type + lazy POV migration on first edit)
+**Resolved during:** Task 10 (schema-driven sidebar rewrite)
 
-`TimelineView.tsx` (lines 44, 87) and `Timeline.tsx` (lines 135, 170, 177, 281) read `userMetadata.pov` with a `as string | undefined` cast and use it directly as a string key for color mapping, filter comparison, and tooltip display. After Task 7, a saved POV value is a `ResourceRef` object `{ id, name }`. Projects that have had their POV field edited since the migration will display `[object Object]` in the timeline color map and filter dropdowns.
-
-**Recommended fix:** Before Task 10 ships, update `TimelineView.tsx` and `Timeline.tsx` to extract the `.name` field when the value is an object:
-
-```ts
-function resolvePovDisplay(pov: string | { name: string } | undefined): string | undefined {
-    if (!pov) return undefined;
-    if (typeof pov === "string") return pov;
-    return pov.name;
-}
-```
-
-Apply this helper wherever `userMetadata.pov` is read in the timeline stack.
-
-**Affects:** `TimelineView.tsx`, `Timeline.tsx`, `TimelineTooltip.tsx`.
+A `resolvePovDisplay` helper was added to `TimelineView.tsx` and applied at both read sites (color-map construction and item mapping). The helper accepts `unknown` and extracts `.name` when the value is an object, returning `string | undefined`. `Timeline.tsx` and `TimelineTooltip.tsx` required no changes because they receive already-resolved strings via the `TimelineItem.metadata.pov` field.
 
 ---
 
-## Delete route uses hard-delete, not `softDeleteResource`
+## ~~Delete route uses hard-delete, not `softDeleteResource`~~ — RESOLVED
 
 **Discovered during:** Task 8 (soft-delete — null `resource-ref` values project-wide)
+**Resolved:** Follow-up pass after Task 10
 
-`frontend/app/api/resource/[resource-id]/route.ts` (the route actually called by `page.tsx`) contains a local `deleteResource` helper that uses `fs.rmSync` — a permanent hard delete. The `softDeleteResource` function in `trash.ts` (which moves files to `.trash/` for recoverability) is never called by the production delete path. Task 8's nullification was wired in before the hard delete, which satisfies the ordering requirement, but the soft-delete safety net is not in use.
+The local `deleteResource` helper (using `fs.rmSync`) was removed from both `[resource-id]/route.ts` and `[resource-id]/delete/route.ts`. Both routes now call `softDeleteResource` from `trash.ts`, which moves files to `.trash/` for recoverability. The `nullifyResourceRefs` call still precedes the move in both routes. Unused `fs` and `path` imports were also removed from the dedicated delete route.
 
-**Recommended fix:** Replace the local `deleteResource` helper in `[resource-id]/route.ts` with `softDeleteResource` from `trash.ts`. Ensure the `nullifyResourceRefs` call still precedes it. Align `[resource-id]/delete/route.ts` in the same pass.
+---
 
-**Affects:** `frontend/app/api/resource/[resource-id]/route.ts`.
+## ~~`MetadataValue` TypeScript type does not include `ResourceRef[]`~~ — RESOLVED
+
+**Discovered during:** Task 10 (schema-driven sidebar rewrite)
+**Resolved:** Follow-up pass after Task 10
+
+`ResourceRef` and `ResourceRef[]` were added explicitly to the `MetadataValue` union in `types.ts`, matching the Zod schema. The `as MetadataValue` cast in `MetadataSidebar.tsx`'s resource-ref `onChange` handler was removed. All consumers of `MetadataValue` (`resourcesSlice`, sidecar read/write paths) were unaffected — the widened union is a strict superset.

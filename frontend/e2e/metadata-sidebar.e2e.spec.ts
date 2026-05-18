@@ -91,26 +91,27 @@ test("metadata sidebar duration unit selector works", async ({ page }) => {
     await expect(lastChangeProbe).toHaveText("120", { timeout: 2000 });
 });
 
-test("collapse: clicking synopsis header hides the textarea", async ({ page }) => {
+test("collapse: clicking Document header hides synopsis and notes", async ({ page }) => {
     await page.goto("/iframe.html?id=sidebar-metadatasidebar--interactive-collapse");
 
     const synopsisTextarea = page.getByLabel("synopsis");
     await expect(synopsisTextarea).toBeVisible();
 
-    await page.getByRole("button", { name: /synopsis/i }).click();
+    await page.getByRole("button", { name: /document/i }).click();
     await expect(synopsisTextarea).not.toBeAttached();
+    await expect(page.getByLabel("notes")).not.toBeAttached();
 });
 
-test("collapse: clicking synopsis header again restores the textarea", async ({ page }) => {
+test("collapse: clicking Document header again restores synopsis and notes", async ({ page }) => {
     await page.goto("/iframe.html?id=sidebar-metadatasidebar--interactive-collapse");
 
-    const synopsisBtn = page.getByRole("button", { name: /synopsis/i });
+    const docBtn = page.getByRole("button", { name: /document/i });
     const synopsisTextarea = page.getByLabel("synopsis");
 
-    await synopsisBtn.click();
+    await docBtn.click();
     await expect(synopsisTextarea).not.toBeAttached();
 
-    await synopsisBtn.click();
+    await docBtn.click();
     await expect(synopsisTextarea).toBeVisible();
 });
 
@@ -128,26 +129,21 @@ test("collapse: clicking story timeline header hides all three timeline inputs",
     await expect(page.getByLabel("end-date-override-toggle", { exact: true })).not.toBeAttached();
 });
 
-test("collapse: notes section collapses and expands independently", async ({ page }) => {
+test("collapse: Document and Story Timeline sections collapse independently", async ({ page }) => {
     await page.goto("/iframe.html?id=sidebar-metadatasidebar--interactive-collapse");
 
-    const notesTextarea = page.getByLabel("notes");
-    const notesBtn = page.getByRole("button", { name: /notes/i });
+    // Collapse only the Document section
+    await page.getByRole("button", { name: /document/i }).click();
+    await expect(page.getByLabel("synopsis")).not.toBeAttached();
 
-    await expect(notesTextarea).toBeVisible();
-    await notesBtn.click();
-    await expect(notesTextarea).not.toBeAttached();
-
-    // Synopsis should still be visible (sections are independent)
-    await expect(page.getByLabel("synopsis")).toBeVisible();
+    // Story Timeline should still be visible
+    await expect(page.getByLabel("story-date-input", { exact: true })).toBeVisible();
 });
 
-test("all-expanded story shows all section headers and content", async ({ page }) => {
+test("all-expanded story shows Document and Story Timeline section headers", async ({ page }) => {
     await page.goto("/iframe.html?id=sidebar-metadatasidebar--all-expanded");
 
-    await expect(page.getByRole("button", { name: /synopsis/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /notes/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /status/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /document/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /story timeline/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /tags/i })).toBeVisible();
     await expect(page.getByLabel("synopsis")).toBeVisible();
