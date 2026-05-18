@@ -75,4 +75,55 @@ describe("Chip", () => {
         const { container } = render(<Chip label="Tag" shape="sharp" />);
         expect(container.firstChild).toHaveClass("chip");
     });
+
+    describe("dismiss button", () => {
+        it("renders dismiss button when onDismiss is provided", () => {
+            render(<Chip label="Tag" shape="sharp" onDismiss={vi.fn()} />);
+            expect(
+                screen.getByRole("button", { name: "Remove" }),
+            ).toBeTruthy();
+        });
+
+        it("does not render dismiss button when onDismiss is omitted", () => {
+            render(<Chip label="Tag" shape="sharp" />);
+            expect(
+                screen.queryByRole("button", { name: "Remove" }),
+            ).toBeNull();
+        });
+
+        it("calls onDismiss when dismiss button is clicked", () => {
+            const onDismiss = vi.fn();
+            render(<Chip label="Tag" shape="sharp" onDismiss={onDismiss} />);
+            fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+            expect(onDismiss).toHaveBeenCalledTimes(1);
+        });
+
+        it("dismiss click does not bubble to chip onClick", () => {
+            const onClick = vi.fn();
+            const onDismiss = vi.fn();
+            render(
+                <Chip
+                    label="Tag"
+                    shape="sharp"
+                    onClick={onClick}
+                    onDismiss={onDismiss}
+                />,
+            );
+            fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+            expect(onDismiss).toHaveBeenCalledTimes(1);
+            expect(onClick).not.toHaveBeenCalled();
+        });
+
+        it("dismiss button has aria-label Remove", () => {
+            render(<Chip label="Tag" shape="sharp" onDismiss={vi.fn()} />);
+            const btn = screen.getByRole("button", { name: "Remove" });
+            expect(btn.getAttribute("aria-label")).toBe("Remove");
+        });
+
+        it("dismiss button has chip__dismiss class", () => {
+            render(<Chip label="Tag" shape="sharp" onDismiss={vi.fn()} />);
+            const btn = screen.getByRole("button", { name: "Remove" });
+            expect(btn).toHaveClass("chip__dismiss");
+        });
+    });
 });

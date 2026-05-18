@@ -30,7 +30,7 @@ Spec: `docs/features/feature-specifications/ui/reusable-chip-component/resuable-
 **Done when:** When `onDismiss` is provided a button element with `aria-label="Remove"` renders inside the chip to the right of the label; clicking it calls `onDismiss` and does not trigger an `onClick` on the chip root; keyboard focus on the button shows a visible focus ring (confirmed via Storybook visual or a11y addon); `pnpm typecheck` passes.
 **Depends on:** Task 2
 **Estimate:** 1
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
