@@ -68,7 +68,7 @@
 **Depends on:** Tasks 3, 5
 **Estimate:** 3
 **Notes:** Follow the transport-service/guards split used in `revisionsSlice`. Do not optimistically update state — wait for the API response (per the no-optimistic-sync architecture).
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

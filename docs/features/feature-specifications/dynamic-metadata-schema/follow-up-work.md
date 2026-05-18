@@ -14,12 +14,9 @@
 
 ---
 
-## Task 6 must update `metadataSchema` in Redux state after API calls
+## ~~Task 6 must update `metadataSchema` in Redux state after API calls~~ — RESOLVED
 
 **Discovered during:** Task 3 (Redux — store `metadataSchema` in `projectsSlice`)
+**Resolved during:** Task 6 (Redux async thunks for schema CRUD)
 
-Task 6 (schema CRUD thunks) will call `POST /api/project/metadata-schema` and receive the updated schema in the response. The thunk must write that schema back into `store.projects.projects[id].metadataSchema` so the sidebar and schema manager stay in sync without a re-fetch.
-
-**Recommended fix:** When implementing Task 6, add a reducer action (or reuse `setProject`) that accepts the project ID and a new `MetadataSchema` and replaces only the `metadataSchema` field on the stored project. The async thunk should dispatch this action on a successful API response.
-
-**Affects:** Task 6 (Redux async thunks for schema CRUD).
+All eight schema CRUD thunks return `{ projectId, schema }` on fulfillment, and the slice's `extraReducers` replaces `state.projects.projects[projectId].metadataSchema` with the API response. A dedicated `updateProjectMetadataSchema` sync reducer was also added for direct dispatch from components that already have an updated schema.
