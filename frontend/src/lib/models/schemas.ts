@@ -104,13 +104,16 @@ export const MetadataFieldTypeSchema = z.enum([
 /**
  * Single metadata field definition within a schema group.
  *
- * - `key` must be a URL-safe slug (`[a-z0-9-]+`).
+ * - `key` accepts any non-empty string so that persisted camelCase built-in
+ *   keys (`storyDate`, `storyDuration`, `storyEndDate`) round-trip cleanly.
+ *   The slug-pattern constraint (`/^[a-z0-9-]+$/`) is enforced only at the
+ *   API route layer, where it guards user-created fields on write.
  * - `options` is only meaningful for `select` / `multiselect` types.
  * - `multiple` is only meaningful for `resource-ref` type.
  * - `locked` fields cannot be removed or have their key changed.
  */
 export const MetadataFieldSchema = z.object({
-    key: z.string().regex(/^[a-z0-9-]+$/),
+    key: z.string().min(1),
     label: z.string(),
     type: MetadataFieldTypeSchema,
     locked: z.boolean().optional(),

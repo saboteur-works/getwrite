@@ -56,7 +56,7 @@
 **Depends on:** Tasks 1, 4
 **Estimate:** 2
 **Notes:** Follow the `tags/route.ts` action-dispatch pattern exactly. Return the full updated schema in every success response so the Redux thunk can replace state without a re-fetch.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

@@ -1,16 +1,16 @@
 # Dynamic Metadata Schema — Follow-up Work
 
-## MetadataFieldSchema key regex rejects built-in camelCase keys
+## ~~MetadataFieldSchema key regex rejects built-in camelCase keys~~ — RESOLVED
 
 **Discovered during:** Task 2 (default built-in schema constant)
+**Resolved during:** Task 5 (API route — `POST /api/project/metadata-schema`)
 
-`MetadataFieldSchema` in `schemas.ts` enforces `/^[a-z0-9-]+$/` on the `key` field. This pattern rejects the camelCase built-in keys (`storyDate`, `storyDuration`, `storyEndDate`), which must remain camelCase to match existing sidecar file keys (backward compatibility).
+`MetadataFieldSchema.key` in `schemas.ts` previously enforced `/^[a-z0-9-]+$/`, which rejected built-in camelCase keys (`storyDate`, `storyDuration`, `storyEndDate`). The fix was applied as part of Task 5:
 
-This is latent until the first time a project's `metadataSchema` is persisted to `project.json` (e.g., after a user adds a custom field). On the next project load, `ProjectConfigSchema.safeParse()` will reject the stored schema, breaking schema reads for that project.
-
-**Recommended fix:** Move the slug-pattern validation out of `MetadataFieldSchema` and into the Task 5 API route handler (`POST /api/project/metadata-schema`), where it can be applied only to user-created fields on write — not to the built-in fields that arrive via the default schema. The Zod schema itself should accept any non-empty string key so that persisted data (including legacy camelCase keys) round-trips cleanly.
-
-**Affects:** Tasks 5 (API route) and any code that calls `MetadataSchemaSchema.safeParse()` or `ProjectConfigSchema.safeParse()` on a schema containing built-in fields.
+- `MetadataFieldSchema.key` changed from `z.string().regex(/^[a-z0-9-]+$/)` to `z.string().min(1)` — any non-empty string is now accepted at the Zod layer.
+- Slug-pattern validation (`/^[a-z0-9-]+$/`) is now enforced only in the `add-field` handler of `POST /api/project/metadata-schema`, guarding user-created fields on write.
+- Built-in camelCase keys round-trip cleanly through `ProjectConfigSchema.safeParse()`.
+- Tests in `metadata-schema-types.test.ts` were updated to reflect the new design; a new `metadata-schema-api.test.ts` covers the route-level slug guard.
 
 ---
 

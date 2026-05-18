@@ -63,19 +63,33 @@ describe("MetadataFieldSchema", () => {
         expect(result.success).toBe(true);
     });
 
-    it("rejects a key with uppercase letters", () => {
+    it("accepts a camelCase key (slug enforcement is at the API route layer, not Zod)", () => {
+        // Built-in keys like storyDate, storyDuration, storyEndDate are camelCase
+        // and must round-trip cleanly. Slug validation is enforced in the POST route.
         const result = MetadataFieldSchema.safeParse({
-            key: "MyField",
-            label: "My Field",
-            type: "text",
+            key: "storyDate",
+            label: "Story Date",
+            type: "date",
+            locked: true,
         });
-        expect(result.success).toBe(false);
+        expect(result.success).toBe(true);
     });
 
-    it("rejects a key with spaces", () => {
+    it("accepts a key with spaces (slug enforcement is at the API route layer, not Zod)", () => {
+        // The Zod schema accepts any non-empty string; the API route handler
+        // rejects non-slug keys for user-created fields before they reach the model.
         const result = MetadataFieldSchema.safeParse({
             key: "my field",
             label: "My Field",
+            type: "text",
+        });
+        expect(result.success).toBe(true);
+    });
+
+    it("rejects an empty key", () => {
+        const result = MetadataFieldSchema.safeParse({
+            key: "",
+            label: "Empty",
             type: "text",
         });
         expect(result.success).toBe(false);
@@ -169,14 +183,33 @@ describe("ProjectConfigSchema.metadataSchema", () => {
         expect(result.success).toBe(true);
     });
 
-    it("rejects a ProjectConfig with an invalid metadataSchema (bad key)", () => {
+    it("accepts a ProjectConfig with a non-slug key (slug validation is enforced at the API route, not the Zod schema)", () => {
+        // MetadataFieldSchema.key accepts any non-empty string so that persisted
+        // camelCase built-in keys (storyDate, storyDuration, storyEndDate) round-trip
+        // cleanly. Slug-pattern enforcement lives in the POST /api/project/metadata-schema
+        // route handler, applied only to user-created fields on write.
         const result = ProjectConfigSchema.safeParse({
             metadataSchema: {
                 groups: [
                     {
                         id: "default",
                         label: "Story",
-                        fields: [{ key: "Bad Key!", label: "Bad", type: "text" }],
+                        fields: [{ key: "storyDate", label: "Story Date", type: "date", locked: true }],
+                    },
+                ],
+            },
+        });
+        expect(result.success).toBe(true);
+    });
+
+    it("rejects a ProjectConfig with an empty-string field key", () => {
+        const result = ProjectConfigSchema.safeParse({
+            metadataSchema: {
+                groups: [
+                    {
+                        id: "default",
+                        label: "Story",
+                        fields: [{ key: "", label: "Bad", type: "text" }],
                     },
                 ],
             },
