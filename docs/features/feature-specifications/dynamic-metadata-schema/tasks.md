@@ -44,7 +44,7 @@
 **Depends on:** Task 1
 **Estimate:** 3
 **Notes:** Follow the pattern in `tags.ts` — read the JSON file, mutate the config block, write back. Use `locks.ts` for concurrent-write safety, consistent with existing API routes. Field `key` slugs must be validated as URL-safe (`/^[a-z0-9-]+$/`) on create.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
