@@ -18,6 +18,8 @@ export interface MultiResourceRefInputProps {
     value?: ResourceRef[];
     /** Called with the full updated refs array on every change. */
     onChange?: (value: ResourceRef[]) => void;
+    /** Maximum number of selections allowed; unset means unbounded. */
+    maxSelections?: number;
     className?: string;
 }
 
@@ -40,11 +42,14 @@ export default function MultiResourceRefInput({
     resourceOptions = [],
     value = [],
     onChange,
+    maxSelections,
     className = "",
 }: MultiResourceRefInputProps): JSX.Element {
     const dispatch = useAppDispatch();
     const [inputVal, setInputVal] = React.useState("");
     const [suggestions, setSuggestions] = React.useState<ResourceOption[]>([]);
+
+    const atCap = maxSelections !== undefined && value.length >= maxSelections;
 
     const selectedNames = React.useMemo(
         () => new Set(value.map((r) => r.name.toLowerCase())),
@@ -52,6 +57,7 @@ export default function MultiResourceRefInput({
     );
 
     const addRef = (option: ResourceOption) => {
+        if (atCap) return;
         onChange?.([...value, { id: option.id, name: option.name }]);
         setInputVal("");
         setSuggestions([]);
@@ -123,6 +129,7 @@ export default function MultiResourceRefInput({
                     onBlur={handleBlur}
                     placeholder="Search resources..."
                     autoComplete="off"
+                    disabled={atCap}
                 />
                 {suggestions.length > 0 && (
                     <ul className="absolute top-full left-0 right-0 mt-1 bg-gw-chrome border border-gw-border rounded max-h-48 overflow-y-auto z-10">

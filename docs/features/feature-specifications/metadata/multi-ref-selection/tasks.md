@@ -66,6 +66,7 @@ Spec: `docs/features/feature-specifications/metadata/multi-ref-selection/multi-r
 **Depends on:** Tasks 2, 4
 **Estimate:** 1
 **Notes:** Covers FR 14. The component should accept `maxSelections?: number` as a prop; unset means unbounded.
+**Done:** [x] `atCap` guard in `addRef` + `disabled={atCap}` on the input. 3 new tests in `multi-resource-ref-input.test.tsx` (cap reached → disabled, Enter blocked at cap, under-cap → not disabled). All 825 tests pass, `pnpm typecheck` clean.
 
 ---
 

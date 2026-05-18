@@ -164,4 +164,40 @@ describe("MultiResourceRefInput", () => {
         expect(screen.queryByText("Alice")).toBeNull();
         expect((input as HTMLInputElement).value).toBe("Al");
     });
+
+    it("input is disabled when maxSelections cap is reached", () => {
+        renderComponent({
+            maxSelections: 2,
+            value: [
+                { id: "id-alice", name: "Alice" },
+                { id: "id-bob", name: "Bob" },
+            ],
+        });
+        const input = screen.getByLabelText("multi-resource-ref-input");
+        expect((input as HTMLInputElement).disabled).toBe(true);
+    });
+
+    it("clicking a suggestion is blocked when maxSelections cap is reached", () => {
+        const onChange = vi.fn();
+        renderComponent({
+            maxSelections: 2,
+            value: [
+                { id: "id-alice", name: "Alice" },
+                { id: "id-bob", name: "Bob" },
+            ],
+            onChange,
+        });
+        // Simulate a suggestion click (e.g., via the addRef path) — onChange must not fire
+        fireEvent.keyDown(screen.getByLabelText("multi-resource-ref-input"), { key: "Enter" });
+        expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("input is not disabled when value count is below maxSelections", () => {
+        renderComponent({
+            maxSelections: 2,
+            value: [{ id: "id-alice", name: "Alice" }],
+        });
+        const input = screen.getByLabelText("multi-resource-ref-input");
+        expect((input as HTMLInputElement).disabled).toBe(false);
+    });
 });
