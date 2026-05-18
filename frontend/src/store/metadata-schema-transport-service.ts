@@ -189,3 +189,18 @@ export async function postRenameFieldKey(
         newKey,
     });
 }
+
+export async function postUpdateRefProperties(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+    updates: { refFolder?: string | null; includeSubfolders?: boolean | null; maxSelections?: number | null },
+): Promise<MetadataSchema> {
+    return postToMetadataSchemaRoute({
+        action: "update-ref-properties",
+        projectPath: context.projectPath,
+        groupId,
+        fieldKey,
+        ...updates,
+    });
+}

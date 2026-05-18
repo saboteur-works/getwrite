@@ -22,6 +22,7 @@ import {
     postReorderFields,
     postRenameField,
     postUpdateFieldOptions,
+    postUpdateRefProperties,
     postChangeFieldType,
     postAddGroup,
     postRemoveGroup,
@@ -336,6 +337,34 @@ export const changeMetadataFieldType = createAsyncThunk<
     },
 );
 
+export const updateMetadataRefProperties = createAsyncThunk<
+    SchemaActionResult,
+    {
+        projectId: string;
+        groupId: string;
+        fieldKey: string;
+        updates: { refFolder?: string | null; includeSubfolders?: boolean | null; maxSelections?: number | null };
+    },
+    { state: any; rejectValue: string }
+>(
+    "projects/updateMetadataRefProperties",
+    async ({ projectId, groupId, fieldKey, updates }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postUpdateRefProperties(context, groupId, fieldKey, updates);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
 /**
  * Initial state for the `projects` slice.
  */
@@ -518,6 +547,7 @@ const projectsSlice = createSlice({
             reorderMetadataFields,
             renameMetadataField,
             updateMetadataFieldOptions,
+            updateMetadataRefProperties,
             changeMetadataFieldType,
             addMetadataGroup,
             removeMetadataGroup,

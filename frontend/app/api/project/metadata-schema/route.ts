@@ -22,6 +22,7 @@ import {
     reorderFields,
     renameField,
     updateFieldOptions,
+    updateRefProperties,
     changeFieldType,
     addGroup,
     removeGroup,
@@ -112,6 +113,19 @@ interface ChangeFieldTypeRequest {
     newType: MetadataFieldType;
 }
 
+interface UpdateRefPropertiesRequest {
+    action: "update-ref-properties";
+    projectPath: string;
+    groupId: string;
+    fieldKey: string;
+    /** `null` clears the property; absent leaves it unchanged. */
+    refFolder?: string | null;
+    /** `null` clears the property; absent leaves it unchanged. */
+    includeSubfolders?: boolean | null;
+    /** `null` clears the property; absent leaves it unchanged. */
+    maxSelections?: number | null;
+}
+
 type MetadataSchemaRequestBody =
     | AddFieldRequest
     | RemoveFieldRequest
@@ -122,7 +136,8 @@ type MetadataSchemaRequestBody =
     | RemoveGroupRequest
     | ReorderGroupsRequest
     | RenameFieldKeyRequest
-    | ChangeFieldTypeRequest;
+    | ChangeFieldTypeRequest
+    | UpdateRefPropertiesRequest;
 
 // ---------------------------------------------------------------------------
 // Response shapes
@@ -258,11 +273,25 @@ export async function POST(
             return NextResponse.json({ schema });
         }
 
+        if (body.action === "update-ref-properties") {
+            const updates: { refFolder?: string | null; includeSubfolders?: boolean | null; maxSelections?: number | null } = {};
+            if ("refFolder" in body) updates.refFolder = body.refFolder;
+            if ("includeSubfolders" in body) updates.includeSubfolders = body.includeSubfolders;
+            if ("maxSelections" in body) updates.maxSelections = body.maxSelections;
+            const schema = await updateRefProperties(
+                body.projectPath,
+                body.groupId,
+                body.fieldKey,
+                updates,
+            );
+            return NextResponse.json({ schema });
+        }
+
         return NextResponse.json(
             {
                 error: "Invalid action",
                 details:
-                    "Expected one of: add-field, remove-field, reorder-fields, rename-field, update-field-options, change-field-type, add-group, remove-group, reorder-groups, rename-key",
+                    "Expected one of: add-field, remove-field, reorder-fields, rename-field, update-field-options, update-ref-properties, change-field-type, add-group, remove-group, reorder-groups, rename-key",
             },
             { status: 400 },
         );

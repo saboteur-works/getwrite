@@ -10,6 +10,7 @@ import projectsReducer, {
     removeMetadataGroup,
     reorderMetadataGroups,
     updateProjectMetadataSchema,
+    updateMetadataRefProperties,
     setProject,
 } from "../../src/store/projectsSlice";
 import type { MetadataField, MetadataGroup, MetadataSchema } from "../../src/lib/models/types";
@@ -456,5 +457,109 @@ describe("reorderMetadataGroups thunk (Task 6)", () => {
         expect(
             store.getState().projects.projects["project-1"].metadataSchema,
         ).toEqual(updatedSchema);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// updateMetadataRefProperties thunk
+// ---------------------------------------------------------------------------
+
+describe("updateMetadataRefProperties thunk (Task 3)", () => {
+    it("calls the API with the correct payload and updates metadataSchema on success", async () => {
+        const store = makeTestStore();
+        seedProject(store);
+        const fetchSpy = mockFetchSuccess();
+
+        const result = await store.dispatch(
+            updateMetadataRefProperties({
+                projectId: "project-1",
+                groupId: "test-group",
+                fieldKey: "characters",
+                updates: { refFolder: "folder-abc", maxSelections: 3 },
+            }),
+        );
+
+        expect(result.meta.requestStatus).toBe("fulfilled");
+        expect(fetchSpy).toHaveBeenCalledWith(
+            "/api/project/metadata-schema",
+            expect.objectContaining({
+                body: JSON.stringify({
+                    action: "update-ref-properties",
+                    projectPath: "/tmp/project-1",
+                    groupId: "test-group",
+                    fieldKey: "characters",
+                    refFolder: "folder-abc",
+                    maxSelections: 3,
+                }),
+            }),
+        );
+        expect(
+            store.getState().projects.projects["project-1"].metadataSchema,
+        ).toEqual(updatedSchema);
+    });
+
+    it("omits undefined updates from the request body", async () => {
+        const store = makeTestStore();
+        seedProject(store);
+        const fetchSpy = mockFetchSuccess();
+
+        await store.dispatch(
+            updateMetadataRefProperties({
+                projectId: "project-1",
+                groupId: "test-group",
+                fieldKey: "characters",
+                updates: { maxSelections: 5 },
+            }),
+        );
+
+        const sentBody = JSON.parse(
+            (fetchSpy.mock.calls[0][1] as RequestInit).body as string,
+        );
+        expect(sentBody).not.toHaveProperty("refFolder");
+        expect(sentBody).not.toHaveProperty("includeSubfolders");
+        expect(sentBody.maxSelections).toBe(5);
+    });
+
+    it("sends null explicitly for properties being cleared", async () => {
+        const store = makeTestStore();
+        seedProject(store);
+        const fetchSpy = mockFetchSuccess();
+
+        await store.dispatch(
+            updateMetadataRefProperties({
+                projectId: "project-1",
+                groupId: "test-group",
+                fieldKey: "characters",
+                updates: { refFolder: null },
+            }),
+        );
+
+        const sentBody = JSON.parse(
+            (fetchSpy.mock.calls[0][1] as RequestInit).body as string,
+        );
+        expect(sentBody.refFolder).toBeNull();
+    });
+
+    it("rejects and leaves state unchanged when the API returns an error", async () => {
+        const store = makeTestStore();
+        seedProject(store);
+        const schemaBefore =
+            store.getState().projects.projects["project-1"].metadataSchema;
+
+        mockFetchError(400, "Cannot update ref properties of locked field");
+
+        const result = await store.dispatch(
+            updateMetadataRefProperties({
+                projectId: "project-1",
+                groupId: "test-group",
+                fieldKey: "locked-field",
+                updates: { refFolder: "x" },
+            }),
+        );
+
+        expect(result.meta.requestStatus).toBe("rejected");
+        expect(
+            store.getState().projects.projects["project-1"].metadataSchema,
+        ).toEqual(schemaBefore);
     });
 });

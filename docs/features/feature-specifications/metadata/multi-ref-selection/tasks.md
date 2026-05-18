@@ -33,6 +33,7 @@ Spec: `docs/features/feature-specifications/metadata/multi-ref-selection/multi-r
 **Depends on:** Task 2
 **Estimate:** 3
 **Notes:** Follow the existing `update-field-options` / `change-field-type` action pattern in `metadata-schema.ts` and `route.ts`. Accept partial updates — passing `null` or omitting a property leaves the existing value alone; passing `undefined` clears it (decide and document one of the two semantics in JSDoc).
+**Done:** [x] Partial-update semantics: `undefined`/absent = leave unchanged, `null` = clear, value = set. Tests in `metadata-schema-api.test.ts` and `metadata-schema-thunks.test.ts`.
 
 ---
 

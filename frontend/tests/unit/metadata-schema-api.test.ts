@@ -21,6 +21,7 @@ import {
     addGroup,
     removeGroup,
     reorderGroups,
+    updateRefProperties,
 } from "../../src/lib/models/metadata-schema";
 import type {
     MetadataField,
@@ -390,5 +391,101 @@ describe("camelCase built-in key round-trip", () => {
             });
             expect(result.success).toBe(true);
         }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// update-ref-properties action
+// ---------------------------------------------------------------------------
+
+describe("updateRefProperties action", () => {
+    const REF_FIELD: MetadataField = {
+        key: "characters",
+        label: "Characters",
+        type: "multi-resource-ref",
+    };
+
+    function refSchema(): MetadataSchema {
+        return {
+            groups: [{ id: GROUP_ID, label: "Group One", fields: [REF_FIELD] }],
+        };
+    }
+
+    it("sets all three ref properties in one call and returns the updated schema", async () => {
+        const { dir } = await makeTmpProject(refSchema());
+        const schema = await updateRefProperties(dir, GROUP_ID, "characters", {
+            refFolder: "folder-abc",
+            includeSubfolders: true,
+            maxSelections: 3,
+        });
+        const field = schema.groups[0].fields.find((f) => f.key === "characters");
+        expect(field?.refFolder).toBe("folder-abc");
+        expect(field?.includeSubfolders).toBe(true);
+        expect(field?.maxSelections).toBe(3);
+    });
+
+    it("updates only the supplied property, leaving others unchanged", async () => {
+        const { dir } = await makeTmpProject({
+            groups: [
+                {
+                    id: GROUP_ID,
+                    label: "G",
+                    fields: [
+                        {
+                            ...REF_FIELD,
+                            refFolder: "original-folder",
+                            maxSelections: 5,
+                        },
+                    ],
+                },
+            ],
+        });
+        const schema = await updateRefProperties(dir, GROUP_ID, "characters", {
+            includeSubfolders: true,
+        });
+        const field = schema.groups[0].fields.find((f) => f.key === "characters");
+        expect(field?.refFolder).toBe("original-folder");
+        expect(field?.includeSubfolders).toBe(true);
+        expect(field?.maxSelections).toBe(5);
+    });
+
+    it("clears a property when null is passed", async () => {
+        const { dir } = await makeTmpProject({
+            groups: [
+                {
+                    id: GROUP_ID,
+                    label: "G",
+                    fields: [{ ...REF_FIELD, refFolder: "some-folder", maxSelections: 2 }],
+                },
+            ],
+        });
+        const schema = await updateRefProperties(dir, GROUP_ID, "characters", {
+            refFolder: null,
+        });
+        const field = schema.groups[0].fields.find((f) => f.key === "characters");
+        expect(field?.refFolder).toBeUndefined();
+        expect(field?.maxSelections).toBe(2);
+    });
+
+    it("throws when the field is locked", async () => {
+        const { dir } = await makeTmpProject({
+            groups: [
+                {
+                    id: GROUP_ID,
+                    label: "G",
+                    fields: [{ ...REF_FIELD, locked: true }],
+                },
+            ],
+        });
+        await expect(
+            updateRefProperties(dir, GROUP_ID, "characters", { refFolder: "x" }),
+        ).rejects.toThrow(/locked/i);
+    });
+
+    it("throws when the field does not exist", async () => {
+        const { dir } = await makeTmpProject(refSchema());
+        await expect(
+            updateRefProperties(dir, GROUP_ID, "ghost", { refFolder: "x" }),
+        ).rejects.toThrow(/Field not found/);
     });
 });

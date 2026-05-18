@@ -355,6 +355,64 @@ async function renameFieldKeyInSchema(
 }
 
 /**
+ * Partial update bag for `updateRefProperties`. Each key is independently
+ * optional:
+ * - Omitting a key (or passing `undefined`) leaves the existing value unchanged.
+ * - Passing `null` clears the property from the field.
+ * - Passing a value sets the property to that value.
+ */
+export interface RefPropertyUpdates {
+    /** Scopes autocomplete to a specific folder. `null` clears the scope. */
+    refFolder?: string | null;
+    /** Extends scope to descendant folders when `refFolder` is set. `null` clears. */
+    includeSubfolders?: boolean | null;
+    /** Maximum selections allowed; `null` makes the field unbounded again. */
+    maxSelections?: number | null;
+}
+
+/**
+ * Patches `refFolder`, `includeSubfolders`, and `maxSelections` on a
+ * `multi-resource-ref` field. Each property is independently optional —
+ * omitting it leaves the existing value unchanged; passing `null` clears it.
+ *
+ * Throws if the group or field does not exist, or if the field is locked.
+ */
+export async function updateRefProperties(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+    updates: RefPropertyUpdates,
+): Promise<MetadataSchema> {
+    const release = await acquireLock(projectRoot);
+    try {
+        const project = await readProject(projectRoot);
+        const schema = getOrInitSchema(project);
+        const group = findGroup(schema, groupId);
+        const field = group.fields.find((f) => f.key === fieldKey);
+        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+        if (field.locked) {
+            throw new Error(`Cannot update ref properties of locked field: "${fieldKey}"`);
+        }
+        if (updates.refFolder !== undefined) {
+            if (updates.refFolder === null) delete field.refFolder;
+            else field.refFolder = updates.refFolder;
+        }
+        if (updates.includeSubfolders !== undefined) {
+            if (updates.includeSubfolders === null) delete field.includeSubfolders;
+            else field.includeSubfolders = updates.includeSubfolders;
+        }
+        if (updates.maxSelections !== undefined) {
+            if (updates.maxSelections === null) delete field.maxSelections;
+            else field.maxSelections = updates.maxSelections;
+        }
+        await writeProject(projectRoot, project);
+        return schema;
+    } finally {
+        release();
+    }
+}
+
+/**
  * Changes the type of a field. When switching away from `select`/`multiselect`,
  * the `options` array is preserved on disk so it can be recovered if the user
  * switches back.
@@ -420,6 +478,7 @@ const metadataSchema = {
     reorderFields,
     renameField,
     updateFieldOptions,
+    updateRefProperties,
     changeFieldType,
     addGroup,
     removeGroup,
