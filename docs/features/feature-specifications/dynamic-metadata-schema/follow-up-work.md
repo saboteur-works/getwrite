@@ -42,3 +42,15 @@ function resolvePovDisplay(pov: string | { name: string } | undefined): string |
 Apply this helper wherever `userMetadata.pov` is read in the timeline stack.
 
 **Affects:** `TimelineView.tsx`, `Timeline.tsx`, `TimelineTooltip.tsx`.
+
+---
+
+## Delete route uses hard-delete, not `softDeleteResource`
+
+**Discovered during:** Task 8 (soft-delete — null `resource-ref` values project-wide)
+
+`frontend/app/api/resource/[resource-id]/route.ts` (the route actually called by `page.tsx`) contains a local `deleteResource` helper that uses `fs.rmSync` — a permanent hard delete. The `softDeleteResource` function in `trash.ts` (which moves files to `.trash/` for recoverability) is never called by the production delete path. Task 8's nullification was wired in before the hard delete, which satisfies the ordering requirement, but the soft-delete safety net is not in use.
+
+**Recommended fix:** Replace the local `deleteResource` helper in `[resource-id]/route.ts` with `softDeleteResource` from `trash.ts`. Ensure the `nullifyResourceRefs` call still precedes it. Align `[resource-id]/delete/route.ts` in the same pass.
+
+**Affects:** `frontend/app/api/resource/[resource-id]/route.ts`.

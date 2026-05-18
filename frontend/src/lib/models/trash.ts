@@ -1,7 +1,130 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { sidecarPathForProject, sidecarFilename } from "./sidecar";
-import type { UUID } from "./types";
+import {
+    sidecarPathForProject,
+    sidecarFilename,
+    readSidecar,
+    writeSidecar,
+} from "./sidecar";
+import type { MetadataValue, UUID } from "./types";
+
+function isEnoent(err: unknown): boolean {
+    return (
+        typeof err === "object" &&
+        err !== null &&
+        "code" in err &&
+        (err as Record<string, unknown>)["code"] === "ENOENT"
+    );
+}
+
+/**
+ * Recursively patches a value: if it is a ResourceRef object whose `id`
+ * matches `deletedId`, replaces `id` with `null`. Handles arrays of
+ * ResourceRef objects (resource-ref fields with `multiple: true`).
+ * Works in `unknown` space to avoid the MetadataValue array-of-objects gap.
+ */
+function patchRef(
+    raw: unknown,
+    deletedId: UUID,
+): { changed: boolean; value: unknown } {
+    if (raw !== null && typeof raw === "object" && !Array.isArray(raw)) {
+        const obj = raw as Record<string, unknown>;
+        if (obj["id"] === deletedId && typeof obj["name"] === "string") {
+            return { changed: true, value: { id: null, name: obj["name"] } };
+        }
+        return { changed: false, value: raw };
+    }
+
+    if (Array.isArray(raw)) {
+        let anyChanged = false;
+        const patched = (raw as unknown[]).map((el) => {
+            const r = patchRef(el, deletedId);
+            if (r.changed) anyChanged = true;
+            return r.value;
+        });
+        return anyChanged
+            ? { changed: true, value: patched }
+            : { changed: false, value: raw };
+    }
+
+    return { changed: false, value: raw };
+}
+
+/**
+ * Scans all sidecar files in `<projectRoot>/meta/` and nullifies any
+ * `ResourceRef` values in `userMetadata` that reference `deletedResourceId`.
+ *
+ * A matching value `{ id: deletedResourceId, name: X }` is replaced with
+ * `{ id: null, name: X }`. Arrays of ResourceRef objects (resource-ref fields
+ * with `multiple: true`) are patched element-by-element.
+ *
+ * The deleted resource's own sidecar is skipped — it will be moved to trash
+ * by `softDeleteResource` immediately after this call.
+ *
+ * Uses `writeSidecar` for each patched file, which serialises concurrent writes
+ * via the meta-lock.
+ */
+export async function nullifyResourceRefs(
+    projectRoot: string,
+    deletedResourceId: UUID,
+    deletedResourceName: string,
+    resourceRefFieldKeys: string[],
+): Promise<void> {
+    if (resourceRefFieldKeys.length === 0) return;
+
+    const metaDir = path.join(projectRoot, "meta");
+    let entries: string[];
+    try {
+        entries = await fs.readdir(metaDir);
+    } catch (err: unknown) {
+        if (isEnoent(err)) return;
+        throw err;
+    }
+
+    const sidecarEntries = entries.filter(
+        (e) =>
+            e.startsWith("resource-") &&
+            e.endsWith(".meta.json") &&
+            !e.includes(deletedResourceId),
+    );
+
+    for (const entry of sidecarEntries) {
+        const resourceId = entry
+            .replace(/^resource-/, "")
+            .replace(/\.meta\.json$/, "");
+
+        const sidecar = await readSidecar(projectRoot, resourceId);
+        if (!sidecar) continue;
+
+        const rawMeta = sidecar["userMetadata"];
+        if (
+            typeof rawMeta !== "object" ||
+            rawMeta === null ||
+            Array.isArray(rawMeta)
+        ) {
+            continue;
+        }
+
+        const userMetadata = rawMeta as Record<string, MetadataValue>;
+        let dirty = false;
+
+        for (const fieldKey of resourceRefFieldKeys) {
+            const value = userMetadata[fieldKey];
+            if (value === undefined) continue;
+
+            const result = patchRef(value, deletedResourceId);
+            if (result.changed) {
+                userMetadata[fieldKey] = result.value as MetadataValue;
+                dirty = true;
+            }
+        }
+
+        if (dirty) {
+            sidecar["userMetadata"] = userMetadata;
+            await writeSidecar(projectRoot, resourceId, sidecar);
+        }
+    }
+}
 
 async function ensureDir(dir: string): Promise<void> {
     try {

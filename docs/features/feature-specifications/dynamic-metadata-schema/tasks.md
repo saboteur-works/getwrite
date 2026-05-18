@@ -92,7 +92,7 @@
 **Depends on:** Task 7
 **Estimate:** 3
 **Notes:** The delete route must know which schema fields are of type `resource-ref` to know which sidecar keys to patch. Pass the project root in the request body (already present for the existing delete route). Iterate `meta/*.meta.json` files. Use file locking. This must happen before the physical file move in `softDeleteResource`.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

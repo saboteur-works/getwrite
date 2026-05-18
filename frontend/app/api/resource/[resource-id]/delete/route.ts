@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
+import { readSidecar } from "../../../../../src/lib/models/sidecar";
+import { nullifyResourceRefs } from "../../../../../src/lib/models/trash";
+import { getSchema } from "../../../../../src/lib/models/metadata-schema";
 
 const deleteResource = async (projectRoot: string, resourceId: string) => {
     const resourcePath = path.join(projectRoot, "resources", resourceId);
@@ -17,7 +20,6 @@ const deleteResource = async (projectRoot: string, resourceId: string) => {
     }
 };
 
-// Updates to resource metadata (notes, status, characters, locations, items, pov)
 export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ "resource-id": string }> },
@@ -27,6 +29,28 @@ export async function POST(
     const { projectRoot } = body as {
         projectRoot: string;
     };
+
+    const sidecar = await readSidecar(projectRoot, resourceId);
+    const deletedName =
+        typeof sidecar?.["name"] === "string" ? sidecar["name"] : "";
+
+    let resourceRefKeys: string[] = [];
+    try {
+        const schema = await getSchema(projectRoot);
+        resourceRefKeys = schema.groups
+            .flatMap((g) => g.fields)
+            .filter((f) => f.type === "resource-ref")
+            .map((f) => f.key);
+    } catch {
+        // Schema unreadable — proceed without nullification
+    }
+
+    await nullifyResourceRefs(
+        projectRoot,
+        resourceId,
+        deletedName,
+        resourceRefKeys,
+    );
 
     await deleteResource(projectRoot, resourceId);
 

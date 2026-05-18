@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { readSidecar, writeSidecar } from "../../../../src/lib/models/sidecar";
 import { generateUUID } from "../../../../src/lib/models/uuid";
+import { nullifyResourceRefs } from "../../../../src/lib/models/trash";
+import { getSchema } from "../../../../src/lib/models/metadata-schema";
 
 const deleteResource = async (projectRoot: string, resourceId: string) => {
     const resourcePath = path.join(projectRoot, "resources", resourceId);
@@ -58,9 +60,33 @@ export async function POST(
     };
 
     switch (action) {
-        case "delete":
+        case "delete": {
+            // Read the resource name and resource-ref field keys before deletion.
+            const sidecar = await readSidecar(projectRoot, resourceId);
+            const deletedName =
+                typeof sidecar?.["name"] === "string" ? sidecar["name"] : "";
+
+            let resourceRefKeys: string[] = [];
+            try {
+                const schema = await getSchema(projectRoot);
+                resourceRefKeys = schema.groups
+                    .flatMap((g) => g.fields)
+                    .filter((f) => f.type === "resource-ref")
+                    .map((f) => f.key);
+            } catch {
+                // Schema unreadable — proceed without nullification
+            }
+
+            await nullifyResourceRefs(
+                projectRoot,
+                resourceId,
+                deletedName,
+                resourceRefKeys,
+            );
+
             await deleteResource(projectRoot, resourceId);
             return NextResponse.json({ message: "Resource deleted successfully" });
+        }
         case "copy": {
             const newResource = await copyResource(
                 projectRoot,
