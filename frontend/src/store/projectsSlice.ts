@@ -13,7 +13,8 @@
  */
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Project } from "../lib/models";
-import type { MetadataValue } from "../lib/models/types";
+import { DEFAULT_METADATA_SCHEMA } from "../lib/models/default-metadata-schema";
+import type { MetadataSchema, MetadataValue } from "../lib/models/types";
 
 /**
  * Minimal folder shape persisted within a stored project record.
@@ -52,6 +53,8 @@ export interface StoredProject {
     metadata?: Record<string, MetadataValue>;
     /** Ordered list of status values configured for this project. */
     statuses?: string[];
+    /** Active metadata field schema. Defaults to DEFAULT_METADATA_SCHEMA when not persisted on disk. */
+    metadataSchema?: MetadataSchema;
 }
 
 /**
@@ -86,7 +89,10 @@ const projectsSlice = createSlice({
          * @param action - Payload containing a full stored project snapshot.
          */
         setProject(state, action: PayloadAction<StoredProject>) {
-            state.projects[action.payload.id] = action.payload;
+            state.projects[action.payload.id] = {
+                ...action.payload,
+                metadataSchema: action.payload.metadataSchema ?? DEFAULT_METADATA_SCHEMA,
+            };
             return state;
         },
         /**
@@ -115,6 +121,7 @@ const projectsSlice = createSlice({
                     resources: p.resources,
                     metadata: p.project.metadata,
                     statuses: p.project.config?.statuses ?? [],
+                    metadataSchema: p.project.config?.metadataSchema ?? DEFAULT_METADATA_SCHEMA,
                 };
             });
             return state;
@@ -293,6 +300,20 @@ export const selectSelectedProjectId = (state: any): string | null => {
 export const selectActiveProjectStatuses = (state: any): string[] => {
     const id = state?.projects?.selectedProjectId;
     return state?.projects?.projects?.[id]?.statuses ?? [];
+};
+
+/**
+ * Selects the metadata schema for the currently active project.
+ * Falls back to DEFAULT_METADATA_SCHEMA when no project is selected or the
+ * stored project has no schema (should not occur after Task 3 injection, but
+ * kept as a safety net for callers operating before a project is loaded).
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ * @returns The active project's MetadataSchema.
+ */
+export const selectActiveProjectMetadataSchema = (state: any): MetadataSchema => {
+    const id = state?.projects?.selectedProjectId;
+    return state?.projects?.projects?.[id]?.metadataSchema ?? DEFAULT_METADATA_SCHEMA;
 };
 
 /**
