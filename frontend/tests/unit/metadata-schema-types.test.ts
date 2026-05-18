@@ -95,6 +95,15 @@ describe("MetadataFieldSchema", () => {
         expect(result.success).toBe(false);
     });
 
+    it("accepts a multi-resource-ref field", () => {
+        const result = MetadataFieldSchema.safeParse({
+            key: "characters",
+            label: "Characters",
+            type: "multi-resource-ref",
+        });
+        expect(result.success).toBe(true);
+    });
+
     it("rejects an unknown field type", () => {
         const result = MetadataFieldSchema.safeParse({
             key: "custom",

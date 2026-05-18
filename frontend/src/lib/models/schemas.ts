@@ -99,6 +99,7 @@ export const MetadataFieldTypeSchema = z.enum([
     "select",
     "multiselect",
     "resource-ref",
+    "multi-resource-ref",
 ]);
 
 /**

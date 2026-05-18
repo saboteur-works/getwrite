@@ -30,6 +30,7 @@ const FIELD_TYPE_LABELS: Record<MetadataFieldType, string> = {
     select: "Select",
     multiselect: "Multi",
     "resource-ref": "Ref",
+    "multi-resource-ref": "Multi Ref",
 };
 
 type DeleteTarget =

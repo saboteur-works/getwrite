@@ -87,7 +87,8 @@ export type MetadataFieldType =
     | "boolean"
     | "select"
     | "multiselect"
-    | "resource-ref";
+    | "resource-ref"
+    | "multi-resource-ref";
 
 /** A single metadata field definition within a schema group. */
 export interface MetadataField {

@@ -1,6 +1,6 @@
 # Reusable Chip Component
 
-**Status:** Ready for implementation  
+**Status:** Implemented  
 **Component path:** `frontend/components/common/UI/Chip`  
 **Implementation note:** Use the `getwrite-component` skill.
 
@@ -41,7 +41,7 @@ A reusable `Chip` component providing a compact, labeled UI element for surfacin
 4. The component must accept an optional `onDismiss` callback. When provided, an × icon button must render inside the chip to the right of the label.
 5. The dismiss button must carry `aria-label="Remove"` and display a visible focus ring on keyboard focus.
 6. The component must accept optional `tooltip` (string) and `tooltipId` (string) props. When both are present, the chip must render a `react-tooltip` tooltip anchored to itself.
-7. The component must accept an optional `onClick` callback. When provided, the chip root element must render as a `<button>`; when omitted, it must render as a `<span>`. The `onClick` and `onDismiss` handlers must not propagate to each other.
+7. The component must accept an optional `onClick` callback. When provided without `onDismiss`, the chip root element renders as a `<button>`. When omitted, it renders as a `<span>`. When both `onClick` and `onDismiss` are provided, the root renders as a non-interactive `<span>` containing a `chip__label-action` `<button>` for the label and a sibling dismiss `<button>` — this avoids nesting interactive controls (ARIA `nested-interactive` violation). The `onClick` and `onDismiss` handlers must not propagate to each other.
 8. The component must accept a `size` prop (`"sm" | "md" | "lg"`) defaulting to `"md"`. Sizes must map to the following values:
 
    | Size | Font size | Padding |
@@ -62,7 +62,7 @@ None — all questions resolved prior to implementation.
 |---|---|
 | OQ-1: Color model | Arbitrary CSS color string (`color?: string`); contrast is caller's responsibility |
 | OQ-2: Shape semantics | `sharp` = `border-radius: 0`; `rounded` = `border-radius: 9999px` |
-| OQ-3: Base interactivity | Chip renders as `<button>` when `onClick` is provided, `<span>` otherwise |
+| OQ-3: Base interactivity | Chip renders as `<button>` when `onClick` is provided alone, `<span>` otherwise. When both `onClick` and `onDismiss` are present, root is a non-interactive `<span>` with sibling `chip__label-action` + dismiss buttons to satisfy ARIA nested-interactive rules. |
 | OQ-4: Size variants | Three sizes: `sm` (9px, 2/6px), `md` (10px, 3/8px, default), `lg` (12px, 5/12px) |
 
 ## Out of scope (deferred)
