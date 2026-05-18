@@ -61,20 +61,17 @@ export default function Chip({
         </button>
     ) : null;
 
-    // When onDismiss is present, use a span root to avoid nesting <button> inside <button>.
-    // onClick is still attached to the span for interactive+dismissible chips.
     let chipElement: JSX.Element;
     if (onDismiss) {
-        chipElement = (
-            <span
-                className={className}
-                style={style}
-                onClick={onClick}
-                role={onClick ? "button" : undefined}
-                tabIndex={onClick ? 0 : undefined}
-                {...tooltipAnchorProps}
-            >
+        const labelContent = onClick ? (
+            <button type="button" className="chip__label-action" onClick={onClick}>
                 {label}
+            </button>
+        ) : label;
+
+        chipElement = (
+            <span className={className} style={style} {...tooltipAnchorProps}>
+                {labelContent}
                 {dismissButton}
             </span>
         );

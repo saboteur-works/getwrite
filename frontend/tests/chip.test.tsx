@@ -132,6 +132,35 @@ describe("Chip", () => {
             expect(onDismiss).toHaveBeenCalledTimes(1);
         });
 
+        it("renders a span root (not role=button) when both onClick and onDismiss are provided", () => {
+            const { container } = render(
+                <Chip
+                    label="Tag"
+                    shape="sharp"
+                    onClick={vi.fn()}
+                    onDismiss={vi.fn()}
+                />,
+            );
+            const root = container.firstChild as HTMLElement;
+            expect(root.nodeName).toBe("SPAN");
+            expect(root.getAttribute("role")).toBeNull();
+            expect(root.getAttribute("tabindex")).toBeNull();
+        });
+
+        it("calls onClick via label button when both onClick and onDismiss are provided", () => {
+            const onClick = vi.fn();
+            render(
+                <Chip
+                    label="Tag"
+                    shape="sharp"
+                    onClick={onClick}
+                    onDismiss={vi.fn()}
+                />,
+            );
+            fireEvent.click(screen.getByRole("button", { name: "Tag" }));
+            expect(onClick).toHaveBeenCalledTimes(1);
+        });
+
         it("dismiss click does not bubble to chip onClick", () => {
             const onClick = vi.fn();
             const onDismiss = vi.fn();

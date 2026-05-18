@@ -2737,6 +2737,25 @@
         padding: 5px 12px;
     }
 
+    .chip__label-action {
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        font: inherit;
+        color: inherit;
+        letter-spacing: inherit;
+        text-transform: inherit;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .chip__label-action:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
+        border-radius: 2px;
+    }
+
     .chip__dismiss {
         display: inline-flex;
         align-items: center;

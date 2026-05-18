@@ -56,6 +56,15 @@ export const AllSizes: Story = {
     ),
 };
 
+export const WithDismiss: Story = {
+    args: {
+        label: "Draft",
+        shape: "sharp",
+        size: "md",
+        onDismiss: () => console.log("dismissed"),
+    },
+};
+
 export const WithTooltip: Story = {
     args: {
         label: "POV",

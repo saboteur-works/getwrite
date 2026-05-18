@@ -50,7 +50,7 @@ Spec: `docs/features/feature-specifications/ui/reusable-chip-component/resuable-
 **Done when:** The stories file exports named stories for: Default, WithColor, SharpVsRounded, AllSizes, WithDismiss, WithTooltip, and InteractiveButton; `pnpm storybook` renders all seven without console errors; the `@storybook/addon-a11y` panel reports no violations on any story; keyboard Tab reaches the dismiss button and interactive chip in the WithDismiss and InteractiveButton stories.
 **Depends on:** Task 3, Task 4
 **Estimate:** 2
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
