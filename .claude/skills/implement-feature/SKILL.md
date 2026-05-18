@@ -107,6 +107,16 @@ After all files, output a brief implementation summary:
 
 ---
 
+## Post-Implementation
+
+- If any actionable follow-ups have been identified:
+    1. Determine the feature's location in @docs/features/feature-specifications. If unclear, always ask the user for the true directory.
+    2. If there is no 'follow-up-work.md' file in that directory, create one with a brief description of the follow-up work needed, why it was deferred, and any relevant context for future implementation.
+    3. If 'follow-up-work.md' already exists, append the new follow-up work to the end of the file, ensuring it is clearly separated from previous entries (e.g., with a date and brief summary).
+    4. If a 'follow-up-work.md' file exists for the feature, review it to ensure that any previously identified follow-up work has been addressed or is still relevant. If any items have been resolved, update the file to reflect their completion, including dates and descriptions of the work done.
+
+---
+
 ## Constraints
 
 - Do not remove or modify existing functionality unless the spec explicitly
@@ -139,16 +149,6 @@ After all files, output a brief implementation summary:
   migration that could lose data without an explicit warning.
 
 ---
-
-## Post-Implementation
-
-After implementation:
-
-- If any follow-up work has been identified:
-    1. Determine the feature's location in docs/features/feature-specifications. If unclear, always ask the user for the true directory.
-    2. If there is no 'follow-up-work.md' file in that directory, create one with a brief description of the follow-up work needed, why it was deferred, and any relevant context for future implementation.
-    3. If 'follow-up-work.md' already exists, append the new follow-up work to the end of the file, ensuring it is clearly separated from previous entries (e.g., with a date and brief summary).
-    4. If a 'follow-up-work.md' file exists for the feature, review it to ensure that any previously identified follow-up work has been addressed or is still relevant. If any items have been resolved, update the file to reflect their completion, including dates and descriptions of the work done.
 
 ## References
 
