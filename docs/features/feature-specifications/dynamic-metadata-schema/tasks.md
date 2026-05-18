@@ -104,7 +104,7 @@
 **Depends on:** Tasks 1, 7
 **Estimate:** 5
 **Notes:** `ResourceRefInput` renders a searchable autocomplete that looks up resources by name and stores a `ResourceRef`. It must support both single (`multiple: false`) and array (`multiple: true`) values. `SelectInput` is a dropdown; `BooleanToggle` is a checkbox or toggle. Reuse `useSyncedControlledValue` where appropriate.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

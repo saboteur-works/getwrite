@@ -1,14 +1,11 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
-import {
-    setStorageAdapter,
-    writeFile,
-    mkdir,
-} from "../../src/lib/models/io";
+import { setStorageAdapter, writeFile, mkdir } from "../../src/lib/models/io";
 import { persistResourceContent } from "../../src/lib/tiptap-utils";
+import { waitForDrain } from "../../src/lib/models/indexer-queue";
 import { writeSidecar } from "../../src/lib/models/sidecar";
 import { computeBacklinks } from "../../src/lib/models/backlinks";
 import { generateUUID } from "../../src/lib/models/uuid";
@@ -17,6 +14,10 @@ describe("backlinks wiki-links and redirects", () => {
     beforeEach(() => {
         const mem = createMemoryAdapter();
         setStorageAdapter(mem);
+    });
+
+    afterEach(async () => {
+        await waitForDrain(2000);
     });
 
     it("resolves wiki-style links by sidecar name/slug", async () => {

@@ -1,10 +1,11 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
 import { setStorageAdapter } from "../../src/lib/models/io";
 import { persistResourceContent } from "../../src/lib/tiptap-utils";
+import { waitForDrain } from "../../src/lib/models/indexer-queue";
 import {
     computeBacklinks,
     persistBacklinks,
@@ -16,6 +17,12 @@ describe("backlinks (T024)", () => {
     beforeEach(() => {
         const mem = createMemoryAdapter();
         setStorageAdapter(mem);
+    });
+
+    afterEach(async () => {
+        // persistResourceContent enqueues indexing in the background; draining
+        // avoids late console logs after Vitest worker teardown.
+        await waitForDrain(2000);
     });
 
     it("discovers backlinks between resources and persists index", async () => {
