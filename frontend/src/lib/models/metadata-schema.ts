@@ -12,11 +12,14 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { acquireLock } from "./locks";
 import { PROJECT_FILENAME } from "./project-config";
+import { readSidecar, writeSidecar } from "./sidecar";
 import type {
     Project,
     MetadataSchema,
     MetadataGroup,
     MetadataField,
+    MetadataValue,
+    UUID,
 } from "./types";
 
 const SLUG_RE = /^[a-z0-9-]+$/;
@@ -300,6 +303,84 @@ export async function reorderGroups(
     }
 }
 
+async function migrateFieldKeyInSidecars(
+    projectRoot: string,
+    oldKey: string,
+    newKey: string,
+): Promise<void> {
+    const metaDir = path.join(projectRoot, "meta");
+    let entries: string[];
+    try {
+        entries = await fs.readdir(metaDir);
+    } catch {
+        return;
+    }
+    for (const entry of entries) {
+        if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) continue;
+        const resourceId = entry.slice("resource-".length, -".meta.json".length) as UUID;
+        const sidecar = await readSidecar(projectRoot, resourceId);
+        if (!sidecar || !(oldKey in sidecar)) continue;
+        sidecar[newKey] = sidecar[oldKey];
+        delete sidecar[oldKey];
+        await writeSidecar(projectRoot, resourceId, sidecar);
+    }
+}
+
+async function renameFieldKeyInSchema(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+    newKey: string,
+): Promise<MetadataSchema> {
+    const release = await acquireLock(projectRoot);
+    try {
+        const project = await readProject(projectRoot);
+        const schema = getOrInitSchema(project);
+        if (allFieldKeys(schema).includes(newKey)) {
+            throw new Error(`Field key already exists: "${newKey}"`);
+        }
+        const group = findGroup(schema, groupId);
+        const field = group.fields.find((f) => f.key === fieldKey);
+        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+        if (field.locked) throw new Error(`Cannot rename key of locked field: "${fieldKey}"`);
+        field.key = newKey;
+        await writeProject(projectRoot, project);
+        return schema;
+    } finally {
+        release();
+    }
+}
+
+/**
+ * Renames the key of a field in the schema and migrates all sidecar values
+ * that reference the old key to the new key project-wide.
+ *
+ * The schema update runs under the project lock. Sidecar migration runs after
+ * the lock is released — if migration fails partially, existing sidecar values
+ * remain under the old key (now orphaned).
+ *
+ * Throws if:
+ * - `newKey` is not a valid URL-safe slug (`/^[a-z0-9-]+$/`)
+ * - `newKey` already exists in the schema
+ * - the group or field does not exist
+ * - the field has `locked: true`
+ */
+export async function renameFieldKey(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+    newKey: string,
+): Promise<MetadataSchema> {
+    if (!SLUG_RE.test(newKey)) {
+        throw new Error(
+            `Invalid field key: "${newKey}". Must match /^[a-z0-9-]+$/`,
+        );
+    }
+    const schema = await renameFieldKeyInSchema(projectRoot, groupId, fieldKey, newKey);
+    await migrateFieldKeyInSidecars(projectRoot, fieldKey, newKey);
+    return schema;
+}
+
 const metadataSchema = {
     getSchema,
     addField,
@@ -310,6 +391,7 @@ const metadataSchema = {
     addGroup,
     removeGroup,
     reorderGroups,
+    renameFieldKey,
 };
 
 export default metadataSchema;

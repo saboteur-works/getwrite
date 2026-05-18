@@ -14,9 +14,12 @@ import {
     addMetadataGroup,
     removeMetadataGroup,
     reorderMetadataGroups,
+    renameMetadataFieldKey,
 } from "../../src/store/projectsSlice";
 import type { MetadataFieldType } from "../../src/lib/models/types";
 import ConfirmDialog from "../common/ConfirmDialog";
+
+const SLUG_RE = /^[a-z0-9-]+$/;
 
 const FIELD_TYPE_LABELS: Record<MetadataFieldType, string> = {
     text: "Text",
@@ -37,6 +40,19 @@ interface EditTarget {
     fieldKey: string;
 }
 
+interface KeyEditTarget {
+    groupId: string;
+    fieldKey: string;
+    fieldLabel: string;
+}
+
+interface KeyRenameConfirm {
+    groupId: string;
+    oldKey: string;
+    newKey: string;
+    fieldLabel: string;
+}
+
 export interface SchemaManagerProps {
     onClose: () => void;
 }
@@ -50,11 +66,17 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
     const [editTarget, setEditTarget] = React.useState<EditTarget | null>(null);
     const [editValue, setEditValue] = React.useState<string>("");
     const [optionsEdits, setOptionsEdits] = React.useState<Record<string, string>>({});
+    const [keyEditTarget, setKeyEditTarget] = React.useState<KeyEditTarget | null>(null);
+    const [keyEditValue, setKeyEditValue] = React.useState<string>("");
+    const [keyEditError, setKeyEditError] = React.useState<string>("");
+    const [keyRenameConfirm, setKeyRenameConfirm] = React.useState<KeyRenameConfirm | null>(null);
 
     // Tracks whether the in-progress label edit was cancelled via Escape.
     // Using a ref prevents the stale-closure issue between onKeyDown (cancel)
     // and the onBlur handler that fires when the input unmounts.
     const editCancelledRef = React.useRef(false);
+    // Same pattern for key edit.
+    const keyEditCancelledRef = React.useRef(false);
 
     function beginLabelEdit(
         groupId: string,
@@ -92,6 +114,66 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
     function cancelLabelEdit(): void {
         editCancelledRef.current = true;
         setEditTarget(null);
+    }
+
+    function beginKeyEdit(
+        groupId: string,
+        fieldKey: string,
+        fieldLabel: string,
+    ): void {
+        keyEditCancelledRef.current = false;
+        setKeyEditTarget({ groupId, fieldKey, fieldLabel });
+        setKeyEditValue(fieldKey);
+        setKeyEditError("");
+    }
+
+    function commitKeyEdit(): void {
+        if (keyEditCancelledRef.current) {
+            setKeyEditTarget(null);
+            return;
+        }
+        if (!keyEditTarget || !projectId) {
+            setKeyEditTarget(null);
+            return;
+        }
+        const trimmed = keyEditValue.trim();
+        if (!trimmed || trimmed === keyEditTarget.fieldKey) {
+            setKeyEditTarget(null);
+            return;
+        }
+        if (!SLUG_RE.test(trimmed)) {
+            setKeyEditError("Must be lowercase letters, numbers, and hyphens only.");
+            return;
+        }
+        setKeyRenameConfirm({
+            groupId: keyEditTarget.groupId,
+            oldKey: keyEditTarget.fieldKey,
+            newKey: trimmed,
+            fieldLabel: keyEditTarget.fieldLabel,
+        });
+        setKeyEditTarget(null);
+    }
+
+    function cancelKeyEdit(): void {
+        keyEditCancelledRef.current = true;
+        setKeyEditTarget(null);
+        setKeyEditError("");
+    }
+
+    function confirmKeyRename(): void {
+        if (!keyRenameConfirm || !projectId) {
+            setKeyRenameConfirm(null);
+            return;
+        }
+        void dispatch(
+            renameMetadataFieldKey({
+                projectId,
+                groupId: keyRenameConfirm.groupId,
+                fieldKey: keyRenameConfirm.oldKey,
+                newKey: keyRenameConfirm.newKey,
+            }),
+        );
+        setKeyRenameConfirm(null);
     }
 
     function confirmDeleteTarget(): void {
@@ -287,6 +369,9 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                         const isEditing =
                                             editTarget?.groupId === group.id &&
                                             editTarget?.fieldKey === field.key;
+                                        const isKeyEditing =
+                                            keyEditTarget?.groupId === group.id &&
+                                            keyEditTarget?.fieldKey === field.key;
                                         const optionsKey = getOptionsKey(
                                             group.id,
                                             field.key,
@@ -421,6 +506,59 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                                     ) : null}
                                                 </div>
 
+                                                {/* Key display / edit row */}
+                                                <div className="flex items-center gap-1.5 pl-1">
+                                                    {isKeyEditing ? (
+                                                        <div className="flex flex-1 flex-col gap-0.5">
+                                                            <input
+                                                                type="text"
+                                                                value={keyEditValue}
+                                                                onChange={(e) => {
+                                                                    setKeyEditValue(e.target.value);
+                                                                    setKeyEditError("");
+                                                                }}
+                                                                onBlur={commitKeyEdit}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === "Enter")
+                                                                        commitKeyEdit();
+                                                                    if (e.key === "Escape")
+                                                                        cancelKeyEdit();
+                                                                }}
+                                                                autoFocus
+                                                                className="rounded border border-gw-border bg-transparent px-2 py-0.5 font-mono text-[11px] text-gw-primary focus:outline-none focus:ring-1 focus:ring-gw-border"
+                                                                aria-label={`Edit key for ${field.key}`}
+                                                            />
+                                                            {keyEditError ? (
+                                                                <span className="font-mono text-[10px] text-gw-secondary">
+                                                                    {keyEditError}
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <span className="font-mono text-[10px] text-gw-secondary opacity-50">
+                                                                {field.key}
+                                                            </span>
+                                                            {!field.locked ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        beginKeyEdit(
+                                                                            group.id,
+                                                                            field.key,
+                                                                            field.label,
+                                                                        )
+                                                                    }
+                                                                    className="font-mono text-[10px] text-gw-secondary transition-colors duration-150 hover:text-gw-primary"
+                                                                    aria-label={`Rename key of ${field.label}`}
+                                                                >
+                                                                    rename key
+                                                                </button>
+                                                            ) : null}
+                                                        </>
+                                                    )}
+                                                </div>
+
                                                 {/* Options editor for select / multiselect */}
                                                 {hasOptions ? (
                                                     <div className="ml-1 mt-1">
@@ -519,6 +657,17 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                 cancelLabel="Cancel"
                 onConfirm={confirmDeleteTarget}
                 onCancel={() => setDeleteTarget(null)}
+            />
+
+            {/* Key rename confirmation */}
+            <ConfirmDialog
+                isOpen={keyRenameConfirm !== null}
+                title={`Rename key "${keyRenameConfirm?.oldKey}" to "${keyRenameConfirm?.newKey}"?`}
+                description={`All sidecar values stored under "${keyRenameConfirm?.oldKey}" will be migrated to "${keyRenameConfirm?.newKey}" project-wide. Any values that cannot be migrated will become orphaned.`}
+                confirmLabel="Rename"
+                cancelLabel="Cancel"
+                onConfirm={confirmKeyRename}
+                onCancel={() => setKeyRenameConfirm(null)}
             />
         </>
     );

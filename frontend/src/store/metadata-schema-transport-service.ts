@@ -159,3 +159,18 @@ export async function postReorderGroups(
         newGroupIdOrder,
     });
 }
+
+export async function postRenameFieldKey(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+    newKey: string,
+): Promise<MetadataSchema> {
+    return postToMetadataSchemaRoute({
+        action: "rename-key",
+        projectPath: context.projectPath,
+        groupId,
+        fieldKey,
+        newKey,
+    });
+}

@@ -25,6 +25,7 @@ import {
     addGroup,
     removeGroup,
     reorderGroups,
+    renameFieldKey,
 } from "../../../../src/lib/models/metadata-schema";
 import type {
     MetadataField,
@@ -93,6 +94,14 @@ interface ReorderGroupsRequest {
     newGroupIdOrder: string[];
 }
 
+interface RenameFieldKeyRequest {
+    action: "rename-key";
+    projectPath: string;
+    groupId: string;
+    fieldKey: string;
+    newKey: string;
+}
+
 type MetadataSchemaRequestBody =
     | AddFieldRequest
     | RemoveFieldRequest
@@ -101,7 +110,8 @@ type MetadataSchemaRequestBody =
     | UpdateFieldOptionsRequest
     | AddGroupRequest
     | RemoveGroupRequest
-    | ReorderGroupsRequest;
+    | ReorderGroupsRequest
+    | RenameFieldKeyRequest;
 
 // ---------------------------------------------------------------------------
 // Response shapes
@@ -208,11 +218,30 @@ export async function POST(
             return NextResponse.json({ schema });
         }
 
+        if (body.action === "rename-key") {
+            if (!SLUG_RE.test(body.newKey)) {
+                return NextResponse.json(
+                    {
+                        error: "Invalid field key",
+                        details: `Key "${body.newKey}" must match /^[a-z0-9-]+$/`,
+                    },
+                    { status: 400 },
+                );
+            }
+            const schema = await renameFieldKey(
+                body.projectPath,
+                body.groupId,
+                body.fieldKey,
+                body.newKey,
+            );
+            return NextResponse.json({ schema });
+        }
+
         return NextResponse.json(
             {
                 error: "Invalid action",
                 details:
-                    "Expected one of: add-field, remove-field, reorder-fields, rename-field, update-field-options, add-group, remove-group, reorder-groups",
+                    "Expected one of: add-field, remove-field, reorder-fields, rename-field, update-field-options, add-group, remove-group, reorder-groups, rename-key",
             },
             { status: 400 },
         );

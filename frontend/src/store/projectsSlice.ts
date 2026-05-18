@@ -25,6 +25,7 @@ import {
     postAddGroup,
     postRemoveGroup,
     postReorderGroups,
+    postRenameFieldKey,
 } from "./metadata-schema-transport-service";
 
 /**
@@ -288,6 +289,29 @@ export const reorderMetadataGroups = createAsyncThunk<
     },
 );
 
+export const renameMetadataFieldKey = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; fieldKey: string; newKey: string },
+    { state: any; rejectValue: string }
+>(
+    "projects/renameMetadataFieldKey",
+    async ({ projectId, groupId, fieldKey, newKey }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postRenameFieldKey(context, groupId, fieldKey, newKey);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
 /**
  * Initial state for the `projects` slice.
  */
@@ -473,6 +497,7 @@ const projectsSlice = createSlice({
             addMetadataGroup,
             removeMetadataGroup,
             reorderMetadataGroups,
+            renameMetadataFieldKey,
         ] as const;
 
         for (const thunk of schemaThunks) {

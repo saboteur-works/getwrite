@@ -50,16 +50,16 @@ The local `deleteResource` helper (using `fs.rmSync`) was removed from both `[re
 
 ---
 
-## Schema manager: field KEY rename not implemented — deferred
+## ~~Schema manager: field KEY rename not implemented~~ — RESOLVED
 
 **Discovered during:** Task 12 (schema manager UI component)
+**Resolved during:** Follow-up pass (field key rename implementation)
 
-The `metadata-schema.ts` model comments reference a "rename-key flow (with orphan warning)" for the schema manager, and Task 12's spec notes that "field key slugs are validated on rename." However, no `rename-key` action exists in the API route (Task 5) or thunks (Task 6), so the schema manager only implements label rename (`renameMetadataField` → `rename-field` action).
+All four requirements have been implemented:
 
-Renaming a field's key would require:
-1. A new `rename-key` action in `POST /api/project/metadata-schema` that: renames the key in the schema AND migrates all sidecar values from the old key to the new key project-wide.
-2. A new `renameMetadataFieldKey` thunk in `projectsSlice`.
-3. Slug validation (`/^[a-z0-9-]+$/`) on the new key.
-4. A confirmation dialog in the schema manager warning that existing sidecar values stored under the old key will be migrated (or orphaned if migration fails).
+1. **`rename-key` API action** — `renameFieldKey` function added to `metadata-schema.ts`. It renames the key in the schema (under project lock via `renameFieldKeyInSchema`) then migrates all sidecar values from the old key to the new key via `migrateFieldKeyInSidecars` (runs after the lock is released). `RenameFieldKeyRequest` interface and `rename-key` handler added to `POST /api/project/metadata-schema`.
+2. **`renameMetadataFieldKey` thunk** — added to `projectsSlice.ts`, calling `postRenameFieldKey` in the transport service. Registered in `schemaThunks` for `extraReducers` handling.
+3. **Slug validation** — `SLUG_RE` (`/^[a-z0-9-]+$/`) enforced in both the model function and the API route handler. The SchemaManager UI also validates inline and shows an error message for invalid slugs before the confirm dialog appears.
+4. **Confirmation dialog** — SchemaManager shows a second `ConfirmDialog` warning that sidecar values will be migrated project-wide (with an orphan note if migration fails). Non-locked fields display their key slug below the label row with a "rename key" button; locked fields show the key read-only.
 
-Currently, the schema manager shows field keys as read-only metadata and does not allow key changes.
+Sidecar migration note: migration runs outside the project lock. If a sidecar write fails mid-scan, already-migrated sidecars have the new key and remaining ones keep the old key (partial orphan). This matches the approach used by `nullifyResourceRefs` in `trash.ts`.

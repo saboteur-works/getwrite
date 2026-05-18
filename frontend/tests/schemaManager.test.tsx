@@ -600,3 +600,173 @@ describe("SchemaManager — options editing", () => {
         expect(body.options).toEqual(["Fantasy", "Horror"]);
     });
 });
+
+// ---------------------------------------------------------------------------
+// Field key rename
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — field key rename", () => {
+    it("renders the field key as a slug below the label", () => {
+        setup();
+        expect(screen.getByText("field-one")).toBeInTheDocument();
+        expect(screen.getByText("field-two")).toBeInTheDocument();
+    });
+
+    it("non-locked fields show a 'rename key' button", () => {
+        setup();
+        expect(screen.getByLabelText("Rename key of Field One")).toBeInTheDocument();
+        expect(screen.getByLabelText("Rename key of Field Two")).toBeInTheDocument();
+    });
+
+    it("locked fields do not show a 'rename key' button", () => {
+        setup(DEFAULT_METADATA_SCHEMA);
+        expect(screen.queryByLabelText("Rename key of Synopsis")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Rename key of Notes")).not.toBeInTheDocument();
+    });
+
+    it("clicking rename key enters key edit mode", () => {
+        setup();
+        fireEvent.click(screen.getByLabelText("Rename key of Field One"));
+        expect(screen.getByLabelText("Edit key for field-one")).toBeInTheDocument();
+    });
+
+    it("entering an invalid slug shows an error", async () => {
+        setup();
+        fireEvent.click(screen.getByLabelText("Rename key of Field One"));
+        const input = screen.getByLabelText("Edit key for field-one");
+        fireEvent.change(input, { target: { value: "INVALID KEY!" } });
+        fireEvent.keyDown(input, { key: "Enter" });
+
+        await waitFor(() => {
+            expect(
+                screen.getByText(/lowercase letters, numbers, and hyphens/i),
+            ).toBeInTheDocument();
+        });
+    });
+
+    it("a valid slug opens the confirm dialog", async () => {
+        setup();
+        fireEvent.click(screen.getByLabelText("Rename key of Field One"));
+        const input = screen.getByLabelText("Edit key for field-one");
+        fireEvent.change(input, { target: { value: "new-key" } });
+        fireEvent.keyDown(input, { key: "Enter" });
+
+        await waitFor(() => {
+            expect(screen.getByRole("dialog")).toBeInTheDocument();
+            expect(
+                screen.getByText(/rename key "field-one" to "new-key"/i),
+            ).toBeInTheDocument();
+        });
+    });
+
+    it("cancelling the confirm dialog does not dispatch", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch");
+        setup();
+
+        fireEvent.click(screen.getByLabelText("Rename key of Field One"));
+        const input = screen.getByLabelText("Edit key for field-one");
+        fireEvent.change(input, { target: { value: "new-key" } });
+        fireEvent.keyDown(input, { key: "Enter" });
+
+        await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+        fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        const renameKeyCalls = fetchSpy.mock.calls.filter(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "rename-key"
+                );
+            } catch {
+                return false;
+            }
+        });
+        expect(renameKeyCalls).toHaveLength(0);
+    });
+
+    it("confirming dispatches renameMetadataFieldKey with correct payload", async () => {
+        const fetchSpy = mockFetchOk(CUSTOM_SCHEMA);
+        setup();
+
+        fireEvent.click(screen.getByLabelText("Rename key of Field One"));
+        const input = screen.getByLabelText("Edit key for field-one");
+        fireEvent.change(input, { target: { value: "new-key" } });
+        fireEvent.keyDown(input, { key: "Enter" });
+
+        await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+        fireEvent.click(screen.getByRole("button", { name: /^rename$/i }));
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"rename-key"'),
+                }),
+            );
+        });
+
+        const call = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "rename-key"
+                );
+            } catch {
+                return false;
+            }
+        });
+        const body = JSON.parse((call![1] as RequestInit).body as string);
+        expect(body.fieldKey).toBe("field-one");
+        expect(body.newKey).toBe("new-key");
+        expect(body.groupId).toBe("group-a");
+    });
+
+    it("pressing Escape cancels key edit without opening confirm dialog", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch");
+        setup();
+
+        fireEvent.click(screen.getByLabelText("Rename key of Field One"));
+        const input = screen.getByLabelText("Edit key for field-one");
+        fireEvent.change(input, { target: { value: "new-key" } });
+        fireEvent.keyDown(input, { key: "Escape" });
+
+        await waitFor(() => {
+            expect(
+                screen.queryByLabelText("Edit key for field-one"),
+            ).not.toBeInTheDocument();
+        });
+
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        const renameKeyCalls = fetchSpy.mock.calls.filter(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "rename-key"
+                );
+            } catch {
+                return false;
+            }
+        });
+        expect(renameKeyCalls).toHaveLength(0);
+    });
+
+    it("unchanged key (same as original) closes edit mode without dialog", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch");
+        setup();
+
+        fireEvent.click(screen.getByLabelText("Rename key of Field One"));
+        const input = screen.getByLabelText("Edit key for field-one");
+        // value starts as "field-one" — press Enter without changing
+        fireEvent.keyDown(input, { key: "Enter" });
+
+        await waitFor(() => {
+            expect(
+                screen.queryByLabelText("Edit key for field-one"),
+            ).not.toBeInTheDocument();
+        });
+
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
+});
