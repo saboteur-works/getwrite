@@ -152,6 +152,7 @@ export default function ResourceRefInput({
                             <li
                                 key={opt.id}
                                 className="px-3 py-2 cursor-pointer hover:bg-gw-chrome2 text-sm"
+                                onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => handleSuggestionClick(opt)}
                             >
                                 {opt.name}

@@ -13,11 +13,13 @@ import path from "node:path";
 import { acquireLock } from "./locks";
 import { PROJECT_FILENAME } from "./project-config";
 import { readSidecar, writeSidecar } from "./sidecar";
+import { DEFAULT_METADATA_SCHEMA } from "./default-metadata-schema";
 import type {
     Project,
     MetadataSchema,
     MetadataGroup,
     MetadataField,
+    MetadataFieldType,
     MetadataValue,
     UUID,
 } from "./types";
@@ -43,7 +45,8 @@ function getOrInitSchema(project: Project): MetadataSchema {
         project.config = { editorConfig: {} };
     }
     if (!project.config.metadataSchema) {
-        project.config.metadataSchema = { groups: [] };
+        // Deep-clone so mutations in this function don't corrupt the constant.
+        project.config.metadataSchema = structuredClone(DEFAULT_METADATA_SCHEMA);
     }
     return project.config.metadataSchema;
 }
@@ -352,6 +355,35 @@ async function renameFieldKeyInSchema(
 }
 
 /**
+ * Changes the type of a field. When switching away from `select`/`multiselect`,
+ * the `options` array is preserved on disk so it can be recovered if the user
+ * switches back.
+ *
+ * Throws if the group or field does not exist, or if the field is locked.
+ */
+export async function changeFieldType(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+    newType: MetadataFieldType,
+): Promise<MetadataSchema> {
+    const release = await acquireLock(projectRoot);
+    try {
+        const project = await readProject(projectRoot);
+        const schema = getOrInitSchema(project);
+        const group = findGroup(schema, groupId);
+        const field = group.fields.find((f) => f.key === fieldKey);
+        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+        if (field.locked) throw new Error(`Cannot change type of locked field: "${fieldKey}"`);
+        field.type = newType;
+        await writeProject(projectRoot, project);
+        return schema;
+    } finally {
+        release();
+    }
+}
+
+/**
  * Renames the key of a field in the schema and migrates all sidecar values
  * that reference the old key to the new key project-wide.
  *
@@ -388,6 +420,7 @@ const metadataSchema = {
     reorderFields,
     renameField,
     updateFieldOptions,
+    changeFieldType,
     addGroup,
     removeGroup,
     reorderGroups,

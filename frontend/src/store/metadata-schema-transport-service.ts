@@ -1,4 +1,4 @@
-import type { MetadataField, MetadataGroup, MetadataSchema } from "../lib/models/types";
+import type { MetadataField, MetadataFieldType, MetadataGroup, MetadataSchema } from "../lib/models/types";
 
 export interface MetadataSchemaRequestContext {
     projectPath: string;
@@ -157,6 +157,21 @@ export async function postReorderGroups(
         action: "reorder-groups",
         projectPath: context.projectPath,
         newGroupIdOrder,
+    });
+}
+
+export async function postChangeFieldType(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+    newType: MetadataFieldType,
+): Promise<MetadataSchema> {
+    return postToMetadataSchemaRoute({
+        action: "change-field-type",
+        projectPath: context.projectPath,
+        groupId,
+        fieldKey,
+        newType,
     });
 }
 

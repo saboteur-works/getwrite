@@ -9,13 +9,14 @@ import EndDateInput from "./controls/EndDateInput";
 import NumberInput from "./controls/NumberInput";
 import BooleanToggle from "./controls/BooleanToggle";
 import SelectInput from "./controls/SelectInput";
-import ResourceRefInput from "./controls/ResourceRefInput";
+import ResourceRefInput, { type ResourceOption } from "./controls/ResourceRefInput";
 import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
 import TagsSection from "./TagsSection";
 import SidebarSection from "./SidebarSection";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
+import { createSelector } from "@reduxjs/toolkit";
 import { selectResource } from "../../src/store/resourcesSlice";
 import {
     selectActiveProjectStatuses,
@@ -30,6 +31,37 @@ import type {
 } from "../../src/lib/models/types";
 
 const EMPTY_RESOURCE_OPTIONS: POVResourceOption[] = [];
+const EMPTY_REF_OPTIONS: ResourceOption[] = [];
+
+const selectCharacterList = createSelector(
+    (state: any) => state.projects.selectedProjectId as string | null,
+    (state: any) => state.projects.projects as Record<string, { folders?: { id: string; name?: string }[] }>,
+    (state: any) => state.resources.resources as { id: string; name: string; folderId?: string | null }[],
+    (selectedProjectId, projects, resources): POVResourceOption[] => {
+        if (!selectedProjectId) return EMPTY_RESOURCE_OPTIONS;
+        const characterFolderId = projects[selectedProjectId]?.folders?.find(
+            (f) => f.name?.toLowerCase() === "characters",
+        )?.id;
+        if (!characterFolderId) return EMPTY_RESOURCE_OPTIONS;
+        return resources.reduce((acc: POVResourceOption[], r) => {
+            if (r.folderId === characterFolderId && r.name) {
+                acc.push({ id: r.id, name: r.name });
+            }
+            return acc;
+        }, []);
+    },
+);
+
+const selectAllResourceOptions = createSelector(
+    (state: any) => state.resources.resources as { id: string; name: string }[],
+    (resources): ResourceOption[] => {
+        if (!resources?.length) return EMPTY_REF_OPTIONS;
+        return resources.reduce((acc: ResourceOption[], r) => {
+            if (r.name) acc.push({ id: r.id, name: r.name });
+            return acc;
+        }, []);
+    },
+);
 
 export interface MetadataSidebarProps {
     onChangeField?: (key: string, value: MetadataValue) => void;
@@ -113,20 +145,8 @@ export default function MetadataSidebar({
         }
     }
 
-    const characterList = useAppSelector((state): POVResourceOption[] => {
-        if (state.projects.selectedProjectId === null) return EMPTY_RESOURCE_OPTIONS;
-
-        const characterFolderId = state.projects.projects[
-            state.projects.selectedProjectId
-        ]?.folders?.find((f) => f.name?.toLowerCase() === "characters")?.id;
-
-        return state.resources.resources.reduce((acc: POVResourceOption[], r) => {
-            if (r.folderId === characterFolderId && r.name) {
-                acc.push({ id: r.id, name: r.name });
-            }
-            return acc;
-        }, []);
-    }, shallowEqual);
+    const characterList = useAppSelector(selectCharacterList);
+    const allResourceOptions = useAppSelector(selectAllResourceOptions, shallowEqual);
 
     const storyDate = selectedResource?.userMetadata?.storyDate as string | undefined;
     const storyDuration = selectedResource?.userMetadata?.storyDuration as
@@ -291,6 +311,7 @@ export default function MetadataSidebar({
                             (rawValue as ResourceRef | ResourceRef[] | null) ??
                             null
                         }
+                        resourceOptions={allResourceOptions}
                         className="text-brand-mid"
                         multiple={multiple}
                         onChange={(v) => emit(key, v)}

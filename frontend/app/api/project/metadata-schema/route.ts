@@ -22,6 +22,7 @@ import {
     reorderFields,
     renameField,
     updateFieldOptions,
+    changeFieldType,
     addGroup,
     removeGroup,
     reorderGroups,
@@ -29,6 +30,7 @@ import {
 } from "../../../../src/lib/models/metadata-schema";
 import type {
     MetadataField,
+    MetadataFieldType,
     MetadataGroup,
     MetadataSchema,
 } from "../../../../src/lib/models/types";
@@ -102,6 +104,14 @@ interface RenameFieldKeyRequest {
     newKey: string;
 }
 
+interface ChangeFieldTypeRequest {
+    action: "change-field-type";
+    projectPath: string;
+    groupId: string;
+    fieldKey: string;
+    newType: MetadataFieldType;
+}
+
 type MetadataSchemaRequestBody =
     | AddFieldRequest
     | RemoveFieldRequest
@@ -111,7 +121,8 @@ type MetadataSchemaRequestBody =
     | AddGroupRequest
     | RemoveGroupRequest
     | ReorderGroupsRequest
-    | RenameFieldKeyRequest;
+    | RenameFieldKeyRequest
+    | ChangeFieldTypeRequest;
 
 // ---------------------------------------------------------------------------
 // Response shapes
@@ -237,11 +248,21 @@ export async function POST(
             return NextResponse.json({ schema });
         }
 
+        if (body.action === "change-field-type") {
+            const schema = await changeFieldType(
+                body.projectPath,
+                body.groupId,
+                body.fieldKey,
+                body.newType,
+            );
+            return NextResponse.json({ schema });
+        }
+
         return NextResponse.json(
             {
                 error: "Invalid action",
                 details:
-                    "Expected one of: add-field, remove-field, reorder-fields, rename-field, update-field-options, add-group, remove-group, reorder-groups, rename-key",
+                    "Expected one of: add-field, remove-field, reorder-fields, rename-field, update-field-options, change-field-type, add-group, remove-group, reorder-groups, rename-key",
             },
             { status: 400 },
         );

@@ -14,7 +14,7 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Project } from "../lib/models";
 import { DEFAULT_METADATA_SCHEMA } from "../lib/models/default-metadata-schema";
-import type { MetadataField, MetadataGroup, MetadataSchema, MetadataValue } from "../lib/models/types";
+import type { MetadataField, MetadataFieldType, MetadataGroup, MetadataSchema, MetadataValue } from "../lib/models/types";
 import {
     resolveMetadataSchemaRequestContext,
     postAddField,
@@ -22,6 +22,7 @@ import {
     postReorderFields,
     postRenameField,
     postUpdateFieldOptions,
+    postChangeFieldType,
     postAddGroup,
     postRemoveGroup,
     postReorderGroups,
@@ -312,6 +313,29 @@ export const renameMetadataFieldKey = createAsyncThunk<
     },
 );
 
+export const changeMetadataFieldType = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; fieldKey: string; newType: MetadataFieldType },
+    { state: any; rejectValue: string }
+>(
+    "projects/changeMetadataFieldType",
+    async ({ projectId, groupId, fieldKey, newType }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postChangeFieldType(context, groupId, fieldKey, newType);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
 /**
  * Initial state for the `projects` slice.
  */
@@ -494,6 +518,7 @@ const projectsSlice = createSlice({
             reorderMetadataFields,
             renameMetadataField,
             updateMetadataFieldOptions,
+            changeMetadataFieldType,
             addMetadataGroup,
             removeMetadataGroup,
             reorderMetadataGroups,

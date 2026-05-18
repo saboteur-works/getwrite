@@ -277,11 +277,13 @@ describe("addGroup", () => {
         expect(schema.groups.map((g) => g.id)).toContain("disk-group");
     });
 
-    it("initializes metadataSchema when none exists", async () => {
+    it("initializes metadataSchema from DEFAULT_METADATA_SCHEMA when none exists", async () => {
         const { dir } = await makeTmpProject();
         const group: MetadataGroup = { id: "first-group", label: "First", fields: [] };
         const schema = await addGroup(dir, group);
-        expect(schema.groups).toHaveLength(1);
+        // schema is seeded from DEFAULT_METADATA_SCHEMA (2 built-in groups) + the new group
+        expect(schema.groups.map((g) => g.id)).toContain("first-group");
+        expect(schema.groups.map((g) => g.id)).toContain("builtin-document");
     });
 
     it("throws when the group ID already exists", async () => {

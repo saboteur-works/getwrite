@@ -11,6 +11,7 @@ import {
     reorderMetadataFields,
     renameMetadataField,
     updateMetadataFieldOptions,
+    changeMetadataFieldType,
     addMetadataGroup,
     removeMetadataGroup,
     reorderMetadataGroups,
@@ -431,10 +432,35 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                                         )}
                                                     </div>
 
-                                                    {/* Type badge */}
-                                                    <span className="shrink-0 rounded border border-gw-border px-1.5 py-0.5 font-mono text-[10px] text-gw-secondary">
-                                                        {FIELD_TYPE_LABELS[field.type]}
-                                                    </span>
+                                                    {/* Type badge / selector */}
+                                                    {field.locked ? (
+                                                        <span className="shrink-0 rounded border border-gw-border px-1.5 py-0.5 font-mono text-[10px] text-gw-secondary">
+                                                            {FIELD_TYPE_LABELS[field.type]}
+                                                        </span>
+                                                    ) : (
+                                                        <select
+                                                            value={field.type}
+                                                            onChange={(e) => {
+                                                                if (!projectId) return;
+                                                                void dispatch(
+                                                                    changeMetadataFieldType({
+                                                                        projectId,
+                                                                        groupId: group.id,
+                                                                        fieldKey: field.key,
+                                                                        newType: e.target.value as MetadataFieldType,
+                                                                    }),
+                                                                );
+                                                            }}
+                                                            className="shrink-0 rounded border border-gw-border bg-transparent px-1.5 py-0.5 font-mono text-[10px] text-gw-secondary focus:outline-none focus:ring-1 focus:ring-gw-border"
+                                                            aria-label={`Field type for ${field.label}`}
+                                                        >
+                                                            {(Object.entries(FIELD_TYPE_LABELS) as [MetadataFieldType, string][]).map(([value, label]) => (
+                                                                <option key={value} value={value}>
+                                                                    {label}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    )}
 
                                                     {/* Locked badge */}
                                                     {field.locked ? (
