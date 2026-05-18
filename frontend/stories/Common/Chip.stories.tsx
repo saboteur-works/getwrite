@@ -56,6 +56,23 @@ export const AllSizes: Story = {
     ),
 };
 
+export const WithTooltip: Story = {
+    args: {
+        label: "POV",
+        shape: "sharp",
+        size: "md",
+        tooltip: "Point of view character for this scene",
+        tooltipId: "chip-story-tooltip",
+    },
+    parameters: {
+        docs: {
+            description: {
+                story: "Hover the chip to see the tooltip. Both `tooltip` and `tooltipId` must be provided — omitting either suppresses the tooltip.",
+            },
+        },
+    },
+};
+
 export const InteractiveButton: Story = {
     args: {
         label: "Clickable",

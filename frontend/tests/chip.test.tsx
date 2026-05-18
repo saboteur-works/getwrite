@@ -76,6 +76,40 @@ describe("Chip", () => {
         expect(container.firstChild).toHaveClass("chip");
     });
 
+    describe("tooltip", () => {
+        it("sets data-tooltip-id and data-tooltip-content when both props provided", () => {
+            const { container } = render(
+                <Chip
+                    label="Tag"
+                    shape="sharp"
+                    tooltip="More detail"
+                    tooltipId="chip-tip-1"
+                />,
+            );
+            const root = container.firstChild as HTMLElement;
+            expect(root.getAttribute("data-tooltip-id")).toBe("chip-tip-1");
+            expect(root.getAttribute("data-tooltip-content")).toBe(
+                "More detail",
+            );
+        });
+
+        it("does not set data-tooltip-id when tooltip is omitted", () => {
+            const { container } = render(
+                <Chip label="Tag" shape="sharp" tooltipId="chip-tip-2" />,
+            );
+            const root = container.firstChild as HTMLElement;
+            expect(root.getAttribute("data-tooltip-id")).toBeNull();
+        });
+
+        it("does not set data-tooltip-id when tooltipId is omitted", () => {
+            const { container } = render(
+                <Chip label="Tag" shape="sharp" tooltip="Some tip" />,
+            );
+            const root = container.firstChild as HTMLElement;
+            expect(root.getAttribute("data-tooltip-id")).toBeNull();
+        });
+    });
+
     describe("dismiss button", () => {
         it("renders dismiss button when onDismiss is provided", () => {
             render(<Chip label="Tag" shape="sharp" onDismiss={vi.fn()} />);

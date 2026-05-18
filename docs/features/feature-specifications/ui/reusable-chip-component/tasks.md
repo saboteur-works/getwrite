@@ -40,7 +40,7 @@ Spec: `docs/features/feature-specifications/ui/reusable-chip-component/resuable-
 **Done when:** When both `tooltip` and `tooltipId` are provided, a `<Tooltip>` from `react-tooltip` is rendered and hovering the chip in Storybook (or jsdom with pointer events) shows the tooltip text; omitting either prop renders no tooltip element; `pnpm typecheck` passes.
 **Depends on:** Task 2
 **Estimate:** 1
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
