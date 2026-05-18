@@ -15,7 +15,6 @@ Users working with scene-level metadata need to associate multiple resources (ch
 ## Non-goals
 
 - Creating or renaming resources from within the input.
-- Filtering the autocomplete list by folder scope (that is a future capability).
 - Drag-to-reorder chips within a single field.
 - Any changes to the `resource-ref` single-select experience.
 
@@ -37,11 +36,16 @@ Users working with scene-level metadata need to associate multiple resources (ch
 8. The stored value **must** be a `ResourceRef[]` array (unchanged from the current `resource-ref multiple` format) so existing sidecars are compatible.
 9. The `SchemaManager` field-type selector **must** include `multi-resource-ref` as a selectable option alongside the existing types.
 10. A `MultiResourceRefInput` component **must** have a Storybook story covering: empty state, chips present, autocomplete open, and a11y checks.
+11. The field schema **must** support an optional `refFolder` string property. When set, the autocomplete candidates **must** be limited to resources whose folder path equals `refFolder`.
+12. The field schema **must** support an optional `includeSubfolders` boolean property (default: `false`). When `true` and `refFolder` is set, autocomplete candidates **must** include resources in `refFolder` and any of its descendant folders.
+13. The `SchemaManager` **must** expose a folder picker for `refFolder` and an "Include Subfolders" checkbox when configuring a `multi-resource-ref` field. Both controls **must** be hidden when `refFolder` is unset.
+14. The field schema **must** support an optional `maxSelections` positive integer property. When set, the chip input **must** prevent adding chips beyond that count and **must** disable the text input once the limit is reached.
+15. The `SchemaManager` **must** expose an optional number input for `maxSelections` when configuring a `multi-resource-ref` field. Leaving it blank means unbounded.
 
-## Open questions
+## Decisions
 
-- Should the autocomplete list be limited to resources in a specific folder (e.g. only Characters), or always show all resources? If folder-scoped, does that require a new `refFolder` field property?
-- Is there a maximum number of selections per field, or is it unbounded?
+- **Autocomplete scope**: Defaults to all resources. A `refFolder` property on the field schema optionally scopes candidates to a specific folder. An `includeSubfolders` boolean (default `false`) extends that scope to descendants. Both are configured in SchemaManager at field-definition time, not at input time. No inline query syntax.
+- **Maximum selections**: Per-field `maxSelections` integer in the schema. Blank (unset) means unbounded. Configured in SchemaManager alongside the other field properties.
 
 ## Out of scope (deferred)
 
