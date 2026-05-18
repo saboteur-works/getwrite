@@ -10,6 +10,7 @@ import NumberInput from "./controls/NumberInput";
 import BooleanToggle from "./controls/BooleanToggle";
 import SelectInput from "./controls/SelectInput";
 import ResourceRefInput, { type ResourceOption } from "./controls/ResourceRefInput";
+import { filterResourceOptionsByScope } from "./folderScope";
 import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
 import TagsSection from "./TagsSection";
@@ -25,6 +26,7 @@ import {
     addMetadataField,
 } from "../../src/store/projectsSlice";
 import type {
+    Folder,
     MetadataField,
     MetadataValue,
     ResourceRef,
@@ -61,6 +63,20 @@ const selectAllResourceOptions = createSelector(
             return acc;
         }, []);
     },
+);
+
+type RawResource = { id: string; name: string; folderId?: string | null };
+const EMPTY_RAW_RESOURCES: RawResource[] = [];
+const EMPTY_FOLDERS: Folder[] = [];
+
+const selectRawResourcesList = createSelector(
+    (state: any) => state.resources.resources as RawResource[],
+    (resources): RawResource[] => resources ?? EMPTY_RAW_RESOURCES,
+);
+
+const selectFoldersList = createSelector(
+    (state: any) => state.resources.folders as Folder[],
+    (folders): Folder[] => folders ?? EMPTY_FOLDERS,
 );
 
 export interface MetadataSidebarProps {
@@ -147,6 +163,8 @@ export default function MetadataSidebar({
 
     const characterList = useAppSelector(selectCharacterList);
     const allResourceOptions = useAppSelector(selectAllResourceOptions, shallowEqual);
+    const rawResources = useAppSelector(selectRawResourcesList, shallowEqual);
+    const folders = useAppSelector(selectFoldersList, shallowEqual);
 
     const storyDate = selectedResource?.userMetadata?.storyDate as string | undefined;
     const storyDuration = selectedResource?.userMetadata?.storyDuration as

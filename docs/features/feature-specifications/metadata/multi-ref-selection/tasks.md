@@ -55,6 +55,7 @@ Spec: `docs/features/feature-specifications/metadata/multi-ref-selection/multi-r
 **Depends on:** Tasks 2, 4
 **Estimate:** 2
 **Notes:** Descendant-folder resolution requires walking `state.resources.folders` by `parentId`. Either expose a helper (`resolveFolderScope(folders, refFolder, includeSubfolders): Set<string>`) or compute the candidate list in `MetadataSidebar` before passing into the input.
+**Done:** [x] `resolveFolderScope` (BFS) and `filterResourceOptionsByScope` in `components/Sidebar/folderScope.ts`. `MetadataSidebar` gains `selectRawResourcesList` + `selectFoldersList` selectors and subscribes to both — ready for Task 7's `case "multi-resource-ref":` branch. 12 unit tests in `tests/folder-scope.test.ts`; all 822 tests pass, `pnpm typecheck` clean.
 
 ---
 
