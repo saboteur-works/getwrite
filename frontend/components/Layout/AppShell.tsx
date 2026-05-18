@@ -20,6 +20,7 @@ import type {
     ResourceType,
     Folder,
     TipTapDocument,
+    ResourceRef,
 } from "../../src/lib/models/types";
 import { shallowEqual } from "react-redux";
 import { removeResource } from "../../src/store/projectsSlice";
@@ -159,7 +160,7 @@ export interface AppShellProps {
         resourceId: string,
     ) => void;
     /** Metadata callback for point-of-view updates. */
-    onChangePOV?: (pov: string | null, resourceId: string) => void;
+    onChangePOV?: (pov: ResourceRef, resourceId: string) => void;
     /** Metadata callback for dynamic metadata updates. */
     onChangeDynamicMetadata?: (
         metadata: Record<string, string[]>,

@@ -3,7 +3,7 @@ import SynopsisInput from "./controls/SynopsisInput";
 import NotesInput from "./controls/NotesInput";
 import StatusSelector from "./controls/StatusSelector";
 import MultiSelectList from "./controls/MultiSelectList";
-import POVAutocomplete from "./controls/POVAutocomplete";
+import POVAutocomplete, { type POVResourceOption } from "./controls/POVAutocomplete";
 import DateTimeInput from "./controls/DateTimeInput";
 import DurationInput from "./controls/DurationInput";
 import EndDateInput from "./controls/EndDateInput";
@@ -14,14 +14,15 @@ import { shallowEqual, useStore } from "react-redux";
 import { selectResource } from "../../src/store/resourcesSlice";
 import { selectActiveProjectStatuses } from "../../src/store/projectsSlice";
 import { RootState } from "../../src/store/store";
+import type { ResourceRef } from "../../src/lib/models/types";
 
-const EMPTY_LIST: string[] = [];
+const EMPTY_RESOURCE_OPTIONS: POVResourceOption[] = [];
 
 export interface MetadataSidebarProps {
     onChangeSynopsis?: (text: string) => void;
     onChangeNotes?: (text: string) => void;
     onChangeStatus?: (status: string) => void;
-    onChangePOV?: (pov: string) => void;
+    onChangePOV?: (pov: ResourceRef) => void;
     onChangeDynamicMetadata?: (metadata: Record<string, string[]>) => void;
     onChangeStoryDate?: (value: string) => void;
     onChangeStoryDuration?: (value: number | null) => void;
@@ -63,16 +64,16 @@ export default function MetadataSidebar({
         shallowEqual,
     );
 
-    const characterList = useAppSelector((state) => {
-        if (state.projects.selectedProjectId === null) return EMPTY_LIST;
+    const characterList = useAppSelector((state): POVResourceOption[] => {
+        if (state.projects.selectedProjectId === null) return EMPTY_RESOURCE_OPTIONS;
 
         const characterFolderId = state.projects.projects[
             state.projects.selectedProjectId
         ].folders?.find((f) => f.name?.toLowerCase() === "characters")?.id;
 
-        return state.resources.resources.reduce((acc: string[], r) => {
+        return state.resources.resources.reduce((acc: POVResourceOption[], r) => {
             if (r.folderId === characterFolderId && r.name) {
-                acc.push(r.name);
+                acc.push({ id: r.id, name: r.name });
             }
             return acc;
         }, []);
@@ -106,8 +107,8 @@ export default function MetadataSidebar({
     const [status, setStatus] = React.useState<string>(
         (selectedResource?.userMetadata?.status as any) ?? projectStatuses[0] ?? "",
     );
-    const [pov, setPOV] = React.useState<string | null>(
-        (selectedResource?.userMetadata?.pov as any) ?? null,
+    const [pov, setPOV] = React.useState<string | ResourceRef | null>(
+        (selectedResource?.userMetadata?.pov as string | ResourceRef) ?? null,
     );
     const [storyDate, setStoryDate] = React.useState<string>(
         (selectedResource?.userMetadata?.storyDate as string) ?? "",
@@ -127,7 +128,7 @@ export default function MetadataSidebar({
         setSynopsis((selectedResource?.userMetadata?.synopsis as string) ?? "");
         setNotes((selectedResource?.userMetadata?.notes as any) ?? "");
         setStatus((selectedResource?.userMetadata?.status as any) ?? projectStatuses[0] ?? "");
-        setPOV((selectedResource?.userMetadata?.pov as any) ?? null);
+        setPOV((selectedResource?.userMetadata?.pov as string | ResourceRef) ?? null);
         setStoryDate(
             (selectedResource?.userMetadata?.storyDate as string) ?? "",
         );
@@ -206,11 +207,11 @@ export default function MetadataSidebar({
                         />
                         <POVAutocomplete
                             className="text-brand-mid"
-                            options={characterList}
-                            value={pov ?? ""}
+                            resourceOptions={characterList}
+                            value={pov ?? undefined}
                             onChange={(v) => {
                                 setPOV(v);
-                                onChangePOV && onChangePOV(v);
+                                onChangePOV?.(v);
                             }}
                         />
                     </SidebarSection>

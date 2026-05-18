@@ -80,7 +80,7 @@
 **Depends on:** Task 1
 **Estimate:** 3
 **Notes:** "First edit after migration" means: detect that the existing stored `pov` value is a plain string (legacy) rather than a ResourceRef object, then resolve on the next write. The resolution lookup is against `state.resources.resources` filtered by the POV folder, matching on `name`.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

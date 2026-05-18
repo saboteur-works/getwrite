@@ -100,7 +100,7 @@ export const Interactive: Story = {
                         onChangeSynopsis={(text) => markChanged(text)}
                         onChangeNotes={(text) => markChanged(text)}
                         onChangeStatus={(status) => markChanged(status)}
-                        onChangePOV={(pov) => markChanged(pov)}
+                        onChangePOV={(pov) => markChanged(pov.name)}
                         onChangeStoryDate={(val) => markChanged(val)}
                         onChangeStoryDuration={(val) =>
                             markChanged(String(val ?? ""))

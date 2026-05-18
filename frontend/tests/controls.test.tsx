@@ -51,12 +51,32 @@ describe("Sidebar Controls", () => {
         );
     });
 
-    it("POVAutocomplete calls onChange", () => {
+    it("POVAutocomplete calls onChange with ResourceRef when name matches", () => {
         const onChange = vi.fn();
-        render(<POVAutocomplete onChange={onChange} options={["X"]} />);
+        render(<POVAutocomplete onChange={onChange} resourceOptions={[{ id: "uuid-x", name: "X" }]} />);
         const input = screen.getByLabelText("pov-input");
         fireEvent.change(input, { target: { value: "X" } });
-        expect(onChange).toHaveBeenCalledWith("X");
+        expect(onChange).toHaveBeenCalledWith({ id: "uuid-x", name: "X" });
+    });
+
+    it("POVAutocomplete calls onChange with id: null when name has no match", () => {
+        const onChange = vi.fn();
+        render(<POVAutocomplete onChange={onChange} resourceOptions={[{ id: "uuid-x", name: "X" }]} />);
+        const input = screen.getByLabelText("pov-input");
+        fireEvent.change(input, { target: { value: "Unknown" } });
+        expect(onChange).toHaveBeenCalledWith({ id: null, name: "Unknown" });
+    });
+
+    it("POVAutocomplete displays name when value is a ResourceRef object", () => {
+        render(<POVAutocomplete value={{ id: "uuid-alice", name: "Alice" }} />);
+        const input = screen.getByLabelText("pov-input") as HTMLInputElement;
+        expect(input.value).toBe("Alice");
+    });
+
+    it("POVAutocomplete displays string value directly", () => {
+        render(<POVAutocomplete value="legacy-string" />);
+        const input = screen.getByLabelText("pov-input") as HTMLInputElement;
+        expect(input.value).toBe("legacy-string");
     });
 
     it("EditorMenuInput syncs schema-provided values and forwards select changes", async () => {
