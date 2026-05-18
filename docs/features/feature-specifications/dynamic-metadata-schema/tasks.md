@@ -139,8 +139,8 @@
 **Done when:** All CRUD actions in the schema manager UI dispatch the correct Redux thunks and the sidebar reflects changes without a page reload; locked fields show no delete button; field key slugs are validated on rename; Storybook story renders in isolation; `pnpm typecheck` passes.
 **Depends on:** Tasks 6, 9
 **Estimate:** 5
-**Notes:** Follow the visual and interaction patterns of the tags manager or preferences panels. No drag-and-drop required — move-up/down buttons are sufficient. Surface a confirmation dialog on field key rename warning that existing values will become orphaned.
-**Done:** [ ]
+**Notes:** Use the getwrite-component skill for this task. Follow the visual and interaction patterns of the tags manager or preferences panels. No drag-and-drop required — move-up/down buttons are sufficient. Surface a confirmation dialog on field key rename warning that existing values will become orphaned.
+**Done:** [x]
 
 ---
 

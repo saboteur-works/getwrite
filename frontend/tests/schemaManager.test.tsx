@@ -1,0 +1,602 @@
+import React from "react";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { Provider } from "react-redux";
+import SchemaManager from "../components/SchemaManager/SchemaManager";
+import { makeStore } from "../src/store/store";
+import {
+    setProject,
+    setSelectedProjectId,
+} from "../src/store/projectsSlice";
+import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
+import type { MetadataSchema } from "../src/lib/models/types";
+
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
+const CUSTOM_SCHEMA: MetadataSchema = {
+    groups: [
+        {
+            id: "group-a",
+            label: "Group A",
+            fields: [
+                { key: "field-one", label: "Field One", type: "text" },
+                { key: "field-two", label: "Field Two", type: "number" },
+            ],
+        },
+        {
+            id: "group-b",
+            label: "Group B",
+            fields: [
+                { key: "genre", label: "Genre", type: "select", options: ["Fantasy", "Sci-Fi"] },
+            ],
+        },
+    ],
+};
+
+function setup(schema?: MetadataSchema) {
+    const testStore = makeStore();
+    testStore.dispatch(
+        setProject({
+            id: "proj-1",
+            rootPath: "/projects/proj-1",
+            metadataSchema: schema ?? CUSTOM_SCHEMA,
+        }),
+    );
+    testStore.dispatch(setSelectedProjectId("proj-1"));
+
+    const onClose = vi.fn();
+    render(
+        <Provider store={testStore}>
+            <SchemaManager onClose={onClose} />
+        </Provider>,
+    );
+    return { testStore, onClose };
+}
+
+function mockFetchOk(returnedSchema: MetadataSchema) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+        new Response(JSON.stringify({ schema: returnedSchema }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+        }),
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — rendering", () => {
+    it("renders all group labels", () => {
+        setup();
+        expect(screen.getByText("Group A")).toBeInTheDocument();
+        expect(screen.getByText("Group B")).toBeInTheDocument();
+    });
+
+    it("renders all field labels", () => {
+        setup();
+        expect(screen.getByText("Field One")).toBeInTheDocument();
+        expect(screen.getByText("Field Two")).toBeInTheDocument();
+        expect(screen.getByText("Genre")).toBeInTheDocument();
+    });
+
+    it("renders a type badge for each field", () => {
+        setup();
+        expect(screen.getAllByText("Text").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Number").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Select").length).toBeGreaterThan(0);
+    });
+
+    it("renders options textarea for select fields", () => {
+        setup();
+        const textarea = screen.getByLabelText("Options for Genre") as HTMLTextAreaElement;
+        expect(textarea).toBeInTheDocument();
+        expect(textarea.value).toBe("Fantasy\nSci-Fi");
+    });
+
+    it("shows empty-group message when schema has no groups", () => {
+        setup({ groups: [] });
+        expect(screen.getByText(/no groups yet/i)).toBeInTheDocument();
+    });
+
+    it("shows the Add Group button", () => {
+        setup();
+        expect(screen.getByLabelText("Add schema group")).toBeInTheDocument();
+    });
+
+    it("shows an Add field button for each group", () => {
+        setup();
+        expect(screen.getByLabelText("Add field to Group A")).toBeInTheDocument();
+        expect(screen.getByLabelText("Add field to Group B")).toBeInTheDocument();
+    });
+
+    it("calls onClose when the Close button is clicked", () => {
+        const { onClose } = setup();
+        fireEvent.click(screen.getByLabelText("Close schema manager"));
+        expect(onClose).toHaveBeenCalledOnce();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Locked fields
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — locked fields", () => {
+    it("locked fields have no delete button", () => {
+        setup(DEFAULT_METADATA_SCHEMA);
+        // synopsis is a locked built-in field — no delete button should exist for it
+        expect(screen.queryByLabelText("Delete Synopsis")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Delete Notes")).not.toBeInTheDocument();
+    });
+
+    it("locked fields show a built-in badge", () => {
+        setup(DEFAULT_METADATA_SCHEMA);
+        const badges = screen.getAllByText("built-in");
+        expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("locked groups have no delete button", () => {
+        setup(DEFAULT_METADATA_SCHEMA);
+        // builtin-document group has locked fields → no delete button
+        expect(
+            screen.queryByLabelText("Delete Document group"),
+        ).not.toBeInTheDocument();
+    });
+
+    it("custom groups (no locked fields) show a delete button", () => {
+        setup();
+        expect(screen.getByLabelText("Delete Group A group")).toBeInTheDocument();
+        expect(screen.getByLabelText("Delete Group B group")).toBeInTheDocument();
+    });
+
+    it("unlocked fields show a delete button", () => {
+        setup();
+        expect(screen.getByLabelText("Delete Field One")).toBeInTheDocument();
+        expect(screen.getByLabelText("Delete Field Two")).toBeInTheDocument();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Delete field
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — delete field", () => {
+    it("clicking delete on a field opens a confirmation dialog", () => {
+        setup();
+        fireEvent.click(screen.getByLabelText("Delete Field One"));
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(screen.getByText(/delete "field one"\?/i)).toBeInTheDocument();
+    });
+
+    it("cancelling the dialog closes it without dispatching", () => {
+        setup();
+        fireEvent.click(screen.getByLabelText("Delete Field One"));
+        fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("confirming delete dispatches removeMetadataField", async () => {
+        const updatedSchema: MetadataSchema = {
+            groups: [
+                {
+                    id: "group-a",
+                    label: "Group A",
+                    fields: [{ key: "field-two", label: "Field Two", type: "number" }],
+                },
+                CUSTOM_SCHEMA.groups[1],
+            ],
+        };
+        const fetchSpy = mockFetchOk(updatedSchema);
+
+        setup();
+        fireEvent.click(screen.getByLabelText("Delete Field One"));
+        fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"remove-field"'),
+                }),
+            );
+        });
+
+        const call = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "remove-field"
+                );
+            } catch {
+                return false;
+            }
+        });
+        const body = JSON.parse((call![1] as RequestInit).body as string);
+        expect(body.fieldKey).toBe("field-one");
+        expect(body.groupId).toBe("group-a");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Delete group
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — delete group", () => {
+    it("clicking delete on a group opens a confirmation dialog", () => {
+        setup();
+        fireEvent.click(screen.getByLabelText("Delete Group A group"));
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(screen.getByText(/delete group "group a"\?/i)).toBeInTheDocument();
+    });
+
+    it("confirming group delete dispatches removeMetadataGroup", async () => {
+        const updatedSchema: MetadataSchema = {
+            groups: [CUSTOM_SCHEMA.groups[1]],
+        };
+        const fetchSpy = mockFetchOk(updatedSchema);
+
+        setup();
+        fireEvent.click(screen.getByLabelText("Delete Group A group"));
+        fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"remove-group"'),
+                }),
+            );
+        });
+
+        const call = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "remove-group"
+                );
+            } catch {
+                return false;
+            }
+        });
+        const body = JSON.parse((call![1] as RequestInit).body as string);
+        expect(body.groupId).toBe("group-a");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Move up / down (fields)
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — reorder fields", () => {
+    it("dispatches reorderMetadataFields when move-up is clicked", async () => {
+        const fetchSpy = mockFetchOk(CUSTOM_SCHEMA);
+        setup();
+
+        // Field Two is at index 1 — clicking move-up swaps it to index 0
+        fireEvent.click(screen.getByLabelText("Move Field Two up"));
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"reorder-fields"'),
+                }),
+            );
+        });
+
+        const call = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "reorder-fields"
+                );
+            } catch {
+                return false;
+            }
+        });
+        const body = JSON.parse((call![1] as RequestInit).body as string);
+        expect(body.newKeyOrder).toEqual(["field-two", "field-one"]);
+        expect(body.groupId).toBe("group-a");
+    });
+
+    it("first field move-up button is disabled", () => {
+        setup();
+        const btn = screen.getByLabelText("Move Field One up") as HTMLButtonElement;
+        expect(btn.disabled).toBe(true);
+    });
+
+    it("last field move-down button is disabled", () => {
+        setup();
+        const btn = screen.getByLabelText(
+            "Move Field Two down",
+        ) as HTMLButtonElement;
+        expect(btn.disabled).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Move up / down (groups)
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — reorder groups", () => {
+    it("dispatches reorderMetadataGroups when group move-down is clicked", async () => {
+        const fetchSpy = mockFetchOk(CUSTOM_SCHEMA);
+        setup();
+
+        fireEvent.click(screen.getByLabelText("Move Group A group down"));
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"reorder-groups"'),
+                }),
+            );
+        });
+
+        const call = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "reorder-groups"
+                );
+            } catch {
+                return false;
+            }
+        });
+        const body = JSON.parse((call![1] as RequestInit).body as string);
+        expect(body.newGroupIdOrder).toEqual(["group-b", "group-a"]);
+    });
+
+    it("first group move-up button is disabled", () => {
+        setup();
+        const btn = screen.getByLabelText(
+            "Move Group A group up",
+        ) as HTMLButtonElement;
+        expect(btn.disabled).toBe(true);
+    });
+
+    it("last group move-down button is disabled", () => {
+        setup();
+        const btn = screen.getByLabelText(
+            "Move Group B group down",
+        ) as HTMLButtonElement;
+        expect(btn.disabled).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Inline label rename
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — inline label rename", () => {
+    it("clicking a non-locked field label enters edit mode", () => {
+        setup();
+        fireEvent.click(screen.getByLabelText("Rename Field One"));
+        expect(screen.getByLabelText("Edit label for field-one")).toBeInTheDocument();
+    });
+
+    it("committing a label edit dispatches renameMetadataField", async () => {
+        const fetchSpy = mockFetchOk(CUSTOM_SCHEMA);
+        setup();
+
+        fireEvent.click(screen.getByLabelText("Rename Field One"));
+        const input = screen.getByLabelText("Edit label for field-one");
+        fireEvent.change(input, { target: { value: "Renamed Field" } });
+        fireEvent.blur(input);
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"rename-field"'),
+                }),
+            );
+        });
+
+        const call = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "rename-field"
+                );
+            } catch {
+                return false;
+            }
+        });
+        const body = JSON.parse((call![1] as RequestInit).body as string);
+        expect(body.fieldKey).toBe("field-one");
+        expect(body.newLabel).toBe("Renamed Field");
+    });
+
+    it("pressing Enter commits the label edit", async () => {
+        const fetchSpy = mockFetchOk(CUSTOM_SCHEMA);
+        setup();
+
+        fireEvent.click(screen.getByLabelText("Rename Field One"));
+        const input = screen.getByLabelText("Edit label for field-one");
+        fireEvent.change(input, { target: { value: "Via Enter" } });
+        fireEvent.keyDown(input, { key: "Enter" });
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"rename-field"'),
+                }),
+            );
+        });
+    });
+
+    it("pressing Escape cancels without dispatching", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch");
+        setup();
+
+        fireEvent.click(screen.getByLabelText("Rename Field One"));
+        const input = screen.getByLabelText("Edit label for field-one");
+        fireEvent.change(input, { target: { value: "Should Not Save" } });
+        fireEvent.keyDown(input, { key: "Escape" });
+
+        // Input should unmount
+        await waitFor(() => {
+            expect(
+                screen.queryByLabelText("Edit label for field-one"),
+            ).not.toBeInTheDocument();
+        });
+
+        // fetch should not have been called with rename-field
+        const renameCalls = fetchSpy.mock.calls.filter(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "rename-field"
+                );
+            } catch {
+                return false;
+            }
+        });
+        expect(renameCalls).toHaveLength(0);
+    });
+
+    it("empty label after trim does not dispatch", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch");
+        setup();
+
+        fireEvent.click(screen.getByLabelText("Rename Field One"));
+        const input = screen.getByLabelText("Edit label for field-one");
+        fireEvent.change(input, { target: { value: "   " } });
+        fireEvent.blur(input);
+
+        await waitFor(() => {
+            expect(
+                screen.queryByLabelText("Edit label for field-one"),
+            ).not.toBeInTheDocument();
+        });
+
+        const renameCalls = fetchSpy.mock.calls.filter(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "rename-field"
+                );
+            } catch {
+                return false;
+            }
+        });
+        expect(renameCalls).toHaveLength(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Add Group
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — add group", () => {
+    it("clicking Add Group dispatches addMetadataGroup", async () => {
+        const fetchSpy = mockFetchOk(CUSTOM_SCHEMA);
+        setup();
+
+        fireEvent.click(screen.getByLabelText("Add schema group"));
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"add-group"'),
+                }),
+            );
+        });
+
+        const call = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "add-group"
+                );
+            } catch {
+                return false;
+            }
+        });
+        const body = JSON.parse((call![1] as RequestInit).body as string);
+        expect(body.group.label).toBe("New Group");
+        expect(body.group.id).toMatch(/^group-\d+$/);
+        expect(body.group.fields).toEqual([]);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Add field within group
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — add field in group", () => {
+    it("clicking 'Add field' within a group dispatches addMetadataField", async () => {
+        const fetchSpy = mockFetchOk(CUSTOM_SCHEMA);
+        setup();
+
+        fireEvent.click(screen.getByLabelText("Add field to Group A"));
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"add-field"'),
+                }),
+            );
+        });
+
+        const call = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "add-field"
+                );
+            } catch {
+                return false;
+            }
+        });
+        const body = JSON.parse((call![1] as RequestInit).body as string);
+        expect(body.groupId).toBe("group-a");
+        expect(body.field.type).toBe("text");
+        expect(body.field.key).toMatch(/^field-\d+$/);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Options editing
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — options editing", () => {
+    it("dispatches updateMetadataFieldOptions on textarea blur", async () => {
+        const fetchSpy = mockFetchOk(CUSTOM_SCHEMA);
+        setup();
+
+        const textarea = screen.getByLabelText("Options for Genre");
+        fireEvent.change(textarea, { target: { value: "Fantasy\nHorror\n" } });
+        fireEvent.blur(textarea);
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"update-field-options"'),
+                }),
+            );
+        });
+
+        const call = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "update-field-options"
+                );
+            } catch {
+                return false;
+            }
+        });
+        const body = JSON.parse((call![1] as RequestInit).body as string);
+        expect(body.fieldKey).toBe("genre");
+        expect(body.options).toEqual(["Fantasy", "Horror"]);
+    });
+});
