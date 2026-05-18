@@ -22,6 +22,7 @@ Spec: `docs/features/feature-specifications/metadata/multi-ref-selection/multi-r
 **Depends on:** Task 1
 **Estimate:** 2
 **Notes:** Covers FR 11, 12, 14 at the schema layer. JSDoc each property: `refFolder` and `includeSubfolders` only meaningful for `resource-ref` / `multi-resource-ref`; `maxSelections` only meaningful for `multi-resource-ref`.
+**Done:** [x]
 
 ---
 

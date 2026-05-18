@@ -111,6 +111,9 @@ export const MetadataFieldTypeSchema = z.enum([
  *   API route layer, where it guards user-created fields on write.
  * - `options` is only meaningful for `select` / `multiselect` types.
  * - `multiple` is only meaningful for `resource-ref` type.
+ * - `refFolder` and `includeSubfolders` are only meaningful for
+ *   `resource-ref` / `multi-resource-ref` types.
+ * - `maxSelections` is only meaningful for `multi-resource-ref` type.
  * - `locked` fields cannot be removed or have their key changed.
  */
 export const MetadataFieldSchema = z.object({
@@ -120,6 +123,12 @@ export const MetadataFieldSchema = z.object({
     locked: z.boolean().optional(),
     options: z.array(z.string()).optional(),
     multiple: z.boolean().optional(),
+    /** Scopes autocomplete candidates to resources in this folder (by folder id). */
+    refFolder: z.string().optional(),
+    /** When true and refFolder is set, candidates include descendant folders too. */
+    includeSubfolders: z.boolean().optional(),
+    /** Maximum number of selections allowed; unset means unbounded. */
+    maxSelections: z.number().int().positive().optional(),
 });
 
 /**

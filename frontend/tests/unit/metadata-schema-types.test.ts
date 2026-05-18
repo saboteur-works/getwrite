@@ -95,6 +95,67 @@ describe("MetadataFieldSchema", () => {
         expect(result.success).toBe(false);
     });
 
+    it("accepts a multi-resource-ref field with refFolder", () => {
+        const result = MetadataFieldSchema.safeParse({
+            key: "characters",
+            label: "Characters",
+            type: "multi-resource-ref",
+            refFolder: "550e8400-e29b-41d4-a716-446655440001",
+        });
+        expect(result.success).toBe(true);
+    });
+
+    it("accepts a multi-resource-ref field with includeSubfolders", () => {
+        const result = MetadataFieldSchema.safeParse({
+            key: "characters",
+            label: "Characters",
+            type: "multi-resource-ref",
+            refFolder: "550e8400-e29b-41d4-a716-446655440001",
+            includeSubfolders: true,
+        });
+        expect(result.success).toBe(true);
+    });
+
+    it("accepts a multi-resource-ref field with maxSelections", () => {
+        const result = MetadataFieldSchema.safeParse({
+            key: "characters",
+            label: "Characters",
+            type: "multi-resource-ref",
+            maxSelections: 3,
+        });
+        expect(result.success).toBe(true);
+    });
+
+    it("rejects maxSelections of zero", () => {
+        const result = MetadataFieldSchema.safeParse({
+            key: "characters",
+            label: "Characters",
+            type: "multi-resource-ref",
+            maxSelections: 0,
+        });
+        expect(result.success).toBe(false);
+    });
+
+    it("rejects a negative maxSelections", () => {
+        const result = MetadataFieldSchema.safeParse({
+            key: "characters",
+            label: "Characters",
+            type: "multi-resource-ref",
+            maxSelections: -1,
+        });
+        expect(result.success).toBe(false);
+    });
+
+    it("rejects a non-integer maxSelections", () => {
+        const result = MetadataFieldSchema.safeParse({
+            key: "characters",
+            label: "Characters",
+            type: "multi-resource-ref",
+            maxSelections: 1.5,
+        });
+        expect(result.success).toBe(false);
+    });
+
     it("accepts a multi-resource-ref field", () => {
         const result = MetadataFieldSchema.safeParse({
             key: "characters",

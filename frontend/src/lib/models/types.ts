@@ -103,6 +103,12 @@ export interface MetadataField {
     options?: string[];
     /** When true, a `resource-ref` field stores an array of refs. */
     multiple?: boolean;
+    /** Scopes autocomplete candidates to resources in this folder (by folder id). Only meaningful for `resource-ref` / `multi-resource-ref`. */
+    refFolder?: string;
+    /** When true and refFolder is set, candidates include descendant folders. Only meaningful for `resource-ref` / `multi-resource-ref`. */
+    includeSubfolders?: boolean;
+    /** Maximum number of selections; unset means unbounded. Only meaningful for `multi-resource-ref`. */
+    maxSelections?: number;
 }
 
 /** A named group of metadata fields, optionally scoped to one folder. */
