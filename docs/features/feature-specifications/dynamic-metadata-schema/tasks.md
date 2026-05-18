@@ -128,7 +128,7 @@
 **Depends on:** Tasks 6, 10
 **Estimate:** 2
 **Notes:** The new field needs a generated slug (`field-<timestamp>` or similar) and a placeholder label. The sidebar should scroll to and focus the new control after schema state updates.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

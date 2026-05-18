@@ -14,12 +14,14 @@ import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
 import TagsSection from "./TagsSection";
 import SidebarSection from "./SidebarSection";
-import useAppSelector from "../../src/store/hooks";
+import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
 import { selectResource } from "../../src/store/resourcesSlice";
 import {
     selectActiveProjectStatuses,
     selectActiveProjectMetadataSchema,
+    selectSelectedProjectId,
+    addMetadataField,
 } from "../../src/store/projectsSlice";
 import type {
     MetadataField,
@@ -65,7 +67,9 @@ export default function MetadataSidebar({
     onChangeField,
     className = "",
 }: MetadataSidebarProps): JSX.Element {
+    const dispatch = useAppDispatch();
     const schema = useAppSelector(selectActiveProjectMetadataSchema);
+    const selectedProjectId = useAppSelector(selectSelectedProjectId);
 
     const selectedResource = useAppSelector((state) =>
         selectResource(state.resources),
@@ -75,6 +79,39 @@ export default function MetadataSidebar({
         (state) => selectActiveProjectStatuses(state),
         shallowEqual,
     );
+
+    const [pendingFocusKey, setPendingFocusKey] = React.useState<string | null>(null);
+    const sidebarRef = React.useRef<HTMLElement | null>(null);
+
+    React.useEffect(() => {
+        if (!pendingFocusKey || !sidebarRef.current) return;
+        const input = sidebarRef.current.querySelector<HTMLInputElement>(
+            `input[aria-label="${pendingFocusKey}"]`,
+        );
+        if (input) {
+            input.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            input.focus();
+            setPendingFocusKey(null);
+        }
+    }, [schema, pendingFocusKey]);
+
+    async function handleAddField(): Promise<void> {
+        if (!selectedProjectId) return;
+        const firstGroup = schema.groups[0];
+        if (!firstGroup) return;
+        const key = `field-${Date.now()}`;
+        setPendingFocusKey(key);
+        const result = await dispatch(
+            addMetadataField({
+                projectId: selectedProjectId,
+                groupId: firstGroup.id,
+                field: { key, label: "New Field", type: "text" },
+            }),
+        );
+        if (addMetadataField.rejected.match(result)) {
+            setPendingFocusKey(null);
+        }
+    }
 
     const characterList = useAppSelector((state): POVResourceOption[] => {
         if (state.projects.selectedProjectId === null) return EMPTY_RESOURCE_OPTIONS;
@@ -266,6 +303,7 @@ export default function MetadataSidebar({
 
     return (
         <aside
+            ref={sidebarRef}
             className={`metadata-sidebar-root ${className}`}
             aria-label="metadata-sidebar"
         >
@@ -296,6 +334,17 @@ export default function MetadataSidebar({
                     <SidebarSection label="Tags">
                         <TagsSection />
                     </SidebarSection>
+                    <div className="mt-2 pt-3 border-t border-gw-border">
+                        <button
+                            type="button"
+                            onClick={() => { void handleAddField(); }}
+                            disabled={!selectedProjectId || schema.groups.length === 0}
+                            className="flex w-full items-center gap-1.5 py-1 text-[11px] font-mono uppercase tracking-[0.12em] text-gw-secondary hover:text-gw-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                            aria-label="add-metadata-field"
+                        >
+                            + Add field
+                        </button>
+                    </div>
                 </React.Fragment>
             ) : (
                 <div className="metadata-sidebar-empty">

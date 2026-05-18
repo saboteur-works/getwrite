@@ -1,6 +1,6 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import MetadataSidebar from "../components/Sidebar/MetadataSidebar";
 import { createTextResource } from "../src/lib/models/resource";
@@ -13,6 +13,7 @@ import {
     setProject,
     setSelectedProjectId,
 } from "../src/store/projectsSlice";
+import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
 import type { MetadataSchema } from "../src/lib/models/types";
 
 describe("MetadataSidebar", () => {
@@ -407,5 +408,137 @@ describe("MetadataSidebar", () => {
 
         expect(screen.getByRole("button", { name: /folder group/i })).toBeInTheDocument();
         expect(screen.getByLabelText("folder-field")).toBeInTheDocument();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Add field footer button (Task 11)
+// ---------------------------------------------------------------------------
+
+describe("MetadataSidebar — Add field footer button (Task 11)", () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    function setupWithProject(schema?: MetadataSchema) {
+        const testStore = makeStore();
+        const projectId = "proj-add-field";
+        testStore.dispatch(
+            setProject({
+                id: projectId,
+                rootPath: "/projects/proj-add-field",
+                metadataSchema: schema ?? DEFAULT_METADATA_SCHEMA,
+            }),
+        );
+        testStore.dispatch(setSelectedProjectId(projectId));
+        const res = createTextResource({ name: "Scene", plainText: "" });
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        return { testStore, projectId, res };
+    }
+
+    it("renders the 'Add field' button when a text resource is selected", () => {
+        const { testStore } = setupWithProject();
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+        expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
+    });
+
+    it("dispatches addMetadataField with first group id and a generated key on click", async () => {
+        const { testStore, projectId } = setupWithProject();
+
+        const returnedSchema: MetadataSchema = {
+            groups: [
+                {
+                    id: DEFAULT_METADATA_SCHEMA.groups[0].id,
+                    label: DEFAULT_METADATA_SCHEMA.groups[0].label,
+                    fields: [
+                        ...DEFAULT_METADATA_SCHEMA.groups[0].fields,
+                        { key: "field-12345", label: "New Field", type: "text" },
+                    ],
+                },
+                DEFAULT_METADATA_SCHEMA.groups[1],
+            ],
+        };
+
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(
+            async (_url, init) => {
+                try {
+                    const body = JSON.parse((init as RequestInit).body as string);
+                    if (body.action === "add-field") {
+                        return new Response(JSON.stringify({ schema: returnedSchema }), {
+                            status: 200,
+                            headers: { "Content-Type": "application/json" },
+                        });
+                    }
+                } catch {
+                    // not a JSON body — fall through
+                }
+                return new Response(JSON.stringify({}), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                });
+            },
+        );
+
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+
+        fireEvent.click(screen.getByLabelText("add-metadata-field"));
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    method: "POST",
+                    body: expect.stringContaining('"action":"add-field"'),
+                }),
+            );
+        });
+
+        const addFieldCall = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                const b = JSON.parse((init as RequestInit).body as string);
+                return b.action === "add-field";
+            } catch {
+                return false;
+            }
+        });
+        expect(addFieldCall).toBeDefined();
+        const body = JSON.parse((addFieldCall![1] as RequestInit).body as string);
+        expect(body.action).toBe("add-field");
+        expect(body.projectPath).toBe("/projects/proj-add-field");
+        expect(body.groupId).toBe(DEFAULT_METADATA_SCHEMA.groups[0].id);
+        expect(body.field.type).toBe("text");
+        expect(body.field.label).toBe("New Field");
+        expect(body.field.key).toMatch(/^field-\d+$/);
+        expect(body.field.locked).toBeUndefined();
+
+        // After API resolves the new field should appear in the sidebar
+        await waitFor(() => {
+            expect(screen.getByLabelText("field-12345")).toBeInTheDocument();
+        });
+
+        void projectId;
+    });
+
+    it("is disabled when no project is selected", () => {
+        const testStore = makeStore();
+        const res = createTextResource({ name: "Scene", plainText: "" });
+        testStore.dispatch(setResources([res]));
+        testStore.dispatch(setSelectedResourceId(res.id));
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+        const btn = screen.getByLabelText("add-metadata-field") as HTMLButtonElement;
+        expect(btn.disabled).toBe(true);
     });
 });
