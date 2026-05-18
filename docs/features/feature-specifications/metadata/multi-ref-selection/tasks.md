@@ -44,6 +44,7 @@ Spec: `docs/features/feature-specifications/metadata/multi-ref-selection/multi-r
 **Depends on:** Task 1
 **Estimate:** 8
 **Notes:** Pattern after `ResourceRefInput.tsx` for autocomplete state and suggestion list; reuse `LabeledField`. Value type is `ResourceRef[]` (FR 8) — no migration needed. Click-to-navigate uses `useAppDispatch` + `setSelectedResourceId` from `resourcesSlice`. The component should accept a `resourceOptions: ResourceOption[]` prop and let the parent handle filtering, keeping the component pure relative to project state.
+**Done:** [x] 14 tests in `tests/multi-resource-ref-input.test.tsx`. Story at `stories/Sidebar/controls/MultiResourceRefInput.stories.tsx`.
 
 ---
 
