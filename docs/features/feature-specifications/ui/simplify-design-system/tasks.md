@@ -155,7 +155,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 4, 5, 6, 7, 8, 9
 **Estimate:** 2
 **Notes:** Optional follow-up: codify the check as `scripts/check-no-hardcoded-hex.mjs` (similar to existing `check-test-policy.mjs`) — but defer that to a separate task if it adds scope.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

@@ -69,6 +69,15 @@
     --color-gw-saving: #d4a440; /* text-gw-saving  | Saving status dot — amber */
     /* These are functional status colors only. They do not appear elsewhere. */
 
+    /* ── TOAST NOTIFICATION TOKENS ── */
+    /* Fixed dark values — toasts render outside the .appshell-shell cascade. */
+    --color-gw-toast-bg: #1a1a18; /* Default toast background */
+    --color-gw-toast-fg: #f5f4f0; /* Default toast text */
+    --color-gw-toast-success-bg: #0d2a18; /* Deep forest green */
+    --color-gw-toast-success-fg: #b3e8c2; /* Light mint text */
+    --color-gw-toast-error-bg: #291d09; /* Deep amber — no red (FR 6) */
+    --color-gw-toast-error-fg: #f0d8a8; /* Warm light amber text */
+
     /* ── PRODUCT TYPE SCALE ── */
     --font-size-gw-hero: clamp(
         60px,
