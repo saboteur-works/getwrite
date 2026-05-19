@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import { mkdir, readFile, writeFile } from "./io";
 import { withMetaLock } from "./meta-locks";
@@ -9,11 +10,22 @@ export type InvertedIndex = Record<string, Record<string, number>>;
 const INDEX_DIR = "meta/index";
 const INDEX_FILE = "inverted.json";
 
+const STOP_WORDS = new Set([
+    "a", "an", "the",
+    "and", "or", "but", "nor", "so", "yet",
+    "is", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "do", "does", "did",
+    "in", "on", "at", "to", "for", "of", "with", "by", "from",
+    "that", "this", "these", "those",
+    "as", "if", "it", "its", "not",
+]);
+
 function tokenize(text: string): string[] {
     return text
         .toLowerCase()
         .split(/[^a-z0-9]+/)
-        .filter(Boolean);
+        .filter(Boolean)
+        .filter((t) => !STOP_WORDS.has(t));
 }
 
 async function ensureIndexDir(projectRoot: string) {
@@ -145,4 +157,47 @@ export async function search(
     });
 }
 
-export default { indexResource, removeResourceFromIndex, search };
+const SIDECAR_RE =
+    /^resource-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.meta\.json$/i;
+
+/**
+ * Enqueues any resource that has a sidecar file but is absent from the
+ * inverted index. Returns the number of resources newly queued.
+ * Safe to call repeatedly — already-indexed resources are skipped.
+ */
+export async function reindexMissingResources(
+    projectRoot: string,
+): Promise<number> {
+    const metaDir = path.join(projectRoot, "meta");
+    let entries: string[];
+    try {
+        entries = await fs.readdir(metaDir);
+    } catch {
+        return 0;
+    }
+
+    const index = await loadIndex(projectRoot);
+    const indexedIds = new Set<string>();
+    for (const posting of Object.values(index)) {
+        for (const rid of Object.keys(posting)) {
+            indexedIds.add(rid);
+        }
+    }
+
+    const { enqueueIndex } = await import("./indexer-queue");
+    let queued = 0;
+
+    for (const entry of entries) {
+        const match = SIDECAR_RE.exec(entry);
+        if (!match) continue;
+        const resourceId = match[1]!;
+        if (!indexedIds.has(resourceId)) {
+            void enqueueIndex(projectRoot, resourceId);
+            queued++;
+        }
+    }
+
+    return queued;
+}
+
+export default { indexResource, removeResourceFromIndex, search, reindexMissingResources };

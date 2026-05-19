@@ -96,6 +96,13 @@ export default function SearchBar({
     }, []);
 
     useEffect(() => {
+        if (!selectedProjectId) return;
+        void fetch(`/api/project/${selectedProjectId}/reindex`, {
+            method: "POST",
+        });
+    }, [selectedProjectId]);
+
+    useEffect(() => {
         if (!projectPath) {
             setAvailableTags([]);
             return;

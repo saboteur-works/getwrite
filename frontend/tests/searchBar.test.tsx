@@ -105,7 +105,12 @@ describe("SearchBar", () => {
             await flushThunkAndRender();
         });
 
-        expect(fetchSpy).not.toHaveBeenCalled();
+        // The reindex effect fires once on mount (project selected), but no
+        // search call should be made for a sub-2-character query.
+        const searchCalls = fetchSpy.mock.calls.filter(([url]) =>
+            String(url).includes("/search"),
+        );
+        expect(searchCalls).toHaveLength(0);
     });
 
     it("disables the input when no project is selected", () => {
