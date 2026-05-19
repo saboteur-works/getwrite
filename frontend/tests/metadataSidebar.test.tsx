@@ -8,6 +8,7 @@ import { makeStore } from "../src/store/store";
 import {
     setResources,
     setSelectedResourceId,
+    updateResource,
 } from "../src/store/resourcesSlice";
 import {
     setProject,
@@ -631,5 +632,33 @@ describe("MetadataSidebar — multi-resource-ref field", () => {
         expect(onChangeField).toHaveBeenCalledWith("refs-field", [
             { id: optionRes.id, name: "Alice" },
         ]);
+    });
+
+    it("renders without crashing when sidecar contains a ResourceRef missing the name field", () => {
+        // Malformed sidecar data: a ref object with no `name` property.
+        // Previously this was silently tolerated by ResourceRefInput (via string join),
+        // but MultiResourceRefInput calls r.name.toLowerCase() which would crash.
+        // createTextResource validates via Zod, so we inject bad data via updateResource
+        // after store setup to bypass schema validation — simulating a corrupt sidecar.
+        const { testStore, res } = setupMultiRefSidebar();
+        testStore.dispatch(
+            updateResource({
+                id: res.id,
+                userMetadata: {
+                    "refs-field": [{ id: "uuid-bad" }] as unknown as MetadataValue,
+                },
+            }),
+        );
+        expect(() =>
+            render(
+                <Provider store={testStore}>
+                    <MetadataSidebar />
+                </Provider>,
+            ),
+        ).not.toThrow();
+        // Malformed ref is filtered out — input is present but no chip buttons
+        expect(screen.getByLabelText("multi-resource-ref-input")).toBeInTheDocument();
+        // Chips render as buttons with visible label text; none should be present
+        expect(screen.queryByRole("button", { name: /uuid-bad/i })).toBeNull();
     });
 });

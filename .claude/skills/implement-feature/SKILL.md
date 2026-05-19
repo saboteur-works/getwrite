@@ -2,7 +2,9 @@
 name: implement-feature
 description: >
     Implement a software feature from a written spec, task description, or
-    acceptance criteria. Use this skill when asked to build, implement, code,
+    acceptance criteria.
+when_to_use: >
+    Use this skill when asked to build, implement, code,
     or develop a feature — especially when a spec, requirements doc, or list of
     acceptance criteria is provided. Also use when the user says things like
     "build this", "make this work", "implement this", or "write the code for

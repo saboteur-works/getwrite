@@ -359,3 +359,111 @@ describe("reorderGroups", () => {
         await expect(reorderGroups(dir, [])).rejects.toThrow();
     });
 });
+
+// ---------------------------------------------------------------------------
+// getSchema — automatic migration of resource-ref { multiple: true }
+// ---------------------------------------------------------------------------
+
+describe("getSchema migration: resource-ref multiple:true → multi-resource-ref", () => {
+    it("upgrades a resource-ref field with multiple:true to multi-resource-ref", async () => {
+        const schema: MetadataSchema = {
+            groups: [
+                {
+                    id: GROUP_ID,
+                    label: "Test",
+                    fields: [{ key: "chars", label: "Characters", type: "resource-ref", multiple: true }],
+                },
+            ],
+        };
+        const { dir } = await makeTmpProject(schema);
+        const result = await getSchema(dir);
+        const field = result.groups[0].fields[0];
+        expect(field.type).toBe("multi-resource-ref");
+        expect(field.multiple).toBeUndefined();
+    });
+
+    it("persists the migration to disk so a second read sees the upgraded type", async () => {
+        const schema: MetadataSchema = {
+            groups: [
+                {
+                    id: GROUP_ID,
+                    label: "Test",
+                    fields: [{ key: "chars", label: "Characters", type: "resource-ref", multiple: true }],
+                },
+            ],
+        };
+        const { dir } = await makeTmpProject(schema);
+        await getSchema(dir);
+        const second = await getSchema(dir);
+        expect(second.groups[0].fields[0].type).toBe("multi-resource-ref");
+    });
+
+    it("does NOT upgrade a resource-ref field with multiple:false", async () => {
+        const schema: MetadataSchema = {
+            groups: [
+                {
+                    id: GROUP_ID,
+                    label: "Test",
+                    fields: [{ key: "pov", label: "POV", type: "resource-ref", multiple: false }],
+                },
+            ],
+        };
+        const { dir } = await makeTmpProject(schema);
+        const result = await getSchema(dir);
+        const field = result.groups[0].fields[0];
+        expect(field.type).toBe("resource-ref");
+    });
+
+    it("does NOT upgrade a resource-ref field without a multiple property", async () => {
+        const schema: MetadataSchema = {
+            groups: [
+                {
+                    id: GROUP_ID,
+                    label: "Test",
+                    fields: [{ key: "pov", label: "POV", type: "resource-ref" }],
+                },
+            ],
+        };
+        const { dir } = await makeTmpProject(schema);
+        const result = await getSchema(dir);
+        expect(result.groups[0].fields[0].type).toBe("resource-ref");
+    });
+
+    it("is idempotent — already-migrated multi-resource-ref fields are unchanged", async () => {
+        const schema: MetadataSchema = {
+            groups: [
+                {
+                    id: GROUP_ID,
+                    label: "Test",
+                    fields: [{ key: "chars", label: "Characters", type: "multi-resource-ref" }],
+                },
+            ],
+        };
+        const { dir } = await makeTmpProject(schema);
+        const result = await getSchema(dir);
+        expect(result.groups[0].fields[0].type).toBe("multi-resource-ref");
+    });
+
+    it("upgrades only multiple:true fields in a mixed schema", async () => {
+        const schema: MetadataSchema = {
+            groups: [
+                {
+                    id: GROUP_ID,
+                    label: "Test",
+                    fields: [
+                        { key: "chars", label: "Characters", type: "resource-ref", multiple: true },
+                        { key: "pov", label: "POV", type: "resource-ref", multiple: false },
+                        { key: "title", label: "Title", type: "text" },
+                    ],
+                },
+            ],
+        };
+        const { dir } = await makeTmpProject(schema);
+        const result = await getSchema(dir);
+        const fields = result.groups[0].fields;
+        expect(fields[0].type).toBe("multi-resource-ref");
+        expect(fields[0].multiple).toBeUndefined();
+        expect(fields[1].type).toBe("resource-ref");
+        expect(fields[2].type).toBe("text");
+    });
+});

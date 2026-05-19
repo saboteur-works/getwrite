@@ -188,6 +188,7 @@ export default function Home(): JSX.Element {
                     : [],
                 metadata: projectFiles.project.metadata,
                 statuses: projectFiles.project.config?.statuses ?? [],
+                metadataSchema: projectFiles.project.config?.metadataSchema,
             }),
         );
         dispatch(setSelectedProjectId(projectFiles.project.id));
@@ -252,6 +253,7 @@ export default function Home(): JSX.Element {
                         : [],
                     metadata: p.project.metadata,
                     statuses: p.project.config?.statuses ?? [],
+                    metadataSchema: p.project.config?.metadataSchema,
                 }),
             );
             dispatch(

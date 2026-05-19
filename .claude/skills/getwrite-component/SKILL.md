@@ -2,8 +2,9 @@
 name: getwrite-component
 description: >
     Create React components for the GetWrite project that conform to the project's
-    brand tokens, typography rules, and Storybook documentation standards. Use this
-    skill whenever the user asks to create, add, or build any piece of UI for
+    brand tokens, typography rules, and Storybook documentation standards.
+when_to_use: >
+    Use this skill when asked to create, add, or build any piece of UI for
     GetWrite — components, buttons, modals, panels, badges, inputs, tags, or any
     named visual element. Trigger on phrases like "create a component", "add a
     [Name] component", "build a [Name] UI", "make a [Name] button/modal/badge",

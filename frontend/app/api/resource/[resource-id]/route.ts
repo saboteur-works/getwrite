@@ -59,7 +59,7 @@ export async function POST(
                 const schema = await getSchema(projectRoot);
                 resourceRefKeys = schema.groups
                     .flatMap((g) => g.fields)
-                    .filter((f) => f.type === "resource-ref")
+                    .filter((f) => f.type === "resource-ref" || f.type === "multi-resource-ref")
                     .map((f) => f.key);
             } catch {
                 // Schema unreadable — proceed without nullification

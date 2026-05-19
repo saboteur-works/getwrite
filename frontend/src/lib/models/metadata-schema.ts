@@ -62,12 +62,50 @@ function allFieldKeys(schema: MetadataSchema): string[] {
 }
 
 /**
+ * Upgrades any `resource-ref` field with `multiple: true` to `multi-resource-ref`
+ * and removes the now-redundant `multiple` property.
+ *
+ * Returns the (possibly mutated) schema and a `changed` flag. Safe to call on
+ * already-migrated schemas — idempotent.
+ */
+function migrateMultipleToMultiRef(schema: MetadataSchema): {
+    schema: MetadataSchema;
+    changed: boolean;
+} {
+    let changed = false;
+    const groups = schema.groups.map((group) => {
+        const fields = group.fields.map((field) => {
+            if (field.type === "resource-ref" && field.multiple === true) {
+                changed = true;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { multiple: _removed, ...rest } = field;
+                return { ...rest, type: "multi-resource-ref" as const };
+            }
+            return field;
+        });
+        return { ...group, fields };
+    });
+    return { schema: { ...schema, groups }, changed };
+}
+
+/**
  * Returns the current metadata schema for a project, or `{ groups: [] }` if
  * none has been stored yet.
+ *
+ * Automatically upgrades any legacy `resource-ref` fields with `multiple: true`
+ * to the `multi-resource-ref` type and persists the change to disk so subsequent
+ * reads see the canonical form.
  */
 export async function getSchema(projectRoot: string): Promise<MetadataSchema> {
     const project = await readProject(projectRoot);
-    return project.config?.metadataSchema ?? { groups: [] };
+    const raw = project.config?.metadataSchema ?? { groups: [] };
+    const { schema, changed } = migrateMultipleToMultiRef(raw);
+    if (changed) {
+        if (!project.config) project.config = { editorConfig: {} };
+        project.config.metadataSchema = schema;
+        await writeProject(projectRoot, project);
+    }
+    return schema;
 }
 
 /**

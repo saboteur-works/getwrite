@@ -36,6 +36,21 @@ import type {
 const EMPTY_RESOURCE_OPTIONS: POVResourceOption[] = [];
 const EMPTY_REF_OPTIONS: ResourceOption[] = [];
 
+/**
+ * Validates raw sidecar JSON as a ResourceRef array at the system boundary.
+ * Filters out any element missing a string `name` — old or malformed sidecar
+ * data can produce such elements, and components assume `name` is always defined.
+ */
+function toResourceRefArray(raw: unknown): ResourceRef[] {
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(
+        (r): r is ResourceRef =>
+            r !== null &&
+            typeof r === "object" &&
+            typeof (r as { name?: unknown }).name === "string",
+    );
+}
+
 const selectCharacterList = createSelector(
     (state: any) => state.projects.selectedProjectId as string | null,
     (state: any) => state.projects.projects as Record<string, { folders?: { id: string; name?: string }[] }>,
@@ -346,7 +361,7 @@ export default function MetadataSidebar({
                             field.refFolder,
                             field.includeSubfolders,
                         )}
-                        value={(rawValue as ResourceRef[]) ?? []}
+                        value={toResourceRefArray(rawValue)}
                         maxSelections={field.maxSelections}
                         className="text-brand-mid"
                         onChange={(v) => emit(key, v)}

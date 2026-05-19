@@ -4,7 +4,9 @@ description: >
     Creates new Redux slices that match the existing GetWrite patterns
     (projectsSlice, resourcesSlice, revisionsSlice) including typed hooks,
     the transport-service/guards split, and the explicit (no optimistic) sync
-    model. Use this skill whenever the user asks to add, create, or build any
+    model.
+when_to_use: >
+    Use this skill whenever the user asks to add, create, or build any
     new Redux slice, store feature, state management layer, or async thunk for
     GetWrite — including "add a slice for X", "create Redux state for Y",
     "I need store state that tracks Z", "add async thunk for", "wire up Redux
