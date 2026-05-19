@@ -43,11 +43,23 @@ function getApiErrorMessage(errorBody: unknown, fallback: string): string {
     return fallback;
 }
 
+export interface SearchFilters {
+    folder?: string;
+    status?: string;
+    tags?: string[];
+}
+
 export async function executeSearchRequest(
     context: SearchRequestContext,
     query: string,
+    filters?: SearchFilters,
 ): Promise<SearchResult[]> {
     const params = new URLSearchParams({ q: query });
+    if (filters?.folder) params.set("folder", filters.folder);
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.tags && filters.tags.length > 0) {
+        params.set("tags", filters.tags.join(","));
+    }
     const response = await fetch(
         `/api/project/${context.projectId}/search?${params.toString()}`,
     );

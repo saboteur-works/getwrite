@@ -2,8 +2,11 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import {
     executeSearchRequest,
     resolveSearchRequestContext,
+    type SearchFilters,
     type SearchResult,
 } from "./search-transport-service";
+
+export type { SearchFilters } from "./search-transport-service";
 import type { RootState } from "./store";
 
 export type { SearchResult } from "./search-transport-service";
@@ -19,6 +22,7 @@ export interface SearchState {
 interface SearchPayload {
     projectId: string;
     query: string;
+    filters?: SearchFilters;
 }
 
 interface SearchFulfilledResult {
@@ -47,7 +51,7 @@ export const runSearch = createAsyncThunk<
     SearchFulfilledResult,
     SearchPayload,
     { state: RootState; rejectValue: string }
->("search/runSearch", async ({ projectId, query }, thunkApi) => {
+>("search/runSearch", async ({ projectId, query, filters }, thunkApi) => {
     const context = resolveSearchRequestContext(thunkApi.getState(), projectId);
 
     if ("error" in context) {
@@ -55,7 +59,7 @@ export const runSearch = createAsyncThunk<
     }
 
     try {
-        const results = await executeSearchRequest(context, query);
+        const results = await executeSearchRequest(context, query, filters);
         return { projectId, query, results };
     } catch (error) {
         return thunkApi.rejectWithValue(

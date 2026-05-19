@@ -96,7 +96,7 @@ Derived from: [full-text-search-spec.md](./full-text-search-spec.md)
 
 **Depends on:** Task 3, Task 4
 **Estimate:** 3 SP
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
