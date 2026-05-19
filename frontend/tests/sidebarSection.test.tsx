@@ -1,41 +1,41 @@
 import React from "react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import SidebarSection from "../components/Sidebar/SidebarSection";
+import CollapsibleSection from "../components/common/UI/CollapsibleSection/CollapsibleSection";
 
-describe("SidebarSection", () => {
+describe("SidebarSection (via CollapsibleSection variant='sidebar')", () => {
     it("renders children when open by default", () => {
         render(
-            <SidebarSection label="Synopsis">
+            <CollapsibleSection title="Synopsis" variant="sidebar">
                 <textarea aria-label="synopsis" />
-            </SidebarSection>,
+            </CollapsibleSection>,
         );
         expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
     });
 
     it("hides children when defaultOpen is false", () => {
         render(
-            <SidebarSection label="Synopsis" defaultOpen={false}>
+            <CollapsibleSection title="Synopsis" variant="sidebar" defaultOpen={false}>
                 <textarea aria-label="synopsis" />
-            </SidebarSection>,
+            </CollapsibleSection>,
         );
         expect(screen.queryByLabelText("synopsis")).not.toBeInTheDocument();
     });
 
     it("renders the section label", () => {
         render(
-            <SidebarSection label="Story Timeline">
+            <CollapsibleSection title="Story Timeline" variant="sidebar">
                 <span>content</span>
-            </SidebarSection>,
+            </CollapsibleSection>,
         );
         expect(screen.getByText("Story Timeline")).toBeInTheDocument();
     });
 
     it("collapses content when toggle is clicked while open", () => {
         render(
-            <SidebarSection label="Notes">
+            <CollapsibleSection title="Notes" variant="sidebar">
                 <textarea aria-label="notes" />
-            </SidebarSection>,
+            </CollapsibleSection>,
         );
         expect(screen.getByLabelText("notes")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: /notes/i }));
@@ -44,9 +44,9 @@ describe("SidebarSection", () => {
 
     it("expands content when toggle is clicked while collapsed", () => {
         render(
-            <SidebarSection label="Notes" defaultOpen={false}>
+            <CollapsibleSection title="Notes" variant="sidebar" defaultOpen={false}>
                 <textarea aria-label="notes" />
-            </SidebarSection>,
+            </CollapsibleSection>,
         );
         expect(screen.queryByLabelText("notes")).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: /notes/i }));
@@ -55,9 +55,9 @@ describe("SidebarSection", () => {
 
     it("toggle button has aria-expanded reflecting open state", () => {
         render(
-            <SidebarSection label="Tags">
+            <CollapsibleSection title="Tags" variant="sidebar">
                 <span>content</span>
-            </SidebarSection>,
+            </CollapsibleSection>,
         );
         const btn = screen.getByRole("button", { name: /tags/i });
         expect(btn).toHaveAttribute("aria-expanded", "true");
@@ -67,12 +67,25 @@ describe("SidebarSection", () => {
 
     it("toggle button has aria-controls pointing to content region", () => {
         render(
-            <SidebarSection label="Status & POV">
+            <CollapsibleSection title="Status & POV" variant="sidebar">
                 <span>content</span>
-            </SidebarSection>,
+            </CollapsibleSection>,
         );
         const btn = screen.getByRole("button", { name: /status/i });
         const controlsId = btn.getAttribute("aria-controls");
         expect(controlsId).toBeTruthy();
+    });
+
+    it("fires onToggle callback with new state", () => {
+        const onToggle = vi.fn();
+        render(
+            <CollapsibleSection title="Notes" variant="sidebar" onToggle={onToggle}>
+                <span>content</span>
+            </CollapsibleSection>,
+        );
+        fireEvent.click(screen.getByRole("button", { name: /notes/i }));
+        expect(onToggle).toHaveBeenCalledWith(false);
+        fireEvent.click(screen.getByRole("button", { name: /notes/i }));
+        expect(onToggle).toHaveBeenCalledWith(true);
     });
 });

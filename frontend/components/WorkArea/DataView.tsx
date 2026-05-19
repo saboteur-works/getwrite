@@ -6,7 +6,7 @@ import WordCountProgressBar from "./WordCountProgressBar";
 import ResourceListItem from "./ResourceListItem";
 import StubResourcesSection from "./StubResourcesSection";
 import ResourceBreakdown, { type ResourceGroup } from "./ResourceBreakdown";
-import CollapsibleSection from "./CollapsibleSection";
+import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 
 const STUB_WORD_THRESHOLD = 50;
 

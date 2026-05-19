@@ -126,8 +126,8 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Done when:** One component exists in `components/common/UI/`. The two prior files are deleted. All four consumers (`MetadataSidebar.tsx`, `DataView.tsx`, and previously-internal references) import the merged version. Storybook covers both variants; a11y test passes; full test suite passes.
 **Depends on:** 2 (not 3 — no shadcn needed)
 **Estimate:** 2
-**Notes:** No shadcn primitive needed; this is pure consolidation. Slugified `aria-controls` IDs must keep working — both sources already do this identically.
-**Done:** [ ]
+**Notes:** No shadcn primitive needed; this is pure consolidation. Slugified `aria-controls` IDs must keep working — both sources already do this identically. Unified prop name is `title` (MetadataSidebar updated from `label`). `onToggle` callback included from SidebarSection. Storybook story moved to `stories/Foundations/CollapsibleSection.stories.tsx` covering both variants.
+**Done:** [x]
 
 ---
 
