@@ -111,6 +111,7 @@ After all files, output a brief implementation summary:
 
 ## Post-Implementation
 
+- If the implementation is related to a supplied task document, mark the task as complete in that document.
 - If any actionable follow-ups have been identified:
     1. Determine the feature's location in @docs/features/feature-specifications. If unclear, always ask the user for the true directory.
     2. If there is no 'follow-up-work.md' file in that directory, create one with a brief description of the follow-up work needed, why it was deferred, and any relevant context for future implementation.

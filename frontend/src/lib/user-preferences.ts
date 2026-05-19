@@ -52,6 +52,8 @@ export const PROJECT_USER_PREFERENCES_KEY = "userPreferences";
 export interface ProjectUserPreferences {
     /** Preferred color mode for the project UI. */
     colorMode?: ColorMode;
+    /** Maximum number of full-text search results returned per query. Must be a positive integer. */
+    searchResultLimit?: number;
 }
 
 /**
@@ -83,12 +85,20 @@ export function getUserPreferencesFromProjectMetadata(
 
     const rawRecord = raw as Record<string, MetadataValue>;
     const colorMode = rawRecord.colorMode;
+    const rawLimit = rawRecord.searchResultLimit;
+    const searchResultLimit =
+        typeof rawLimit === "number" &&
+        Number.isInteger(rawLimit) &&
+        rawLimit > 0
+            ? rawLimit
+            : undefined;
 
     return {
         colorMode:
             colorMode === "light" || colorMode === "dark"
                 ? colorMode
                 : undefined,
+        searchResultLimit,
     };
 }
 
