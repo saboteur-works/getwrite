@@ -2406,9 +2406,23 @@
         transition: background-color 0.1s ease;
     }
 
+    .listbox-option--stacked {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
     .listbox-option--highlighted,
     .listbox-option:hover {
         background: var(--color-gw-chrome2);
+    }
+
+    .listbox-option-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        gap: 8px;
     }
 
     .listbox-option-label {
@@ -2426,6 +2440,17 @@
         text-transform: uppercase;
         letter-spacing: 0.08em;
         color: var(--color-gw-secondary);
+    }
+
+    .listbox-option-description {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        font-size: 11px;
+        color: var(--color-gw-secondary);
+        line-height: 1.5;
+        width: 100%;
     }
 
     /* ── TABS ── */

@@ -214,7 +214,9 @@ export default function SearchBar({
                     options={results.map((r) => ({
                         value: r.resourceId,
                         label: r.title,
-                        meta: r.snippet ?? undefined,
+                        description: r.snippet
+                            ? renderSnippet(r.snippet, query)
+                            : undefined,
                     }))}
                     highlightedIndex={highlight}
                     onSelect={(resourceId) => {

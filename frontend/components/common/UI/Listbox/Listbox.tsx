@@ -8,6 +8,8 @@ export interface ListboxOption {
     label: string;
     /** Optional secondary label shown to the right of the main label. */
     meta?: string;
+    /** Optional content rendered below the label (accepts React nodes for rich text like <mark>). */
+    description?: React.ReactNode;
 }
 
 export interface ListboxProps {
@@ -67,15 +69,21 @@ export default function Listbox({
                             tabIndex={-1}
                             className={cn(
                                 "listbox-option",
+                                opt.description && "listbox-option--stacked",
                                 isHighlighted && "listbox-option--highlighted",
                             )}
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => onSelect(opt.value)}
                             onMouseEnter={() => onHighlightChange?.(i)}
                         >
-                            <span className="listbox-option-label">{opt.label}</span>
-                            {opt.meta ? (
-                                <span className="listbox-option-meta">{opt.meta}</span>
+                            <div className="listbox-option-top">
+                                <span className="listbox-option-label">{opt.label}</span>
+                                {opt.meta ? (
+                                    <span className="listbox-option-meta">{opt.meta}</span>
+                                ) : null}
+                            </div>
+                            {opt.description ? (
+                                <div className="listbox-option-description">{opt.description}</div>
                             ) : null}
                         </button>
                     </li>
