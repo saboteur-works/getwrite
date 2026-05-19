@@ -61,6 +61,22 @@ describe("resolveFolderScope", () => {
         expect(scope.has("other")).toBe(false);
         expect(scope.has("root")).toBe(false);
     });
+
+    it("finds subfolders that use folderId instead of parentId (legacy on-disk format)", () => {
+        const legacySubfolder = {
+            id: "legacy-child",
+            type: "folder" as const,
+            name: "legacy-child",
+            slug: "legacy-child",
+            orderIndex: 0,
+            createdAt: "2024-01-01T00:00:00.000Z",
+            // parentId is not set — only folderId is set (pre-fix on-disk format)
+            folderId: "root",
+        } as unknown as import("../src/lib/models/types").Folder;
+        const folders = [...FOLDERS, legacySubfolder];
+        const scope = resolveFolderScope(folders, "root", true);
+        expect(scope.has("legacy-child")).toBe(true);
+    });
 });
 
 describe("filterResourceOptionsByScope", () => {

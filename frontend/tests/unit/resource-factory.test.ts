@@ -62,7 +62,7 @@ describe("models/resource factory regressions (T007)", () => {
         });
 
         expect(folder.type).toBe("folder");
-        expect(folder.folderId).toBe(folderId);
+        expect(folder.parentId).toBe(folderId);
         expect(folder.special).toBe(true);
         expect(folder.orderIndex).toBe(0);
         expect(folder.slug).toBe("workspace");

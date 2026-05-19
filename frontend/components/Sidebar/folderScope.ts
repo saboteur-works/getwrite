@@ -18,7 +18,8 @@ export function resolveFolderScope(
     while (queue.length > 0) {
         const current = queue.shift()!;
         for (const folder of folders) {
-            if (folder.parentId === current && !scope.has(folder.id)) {
+            const effectiveParentId = folder.parentId ?? folder.folderId ?? null;
+            if (effectiveParentId === current && !scope.has(folder.id)) {
                 scope.add(folder.id);
                 queue.push(folder.id);
             }
