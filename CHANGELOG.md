@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.31](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.30...getwrite-v0.2.31) (2026-05-19)
+
+
+### Features
+
+* add normalizePastedHTML pure function with full test coverage ([e817a9e](https://github.com/saboteur-works/getwrite/commit/e817a9ec3a16d7f4c448e75e2b913a4ad8df82ef))
+* normalize pasted text and replace StripExternalPasteColor ([e4e17e3](https://github.com/saboteur-works/getwrite/commit/e4e17e3f3fd8535349415ed0f4c78d769f35f845))
+* replace StripExternalPasteColor with NormalizePastedText extension ([b080a1d](https://github.com/saboteur-works/getwrite/commit/b080a1d32737b17035135162f9c18e2e63bb4951))
+
 ## [0.2.30](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.29...getwrite-v0.2.30) (2026-05-19)
 
 
