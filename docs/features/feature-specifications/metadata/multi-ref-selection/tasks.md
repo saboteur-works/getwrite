@@ -88,6 +88,7 @@ Spec: `docs/features/feature-specifications/metadata/multi-ref-selection/multi-r
 **Depends on:** Tasks 1, 7
 **Estimate:** 1
 **Notes:** Covers FR 9. One-line addition to the labels record plus verification the existing `changeMetadataFieldType` thunk accepts the new value (it should, given Task 1).
+**Done:** [x] `"multi-resource-ref": "Multi Ref"` was already added to `FIELD_TYPE_LABELS` during Task 1 (required for exhaustive `Record<MetadataFieldType, string>`). Dropdown iterates `Object.entries(FIELD_TYPE_LABELS)` — no code changes needed. Added 2 tests to `schemaManager.test.tsx` verifying "Multi Ref" appears in the dropdown and that selecting it dispatches `changeMetadataFieldType` with the correct payload. All 830 tests pass, `pnpm typecheck` clean.
 
 ---
 

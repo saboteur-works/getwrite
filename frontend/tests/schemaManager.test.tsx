@@ -770,3 +770,47 @@ describe("SchemaManager — field key rename", () => {
         expect(fetchSpy).not.toHaveBeenCalled();
     });
 });
+
+// ---------------------------------------------------------------------------
+// multi-resource-ref in field-type dropdown (Task 8)
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — multi-resource-ref field type", () => {
+    it("field-type dropdown includes 'Multi Ref' as an option", () => {
+        setup();
+        const select = screen.getByLabelText("Field type for Field One") as HTMLSelectElement;
+        const options = Array.from(select.options).map((o) => o.text);
+        expect(options).toContain("Multi Ref");
+    });
+
+    it("selecting multi-resource-ref dispatches changeMetadataFieldType", async () => {
+        const fetchSpy = mockFetchOk(CUSTOM_SCHEMA);
+        setup();
+
+        const select = screen.getByLabelText("Field type for Field One") as HTMLSelectElement;
+        fireEvent.change(select, { target: { value: "multi-resource-ref" } });
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"change-field-type"'),
+                }),
+            );
+        });
+
+        const call = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                return (
+                    JSON.parse((init as RequestInit).body as string).action ===
+                    "change-field-type"
+                );
+            } catch {
+                return false;
+            }
+        });
+        const body = JSON.parse((call![1] as RequestInit).body as string);
+        expect(body.fieldKey).toBe("field-one");
+        expect(body.newType).toBe("multi-resource-ref");
+    });
+});
