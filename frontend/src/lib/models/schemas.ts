@@ -54,6 +54,7 @@ export const MetadataValue: z.ZodTypeAny = z.lazy(() =>
         z.array(z.string()),
         z.array(z.number()),
         z.array(z.boolean()),
+        z.array(ResourceRefValueSchema),
         ResourceRefValueSchema,
         z.record(z.string(), MetadataValue),
     ]),

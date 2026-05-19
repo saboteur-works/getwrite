@@ -14,7 +14,49 @@ import {
     setSelectedProjectId,
 } from "../src/store/projectsSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
-import type { MetadataSchema } from "../src/lib/models/types";
+import type { MetadataSchema, MetadataValue } from "../src/lib/models/types";
+
+function setupMultiRefSidebar({
+    fieldKey = "refs-field",
+    fieldLabel = "Refs",
+    refFolder,
+    maxSelections,
+    userMetadata = {},
+    extraResources = [] as ReturnType<typeof createTextResource>[],
+}: {
+    fieldKey?: string;
+    fieldLabel?: string;
+    refFolder?: string;
+    maxSelections?: number;
+    userMetadata?: Record<string, MetadataValue>;
+    extraResources?: ReturnType<typeof createTextResource>[];
+} = {}) {
+    const customSchema: MetadataSchema = {
+        groups: [
+            {
+                id: "custom-group",
+                label: "Custom Group",
+                fields: [
+                    {
+                        key: fieldKey,
+                        label: fieldLabel,
+                        type: "multi-resource-ref",
+                        ...(refFolder !== undefined ? { refFolder } : {}),
+                        ...(maxSelections !== undefined ? { maxSelections } : {}),
+                    },
+                ],
+            },
+        ],
+    };
+    const res = createTextResource({ name: "Scene", plainText: "", userMetadata });
+    const testStore = makeStore();
+    const projectId = "test-project-id";
+    testStore.dispatch(setProject({ id: projectId, rootPath: "/test", metadataSchema: customSchema }));
+    testStore.dispatch(setSelectedProjectId(projectId));
+    testStore.dispatch(setResources([res, ...extraResources]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    return { testStore, res, projectId };
+}
 
 describe("MetadataSidebar", () => {
     it("renders story date/duration controls and invokes onChangeField", () => {
@@ -540,5 +582,54 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
         );
         const btn = screen.getByLabelText("add-metadata-field") as HTMLButtonElement;
         expect(btn.disabled).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// multi-resource-ref field wiring (Task 7)
+// ---------------------------------------------------------------------------
+
+describe("MetadataSidebar — multi-resource-ref field", () => {
+    it("renders MultiResourceRefInput for a multi-resource-ref field", () => {
+        const { testStore } = setupMultiRefSidebar();
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+        expect(screen.getByLabelText("multi-resource-ref-input")).toBeInTheDocument();
+    });
+
+    it("loads an existing ResourceRef[] sidecar value as chips", () => {
+        const optionRes = createTextResource({ name: "Alice", plainText: "" });
+        const { testStore } = setupMultiRefSidebar({
+            userMetadata: { "refs-field": [{ id: optionRes.id, name: "Alice" }] },
+            extraResources: [optionRes],
+        });
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar />
+            </Provider>,
+        );
+        expect(screen.getByRole("button", { name: "Alice" })).toBeInTheDocument();
+    });
+
+    it("calls onChangeField with ResourceRef[] when a ref is added via Enter", () => {
+        const optionRes = createTextResource({ name: "Alice", plainText: "" });
+        const onChangeField = vi.fn();
+        const { testStore } = setupMultiRefSidebar({ extraResources: [optionRes] });
+        render(
+            <Provider store={testStore}>
+                <MetadataSidebar onChangeField={onChangeField} />
+            </Provider>,
+        );
+
+        const input = screen.getByLabelText("multi-resource-ref-input");
+        fireEvent.change(input, { target: { value: "Alice" } });
+        fireEvent.keyDown(input, { key: "Enter" });
+
+        expect(onChangeField).toHaveBeenCalledWith("refs-field", [
+            { id: optionRes.id, name: "Alice" },
+        ]);
     });
 });

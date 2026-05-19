@@ -10,6 +10,7 @@ import NumberInput from "./controls/NumberInput";
 import BooleanToggle from "./controls/BooleanToggle";
 import SelectInput from "./controls/SelectInput";
 import ResourceRefInput, { type ResourceOption } from "./controls/ResourceRefInput";
+import MultiResourceRefInput from "./controls/MultiResourceRefInput";
 import { filterResourceOptionsByScope } from "./folderScope";
 import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
@@ -332,6 +333,22 @@ export default function MetadataSidebar({
                         resourceOptions={allResourceOptions}
                         className="text-brand-mid"
                         multiple={multiple}
+                        onChange={(v) => emit(key, v)}
+                    />
+                );
+            case "multi-resource-ref":
+                return (
+                    <MultiResourceRefInput
+                        label={label}
+                        resourceOptions={filterResourceOptionsByScope(
+                            rawResources,
+                            folders,
+                            field.refFolder,
+                            field.includeSubfolders,
+                        )}
+                        value={(rawValue as ResourceRef[]) ?? []}
+                        maxSelections={field.maxSelections}
+                        className="text-brand-mid"
                         onChange={(v) => emit(key, v)}
                     />
                 );

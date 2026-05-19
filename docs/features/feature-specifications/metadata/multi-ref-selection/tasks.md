@@ -77,6 +77,7 @@ Spec: `docs/features/feature-specifications/metadata/multi-ref-selection/multi-r
 **Depends on:** Tasks 4, 5, 6
 **Estimate:** 1
 **Notes:** Covers FR 2. The `onChange` shape (`ResourceRef[]`) plugs into the same `onChangeField(key, value)` callback used by all other typed inputs.
+**Done:** [x] `case "multi-resource-ref":` added to `renderField` switch. Also fixed a pre-existing gap: `z.array(ResourceRefValueSchema)` was missing from `MetadataValueSchema` in `schemas.ts` (TS type already included `ResourceRef[]`, Zod did not). 3 new tests in `metadataSidebar.test.tsx`. All 828 tests pass, `pnpm typecheck` clean.
 
 ---
 
