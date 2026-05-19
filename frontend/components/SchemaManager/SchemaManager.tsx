@@ -687,6 +687,41 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                                                 Include subfolders
                                                             </label>
                                                         ) : null}
+                                                        <label className="text-[11px] text-gw-secondary">
+                                                            Max selections
+                                                        </label>
+                                                        <input
+                                                            key={field.maxSelections ?? "none"}
+                                                            type="number"
+                                                            min={1}
+                                                            defaultValue={field.maxSelections ?? ""}
+                                                            onBlur={(e) => {
+                                                                if (!projectId) return;
+                                                                const raw = e.target.value;
+                                                                const parsed = parseInt(raw, 10);
+                                                                if (raw === "") {
+                                                                    void dispatch(
+                                                                        updateMetadataRefProperties({
+                                                                            projectId,
+                                                                            groupId: group.id,
+                                                                            fieldKey: field.key,
+                                                                            updates: { maxSelections: null },
+                                                                        }),
+                                                                    );
+                                                                } else if (!isNaN(parsed) && parsed >= 1) {
+                                                                    void dispatch(
+                                                                        updateMetadataRefProperties({
+                                                                            projectId,
+                                                                            groupId: group.id,
+                                                                            fieldKey: field.key,
+                                                                            updates: { maxSelections: parsed },
+                                                                        }),
+                                                                    );
+                                                                }
+                                                            }}
+                                                            className="rounded border border-gw-border bg-transparent px-2 py-0.5 font-mono text-[11px] text-gw-primary focus:outline-none focus:ring-1 focus:ring-gw-border"
+                                                            aria-label={`Max selections for ${field.label}`}
+                                                        />
                                                     </div>
                                                 ) : null}
                                             </div>

@@ -977,3 +977,92 @@ describe("SchemaManager — folder picker (Task 9)", () => {
         });
     });
 });
+
+// ---------------------------------------------------------------------------
+// maxSelections number input (Task 10)
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — maxSelections input (Task 10)", () => {
+    it("Max selections input appears for multi-resource-ref fields", () => {
+        setupWithFolders(MULTI_REF_SCHEMA);
+        expect(screen.getByLabelText("Max selections for Refs")).toBeInTheDocument();
+    });
+
+    it("Max selections input shows existing maxSelections value", () => {
+        const schema: MetadataSchema = {
+            groups: [{
+                id: "group-a",
+                label: "Group A",
+                fields: [{ key: "refs-field", label: "Refs", type: "multi-resource-ref", maxSelections: 3 }],
+            }],
+        };
+        setupWithFolders(schema);
+        const input = screen.getByLabelText("Max selections for Refs") as HTMLInputElement;
+        expect(input.value).toBe("3");
+    });
+
+    it("entering a positive integer and blurring dispatches updateMetadataRefProperties", async () => {
+        const fetchSpy = mockFetchOk(MULTI_REF_SCHEMA);
+        setupWithFolders(MULTI_REF_SCHEMA);
+
+        const input = screen.getByLabelText("Max selections for Refs");
+        fireEvent.change(input, { target: { value: "5" } });
+        fireEvent.blur(input);
+
+        await waitFor(() => {
+            const call = fetchSpy.mock.calls.find(([, init]) => {
+                try {
+                    return JSON.parse((init as RequestInit).body as string).action === "update-ref-properties";
+                } catch { return false; }
+            });
+            expect(call).toBeDefined();
+            const body = JSON.parse((call![1] as RequestInit).body as string);
+            expect(body.fieldKey).toBe("refs-field");
+            expect(body.maxSelections).toBe(5);
+        });
+    });
+
+    it("clearing the input dispatches with maxSelections: null", async () => {
+        const schema: MetadataSchema = {
+            groups: [{
+                id: "group-a",
+                label: "Group A",
+                fields: [{ key: "refs-field", label: "Refs", type: "multi-resource-ref", maxSelections: 3 }],
+            }],
+        };
+        const fetchSpy = mockFetchOk(schema);
+        setupWithFolders(schema);
+
+        const input = screen.getByLabelText("Max selections for Refs");
+        fireEvent.change(input, { target: { value: "" } });
+        fireEvent.blur(input);
+
+        await waitFor(() => {
+            const call = fetchSpy.mock.calls.find(([, init]) => {
+                try {
+                    return JSON.parse((init as RequestInit).body as string).action === "update-ref-properties";
+                } catch { return false; }
+            });
+            expect(call).toBeDefined();
+            const body = JSON.parse((call![1] as RequestInit).body as string);
+            expect(body.maxSelections).toBeNull();
+        });
+    });
+
+    it("entering 0 does not dispatch", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch");
+        setupWithFolders(MULTI_REF_SCHEMA);
+
+        const input = screen.getByLabelText("Max selections for Refs");
+        fireEvent.change(input, { target: { value: "0" } });
+        fireEvent.blur(input);
+
+        await new Promise((r) => setTimeout(r, 50));
+        const refPropCalls = fetchSpy.mock.calls.filter(([, init]) => {
+            try {
+                return JSON.parse((init as RequestInit).body as string).action === "update-ref-properties";
+            } catch { return false; }
+        });
+        expect(refPropCalls).toHaveLength(0);
+    });
+});

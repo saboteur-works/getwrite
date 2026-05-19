@@ -110,6 +110,7 @@ Spec: `docs/features/feature-specifications/metadata/multi-ref-selection/multi-r
 **Depends on:** Tasks 3, 8
 **Estimate:** 1
 **Notes:** Covers FR 15. Validate `min=1` on the input element; reject non-positive values inline. Reuse the existing rename/edit row styling in SchemaManager.
+**Done:** [x] `<input type="number" min=1>` added inside the `isMultiRef` block. Dispatches `updateMetadataRefProperties({ maxSelections: value })` on blur for valid positive integers, `maxSelections: null` when cleared; value 0 or negative is silently ignored. Uses `defaultValue` + `key` to stay in sync after API roundtrips. 5 tests in `schemaManager.test.tsx`. All 843 tests pass, `pnpm typecheck` clean.
 
 ---
 
