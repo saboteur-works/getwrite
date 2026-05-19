@@ -32,6 +32,7 @@ Output format — one entry per task:
 **Depends on:** [task numbers this task requires, or "none"]
 **Estimate:** [$2 — your estimate for this task]
 **Notes:** [assumptions, risks, or implementation hints. Omit if none.]
+**Done:** [checkbox to track completion]
 
 After the task list, add:
 
@@ -42,3 +43,5 @@ After the task list, add:
 - Critical path: [the sequence of dependent tasks that determines minimum
   elapsed time, e.g. "Tasks 1 → 3 → 5 → 6"]
 - Risks: [any tasks with high uncertainty or dependency risk]
+
+When complete, write the document to @docs/features/feature-specifications/[feature-name]/tasks.md, where `feature-name` is a kebab-case version of the feature name.
