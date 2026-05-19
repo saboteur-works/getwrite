@@ -20,7 +20,7 @@ const STOP_WORDS = new Set([
     "as", "if", "it", "its", "not",
 ]);
 
-function tokenize(text: string): string[] {
+export function tokenize(text: string): string[] {
     return text
         .toLowerCase()
         .split(/[^a-z0-9]+/)

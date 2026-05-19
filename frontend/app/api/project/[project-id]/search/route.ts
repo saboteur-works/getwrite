@@ -12,14 +12,18 @@
  * - `status` (optional) — filter by status string; resource must have this status in its `statuses` array
  * - `tags`   (optional) — comma-separated tag IDs; resource must have at least one matching tag
  *
- * Success payload: `SearchResult[]` ordered by inverted-index term-frequency score
+ * Success payload: `SearchResult[]` ordered by proximity score (multi-term) or term frequency (single-term)
  * Failure payload: `{ error: string }`
  */
 import fs from "node:fs/promises";
 import type { Dirent } from "node:fs";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
-import { search } from "../../../../../src/lib/models/inverted-index";
+import {
+    search,
+    tokenize,
+} from "../../../../../src/lib/models/inverted-index";
+import { computeProximityScore } from "../../../../../src/lib/models/search-scoring";
 import { readSidecar } from "../../../../../src/lib/models/sidecar";
 import {
     getCanonicalRevision,
@@ -33,6 +37,9 @@ import type { Project } from "../../../../../src/lib/models/types";
 
 const DEFAULT_RESULT_LIMIT = 50;
 const SNIPPET_MAX_LEN = 160;
+// Maximum candidates scored for proximity before applying filters + limit.
+// Caps content loading for very broad multi-term queries on large projects.
+const PROXIMITY_CANDIDATE_LIMIT = 200;
 
 // --- Types ---
 
@@ -86,10 +93,9 @@ async function findProjectRoot(
     return null;
 }
 
-async function readCanonicalSnippet(
+async function loadCanonicalText(
     projectRoot: string,
     resourceId: string,
-    query: string,
 ): Promise<string> {
     const canonical = await getCanonicalRevision(projectRoot, resourceId);
     if (!canonical) return "";
@@ -106,7 +112,6 @@ async function readCanonicalSnippet(
         return "";
     }
 
-    // Detect TipTap JSON and convert to plain text before extracting snippet.
     if (text.trimStart().startsWith("{")) {
         try {
             text = tiptapToPlainText(JSON.parse(text));
@@ -115,7 +120,7 @@ async function readCanonicalSnippet(
         }
     }
 
-    return extractSnippet(text, query, SNIPPET_MAX_LEN);
+    return text;
 }
 
 // --- Core search logic (exported for testing) ---
@@ -139,29 +144,65 @@ export async function executeSearch(
         // proceed without tag data
     }
 
+    const terms = tokenize(query);
+    const isMultiTerm = terms.length > 1;
     const rankedIds = await search(projectRoot, query);
+
+    // For multi-term queries, preload canonical text for all candidates (up to
+    // PROXIMITY_CANDIDATE_LIMIT) and re-rank by how closely the query terms
+    // appear together. Within the same proximity score, the original term-freq
+    // rank is preserved as a tiebreaker.
+    interface ScoredCandidate {
+        id: string;
+        text: string | null;
+        proxScore: number;
+        rank: number;
+    }
+
+    let candidates: ScoredCandidate[];
+
+    if (isMultiTerm) {
+        const cap = Math.min(rankedIds.length, PROXIMITY_CANDIDATE_LIMIT);
+        const scored: ScoredCandidate[] = [];
+        for (let i = 0; i < cap; i++) {
+            const id = rankedIds[i]!;
+            const text = await loadCanonicalText(projectRoot, id);
+            scored.push({ id, text, proxScore: computeProximityScore(text, terms), rank: i });
+        }
+        scored.sort((a, b) =>
+            b.proxScore !== a.proxScore
+                ? b.proxScore - a.proxScore
+                : a.rank - b.rank,
+        );
+        candidates = scored;
+    } else {
+        candidates = rankedIds.map((id, rank) => ({
+            id,
+            text: null,
+            proxScore: 0,
+            rank,
+        }));
+    }
+
     const results: SearchResult[] = [];
 
-    for (const resourceId of rankedIds) {
+    for (const candidate of candidates) {
         if (results.length >= limit) break;
 
-        const sidecar = await readSidecar(projectRoot, resourceId);
+        const sidecar = await readSidecar(projectRoot, candidate.id);
 
         const title =
-            typeof sidecar?.name === "string" ? sidecar.name : resourceId;
+            typeof sidecar?.name === "string" ? sidecar.name : candidate.id;
         const statuses = Array.isArray(sidecar?.statuses)
             ? (sidecar.statuses as string[])
             : [];
         const folderId =
             typeof sidecar?.folderId === "string" ? sidecar.folderId : null;
-        const resourceTags: string[] = tagAssignments[resourceId] ?? [];
+        const resourceTags: string[] = tagAssignments[candidate.id] ?? [];
 
         // Apply filters — all active filters must match.
         if (filters.folder !== undefined && folderId !== filters.folder) continue;
-        if (
-            filters.status !== undefined &&
-            !statuses.includes(filters.status)
-        )
+        if (filters.status !== undefined && !statuses.includes(filters.status))
             continue;
         if (
             filters.tags !== undefined &&
@@ -170,10 +211,13 @@ export async function executeSearch(
         )
             continue;
 
-        const snippet = await readCanonicalSnippet(projectRoot, resourceId, query);
+        // Reuse preloaded text for multi-term queries; load on demand for single-term.
+        const text =
+            candidate.text ?? (await loadCanonicalText(projectRoot, candidate.id));
+        const snippet = extractSnippet(text, query, SNIPPET_MAX_LEN);
 
         results.push({
-            resourceId,
+            resourceId: candidate.id,
             title,
             snippet,
             status: statuses[0] ?? null,

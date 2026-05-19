@@ -171,6 +171,53 @@ describe("executeSearch — happy path", () => {
     });
 });
 
+describe("executeSearch — proximity scoring", () => {
+    it("ranks phrase matches above scattered term matches for multi-term queries", async () => {
+        const projectsDir = await makeTmpProjectsDir();
+        const { projectRoot } = await createTestProject(projectsDir);
+
+        // "tall one" appear adjacent — high proximity score
+        const idPhrase = await addTestResource(projectRoot, {
+            name: "Phrase",
+            content: "The tall one stood by the door.",
+        });
+
+        // "tall" and "one" appear in the same document but far apart — low proximity score
+        const idScattered = await addTestResource(projectRoot, {
+            name: "Scattered",
+            content:
+                "The tall shadow loomed over the crowd. " +
+                "word ".repeat(30) +
+                "Every one of them turned.",
+        });
+
+        const results = await executeSearch(projectRoot, "tall one", {}, 50);
+
+        expect(results).toHaveLength(2);
+        expect(results[0]!.resourceId).toBe(idPhrase);
+        expect(results[1]!.resourceId).toBe(idScattered);
+    });
+
+    it("falls back to term-freq order when proximity scores are equal", async () => {
+        const projectsDir = await makeTmpProjectsDir();
+        const { projectRoot } = await createTestProject(projectsDir);
+
+        // Both have "dragon knight" adjacent, but A has more occurrences
+        const idA = await addTestResource(projectRoot, {
+            name: "A",
+            content: "dragon knight dragon knight dragon knight",
+        });
+        const idB = await addTestResource(projectRoot, {
+            name: "B",
+            content: "dragon knight",
+        });
+
+        const results = await executeSearch(projectRoot, "dragon knight", {}, 50);
+        expect(results[0]!.resourceId).toBe(idA);
+        expect(results[1]!.resourceId).toBe(idB);
+    });
+});
+
 describe("executeSearch — snippet extraction", () => {
     it("snippet comes from the canonical revision content", async () => {
         const projectsDir = await makeTmpProjectsDir();
