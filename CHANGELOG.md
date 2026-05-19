@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.2.32](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.31...getwrite-v0.2.32) (2026-05-19)
+
+
+### Features
+
+* add full-text search API route, search snippet model, and user preference for result limit ([95cf9e5](https://github.com/saboteur-works/getwrite/commit/95cf9e554730c3c68627a44905d0cb654a02a319))
+* add SearchFilterPanel with folder, status, and tag filters ([3c8a462](https://github.com/saboteur-works/getwrite/commit/3c8a4622f73388ba0e8b805ef4fe5794fd8f5ea5))
+* **search:** full-text search with ranking, filters, and scrollable results ([9555ac3](https://github.com/saboteur-works/getwrite/commit/9555ac38e1003e1a3bbf45bcabd4e03db4923216))
+* **search:** proximity scoring for multi-term queries ([fc686b5](https://github.com/saboteur-works/getwrite/commit/fc686b5b3c552e6589b04f89e920200d1dc7e2b1))
+* **search:** stop word filtering and background reindex of existing content ([87a7c3b](https://github.com/saboteur-works/getwrite/commit/87a7c3b30fbc2bffd50539bff72607826a34886a))
+* **search:** title boosting — resources named after query terms rank first ([f81b239](https://github.com/saboteur-works/getwrite/commit/f81b23901a92107921fa64cd711837b9e048f19b))
+* wire SearchBar to full-text search API via Redux slice ([3373815](https://github.com/saboteur-works/getwrite/commit/337381570b52d4b72611e9b4b55266a087664a06))
+
+
+### Bug Fixes
+
+* **search:** AND semantics for multi-term queries; center snippet on full phrase ([d7ae273](https://github.com/saboteur-works/getwrite/commit/d7ae27362e64251b274c03c201b9977572a8577e))
+* **search:** read status from userMetadata.status, not top-level statuses array ([4ae8900](https://github.com/saboteur-works/getwrite/commit/4ae8900218715c7003a0dd3cdee5cfd093dfa545))
+* **search:** remove hardcoded 8-result cap and add scrollable results list ([0d5d045](https://github.com/saboteur-works/getwrite/commit/0d5d04540d0bb6ec294568d00861c67c0de826e0))
+* **search:** show snippet text and highlight matched terms in results ([283675c](https://github.com/saboteur-works/getwrite/commit/283675ce1bf49303d56fbf23f1887ea914730b92))
+
 ## [0.2.31](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.30...getwrite-v0.2.31) (2026-05-19)
 
 
