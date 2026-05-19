@@ -43,16 +43,19 @@ export const AutocompleteOpen: Story = {
         label: "Characters",
         resourceOptions: RESOURCE_OPTIONS,
         value: [{ id: "uuid-alice", name: "Alice" }],
+        defaultInputValue: "Al",
     },
-    render: (args) => {
-        const [value, setValue] = React.useState(args.value ?? []);
-        return (
-            <MultiResourceRefInput
-                {...args}
-                value={value}
-                onChange={setValue}
-            />
-        );
+};
+
+export const MaxSelectionsReached: Story = {
+    args: {
+        label: "Characters",
+        resourceOptions: RESOURCE_OPTIONS,
+        value: [
+            { id: "uuid-alice", name: "Alice" },
+            { id: "uuid-bob", name: "Bob" },
+        ],
+        maxSelections: 2,
     },
 };
 

@@ -121,6 +121,7 @@ Spec: `docs/features/feature-specifications/metadata/multi-ref-selection/multi-r
 **Depends on:** Tasks 4, 6
 **Estimate:** 2
 **Notes:** Covers FR 10. Use mock `resourceOptions` data inline. The `AutocompleteOpen` story can pre-set initial input text via a render wrapper to force suggestions to display.
+**Done:** [x] Added `defaultInputValue?: string` prop to `MultiResourceRefInput` (initialises both `inputVal` state and `suggestions`). Stories: `Empty`, `WithChips`, `AutocompleteOpen` (uses `defaultInputValue="Al"`), `MaxSelectionsReached` (2 chips, `maxSelections: 2`), `Interactive`. Follow-up item in `follow-up-work.md` marked resolved.
 
 ---
 

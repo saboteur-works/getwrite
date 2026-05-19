@@ -20,6 +20,8 @@ export interface MultiResourceRefInputProps {
     onChange?: (value: ResourceRef[]) => void;
     /** Maximum number of selections allowed; unset means unbounded. */
     maxSelections?: number;
+    /** Seed the text input on first render (does not make the input controlled). */
+    defaultInputValue?: string;
     className?: string;
 }
 
@@ -43,11 +45,16 @@ export default function MultiResourceRefInput({
     value = [],
     onChange,
     maxSelections,
+    defaultInputValue,
     className = "",
 }: MultiResourceRefInputProps): JSX.Element {
     const dispatch = useAppDispatch();
-    const [inputVal, setInputVal] = React.useState("");
-    const [suggestions, setSuggestions] = React.useState<ResourceOption[]>([]);
+    const [inputVal, setInputVal] = React.useState(defaultInputValue ?? "");
+    const [suggestions, setSuggestions] = React.useState<ResourceOption[]>(() => {
+        if (!defaultInputValue) return [];
+        const selected = new Set(value.map((r) => r.name.toLowerCase()));
+        return filterOptions(defaultInputValue, resourceOptions, selected);
+    });
 
     const atCap = maxSelections !== undefined && value.length >= maxSelections;
 
