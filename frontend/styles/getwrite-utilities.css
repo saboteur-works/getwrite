@@ -2699,4 +2699,84 @@
         outline: 2px solid var(--color-gw-focus-ring);
         outline-offset: 1px;
     }
+
+    /* ── CHIP ── */
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-family: var(--font-mono);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        border: 0.5px solid var(--color-gw-border);
+        background: transparent;
+        color: var(--color-gw-secondary);
+        white-space: nowrap;
+    }
+
+    .chip--sharp {
+        border-radius: 0;
+    }
+
+    .chip--rounded {
+        border-radius: 9999px;
+    }
+
+    .chip--sm {
+        font-size: 9px;
+        padding: 2px 6px;
+    }
+
+    .chip--md {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+
+    .chip--lg {
+        font-size: 12px;
+        padding: 5px 12px;
+    }
+
+    .chip__label-action {
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        font: inherit;
+        color: inherit;
+        letter-spacing: inherit;
+        text-transform: inherit;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .chip__label-action:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
+        border-radius: 2px;
+    }
+
+    .chip__dismiss {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        color: inherit;
+        line-height: 1;
+        opacity: 0.7;
+        transition: opacity 150ms ease;
+    }
+
+    .chip__dismiss:hover {
+        opacity: 1;
+    }
+
+    .chip__dismiss:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
+        border-radius: 2px;
+    }
 }

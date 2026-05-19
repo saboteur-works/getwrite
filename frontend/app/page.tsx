@@ -35,7 +35,7 @@ import StartPage, {
     type StartPageCreateResult,
 } from "../components/Start/StartPage";
 import type { Folder, AnyResource, ResourceBase } from "../src/lib/models";
-import type { MetadataValue } from "../src/lib/models/types";
+import type { MetadataValue, ResourceRef } from "../src/lib/models/types";
 import { buildProjectView } from "../src/lib/models/project-view";
 import {
     setResources,
@@ -188,6 +188,7 @@ export default function Home(): JSX.Element {
                     : [],
                 metadata: projectFiles.project.metadata,
                 statuses: projectFiles.project.config?.statuses ?? [],
+                metadataSchema: projectFiles.project.config?.metadataSchema,
             }),
         );
         dispatch(setSelectedProjectId(projectFiles.project.id));
@@ -252,6 +253,7 @@ export default function Home(): JSX.Element {
                         : [],
                     metadata: p.project.metadata,
                     statuses: p.project.config?.statuses ?? [],
+                    metadataSchema: p.project.config?.metadataSchema,
                 }),
             );
             dispatch(
@@ -408,7 +410,7 @@ export default function Home(): JSX.Element {
      * @param pov        - Name of the POV character, or `null` to clear it.
      * @param resourceId - ID of the target resource.
      */
-    const handleChangePOV = (pov: string | null, resourceId: string) => {
+    const handleChangePOV = (pov: ResourceRef, resourceId: string) => {
         updateResource(resourceId, (r) => ({
             ...r,
             userMetadata: { ...r.userMetadata, pov },

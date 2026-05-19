@@ -11,9 +11,24 @@
  * shell-level UI concerns (project selection, project-scoped resource lists),
  * while resource editing details are maintained in `resourcesSlice`.
  */
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Project } from "../lib/models";
-import type { MetadataValue } from "../lib/models/types";
+import { DEFAULT_METADATA_SCHEMA } from "../lib/models/default-metadata-schema";
+import type { MetadataField, MetadataFieldType, MetadataGroup, MetadataSchema, MetadataValue } from "../lib/models/types";
+import {
+    resolveMetadataSchemaRequestContext,
+    postAddField,
+    postRemoveField,
+    postReorderFields,
+    postRenameField,
+    postUpdateFieldOptions,
+    postUpdateRefProperties,
+    postChangeFieldType,
+    postAddGroup,
+    postRemoveGroup,
+    postReorderGroups,
+    postRenameFieldKey,
+} from "./metadata-schema-transport-service";
 
 /**
  * Minimal folder shape persisted within a stored project record.
@@ -52,6 +67,8 @@ export interface StoredProject {
     metadata?: Record<string, MetadataValue>;
     /** Ordered list of status values configured for this project. */
     statuses?: string[];
+    /** Active metadata field schema. Defaults to DEFAULT_METADATA_SCHEMA when not persisted on disk. */
+    metadataSchema?: MetadataSchema;
 }
 
 /**
@@ -63,6 +80,290 @@ export interface ProjectsState {
     /** Dictionary of stored projects keyed by project ID. */
     projects: Record<string, StoredProject>;
 }
+
+// ---------------------------------------------------------------------------
+// Async thunks — metadata schema CRUD
+// ---------------------------------------------------------------------------
+// All thunks share the same contract:
+//   1. Resolve project context (guard: project not found or rootPath missing)
+//   2. Call the transport service
+//   3. Return { projectId, schema } on success; rejectWithValue on failure
+// State is updated in extraReducers.fulfilled inside the slice below.
+
+function getSchemaThunkErrorMessage(error: unknown): string {
+    if (error instanceof Error && error.message.trim().length > 0) {
+        return error.message;
+    }
+    return "Metadata schema operation failed.";
+}
+
+interface SchemaActionResult {
+    projectId: string;
+    schema: MetadataSchema;
+}
+
+export const addMetadataField = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; field: MetadataField },
+    { state: any; rejectValue: string }
+>(
+    "projects/addMetadataField",
+    async ({ projectId, groupId, field }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postAddField(context, groupId, field);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const removeMetadataField = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; fieldKey: string },
+    { state: any; rejectValue: string }
+>(
+    "projects/removeMetadataField",
+    async ({ projectId, groupId, fieldKey }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postRemoveField(context, groupId, fieldKey);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const reorderMetadataFields = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; newKeyOrder: string[] },
+    { state: any; rejectValue: string }
+>(
+    "projects/reorderMetadataFields",
+    async ({ projectId, groupId, newKeyOrder }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postReorderFields(context, groupId, newKeyOrder);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const renameMetadataField = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; fieldKey: string; newLabel: string },
+    { state: any; rejectValue: string }
+>(
+    "projects/renameMetadataField",
+    async ({ projectId, groupId, fieldKey, newLabel }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postRenameField(context, groupId, fieldKey, newLabel);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const updateMetadataFieldOptions = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; fieldKey: string; options: string[] },
+    { state: any; rejectValue: string }
+>(
+    "projects/updateMetadataFieldOptions",
+    async ({ projectId, groupId, fieldKey, options }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postUpdateFieldOptions(
+                context,
+                groupId,
+                fieldKey,
+                options,
+            );
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const addMetadataGroup = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; group: MetadataGroup },
+    { state: any; rejectValue: string }
+>(
+    "projects/addMetadataGroup",
+    async ({ projectId, group }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postAddGroup(context, group);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const removeMetadataGroup = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string },
+    { state: any; rejectValue: string }
+>(
+    "projects/removeMetadataGroup",
+    async ({ projectId, groupId }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postRemoveGroup(context, groupId);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const reorderMetadataGroups = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; newGroupIdOrder: string[] },
+    { state: any; rejectValue: string }
+>(
+    "projects/reorderMetadataGroups",
+    async ({ projectId, newGroupIdOrder }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postReorderGroups(context, newGroupIdOrder);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const renameMetadataFieldKey = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; fieldKey: string; newKey: string },
+    { state: any; rejectValue: string }
+>(
+    "projects/renameMetadataFieldKey",
+    async ({ projectId, groupId, fieldKey, newKey }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postRenameFieldKey(context, groupId, fieldKey, newKey);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const changeMetadataFieldType = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; fieldKey: string; newType: MetadataFieldType },
+    { state: any; rejectValue: string }
+>(
+    "projects/changeMetadataFieldType",
+    async ({ projectId, groupId, fieldKey, newType }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postChangeFieldType(context, groupId, fieldKey, newType);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const updateMetadataRefProperties = createAsyncThunk<
+    SchemaActionResult,
+    {
+        projectId: string;
+        groupId: string;
+        fieldKey: string;
+        updates: { refFolder?: string | null; includeSubfolders?: boolean | null; maxSelections?: number | null };
+    },
+    { state: any; rejectValue: string }
+>(
+    "projects/updateMetadataRefProperties",
+    async ({ projectId, groupId, fieldKey, updates }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postUpdateRefProperties(context, groupId, fieldKey, updates);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
 
 /**
  * Initial state for the `projects` slice.
@@ -86,7 +387,10 @@ const projectsSlice = createSlice({
          * @param action - Payload containing a full stored project snapshot.
          */
         setProject(state, action: PayloadAction<StoredProject>) {
-            state.projects[action.payload.id] = action.payload;
+            state.projects[action.payload.id] = {
+                ...action.payload,
+                metadataSchema: action.payload.metadataSchema ?? DEFAULT_METADATA_SCHEMA,
+            };
             return state;
         },
         /**
@@ -115,6 +419,7 @@ const projectsSlice = createSlice({
                     resources: p.resources,
                     metadata: p.project.metadata,
                     statuses: p.project.config?.statuses ?? [],
+                    metadataSchema: p.project.config?.metadataSchema ?? DEFAULT_METADATA_SCHEMA,
                 };
             });
             return state;
@@ -216,6 +521,49 @@ const projectsSlice = createSlice({
             state.projects[projectId] = proj;
             return state;
         },
+        /**
+         * Replaces only the `metadataSchema` field on a stored project.
+         * Dispatched by schema CRUD thunks on API success; can also be
+         * dispatched directly when the caller already has the updated schema.
+         *
+         * @param state - Current slice state draft.
+         * @param action - Target project ID and the replacement schema.
+         */
+        updateProjectMetadataSchema(
+            state,
+            action: PayloadAction<{ projectId: string; schema: MetadataSchema }>,
+        ) {
+            const { projectId, schema } = action.payload;
+            const project = state.projects[projectId];
+            if (!project) return state;
+            state.projects[projectId] = { ...project, metadataSchema: schema };
+            return state;
+        },
+    },
+    extraReducers: (builder) => {
+        const schemaThunks = [
+            addMetadataField,
+            removeMetadataField,
+            reorderMetadataFields,
+            renameMetadataField,
+            updateMetadataFieldOptions,
+            updateMetadataRefProperties,
+            changeMetadataFieldType,
+            addMetadataGroup,
+            removeMetadataGroup,
+            reorderMetadataGroups,
+            renameMetadataFieldKey,
+        ] as const;
+
+        for (const thunk of schemaThunks) {
+            builder.addCase(thunk.fulfilled, (state, action) => {
+                const { projectId, schema } = action.payload;
+                const project = state.projects[projectId];
+                if (!project) return state;
+                state.projects[projectId] = { ...project, metadataSchema: schema };
+                return state;
+            });
+        }
     },
 });
 
@@ -227,6 +575,7 @@ export const {
     deleteProject,
     addResource,
     removeResource,
+    updateProjectMetadataSchema,
 } = projectsSlice.actions;
 export default projectsSlice.reducer;
 
@@ -293,6 +642,20 @@ export const selectSelectedProjectId = (state: any): string | null => {
 export const selectActiveProjectStatuses = (state: any): string[] => {
     const id = state?.projects?.selectedProjectId;
     return state?.projects?.projects?.[id]?.statuses ?? [];
+};
+
+/**
+ * Selects the metadata schema for the currently active project.
+ * Falls back to DEFAULT_METADATA_SCHEMA when no project is selected or the
+ * stored project has no schema (should not occur after Task 3 injection, but
+ * kept as a safety net for callers operating before a project is loaded).
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ * @returns The active project's MetadataSchema.
+ */
+export const selectActiveProjectMetadataSchema = (state: any): MetadataSchema => {
+    const id = state?.projects?.selectedProjectId;
+    return state?.projects?.projects?.[id]?.metadataSchema ?? DEFAULT_METADATA_SCHEMA;
 };
 
 /**

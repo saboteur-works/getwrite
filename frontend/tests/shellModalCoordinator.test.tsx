@@ -36,6 +36,8 @@ function makeDefaultProps(overrides: Partial<ShellModalCoordinatorProps> = {}): 
         setIsProjectTypesModalOpen: vi.fn(),
         isTagsManagerOpen: false,
         setIsTagsManagerOpen: vi.fn(),
+        isSchemaManagerOpen: false,
+        setIsSchemaManagerOpen: vi.fn(),
         isResourcePaletteOpen: false,
         setIsResourcePaletteOpen: vi.fn(),
         isProjectTypesLoading: false,

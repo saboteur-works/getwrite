@@ -173,7 +173,7 @@ export function createFolderResource(params: {
         name: params.name,
         slug: params.slug ?? slugify(params.name),
         type: "folder",
-        folderId: params.parentFolderId,
+        parentId: params.parentFolderId,
         createdAt: now,
         userMetadata: params.userMetadata,
         orderIndex: params.orderIndex ?? 0,

@@ -1,21 +1,46 @@
 import React from "react";
 import LabeledField from "./LabeledField";
-import useSyncedControlledValue from "./useSyncedControlledValue";
+import type { ResourceRef } from "../../../src/lib/models/types";
+
+export interface POVResourceOption {
+    id: string;
+    name: string;
+}
 
 export interface POVAutocompleteProps {
-    options?: string[];
-    value?: string;
-    onChange?: (value: string) => void;
+    resourceOptions?: POVResourceOption[];
+    value?: string | ResourceRef;
+    onChange?: (value: ResourceRef) => void;
     className?: string;
 }
 
+export function resolvePovValue(
+    name: string,
+    resourceOptions: POVResourceOption[],
+): ResourceRef {
+    const match = resourceOptions.find(
+        (r) => r.name.toLowerCase() === name.toLowerCase(),
+    );
+    return match ? { id: match.id, name: match.name } : { id: null, name };
+}
+
+function toDisplayString(v: string | ResourceRef | undefined | null): string {
+    if (v == null) return "";
+    if (typeof v === "string") return v;
+    return v.name;
+}
+
 export default function POVAutocomplete({
-    options = [],
-    value = "",
+    resourceOptions = [],
+    value,
     onChange,
     className = "",
 }: POVAutocompleteProps) {
-    const [val, setVal] = useSyncedControlledValue(value, onChange);
+    const [inputVal, setInputVal] = React.useState<string>(toDisplayString(value));
+
+    React.useEffect(() => {
+        setInputVal(toDisplayString(value));
+    }, [value]);
 
     return (
         <LabeledField label="POV" className={className}>
@@ -23,12 +48,16 @@ export default function POVAutocomplete({
                 list="pov-options"
                 aria-label="pov-input"
                 className="w-full mt-2 p-2 border border-brand-mid text-sm"
-                value={val}
-                onChange={(e) => setVal(e.target.value)}
+                value={inputVal}
+                onChange={(e) => {
+                    const next = e.target.value;
+                    setInputVal(next);
+                    onChange?.(resolvePovValue(next, resourceOptions));
+                }}
             />
             <datalist id="pov-options">
-                {options.map((o) => (
-                    <option key={o} value={o} />
+                {resourceOptions.map((o) => (
+                    <option key={o.id} value={o.name} />
                 ))}
             </datalist>
         </LabeledField>

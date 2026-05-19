@@ -2,14 +2,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { projectActionsController } from "../../src/store/project-actions-controller";
 
+import { DEFAULT_METADATA_SCHEMA } from "../../src/lib/models/default-metadata-schema";
 import projectsReducer, {
     addResource,
     deleteProject,
     normalizeStoredProject,
     renameProject,
     removeResource,
+    selectActiveProjectMetadataSchema,
     selectProject,
     selectSelectedProjectId,
+    setProject,
     setProjects,
     setSelectedProjectId,
     type ProjectsState,
@@ -203,5 +206,138 @@ describe("store/project-actions-controller guardrails (T017)", () => {
                 projectPath: "/tmp/project-1",
             }),
         });
+    });
+});
+
+describe("store/projectsSlice — metadataSchema injection (Task 3)", () => {
+    it("injects DEFAULT_METADATA_SCHEMA when project has no stored metadataSchema via setProjects", () => {
+        const state = projectsReducer(
+            undefined,
+            setProjects([
+                {
+                    project: {
+                        id: "project-1",
+                        name: "No Schema Project",
+                        rootPath: "/tmp/no-schema",
+                        createdAt: "2026-01-01T00:00:00.000Z",
+                    },
+                    folders: [],
+                    resources: [],
+                },
+            ]),
+        );
+
+        expect(state.projects["project-1"].metadataSchema).toEqual(
+            DEFAULT_METADATA_SCHEMA,
+        );
+    });
+
+    it("preserves the stored metadataSchema verbatim when project.json has one via setProjects", () => {
+        const customSchema = {
+            groups: [
+                {
+                    id: "custom-group",
+                    label: "Custom",
+                    fields: [
+                        { key: "my-field", label: "My Field", type: "text" as const, locked: false },
+                    ],
+                },
+            ],
+        };
+
+        const state = projectsReducer(
+            undefined,
+            setProjects([
+                {
+                    project: {
+                        id: "project-2",
+                        name: "Has Schema Project",
+                        rootPath: "/tmp/has-schema",
+                        createdAt: "2026-01-01T00:00:00.000Z",
+                        config: {
+                            metadataSchema: customSchema,
+                            editorConfig: {},
+                        },
+                    },
+                    folders: [],
+                    resources: [],
+                },
+            ]),
+        );
+
+        expect(state.projects["project-2"].metadataSchema).toEqual(customSchema);
+    });
+
+    it("injects DEFAULT_METADATA_SCHEMA when setProject is dispatched without a metadataSchema", () => {
+        const state = projectsReducer(
+            undefined,
+            setProject({
+                id: "project-3",
+                name: "Direct Set Project",
+                rootPath: "/tmp/direct",
+            }),
+        );
+
+        expect(state.projects["project-3"].metadataSchema).toEqual(
+            DEFAULT_METADATA_SCHEMA,
+        );
+    });
+
+    it("preserves existing metadataSchema when setProject is dispatched with one", () => {
+        const customSchema = {
+            groups: [
+                {
+                    id: "my-group",
+                    label: "My Group",
+                    fields: [
+                        { key: "title", label: "Title", type: "text" as const },
+                    ],
+                },
+            ],
+        };
+
+        const state = projectsReducer(
+            undefined,
+            setProject({
+                id: "project-4",
+                name: "Preset Schema Project",
+                rootPath: "/tmp/preset",
+                metadataSchema: customSchema,
+            }),
+        );
+
+        expect(state.projects["project-4"].metadataSchema).toEqual(customSchema);
+    });
+
+    it("selectActiveProjectMetadataSchema returns the active project schema", () => {
+        let state = projectsReducer(
+            undefined,
+            setProjects([
+                {
+                    project: {
+                        id: "project-1",
+                        name: "Project One",
+                        rootPath: "/tmp/project-1",
+                        createdAt: "2026-01-01T00:00:00.000Z",
+                    },
+                    folders: [],
+                    resources: [],
+                },
+            ]),
+        );
+        state = projectsReducer(state, setSelectedProjectId("project-1"));
+
+        const rootState = { projects: state };
+        expect(selectActiveProjectMetadataSchema(rootState)).toEqual(
+            DEFAULT_METADATA_SCHEMA,
+        );
+    });
+
+    it("selectActiveProjectMetadataSchema returns DEFAULT_METADATA_SCHEMA when no project is selected", () => {
+        const state = projectsReducer(undefined, { type: "@@INIT" });
+        const rootState = { projects: state };
+        expect(selectActiveProjectMetadataSchema(rootState)).toEqual(
+            DEFAULT_METADATA_SCHEMA,
+        );
     });
 });

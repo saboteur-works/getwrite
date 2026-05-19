@@ -2,7 +2,9 @@
 name: implement-feature
 description: >
     Implement a software feature from a written spec, task description, or
-    acceptance criteria. Use this skill when asked to build, implement, code,
+    acceptance criteria.
+when_to_use: >
+    Use this skill when asked to build, implement, code,
     or develop a feature — especially when a spec, requirements doc, or list of
     acceptance criteria is provided. Also use when the user says things like
     "build this", "make this work", "implement this", or "write the code for
@@ -38,6 +40,7 @@ must do before proceeding.
 
 Identify:
 
+0. Any follow-up that may be blocking the implementation (usually located in docs/features/feature-specifications/[feature-name]/follow-up-work.md). If there is blocking follow-up work, note it and ask whether to proceed with implementation anyway, or address the follow-up first.
 1. What the feature must do (functional requirements)
 2. What the feature must not do or break (constraints and non-goals)
 3. Where the code lives (existing file structure, module conventions)
@@ -106,6 +109,16 @@ After all files, output a brief implementation summary:
 
 ---
 
+## Post-Implementation
+
+- If any actionable follow-ups have been identified:
+    1. Determine the feature's location in @docs/features/feature-specifications. If unclear, always ask the user for the true directory.
+    2. If there is no 'follow-up-work.md' file in that directory, create one with a brief description of the follow-up work needed, why it was deferred, and any relevant context for future implementation.
+    3. If 'follow-up-work.md' already exists, append the new follow-up work to the end of the file, ensuring it is clearly separated from previous entries (e.g., with a date and brief summary).
+    4. If a 'follow-up-work.md' file exists for the feature, review it to ensure that any previously identified follow-up work has been addressed or is still relevant. If any items have been resolved, update the file to reflect their completion, including dates and descriptions of the work done.
+
+---
+
 ## Constraints
 
 - Do not remove or modify existing functionality unless the spec explicitly
@@ -118,6 +131,7 @@ After all files, output a brief implementation summary:
   it should be split.
 - Do not leave TODO comments in code you produce. Either implement it or
   note it in the implementation summary under "Follow-up recommended".
+- Always use TDD approaches when possible. Write tests before implementation, and ensure they fail before writing code to pass them. Make sure to check for existing tests that cover the same functionality before writing new ones.
 
 ---
 

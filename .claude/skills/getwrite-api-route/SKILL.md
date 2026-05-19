@@ -4,8 +4,9 @@ description: >
     Create Next.js App Router API routes for the GetWrite project that follow
     the project's filesystem-backed, no-database architecture: typed request/
     response interfaces, consistent error handling, file locking for concurrent
-    writes, and proper use of the model layer in src/lib/models/. Use this skill
-    whenever the user asks to add, create, or build a new API route or endpoint
+    writes, and proper use of the model layer in src/lib/models/.
+when-to-use: >
+    Use this skill whenever the user asks to add, create, or build a new API route or endpoint
     in GetWrite — including "add a route for X", "create an endpoint that does Y",
     "I need an API that Z", or any request that results in a new route.ts file
     under frontend/app/api/. Also use when an existing route needs a new HTTP

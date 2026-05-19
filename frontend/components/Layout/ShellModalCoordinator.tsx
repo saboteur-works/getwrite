@@ -20,6 +20,7 @@ import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import HelpPage from "../help/HelpPage";
 import TagsManagerModal from "../common/TagsManagerModal";
+import SchemaManager from "../SchemaManager/SchemaManager";
 import DefaultRevisionNameModal from "../preferences/DefaultRevisionNameModal";
 import ModalOverlayShell from "../common/ModalOverlayShell";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
@@ -102,6 +103,8 @@ export interface ShellModalCoordinatorProps {
     setIsTagsManagerOpen: (open: boolean) => void;
     /** Root path of the active project — required to render TagsManagerModal. */
     projectPath?: string;
+    isSchemaManagerOpen: boolean;
+    setIsSchemaManagerOpen: (open: boolean) => void;
     isResourcePaletteOpen: boolean;
     setIsResourcePaletteOpen: (open: boolean) => void;
     isProjectTypesLoading: boolean;
@@ -163,6 +166,8 @@ export default function ShellModalCoordinator({
     isTagsManagerOpen,
     setIsTagsManagerOpen,
     projectPath,
+    isSchemaManagerOpen,
+    setIsSchemaManagerOpen,
     isResourcePaletteOpen,
     setIsResourcePaletteOpen,
     isProjectTypesLoading,
@@ -395,6 +400,14 @@ export default function ShellModalCoordinator({
                         onClose={() => setIsTagsManagerOpen(false)}
                     />
                 ) : null}
+            </ModalOverlayShell>
+
+            <ModalOverlayShell
+                isOpen={isSchemaManagerOpen}
+                onClose={() => setIsSchemaManagerOpen(false)}
+                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            >
+                <SchemaManager onClose={() => setIsSchemaManagerOpen(false)} />
             </ModalOverlayShell>
 
             {hasUnsavedEditorChanges ? null : null}
