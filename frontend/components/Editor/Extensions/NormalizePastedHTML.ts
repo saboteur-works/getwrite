@@ -25,6 +25,7 @@ function normalizeInlineStyles(
 ): void {
     doc.querySelectorAll("[style]").forEach((el) => {
         const htmlEl = el as HTMLElement;
+        htmlEl.style.removeProperty("color");
         htmlEl.style.removeProperty("font-family");
         htmlEl.style.removeProperty("background-color");
 

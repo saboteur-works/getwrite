@@ -200,6 +200,42 @@ describe("normalizePastedHTML", () => {
         });
     });
 
+    // color stripping — regression guard (replaced StripExternalPasteColor behaviour)
+    describe("color stripping on non-heading elements", () => {
+        it("removes color from paragraph inline styles", () => {
+            const input = `<p style="color: rgb(0, 0, 0)">black text</p>`;
+            const result = normalizePastedHTML(input);
+            expect(result).not.toContain("color");
+            expect(result).toContain("black text");
+        });
+
+        it("removes color from span inline styles", () => {
+            const input = `<span style="color: #000000">dark text</span>`;
+            const result = normalizePastedHTML(input);
+            expect(result).not.toContain("color");
+        });
+
+        it("preserves other style properties when stripping color", () => {
+            const input = `<span style="color: black; font-weight: bold">text</span>`;
+            const result = normalizePastedHTML(input);
+            expect(result).not.toContain("color");
+            expect(result).toContain("font-weight");
+            expect(result).toContain("bold");
+        });
+
+        it("removes the style attribute entirely when color was the only property", () => {
+            const input = `<span style="color: black">text</span>`;
+            const result = normalizePastedHTML(input);
+            expect(result).not.toContain("style=");
+        });
+
+        it("does not strip color from internal paste (data-pm-slice)", () => {
+            const input = `<meta data-pm-slice="1 1 []"><span style="color: black">text</span>`;
+            const result = normalizePastedHTML(input);
+            expect(result).toContain("color");
+        });
+    });
+
     // combined / edge cases
     describe("combined normalization", () => {
         it("strips font-family, font-size, and background-color in one pass", () => {

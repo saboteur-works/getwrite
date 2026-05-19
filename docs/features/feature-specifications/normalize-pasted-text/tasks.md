@@ -48,7 +48,7 @@
 
 **Notes:** Follow the `StripExternalPasteColor` pattern — `Extension.create` with a `transformPastedHTML` hook. Add an `addOptions()` block that declares `bodyFontSize: string | undefined`.
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -72,7 +72,7 @@
 
 **Notes:** `StripExternalPasteColor.ts` itself can remain on disk (its export is still used by the existing test suite); only its usage in `TipTapEditor.tsx` should be removed. If no other file imports `StripExternalPasteColor`, the file may be deleted — verify with a project-wide grep before removing.
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
