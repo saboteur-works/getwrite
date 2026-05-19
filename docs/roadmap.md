@@ -52,7 +52,7 @@ Features with a clear intent but no active implementation timeline:
 
 - [x] Implement `EditView` with TipTap, debounced autosave, and revision promotion behavior.
 - [ ] Implement `OrganizerView` card rendering, body toggle, and filters (Status/Character/Location/Word Count).
-- [ ] Implement `DataView` with Overall Stats and foldable Resources lists (click-to-open behavior).
+- [x] Implement `DataView` with Overall Stats and foldable Resources lists (click-to-open behavior).
 - [ ] Add tests and Storybook stories; ensure Edit View autosave/revision lifecycle preserved.
 
 ### Data Models & Sidecar Storage

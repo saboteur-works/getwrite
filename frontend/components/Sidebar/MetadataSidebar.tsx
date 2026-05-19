@@ -2,7 +2,7 @@ import React from "react";
 import SynopsisInput from "./controls/SynopsisInput";
 import NotesInput from "./controls/NotesInput";
 import StatusSelector from "./controls/StatusSelector";
-import POVAutocomplete, { type POVResourceOption } from "./controls/POVAutocomplete";
+import POVAutocomplete from "./controls/POVAutocomplete";
 import DateTimeInput from "./controls/DateTimeInput";
 import DurationInput from "./controls/DurationInput";
 import EndDateInput from "./controls/EndDateInput";
@@ -33,7 +33,6 @@ import type {
     ResourceRef,
 } from "../../src/lib/models/types";
 
-const EMPTY_RESOURCE_OPTIONS: POVResourceOption[] = [];
 const EMPTY_REF_OPTIONS: ResourceOption[] = [];
 
 /**
@@ -50,25 +49,6 @@ function toResourceRefArray(raw: unknown): ResourceRef[] {
             typeof (r as { name?: unknown }).name === "string",
     );
 }
-
-const selectCharacterList = createSelector(
-    (state: any) => state.projects.selectedProjectId as string | null,
-    (state: any) => state.projects.projects as Record<string, { folders?: { id: string; name?: string }[] }>,
-    (state: any) => state.resources.resources as { id: string; name: string; folderId?: string | null }[],
-    (selectedProjectId, projects, resources): POVResourceOption[] => {
-        if (!selectedProjectId) return EMPTY_RESOURCE_OPTIONS;
-        const characterFolderId = projects[selectedProjectId]?.folders?.find(
-            (f) => f.name?.toLowerCase() === "characters",
-        )?.id;
-        if (!characterFolderId) return EMPTY_RESOURCE_OPTIONS;
-        return resources.reduce((acc: POVResourceOption[], r) => {
-            if (r.folderId === characterFolderId && r.name) {
-                acc.push({ id: r.id, name: r.name });
-            }
-            return acc;
-        }, []);
-    },
-);
 
 const selectAllResourceOptions = createSelector(
     (state: any) => state.resources.resources as { id: string; name: string }[],
@@ -177,7 +157,6 @@ export default function MetadataSidebar({
         }
     }
 
-    const characterList = useAppSelector(selectCharacterList);
     const allResourceOptions = useAppSelector(selectAllResourceOptions, shallowEqual);
     const rawResources = useAppSelector(selectRawResourcesList, shallowEqual);
     const folders = useAppSelector(selectFoldersList, shallowEqual);
@@ -241,7 +220,7 @@ export default function MetadataSidebar({
                 return (
                     <POVAutocomplete
                         className="text-brand-mid"
-                        resourceOptions={characterList}
+                        resourceOptions={allResourceOptions}
                         value={(rawValue as string | ResourceRef) ?? undefined}
                         onChange={(v) => emit(key, v)}
                     />
