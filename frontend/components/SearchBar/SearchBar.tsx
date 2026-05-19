@@ -1,150 +1,78 @@
+"use client";
+
 import React, { useEffect, useRef, useState } from "react";
-import { Search } from "lucide-react";
-import type { AnyResource } from "../../src/lib/models/types";
+import { Search, SlidersHorizontal } from "lucide-react";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
+import { setSelectedResourceId, selectFolders } from "../../src/store/resourcesSlice";
 import {
-    selectResources,
-    setSelectedResourceId,
-} from "../../src/store/resourcesSlice";
+    selectSelectedProjectId,
+    selectActiveProjectStatuses,
+} from "../../src/store/projectsSlice";
+import {
+    clearSearch,
+    runSearch,
+    selectSearchResults,
+} from "../../src/store/searchSlice";
+import type { SearchFilters } from "../../src/store/search-transport-service";
+import type { Tag } from "../../src/lib/models/types";
+import SearchFilterPanel from "./SearchFilterPanel";
 
-/**
- * @module SearchBar
- * Provides a searchable resource input with lightweight fuzzy matching,
- * keyboard navigation, and result highlighting.
- */
+function renderSnippet(snippet: string, query: string): React.ReactNode {
+    if (!snippet || !query) return snippet;
+    const terms = query.split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return snippet;
+    const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const regex = new RegExp(`(${escaped.join("|")})`, "gi");
+    const parts = snippet.split(regex);
+    const lowerTerms = terms.map((t) => t.toLowerCase());
+    return (
+        <>
+            {parts.map((part, i) =>
+                lowerTerms.includes(part.toLowerCase()) ? (
+                    <mark key={i} className="searchbar-result-match">
+                        {part}
+                    </mark>
+                ) : (
+                    part
+                ),
+            )}
+        </>
+    );
+}
 
-/**
- * Props accepted by {@link SearchBar}.
- */
 export interface SearchBarProps {
-    /**
-     * Optional resource list override.
-     *
-    /** Placeholder text shown in the search input when empty. */
     placeholder?: string;
-    /**
-     * Callback fired when a search result is selected.
-     *
-     * @param id - The selected resource identifier.
-     */
     onSelect?: (id: string) => void;
 }
 
-/**
- * Renders an input that searches resources by title/name and displays
- * ranked suggestions.
- *
- * @param props - Component configuration.
- * @param props.placeholder - Input placeholder text.
- * @param props.onSelect - Invoked with the selected resource id.
- * @returns Search input with a keyboard-accessible suggestion list.
- *
- * @example
- * <SearchBar
- *   placeholder="Search docs..."
- *   onSelect={(id) => console.log("Selected", id)}
- * />
- */
 export default function SearchBar({
     placeholder = "Search resources...",
     onSelect,
 }: SearchBarProps): JSX.Element {
-    /** Keyboard shortcut hint label shown in the search field. */
     const [shortcutHint, setShortcutHint] = useState<string>("⌘K / Ctrl K");
     const dispatch = useAppDispatch();
-    /** Resource collection sourced from Redux state. */
-    const resources = useAppSelector((s) => selectResources(s.resources));
-    /** Current raw query string entered by the user. */
-    const [query, setQuery] = useState<string>("");
-    /** Controls visibility of the suggestion popover. */
-    const [open, setOpen] = useState<boolean>(false);
-    /** Index of the currently keyboard-highlighted result row. */
-    const [highlight, setHighlight] = useState<number>(0);
-    /** Ref to the search input for future focus-based interactions. */
-    const inputRef = useRef<HTMLInputElement | null>(null);
-    /** Ref to the container used for outside-click detection. */
-    const containerRef = useRef<HTMLDivElement | null>(null);
-
-    /**
-     * Scores whether query text matches a candidate label.
-     *
-     * Matching strategy:
-     * 1. Exact substring match (higher score, earlier index favored)
-     * 2. Ordered subsequence match (penalized by character gaps)
-     *
-     * @param q - Query text entered by the user.
-     * @param text - Candidate text to evaluate.
-     * @returns Match metadata including score and matched character indices,
-     * or `null` if there is no match.
-     *
-     * @example
-     * const match = fuzzyMatch("rd", "Resource Doc");
-     * // => { score: 79, indices: [0, 9] } (score may vary with position/gaps)
-     */
-    const fuzzyMatch = (
-        q: string,
-        text: string,
-    ): { score: number; indices: number[] } | null => {
-        if (!q) return null;
-        const ql = q.toLowerCase();
-        const tl = text.toLowerCase();
-
-        // Exact substring check
-        const idx = tl.indexOf(ql);
-        if (idx !== -1) {
-            // give high score, earlier matches rank higher
-            const indices: number[] = [];
-            for (let i = idx; i < idx + ql.length; i += 1) indices.push(i);
-            return { score: 100 - idx, indices };
-        }
-
-        // Subsequence match (chars in order, possibly non-contiguous)
-        const indices: number[] = [];
-        let pos = 0;
-        for (let i = 0; i < ql.length; i += 1) {
-            const ch = ql[i];
-            const found = tl.indexOf(ch, pos);
-            if (found === -1) return null;
-            indices.push(found);
-            pos = found + 1;
-        }
-
-        // score inversely proportional to total gaps: contiguous is better
-        let gaps = 0;
-        for (let i = 1; i < indices.length; i += 1)
-            gaps += indices[i] - indices[i - 1] - 1;
-        const score = Math.max(1, 80 - gaps);
-        return { score, indices };
-    };
-
-    const results = query
-        ? (resources
-              .map((r) => {
-                  const title = (r as any).name ?? (r as any).title ?? "";
-                  const match = fuzzyMatch(query, title);
-                  return match ? { resource: r, match } : null;
-              })
-              .filter(Boolean) as {
-              resource: AnyResource;
-              match: { score: number; indices: number[] };
-          }[])
-        : [];
-
-    /** Sort by descending match score, then lexicographically by title. */
-    results.sort((a, b) => {
-        if (b.match.score !== a.match.score)
-            return b.match.score - a.match.score;
-        const ta = (a.resource as any).name ?? (a.resource as any).title ?? "";
-        const tb = (b.resource as any).name ?? (b.resource as any).title ?? "";
-        return ta.localeCompare(tb);
+    const selectedProjectId = useAppSelector(selectSelectedProjectId);
+    const results = useAppSelector(selectSearchResults);
+    const statuses = useAppSelector(selectActiveProjectStatuses);
+    const folders = useAppSelector((s) => selectFolders(s.resources));
+    const projectPath = useAppSelector((s) => {
+        const id = s.projects.selectedProjectId;
+        if (!id) return null;
+        return s.projects.projects[id]?.rootPath ?? null;
     });
 
+    const [query, setQuery] = useState<string>("");
+    const [open, setOpen] = useState<boolean>(false);
+    const [highlight, setHighlight] = useState<number>(0);
+    const [filterPanelOpen, setFilterPanelOpen] = useState<boolean>(false);
+    const [activeFilters, setActiveFilters] = useState<SearchFilters>({});
+    const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+
+    const inputRef = useRef<HTMLInputElement | null>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const activeItemRef = useRef<HTMLLIElement | null>(null);
+
     useEffect(() => {
-        /**
-         * Closes the suggestion popover when a click occurs outside container.
-         *
-         * @param e - Native mouse event from the document listener.
-         */
         function onDocClick(e: MouseEvent) {
             if (
                 containerRef.current &&
@@ -160,6 +88,10 @@ export default function SearchBar({
     useEffect(() => setHighlight(0), [query]);
 
     useEffect(() => {
+        activeItemRef.current?.scrollIntoView({ block: "nearest" });
+    }, [highlight]);
+
+    useEffect(() => {
         const platform =
             typeof navigator === "undefined" ? "" : navigator.platform;
         const userAgent =
@@ -168,17 +100,49 @@ export default function SearchBar({
         setShortcutHint(isMacPlatform ? "⌘K" : "Ctrl K");
     }, []);
 
-    /**
-     * Handles keyboard navigation and selection in the suggestion list.
-     *
-     * Supported keys:
-     * - ArrowDown: move highlight down
-     * - ArrowUp: move highlight up
-     * - Enter: select highlighted result
-     * - Escape: close results
-     *
-     * @param e - Keyboard event from the input element.
-     */
+    useEffect(() => {
+        if (!selectedProjectId) return;
+        void fetch(`/api/project/${selectedProjectId}/reindex`, {
+            method: "POST",
+        });
+    }, [selectedProjectId]);
+
+    useEffect(() => {
+        if (!projectPath) {
+            setAvailableTags([]);
+            return;
+        }
+        fetch("/api/project/tags", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "list", projectPath }),
+        })
+            .then((r) => r.json())
+            .then((data: { tags?: Tag[] }) => setAvailableTags(data.tags ?? []))
+            .catch(() => setAvailableTags([]));
+    }, [projectPath]);
+
+    useEffect(() => {
+        if (query.length < 2 || !selectedProjectId) {
+            dispatch(clearSearch());
+            setOpen(false);
+            return;
+        }
+
+        setOpen(true);
+        const timerId = setTimeout(() => {
+            dispatch(
+                runSearch({
+                    projectId: selectedProjectId,
+                    query,
+                    filters: activeFilters,
+                }),
+            );
+        }, 200);
+
+        return () => clearTimeout(timerId);
+    }, [query, selectedProjectId, activeFilters, dispatch]);
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (!open) return;
         if (e.key === "ArrowDown") {
@@ -190,8 +154,8 @@ export default function SearchBar({
         } else if (e.key === "Enter") {
             const r = results[highlight];
             if (r) {
-                dispatch(setSelectedResourceId(r.resource.id));
-                onSelect?.(r.resource.id);
+                dispatch(setSelectedResourceId(r.resourceId));
+                onSelect?.(r.resourceId);
                 setOpen(false);
                 setQuery("");
             }
@@ -202,89 +166,95 @@ export default function SearchBar({
         }
     };
 
-    /**
-     * Wraps matched character indices in a stronger text style.
-     *
-     * @param text - Source label to render.
-     * @param indices - Character indices to emphasize.
-     * @returns React nodes with highlighted characters.
-     *
-     * @example
-     * renderHighlighted("Document", [0, 3]);
-     */
-    const renderHighlighted = (text: string, indices: number[]) => {
-        if (!indices || indices.length === 0) return <>{text}</>;
-        const parts: React.ReactNode[] = [];
-        let last = 0;
-        const set = new Set(indices);
-        for (let i = 0; i < text.length; i += 1) {
-            if (set.has(i)) {
-                if (last < i)
-                    parts.push(
-                        <span key={`t-${last}`}>{text.slice(last, i)}</span>,
-                    );
-                parts.push(
-                    <span key={`h-${i}`} className="font-semibold">
-                        {text[i]}
-                    </span>,
-                );
-                last = i + 1;
-            }
-        }
-        if (last < text.length)
-            parts.push(<span key={`t-last`}>{text.slice(last)}</span>);
-        return <>{parts}</>;
-    };
+    const hasActiveFilters =
+        !!activeFilters.folder ||
+        !!activeFilters.status ||
+        (activeFilters.tags?.length ?? 0) > 0;
 
     return (
         <div className="searchbar-root" ref={containerRef}>
-            <div className="searchbar-field">
-                <Search
-                    size={16}
-                    aria-hidden="true"
-                    className="searchbar-icon"
-                />
-                <input
-                    ref={inputRef}
-                    value={query}
-                    onChange={(e) => {
-                        setQuery(e.target.value);
-                        setOpen(e.target.value.length > 0);
-                    }}
-                    onFocus={() => setOpen(query.length > 0)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={placeholder}
-                    aria-label="resource-search"
-                    className="searchbar-input"
-                />
-                <span className="searchbar-shortcut" aria-hidden="true">
-                    {shortcutHint}
-                </span>
+            <div className="searchbar-input-row">
+                <div className="searchbar-field">
+                    <Search
+                        size={16}
+                        aria-hidden="true"
+                        className="searchbar-icon"
+                    />
+                    <input
+                        ref={inputRef}
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        onFocus={() =>
+                            setOpen(query.length >= 2 && results.length > 0)
+                        }
+                        onKeyDown={handleKeyDown}
+                        placeholder={placeholder}
+                        aria-label="resource-search"
+                        className="searchbar-input"
+                        disabled={!selectedProjectId}
+                    />
+                    <span className="searchbar-shortcut" aria-hidden="true">
+                        {shortcutHint}
+                    </span>
+                </div>
+                <button
+                    type="button"
+                    className={`searchbar-filter-toggle${
+                        filterPanelOpen || hasActiveFilters
+                            ? " searchbar-filter-toggle-active"
+                            : ""
+                    }`}
+                    onClick={() => setFilterPanelOpen((v) => !v)}
+                    aria-label="Toggle search filters"
+                    aria-expanded={filterPanelOpen}
+                    disabled={!selectedProjectId}
+                >
+                    <SlidersHorizontal size={14} aria-hidden="true" />
+                </button>
             </div>
+
+            {filterPanelOpen && (
+                <SearchFilterPanel
+                    folders={folders}
+                    statuses={statuses}
+                    tags={availableTags}
+                    activeFilters={activeFilters}
+                    onFilterChange={setActiveFilters}
+                />
+            )}
 
             {open && results.length > 0 ? (
                 <ul className="searchbar-results">
-                    {results.slice(0, 8).map(({ resource, match }, i) => (
-                        <li key={resource.id} className="searchbar-result-item">
+                    {results.map((result, i) => (
+                        <li
+                            key={result.resourceId}
+                            ref={i === highlight ? activeItemRef : null}
+                            className="searchbar-result-item"
+                        >
                             <button
                                 type="button"
                                 onClick={() => {
-                                    onSelect?.(resource.id);
+                                    dispatch(
+                                        setSelectedResourceId(result.resourceId),
+                                    );
+                                    onSelect?.(result.resourceId);
                                     setOpen(false);
                                     setQuery("");
                                 }}
-                                className={`searchbar-result-button ${
+                                className={`searchbar-result-button${
                                     i === highlight
-                                        ? "searchbar-result-button-active"
+                                        ? " searchbar-result-button-active"
                                         : ""
                                 }`}
                             >
-                                {renderHighlighted(
-                                    (resource as any).name ??
-                                        (resource as any).title ??
-                                        resource.id,
-                                    match.indices,
-                                )}
+                                <span className="font-semibold">
+                                    {result.title}
+                                </span>
+                                {result.snippet ? (
+                                    <span className="searchbar-result-snippet">
+                                        {renderSnippet(result.snippet, query)}
+                                    </span>
+                                ) : null}
                             </button>
                         </li>
                     ))}

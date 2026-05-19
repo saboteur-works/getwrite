@@ -72,6 +72,13 @@ function createRootState(overrides?: {
         editorConfig: {
             headings: {},
         },
+        search: {
+            requestedProjectId: null,
+            requestedQuery: "",
+            results: [],
+            isLoading: false,
+            errorMessage: "",
+        },
     } as RootState;
 }
 
