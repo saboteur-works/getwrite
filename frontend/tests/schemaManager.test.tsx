@@ -8,8 +8,21 @@ import {
     setProject,
     setSelectedProjectId,
 } from "../src/store/projectsSlice";
+import { setFolders } from "../src/store/resourcesSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
-import type { MetadataSchema } from "../src/lib/models/types";
+import type { Folder, MetadataSchema } from "../src/lib/models/types";
+
+function makeFolder(id: string, name: string): Folder {
+    return {
+        id,
+        type: "folder",
+        name,
+        slug: id,
+        orderIndex: 0,
+        createdAt: "2024-01-01T00:00:00.000Z",
+        parentId: null,
+    };
+}
 
 afterEach(() => {
     vi.restoreAllMocks();
@@ -812,5 +825,155 @@ describe("SchemaManager — multi-resource-ref field type", () => {
         const body = JSON.parse((call![1] as RequestInit).body as string);
         expect(body.fieldKey).toBe("field-one");
         expect(body.newType).toBe("multi-resource-ref");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Folder picker + Include Subfolders checkbox (Task 9)
+// ---------------------------------------------------------------------------
+
+const MULTI_REF_SCHEMA: MetadataSchema = {
+    groups: [
+        {
+            id: "group-a",
+            label: "Group A",
+            fields: [
+                { key: "refs-field", label: "Refs", type: "multi-resource-ref" },
+            ],
+        },
+    ],
+};
+
+const MULTI_REF_SCHEMA_WITH_FOLDER: MetadataSchema = {
+    groups: [
+        {
+            id: "group-a",
+            label: "Group A",
+            fields: [
+                {
+                    key: "refs-field",
+                    label: "Refs",
+                    type: "multi-resource-ref",
+                    refFolder: "folder-1",
+                    includeSubfolders: false,
+                },
+            ],
+        },
+    ],
+};
+
+function setupWithFolders(schema: MetadataSchema, folders: Folder[] = []) {
+    const testStore = makeStore();
+    testStore.dispatch(setProject({ id: "proj-1", rootPath: "/projects/proj-1", metadataSchema: schema }));
+    testStore.dispatch(setSelectedProjectId("proj-1"));
+    testStore.dispatch(setFolders(folders));
+    const onClose = vi.fn();
+    render(
+        <Provider store={testStore}>
+            <SchemaManager onClose={onClose} />
+        </Provider>,
+    );
+    return { testStore, onClose };
+}
+
+describe("SchemaManager — folder picker (Task 9)", () => {
+    it("folder picker appears for multi-resource-ref fields", () => {
+        setupWithFolders(MULTI_REF_SCHEMA);
+        expect(screen.getByLabelText("Ref folder for Refs")).toBeInTheDocument();
+    });
+
+    it("folder picker is populated with folders from state", () => {
+        const folders = [makeFolder("folder-1", "Chapter 1"), makeFolder("folder-2", "Chapter 2")];
+        setupWithFolders(MULTI_REF_SCHEMA, folders);
+        const select = screen.getByLabelText("Ref folder for Refs") as HTMLSelectElement;
+        const options = Array.from(select.options).map((o) => o.text);
+        expect(options).toContain("Chapter 1");
+        expect(options).toContain("Chapter 2");
+    });
+
+    it("folder picker includes an empty 'Any folder' option", () => {
+        setupWithFolders(MULTI_REF_SCHEMA);
+        const select = screen.getByLabelText("Ref folder for Refs") as HTMLSelectElement;
+        expect(select.options[0].value).toBe("");
+    });
+
+    it("selecting a folder dispatches updateMetadataRefProperties", async () => {
+        const folders = [makeFolder("folder-1", "Chapter 1")];
+        const fetchSpy = mockFetchOk(MULTI_REF_SCHEMA);
+        setupWithFolders(MULTI_REF_SCHEMA, folders);
+
+        const select = screen.getByLabelText("Ref folder for Refs") as HTMLSelectElement;
+        fireEvent.change(select, { target: { value: "folder-1" } });
+
+        await waitFor(() => {
+            expect(fetchSpy).toHaveBeenCalledWith(
+                "/api/project/metadata-schema",
+                expect.objectContaining({
+                    body: expect.stringContaining('"action":"update-ref-properties"'),
+                }),
+            );
+        });
+
+        const call = fetchSpy.mock.calls.find(([, init]) => {
+            try {
+                return JSON.parse((init as RequestInit).body as string).action === "update-ref-properties";
+            } catch { return false; }
+        });
+        const body = JSON.parse((call![1] as RequestInit).body as string);
+        expect(body.fieldKey).toBe("refs-field");
+        expect(body.refFolder).toBe("folder-1");
+    });
+
+    it("clearing the folder also clears includeSubfolders", async () => {
+        const folders = [makeFolder("folder-1", "Chapter 1")];
+        const fetchSpy = mockFetchOk(MULTI_REF_SCHEMA_WITH_FOLDER);
+        setupWithFolders(MULTI_REF_SCHEMA_WITH_FOLDER, folders);
+
+        const select = screen.getByLabelText("Ref folder for Refs") as HTMLSelectElement;
+        fireEvent.change(select, { target: { value: "" } });
+
+        await waitFor(() => {
+            const call = fetchSpy.mock.calls.find(([, init]) => {
+                try {
+                    return JSON.parse((init as RequestInit).body as string).action === "update-ref-properties";
+                } catch { return false; }
+            });
+            expect(call).toBeDefined();
+            const body = JSON.parse((call![1] as RequestInit).body as string);
+            expect(body.refFolder).toBeNull();
+            expect(body.includeSubfolders).toBeNull();
+        });
+    });
+
+    it("Include Subfolders checkbox is hidden when refFolder is not set", () => {
+        setupWithFolders(MULTI_REF_SCHEMA);
+        expect(screen.queryByLabelText("Include subfolders for Refs")).not.toBeInTheDocument();
+    });
+
+    it("Include Subfolders checkbox appears when refFolder is set", () => {
+        const folders = [makeFolder("folder-1", "Chapter 1")];
+        setupWithFolders(MULTI_REF_SCHEMA_WITH_FOLDER, folders);
+        expect(screen.getByLabelText("Include subfolders for Refs")).toBeInTheDocument();
+    });
+
+    it("toggling Include Subfolders dispatches updateMetadataRefProperties", async () => {
+        const folders = [makeFolder("folder-1", "Chapter 1")];
+        const fetchSpy = mockFetchOk(MULTI_REF_SCHEMA_WITH_FOLDER);
+        setupWithFolders(MULTI_REF_SCHEMA_WITH_FOLDER, folders);
+
+        const checkbox = screen.getByLabelText("Include subfolders for Refs") as HTMLInputElement;
+        fireEvent.click(checkbox);
+
+        await waitFor(() => {
+            const call = fetchSpy.mock.calls.find(([, init]) => {
+                try {
+                    return JSON.parse((init as RequestInit).body as string).action === "update-ref-properties";
+                } catch { return false; }
+            });
+            expect(call).toBeDefined();
+            const body = JSON.parse((call![1] as RequestInit).body as string);
+            expect(body.fieldKey).toBe("refs-field");
+            expect(body.includeSubfolders).toBe(true);
+        });
     });
 });

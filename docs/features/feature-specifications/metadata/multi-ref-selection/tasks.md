@@ -99,6 +99,7 @@ Spec: `docs/features/feature-specifications/metadata/multi-ref-selection/multi-r
 **Depends on:** Tasks 3, 8
 **Estimate:** 3
 **Notes:** Covers FR 13. No reusable `FolderPicker` exists yet — build a simple `<select>` populated from `selectFolders` rather than introducing a new shared component (out of scope). The "Include Subfolders" checkbox must use `disabled` + `checked` state derived from the current `MetadataField`.
+**Done:** [x] Folder picker `<select>` and conditional "Include subfolders" checkbox added to `SchemaManager.tsx` for `multi-resource-ref` fields. Folder list from `state.resources.folders`. Selecting a folder dispatches `updateMetadataRefProperties`; clearing also clears `includeSubfolders`. Checkbox hidden when no `refFolder`. 7 tests in `schemaManager.test.tsx`. All 838 tests pass, `pnpm typecheck` clean.
 
 ---
 

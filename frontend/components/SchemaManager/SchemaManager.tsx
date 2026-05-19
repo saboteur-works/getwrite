@@ -16,8 +16,9 @@ import {
     removeMetadataGroup,
     reorderMetadataGroups,
     renameMetadataFieldKey,
+    updateMetadataRefProperties,
 } from "../../src/store/projectsSlice";
-import type { MetadataFieldType } from "../../src/lib/models/types";
+import type { Folder, MetadataFieldType } from "../../src/lib/models/types";
 import ConfirmDialog from "../common/ConfirmDialog";
 
 const SLUG_RE = /^[a-z0-9-]+$/;
@@ -63,6 +64,9 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
     const dispatch = useAppDispatch();
     const schema = useAppSelector(selectActiveProjectMetadataSchema);
     const projectId = useAppSelector(selectSelectedProjectId);
+    const folders = useAppSelector(
+        (state) => (state.resources as unknown as { folders: Folder[] }).folders,
+    );
 
     const [deleteTarget, setDeleteTarget] = React.useState<DeleteTarget | null>(null);
     const [editTarget, setEditTarget] = React.useState<EditTarget | null>(null);
@@ -381,6 +385,8 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                         const hasOptions =
                                             field.type === "select" ||
                                             field.type === "multiselect";
+                                        const isMultiRef =
+                                            field.type === "multi-resource-ref";
 
                                         return (
                                             <div
@@ -625,6 +631,62 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                                                 )
                                                             }
                                                         />
+                                                    </div>
+                                                ) : null}
+
+                                                {/* Folder picker + Include Subfolders for multi-resource-ref */}
+                                                {isMultiRef ? (
+                                                    <div className="ml-1 mt-1 flex flex-col gap-1">
+                                                        <label className="text-[11px] text-gw-secondary">
+                                                            Folder scope
+                                                        </label>
+                                                        <select
+                                                            value={field.refFolder ?? ""}
+                                                            onChange={(e) => {
+                                                                if (!projectId) return;
+                                                                const val = e.target.value;
+                                                                void dispatch(
+                                                                    updateMetadataRefProperties({
+                                                                        projectId,
+                                                                        groupId: group.id,
+                                                                        fieldKey: field.key,
+                                                                        updates: val
+                                                                            ? { refFolder: val }
+                                                                            : { refFolder: null, includeSubfolders: null },
+                                                                    }),
+                                                                );
+                                                            }}
+                                                            className="rounded border border-gw-border bg-transparent px-1.5 py-0.5 font-mono text-[10px] text-gw-secondary focus:outline-none focus:ring-1 focus:ring-gw-border"
+                                                            aria-label={`Ref folder for ${field.label}`}
+                                                        >
+                                                            <option value="">Any folder</option>
+                                                            {folders.map((f) => (
+                                                                <option key={f.id} value={f.id}>
+                                                                    {f.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        {field.refFolder ? (
+                                                            <label className="flex items-center gap-1.5 font-mono text-[10px] text-gw-secondary">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={field.includeSubfolders ?? false}
+                                                                    onChange={(e) => {
+                                                                        if (!projectId) return;
+                                                                        void dispatch(
+                                                                            updateMetadataRefProperties({
+                                                                                projectId,
+                                                                                groupId: group.id,
+                                                                                fieldKey: field.key,
+                                                                                updates: { includeSubfolders: e.target.checked },
+                                                                            }),
+                                                                        );
+                                                                    }}
+                                                                    aria-label={`Include subfolders for ${field.label}`}
+                                                                />
+                                                                Include subfolders
+                                                            </label>
+                                                        ) : null}
                                                     </div>
                                                 ) : null}
                                             </div>
