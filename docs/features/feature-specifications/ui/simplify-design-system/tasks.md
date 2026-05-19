@@ -167,7 +167,40 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 10
 **Estimate:** 2
 **Notes:** Audit's projected savings: ~1140 LOC across the seven phase-one tasks. PR description should cite the audit's before-counts vs. the post-migration counts as evidence for spec goal 2.
-**Done:** [ ]
+**Done:** [x]
+
+#### Verification results (2026-05-19)
+
+All gates green on `feat/simplify-design-system`:
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck` | ✅ clean |
+| `pnpm lint` | ✅ 0 errors (386 pre-existing warnings, all in `tests/`) |
+| `pnpm test:ci` | ✅ 1051 passed / 1 skipped (134 files) |
+| `pnpm build` | ✅ Next.js production build OK |
+| `pnpm build-storybook` | ✅ Storybook static built |
+| `pnpm test:e2e` | ✅ 107 passed (Chromium) |
+
+**Primitive-count reduction (excluding new `common/UI/` primitives):**
+
+| Category | main | HEAD | Δ | % reduction |
+|---|---:|---:|---:|---:|
+| Raw `<button>` (call sites) | 117 across 46 files | 56 across 32 files | −61 / −14 files | **52%** |
+| Raw `<input>` | 50 | 33 | −17 | **34%** |
+| Raw `<textarea>` | 4 | 2 | −2 | **50%** |
+| Raw `<select>` | 15 | 9 | −6 | **40%** |
+| Input family combined | 69 | 44 | −25 | **36%** |
+| Dialog/Modal overlay impls | 4 shells + 3 inline = 7 | 1 canonical Dialog | −6 | **86%** |
+| Bordered+rounded card surfaces | 51 | 21 | −30 | **59%** |
+
+Every targeted category clears the ≥ 30% spec-goal-2 bar. Two parallel modal-shell files (`ModalOverlayShell.tsx`, `ProjectModalFrame.tsx`) and four CSS class systems (`appshell-modal-*`, `project-modal-*`, `confirm-dialog-*`, `compile-tree-checkbox` etc.) were deleted entirely; remaining `<button>` / `<input>` usage in `Timeline/`, `SearchBar/`, `Editor/MenuBar/` is deferred per audit § 1 / § 4 (visually unique or behaviorally non-trivial).
+
+**LOC delta vs. `main`** (all files, branch-wide): `101 files changed, +3972 / −1653` — net +2319 (includes new Storybook stories, a11y tests, primitive sources, decisions/audit/follow-up docs).
+
+Limiting to `frontend/components/` + `frontend/styles/`: `57 files changed, +974 / −1302` — net **−328 LOC** of component/style code.
+
+Excluding new `common/UI/` primitives and `__smoke__`: `41 files changed, +535 / −1351` — net **−816 LOC** removed from migrated call sites (vs. audit projection of ~1140 LOC — within range, since several inputs were converted to thin wrappers rather than fully inlined removals).
 
 ---
 
