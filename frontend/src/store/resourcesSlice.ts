@@ -5,6 +5,7 @@ import {
     PayloadAction,
 } from "@reduxjs/toolkit";
 import { AnyResource, Folder } from "../lib/models";
+import { renameMetadataFieldKey } from "./projectsSlice";
 
 interface ResourcesState {
     selectedResourceId: string | null;
@@ -139,6 +140,16 @@ const resourcesSlice = createSlice({
             );
             return state;
         },
+    },
+    extraReducers: (builder) => {
+        builder.addCase(renameMetadataFieldKey.fulfilled, (state, action) => {
+            const { fieldKey: oldKey, newKey } = action.meta.arg;
+            for (const resource of state.resources) {
+                if (!resource.userMetadata || !(oldKey in resource.userMetadata)) continue;
+                const { [oldKey]: value, ...rest } = resource.userMetadata;
+                resource.userMetadata = { ...rest, [newKey]: value };
+            }
+        });
     },
 });
 

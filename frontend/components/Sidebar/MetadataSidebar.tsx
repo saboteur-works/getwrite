@@ -354,37 +354,39 @@ export default function MetadataSidebar({
     return (
         <aside
             ref={sidebarRef}
-            className={`metadata-sidebar-root ${className}`}
+            className={`metadata-sidebar-root flex flex-col h-full overflow-hidden ${className}`}
             aria-label="metadata-sidebar"
         >
             {selectedResource?.type === "text" ? (
                 <React.Fragment>
-                    <div className="mb-4">
+                    <div className="flex-shrink-0 mb-4">
                         <h3 className="metadata-sidebar-title text-gw-secondary-light font-bold">
                             {selectedResource.name}
                         </h3>
                     </div>
-                    {schema.groups.map((group) => {
-                        if (
-                            group.folderId &&
-                            selectedResource.folderId !== group.folderId
-                        ) {
-                            return null;
-                        }
-                        return (
-                            <SidebarSection key={group.id} label={group.label}>
-                                {group.fields.map((field) => (
-                                    <React.Fragment key={field.key}>
-                                        {renderField(field)}
-                                    </React.Fragment>
-                                ))}
-                            </SidebarSection>
-                        );
-                    })}
-                    <SidebarSection label="Tags">
-                        <TagsSection />
-                    </SidebarSection>
-                    <div className="mt-2 pt-3 border-t border-gw-border">
+                    <div className="flex-1 min-h-0 overflow-y-auto">
+                        {schema.groups.map((group) => {
+                            if (
+                                group.folderId &&
+                                selectedResource.folderId !== group.folderId
+                            ) {
+                                return null;
+                            }
+                            return (
+                                <SidebarSection key={group.id} label={group.label}>
+                                    {group.fields.map((field) => (
+                                        <React.Fragment key={field.key}>
+                                            {renderField(field)}
+                                        </React.Fragment>
+                                    ))}
+                                </SidebarSection>
+                            );
+                        })}
+                        <SidebarSection label="Tags">
+                            <TagsSection />
+                        </SidebarSection>
+                    </div>
+                    <div className="flex-shrink-0 mt-2 pt-3 border-t border-gw-border">
                         <button
                             type="button"
                             onClick={() => { void handleAddField(); }}
