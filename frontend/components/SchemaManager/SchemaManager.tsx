@@ -22,6 +22,7 @@ import {
 } from "../../src/store/projectsSlice";
 import type { Folder, MetadataFieldType } from "../../src/lib/models/types";
 import ConfirmDialog from "../common/ConfirmDialog";
+import { DialogTitle } from "../common/UI/Dialog/Dialog";
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
@@ -285,9 +286,11 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
             <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-8">
                 <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
                     <div>
-                        <h1 className="text-2xl font-semibold text-gw-primary">
-                            Metadata Fields
-                        </h1>
+                        <DialogTitle asChild>
+                            <h1 className="text-2xl font-semibold text-gw-primary">
+                                Metadata Fields
+                            </h1>
+                        </DialogTitle>
                         <p className="mt-1 text-sm text-gw-secondary">
                             Add, remove, and reorder fields shown in the metadata
                             sidebar.
