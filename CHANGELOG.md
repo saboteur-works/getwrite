@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.2.29](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.28...getwrite-v0.2.29) (2026-05-19)
+
+
+### Features
+
+* **api:** add POST /api/project/metadata-schema route (Task 5) ([6191a7d](https://github.com/saboteur-works/getwrite/commit/6191a7dc057419dba7c200309ed4eb89dcd25983))
+* **chip:** add chip BEM CSS classes to getwrite-utilities.css ([a810d28](https://github.com/saboteur-works/getwrite/commit/a810d28d542367d5dbbb39e9073e3ad456ce9b0a))
+* **chip:** add onDismiss prop with lucide X icon and propagation guard ([4fbb3f6](https://github.com/saboteur-works/getwrite/commit/4fbb3f67cb0c271fbae1e79484629afac7e929b6))
+* **chip:** add tooltip prop with brand styling and WithTooltip story ([83135ce](https://github.com/saboteur-works/getwrite/commit/83135ce5a6dbcf8adfc4e127b003620e2518d928))
+* **chip:** implement reusable Chip component with tests and Storybook story ([4339798](https://github.com/saboteur-works/getwrite/commit/43397984046466f410758583d43c050ba4e17c78))
+* **dynamic-metadata:** dynamic metadata schema + multi-resource-ref field type ([6c8c54c](https://github.com/saboteur-works/getwrite/commit/6c8c54cd32e062cbf5e4ca324b2081ce2664cc24))
+* **metadata:** add dynamic sidebar controls and stabilize related tests ([5e6f56b](https://github.com/saboteur-works/getwrite/commit/5e6f56b0093fd339e28b123a27d9a1e6ed840dcc))
+* **models:** add metadata-schema CRUD model layer (Task 4) ([677f9f2](https://github.com/saboteur-works/getwrite/commit/677f9f205f2d3a9deb05751d54456df808f31fe8))
+* **multi-resource-ref:** Task 1 — add type to schema union + spec and tasks ([bda6a94](https://github.com/saboteur-works/getwrite/commit/bda6a940bcbac5d3ca3907494bd8af318a6db95f))
+* **multi-resource-ref:** Task 10 — maxSelections number input in SchemaManager ([a26955f](https://github.com/saboteur-works/getwrite/commit/a26955fb9f5de677201b7080a7e3673f90e8efc7))
+* **multi-resource-ref:** Task 11 — Storybook stories for MultiResourceRefInput ([b4abd1d](https://github.com/saboteur-works/getwrite/commit/b4abd1decd24caa84198363bfbe001adac600bed))
+* **multi-resource-ref:** Task 2 — add refFolder, includeSubfolders, maxSelections to schema ([c585191](https://github.com/saboteur-works/getwrite/commit/c585191d6db3cc58a49626c92880ee61d05bd9c1))
+* **multi-resource-ref:** Task 3 — update-ref-properties across model, route, transport, and Redux ([2483359](https://github.com/saboteur-works/getwrite/commit/24833598da4af3684fec79f5b2b45bfb1dc87148))
+* **multi-resource-ref:** Task 4 — MultiResourceRefInput chip-based control ([fcce8cd](https://github.com/saboteur-works/getwrite/commit/fcce8cd3ff4d92d597569e9eef8e00ce68e21169))
+* **multi-resource-ref:** Task 5 — folder-scoped autocomplete candidates ([6202d0b](https://github.com/saboteur-works/getwrite/commit/6202d0baf76165d2fb4c344bb1c186d4612f5301))
+* **multi-resource-ref:** Task 6 — max-selections enforcement ([a3cfff7](https://github.com/saboteur-works/getwrite/commit/a3cfff740cfaa628265fd30f5e4aa4e02289fc57))
+* **multi-resource-ref:** Task 7 — wire MultiResourceRefInput into MetadataSidebar ([a1f660b](https://github.com/saboteur-works/getwrite/commit/a1f660bf2f749183234a30ea7e322f993e7e368a))
+* **multi-resource-ref:** Task 8 — multi-resource-ref in SchemaManager type dropdown ([27b866c](https://github.com/saboteur-works/getwrite/commit/27b866c3ea9a0e478f77760bb05440df9bd1b7e6))
+* **multi-resource-ref:** Task 9 — folder picker + Include Subfolders in SchemaManager ([15318e6](https://github.com/saboteur-works/getwrite/commit/15318e603b51fa88b52480540353812dfbbfe691))
+* **redux:** add metadata schema CRUD thunks and transport service (Task 6) ([4226e79](https://github.com/saboteur-works/getwrite/commit/4226e79f0d347487090b68adb8ac2db15f0c3c59))
+* **redux:** store metadataSchema in projectsSlice and expose selector (Task 3) ([9b290b7](https://github.com/saboteur-works/getwrite/commit/9b290b7f39f56569ba6b6b66e71b9549b75b0942))
+* **schema-manager:** add field type selector; fix resource-ref autocomplete ([b587871](https://github.com/saboteur-works/getwrite/commit/b587871af269ff990e0da316455fe94897a9bcf8))
+* **schema-manager:** build SchemaManager modal UI component (Task 12) ([df33bab](https://github.com/saboteur-works/getwrite/commit/df33bab47c46eea473442e84797d680ea5c9a5ba))
+* **schema-manager:** implement field key rename with sidecar migration ([7d9ac78](https://github.com/saboteur-works/getwrite/commit/7d9ac78b62f14cc7715ddd5658171c67d1f4a5ae))
+* **schemas:** add DEFAULT_METADATA_SCHEMA constant with seven built-in fields (Task 2) ([e6b56ec](https://github.com/saboteur-works/getwrite/commit/e6b56ec4f2e5d846d5a2b1bf5fba628f16ceed4c))
+* **schemas:** add Zod schemas and TS types for dynamic metadata schema (Task 1) ([ca37782](https://github.com/saboteur-works/getwrite/commit/ca3778299abad129abaebe1685739b863fbea249))
+* **settings:** wire SchemaManager into settings menu (Task 13) ([97adf2d](https://github.com/saboteur-works/getwrite/commit/97adf2d3fa559e5fa09616dd44bc931eba2a6b96))
+* **sidebar:** add "Add field" footer button to MetadataSidebar (Task 11) ([61917cc](https://github.com/saboteur-works/getwrite/commit/61917ccc36294d835a086461e27372fc6a3d17b6))
+* **sidebar:** lazy POV migration to ResourceRef on first edit (Task 7) ([4e2eff2](https://github.com/saboteur-works/getwrite/commit/4e2eff2d8b6a2a2547caf64d0ea4e9585ca0bcd6))
+* **sidebar:** schema-driven MetadataSidebar rewrite (Task 10) ([cc04767](https://github.com/saboteur-works/getwrite/commit/cc04767c61086202f56f75860952c12b4e5b2ce4))
+* **trash:** nullify resource-ref values project-wide on delete (Task 8) ([324b5da](https://github.com/saboteur-works/getwrite/commit/324b5da46747ceeda0fc22f9a8132c3a44c0e412))
+
+
+### Bug Fixes
+
+* **chip:** resolve nested interactive controls a11y violation ([dae139a](https://github.com/saboteur-works/getwrite/commit/dae139a8e0582bbc660b04ad2366821890ae4bab))
+* **dynamic-metadata:** forward metadataSchema on project open ([638da71](https://github.com/saboteur-works/getwrite/commit/638da71b1307984e79a0a6641a643f6e159d3b43))
+* **multi-resource-ref:** subfolder resources missing from autocomplete ([e7362ce](https://github.com/saboteur-works/getwrite/commit/e7362ce09893b092981e29b97cdf8767d036baa8))
+* **pov:** expand autocomplete to all resources instead of characters-only ([9d5ddaa](https://github.com/saboteur-works/getwrite/commit/9d5ddaab0b71a8bcf112a0f91bc004ceb169f601))
+* **schema-manager:** sync userMetadata key rename into Redux resources ([b342b06](https://github.com/saboteur-works/getwrite/commit/b342b064c8c20024645c34576d1039ea2d3bd71d))
+* **sidebar:** sticky title and Add Field; scrollable content between ([a6b8efe](https://github.com/saboteur-works/getwrite/commit/a6b8efecc81440878749c1b9d9c21417d2429f7b))
+
 ## [0.2.28](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.27...getwrite-v0.2.28) (2026-05-17)
 
 
