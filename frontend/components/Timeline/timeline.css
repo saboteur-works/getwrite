@@ -109,8 +109,8 @@
 }
 
 .timeline-root .timeline-pov-pill.active {
-    color: #d44040;
-    border-color: #d44040;
+    color: var(--timeline-active-color, #d44040);
+    border-color: var(--timeline-active-color, #d44040);
     z-index: 1;
 }
 
@@ -229,6 +229,6 @@
 }
 
 .timeline-root .timeline-chip:focus-visible {
-    outline: 1px solid #f5f4f0;
+    outline: 1px solid var(--timeline-focus-ring, #f5f4f0);
     outline-offset: 1px;
 }

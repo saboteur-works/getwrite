@@ -252,8 +252,6 @@ export default function AppShell({
         useState<boolean>(false);
     const [isCloseProjectConfirmOpen, setIsCloseProjectConfirmOpen] =
         useState<boolean>(false);
-    const settingsMenuRef = useRef<HTMLDivElement | null>(null);
-    const projectMenuRef = useRef<HTMLDivElement | null>(null);
     const latestEditorEditVersionRef = useRef<number>(0);
     const combined = React.useMemo(() => {
         return [...(resources ?? []), ...(folders ?? [])];
@@ -602,21 +600,6 @@ export default function AppShell({
     }, [project?.id, selectedResourceId]);
 
     useEffect(() => {
-        const onDocumentMouseDown = (event: MouseEvent) => {
-            if (
-                settingsMenuRef.current &&
-                !settingsMenuRef.current.contains(event.target as Node)
-            ) {
-                setIsSettingsMenuOpen(false);
-            }
-            if (
-                projectMenuRef.current &&
-                !projectMenuRef.current.contains(event.target as Node)
-            ) {
-                setIsProjectMenuOpen(false);
-            }
-        };
-
         const onDocumentKeyDown = (event: KeyboardEvent) => {
             const isCommandPaletteShortcut =
                 (event.metaKey || event.ctrlKey) &&
@@ -630,8 +613,6 @@ export default function AppShell({
             }
 
             if (event.key === "Escape") {
-                setIsSettingsMenuOpen(false);
-                setIsProjectMenuOpen(false);
                 setIsPreferencesModalOpen(false);
                 setIsProjectTypesModalOpen(false);
                 setIsHelpModalOpen(false);
@@ -639,11 +620,9 @@ export default function AppShell({
             }
         };
 
-        document.addEventListener("mousedown", onDocumentMouseDown);
         document.addEventListener("keydown", onDocumentKeyDown);
 
         return () => {
-            document.removeEventListener("mousedown", onDocumentMouseDown);
             document.removeEventListener("keydown", onDocumentKeyDown);
         };
     }, []);
@@ -858,7 +837,7 @@ export default function AppShell({
                 projectName={project?.name}
                 isDarkMode={isDarkMode}
                 isOpen={isSettingsMenuOpen}
-                menuRef={settingsMenuRef}
+                onClose={() => setIsSettingsMenuOpen(false)}
                 onToggleOpen={() => setIsSettingsMenuOpen((prev) => !prev)}
                 onOpenPreferences={handleOpenPreferences}
                 onOpenHeadingSettings={handleOpenHeadingSettings}
@@ -874,7 +853,7 @@ export default function AppShell({
                 onCloseProject={handleCloseProject}
                 hasProject={Boolean(project)}
                 isProjectMenuOpen={isProjectMenuOpen}
-                projectMenuRef={projectMenuRef}
+                onCloseProjectMenu={() => setIsProjectMenuOpen(false)}
                 onToggleProjectMenuOpen={() =>
                     setIsProjectMenuOpen((prev) => !prev)
                 }

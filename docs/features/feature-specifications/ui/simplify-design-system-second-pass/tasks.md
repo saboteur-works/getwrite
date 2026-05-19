@@ -14,7 +14,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Mirror the union of behaviors currently duplicated in `ResourceContextMenu`, `ShellSettingsMenu`, `ManageProjectMenu`. Read all three before designing the API so the contract fits the call sites without per-menu special cases. Decide upfront whether the hook owns the trigger ref or only the menu ref — document the choice in the file header.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -26,7 +26,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** FR 1 forbids parallel coexistence — grep each migrated file post-change to confirm the deleted patterns are gone. Behavior must remain identical (test against keyboard a11y harness from phase one).
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -38,7 +38,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Follow the brand-token wiring pattern set in phase-one primitives (`Button`, `Dialog`, etc.). Red token must not appear (FR 6).
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -50,7 +50,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 3
 **Estimate:** 2
 **Notes:** Single call site (per spec § "Out of scope (deferred)" of phase one). Preserve current keyboard semantics — Radix Tabs already provides them, but verify no app-specific shortcut layered on top is lost.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -62,7 +62,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Spec § FR 3 explicitly excludes `cmdk` — keep filter logic out. Read the four call sites (`SearchBar`, `ResourceCommandPalette`, `POVAutocomplete`, `MultiResourceRefInput`) before locking the API so it fits all four without per-site escape hatches.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -74,7 +74,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 5
 **Estimate:** 3
 **Notes:** Largest of the four migrations. Verify focus return after selection matches current UX. SearchBar uses `Chip` already (phase one) — confirm that adoption is unaffected.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -86,7 +86,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 5
 **Estimate:** 3
 **Notes:** Palette currently combines an `inset-0` overlay with custom keyboard plumbing — confirm the canonical `Dialog` (already used elsewhere) plus `Input` + `Listbox` together produce the same end-to-end behavior. Filtering must stay in the call site.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -98,7 +98,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 5
 **Estimate:** 2
 **Notes:** Per phase-one notes, this file's prior `border-brand-mid` drift was already fixed — confirm no new drift is introduced.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -110,7 +110,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 5
 **Estimate:** 2
 **Notes:** Multi-select selection model lives in the call site (per FR 3 — filtering/fetching/selection stay out of the primitive).
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -122,7 +122,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Spec FR 6 is explicit about no red fill. Phase-one follow-up doc ([`../simplify-design-system/follow-up-work.md`](../simplify-design-system/follow-up-work.md) § Task 9) sketched this; treat it as canonical guidance.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -134,7 +134,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 10
 **Estimate:** 5
 **Notes:** Phase one deferred Timeline as visually unique. The cut here is contract-based: if the variant matches, migrate; otherwise document. Watch the red token rule (FR 6) — Timeline's canonical-position indicator usage is the *one* legitimate red surface and must remain.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -146,7 +146,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 2, 4, 6, 7, 8, 9, 10, 11
 **Estimate:** 3
 **Notes:** Model after `frontend/scripts/check-test-policy.mjs`. Run script-locally before wiring to CI so the baseline is clean. The structured-comment marker is what protects future contributors from quietly extending the exemption list.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -158,7 +158,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 12
 **Estimate:** 2
 **Notes:** Mirror the phase-one verification table pattern from [`../simplify-design-system/tasks.md`](../simplify-design-system/tasks.md) § Task 11 — concrete primitive-count deltas are evidence the second pass closed the loop.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

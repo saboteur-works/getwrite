@@ -76,14 +76,14 @@ function toColorInputValue(color: string | undefined): string {
     const normalizedColor = color?.trim();
 
     if (!normalizedColor) {
-        return "#000000";
+        return "#000000"; // GW-HEX-EXEMPT: color picker placeholder — user-selected arbitrary colors
     }
 
     const isHexColor = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(
         normalizedColor,
     );
 
-    return isHexColor ? normalizedColor : "#000000";
+    return isHexColor ? normalizedColor : "#000000"; // GW-HEX-EXEMPT: color picker placeholder — user-selected arbitrary colors
 }
 
 export default function HeadingSettingsModal({

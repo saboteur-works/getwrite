@@ -114,7 +114,8 @@ export default function TagsSection(): JSX.Element | null {
                                     shape="sharp"
                                     size="sm"
                                     color={tag.color}
-                                    active={isActive}
+                                    active={isActive && !!tag.color}
+                                    tagActive={isActive && !tag.color}
                                     onClick={() => void handleToggle(tag.id)}
                                 />
                             );

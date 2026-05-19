@@ -43,6 +43,7 @@ export function registerIBMPlexFonts() {
     });
 }
 
+// GW-HEX-EXEMPT-START: @react-pdf/renderer StyleSheet — CSS variables are not supported in PDF rendering context
 const styles = StyleSheet.create({
     page: {
         fontFamily: "IBM Plex Serif",
@@ -79,6 +80,7 @@ const styles = StyleSheet.create({
         lineHeight: 1.8,
     },
 });
+// GW-HEX-EXEMPT-END
 
 export interface CompilePDFDocumentProps {
     sections: CompileSection[];

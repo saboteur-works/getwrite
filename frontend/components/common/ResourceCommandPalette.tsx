@@ -4,6 +4,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FileText, Image as ImageIcon, Music2, Search } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
 import { Dialog, DialogContent, DialogTitle } from "./UI/Dialog";
+import Input from "./UI/Input/Input";
+import Listbox from "./UI/Listbox/Listbox";
+import type { ListboxOption } from "./UI/Listbox/Listbox";
 
 interface ResourceCommandPaletteProps {
     isOpen: boolean;
@@ -148,7 +151,7 @@ export default function ResourceCommandPalette({
                         aria-hidden="true"
                         className="resource-palette-input-icon"
                     />
-                    <input
+                    <Input
                         ref={inputRef}
                         value={query}
                         onChange={(event) => setQuery(event.target.value)}
@@ -158,56 +161,27 @@ export default function ResourceCommandPalette({
                     />
                 </div>
 
-                <ul
-                    className="resource-palette-list"
-                    role="listbox"
-                    aria-label="Resources"
-                >
-                    {filteredResources.length > 0 ? (
-                        filteredResources.map((resource, index) => {
-                            const isHighlighted = index === highlightedIndex;
-
-                            return (
-                                <li
-                                    key={resource.id}
-                                    className="resource-palette-list-item"
-                                >
-                                    <button
-                                        type="button"
-                                        role="option"
-                                        aria-selected={isHighlighted}
-                                        className={`resource-palette-item ${isHighlighted ? "resource-palette-item-active" : ""}`}
-                                        onMouseEnter={() =>
-                                            setHighlightedIndex(index)
-                                        }
-                                        onClick={() =>
-                                            handleSelect(resource.id)
-                                        }
-                                    >
-                                        <span
-                                            className="resource-palette-item-icon"
-                                            aria-hidden="true"
-                                        >
-                                            <ResourceTypeIcon
-                                                resource={resource}
-                                            />
-                                        </span>
-                                        <span className="resource-palette-item-name">
-                                            {getResourceName(resource)}
-                                        </span>
-                                        <span className="resource-palette-item-type">
-                                            {getResourceTypeLabel(resource)}
-                                        </span>
-                                    </button>
-                                </li>
-                            );
-                        })
-                    ) : (
+                {filteredResources.length > 0 ? (
+                    <Listbox
+                        options={filteredResources.map((r) => ({
+                            value: r.id,
+                            label: getResourceName(r),
+                            meta: getResourceTypeLabel(r),
+                        }))}
+                        highlightedIndex={highlightedIndex}
+                        onSelect={handleSelect}
+                        onHighlightChange={setHighlightedIndex}
+                        anchored={false}
+                        aria-label="Resources"
+                        className="resource-palette-list"
+                    />
+                ) : (
+                    <ul className="resource-palette-list" role="listbox" aria-label="Resources">
                         <li className="resource-palette-empty">
                             No resources match your search.
                         </li>
-                    )}
-                </ul>
+                    </ul>
+                )}
             </DialogContent>
         </Dialog>
     );

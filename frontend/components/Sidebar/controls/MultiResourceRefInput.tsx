@@ -4,6 +4,8 @@ import React from "react";
 import LabeledField from "./LabeledField";
 import Chip from "../../common/UI/Chip/Chip";
 import { useAppDispatch } from "../../../src/store/hooks";
+import Input from "../../common/UI/Input/Input";
+import Listbox from "../../common/UI/Listbox/Listbox";
 import { setSelectedResourceId } from "../../../src/store/resourcesSlice";
 import type { ResourceRef } from "../../../src/lib/models/types";
 import type { ResourceOption } from "./ResourceRefInput";
@@ -126,10 +128,10 @@ export default function MultiResourceRefInput({
                         })}
                     </div>
                 )}
-                <input
+                <Input
                     type="text"
                     aria-label="multi-resource-ref-input"
-                    className="w-full p-2 border border-gw-border rounded text-sm"
+                    className="w-full"
                     value={inputVal}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
@@ -138,20 +140,20 @@ export default function MultiResourceRefInput({
                     autoComplete="off"
                     disabled={atCap}
                 />
-                {suggestions.length > 0 && (
-                    <ul className="absolute top-full left-0 right-0 mt-1 bg-gw-chrome border border-gw-border rounded max-h-48 overflow-y-auto z-10">
-                        {suggestions.map((opt) => (
-                            <li
-                                key={opt.id}
-                                className="px-3 py-2 cursor-pointer hover:bg-gw-chrome2 text-sm"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => addRef(opt)}
-                            >
-                                {opt.name}
-                            </li>
-                        ))}
-                    </ul>
-                )}
+                <Listbox
+                    options={suggestions.map((opt) => ({
+                        value: opt.id ?? opt.name,
+                        label: opt.name,
+                    }))}
+                    highlightedIndex={-1}
+                    onSelect={(val) => {
+                        const match = suggestions.find(
+                            (opt) => (opt.id ?? opt.name) === val,
+                        );
+                        if (match) addRef(match);
+                    }}
+                    aria-label="Resource suggestions"
+                />
             </div>
         </LabeledField>
     );

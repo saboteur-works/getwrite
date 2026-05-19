@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { MoreHorizontal, Pencil, Trash2, Package } from "lucide-react";
 import ConfirmDialog from "../common/ConfirmDialog";
 import RenameProjectModal from "./RenameProjectModal";
@@ -11,6 +11,7 @@ import {
 import { useAppDispatch, useAppSelector } from "../../src/store/hooks";
 import { projectActionsController } from "../../src/store/project-actions-controller";
 import { toastService } from "../../src/lib/toast-service";
+import useDismissableMenu from "../common/UI/hooks/useDismissableMenu";
 
 export interface ManageProjectMenuProps {
     projectId: string;
@@ -40,25 +41,10 @@ export default function ManageProjectMenu({
     const [name, setName] = useState<string>(projectName);
     const [renameOpen, setRenameOpen] = useState<boolean>(false);
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
-    const menuRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        // Use mousedown so the listener runs before React's click handlers and
-        // before any re-render that might replace menu nodes. This prevents a
-        // click inside the menu (that toggles editing) from being considered an
-        // outside click after a synchronous DOM update.
-        function onDocClick(e: MouseEvent) {
-            if (
-                menuRef.current &&
-                !menuRef.current.contains(e.target as Node)
-            ) {
-                setOpen(false);
-            }
-        }
-
-        document.addEventListener("mousedown", onDocClick);
-        return () => document.removeEventListener("mousedown", onDocClick);
-    }, []);
+    const { containerRef: menuRef } = useDismissableMenu({
+        isOpen: open,
+        onClose: () => setOpen(false),
+    });
 
     useEffect(() => {
         setName(projectName);
@@ -84,9 +70,6 @@ export default function ManageProjectMenu({
         setOpen(false);
         toastService.success("Project deleted", projectName);
     };
-
-    // Implementation notes: `menuRef` ensures outside-click detection. Rename only
-    // fires `onRename` when value is non-empty.
 
     return (
         <div className="relative inline-block" ref={menuRef}>

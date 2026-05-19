@@ -17,6 +17,7 @@
         "test-storybook": "vitest run --config=vitest.storybook.config.ts --configLoader runner",
         "test:e2e": "playwright test",
         "test:policy:check": "node ./scripts/check-test-policy.mjs",
+        "check:no-hex": "node ./scripts/check-no-hardcoded-hex.mjs",
         "test:refactor:resource-templates": "pnpm exec vitest run --passWithNoTests tests/unit/resource.test.ts tests/unit/resource-factory.test.ts tests/unit/resource-persistence.test.ts tests/unit/project-view-adapter.test.ts tests/unit/template-service.test.ts tests/unit/resource-templates.test.ts tests/unit/resource-templates-export.test.ts tests/unit/resource-templates-list.test.ts tests/unit/uuid.test.ts tests/unit/project-type-validation.test.ts",
         "test:refactor:revisions": "pnpm exec vitest run --passWithNoTests tests/unit/revision-canonical-guards.test.ts tests/unit/revisions-slice-selectors.test.ts tests/unit/revision-invariants.test.ts tests/unit/revision-manager.test.ts tests/unit/revision.test.ts tests/reorder-persistence.test.tsx",
         "test:refactor:projects": "pnpm exec vitest run --passWithNoTests tests/unit/projects-slice-controller.test.ts tests/start.test.tsx tests/create-project-modal.test.tsx tests/unit/project-type-validation.test.ts",
