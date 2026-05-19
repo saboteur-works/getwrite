@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import type { Tag } from "../../src/lib/models/types";
 import Button from "./UI/Button/Button";
+import Chip from "./UI/Chip";
 
 function toColorInputValue(color: string | undefined): string {
     if (!color) return "#000000";
@@ -122,19 +123,12 @@ export default function TagsManagerModal({
                                 key={tag.id}
                                 className="flex items-center justify-between gap-2 rounded-md border-[0.5px] border-gw-border bg-gw-chrome px-3 py-2"
                             >
-                                <span
-                                    className="metadata-sidebar-tag"
-                                    style={
-                                        tag.color
-                                            ? {
-                                                  borderColor: tag.color,
-                                                  color: tag.color,
-                                              }
-                                            : undefined
-                                    }
-                                >
-                                    {tag.name}
-                                </span>
+                                <Chip
+                                    label={tag.name}
+                                    shape="sharp"
+                                    size="sm"
+                                    color={tag.color}
+                                />
                                 <button
                                     type="button"
                                     aria-label={`Delete tag ${tag.name}`}

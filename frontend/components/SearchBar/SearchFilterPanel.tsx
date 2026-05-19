@@ -3,6 +3,7 @@
 import React from "react";
 import type { Folder, Tag } from "../../src/lib/models/types";
 import type { SearchFilters } from "../../src/store/search-transport-service";
+import Chip from "../common/UI/Chip";
 
 export interface SearchFilterPanelProps {
     folders: Folder[];
@@ -68,21 +69,16 @@ export default function SearchFilterPanel({
             {statuses.length > 0 && (
                 <div className="searchbar-filter-section">
                     <span className="searchbar-filter-label">Status</span>
-                    <div className="searchbar-chips">
+                    <div className="flex flex-wrap gap-1">
                         {statuses.map((status) => (
-                            <button
+                            <Chip
                                 key={status}
-                                type="button"
-                                className={`searchbar-chip${
-                                    activeFilters.status === status
-                                        ? " searchbar-chip-active"
-                                        : ""
-                                }`}
+                                label={status}
+                                shape="rounded"
+                                size="md"
+                                active={activeFilters.status === status}
                                 onClick={() => toggleStatus(status)}
-                                aria-pressed={activeFilters.status === status}
-                            >
-                                {status}
-                            </button>
+                            />
                         ))}
                     </div>
                 </div>
@@ -91,21 +87,20 @@ export default function SearchFilterPanel({
             {tags.length > 0 && (
                 <div className="searchbar-filter-section">
                     <span className="searchbar-filter-label">Tags</span>
-                    <div className="searchbar-chips">
+                    <div className="flex flex-wrap gap-1">
                         {tags.map((tag) => {
                             const isActive = (activeFilters.tags ?? []).includes(
                                 tag.id,
                             );
                             return (
-                                <button
+                                <Chip
                                     key={tag.id}
-                                    type="button"
-                                    className={`searchbar-chip${isActive ? " searchbar-chip-active" : ""}`}
+                                    label={tag.name}
+                                    shape="rounded"
+                                    size="md"
+                                    active={isActive}
                                     onClick={() => toggleTag(tag.id)}
-                                    aria-pressed={isActive}
-                                >
-                                    {tag.name}
-                                </button>
+                                />
                             );
                         })}
                     </div>

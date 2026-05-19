@@ -1333,37 +1333,6 @@
         cursor: pointer;
     }
 
-    .searchbar-chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-    }
-
-    .searchbar-chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 8px;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: 999px;
-        background-color: transparent;
-        color: var(--color-gw-secondary);
-        font-size: 11px;
-        font-family: var(--font-mono);
-        cursor: pointer;
-        transition: border-color 150ms ease, color 150ms ease;
-    }
-
-    .searchbar-chip:hover {
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
-
-    .searchbar-chip-active {
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-        background-color: var(--color-gw-chrome3);
-    }
-
     .searchbar-result-item {
         list-style: none;
     }
@@ -1533,31 +1502,6 @@
     .metadata-sidebar-input:focus {
         border-color: var(--color-gw-border-md);
         box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
-    }
-
-    .metadata-sidebar-tag {
-        display: inline-flex;
-        align-items: center;
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-sm);
-        padding: 2px 8px;
-        color: var(--color-gw-secondary);
-        background: transparent;
-        cursor: pointer;
-        transition:
-            border-color 150ms ease,
-            color 150ms ease,
-            background-color 150ms ease;
-    }
-
-    .metadata-sidebar-tag--active {
-        border-color: var(--color-gw-red-border);
-        background-color: var(--color-gw-red);
-        color: #fff;
     }
 
     /* ── REVISION CONTROL ── */
@@ -2502,5 +2446,16 @@
         outline: none;
         box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
         border-radius: 2px;
+    }
+
+    .chip--active {
+        background-color: var(--color-gw-chrome3);
+        border-color: var(--color-gw-border-md);
+        color: var(--color-gw-primary);
+    }
+
+    button.chip:hover:not(:disabled) {
+        border-color: var(--color-gw-border-md);
+        color: var(--color-gw-primary);
     }
 }

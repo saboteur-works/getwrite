@@ -139,7 +139,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 2 (not 3 — no shadcn needed; existing `Chip` is already a hand-rolled primitive)
 **Estimate:** 2
 **Notes:** **Leave** `TimelineChip` and the revision-badge inline (per audit) — they're visually distinct enough to stay separate.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
