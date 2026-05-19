@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.30](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.29...getwrite-v0.2.30) (2026-05-19)
+
+
+### Features
+
+* **editor:** add StripExternalPasteColor extension to strip color on external paste ([725e521](https://github.com/saboteur-works/getwrite/commit/725e521564bb2ef194dafefa0fd23d9aff6a792c))
+* **editor:** strip inline color from externally pasted text ([fd2550b](https://github.com/saboteur-works/getwrite/commit/fd2550b02548f1901edebc2c8be4201720dd3c06))
+
 ## [0.2.29](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.28...getwrite-v0.2.29) (2026-05-19)
 
 
