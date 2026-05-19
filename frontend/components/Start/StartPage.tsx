@@ -11,6 +11,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { FolderPlus, Plus, FolderOpen } from "lucide-react";
+import Card from "../common/UI/Card/Card";
 import type {
     Project as CanonicalProject,
     AnyResource,
@@ -482,22 +483,22 @@ export default function StartPage({
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="rounded-lg border border-gw-border bg-gw-chrome2 px-4 py-4">
+                                    <Card variant="chrome2" padding="none" className="px-4 py-4">
                                         <div className="text-xs uppercase tracking-[0.2em] text-gw-secondary">
                                             Resources
                                         </div>
                                         <div className="mt-2 text-2xl font-semibold text-gw-primary">
                                             {totalRenderableResources}
                                         </div>
-                                    </div>
-                                    <div className="rounded-lg border border-gw-border bg-gw-chrome2 px-4 py-4">
+                                    </Card>
+                                    <Card variant="chrome2" padding="none" className="px-4 py-4">
                                         <div className="text-xs uppercase tracking-[0.2em] text-gw-secondary">
                                             Folders
                                         </div>
                                         <div className="mt-2 text-2xl font-semibold text-gw-primary">
                                             {totalFolders}
                                         </div>
-                                    </div>
+                                    </Card>
                                 </div>
 
                                 <button

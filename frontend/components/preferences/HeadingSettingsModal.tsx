@@ -14,6 +14,7 @@ import {
 } from "../../src/lib/editor-heading-settings";
 import HeadingStyleField from "./HeadingStyleField";
 import Button from "../common/UI/Button/Button";
+import Card from "../common/UI/Card/Card";
 
 interface HeadingSettingsModalProps {
     initialHeadings?: EditorHeadingMap;
@@ -193,9 +194,10 @@ export default function HeadingSettingsModal({
                         !DEFAULT_VISIBLE_HEADING_LEVELS.includes(level);
 
                     return (
-                        <section
+                        <Card
+                            as="section"
                             key={level}
-                            className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5"
+                            padding="lg"
                         >
                             <div className="flex items-center justify-between gap-4 border-b border-gw-border pb-4">
                                 <div>
@@ -368,7 +370,7 @@ export default function HeadingSettingsModal({
                                     </div>
                                 </HeadingStyleField>
                             </div>
-                        </section>
+                        </Card>
                     );
                 })}
             </div>

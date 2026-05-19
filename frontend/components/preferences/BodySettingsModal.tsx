@@ -5,6 +5,7 @@ import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 import { BODY_FIELD_DEFINITIONS, sanitizeEditorBody } from "../../src/lib/editor-body-settings";
 import HeadingStyleField from "./HeadingStyleField";
 import Button from "../common/UI/Button/Button";
+import Card from "../common/UI/Card/Card";
 
 interface BodySettingsModalProps {
     initialBody?: EditorBodyConfig;
@@ -63,7 +64,7 @@ export default function BodySettingsModal({
                 </Button>
             </header>
 
-            <section className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
+            <Card as="section" padding="lg">
                 <div className="grid gap-3 md:grid-cols-2">
                     {BODY_FIELD_DEFINITIONS.map(({ key, label, placeholder }) => (
                         <HeadingStyleField key={key} id={`body-${key}`} label={label}>
@@ -80,7 +81,7 @@ export default function BodySettingsModal({
                         </HeadingStyleField>
                     ))}
                 </div>
-            </section>
+            </Card>
 
             {errorMessage ? (
                 <p className="text-sm text-gw-secondary" role="alert">

@@ -2007,19 +2007,6 @@
         color: var(--color-gw-secondary);
     }
 
-    .help-card {
-        background-color: var(--color-gw-chrome);
-        border-color: var(--color-gw-border);
-    }
-
-    .help-section-card {
-        margin-bottom: 1rem;
-        padding: 1rem;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-md);
-        background-color: var(--color-gw-chrome);
-    }
-
     .help-section-card-title {
         margin: 0 0 0.5rem;
         font-family: var(--font-mono);

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import Button from "../common/UI/Button/Button";
+import Card from "../common/UI/Card/Card";
 
 export interface DefaultRevisionNameModalProps {
     initialName: string;
@@ -67,7 +68,7 @@ export default function DefaultRevisionNameModal({
             </div>
 
             {/* Input section */}
-            <div className="flex flex-col gap-3 rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
+            <Card padding="lg" className="flex flex-col gap-3">
                 <label
                     htmlFor="default-revision-name"
                     className="text-sm font-medium text-gw-primary"
@@ -86,7 +87,7 @@ export default function DefaultRevisionNameModal({
                 <p className="text-right text-xs text-gw-secondary">
                     {draftName.trim().length} / 100
                 </p>
-            </div>
+            </Card>
 
             {/* Error */}
             {errorMessage ? (

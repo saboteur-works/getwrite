@@ -3,6 +3,7 @@
 import React from "react";
 import { ChevronUp, ChevronDown, Trash2, Plus } from "lucide-react";
 import Button from "../common/UI/Button/Button";
+import Card from "../common/UI/Card/Card";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
     selectActiveProjectMetadataSchema,
@@ -317,9 +318,9 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                         );
 
                         return (
-                            <div
+                            <Card
                                 key={group.id}
-                                className="rounded-lg border-hairline border-gw-border bg-gw-chrome"
+                                padding="none"
                             >
                                 {/* Group header */}
                                 <div className="flex items-center gap-1 border-b border-gw-border px-4 py-3">
@@ -742,7 +743,7 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                         Add field
                                     </button>
                                 </div>
-                            </div>
+                            </Card>
                         );
                     })}
                 </div>

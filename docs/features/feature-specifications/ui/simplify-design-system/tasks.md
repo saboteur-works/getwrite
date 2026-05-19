@@ -98,7 +98,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** New task added based on audit finding — Card was the third-highest-impact category (~150 LOC saved) and wasn't in the original plan. **Defer** any card that carries non-trivial layout logic beyond `border + rounded + padding + background` (e.g. timeline rows).
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
