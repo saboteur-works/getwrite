@@ -3,6 +3,7 @@
 import React from "react";
 import LabeledField from "./LabeledField";
 import useSyncedControlledValue from "./useSyncedControlledValue";
+import Select from "../../common/UI/Select/Select";
 
 const EMPTY_MULTI_VALUE: string[] = [];
 
@@ -74,9 +75,9 @@ export default function SelectInput({
 
     return (
         <LabeledField label={label} className={className}>
-            <select
+            <Select
                 aria-label={ariaLabel}
-                className="w-full mt-2 p-2 border border-gw-border rounded text-sm"
+                className="w-full mt-2"
                 value={displayValue}
                 onChange={handleChange}
                 multiple={multiple}
@@ -87,7 +88,7 @@ export default function SelectInput({
                         {opt}
                     </option>
                 ))}
-            </select>
+            </Select>
         </LabeledField>
     );
 }

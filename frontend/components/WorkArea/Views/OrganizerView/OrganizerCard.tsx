@@ -1,5 +1,6 @@
 import React from "react";
 import type { AnyResource, TextResource } from "../../../../src/lib/models/types";
+import Card from "../../../common/UI/Card/Card";
 
 /**
  * @module OrganizerCard
@@ -59,8 +60,9 @@ export default function OrganizerCard({
     const status = (resource.userMetadata?.status as string) || defaultStatus;
 
     return (
-        <article
-            className="h-48 border border-gw-border rounded-md p-4 bg-gw-chrome"
+        <Card
+            as="article"
+            className="h-48 border"
             aria-labelledby={`res-${resource.id}-title`}
         >
             <header className="flex items-start justify-between gap-3 mb-3">
@@ -103,6 +105,6 @@ export default function OrganizerCard({
                     </button>
                 )}
             </footer>
-        </article>
+        </Card>
     );
 }

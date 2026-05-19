@@ -1,6 +1,7 @@
 import React from "react";
 import LabeledField from "./LabeledField";
 import useSyncedControlledValue from "./useSyncedControlledValue";
+import Checkbox from "../../common/UI/Checkbox/Checkbox";
 
 export interface MultiSelectListProps {
     items: string[];
@@ -40,8 +41,7 @@ export default function MultiSelectList({
             <div className="mt-2 space-y-2">
                 {items.map((it) => (
                     <label key={it} className="flex items-center gap-2 text-sm">
-                        <input
-                            type="checkbox"
+                        <Checkbox
                             aria-label={it}
                             checked={sel.includes(it)}
                             onChange={() => toggle(it)}

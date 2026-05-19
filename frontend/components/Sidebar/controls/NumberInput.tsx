@@ -3,6 +3,7 @@
 import React from "react";
 import LabeledField from "./LabeledField";
 import useSyncedControlledValue from "./useSyncedControlledValue";
+import Input from "../../common/UI/Input/Input";
 
 export interface NumberInputProps {
     /**
@@ -42,14 +43,13 @@ export default function NumberInput({
 
     return (
         <LabeledField label={label} className={className}>
-            <input
+            <Input
                 type="number"
                 aria-label={ariaLabel}
-                className="w-full mt-2 p-2 border border-gw-border rounded text-sm"
+                className="w-full mt-2"
                 value={number}
                 onChange={(e) => {
                     const v = e.target.value;
-                    // Convert to number, or fall back to 0 if empty
                     const numValue = v === "" ? 0 : parseFloat(v);
                     if (!isNaN(numValue)) {
                         setNumber(numValue);

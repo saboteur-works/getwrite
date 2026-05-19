@@ -7,36 +7,63 @@ export interface CollapsibleSectionProps {
     title: string;
     children: React.ReactNode;
     defaultOpen?: boolean;
-    /**
-     * Renders in the header row to the right of the title, only when expanded.
-     * Used for sort controls in the Resources section.
-     */
+    variant?: "sidebar" | "workarea";
     actions?: React.ReactNode;
+    onToggle?: (isOpen: boolean) => void;
 }
 
 function slugify(text: string): string {
-    return text
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
+    return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
 export default function CollapsibleSection({
     title,
     children,
     defaultOpen = true,
+    variant = "workarea",
     actions,
+    onToggle,
 }: CollapsibleSectionProps): JSX.Element {
     const [isOpen, setIsOpen] = React.useState<boolean>(defaultOpen);
     const contentId = `collapsible-section-${slugify(title)}`;
 
-    const toggle = () => setIsOpen((prev) => !prev);
+    const toggle = () => {
+        const next = !isOpen;
+        setIsOpen(next);
+        onToggle?.(next);
+    };
+
+    if (variant === "sidebar") {
+        return (
+            <div className="mb-4">
+                <button
+                    type="button"
+                    onClick={toggle}
+                    aria-expanded={isOpen}
+                    aria-controls={contentId}
+                    className="flex w-full items-center justify-between py-1 text-gw-secondary hover:text-gw-primary transition-colors duration-150"
+                >
+                    <span className="font-mono text-[11px] uppercase tracking-[0.12em]">
+                        {title}
+                    </span>
+                    {isOpen ? (
+                        <ChevronDown size={12} strokeWidth={1.5} />
+                    ) : (
+                        <ChevronRight size={12} strokeWidth={1.5} />
+                    )}
+                </button>
+                {isOpen && (
+                    <div id={contentId}>
+                        {children}
+                    </div>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className="workarea-section">
-            <div
-                className={`flex items-center justify-between${isOpen ? " mb-3" : ""}`}
-            >
+            <div className={`flex items-center justify-between${isOpen ? " mb-3" : ""}`}>
                 <button
                     type="button"
                     onClick={toggle}

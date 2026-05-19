@@ -13,6 +13,11 @@ import {
     type EditorHeadingMap,
 } from "../../src/lib/editor-heading-settings";
 import HeadingStyleField from "./HeadingStyleField";
+import Button from "../common/UI/Button/Button";
+import Card from "../common/UI/Card/Card";
+import Input from "../common/UI/Input/Input";
+import Select from "../common/UI/Select/Select";
+import { DialogTitle } from "../common/UI/Dialog/Dialog";
 
 interface HeadingSettingsModalProps {
     initialHeadings?: EditorHeadingMap;
@@ -171,22 +176,20 @@ export default function HeadingSettingsModal({
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8 lg:px-10">
             <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-semibold text-gw-primary">
-                        Heading Settings
-                    </h1>
+                    <DialogTitle asChild>
+                        <h1 className="text-2xl font-semibold text-gw-primary">
+                            Heading Settings
+                        </h1>
+                    </DialogTitle>
                     <p className="max-w-2xl text-sm text-gw-secondary">
                         Configure project-specific heading styles for the
                         editor. H1 through H3 are always available, and you can
                         add H4 through H6 as needed.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
-                >
+                <Button variant="secondary" size="sm" onClick={onClose}>
                     Close
-                </button>
+                </Button>
             </header>
 
             <div className="flex flex-col gap-4">
@@ -196,9 +199,10 @@ export default function HeadingSettingsModal({
                         !DEFAULT_VISIBLE_HEADING_LEVELS.includes(level);
 
                     return (
-                        <section
+                        <Card
+                            as="section"
                             key={level}
-                            className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5"
+                            padding="lg"
                         >
                             <div className="flex items-center justify-between gap-4 border-b border-gw-border pb-4">
                                 <div>
@@ -211,15 +215,15 @@ export default function HeadingSettingsModal({
                                     </p>
                                 </div>
                                 {isOptionalLevel ? (
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
                                         onClick={() =>
                                             handleRemoveHeading(level)
                                         }
-                                        className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
                                     >
                                         Remove {getHeadingLabel(level)}
-                                    </button>
+                                    </Button>
                                 ) : null}
                             </div>
 
@@ -228,7 +232,7 @@ export default function HeadingSettingsModal({
                                     id={`${level}-fontSize`}
                                     label="Font Size"
                                 >
-                                    <input
+                                    <Input
                                         id={`${level}-fontSize`}
                                         aria-label={`${getHeadingLabel(level)} Font Size`}
                                         type="number"
@@ -247,7 +251,6 @@ export default function HeadingSettingsModal({
                                                 value ? `${value}px` : "",
                                             );
                                         }}
-                                        className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
                                     />
                                 </HeadingStyleField>
 
@@ -255,7 +258,7 @@ export default function HeadingSettingsModal({
                                     id={`${level}-fontFamily`}
                                     label="Font Family"
                                 >
-                                    <input
+                                    <Input
                                         id={`${level}-fontFamily`}
                                         aria-label={`${getHeadingLabel(level)} Font Family`}
                                         value={heading.fontFamily ?? ""}
@@ -267,7 +270,6 @@ export default function HeadingSettingsModal({
                                                 event.target.value,
                                             )
                                         }
-                                        className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
                                     />
                                 </HeadingStyleField>
 
@@ -275,7 +277,7 @@ export default function HeadingSettingsModal({
                                     id={`${level}-fontWeight`}
                                     label="Font Weight"
                                 >
-                                    <select
+                                    <Select
                                         id={`${level}-fontWeight`}
                                         aria-label={`${getHeadingLabel(level)} Font Weight`}
                                         value={toFontWeightSelectValue(
@@ -288,7 +290,6 @@ export default function HeadingSettingsModal({
                                                 event.target.value,
                                             )
                                         }
-                                        className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
                                     >
                                         <option value="">Use default</option>
                                         {FONT_WEIGHT_OPTIONS.map((option) => (
@@ -299,14 +300,14 @@ export default function HeadingSettingsModal({
                                                 {option.label}
                                             </option>
                                         ))}
-                                    </select>
+                                    </Select>
                                 </HeadingStyleField>
 
                                 <HeadingStyleField
                                     id={`${level}-letterSpacing`}
                                     label="Letter Spacing"
                                 >
-                                    <input
+                                    <Input
                                         id={`${level}-letterSpacing`}
                                         aria-label={`${getHeadingLabel(level)} Letter Spacing`}
                                         type="number"
@@ -325,7 +326,6 @@ export default function HeadingSettingsModal({
                                                 value ? `${value}em` : "",
                                             );
                                         }}
-                                        className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
                                     />
                                 </HeadingStyleField>
 
@@ -371,7 +371,7 @@ export default function HeadingSettingsModal({
                                     </div>
                                 </HeadingStyleField>
                             </div>
-                        </section>
+                        </Card>
                     );
                 })}
             </div>
@@ -379,13 +379,13 @@ export default function HeadingSettingsModal({
             <div className="flex flex-col gap-3 border-t border-gw-border pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     {nextHeadingLevel ? (
-                        <button
-                            type="button"
+                        <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={handleAddHeading}
-                            className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
                         >
                             Add {getHeadingLabel(nextHeadingLevel)}
-                        </button>
+                        </Button>
                     ) : (
                         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
                             All heading levels enabled
@@ -399,24 +399,24 @@ export default function HeadingSettingsModal({
                 </div>
 
                 <div className="flex items-center justify-end gap-3">
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={onClose}
-                        className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
                         disabled={isSaving}
                     >
                         Cancel
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
+                        variant="default"
+                        size="sm"
                         onClick={() => {
                             void handleSave();
                         }}
-                        className="rounded-md border border-gw-border-md bg-gw-chrome2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-primary transition-colors duration-150 hover:bg-gw-surface disabled:cursor-not-allowed disabled:opacity-60"
                         disabled={isSaving}
                     >
                         {isSaving ? "Saving..." : "Save Changes"}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import type { Tag } from "../../src/lib/models/types";
+import Button from "./UI/Button/Button";
+import Chip from "./UI/Chip";
+import { DialogTitle } from "./UI/Dialog/Dialog";
 
 function toColorInputValue(color: string | undefined): string {
     if (!color) return "#000000";
@@ -20,7 +23,7 @@ export interface TagsManagerModalProps {
 
 /**
  * Modal for managing project-level tags: create and delete.
- * Rendered via `ModalOverlayShell` in `ShellModalCoordinator`.
+ * Rendered via `Dialog` in `ShellModalCoordinator`.
  */
 export default function TagsManagerModal({
     projectPath,
@@ -95,22 +98,19 @@ export default function TagsManagerModal({
         <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-6 py-8">
             <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gw-primary">
-                        Manage Tags
-                    </h1>
+                    <DialogTitle asChild>
+                        <h1 className="text-2xl font-semibold text-gw-primary">
+                            Manage Tags
+                        </h1>
+                    </DialogTitle>
                     <p className="mt-1 text-sm text-gw-secondary">
                         Create and delete project-scoped tags. Assign them to
                         resources from the metadata sidebar.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
-                    aria-label="Close"
-                >
+                <Button variant="secondary" size="sm" onClick={onClose} aria-label="Close">
                     Close
-                </button>
+                </Button>
             </header>
 
             <div className="flex flex-col gap-6">
@@ -126,19 +126,12 @@ export default function TagsManagerModal({
                                 key={tag.id}
                                 className="flex items-center justify-between gap-2 rounded-md border-[0.5px] border-gw-border bg-gw-chrome px-3 py-2"
                             >
-                                <span
-                                    className="metadata-sidebar-tag"
-                                    style={
-                                        tag.color
-                                            ? {
-                                                  borderColor: tag.color,
-                                                  color: tag.color,
-                                              }
-                                            : undefined
-                                    }
-                                >
-                                    {tag.name}
-                                </span>
+                                <Chip
+                                    label={tag.name}
+                                    shape="sharp"
+                                    size="sm"
+                                    color={tag.color}
+                                />
                                 <button
                                     type="button"
                                     aria-label={`Delete tag ${tag.name}`}
@@ -190,13 +183,13 @@ export default function TagsManagerModal({
                             />
                         ) : null}
                     </div>
-                    <button
+                    <Button
                         type="submit"
+                        variant="secondary"
                         disabled={!newName.trim() || isSubmitting}
-                        className="rounded-md border border-gw-border bg-transparent px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         Add Tag
-                    </button>
+                    </Button>
                 </form>
             </div>
         </div>

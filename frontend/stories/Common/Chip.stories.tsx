@@ -90,3 +90,35 @@ export const InteractiveButton: Story = {
         onClick: () => console.log("chip clicked"),
     },
 };
+
+export const Active: Story = {
+    args: {
+        label: "Draft",
+        shape: "rounded",
+        size: "md",
+        active: true,
+        onClick: () => console.log("chip clicked"),
+    },
+    render: (args) => (
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <Chip {...args} active={false} label="Inactive" />
+            <Chip {...args} active={true} label="Active" />
+        </div>
+    ),
+};
+
+export const ActiveWithColor: Story = {
+    args: {
+        label: "Fiction",
+        shape: "sharp",
+        size: "sm",
+        color: "#6b8cae",
+        onClick: () => console.log("chip clicked"),
+    },
+    render: (args) => (
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <Chip {...args} active={false} label="Unassigned" />
+            <Chip {...args} active={true} label="Assigned" />
+        </div>
+    ),
+};

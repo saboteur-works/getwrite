@@ -539,29 +539,6 @@
         padding: 16px;
     }
 
-    .project-type-editor-action-button {
-        padding: 4px 10px;
-        background: transparent;
-        border: 1px solid var(--color-gw-border);
-        border-radius: var(--radius-md);
-        font-family: var(--font-mono);
-        font-size: 9px;
-        text-transform: uppercase;
-        letter-spacing: 0.14em;
-        color: var(--color-gw-secondary);
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            color 150ms ease,
-            border-color 150ms ease;
-        white-space: nowrap;
-    }
-
-    .project-type-editor-action-button:hover {
-        background-color: var(--color-gw-chrome2);
-        color: var(--color-gw-primary);
-        border-color: var(--color-gw-border-md);
-    }
 
     .project-type-editor-row-end {
         display: flex;
@@ -973,36 +950,6 @@
     }
 
     /* ── COMPILE PREVIEW MODAL ── */
-    .compile-modal-root {
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .compile-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background-color: rgba(2, 6, 23, 0.4);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-    }
-
-    .compile-modal-panel {
-        position: relative;
-        z-index: 10;
-        width: min(94vw, 560px);
-        max-height: 88vh;
-        overflow-y: auto;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-xl);
-        background-color: var(--color-gw-chrome);
-        padding: 24px;
-    }
-
     .compile-modal-title {
         font-family: var(--font-sans);
         font-size: 16px;
@@ -1028,49 +975,6 @@
         margin-bottom: 6px;
     }
 
-    .compile-modal-select {
-        display: block;
-        background-color: var(--color-gw-chrome2);
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-md);
-        padding: 8px 12px;
-        font-family: var(--font-sans);
-        font-size: 13px;
-        color: var(--color-gw-primary);
-        width: 100%;
-        outline: none;
-    }
-
-    .compile-modal-select:focus {
-        border-color: var(--color-gw-border-md);
-    }
-
-    .compile-modal-generate-button {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: var(--radius-md);
-        border: 0.5px solid var(--color-gw-border);
-        background: transparent;
-        font-family: var(--font-mono);
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        color: var(--color-gw-secondary);
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            color 150ms ease,
-            border-color 150ms ease;
-    }
-
-    .compile-modal-generate-button:hover {
-        background-color: var(--color-gw-chrome2);
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
-
     .compile-modal-textarea {
         width: 100%;
         height: 160px;
@@ -1089,86 +993,6 @@
         font-family: var(--font-mono);
         font-size: 10px;
         color: var(--color-gw-secondary);
-    }
-
-    .compile-modal-close {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: var(--radius-md);
-        border: 0.5px solid var(--color-gw-border);
-        background: transparent;
-        font-family: var(--font-mono);
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        color: var(--color-gw-secondary);
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            color 150ms ease,
-            border-color 150ms ease;
-    }
-
-    .compile-modal-close:hover {
-        background-color: var(--color-gw-chrome2);
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
-
-    /* ── CONFIRM DIALOG ── */
-    .confirm-dialog-root {
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .confirm-dialog-backdrop {
-        position: fixed;
-        inset: 0;
-        background-color: rgba(2, 6, 23, 0.4);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-    }
-
-    .confirm-dialog-panel {
-        position: relative;
-        z-index: 10;
-        width: min(94vw, 480px);
-        max-height: 88vh;
-        overflow-y: auto;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-xl);
-        background-color: var(--color-gw-chrome);
-        padding: 24px;
-    }
-
-    .confirm-dialog-title {
-        font-family: var(--font-sans);
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--color-gw-primary);
-        margin-bottom: 8px;
-    }
-
-    .confirm-dialog-description {
-        font-family: var(--font-sans);
-        font-size: 13px;
-        color: var(--color-gw-secondary);
-        margin-bottom: 16px;
-        white-space: pre-wrap;
-    }
-
-    .confirm-dialog-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 8px;
-        margin-top: 20px;
     }
 
     /* ── COMPILE RESOURCE TREE ── */
@@ -1230,13 +1054,6 @@
 
     .compile-tree-label:hover {
         color: var(--color-gw-primary);
-    }
-
-    .compile-tree-checkbox {
-        flex-shrink: 0;
-        width: 13px;
-        height: 13px;
-        cursor: pointer;
     }
 
     .compile-tree-icon {
@@ -1516,37 +1333,6 @@
         cursor: pointer;
     }
 
-    .searchbar-chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-    }
-
-    .searchbar-chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 8px;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: 999px;
-        background-color: transparent;
-        color: var(--color-gw-secondary);
-        font-size: 11px;
-        font-family: var(--font-mono);
-        cursor: pointer;
-        transition: border-color 150ms ease, color 150ms ease;
-    }
-
-    .searchbar-chip:hover {
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
-
-    .searchbar-chip-active {
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-        background-color: var(--color-gw-chrome3);
-    }
-
     .searchbar-result-item {
         list-style: none;
     }
@@ -1716,31 +1502,6 @@
     .metadata-sidebar-input:focus {
         border-color: var(--color-gw-border-md);
         box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
-    }
-
-    .metadata-sidebar-tag {
-        display: inline-flex;
-        align-items: center;
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-sm);
-        padding: 2px 8px;
-        color: var(--color-gw-secondary);
-        background: transparent;
-        cursor: pointer;
-        transition:
-            border-color 150ms ease,
-            color 150ms ease,
-            background-color 150ms ease;
-    }
-
-    .metadata-sidebar-tag--active {
-        border-color: var(--color-gw-red-border);
-        background-color: var(--color-gw-red);
-        color: #fff;
     }
 
     /* ── REVISION CONTROL ── */
@@ -2165,19 +1926,6 @@
         color: var(--color-gw-secondary);
     }
 
-    .help-card {
-        background-color: var(--color-gw-chrome);
-        border-color: var(--color-gw-border);
-    }
-
-    .help-section-card {
-        margin-bottom: 1rem;
-        padding: 1rem;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-md);
-        background-color: var(--color-gw-chrome);
-    }
-
     .help-section-card-title {
         margin: 0 0 0.5rem;
         font-family: var(--font-mono);
@@ -2264,34 +2012,6 @@
         flex-shrink: 0;
     }
 
-    .appshell-topbar-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 2.25rem;
-        height: 2.25rem;
-        border-radius: var(--radius-md);
-        border: 0.5px solid var(--color-gw-border);
-        background: transparent;
-        color: var(--color-gw-secondary);
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            border-color 150ms ease,
-            color 150ms ease;
-    }
-
-    .appshell-topbar-button:hover {
-        background-color: var(--color-gw-chrome2);
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
-
-    .appshell-topbar-button:focus-visible {
-        outline: none;
-        box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
-        border-color: var(--color-gw-border-md);
-    }
 
     .appshell-topbar-dropdown {
         position: absolute;
@@ -2389,27 +2109,6 @@
         overflow-x: hidden;
     }
 
-    .appshell-close-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 2rem;
-        height: 2rem;
-        padding: 0;
-        border: none;
-        border-radius: var(--radius-md);
-        background-color: transparent;
-        color: var(--color-gw-secondary);
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            color 150ms ease;
-    }
-
-    .appshell-close-button:hover {
-        background-color: var(--color-gw-chrome2);
-        color: var(--color-gw-primary);
-    }
 
     .appshell-resize-handle {
         flex-shrink: 0;
@@ -2430,30 +2129,6 @@
         background-color: var(--color-gw-border-md);
     }
 
-    .appshell-sidebar-toggle {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 2.5rem;
-        height: 2.5rem;
-        padding: 0 0.5rem;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-md);
-        background-color: transparent;
-        color: var(--color-gw-secondary);
-        font-size: 0.875rem;
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            border-color 150ms ease,
-            color 150ms ease;
-    }
-
-    .appshell-sidebar-toggle:hover {
-        background-color: var(--color-gw-chrome2);
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
 
     .appshell-work-area {
         flex: 1;
@@ -2472,48 +2147,6 @@
     }
 
     /* ── MODALS ── */
-    .appshell-modal-root {
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .appshell-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background-color: rgba(2, 6, 23, 0.4);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-    }
-
-    .appshell-modal-panel {
-        position: relative;
-        z-index: 10;
-        width: min(94vw, 820px);
-        max-height: 92vh;
-        overflow-y: auto;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-lg); /* 8px — STYLING.md S6 */
-        background-color: var(--color-gw-chrome);
-        /* No box-shadow (D10) */
-    }
-
-    .appshell-modal-panel--help {
-        width: min(94vw, 860px);
-    }
-
-    .appshell-modal-panel--project-types {
-        width: min(96vw, 1200px);
-    }
-
-    .appshell-modal-panel--palette {
-        width: min(94vw, 560px);
-    }
-
     .appshell-modal-message {
         padding: 24px;
         font-size: 13px;
@@ -2526,36 +2159,6 @@
     }
 
     /* ── CREATE PROJECT MODAL ── */
-    .project-modal-root {
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .project-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background-color: rgba(2, 6, 23, 0.4);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-    }
-
-    .project-modal-panel {
-        position: relative;
-        z-index: 10;
-        width: min(94vw, 480px);
-        background-color: var(--color-gw-chrome);
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-xl);
-        padding: 24px;
-        max-height: calc(100vh - 80px);
-        overflow-y: auto;
-    }
-
     .project-modal-title {
         font-family: var(--font-sans);
         font-size: 16px;
@@ -2577,27 +2180,6 @@
         text-transform: uppercase;
         letter-spacing: 0.14em;
         color: var(--color-gw-secondary);
-    }
-
-    .project-modal-input,
-    .project-modal-select {
-        display: block;
-        background-color: var(--color-gw-chrome2);
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-md);
-        padding: 8px 12px;
-        font-family: var(--font-sans);
-        font-size: 13px;
-        color: var(--color-gw-primary);
-        width: 100%;
-        outline: none;
-        margin-top: 4px;
-    }
-
-    .project-modal-input:focus,
-    .project-modal-select:focus {
-        border-color: var(--color-gw-border-md);
-        box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
     }
 
     .project-modal-hint {
@@ -2626,49 +2208,6 @@
         border-top: 0.5px solid var(--color-gw-border);
     }
 
-    .project-modal-button {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: var(--radius-md);
-        font-family: var(--font-mono);
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            color 150ms ease,
-            border-color 150ms ease;
-    }
-
-    .project-modal-button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .project-modal-button-primary {
-        background-color: transparent;
-        border: 1px solid var(--color-gw-primary);
-        color: var(--color-gw-primary);
-    }
-
-    .project-modal-button-primary:hover:not(:disabled) {
-        background-color: var(--color-gw-chrome2);
-    }
-
-    .project-modal-button-secondary {
-        background-color: transparent;
-        border: 1px solid var(--color-gw-border);
-        color: var(--color-gw-secondary);
-    }
-
-    .project-modal-button-secondary:hover:not(:disabled) {
-        background-color: var(--color-gw-chrome2);
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
 
     /* ── DENSITY VARIANTS ── */
     .gw-density-compact .appshell-topbar {
@@ -2907,5 +2446,16 @@
         outline: none;
         box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
         border-radius: 2px;
+    }
+
+    .chip--active {
+        background-color: var(--color-gw-chrome3);
+        border-color: var(--color-gw-border-md);
+        color: var(--color-gw-primary);
+    }
+
+    button.chip:hover:not(:disabled) {
+        border-color: var(--color-gw-border-md);
+        color: var(--color-gw-primary);
     }
 }

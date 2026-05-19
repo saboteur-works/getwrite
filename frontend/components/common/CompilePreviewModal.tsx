@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X, PackageCheck } from "lucide-react";
+import { PackageCheck } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
 import CompileResourceTree from "./CompileResourceTree";
 import {
@@ -10,6 +10,10 @@ import {
     getDescendantLeafIds,
     ROOT_ITEM_ID,
 } from "./compileSelection";
+import Button from "./UI/Button/Button";
+import { Dialog, DialogContent, DialogTitle } from "./UI/Dialog";
+import Checkbox from "./UI/Checkbox/Checkbox";
+import Select from "./UI/Select/Select";
 
 export interface CompileOptions {
     includeHeaders: boolean;
@@ -32,7 +36,7 @@ export default function CompilePreviewModal(
         resource?: AnyResource;
         onConfirm?: () => void;
     },
-): JSX.Element | null {
+): JSX.Element {
     const {
         isOpen,
         resources = [],
@@ -67,37 +71,36 @@ export default function CompilePreviewModal(
         }
     }, [isOpen, resource]);
 
-    if (!isOpen) return null;
-
     return (
-        <div className="compile-modal-root" data-testid="compile-preview-modal">
-            <div
-                className="compile-modal-backdrop"
-                onClick={onClose}
-                aria-hidden="true"
-            />
-
-            <div className="compile-modal-panel">
-                <h3 className="compile-modal-title">Compile Project</h3>
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose?.(); }}>
+            <DialogContent
+                maxWidth="max-w-[560px]"
+                className="p-6"
+                data-testid="compile-preview-modal"
+                aria-describedby={undefined}
+            >
+                <DialogTitle asChild>
+                    <h3 className="compile-modal-title">Compile Project</h3>
+                </DialogTitle>
                 <p className="compile-modal-description">
                     Select which resources to include in the compiled output.
                 </p>
 
                 <div className="flex gap-2 mb-2">
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
+                        size="xs"
                         onClick={() => setCheckedIds(initAllChecked(tree))}
-                        className="compile-modal-generate-button"
                     >
                         Select All
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="xs"
                         onClick={() => setCheckedIds(new Set())}
-                        className="compile-modal-generate-button"
                     >
                         Select None
-                    </button>
+                    </Button>
                 </div>
 
                 <CompileResourceTree
@@ -111,12 +114,11 @@ export default function CompilePreviewModal(
                 </div>
 
                 <div className="mt-3 flex items-center gap-2">
-                    <input
+                    <Checkbox
                         id="compile-include-headers"
-                        type="checkbox"
                         checked={includeHeaders}
                         onChange={(e) => setIncludeHeaders(e.target.checked)}
-                        className="cursor-pointer"
+                        aria-label="Include section headers"
                     />
                     <label
                         htmlFor="compile-include-headers"
@@ -133,7 +135,7 @@ export default function CompilePreviewModal(
                     >
                         Compile as
                     </label>
-                    <select
+                    <Select
                         id="compile-as"
                         value={compileAs}
                         onChange={(e) =>
@@ -141,12 +143,12 @@ export default function CompilePreviewModal(
                                 e.target.value as "txt" | "pdf" | "docx",
                             )
                         }
-                        className="compile-modal-select w-auto"
+                        className="w-auto"
                     >
                         <option value="txt">txt</option>
                         <option value="pdf">pdf</option>
                         <option value="docx">docx</option>
-                    </select>
+                    </Select>
                 </div>
 
                 <div className="mt-3">
@@ -162,16 +164,11 @@ export default function CompilePreviewModal(
                 </div>
 
                 <div className="mt-4 flex justify-end gap-3">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="compile-modal-close"
-                    >
-                        <X size={14} aria-hidden="true" />
+                    <Button variant="secondary" onClick={onClose}>
                         Close
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
+                        variant="outline"
                         onClick={() => {
                             const orderedIds = getDescendantLeafIds(
                                 ROOT_ITEM_ID,
@@ -186,13 +183,12 @@ export default function CompilePreviewModal(
                             onClose?.();
                         }}
                         disabled={checkedIds.size === 0}
-                        className="border border-gw-primary text-gw-primary bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <PackageCheck size={14} aria-hidden="true" />
                         Compile ({checkedIds.size})
-                    </button>
+                    </Button>
                 </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import CollapsibleSection from "../components/WorkArea/CollapsibleSection";
+import CollapsibleSection from "../components/common/UI/CollapsibleSection/CollapsibleSection";
 
 describe("CollapsibleSection", () => {
     it("renders children when open by default", () => {

@@ -26,6 +26,7 @@ import {
     saveGlobalColorMode,
 } from "../../src/lib/user-preferences";
 import type { MetadataValue } from "../../src/lib/models/types";
+import Button from "../common/UI/Button/Button";
 
 /**
  * Props accepted by {@link UserPreferencesPage}.
@@ -153,13 +154,9 @@ export default function UserPreferencesPage({
                         metadata.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={handleClose}
-                    className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary hover:bg-gw-chrome2 transition-colors duration-150"
-                >
+                <Button variant="secondary" size="sm" onClick={handleClose}>
                     Close
-                </button>
+                </Button>
             </header>
 
             <section className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">

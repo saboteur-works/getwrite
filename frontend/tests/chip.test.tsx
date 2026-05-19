@@ -76,6 +76,72 @@ describe("Chip", () => {
         expect(container.firstChild).toHaveClass("chip");
     });
 
+    describe("active state", () => {
+        it("adds chip--active class when active=true and no color", () => {
+            const { container } = render(
+                <Chip label="Tag" shape="sharp" active={true} />,
+            );
+            expect(container.firstChild).toHaveClass("chip--active");
+        });
+
+        it("does not add chip--active class when active=false", () => {
+            const { container } = render(
+                <Chip label="Tag" shape="sharp" active={false} />,
+            );
+            expect(container.firstChild).not.toHaveClass("chip--active");
+        });
+
+        it("does not add chip--active class when active=true with color (uses inline style instead)", () => {
+            const { container } = render(
+                <Chip label="Tag" shape="sharp" active={true} color="#4a9e4a" />,
+            );
+            expect(container.firstChild).not.toHaveClass("chip--active");
+        });
+
+        it("active=true with color sets backgroundColor and white text", () => {
+            const { container } = render(
+                <Chip label="Tag" shape="sharp" active={true} color="#4a9e4a" />,
+            );
+            const el = container.firstChild as HTMLElement;
+            expect(el.style.backgroundColor).toBe("rgb(74, 158, 74)");
+            expect(el.style.color).toBe("rgb(255, 255, 255)");
+        });
+
+        it("active=false with color keeps border/text color only (no background)", () => {
+            const { container } = render(
+                <Chip label="Tag" shape="sharp" active={false} color="#4a9e4a" />,
+            );
+            const el = container.firstChild as HTMLElement;
+            expect(el.style.backgroundColor).toBe("");
+            expect(el.style.borderColor).toBe("rgb(74, 158, 74)");
+        });
+
+        it("button chip with active=true has aria-pressed=true", () => {
+            render(
+                <Chip label="Tag" shape="sharp" active={true} onClick={vi.fn()} />,
+            );
+            expect(screen.getByRole("button")).toHaveAttribute(
+                "aria-pressed",
+                "true",
+            );
+        });
+
+        it("button chip with active=false has aria-pressed=false", () => {
+            render(
+                <Chip label="Tag" shape="sharp" active={false} onClick={vi.fn()} />,
+            );
+            expect(screen.getByRole("button")).toHaveAttribute(
+                "aria-pressed",
+                "false",
+            );
+        });
+
+        it("button chip without active prop has no aria-pressed attribute", () => {
+            render(<Chip label="Tag" shape="sharp" onClick={vi.fn()} />);
+            expect(screen.getByRole("button")).not.toHaveAttribute("aria-pressed");
+        });
+    });
+
     describe("tooltip", () => {
         it("sets data-tooltip-id and data-tooltip-content when both props provided", () => {
             const { container } = render(

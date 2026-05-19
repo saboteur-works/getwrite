@@ -2,6 +2,11 @@ import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import TagsManagerModal from "../components/common/TagsManagerModal";
+import { Dialog } from "../components/common/UI/Dialog/Dialog";
+
+function renderInDialog(ui: React.ReactElement) {
+    return render(<Dialog open onOpenChange={() => undefined}>{ui}</Dialog>);
+}
 
 const PROJECT_PATH = "/tmp/test-tags-manager";
 
@@ -65,7 +70,7 @@ afterEach(() => {
 describe("TagsManagerModal", () => {
     it("renders the list of project tags on mount", async () => {
         setupFetchStub();
-        render(
+        renderInDialog(
             <TagsManagerModal
                 projectPath={PROJECT_PATH}
                 onClose={() => {}}
@@ -78,7 +83,7 @@ describe("TagsManagerModal", () => {
 
     it("shows empty-state message when there are no tags", async () => {
         setupFetchStub([]);
-        render(
+        renderInDialog(
             <TagsManagerModal
                 projectPath={PROJECT_PATH}
                 onClose={() => {}}
@@ -90,7 +95,7 @@ describe("TagsManagerModal", () => {
 
     it("submitting the new-tag form calls the create endpoint and shows the new tag", async () => {
         const fetchStub = setupFetchStub([]);
-        render(
+        renderInDialog(
             <TagsManagerModal
                 projectPath={PROJECT_PATH}
                 onClose={() => {}}
@@ -120,7 +125,7 @@ describe("TagsManagerModal", () => {
 
     it("clicking delete on a tag removes it from the list", async () => {
         setupFetchStub();
-        render(
+        renderInDialog(
             <TagsManagerModal
                 projectPath={PROJECT_PATH}
                 onClose={() => {}}
@@ -142,7 +147,7 @@ describe("TagsManagerModal", () => {
     it("calls onClose when the Close button is clicked", () => {
         setupFetchStub([]);
         const onClose = vi.fn();
-        render(
+        renderInDialog(
             <TagsManagerModal projectPath={PROJECT_PATH} onClose={onClose} />,
         );
 

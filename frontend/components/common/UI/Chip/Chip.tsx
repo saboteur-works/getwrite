@@ -9,6 +9,7 @@ export interface ChipProps {
     shape: "sharp" | "rounded";
     size?: "sm" | "md" | "lg";
     color?: string;
+    active?: boolean;
     onClick?: () => void;
     onDismiss?: () => void;
     tooltip?: string;
@@ -32,13 +33,19 @@ export default function Chip({
     shape,
     size = "md",
     color,
+    active,
     onClick,
     onDismiss,
     tooltip,
     tooltipId,
 }: ChipProps): JSX.Element {
-    const className = `chip chip--${shape} chip--${size}`;
-    const style = color ? { borderColor: color, color } : undefined;
+    const activeModifier = active && !color ? " chip--active" : "";
+    const className = `chip chip--${shape} chip--${size}${activeModifier}`;
+    const style: React.CSSProperties | undefined = color
+        ? active
+            ? { borderColor: color, backgroundColor: color, color: "#fff" }
+            : { borderColor: color, color }
+        : undefined;
     const hasTooltip = Boolean(tooltip && tooltipId);
     const tooltipAnchorProps = hasTooltip
         ? {
@@ -82,6 +89,7 @@ export default function Chip({
                 className={className}
                 style={style}
                 onClick={onClick}
+                aria-pressed={active}
                 {...tooltipAnchorProps}
             >
                 {label}

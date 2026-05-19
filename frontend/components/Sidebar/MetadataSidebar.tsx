@@ -1,6 +1,7 @@
 import React from "react";
 import SynopsisInput from "./controls/SynopsisInput";
 import NotesInput from "./controls/NotesInput";
+import Input from "../common/UI/Input/Input";
 import StatusSelector from "./controls/StatusSelector";
 import POVAutocomplete from "./controls/POVAutocomplete";
 import DateTimeInput from "./controls/DateTimeInput";
@@ -15,7 +16,7 @@ import { filterResourceOptionsByScope } from "./folderScope";
 import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
 import TagsSection from "./TagsSection";
-import SidebarSection from "./SidebarSection";
+import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
 import { createSelector } from "@reduxjs/toolkit";
@@ -96,10 +97,10 @@ function GenericTextInput({
     const [text, setText] = useSyncedControlledValue(value, onChange);
     return (
         <LabeledField label={label} className={className}>
-            <input
+            <Input
                 type="text"
                 aria-label={ariaLabel}
-                className="w-full mt-2 p-2 border border-gw-border rounded text-sm"
+                className="w-full mt-2"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
             />
@@ -373,18 +374,18 @@ export default function MetadataSidebar({
                                 return null;
                             }
                             return (
-                                <SidebarSection key={group.id} label={group.label}>
+                                <CollapsibleSection key={group.id} title={group.label} variant="sidebar">
                                     {group.fields.map((field) => (
                                         <React.Fragment key={field.key}>
                                             {renderField(field)}
                                         </React.Fragment>
                                     ))}
-                                </SidebarSection>
+                                </CollapsibleSection>
                             );
                         })}
-                        <SidebarSection label="Tags">
+                        <CollapsibleSection title="Tags" variant="sidebar">
                             <TagsSection />
-                        </SidebarSection>
+                        </CollapsibleSection>
                     </div>
                     <div className="flex-shrink-0 mt-2 pt-3 border-t border-gw-border">
                         <button

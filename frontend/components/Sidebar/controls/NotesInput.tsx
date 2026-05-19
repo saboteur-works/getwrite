@@ -1,6 +1,7 @@
 import React from "react";
 import LabeledField from "./LabeledField";
 import useSyncedControlledValue from "./useSyncedControlledValue";
+import Textarea from "../../common/UI/Textarea/Textarea";
 
 export interface NotesInputProps {
     value?: string;
@@ -21,9 +22,9 @@ export default function NotesInput({
 
     return (
         <LabeledField label="Notes" className={className}>
-            <textarea
+            <Textarea
                 aria-label={ariaLabel}
-                className="w-full mt-2 p-2 border rounded resize-y min-h-[80px] text-sm"
+                className="w-full mt-2"
                 placeholder={placeholder}
                 value={text}
                 onChange={(e) => setText(e.target.value)}

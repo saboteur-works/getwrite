@@ -1,5 +1,6 @@
 import React from "react";
 import { ChevronRight } from "lucide-react";
+import Card from "../common/UI/Card/Card";
 import type { HelpRichTextPart } from "./help-content";
 
 export interface HelpSectionCardProps {
@@ -39,7 +40,7 @@ export default function HelpSectionCard({
     items,
 }: HelpSectionCardProps): JSX.Element {
     return (
-        <div className="help-section-card help-card">
+        <Card className="mb-4">
             {title ? (
                 <p className="help-section-card-title help-label">{title}</p>
             ) : null}
@@ -58,6 +59,6 @@ export default function HelpSectionCard({
                     </li>
                 ))}
             </ul>
-        </div>
+        </Card>
     );
 }

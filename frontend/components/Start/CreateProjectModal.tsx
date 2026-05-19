@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { X, FolderPlus } from "lucide-react";
 import type { Project as CanonicalProject } from "../../src/lib/models/types";
-import ProjectModalFrame from "../common/ProjectModalFrame";
+import Button from "../common/UI/Button/Button";
+import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
+import Input from "../common/UI/Input/Input";
+import Select from "../common/UI/Select/Select";
 
 export interface CreateProjectPayload {
     name: string;
@@ -114,46 +117,9 @@ export default function CreateProjectModal({
             setName(defaultName);
             setProjectType(defaultType);
             setError(null);
-            // load project types when modal opens via API
             void loadTypes();
-            // focus the name input when opening
-            setTimeout(() => nameRef.current?.focus(), 50);
-            // basic focus trap: keep focus inside the form while modal is open
-            const handleKeyDown = (ev: KeyboardEvent) => {
-                if (ev.key === "Escape") {
-                    onClose();
-                    return;
-                }
-                if (ev.key === "Tab") {
-                    const root = nameRef.current?.closest("form");
-                    if (!root) return;
-                    const focusable = Array.from(
-                        root.querySelectorAll<HTMLElement>(
-                            "a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex='-1'])",
-                        ),
-                    ).filter(Boolean);
-                    if (focusable.length === 0) return;
-                    const first = focusable[0];
-                    const last = focusable[focusable.length - 1];
-                    if (ev.shiftKey) {
-                        if (document.activeElement === first) {
-                            last.focus();
-                            ev.preventDefault();
-                        }
-                    } else {
-                        if (document.activeElement === last) {
-                            first.focus();
-                            ev.preventDefault();
-                        }
-                    }
-                }
-            };
-            document.addEventListener("keydown", handleKeyDown);
-            return () => document.removeEventListener("keydown", handleKeyDown);
         }
     }, [isOpen, defaultName, defaultType]);
-
-    if (!isOpen) return null;
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (creating) return; // ignore duplicate submits while creating
@@ -206,25 +172,26 @@ export default function CreateProjectModal({
     };
 
     return (
-        <ProjectModalFrame
-            onClose={onClose}
-            ariaLabelledBy="create-project-title"
-        >
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+            <DialogContent
+                maxWidth="max-w-[480px]"
+                className="p-6"
+                aria-describedby={undefined}
+                onOpenAutoFocus={(e) => { e.preventDefault(); nameRef.current?.focus(); }}
+            >
             <form
                 onSubmit={handleSubmit}
-                className="project-modal-panel"
-                onKeyDown={(ev) => {
-                    if (ev.key === "Escape") onClose();
-                }}
                 aria-busy={creating}
             >
-                <h2 id="create-project-title" className="project-modal-title">
-                    Create Project
-                </h2>
+                <DialogTitle asChild>
+                    <h2 className="project-modal-title">
+                        Create Project
+                    </h2>
+                </DialogTitle>
 
                 <label className="project-modal-field">
                     <div className="project-modal-label">Name</div>
-                    <input
+                    <Input
                         ref={nameRef}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
@@ -234,7 +201,7 @@ export default function CreateProjectModal({
                                 void handleSubmit();
                             }
                         }}
-                        className="project-modal-input"
+                        className="w-full mt-1"
                         aria-required
                         disabled={creating}
                     />
@@ -243,21 +210,21 @@ export default function CreateProjectModal({
                 <label className="project-modal-field">
                     <div className="project-modal-label">Project Type</div>
                     <div>
-                        <input
+                        <Input
                             type="search"
                             aria-label="Filter project types"
                             placeholder="Search project types..."
                             value={filter}
                             onChange={(e) => setFilter(e.target.value)}
-                            className="project-modal-input"
+                            className="w-full mt-1"
                             disabled={creating || loadingTypes}
                         />
-                        <select
+                        <Select
                             value={projectType}
                             onChange={(e) =>
                                 setProjectType(e.target.value as string)
                             }
-                            className="project-modal-select"
+                            className="w-full mt-1"
                             disabled={
                                 creating ||
                                 loadingTypes ||
@@ -293,7 +260,7 @@ export default function CreateProjectModal({
                                     No project types available
                                 </option>
                             )}
-                        </select>
+                        </Select>
                     </div>
                     {types && types.length > 0 && (
                         <div className="project-modal-hint">
@@ -337,18 +304,17 @@ export default function CreateProjectModal({
                 ) : null}
 
                 <div className="project-modal-actions">
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
                         onClick={onClose}
-                        className="project-modal-button project-modal-button-secondary"
                         disabled={creating}
                     >
                         <X size={14} aria-hidden="true" />
                         Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="submit"
-                        className="project-modal-button project-modal-button-primary"
+                        variant="outline"
                         disabled={
                             creating ||
                             (!!types &&
@@ -362,9 +328,10 @@ export default function CreateProjectModal({
                     >
                         <FolderPlus size={14} aria-hidden="true" />
                         {creating ? "Creating…" : "Create"}
-                    </button>
+                    </Button>
                 </div>
             </form>
-        </ProjectModalFrame>
+            </DialogContent>
+        </Dialog>
     );
 }

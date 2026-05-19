@@ -25,6 +25,7 @@ import {
 } from "../../../../../src/lib/models/inverted-index";
 import { computeProximityScore } from "../../../../../src/lib/models/search-scoring";
 import { readSidecar } from "../../../../../src/lib/models/sidecar";
+import type { MetadataValue } from "../../../../../src/lib/models/types";
 import {
     getCanonicalRevision,
     revisionDir,
@@ -212,10 +213,11 @@ export async function executeSearch(
 
         const title =
             typeof sidecar?.name === "string" ? sidecar.name : candidate.id;
+        const userMetadata = sidecar?.userMetadata as
+            | Record<string, MetadataValue>
+            | undefined;
         const status =
-            typeof sidecar?.userMetadata?.status === "string"
-                ? (sidecar.userMetadata.status as string)
-                : null;
+            typeof userMetadata?.status === "string" ? userMetadata.status : null;
         const folderId =
             typeof sidecar?.folderId === "string" ? sidecar.folderId : null;
         const resourceTags: string[] = tagAssignments[candidate.id] ?? [];

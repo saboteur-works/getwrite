@@ -2,10 +2,15 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import HeadingSettingsModal from "../components/preferences/HeadingSettingsModal";
+import { Dialog } from "../components/common/UI/Dialog/Dialog";
+
+function renderInDialog(ui: React.ReactElement) {
+    return render(<Dialog open onOpenChange={() => undefined}>{ui}</Dialog>);
+}
 
 describe("HeadingSettingsModal", () => {
     it("renders H1 through H3 by default and can add optional levels", () => {
-        render(
+        renderInDialog(
             <HeadingSettingsModal
                 initialHeadings={{}}
                 onClose={vi.fn()}
@@ -24,7 +29,7 @@ describe("HeadingSettingsModal", () => {
     });
 
     it("removes optional heading levels from the draft", () => {
-        render(
+        renderInDialog(
             <HeadingSettingsModal
                 initialHeadings={{
                     h4: { fontSize: "18px" },
@@ -45,7 +50,7 @@ describe("HeadingSettingsModal", () => {
         const onClose = vi.fn();
         const onSave = vi.fn().mockResolvedValue(undefined);
 
-        render(
+        renderInDialog(
             <HeadingSettingsModal
                 initialHeadings={{}}
                 onClose={onClose}
@@ -78,7 +83,7 @@ describe("HeadingSettingsModal", () => {
         const onClose = vi.fn();
         const onSave = vi.fn();
 
-        render(
+        renderInDialog(
             <HeadingSettingsModal
                 initialHeadings={{}}
                 onClose={onClose}

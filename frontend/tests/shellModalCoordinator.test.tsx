@@ -83,7 +83,7 @@ describe("ShellModalCoordinator — close-project confirm dialog", () => {
     });
 
     it("marks error blockers with a visible error indicator", () => {
-        const { container } = render(
+        render(
             <ShellModalCoordinator
                 {...makeDefaultProps({
                     isCloseProjectConfirmOpen: true,
@@ -93,11 +93,11 @@ describe("ShellModalCoordinator — close-project confirm dialog", () => {
                 })}
             />,
         );
-        expect(container.querySelector(".sync-blocker--error")).toBeTruthy();
+        expect(document.querySelector(".sync-blocker--error")).toBeTruthy();
     });
 
     it("renders no blocker list when syncBlockers is empty", () => {
-        const { container } = render(
+        render(
             <ShellModalCoordinator
                 {...makeDefaultProps({
                     isCloseProjectConfirmOpen: true,
@@ -105,15 +105,15 @@ describe("ShellModalCoordinator — close-project confirm dialog", () => {
                 })}
             />,
         );
-        expect(container.querySelector(".sync-blockers-list")).toBeNull();
+        expect(document.querySelector(".sync-blockers-list")).toBeNull();
     });
 
     it("renders no blocker list when syncBlockers is not provided", () => {
-        const { container } = render(
+        render(
             <ShellModalCoordinator
                 {...makeDefaultProps({ isCloseProjectConfirmOpen: true })}
             />,
         );
-        expect(container.querySelector(".sync-blockers-list")).toBeNull();
+        expect(document.querySelector(".sync-blockers-list")).toBeNull();
     });
 });

@@ -28,11 +28,10 @@ test("organizer view displays resource cards", async ({ page }) => {
     await expect(resourceCount).toHaveText("3");
 });
 
-test("organizer view default shows folder headers", async ({ page }) => {
+test("organizer view default shows empty state", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-organizerview--default");
 
-    // OrganizerView renders folder trees; resource names are inside collapsed folders.
-    // The Storybook global store provides "Folder 1" and "Folder 2" as root folders.
-    await expect(page.getByText("Folder 1")).toBeVisible();
-    await expect(page.getByText("Folder 2")).toBeVisible();
+    // OrganizerView shows a prompt when no folder is selected in the Redux store.
+    // The global mock store has selectedResourceId: null, so no folder is active.
+    await expect(page.getByText("Select a folder to view its contents.")).toBeVisible();
 });

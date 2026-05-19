@@ -1,10 +1,18 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import DefaultRevisionNameModal from "../../components/preferences/DefaultRevisionNameModal";
+import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 
 const meta: Meta<typeof DefaultRevisionNameModal> = {
     title: "Preferences/DefaultRevisionNameModal",
     component: DefaultRevisionNameModal,
+    decorators: [
+        (Story) => (
+            <Dialog open onOpenChange={() => undefined}>
+                <Story />
+            </Dialog>
+        ),
+    ],
 };
 
 export default meta;

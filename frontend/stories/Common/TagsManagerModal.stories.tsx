@@ -1,6 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import TagsManagerModal from "../../components/common/TagsManagerModal";
+import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 
 const PROJECT_PATH = "/example-project";
 
@@ -60,6 +61,13 @@ const meta: Meta<typeof TagsManagerModal> = {
         projectPath: PROJECT_PATH,
         onClose: () => {},
     },
+    decorators: [
+        (Story) => (
+            <Dialog open onOpenChange={() => undefined}>
+                <Story />
+            </Dialog>
+        ),
+    ],
 };
 
 export default meta;

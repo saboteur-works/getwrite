@@ -9,6 +9,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import Button from "../common/UI/Button/Button";
 import HelpSectionCard, { renderHelpRichText } from "./HelpSectionCard";
 import { HELP_TABS, type HelpContentBlock, type HelpTab } from "./help-content";
 
@@ -147,15 +148,14 @@ export default function HelpPage({
                     </p>
                 </div>
                 {onClose ? (
-                    <button
+                    <Button
                         ref={closeButtonRef}
-                        type="button"
+                        variant="ghost"
                         onClick={handleClose}
-                        className="appshell-close-button"
                         aria-label="Close help"
                     >
                         <X size={16} aria-hidden="true" />
-                    </button>
+                    </Button>
                 ) : null}
             </div>
 

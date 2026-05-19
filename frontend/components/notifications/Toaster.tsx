@@ -28,11 +28,10 @@ export default function AppToaster(): JSX.Element {
             reverseOrder={false}
             gutter={16}
             toastOptions={{
-                // Default options
                 duration: 3000,
                 style: {
-                    background: "#1f2937",
-                    color: "#f3f4f6",
+                    background: "var(--color-gw-toast-bg)",
+                    color: "var(--color-gw-toast-fg)",
                     borderRadius: "0.5rem",
                     padding: "1rem 1.25rem",
                     boxShadow:
@@ -41,38 +40,35 @@ export default function AppToaster(): JSX.Element {
                     lineHeight: "1.25rem",
                     fontFamily: "system-ui, -apple-system, sans-serif",
                 },
-                // Success styling
                 success: {
                     duration: 3000,
                     style: {
-                        background: "#065f46",
-                        color: "#d1fae5",
-                        borderLeft: "4px solid #10b981",
+                        background: "var(--color-gw-toast-success-bg)",
+                        color: "var(--color-gw-toast-success-fg)",
+                        borderLeft: "4px solid var(--color-gw-saved)",
                     },
                     iconTheme: {
-                        primary: "#10b981",
-                        secondary: "#065f46",
+                        primary: "var(--color-gw-saved)",
+                        secondary: "var(--color-gw-toast-success-bg)",
                     },
                 },
-                // Error styling
                 error: {
                     duration: 4000,
                     style: {
-                        background: "#7f1d1d",
-                        color: "#fee2e2",
-                        borderLeft: "4px solid #ef4444",
+                        background: "var(--color-gw-toast-error-bg)",
+                        color: "var(--color-gw-toast-error-fg)",
+                        borderLeft: "4px solid var(--color-gw-saving)",
                     },
                     iconTheme: {
-                        primary: "#ef4444",
-                        secondary: "#7f1d1d",
+                        primary: "var(--color-gw-saving)",
+                        secondary: "var(--color-gw-toast-error-bg)",
                     },
                 },
-                // Loading styling (custom type)
                 loading: {
                     style: {
-                        background: "#1e3a8a",
-                        color: "#dbeafe",
-                        borderLeft: "4px solid #3b82f6",
+                        background: "var(--color-gw-toast-bg)",
+                        color: "var(--color-gw-toast-fg)",
+                        borderLeft: "4px solid var(--color-gw-saving)",
                     },
                 },
             }}

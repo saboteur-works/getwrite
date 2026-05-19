@@ -2,6 +2,10 @@
 
 import React, { useState } from "react";
 import { X } from "lucide-react";
+import Button from "../common/UI/Button/Button";
+import Card from "../common/UI/Card/Card";
+import Input from "../common/UI/Input/Input";
+import { DialogTitle } from "../common/UI/Dialog/Dialog";
 
 export interface DefaultRevisionNameModalProps {
     initialName: string;
@@ -47,45 +51,47 @@ export default function DefaultRevisionNameModal({
             {/* Header */}
             <div className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
                 <div>
-                    <h2 className="text-2xl font-semibold text-gw-primary">
-                        Default Revision Name
-                    </h2>
+                    <DialogTitle asChild>
+                        <h2 className="text-2xl font-semibold text-gw-primary">
+                            Default Revision Name
+                        </h2>
+                    </DialogTitle>
                     <p className="mt-1 max-w-2xl text-sm text-gw-secondary">
                         The name given to the first saved revision when a new
                         text resource is created.
                     </p>
                 </div>
-                <button
-                    type="button"
+                <Button
+                    variant="ghost"
                     onClick={onClose}
                     aria-label="Close"
-                    className="shrink-0 rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary"
+                    className="shrink-0"
                 >
                     <X size={16} aria-hidden="true" />
-                </button>
+                </Button>
             </div>
 
             {/* Input section */}
-            <div className="flex flex-col gap-3 rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
+            <Card padding="lg" className="flex flex-col gap-3">
                 <label
                     htmlFor="default-revision-name"
                     className="text-sm font-medium text-gw-primary"
                 >
                     Default name
                 </label>
-                <input
+                <Input
                     id="default-revision-name"
                     type="text"
                     value={draftName}
                     onChange={(e) => setDraftName(e.target.value)}
                     placeholder="Initial Draft"
                     maxLength={110}
-                    className="w-full rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
+                    className="w-full"
                 />
                 <p className="text-right text-xs text-gw-secondary">
                     {draftName.trim().length} / 100
                 </p>
-            </div>
+            </Card>
 
             {/* Error */}
             {errorMessage ? (
@@ -96,21 +102,17 @@ export default function DefaultRevisionNameModal({
 
             {/* Footer */}
             <div className="flex justify-end gap-3 border-t border-gw-border pt-5">
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
-                >
+                <Button variant="secondary" size="sm" onClick={onClose}>
                     Cancel
-                </button>
-                <button
-                    type="button"
+                </Button>
+                <Button
+                    variant="default"
+                    size="sm"
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="rounded-md border border-gw-border-md bg-gw-chrome2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-primary transition-colors duration-150 hover:bg-gw-chrome3 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {isSaving ? "Saving…" : "Save Changes"}
-                </button>
+                </Button>
             </div>
         </div>
     );

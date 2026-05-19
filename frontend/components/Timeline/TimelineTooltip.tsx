@@ -119,9 +119,9 @@ export default function TimelineTooltip({
                                 letterSpacing: "0.12em",
                                 textTransform: "uppercase",
                                 padding: "2px 7px",
-                                border: `0.5px solid ${isFinal ? "#D44040" : "var(--color-gw-border, #2E2E2C)"}`,
+                                border: `0.5px solid ${isFinal ? "var(--color-gw-red-border, #D44040)" : "var(--color-gw-border, #2E2E2C)"}`,
                                 color: isFinal
-                                    ? "#D44040"
+                                    ? "var(--color-gw-red, #D44040)"
                                     : "var(--color-gw-secondary, #6A6864)",
                             }}
                         >

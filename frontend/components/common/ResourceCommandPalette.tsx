@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FileText, Image as ImageIcon, Music2, Search } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
+import { Dialog, DialogContent, DialogTitle } from "./UI/Dialog";
 
 interface ResourceCommandPaletteProps {
     isOpen: boolean;
@@ -48,7 +49,7 @@ export default function ResourceCommandPalette({
     resources,
     onClose,
     onSelectResource,
-}: ResourceCommandPaletteProps): JSX.Element | null {
+}: ResourceCommandPaletteProps): JSX.Element {
     const inputRef = useRef<HTMLInputElement | null>(null);
     const [query, setQuery] = useState<string>("");
     const [highlightedIndex, setHighlightedIndex] = useState<number>(0);
@@ -78,15 +79,6 @@ export default function ResourceCommandPalette({
 
         setQuery("");
         setHighlightedIndex(0);
-
-        const timer = window.setTimeout(() => {
-            inputRef.current?.focus();
-            inputRef.current?.select();
-        }, 0);
-
-        return () => {
-            window.clearTimeout(timer);
-        };
     }, [isOpen]);
 
     useEffect(() => {
@@ -130,31 +122,18 @@ export default function ResourceCommandPalette({
             }
             return;
         }
-
-        if (event.key === "Escape") {
-            event.preventDefault();
-            onClose();
-        }
     };
 
-    if (!isOpen) {
-        return null;
-    }
-
     return (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-8">
-            <button
-                type="button"
-                className="fixed inset-0 appshell-modal-backdrop"
-                aria-label="Close command palette"
-                onClick={onClose}
-            />
-            <section
-                role="dialog"
-                aria-modal="true"
-                aria-label="Open resource command palette"
-                className="resource-palette-panel appshell-modal-panel appshell-modal-panel--palette"
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+            <DialogContent
+                topAlign
+                maxWidth="max-w-[560px]"
+                className="p-0 overflow-hidden"
+                onOpenAutoFocus={(e) => { e.preventDefault(); inputRef.current?.focus(); }}
             >
+                <DialogTitle className="sr-only">Open Resource</DialogTitle>
+
                 <div className="resource-palette-header">
                     <div className="resource-palette-title">
                         <Search size={16} aria-hidden="true" />
@@ -229,7 +208,7 @@ export default function ResourceCommandPalette({
                         </li>
                     )}
                 </ul>
-            </section>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

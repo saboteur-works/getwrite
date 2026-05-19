@@ -6,6 +6,7 @@ import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
 import type { Tag } from "../../src/lib/models/types";
 import LabeledField from "./controls/LabeledField";
+import Chip from "../common/UI/Chip";
 
 /**
  * Sidebar section that displays all project-level tags as toggleable chips.
@@ -107,29 +108,15 @@ export default function TagsSection(): JSX.Element | null {
                         allTags.map((tag) => {
                             const isActive = assignedTagIds.includes(tag.id);
                             return (
-                                <button
+                                <Chip
                                     key={tag.id}
-                                    type="button"
-                                    aria-pressed={isActive}
+                                    label={tag.name}
+                                    shape="sharp"
+                                    size="sm"
+                                    color={tag.color}
+                                    active={isActive}
                                     onClick={() => void handleToggle(tag.id)}
-                                    className={`metadata-sidebar-tag${isActive ? " metadata-sidebar-tag--active" : ""}`}
-                                    style={
-                                        tag.color
-                                            ? isActive
-                                                ? {
-                                                      borderColor: tag.color,
-                                                      backgroundColor: tag.color,
-                                                      color: "#fff",
-                                                  }
-                                                : {
-                                                      borderColor: tag.color,
-                                                      color: tag.color,
-                                                  }
-                                            : undefined
-                                    }
-                                >
-                                    {tag.name}
-                                </button>
+                                />
                             );
                         })
                     )}

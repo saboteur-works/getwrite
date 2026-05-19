@@ -53,6 +53,7 @@ import {
     Music2,
     Plus,
 } from "lucide-react";
+import Button from "../common/UI/Button/Button";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource, selectResources, selectFolders, setSelectedResourceId, updateResource, updateFolder } from "../../src/store/resourcesSlice";
 import {
@@ -893,12 +894,11 @@ export default function AppShell({
                                     <span className="font-mono text-[9px] uppercase tracking-[0.18em] font-semibold text-gw-secondary">
                                         Resources
                                     </span>
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="ghost"
                                         onClick={() =>
                                             layout.setLeftOpen(false)
                                         }
-                                        className="appshell-close-button"
                                         title="Close left sidebar"
                                         aria-label="Close resource sidebar"
                                     >
@@ -906,7 +906,7 @@ export default function AppShell({
                                             size={16}
                                             aria-hidden="true"
                                         />
-                                    </button>
+                                    </Button>
                                 </div>
                                 <div className="appshell-sidebar-content p-4 pt-3">
                                     {project ? (
@@ -928,10 +928,10 @@ export default function AppShell({
                         {/* Left Sidebar Collapsed Toggle */}
                         {showSidebars && !layout.leftOpen ? (
                             <div className="hidden sm:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-r border-[0.5px] border-gw-border">
-                                <button
-                                    type="button"
+                                <Button
+                                    variant="icon"
+                                    className="w-10 h-10"
                                     onClick={() => layout.setLeftOpen(true)}
-                                    className="appshell-sidebar-toggle"
                                     title="Open left sidebar"
                                     aria-label="Open resource sidebar"
                                 >
@@ -939,7 +939,7 @@ export default function AppShell({
                                         size={16}
                                         aria-hidden="true"
                                     />
-                                </button>
+                                </Button>
                             </div>
                         ) : null}
 
@@ -1490,8 +1490,8 @@ export default function AppShell({
                                                                     </p>
                                                                 </div>
 
-                                                                <button
-                                                                    type="button"
+                                                                <Button
+                                                                    variant="outline"
                                                                     onClick={() =>
                                                                         setCreateModal(
                                                                             {
@@ -1503,7 +1503,6 @@ export default function AppShell({
                                                                             },
                                                                         )
                                                                     }
-                                                                    className="inline-flex items-center gap-2 rounded-md border border-gw-primary bg-transparent px-4 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-gw-primary hover:bg-gw-chrome2 transition-colors duration-150"
                                                                 >
                                                                     <Plus
                                                                         size={
@@ -1513,7 +1512,7 @@ export default function AppShell({
                                                                     />
                                                                     Create
                                                                     Resource
-                                                                </button>
+                                                                </Button>
                                                             </div>
 
                                                             <div className="mt-8">
@@ -1653,12 +1652,11 @@ export default function AppShell({
                                     <span className="font-mono text-[9px] uppercase tracking-[0.18em] font-semibold text-gw-secondary">
                                         Metadata
                                     </span>
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="ghost"
                                         onClick={() =>
                                             layout.setRightOpen(false)
                                         }
-                                        className="appshell-close-button"
                                         title="Close right sidebar"
                                         aria-label="Close metadata sidebar"
                                     >
@@ -1666,7 +1664,7 @@ export default function AppShell({
                                             size={16}
                                             aria-hidden="true"
                                         />
-                                    </button>
+                                    </Button>
                                 </div>
                                 <div className="appshell-sidebar-content p-4 pt-3">
                                     <MetadataSidebar
@@ -1692,10 +1690,10 @@ export default function AppShell({
                         {/* Right Sidebar Collapsed Toggle */}
                         {showSidebars && !layout.rightOpen ? (
                             <div className="hidden lg:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-l border-[0.5px] border-gw-border">
-                                <button
-                                    type="button"
+                                <Button
+                                    variant="icon"
+                                    className="w-10 h-10"
                                     onClick={() => layout.setRightOpen(true)}
-                                    className="appshell-sidebar-toggle"
                                     title="Open right sidebar"
                                     aria-label="Open metadata sidebar"
                                 >
@@ -1703,7 +1701,7 @@ export default function AppShell({
                                         size={16}
                                         aria-hidden="true"
                                     />
-                                </button>
+                                </Button>
                             </div>
                         ) : null}
                     </div>

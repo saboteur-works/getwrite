@@ -5,7 +5,10 @@ import type {
     ResourceType as CanonicalResourceType,
     Folder,
 } from "../../src/lib/models/types";
-import ProjectModalFrame from "../common/ProjectModalFrame";
+import Button from "../common/UI/Button/Button";
+import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
+import Input from "../common/UI/Input/Input";
+import Select from "../common/UI/Select/Select";
 
 type ResourceType = CanonicalResourceType | string;
 
@@ -72,14 +75,20 @@ export default function CreateResourceModal({
         onClose?.();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <ProjectModalFrame onClose={onClose ?? (() => {})}>
-            <div className="project-modal-panel">
-                <h3 className="project-modal-title">
-                    {initialTitle ? "Create resource" : "New resource"}
-                </h3>
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose?.(); }}>
+            <DialogContent
+                maxWidth="max-w-[480px]"
+                className="p-6"
+                aria-describedby={undefined}
+                onOpenAutoFocus={(e) => { e.preventDefault(); inputRef.current?.focus(); }}
+            >
+            <div>
+                <DialogTitle asChild>
+                    <h3 className="project-modal-title">
+                        {initialTitle ? "Create resource" : "New resource"}
+                    </h3>
+                </DialogTitle>
 
                 <div className="project-modal-field">
                     <label
@@ -88,12 +97,12 @@ export default function CreateResourceModal({
                     >
                         Title
                     </label>
-                    <input
+                    <Input
                         id="resource-title"
                         ref={inputRef}
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="project-modal-input"
+                        className="w-full mt-1"
                         aria-label="resource-title"
                     />
                 </div>
@@ -105,18 +114,18 @@ export default function CreateResourceModal({
                     >
                         Type
                     </label>
-                    <select
+                    <Select
                         id="resource-type"
                         value={type}
                         onChange={(e) =>
                             setType(e.target.value as ResourceType)
                         }
-                        className="project-modal-select"
+                        className="w-full mt-1"
                         aria-label="resource-type"
                     >
                         <option value="text">Document</option>
                         <option value="folder">Folder</option>
-                    </select>
+                    </Select>
                 </div>
 
                 <div className="project-modal-field">
@@ -126,7 +135,7 @@ export default function CreateResourceModal({
                     >
                         Parent folder
                     </label>
-                    <select
+                    <Select
                         id="resource-parent"
                         value={selectedParent ?? ""}
                         onChange={(e) =>
@@ -136,7 +145,7 @@ export default function CreateResourceModal({
                                     : e.target.value,
                             )
                         }
-                        className="project-modal-select"
+                        className="w-full mt-1"
                         aria-label="resource-parent"
                     >
                         <option value="">Project Root</option>
@@ -145,28 +154,21 @@ export default function CreateResourceModal({
                                 {p.name}
                             </option>
                         ))}
-                    </select>
+                    </Select>
                 </div>
 
                 <div className="project-modal-actions">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="project-modal-button project-modal-button-secondary"
-                    >
+                    <Button variant="secondary" onClick={onClose}>
                         <X size={14} aria-hidden="true" />
                         Cancel
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleCreate}
-                        className="project-modal-button project-modal-button-primary"
-                    >
+                    </Button>
+                    <Button variant="outline" onClick={handleCreate}>
                         <FilePlus2 size={14} aria-hidden="true" />
                         Create
-                    </button>
+                    </Button>
                 </div>
             </div>
-        </ProjectModalFrame>
+            </DialogContent>
+        </Dialog>
     );
 }

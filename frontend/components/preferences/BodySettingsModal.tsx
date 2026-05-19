@@ -4,6 +4,10 @@ import React, { useState } from "react";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 import { BODY_FIELD_DEFINITIONS, sanitizeEditorBody } from "../../src/lib/editor-body-settings";
 import HeadingStyleField from "./HeadingStyleField";
+import Button from "../common/UI/Button/Button";
+import Card from "../common/UI/Card/Card";
+import Input from "../common/UI/Input/Input";
+import { DialogTitle } from "../common/UI/Dialog/Dialog";
 
 interface BodySettingsModalProps {
     initialBody?: EditorBodyConfig;
@@ -49,28 +53,26 @@ export default function BodySettingsModal({
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8 lg:px-10">
             <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-semibold text-gw-primary">
-                        Body Text Styles
-                    </h1>
+                    <DialogTitle asChild>
+                        <h1 className="text-2xl font-semibold text-gw-primary">
+                            Body Text Styles
+                        </h1>
+                    </DialogTitle>
                     <p className="max-w-2xl text-sm text-gw-secondary">
                         Configure default body text typography for this project.
                         These settings apply to all editor body text.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
-                >
+                <Button variant="secondary" size="sm" onClick={onClose}>
                     Close
-                </button>
+                </Button>
             </header>
 
-            <section className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
+            <Card as="section" padding="lg">
                 <div className="grid gap-3 md:grid-cols-2">
                     {BODY_FIELD_DEFINITIONS.map(({ key, label, placeholder }) => (
                         <HeadingStyleField key={key} id={`body-${key}`} label={label}>
-                            <input
+                            <Input
                                 id={`body-${key}`}
                                 aria-label={label}
                                 value={draft[key] ?? ""}
@@ -78,12 +80,11 @@ export default function BodySettingsModal({
                                 onChange={(event) =>
                                     handleFieldChange(key, event.target.value)
                                 }
-                                className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
                             />
                         </HeadingStyleField>
                     ))}
                 </div>
-            </section>
+            </Card>
 
             {errorMessage ? (
                 <p className="text-sm text-gw-secondary" role="alert">
@@ -92,22 +93,16 @@ export default function BodySettingsModal({
             ) : null}
 
             <footer className="flex justify-end gap-3 border-t border-gw-border pt-5">
-                <button
-                    type="button"
-                    onClick={onClose}
-                    disabled={isSaving}
-                    className="rounded-md border border-gw-border bg-transparent px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2 disabled:opacity-50"
-                >
+                <Button variant="secondary" onClick={onClose} disabled={isSaving}>
                     Cancel
-                </button>
-                <button
-                    type="button"
+                </Button>
+                <Button
+                    variant="default"
                     onClick={() => void handleSave()}
                     disabled={isSaving}
-                    className="rounded-md border border-gw-border bg-gw-chrome2 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-primary transition-colors duration-150 hover:bg-gw-chrome disabled:opacity-50"
                 >
                     {isSaving ? "Saving…" : "Save"}
-                </button>
+                </Button>
             </footer>
         </div>
     );
