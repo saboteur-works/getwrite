@@ -44,4 +44,4 @@ After the task list, add:
   elapsed time, e.g. "Tasks 1 → 3 → 5 → 6"]
 - Risks: [any tasks with high uncertainty or dependency risk]
 
-When complete, write the document to @docs/features/feature-specifications/[feature-name]/tasks.md, where `feature-name` is a kebab-case version of the feature name.
+When complete, write the document to @docs/features/feature-specifications/[feature-name]/[tasks].md, where `feature-name` is a kebab-case version of the feature name.
