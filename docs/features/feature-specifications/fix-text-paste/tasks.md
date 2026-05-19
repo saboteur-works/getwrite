@@ -8,7 +8,7 @@
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Write tests against the to-be-extracted pure function (`stripExternalColor(html: string): string`) before the extension exists. Tests will fail until Task 2 is complete — that's intentional TDD.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -20,7 +20,7 @@
 **Depends on:** Task 1
 **Estimate:** 2
 **Notes:** Extract the transformation logic as a named exported pure function (`stripExternalColor`) so it remains independently testable. The extension itself is a thin wrapper: `Extension.create({ name: 'stripExternalPasteColor', transformPastedHTML(html) { return stripExternalColor(html); } })`. Use `DOMParser` / a detached element to walk the HTML rather than regex, to avoid partial-match edge cases on complex style strings.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -32,7 +32,7 @@
 **Depends on:** Task 2
 **Estimate:** 1
 **Notes:** The extension has no options or commands, so registration is a one-liner import + array entry. Confirm it sits after `TextStyle` and `Color` in the array (transformation order can matter if other extensions also use `transformPastedHTML`).
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -44,7 +44,7 @@
 **Depends on:** Task 3
 **Estimate:** 1
 **Notes:** Test with at least two external sources known to include inline color styles: a Google Doc and a web page (e.g. a syntax-highlighted code snippet). If discrepancies are found, loop back to Task 2.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

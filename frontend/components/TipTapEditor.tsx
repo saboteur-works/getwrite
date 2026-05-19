@@ -46,6 +46,7 @@ import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import TextAlign from "@tiptap/extension-text-align";
 import GetWriteParagraphLeading from "./Editor/Extensions/GetWriteParagraphLeading";
 import CustomHeading from "./Editor/Extensions/CustomHeading";
+import StripExternalPasteColor from "./Editor/Extensions/StripExternalPasteColor";
 import { useSelector } from "react-redux";
 import { selectEditorConfig } from "../src/store/editorConfigSlice";
 /**
@@ -84,6 +85,7 @@ export const extensions = [
     TextStyle,
     Color,
     BackgroundColor,
+    StripExternalPasteColor,
     FontSize,
     Blockquote,
     BulletList,
