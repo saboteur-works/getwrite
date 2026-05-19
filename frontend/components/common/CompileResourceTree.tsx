@@ -20,6 +20,7 @@ import {
     AudioIcon,
     FolderIcon,
 } from "../ResourceTree/ResourceTreeIcons";
+import Checkbox from "./UI/Checkbox/Checkbox";
 
 export interface CompileResourceTreeProps {
     resources: AnyResource[];
@@ -112,9 +113,8 @@ export default function CompileResourceTree({
                             {isExpanded ? <ChevronDown /> : <ChevronRight />}
                         </button>
                         <label className="compile-tree-label">
-                            <input
-                                type="checkbox"
-                                className="compile-tree-checkbox"
+                            <Checkbox
+                                className="w-[13px] h-[13px] flex-shrink-0"
                                 checked={checked}
                                 disabled={!hasLeaves}
                                 ref={(el) => {
@@ -151,9 +151,8 @@ export default function CompileResourceTree({
                     aria-hidden="true"
                 />
                 <label className="compile-tree-label">
-                    <input
-                        type="checkbox"
-                        className="compile-tree-checkbox"
+                    <Checkbox
+                        className="w-[13px] h-[13px] flex-shrink-0"
                         checked={checkedIds.has(nodeId)}
                         onChange={() =>
                             onChange(toggleNode(nodeId, checkedIds, tree))

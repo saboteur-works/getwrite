@@ -114,8 +114,8 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 - Storybook covers default / disabled / error states; a11y tests pass; full test suite passes.
 **Depends on:** 3
 **Estimate:** 5
-**Notes:** Estimate bumped from 3 → 5 vs. the original plan because the audit confirmed four primitive families, not one. **Defer** specialized inputs: `SearchBar` autocomplete, `ResourceCommandPalette` search input, `POVAutocomplete`, `MultiResourceRefInput` — they layer custom behavior on top and are not simple text-field swaps.
-**Done:** [ ]
+**Notes:** Estimate bumped from 3 → 5 vs. the original plan because the audit confirmed four primitive families, not one. **Defer** specialized inputs: `SearchBar` autocomplete, `ResourceCommandPalette` search input, `POVAutocomplete`, `MultiResourceRefInput` — they layer custom behavior on top and are not simple text-field swaps. Also migrated `SynopsisInput` and `NotesInput` to `Textarea` (same class-string duplication pattern). `compile-modal-select`, `.project-modal-input`, `.project-modal-select`, `.compile-tree-checkbox` CSS rules deleted. `border-brand-mid` drift in `POVAutocomplete` replaced with `border-gw-border`.
+**Done:** [x]
 
 ---
 

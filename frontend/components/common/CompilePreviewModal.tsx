@@ -12,6 +12,8 @@ import {
 } from "./compileSelection";
 import Button from "./UI/Button/Button";
 import { Dialog, DialogContent } from "./UI/Dialog";
+import Checkbox from "./UI/Checkbox/Checkbox";
+import Select from "./UI/Select/Select";
 
 export interface CompileOptions {
     includeHeaders: boolean;
@@ -110,12 +112,11 @@ export default function CompilePreviewModal(
                 </div>
 
                 <div className="mt-3 flex items-center gap-2">
-                    <input
+                    <Checkbox
                         id="compile-include-headers"
-                        type="checkbox"
                         checked={includeHeaders}
                         onChange={(e) => setIncludeHeaders(e.target.checked)}
-                        className="cursor-pointer"
+                        aria-label="Include section headers"
                     />
                     <label
                         htmlFor="compile-include-headers"
@@ -132,7 +133,7 @@ export default function CompilePreviewModal(
                     >
                         Compile as
                     </label>
-                    <select
+                    <Select
                         id="compile-as"
                         value={compileAs}
                         onChange={(e) =>
@@ -140,12 +141,12 @@ export default function CompilePreviewModal(
                                 e.target.value as "txt" | "pdf" | "docx",
                             )
                         }
-                        className="compile-modal-select w-auto"
+                        className="w-auto"
                     >
                         <option value="txt">txt</option>
                         <option value="pdf">pdf</option>
                         <option value="docx">docx</option>
-                    </select>
+                    </Select>
                 </div>
 
                 <div className="mt-3">

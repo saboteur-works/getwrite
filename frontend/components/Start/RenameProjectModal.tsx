@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Button from "../common/UI/Button/Button";
 import { Dialog, DialogContent } from "../common/UI/Dialog";
+import Input from "../common/UI/Input/Input";
 
 export interface RenameProjectModalProps {
     isOpen: boolean;
@@ -41,14 +42,14 @@ export default function RenameProjectModal({
 
                 <div className="p-2">
                     <label className="text-sm font-medium text-gw-secondary">Name</label>
-                    <input
+                    <Input
                         ref={inputRef}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         onKeyDown={(e) => {
                             if (e.key === "Enter") handleSave();
                         }}
-                        className="w-full border border-gw-border rounded px-2 py-1 mt-1 bg-gw-chrome text-gw-primary"
+                        className="w-full mt-1"
                         aria-label="rename-project-input"
                     />
                 </div>

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
+import Input from "../common/UI/Input/Input";
 
 export interface DefaultRevisionNameModalProps {
     initialName: string;
@@ -75,14 +76,14 @@ export default function DefaultRevisionNameModal({
                 >
                     Default name
                 </label>
-                <input
+                <Input
                     id="default-revision-name"
                     type="text"
                     value={draftName}
                     onChange={(e) => setDraftName(e.target.value)}
                     placeholder="Initial Draft"
                     maxLength={110}
-                    className="w-full rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
+                    className="w-full"
                 />
                 <p className="text-right text-xs text-gw-secondary">
                     {draftName.trim().length} / 100

@@ -7,6 +7,8 @@ import type {
 } from "../../src/lib/models/types";
 import Button from "../common/UI/Button/Button";
 import { Dialog, DialogContent } from "../common/UI/Dialog";
+import Input from "../common/UI/Input/Input";
+import Select from "../common/UI/Select/Select";
 
 type ResourceType = CanonicalResourceType | string;
 
@@ -93,12 +95,12 @@ export default function CreateResourceModal({
                     >
                         Title
                     </label>
-                    <input
+                    <Input
                         id="resource-title"
                         ref={inputRef}
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="project-modal-input"
+                        className="w-full mt-1"
                         aria-label="resource-title"
                     />
                 </div>
@@ -110,18 +112,18 @@ export default function CreateResourceModal({
                     >
                         Type
                     </label>
-                    <select
+                    <Select
                         id="resource-type"
                         value={type}
                         onChange={(e) =>
                             setType(e.target.value as ResourceType)
                         }
-                        className="project-modal-select"
+                        className="w-full mt-1"
                         aria-label="resource-type"
                     >
                         <option value="text">Document</option>
                         <option value="folder">Folder</option>
-                    </select>
+                    </Select>
                 </div>
 
                 <div className="project-modal-field">
@@ -131,7 +133,7 @@ export default function CreateResourceModal({
                     >
                         Parent folder
                     </label>
-                    <select
+                    <Select
                         id="resource-parent"
                         value={selectedParent ?? ""}
                         onChange={(e) =>
@@ -141,7 +143,7 @@ export default function CreateResourceModal({
                                     : e.target.value,
                             )
                         }
-                        className="project-modal-select"
+                        className="w-full mt-1"
                         aria-label="resource-parent"
                     >
                         <option value="">Project Root</option>
@@ -150,7 +152,7 @@ export default function CreateResourceModal({
                                 {p.name}
                             </option>
                         ))}
-                    </select>
+                    </Select>
                 </div>
 
                 <div className="project-modal-actions">

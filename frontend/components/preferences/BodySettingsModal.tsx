@@ -6,6 +6,7 @@ import { BODY_FIELD_DEFINITIONS, sanitizeEditorBody } from "../../src/lib/editor
 import HeadingStyleField from "./HeadingStyleField";
 import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
+import Input from "../common/UI/Input/Input";
 
 interface BodySettingsModalProps {
     initialBody?: EditorBodyConfig;
@@ -68,7 +69,7 @@ export default function BodySettingsModal({
                 <div className="grid gap-3 md:grid-cols-2">
                     {BODY_FIELD_DEFINITIONS.map(({ key, label, placeholder }) => (
                         <HeadingStyleField key={key} id={`body-${key}`} label={label}>
-                            <input
+                            <Input
                                 id={`body-${key}`}
                                 aria-label={label}
                                 value={draft[key] ?? ""}
@@ -76,7 +77,6 @@ export default function BodySettingsModal({
                                 onChange={(event) =>
                                     handleFieldChange(key, event.target.value)
                                 }
-                                className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
                             />
                         </HeadingStyleField>
                     ))}

@@ -15,6 +15,8 @@ import {
 import HeadingStyleField from "./HeadingStyleField";
 import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
+import Input from "../common/UI/Input/Input";
+import Select from "../common/UI/Select/Select";
 
 interface HeadingSettingsModalProps {
     initialHeadings?: EditorHeadingMap;
@@ -227,7 +229,7 @@ export default function HeadingSettingsModal({
                                     id={`${level}-fontSize`}
                                     label="Font Size"
                                 >
-                                    <input
+                                    <Input
                                         id={`${level}-fontSize`}
                                         aria-label={`${getHeadingLabel(level)} Font Size`}
                                         type="number"
@@ -246,7 +248,6 @@ export default function HeadingSettingsModal({
                                                 value ? `${value}px` : "",
                                             );
                                         }}
-                                        className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
                                     />
                                 </HeadingStyleField>
 
@@ -254,7 +255,7 @@ export default function HeadingSettingsModal({
                                     id={`${level}-fontFamily`}
                                     label="Font Family"
                                 >
-                                    <input
+                                    <Input
                                         id={`${level}-fontFamily`}
                                         aria-label={`${getHeadingLabel(level)} Font Family`}
                                         value={heading.fontFamily ?? ""}
@@ -266,7 +267,6 @@ export default function HeadingSettingsModal({
                                                 event.target.value,
                                             )
                                         }
-                                        className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
                                     />
                                 </HeadingStyleField>
 
@@ -274,7 +274,7 @@ export default function HeadingSettingsModal({
                                     id={`${level}-fontWeight`}
                                     label="Font Weight"
                                 >
-                                    <select
+                                    <Select
                                         id={`${level}-fontWeight`}
                                         aria-label={`${getHeadingLabel(level)} Font Weight`}
                                         value={toFontWeightSelectValue(
@@ -287,7 +287,6 @@ export default function HeadingSettingsModal({
                                                 event.target.value,
                                             )
                                         }
-                                        className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
                                     >
                                         <option value="">Use default</option>
                                         {FONT_WEIGHT_OPTIONS.map((option) => (
@@ -298,14 +297,14 @@ export default function HeadingSettingsModal({
                                                 {option.label}
                                             </option>
                                         ))}
-                                    </select>
+                                    </Select>
                                 </HeadingStyleField>
 
                                 <HeadingStyleField
                                     id={`${level}-letterSpacing`}
                                     label="Letter Spacing"
                                 >
-                                    <input
+                                    <Input
                                         id={`${level}-letterSpacing`}
                                         aria-label={`${getHeadingLabel(level)} Letter Spacing`}
                                         type="number"
@@ -324,7 +323,6 @@ export default function HeadingSettingsModal({
                                                 value ? `${value}em` : "",
                                             );
                                         }}
-                                        className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md"
                                     />
                                 </HeadingStyleField>
 

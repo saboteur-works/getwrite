@@ -2,6 +2,7 @@
 
 import React from "react";
 import LabeledField from "./LabeledField";
+import Input from "../../common/UI/Input/Input";
 import type { ResourceRef } from "../../../src/lib/models/types";
 
 export interface ResourceOption {
@@ -133,10 +134,10 @@ export default function ResourceRefInput({
     return (
         <LabeledField label={label} className={className}>
             <div className="relative">
-                <input
+                <Input
                     type="text"
                     aria-label={ariaLabel}
-                    className="w-full mt-2 p-2 border border-gw-border rounded text-sm"
+                    className="w-full mt-2"
                     value={inputVal}
                     onChange={handleInputChange}
                     placeholder={

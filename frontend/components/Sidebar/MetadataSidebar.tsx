@@ -1,6 +1,7 @@
 import React from "react";
 import SynopsisInput from "./controls/SynopsisInput";
 import NotesInput from "./controls/NotesInput";
+import Input from "../common/UI/Input/Input";
 import StatusSelector from "./controls/StatusSelector";
 import POVAutocomplete from "./controls/POVAutocomplete";
 import DateTimeInput from "./controls/DateTimeInput";
@@ -96,10 +97,10 @@ function GenericTextInput({
     const [text, setText] = useSyncedControlledValue(value, onChange);
     return (
         <LabeledField label={label} className={className}>
-            <input
+            <Input
                 type="text"
                 aria-label={ariaLabel}
-                className="w-full mt-2 p-2 border border-gw-border rounded text-sm"
+                className="w-full mt-2"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
             />

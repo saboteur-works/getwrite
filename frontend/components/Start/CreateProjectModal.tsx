@@ -4,6 +4,8 @@ import { X, FolderPlus } from "lucide-react";
 import type { Project as CanonicalProject } from "../../src/lib/models/types";
 import Button from "../common/UI/Button/Button";
 import { Dialog, DialogContent } from "../common/UI/Dialog";
+import Input from "../common/UI/Input/Input";
+import Select from "../common/UI/Select/Select";
 
 export interface CreateProjectPayload {
     name: string;
@@ -187,7 +189,7 @@ export default function CreateProjectModal({
 
                 <label className="project-modal-field">
                     <div className="project-modal-label">Name</div>
-                    <input
+                    <Input
                         ref={nameRef}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
@@ -197,7 +199,7 @@ export default function CreateProjectModal({
                                 void handleSubmit();
                             }
                         }}
-                        className="project-modal-input"
+                        className="w-full mt-1"
                         aria-required
                         disabled={creating}
                     />
@@ -206,21 +208,21 @@ export default function CreateProjectModal({
                 <label className="project-modal-field">
                     <div className="project-modal-label">Project Type</div>
                     <div>
-                        <input
+                        <Input
                             type="search"
                             aria-label="Filter project types"
                             placeholder="Search project types..."
                             value={filter}
                             onChange={(e) => setFilter(e.target.value)}
-                            className="project-modal-input"
+                            className="w-full mt-1"
                             disabled={creating || loadingTypes}
                         />
-                        <select
+                        <Select
                             value={projectType}
                             onChange={(e) =>
                                 setProjectType(e.target.value as string)
                             }
-                            className="project-modal-select"
+                            className="w-full mt-1"
                             disabled={
                                 creating ||
                                 loadingTypes ||
@@ -256,7 +258,7 @@ export default function CreateProjectModal({
                                     No project types available
                                 </option>
                             )}
-                        </select>
+                        </Select>
                     </div>
                     {types && types.length > 0 && (
                         <div className="project-modal-hint">

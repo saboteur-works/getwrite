@@ -47,7 +47,7 @@ export default function POVAutocomplete({
             <input
                 list="pov-options"
                 aria-label="pov-input"
-                className="w-full mt-2 p-2 border border-brand-mid text-sm"
+                className="w-full mt-2 p-2 border border-gw-border text-sm"
                 value={inputVal}
                 onChange={(e) => {
                     const next = e.target.value;
