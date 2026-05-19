@@ -22,7 +22,7 @@ import HelpPage from "../help/HelpPage";
 import TagsManagerModal from "../common/TagsManagerModal";
 import SchemaManager from "../SchemaManager/SchemaManager";
 import DefaultRevisionNameModal from "../preferences/DefaultRevisionNameModal";
-import ModalOverlayShell from "../common/ModalOverlayShell";
+import { Dialog, DialogContent } from "../common/UI/Dialog";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
@@ -309,106 +309,114 @@ export default function ShellModalCoordinator({
                 }}
             />
 
-            <ModalOverlayShell
-                isOpen={isHeadingSettingsModalOpen}
-                onClose={() => setIsHeadingSettingsModalOpen(false)}
-                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            <Dialog
+                open={isHeadingSettingsModalOpen}
+                onOpenChange={(open) => { if (!open) setIsHeadingSettingsModalOpen(false); }}
             >
-                <HeadingSettingsModal
-                    initialHeadings={initialHeadingSettings}
-                    onClose={() => setIsHeadingSettingsModalOpen(false)}
-                    onSave={onSaveHeadingSettings}
-                />
-            </ModalOverlayShell>
+                <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
+                    <HeadingSettingsModal
+                        initialHeadings={initialHeadingSettings}
+                        onClose={() => setIsHeadingSettingsModalOpen(false)}
+                        onSave={onSaveHeadingSettings}
+                    />
+                </DialogContent>
+            </Dialog>
 
-            <ModalOverlayShell
-                isOpen={isBodySettingsModalOpen}
-                onClose={() => setIsBodySettingsModalOpen(false)}
-                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            <Dialog
+                open={isBodySettingsModalOpen}
+                onOpenChange={(open) => { if (!open) setIsBodySettingsModalOpen(false); }}
             >
-                <BodySettingsModal
-                    initialBody={initialBodySettings}
-                    onClose={() => setIsBodySettingsModalOpen(false)}
-                    onSave={onSaveBodySettings}
-                />
-            </ModalOverlayShell>
+                <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
+                    <BodySettingsModal
+                        initialBody={initialBodySettings}
+                        onClose={() => setIsBodySettingsModalOpen(false)}
+                        onSave={onSaveBodySettings}
+                    />
+                </DialogContent>
+            </Dialog>
 
-            <ModalOverlayShell
-                isOpen={isDefaultRevisionNameModalOpen}
-                onClose={() => setIsDefaultRevisionNameModalOpen(false)}
-                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            <Dialog
+                open={isDefaultRevisionNameModalOpen}
+                onOpenChange={(open) => { if (!open) setIsDefaultRevisionNameModalOpen(false); }}
             >
-                <DefaultRevisionNameModal
-                    initialName={initialDefaultRevisionName}
-                    onClose={() => setIsDefaultRevisionNameModalOpen(false)}
-                    onSave={onSaveDefaultRevisionName}
-                />
-            </ModalOverlayShell>
+                <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
+                    <DefaultRevisionNameModal
+                        initialName={initialDefaultRevisionName}
+                        onClose={() => setIsDefaultRevisionNameModalOpen(false)}
+                        onSave={onSaveDefaultRevisionName}
+                    />
+                </DialogContent>
+            </Dialog>
 
-            <ModalOverlayShell
-                isOpen={isPreferencesModalOpen}
-                onClose={() => setIsPreferencesModalOpen(false)}
-                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            <Dialog
+                open={isPreferencesModalOpen}
+                onOpenChange={(open) => { if (!open) setIsPreferencesModalOpen(false); }}
             >
-                <UserPreferencesPage
-                    renderInModal
-                    onClose={() => setIsPreferencesModalOpen(false)}
-                />
-            </ModalOverlayShell>
-
-            <ModalOverlayShell
-                isOpen={isHelpModalOpen}
-                onClose={() => setIsHelpModalOpen(false)}
-                panelClassName="appshell-modal-panel appshell-modal-panel--help"
-            >
-                <HelpPage
-                    renderInModal
-                    onClose={() => setIsHelpModalOpen(false)}
-                />
-            </ModalOverlayShell>
-
-            <ModalOverlayShell
-                isOpen={isProjectTypesModalOpen}
-                onClose={() => setIsProjectTypesModalOpen(false)}
-                panelClassName="appshell-modal-panel appshell-modal-panel--project-types"
-            >
-                {isProjectTypesLoading ? (
-                    <div className="appshell-modal-message">
-                        Loading project types...
-                    </div>
-                ) : projectTypesLoadError ? (
-                    <div className="appshell-modal-message appshell-modal-message--error">
-                        {projectTypesLoadError}
-                    </div>
-                ) : (
-                    <ProjectTypesManagerPage
-                        initialTemplates={projectTypeTemplates}
+                <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
+                    <UserPreferencesPage
                         renderInModal
-                        onClose={() => setIsProjectTypesModalOpen(false)}
+                        onClose={() => setIsPreferencesModalOpen(false)}
                     />
-                )}
-            </ModalOverlayShell>
+                </DialogContent>
+            </Dialog>
 
-            <ModalOverlayShell
-                isOpen={isTagsManagerOpen && Boolean(projectPath)}
-                onClose={() => setIsTagsManagerOpen(false)}
-                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            <Dialog
+                open={isHelpModalOpen}
+                onOpenChange={(open) => { if (!open) setIsHelpModalOpen(false); }}
             >
-                {projectPath ? (
-                    <TagsManagerModal
-                        projectPath={projectPath}
-                        onClose={() => setIsTagsManagerOpen(false)}
+                <DialogContent maxWidth="max-w-[860px]" aria-describedby={undefined}>
+                    <HelpPage
+                        renderInModal
+                        onClose={() => setIsHelpModalOpen(false)}
                     />
-                ) : null}
-            </ModalOverlayShell>
+                </DialogContent>
+            </Dialog>
 
-            <ModalOverlayShell
-                isOpen={isSchemaManagerOpen}
-                onClose={() => setIsSchemaManagerOpen(false)}
-                panelClassName="appshell-modal-panel appshell-modal-panel--preferences"
+            <Dialog
+                open={isProjectTypesModalOpen}
+                onOpenChange={(open) => { if (!open) setIsProjectTypesModalOpen(false); }}
             >
-                <SchemaManager onClose={() => setIsSchemaManagerOpen(false)} />
-            </ModalOverlayShell>
+                <DialogContent maxWidth="max-w-[1200px]" aria-describedby={undefined}>
+                    {isProjectTypesLoading ? (
+                        <div className="appshell-modal-message">
+                            Loading project types...
+                        </div>
+                    ) : projectTypesLoadError ? (
+                        <div className="appshell-modal-message appshell-modal-message--error">
+                            {projectTypesLoadError}
+                        </div>
+                    ) : (
+                        <ProjectTypesManagerPage
+                            initialTemplates={projectTypeTemplates}
+                            renderInModal
+                            onClose={() => setIsProjectTypesModalOpen(false)}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={isTagsManagerOpen && Boolean(projectPath)}
+                onOpenChange={(open) => { if (!open) setIsTagsManagerOpen(false); }}
+            >
+                <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
+                    {projectPath ? (
+                        <TagsManagerModal
+                            projectPath={projectPath}
+                            onClose={() => setIsTagsManagerOpen(false)}
+                        />
+                    ) : null}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={isSchemaManagerOpen}
+                onOpenChange={(open) => { if (!open) setIsSchemaManagerOpen(false); }}
+            >
+                <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
+                    <SchemaManager onClose={() => setIsSchemaManagerOpen(false)} />
+                </DialogContent>
+            </Dialog>
 
             {hasUnsavedEditorChanges ? null : null}
         </>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import Button from "../common/UI/Button/Button";
+import { Dialog, DialogContent } from "../common/UI/Dialog";
 
 export interface RenameProjectModalProps {
     isOpen: boolean;
@@ -13,17 +14,13 @@ export default function RenameProjectModal({
     initialName = "",
     onClose,
     onConfirm,
-}: RenameProjectModalProps): JSX.Element | null {
+}: RenameProjectModalProps): JSX.Element {
     const [name, setName] = useState<string>(initialName);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         setName(initialName);
     }, [initialName, isOpen]);
-
-    useEffect(() => {
-        if (isOpen) setTimeout(() => inputRef.current?.focus(), 50);
-    }, [isOpen]);
 
     const handleSave = () => {
         const trimmed = name.trim();
@@ -32,17 +29,14 @@ export default function RenameProjectModal({
         onClose?.();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-                className="fixed inset-0 bg-black/40"
-                onClick={onClose}
-                aria-hidden="true"
-            />
-
-            <div className="z-10 bg-gw-chrome rounded-md max-w-md w-full p-6">
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose?.(); }}>
+            <DialogContent
+                maxWidth="max-w-[480px]"
+                className="p-6"
+                aria-describedby={undefined}
+                onOpenAutoFocus={(e) => { e.preventDefault(); inputRef.current?.focus(); }}
+            >
                 <h3 className="text-lg font-medium text-gw-primary">Rename project</h3>
 
                 <div className="p-2">
@@ -53,7 +47,6 @@ export default function RenameProjectModal({
                         onChange={(e) => setName(e.target.value)}
                         onKeyDown={(e) => {
                             if (e.key === "Enter") handleSave();
-                            else if (e.key === "Escape") onClose?.();
                         }}
                         className="w-full border border-gw-border rounded px-2 py-1 mt-1 bg-gw-chrome text-gw-primary"
                         aria-label="rename-project-input"
@@ -68,7 +61,7 @@ export default function RenameProjectModal({
                         Save
                     </Button>
                 </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

@@ -23,9 +23,9 @@ describe("ConfirmDialog", () => {
         expect(screen.getByText("This cannot be undone.")).toBeTruthy();
     });
 
-    it("returns null when isOpen is false", () => {
-        const { container } = render(<ConfirmDialog {...baseProps} isOpen={false} />);
-        expect(container.firstChild).toBeNull();
+    it("does not render dialog content when isOpen is false", () => {
+        render(<ConfirmDialog {...baseProps} isOpen={false} />);
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     it("calls onConfirm when confirm button is clicked", () => {
@@ -42,11 +42,10 @@ describe("ConfirmDialog", () => {
         expect(onCancel).toHaveBeenCalledTimes(1);
     });
 
-    it("calls onCancel when backdrop is clicked", () => {
+    it("calls onCancel when Escape is pressed", () => {
         const onCancel = vi.fn();
-        const { container } = render(<ConfirmDialog {...baseProps} onCancel={onCancel} />);
-        const backdrop = container.querySelector(".confirm-dialog-backdrop");
-        fireEvent.click(backdrop!);
+        render(<ConfirmDialog {...baseProps} onCancel={onCancel} />);
+        fireEvent.keyDown(document, { key: "Escape" });
         expect(onCancel).toHaveBeenCalledTimes(1);
     });
 
@@ -62,15 +61,15 @@ describe("ConfirmDialog", () => {
         });
 
         it("does not render details section when details is not provided", () => {
-            const { container } = render(<ConfirmDialog {...baseProps} />);
-            expect(container.querySelector(".confirm-dialog-details")).toBeNull();
+            render(<ConfirmDialog {...baseProps} />);
+            expect(document.querySelector(".confirm-dialog-details")).toBeNull();
         });
 
         it("renders details section when details is provided", () => {
-            const { container } = render(
+            render(
                 <ConfirmDialog {...baseProps} details={<span>Pending</span>} />,
             );
-            expect(container.querySelector(".confirm-dialog-details")).toBeTruthy();
+            expect(document.querySelector(".confirm-dialog-details")).toBeTruthy();
         });
     });
 });

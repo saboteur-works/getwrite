@@ -21,7 +21,7 @@ export interface TagsManagerModalProps {
 
 /**
  * Modal for managing project-level tags: create and delete.
- * Rendered via `ModalOverlayShell` in `ShellModalCoordinator`.
+ * Rendered via `Dialog` in `ShellModalCoordinator`.
  */
 export default function TagsManagerModal({
     projectPath,

@@ -950,36 +950,6 @@
     }
 
     /* ── COMPILE PREVIEW MODAL ── */
-    .compile-modal-root {
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .compile-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background-color: rgba(2, 6, 23, 0.4);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-    }
-
-    .compile-modal-panel {
-        position: relative;
-        z-index: 10;
-        width: min(94vw, 560px);
-        max-height: 88vh;
-        overflow-y: auto;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-xl);
-        background-color: var(--color-gw-chrome);
-        padding: 24px;
-    }
-
     .compile-modal-title {
         font-family: var(--font-sans);
         font-size: 16px;
@@ -1041,86 +1011,6 @@
         font-family: var(--font-mono);
         font-size: 10px;
         color: var(--color-gw-secondary);
-    }
-
-    .compile-modal-close {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: var(--radius-md);
-        border: 0.5px solid var(--color-gw-border);
-        background: transparent;
-        font-family: var(--font-mono);
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        color: var(--color-gw-secondary);
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            color 150ms ease,
-            border-color 150ms ease;
-    }
-
-    .compile-modal-close:hover {
-        background-color: var(--color-gw-chrome2);
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
-
-    /* ── CONFIRM DIALOG ── */
-    .confirm-dialog-root {
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .confirm-dialog-backdrop {
-        position: fixed;
-        inset: 0;
-        background-color: rgba(2, 6, 23, 0.4);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-    }
-
-    .confirm-dialog-panel {
-        position: relative;
-        z-index: 10;
-        width: min(94vw, 480px);
-        max-height: 88vh;
-        overflow-y: auto;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-xl);
-        background-color: var(--color-gw-chrome);
-        padding: 24px;
-    }
-
-    .confirm-dialog-title {
-        font-family: var(--font-sans);
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--color-gw-primary);
-        margin-bottom: 8px;
-    }
-
-    .confirm-dialog-description {
-        font-family: var(--font-sans);
-        font-size: 13px;
-        color: var(--color-gw-secondary);
-        margin-bottom: 16px;
-        white-space: pre-wrap;
-    }
-
-    .confirm-dialog-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 8px;
-        margin-top: 20px;
     }
 
     /* ── COMPILE RESOURCE TREE ── */
@@ -2351,48 +2241,6 @@
     }
 
     /* ── MODALS ── */
-    .appshell-modal-root {
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .appshell-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background-color: rgba(2, 6, 23, 0.4);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-    }
-
-    .appshell-modal-panel {
-        position: relative;
-        z-index: 10;
-        width: min(94vw, 820px);
-        max-height: 92vh;
-        overflow-y: auto;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-lg); /* 8px — STYLING.md S6 */
-        background-color: var(--color-gw-chrome);
-        /* No box-shadow (D10) */
-    }
-
-    .appshell-modal-panel--help {
-        width: min(94vw, 860px);
-    }
-
-    .appshell-modal-panel--project-types {
-        width: min(96vw, 1200px);
-    }
-
-    .appshell-modal-panel--palette {
-        width: min(94vw, 560px);
-    }
-
     .appshell-modal-message {
         padding: 24px;
         font-size: 13px;
@@ -2405,36 +2253,6 @@
     }
 
     /* ── CREATE PROJECT MODAL ── */
-    .project-modal-root {
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .project-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background-color: rgba(2, 6, 23, 0.4);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-    }
-
-    .project-modal-panel {
-        position: relative;
-        z-index: 10;
-        width: min(94vw, 480px);
-        background-color: var(--color-gw-chrome);
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-xl);
-        padding: 24px;
-        max-height: calc(100vh - 80px);
-        overflow-y: auto;
-    }
-
     .project-modal-title {
         font-family: var(--font-sans);
         font-size: 16px;

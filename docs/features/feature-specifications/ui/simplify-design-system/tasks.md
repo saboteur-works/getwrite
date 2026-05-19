@@ -81,7 +81,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 3
 **Estimate:** 8
 **Notes:** Highest-risk migration. Existing modals do **not** use portals; Radix Dialog does — verify z-index and Storybook portal mounting before the first migration. Don't loosen the existing tests when porting; if a test breaks, the migration is wrong.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

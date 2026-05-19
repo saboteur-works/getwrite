@@ -5,8 +5,8 @@ import type {
     ResourceType as CanonicalResourceType,
     Folder,
 } from "../../src/lib/models/types";
-import ProjectModalFrame from "../common/ProjectModalFrame";
 import Button from "../common/UI/Button/Button";
+import { Dialog, DialogContent } from "../common/UI/Dialog";
 
 type ResourceType = CanonicalResourceType | string;
 
@@ -73,11 +73,15 @@ export default function CreateResourceModal({
         onClose?.();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <ProjectModalFrame onClose={onClose ?? (() => {})}>
-            <div className="project-modal-panel">
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose?.(); }}>
+            <DialogContent
+                maxWidth="max-w-[480px]"
+                className="p-6"
+                aria-describedby={undefined}
+                onOpenAutoFocus={(e) => { e.preventDefault(); inputRef.current?.focus(); }}
+            >
+            <div>
                 <h3 className="project-modal-title">
                     {initialTitle ? "Create resource" : "New resource"}
                 </h3>
@@ -160,6 +164,7 @@ export default function CreateResourceModal({
                     </Button>
                 </div>
             </div>
-        </ProjectModalFrame>
+            </DialogContent>
+        </Dialog>
     );
 }

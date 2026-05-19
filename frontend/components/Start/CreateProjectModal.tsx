@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { X, FolderPlus } from "lucide-react";
 import type { Project as CanonicalProject } from "../../src/lib/models/types";
-import ProjectModalFrame from "../common/ProjectModalFrame";
 import Button from "../common/UI/Button/Button";
+import { Dialog, DialogContent } from "../common/UI/Dialog";
 
 export interface CreateProjectPayload {
     name: string;
@@ -115,46 +115,9 @@ export default function CreateProjectModal({
             setName(defaultName);
             setProjectType(defaultType);
             setError(null);
-            // load project types when modal opens via API
             void loadTypes();
-            // focus the name input when opening
-            setTimeout(() => nameRef.current?.focus(), 50);
-            // basic focus trap: keep focus inside the form while modal is open
-            const handleKeyDown = (ev: KeyboardEvent) => {
-                if (ev.key === "Escape") {
-                    onClose();
-                    return;
-                }
-                if (ev.key === "Tab") {
-                    const root = nameRef.current?.closest("form");
-                    if (!root) return;
-                    const focusable = Array.from(
-                        root.querySelectorAll<HTMLElement>(
-                            "a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex='-1'])",
-                        ),
-                    ).filter(Boolean);
-                    if (focusable.length === 0) return;
-                    const first = focusable[0];
-                    const last = focusable[focusable.length - 1];
-                    if (ev.shiftKey) {
-                        if (document.activeElement === first) {
-                            last.focus();
-                            ev.preventDefault();
-                        }
-                    } else {
-                        if (document.activeElement === last) {
-                            first.focus();
-                            ev.preventDefault();
-                        }
-                    }
-                }
-            };
-            document.addEventListener("keydown", handleKeyDown);
-            return () => document.removeEventListener("keydown", handleKeyDown);
         }
     }, [isOpen, defaultName, defaultType]);
-
-    if (!isOpen) return null;
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (creating) return; // ignore duplicate submits while creating
@@ -207,16 +170,15 @@ export default function CreateProjectModal({
     };
 
     return (
-        <ProjectModalFrame
-            onClose={onClose}
-            ariaLabelledBy="create-project-title"
-        >
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+            <DialogContent
+                maxWidth="max-w-[480px]"
+                className="p-6"
+                aria-describedby={undefined}
+                onOpenAutoFocus={(e) => { e.preventDefault(); nameRef.current?.focus(); }}
+            >
             <form
                 onSubmit={handleSubmit}
-                className="project-modal-panel"
-                onKeyDown={(ev) => {
-                    if (ev.key === "Escape") onClose();
-                }}
                 aria-busy={creating}
             >
                 <h2 id="create-project-title" className="project-modal-title">
@@ -365,6 +327,7 @@ export default function CreateProjectModal({
                     </Button>
                 </div>
             </form>
-        </ProjectModalFrame>
+            </DialogContent>
+        </Dialog>
     );
 }
