@@ -74,7 +74,7 @@ Derived from: [full-text-search-spec.md](./full-text-search-spec.md)
 **Depends on:** Task 3
 **Estimate:** 5 SP
 **Notes:** The active project's `rootPath` is on `StoredProject.rootPath` in the Redux store — read `selectedProjectId` from `projectsSlice` and pass only the project ID in the URL (the route resolves the path server-side). Remove the `fuzzyMatch` function and related state entirely; the `renderHighlighted` helper can be removed or repurposed for snippet display.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

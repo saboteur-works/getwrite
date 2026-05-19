@@ -1,54 +1,55 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { Provider } from "react-redux";
 import SearchBar from "../components/SearchBar/SearchBar";
-import type { AnyResource } from "../src/lib/models/types";
 import { makeStore } from "../src/store/store";
-import { setResources } from "../src/store/resourcesSlice";
+import { setSelectedProjectId } from "../src/store/projectsSlice";
+import type { SearchResult } from "../src/store/searchSlice";
+
+const mockResults: SearchResult[] = [
+    {
+        resourceId: "r1",
+        title: "Alpha",
+        snippet: "...contains alpha content...",
+    },
+    {
+        resourceId: "r2",
+        title: "Gamma",
+        snippet: "...gamma related text...",
+    },
+];
+
+/**
+ * Flush all pending microtasks through the full async-thunk + fetch-mock chain.
+ * With vi.useFakeTimers(), waitFor's internal polling timer is also faked and
+ * never fires, causing it to hang. Flushing microtasks manually inside act
+ * avoids that pitfall.
+ */
+async function flushThunkAndRender(): Promise<void> {
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+}
 
 describe("SearchBar", () => {
-    it("shows matches and calls onSelect when clicked", () => {
-        const now = new Date().toISOString();
-        const resources: AnyResource[] = [
-            {
-                id: "r1",
-                slug: "alpha",
-                name: "Alpha",
-                type: "text",
-                orderIndex: 0,
-                plainText: "",
-                createdAt: now,
-                updatedAt: now,
-                userMetadata: {},
-            },
-            {
-                id: "r2",
-                slug: "beta",
-                name: "Beta",
-                type: "text",
-                orderIndex: 0,
-                plainText: "",
-                createdAt: now,
-                updatedAt: now,
-                userMetadata: {},
-            },
-            {
-                id: "r3",
-                slug: "gamma",
-                name: "Gamma",
-                type: "text",
-                orderIndex: 0,
-                plainText: "",
-                createdAt: now,
-                updatedAt: now,
-                userMetadata: {},
-            },
-        ];
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+
+    it("shows API results and calls onSelect when clicked", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({
+            ok: true,
+            json: async () => mockResults,
+        } as Response);
 
         const onSelect = vi.fn();
         const testStore = makeStore();
-        testStore.dispatch(setResources(resources));
+        testStore.dispatch(setSelectedProjectId("project-1"));
+
         render(
             <Provider store={testStore}>
                 <SearchBar onSelect={onSelect} />
@@ -58,10 +59,13 @@ describe("SearchBar", () => {
         const input = screen.getByLabelText(
             "resource-search",
         ) as HTMLInputElement;
-        fireEvent.change(input, { target: { value: "a" } });
+        fireEvent.change(input, { target: { value: "al" } });
 
-        // Alpha and Gamma contain 'a' (case-insensitive). Because matches are
-        // highlighted and split across spans, query by accessible name instead.
+        await act(async () => {
+            vi.advanceTimersByTime(200);
+            await flushThunkAndRender();
+        });
+
         expect(
             screen.getByRole("button", { name: /Alpha/i }),
         ).toBeInTheDocument();
@@ -71,5 +75,121 @@ describe("SearchBar", () => {
 
         fireEvent.click(screen.getByRole("button", { name: /Alpha/i }));
         expect(onSelect).toHaveBeenCalledWith("r1");
+    });
+
+    it("does not fire an API call for fewer than 2 characters", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+            ok: true,
+            json: async () => [],
+        } as Response);
+
+        const testStore = makeStore();
+        testStore.dispatch(setSelectedProjectId("project-1"));
+
+        render(
+            <Provider store={testStore}>
+                <SearchBar />
+            </Provider>,
+        );
+
+        const input = screen.getByLabelText(
+            "resource-search",
+        ) as HTMLInputElement;
+        fireEvent.change(input, { target: { value: "a" } });
+
+        await act(async () => {
+            vi.advanceTimersByTime(200);
+            await flushThunkAndRender();
+        });
+
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("disables the input when no project is selected", () => {
+        const testStore = makeStore();
+
+        render(
+            <Provider store={testStore}>
+                <SearchBar />
+            </Provider>,
+        );
+
+        const input = screen.getByLabelText(
+            "resource-search",
+        ) as HTMLInputElement;
+        expect(input).toBeDisabled();
+    });
+
+    it("navigates results with keyboard and selects on Enter", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({
+            ok: true,
+            json: async () => mockResults,
+        } as Response);
+
+        const onSelect = vi.fn();
+        const testStore = makeStore();
+        testStore.dispatch(setSelectedProjectId("project-1"));
+
+        render(
+            <Provider store={testStore}>
+                <SearchBar onSelect={onSelect} />
+            </Provider>,
+        );
+
+        const input = screen.getByLabelText(
+            "resource-search",
+        ) as HTMLInputElement;
+        fireEvent.change(input, { target: { value: "al" } });
+
+        await act(async () => {
+            vi.advanceTimersByTime(200);
+            await flushThunkAndRender();
+        });
+
+        expect(
+            screen.getByRole("button", { name: /Alpha/i }),
+        ).toBeInTheDocument();
+
+        // ArrowDown moves highlight from 0 → 1 (Gamma), Enter selects it
+        fireEvent.keyDown(input, { key: "ArrowDown" });
+        fireEvent.keyDown(input, { key: "Enter" });
+
+        expect(onSelect).toHaveBeenCalledWith("r2");
+    });
+
+    it("closes the results list on Escape", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({
+            ok: true,
+            json: async () => mockResults,
+        } as Response);
+
+        const testStore = makeStore();
+        testStore.dispatch(setSelectedProjectId("project-1"));
+
+        render(
+            <Provider store={testStore}>
+                <SearchBar />
+            </Provider>,
+        );
+
+        const input = screen.getByLabelText(
+            "resource-search",
+        ) as HTMLInputElement;
+        fireEvent.change(input, { target: { value: "al" } });
+
+        await act(async () => {
+            vi.advanceTimersByTime(200);
+            await flushThunkAndRender();
+        });
+
+        expect(
+            screen.getByRole("button", { name: /Alpha/i }),
+        ).toBeInTheDocument();
+
+        fireEvent.keyDown(input, { key: "Escape" });
+
+        expect(
+            screen.queryByRole("button", { name: /Alpha/i }),
+        ).not.toBeInTheDocument();
     });
 });
