@@ -198,6 +198,27 @@ describe("executeSearch — proximity scoring", () => {
         expect(results[1]!.resourceId).toBe(idScattered);
     });
 
+    it("ranks a title match above a body-only match", async () => {
+        const projectsDir = await makeTmpProjectsDir();
+        const { projectRoot } = await createTestProject(projectsDir);
+
+        // Named after the query — title boost pushes it above body-only matches
+        const idTitle = await addTestResource(projectRoot, {
+            name: "Dragon Knight",
+            content: "A brief chapter.",
+        });
+
+        // Body contains the terms repeatedly, but the title is unrelated
+        const idBody = await addTestResource(projectRoot, {
+            name: "Battle Scene",
+            content: "dragon knight dragon knight dragon knight",
+        });
+
+        const results = await executeSearch(projectRoot, "dragon knight", {}, 50);
+        expect(results).toHaveLength(2);
+        expect(results[0]!.resourceId).toBe(idTitle);
+    });
+
     it("falls back to term-freq order when proximity scores are equal", async () => {
         const projectsDir = await makeTmpProjectsDir();
         const { projectRoot } = await createTestProject(projectsDir);

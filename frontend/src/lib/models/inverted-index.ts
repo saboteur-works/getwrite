@@ -61,6 +61,10 @@ function removeFromIndexObj(index: InvertedIndex, resourceId: string) {
     }
 }
 
+// Title terms are weighted above body terms so a resource named "Dragon Knight"
+// reliably ranks above one that merely mentions those words in passing.
+const TITLE_BOOST = 10;
+
 /** Index a resource's plain text into the project's inverted index. */
 export async function indexResource(projectRoot: string, res: TextResource) {
     const index = await loadIndex(projectRoot);
@@ -68,7 +72,7 @@ export async function indexResource(projectRoot: string, res: TextResource) {
     // Remove previous entries for resource
     removeFromIndexObj(index, res.id);
 
-    // Determine text: prefer resource.plainText, else tiptap, else load persisted
+    // Determine body text: prefer resource.plainText, else tiptap, else load persisted
     let text = res.plainText ?? "";
     if (!text && res.tiptap) text = tiptapToPlainText(res.tiptap as any);
     if (!text) {
@@ -82,14 +86,22 @@ export async function indexResource(projectRoot: string, res: TextResource) {
         }
     }
 
-    if (!text) {
+    const counts: Record<string, number> = {};
+
+    // Title terms with boost (applied even when body text is empty).
+    for (const t of tokenize(res.name ?? "")) {
+        counts[t] = (counts[t] ?? 0) + TITLE_BOOST;
+    }
+
+    // Body terms at normal weight.
+    for (const t of tokenize(text)) {
+        counts[t] = (counts[t] ?? 0) + 1;
+    }
+
+    if (Object.keys(counts).length === 0) {
         await saveIndex(projectRoot, index);
         return;
     }
-
-    const terms = tokenize(text);
-    const counts: Record<string, number> = {};
-    for (const t of terms) counts[t] = (counts[t] ?? 0) + 1;
 
     for (const [t, c] of Object.entries(counts)) {
         index[t] = index[t] ?? {};

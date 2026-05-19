@@ -148,13 +148,18 @@ export async function executeSearch(
     const isMultiTerm = terms.length > 1;
     const rankedIds = await search(projectRoot, query);
 
-    // For multi-term queries, preload canonical text for all candidates (up to
-    // PROXIMITY_CANDIDATE_LIMIT) and re-rank by how closely the query terms
-    // appear together. Within the same proximity score, the original term-freq
-    // rank is preserved as a tiebreaker.
+    // For multi-term queries, preload canonical text and sidecar for all
+    // candidates (up to PROXIMITY_CANDIDATE_LIMIT), then re-rank by how
+    // closely the query terms appear together. The title is included in the
+    // proximity text so that a resource named "Dragon Knight" scores as a
+    // tight phrase match even when the body is sparse. Within equal proximity
+    // scores the original term-freq rank is preserved as a tiebreaker.
+    type SidecarData = Awaited<ReturnType<typeof readSidecar>>;
+
     interface ScoredCandidate {
         id: string;
         text: string | null;
+        sidecar: SidecarData;
         proxScore: number;
         rank: number;
     }
@@ -166,8 +171,20 @@ export async function executeSearch(
         const scored: ScoredCandidate[] = [];
         for (let i = 0; i < cap; i++) {
             const id = rankedIds[i]!;
-            const text = await loadCanonicalText(projectRoot, id);
-            scored.push({ id, text, proxScore: computeProximityScore(text, terms), rank: i });
+            const [text, sidecar] = await Promise.all([
+                loadCanonicalText(projectRoot, id),
+                readSidecar(projectRoot, id),
+            ]);
+            const title =
+                typeof sidecar?.name === "string" ? sidecar.name : "";
+            const textForProximity = title ? `${title}\n${text}` : text;
+            scored.push({
+                id,
+                text,
+                sidecar,
+                proxScore: computeProximityScore(textForProximity, terms),
+                rank: i,
+            });
         }
         scored.sort((a, b) =>
             b.proxScore !== a.proxScore
@@ -179,6 +196,7 @@ export async function executeSearch(
         candidates = rankedIds.map((id, rank) => ({
             id,
             text: null,
+            sidecar: null,
             proxScore: 0,
             rank,
         }));
@@ -189,7 +207,8 @@ export async function executeSearch(
     for (const candidate of candidates) {
         if (results.length >= limit) break;
 
-        const sidecar = await readSidecar(projectRoot, candidate.id);
+        const sidecar =
+            candidate.sidecar ?? (await readSidecar(projectRoot, candidate.id));
 
         const title =
             typeof sidecar?.name === "string" ? sidecar.name : candidate.id;

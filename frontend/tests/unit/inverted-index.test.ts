@@ -52,6 +52,27 @@ describe("inverted index (T025)", () => {
         expect(r3).toEqual([a.id]);
     });
 
+    it("ranks a title match above a body-only match for the same query terms", async () => {
+        const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-idx-"));
+
+        // res1 is NAMED after the query terms but mentions them nowhere in the body
+        const res1 = createTextResource({
+            name: "Dragon Knight",
+            plainText: "A brief scene.",
+        });
+        // res2 mentions the query terms in the body but has an unrelated title
+        const res2 = createTextResource({
+            name: "Battle",
+            plainText: "dragon knight battle",
+        });
+
+        await indexResource(projectRoot, res1);
+        await indexResource(projectRoot, res2);
+
+        const results = await search(projectRoot, "dragon knight");
+        expect(results[0]).toBe(res1.id);
+    });
+
     it("filters stop words at index and query time", async () => {
         const projectRoot = await fs.mkdtemp(
             path.join(os.tmpdir(), "gw-idx-sw-"),
