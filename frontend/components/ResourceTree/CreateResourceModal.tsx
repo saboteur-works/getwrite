@@ -6,6 +6,7 @@ import type {
     Folder,
 } from "../../src/lib/models/types";
 import ProjectModalFrame from "../common/ProjectModalFrame";
+import Button from "../common/UI/Button/Button";
 
 type ResourceType = CanonicalResourceType | string;
 
@@ -149,22 +150,14 @@ export default function CreateResourceModal({
                 </div>
 
                 <div className="project-modal-actions">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="project-modal-button project-modal-button-secondary"
-                    >
+                    <Button variant="secondary" onClick={onClose}>
                         <X size={14} aria-hidden="true" />
                         Cancel
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleCreate}
-                        className="project-modal-button project-modal-button-primary"
-                    >
+                    </Button>
+                    <Button variant="outline" onClick={handleCreate}>
                         <FilePlus2 size={14} aria-hidden="true" />
                         Create
-                    </button>
+                    </Button>
                 </div>
             </div>
         </ProjectModalFrame>

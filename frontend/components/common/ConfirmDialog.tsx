@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import Button from "./UI/Button/Button";
 
 export interface ConfirmDialogProps {
     isOpen: boolean;
@@ -91,22 +92,17 @@ export default function ConfirmDialog({
                 ) : null}
 
                 <div className="confirm-dialog-actions">
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        className="border border-gw-primary text-gw-primary bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150"
-                    >
+                    <Button variant="outline" onClick={onCancel}>
                         {cancelLabel}
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                         ref={confirmRef}
-                        type="button"
+                        variant="destructive"
                         onClick={onConfirm}
-                        className="border border-gw-red-border text-gw-red bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150"
                     >
                         {confirmLabel}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

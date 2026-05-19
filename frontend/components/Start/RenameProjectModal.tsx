@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import Button from "../common/UI/Button/Button";
 
 export interface RenameProjectModalProps {
     isOpen: boolean;
@@ -60,20 +61,12 @@ export default function RenameProjectModal({
                 </div>
 
                 <div className="mt-6 flex justify-end gap-3">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="border border-gw-primary text-gw-primary bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150"
-                    >
+                    <Button variant="outline" onClick={onClose}>
                         Cancel
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleSave}
-                        className="border border-gw-primary text-gw-primary bg-transparent rounded-md font-mono text-[10px] uppercase tracking-[0.16em] px-4 py-2 hover:bg-gw-chrome2 transition-colors duration-150"
-                    >
+                    </Button>
+                    <Button variant="outline" onClick={handleSave}>
                         Save
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

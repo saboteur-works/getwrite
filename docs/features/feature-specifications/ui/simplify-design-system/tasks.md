@@ -64,7 +64,7 @@ Estimate scale: story points (1 / 2 / 3 / 5 / 8)
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** Largest call-site fan-out of the categories (~300 LOC saved). Red token must not appear in any action variant (FR 6). **Defer** Timeline-specific buttons (`timeline-zoom-btn`, `timeline-chip`) — they're visually unique and out of phase one per the audit.
-**Done:** [ ]
+**Done:** [x]
 
 ---
 

@@ -10,6 +10,7 @@
  */
 
 import React from "react";
+import Button from "../common/UI/Button/Button";
 import type {
     ProjectTypeDefinition,
     ProjectTypeDefaultFolder,
@@ -175,13 +176,13 @@ export default function ProjectTypeEditorForm({
                     <h2 className="project-type-editor-section-title">
                         Statuses
                     </h2>
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
+                        size="xs"
                         onClick={onAddStatus}
-                        className="project-type-editor-action-button"
                     >
                         Add Status
-                    </button>
+                    </Button>
                 </div>
                 {(definition.statuses ?? []).length === 0 ? (
                     <p className="project-type-editor-helper-text">
@@ -203,13 +204,13 @@ export default function ProjectTypeEditorForm({
                                     }
                                 />
                                 <div className="project-type-editor-row-end project-type-editor-row-end--right" style={{ gridColumn: "3" }}>
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="secondary"
+                                        size="xs"
                                         onClick={() => onRemoveStatus(index)}
-                                        className="project-type-editor-action-button"
                                     >
                                         Remove
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         ))}
@@ -223,13 +224,13 @@ export default function ProjectTypeEditorForm({
                     <h2 className="project-type-editor-section-title">
                         Folders
                     </h2>
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
+                        size="xs"
                         onClick={onAddFolder}
-                        className="project-type-editor-action-button"
                     >
                         Add Folder
-                    </button>
+                    </Button>
                 </div>
                 <p className="project-type-editor-helper-text">
                     Top-level folder categories for this project type. Must
@@ -267,13 +268,13 @@ export default function ProjectTypeEditorForm({
                                     </label>
                                 </div>
                                 <div className="project-type-editor-row-end project-type-editor-row-end--right">
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="secondary"
+                                        size="xs"
                                         onClick={() => onRemoveFolder(index)}
-                                        className="project-type-editor-action-button"
                                     >
                                         Remove
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
 
@@ -334,13 +335,13 @@ export default function ProjectTypeEditorForm({
                     <h2 className="project-type-editor-section-title">
                         Default Folders
                     </h2>
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
+                        size="xs"
                         onClick={onAddDefaultFolder}
-                        className="project-type-editor-action-button"
                     >
                         Add Default Folder
-                    </button>
+                    </Button>
                 </div>
                 <p className="project-type-editor-helper-text">
                     Subfolders seeded under a parent folder when a project is
@@ -439,13 +440,13 @@ export default function ProjectTypeEditorForm({
                             </div>
 
                             <div className="project-type-editor-row-end project-type-editor-row-end--right">
-                                <button
-                                    type="button"
+                                <Button
+                                    variant="secondary"
+                                    size="xs"
                                     onClick={() => onRemoveDefaultFolder(index)}
-                                    className="project-type-editor-action-button"
                                 >
                                     Remove
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     ))}
@@ -458,13 +459,13 @@ export default function ProjectTypeEditorForm({
                     <h2 className="project-type-editor-section-title">
                         Default Resources
                     </h2>
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
+                        size="xs"
                         onClick={onAddResource}
-                        className="project-type-editor-action-button"
                     >
                         Add Resource
-                    </button>
+                    </Button>
                 </div>
                 <p className="project-type-editor-helper-text">
                     Resources created automatically when a new project of this
@@ -522,13 +523,13 @@ export default function ProjectTypeEditorForm({
                                 />
 
                                 <div className="project-type-editor-row-end project-type-editor-row-end--right">
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="secondary"
+                                        size="xs"
                                         onClick={() => onRemoveResource(index)}
-                                        className="project-type-editor-action-button"
                                     >
                                         Remove Resource
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         ),

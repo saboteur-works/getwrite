@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import type { Tag } from "../../src/lib/models/types";
+import Button from "./UI/Button/Button";
 
 function toColorInputValue(color: string | undefined): string {
     if (!color) return "#000000";
@@ -103,14 +104,9 @@ export default function TagsManagerModal({
                         resources from the metadata sidebar.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
-                    aria-label="Close"
-                >
+                <Button variant="secondary" size="sm" onClick={onClose} aria-label="Close">
                     Close
-                </button>
+                </Button>
             </header>
 
             <div className="flex flex-col gap-6">
@@ -190,13 +186,13 @@ export default function TagsManagerModal({
                             />
                         ) : null}
                     </div>
-                    <button
+                    <Button
                         type="submit"
+                        variant="secondary"
                         disabled={!newName.trim() || isSubmitting}
-                        className="rounded-md border border-gw-border bg-transparent px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         Add Tag
-                    </button>
+                    </Button>
                 </form>
             </div>
         </div>

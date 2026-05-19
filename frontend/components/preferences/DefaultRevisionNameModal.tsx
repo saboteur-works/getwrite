@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { X } from "lucide-react";
+import Button from "../common/UI/Button/Button";
 
 export interface DefaultRevisionNameModalProps {
     initialName: string;
@@ -55,14 +56,14 @@ export default function DefaultRevisionNameModal({
                         text resource is created.
                     </p>
                 </div>
-                <button
-                    type="button"
+                <Button
+                    variant="ghost"
                     onClick={onClose}
                     aria-label="Close"
-                    className="shrink-0 rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary"
+                    className="shrink-0"
                 >
                     <X size={16} aria-hidden="true" />
-                </button>
+                </Button>
             </div>
 
             {/* Input section */}
@@ -96,21 +97,17 @@ export default function DefaultRevisionNameModal({
 
             {/* Footer */}
             <div className="flex justify-end gap-3 border-t border-gw-border pt-5">
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
-                >
+                <Button variant="secondary" size="sm" onClick={onClose}>
                     Cancel
-                </button>
-                <button
-                    type="button"
+                </Button>
+                <Button
+                    variant="default"
+                    size="sm"
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="rounded-md border border-gw-border-md bg-gw-chrome2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-primary transition-colors duration-150 hover:bg-gw-chrome3 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {isSaving ? "Saving…" : "Save Changes"}
-                </button>
+                </Button>
             </div>
         </div>
     );

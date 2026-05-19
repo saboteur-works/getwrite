@@ -13,6 +13,7 @@ import {
     type EditorHeadingMap,
 } from "../../src/lib/editor-heading-settings";
 import HeadingStyleField from "./HeadingStyleField";
+import Button from "../common/UI/Button/Button";
 
 interface HeadingSettingsModalProps {
     initialHeadings?: EditorHeadingMap;
@@ -180,13 +181,9 @@ export default function HeadingSettingsModal({
                         add H4 through H6 as needed.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
-                >
+                <Button variant="secondary" size="sm" onClick={onClose}>
                     Close
-                </button>
+                </Button>
             </header>
 
             <div className="flex flex-col gap-4">
@@ -211,15 +208,15 @@ export default function HeadingSettingsModal({
                                     </p>
                                 </div>
                                 {isOptionalLevel ? (
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
                                         onClick={() =>
                                             handleRemoveHeading(level)
                                         }
-                                        className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
                                     >
                                         Remove {getHeadingLabel(level)}
-                                    </button>
+                                    </Button>
                                 ) : null}
                             </div>
 
@@ -379,13 +376,13 @@ export default function HeadingSettingsModal({
             <div className="flex flex-col gap-3 border-t border-gw-border pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     {nextHeadingLevel ? (
-                        <button
-                            type="button"
+                        <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={handleAddHeading}
-                            className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
                         >
                             Add {getHeadingLabel(nextHeadingLevel)}
-                        </button>
+                        </Button>
                     ) : (
                         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
                             All heading levels enabled
@@ -399,24 +396,24 @@ export default function HeadingSettingsModal({
                 </div>
 
                 <div className="flex items-center justify-end gap-3">
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={onClose}
-                        className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
                         disabled={isSaving}
                     >
                         Cancel
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
+                        variant="default"
+                        size="sm"
                         onClick={() => {
                             void handleSave();
                         }}
-                        className="rounded-md border border-gw-border-md bg-gw-chrome2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-primary transition-colors duration-150 hover:bg-gw-surface disabled:cursor-not-allowed disabled:opacity-60"
                         disabled={isSaving}
                     >
                         {isSaving ? "Saving..." : "Save Changes"}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

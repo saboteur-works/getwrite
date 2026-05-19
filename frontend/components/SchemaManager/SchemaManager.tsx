@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ChevronUp, ChevronDown, Trash2, Plus } from "lucide-react";
+import Button from "../common/UI/Button/Button";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
     selectActiveProjectMetadataSchema,
@@ -291,14 +292,14 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                             sidebar.
                         </p>
                     </div>
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={onClose}
-                        className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-label text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
                         aria-label="Close schema manager"
                     >
                         Close
-                    </button>
+                    </Button>
                 </header>
 
                 <div className="flex flex-col gap-4">
@@ -325,27 +326,25 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                     <span className="flex-1 font-mono text-[11px] uppercase tracking-[0.12em] text-gw-secondary">
                                         {group.label}
                                     </span>
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="ghost"
                                         onClick={() => moveGroup(group.id, "up")}
                                         disabled={isFirstGroup}
-                                        className="rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary disabled:cursor-not-allowed disabled:opacity-30"
                                         aria-label={`Move ${group.label} group up`}
                                     >
                                         <ChevronUp size={14} aria-hidden="true" />
-                                    </button>
-                                    <button
-                                        type="button"
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
                                         onClick={() => moveGroup(group.id, "down")}
                                         disabled={isLastGroup}
-                                        className="rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary disabled:cursor-not-allowed disabled:opacity-30"
                                         aria-label={`Move ${group.label} group down`}
                                     >
                                         <ChevronDown size={14} aria-hidden="true" />
-                                    </button>
+                                    </Button>
                                     {!groupHasLockedFields ? (
-                                        <button
-                                            type="button"
+                                        <Button
+                                            variant="ghost"
                                             onClick={() =>
                                                 setDeleteTarget({
                                                     type: "group",
@@ -353,11 +352,10 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                                     label: group.label,
                                                 })
                                             }
-                                            className="rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary"
                                             aria-label={`Delete ${group.label} group`}
                                         >
                                             <Trash2 size={14} aria-hidden="true" />
-                                        </button>
+                                        </Button>
                                     ) : null}
                                 </div>
 
@@ -477,8 +475,9 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                                     ) : null}
 
                                                     {/* Move up */}
-                                                    <button
-                                                        type="button"
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="shrink-0"
                                                         onClick={() =>
                                                             moveField(
                                                                 group.id,
@@ -487,18 +486,18 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                                             )
                                                         }
                                                         disabled={isFirstField}
-                                                        className="shrink-0 rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary disabled:cursor-not-allowed disabled:opacity-30"
                                                         aria-label={`Move ${field.label} up`}
                                                     >
                                                         <ChevronUp
                                                             size={13}
                                                             aria-hidden="true"
                                                         />
-                                                    </button>
+                                                    </Button>
 
                                                     {/* Move down */}
-                                                    <button
-                                                        type="button"
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="shrink-0"
                                                         onClick={() =>
                                                             moveField(
                                                                 group.id,
@@ -507,19 +506,19 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                                             )
                                                         }
                                                         disabled={isLastField}
-                                                        className="shrink-0 rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary disabled:cursor-not-allowed disabled:opacity-30"
                                                         aria-label={`Move ${field.label} down`}
                                                     >
                                                         <ChevronDown
                                                             size={13}
                                                             aria-hidden="true"
                                                         />
-                                                    </button>
+                                                    </Button>
 
                                                     {/* Delete — only for non-locked fields */}
                                                     {!field.locked ? (
-                                                        <button
-                                                            type="button"
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="shrink-0"
                                                             onClick={() =>
                                                                 setDeleteTarget({
                                                                     type: "field",
@@ -528,14 +527,13 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
                                                                     label: field.label,
                                                                 })
                                                             }
-                                                            className="shrink-0 rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary"
                                                             aria-label={`Delete ${field.label}`}
                                                         >
                                                             <Trash2
                                                                 size={13}
                                                                 aria-hidden="true"
                                                             />
-                                                        </button>
+                                                        </Button>
                                                     ) : null}
                                                 </div>
 
@@ -751,16 +749,15 @@ export default function SchemaManager({ onClose }: SchemaManagerProps): JSX.Elem
 
                 {/* Add Group footer */}
                 <div className="border-t border-gw-border pt-4">
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
                         onClick={handleAddGroup}
                         disabled={!projectId}
-                        className="flex items-center gap-1.5 rounded-md border border-gw-border bg-transparent px-4 py-2 font-mono text-[10px] uppercase tracking-label text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2 disabled:cursor-not-allowed disabled:opacity-40"
                         aria-label="Add schema group"
                     >
                         <Plus size={13} aria-hidden="true" />
                         Add Group
-                    </button>
+                    </Button>
                 </div>
             </div>
 

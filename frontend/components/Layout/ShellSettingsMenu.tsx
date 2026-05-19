@@ -16,6 +16,7 @@ import {
     LayoutList,
 } from "lucide-react";
 import MenuItemButton from "../common/MenuItemButton";
+import Button from "../common/UI/Button/Button";
 
 export interface ShellSettingsMenuProps {
     projectName?: string;
@@ -74,16 +75,15 @@ export default function ShellSettingsMenu({
             <div className="flex items-center gap-1">
                 {hasProject ? (
                     <div className="appshell-topbar-menu" ref={projectMenuRef}>
-                        <button
-                            type="button"
-                            className="appshell-topbar-button"
+                        <Button
+                            variant="icon"
                             aria-haspopup="menu"
                             aria-expanded={isProjectMenuOpen}
                             aria-label="Open project menu"
                             onClick={onToggleProjectMenuOpen}
                         >
                             <BookOpen size={18} aria-hidden="true" />
-                        </button>
+                        </Button>
 
                         {isProjectMenuOpen ? (
                             <div
@@ -105,16 +105,15 @@ export default function ShellSettingsMenu({
                 ) : null}
 
                 <div className="appshell-topbar-menu" ref={menuRef}>
-                    <button
-                        type="button"
-                        className="appshell-topbar-button"
+                    <Button
+                        variant="icon"
                         aria-haspopup="menu"
                         aria-expanded={isOpen}
                         aria-label="Open project settings menu"
                         onClick={onToggleOpen}
                     >
                         <Settings size={18} aria-hidden="true" />
-                    </button>
+                    </Button>
 
                     {isOpen ? (
                         <div

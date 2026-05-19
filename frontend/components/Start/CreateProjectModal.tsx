@@ -3,6 +3,7 @@ import { toast } from "react-hot-toast";
 import { X, FolderPlus } from "lucide-react";
 import type { Project as CanonicalProject } from "../../src/lib/models/types";
 import ProjectModalFrame from "../common/ProjectModalFrame";
+import Button from "../common/UI/Button/Button";
 
 export interface CreateProjectPayload {
     name: string;
@@ -337,18 +338,17 @@ export default function CreateProjectModal({
                 ) : null}
 
                 <div className="project-modal-actions">
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
                         onClick={onClose}
-                        className="project-modal-button project-modal-button-secondary"
                         disabled={creating}
                     >
                         <X size={14} aria-hidden="true" />
                         Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="submit"
-                        className="project-modal-button project-modal-button-primary"
+                        variant="outline"
                         disabled={
                             creating ||
                             (!!types &&
@@ -362,7 +362,7 @@ export default function CreateProjectModal({
                     >
                         <FolderPlus size={14} aria-hidden="true" />
                         {creating ? "Creating…" : "Create"}
-                    </button>
+                    </Button>
                 </div>
             </form>
         </ProjectModalFrame>

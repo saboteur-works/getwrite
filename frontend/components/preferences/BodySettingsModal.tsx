@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 import { BODY_FIELD_DEFINITIONS, sanitizeEditorBody } from "../../src/lib/editor-body-settings";
 import HeadingStyleField from "./HeadingStyleField";
+import Button from "../common/UI/Button/Button";
 
 interface BodySettingsModalProps {
     initialBody?: EditorBodyConfig;
@@ -57,13 +58,9 @@ export default function BodySettingsModal({
                         These settings apply to all editor body text.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded-md border border-gw-border bg-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2"
-                >
+                <Button variant="secondary" size="sm" onClick={onClose}>
                     Close
-                </button>
+                </Button>
             </header>
 
             <section className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
@@ -92,22 +89,16 @@ export default function BodySettingsModal({
             ) : null}
 
             <footer className="flex justify-end gap-3 border-t border-gw-border pt-5">
-                <button
-                    type="button"
-                    onClick={onClose}
-                    disabled={isSaving}
-                    className="rounded-md border border-gw-border bg-transparent px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2 disabled:opacity-50"
-                >
+                <Button variant="secondary" onClick={onClose} disabled={isSaving}>
                     Cancel
-                </button>
-                <button
-                    type="button"
+                </Button>
+                <Button
+                    variant="default"
                     onClick={() => void handleSave()}
                     disabled={isSaving}
-                    className="rounded-md border border-gw-border bg-gw-chrome2 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gw-primary transition-colors duration-150 hover:bg-gw-chrome disabled:opacity-50"
                 >
                     {isSaving ? "Saving…" : "Save"}
-                </button>
+                </Button>
             </footer>
         </div>
     );

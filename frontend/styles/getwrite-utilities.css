@@ -539,29 +539,6 @@
         padding: 16px;
     }
 
-    .project-type-editor-action-button {
-        padding: 4px 10px;
-        background: transparent;
-        border: 1px solid var(--color-gw-border);
-        border-radius: var(--radius-md);
-        font-family: var(--font-mono);
-        font-size: 9px;
-        text-transform: uppercase;
-        letter-spacing: 0.14em;
-        color: var(--color-gw-secondary);
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            color 150ms ease,
-            border-color 150ms ease;
-        white-space: nowrap;
-    }
-
-    .project-type-editor-action-button:hover {
-        background-color: var(--color-gw-chrome2);
-        color: var(--color-gw-primary);
-        border-color: var(--color-gw-border-md);
-    }
 
     .project-type-editor-row-end {
         display: flex;
@@ -1045,31 +1022,6 @@
         border-color: var(--color-gw-border-md);
     }
 
-    .compile-modal-generate-button {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: var(--radius-md);
-        border: 0.5px solid var(--color-gw-border);
-        background: transparent;
-        font-family: var(--font-mono);
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        color: var(--color-gw-secondary);
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            color 150ms ease,
-            border-color 150ms ease;
-    }
-
-    .compile-modal-generate-button:hover {
-        background-color: var(--color-gw-chrome2);
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
 
     .compile-modal-textarea {
         width: 100%;
@@ -2264,34 +2216,6 @@
         flex-shrink: 0;
     }
 
-    .appshell-topbar-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 2.25rem;
-        height: 2.25rem;
-        border-radius: var(--radius-md);
-        border: 0.5px solid var(--color-gw-border);
-        background: transparent;
-        color: var(--color-gw-secondary);
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            border-color 150ms ease,
-            color 150ms ease;
-    }
-
-    .appshell-topbar-button:hover {
-        background-color: var(--color-gw-chrome2);
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
-
-    .appshell-topbar-button:focus-visible {
-        outline: none;
-        box-shadow: 0 0 0 3px var(--color-gw-focus-ring);
-        border-color: var(--color-gw-border-md);
-    }
 
     .appshell-topbar-dropdown {
         position: absolute;
@@ -2389,27 +2313,6 @@
         overflow-x: hidden;
     }
 
-    .appshell-close-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 2rem;
-        height: 2rem;
-        padding: 0;
-        border: none;
-        border-radius: var(--radius-md);
-        background-color: transparent;
-        color: var(--color-gw-secondary);
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            color 150ms ease;
-    }
-
-    .appshell-close-button:hover {
-        background-color: var(--color-gw-chrome2);
-        color: var(--color-gw-primary);
-    }
 
     .appshell-resize-handle {
         flex-shrink: 0;
@@ -2430,30 +2333,6 @@
         background-color: var(--color-gw-border-md);
     }
 
-    .appshell-sidebar-toggle {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 2.5rem;
-        height: 2.5rem;
-        padding: 0 0.5rem;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-md);
-        background-color: transparent;
-        color: var(--color-gw-secondary);
-        font-size: 0.875rem;
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            border-color 150ms ease,
-            color 150ms ease;
-    }
-
-    .appshell-sidebar-toggle:hover {
-        background-color: var(--color-gw-chrome2);
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
 
     .appshell-work-area {
         flex: 1;
@@ -2626,49 +2505,6 @@
         border-top: 0.5px solid var(--color-gw-border);
     }
 
-    .project-modal-button {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: var(--radius-md);
-        font-family: var(--font-mono);
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        cursor: pointer;
-        transition:
-            background-color 150ms ease,
-            color 150ms ease,
-            border-color 150ms ease;
-    }
-
-    .project-modal-button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .project-modal-button-primary {
-        background-color: transparent;
-        border: 1px solid var(--color-gw-primary);
-        color: var(--color-gw-primary);
-    }
-
-    .project-modal-button-primary:hover:not(:disabled) {
-        background-color: var(--color-gw-chrome2);
-    }
-
-    .project-modal-button-secondary {
-        background-color: transparent;
-        border: 1px solid var(--color-gw-border);
-        color: var(--color-gw-secondary);
-    }
-
-    .project-modal-button-secondary:hover:not(:disabled) {
-        background-color: var(--color-gw-chrome2);
-        border-color: var(--color-gw-border-md);
-        color: var(--color-gw-primary);
-    }
 
     /* ── DENSITY VARIANTS ── */
     .gw-density-compact .appshell-topbar {
