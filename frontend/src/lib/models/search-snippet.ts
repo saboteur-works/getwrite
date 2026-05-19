@@ -20,15 +20,29 @@ export function extractSnippet(
 
     const textLower = text.toLowerCase();
 
-    // Find the earliest match position across all query terms.
     let matchStart = -1;
     let matchLength = 0;
 
-    for (const term of terms) {
-        const idx = textLower.indexOf(term);
-        if (idx !== -1 && (matchStart === -1 || idx < matchStart)) {
+    // For multi-term queries, try to find the full phrase first so the snippet
+    // centers on where all the words appear together rather than the first
+    // occurrence of any individual term (which may be a stop word like "the").
+    if (terms.length > 1) {
+        const phrase = terms.join(" ");
+        const idx = textLower.indexOf(phrase);
+        if (idx !== -1) {
             matchStart = idx;
-            matchLength = term.length;
+            matchLength = phrase.length;
+        }
+    }
+
+    // Fall back to earliest single-term match.
+    if (matchStart === -1) {
+        for (const term of terms) {
+            const idx = textLower.indexOf(term);
+            if (idx !== -1 && (matchStart === -1 || idx < matchStart)) {
+                matchStart = idx;
+                matchLength = term.length;
+            }
         }
     }
 

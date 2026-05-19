@@ -42,9 +42,9 @@ describe("inverted index (T025)", () => {
         expect(r2.sort()).toEqual([a.id, b.id].sort());
 
         const r3 = await search(projectRoot, "apple banana");
-        // scores: c=3, a=3 (2 apple +1 banana) -> c then a
-        expect(r3[0]).toBe(c.id);
-        expect(r3[1]).toBe(a.id);
+        // AND semantics: only resources with BOTH terms qualify.
+        // a has apple(2) + banana(1); c has apple(3) but no banana; b has banana but no apple.
+        expect(r3).toEqual([a.id]);
     });
 
     it("removes resources from index", async () => {

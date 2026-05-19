@@ -120,22 +120,29 @@ export async function search(
         }
     }
 
+    // For multi-term queries require all terms to be present (AND semantics).
+    // Single-term queries keep the full scored set (OR semantics not needed).
+    const qualifiedIds =
+        terms.length > 1
+            ? Object.keys(scores).filter((rid) =>
+                  terms.every((t) => (perTermFreq[t]?.[rid] ?? 0) > 0),
+              )
+            : Object.keys(scores);
+
     const firstTerm = terms[0];
-    return Object.entries(scores)
-        .sort((a, b) => {
-            const scoreA = a[1];
-            const scoreB = b[1];
-            if (scoreB !== scoreA) return scoreB - scoreA;
-            // tie-break: prefer higher frequency for first query term
-            if (firstTerm) {
-                const fa = perTermFreq[firstTerm][a[0]] ?? 0;
-                const fb = perTermFreq[firstTerm][b[0]] ?? 0;
-                if (fb !== fa) return fb - fa;
-            }
-            // final deterministic tie-break: lexicographic id
-            return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0;
-        })
-        .map((e) => e[0]);
+    return qualifiedIds.sort((a, b) => {
+        const scoreA = scores[a] ?? 0;
+        const scoreB = scores[b] ?? 0;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        // tie-break: prefer higher frequency for first query term
+        if (firstTerm) {
+            const fa = perTermFreq[firstTerm]?.[a] ?? 0;
+            const fb = perTermFreq[firstTerm]?.[b] ?? 0;
+            if (fb !== fa) return fb - fa;
+        }
+        // final deterministic tie-break: lexicographic id
+        return a < b ? -1 : a > b ? 1 : 0;
+    });
 }
 
 export default { indexResource, removeResourceFromIndex, search };
