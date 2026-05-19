@@ -1624,7 +1624,8 @@
         border: 0.5px solid var(--color-gw-border);
         border-radius: var(--radius-md);
         background-color: var(--color-gw-chrome2);
-        overflow: hidden;
+        max-height: 320px;
+        overflow-y: auto;
         z-index: 40;
     }
 

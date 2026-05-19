@@ -70,6 +70,7 @@ export default function SearchBar({
 
     const inputRef = useRef<HTMLInputElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const activeItemRef = useRef<HTMLLIElement | null>(null);
 
     useEffect(() => {
         function onDocClick(e: MouseEvent) {
@@ -85,6 +86,10 @@ export default function SearchBar({
     }, []);
 
     useEffect(() => setHighlight(0), [query]);
+
+    useEffect(() => {
+        activeItemRef.current?.scrollIntoView({ block: "nearest" });
+    }, [highlight]);
 
     useEffect(() => {
         const platform =
@@ -220,9 +225,10 @@ export default function SearchBar({
 
             {open && results.length > 0 ? (
                 <ul className="searchbar-results">
-                    {results.slice(0, 8).map((result, i) => (
+                    {results.map((result, i) => (
                         <li
                             key={result.resourceId}
+                            ref={i === highlight ? activeItemRef : null}
                             className="searchbar-result-item"
                         >
                             <button
