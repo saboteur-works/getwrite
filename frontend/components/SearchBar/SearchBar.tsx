@@ -17,6 +17,29 @@ import type { SearchFilters } from "../../src/store/search-transport-service";
 import type { Tag } from "../../src/lib/models/types";
 import SearchFilterPanel from "./SearchFilterPanel";
 
+function renderSnippet(snippet: string, query: string): React.ReactNode {
+    if (!snippet || !query) return snippet;
+    const terms = query.split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return snippet;
+    const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const regex = new RegExp(`(${escaped.join("|")})`, "gi");
+    const parts = snippet.split(regex);
+    const lowerTerms = terms.map((t) => t.toLowerCase());
+    return (
+        <>
+            {parts.map((part, i) =>
+                lowerTerms.includes(part.toLowerCase()) ? (
+                    <mark key={i} className="searchbar-result-match">
+                        {part}
+                    </mark>
+                ) : (
+                    part
+                ),
+            )}
+        </>
+    );
+}
+
 export interface SearchBarProps {
     placeholder?: string;
     onSelect?: (id: string) => void;
@@ -216,7 +239,7 @@ export default function SearchBar({
                                 </span>
                                 {result.snippet ? (
                                     <span className="searchbar-result-snippet">
-                                        {result.snippet}
+                                        {renderSnippet(result.snippet, query)}
                                     </span>
                                 ) : null}
                             </button>

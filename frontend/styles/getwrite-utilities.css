@@ -1557,13 +1557,20 @@
     }
 
     .searchbar-result-snippet {
-        display: block;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
         font-size: 11px;
         color: var(--color-gw-secondary);
         margin-top: 2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        line-height: 1.5;
+    }
+
+    .searchbar-result-match {
+        background: transparent;
+        font-weight: 600;
+        color: var(--color-gw-primary);
     }
 
     .searchbar-field {
