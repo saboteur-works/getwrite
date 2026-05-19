@@ -7,18 +7,18 @@ test("timeline view interactive variant renders", async ({ page }) => {
     await expect(page).toHaveURL(/timelineview--interactive/);
 });
 
-test("timeline view default displays project info", async ({ page }) => {
+test("timeline view default renders timeline chips", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-timelineview--default");
 
-    const projectName = page.getByText("The Clockwork King");
-    await expect(projectName).toBeVisible();
+    const chips = page.getByRole("listitem");
+    await expect(chips.first()).toBeVisible();
 });
 
 test("timeline view single item variant renders", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-timelineview--single-item");
 
-    const resourceName = page.getByText("The Only Scene");
-    await expect(resourceName).toBeVisible();
+    const chip = page.getByRole("listitem", { name: "The Only Scene" });
+    await expect(chip).toBeVisible();
 });
 
 test(

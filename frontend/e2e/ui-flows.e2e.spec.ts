@@ -3,7 +3,8 @@ import { test, expect } from "@playwright/test";
 test("data view shows resources and counts are correct", async ({ page }) => {
     await page.goto("/iframe.html?id=workarea-dataview--with-resources");
 
-    const header = page.getByRole("heading", { name: /Data/i });
+    // CollapsibleSection renders its title inside a <button>, not a <h*> element.
+    const header = page.getByRole("button", { name: /Data\s*—/i });
     await expect(header).toBeVisible();
 
     // list should contain a placeholder resource from the story
