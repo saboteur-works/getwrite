@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.2.33](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.32...getwrite-v0.2.33) (2026-05-19)
+
+
+### Features
+
+* **ui:** canonical Button primitive + full call-site migration (Task 4) ([ce6dc31](https://github.com/saboteur-works/getwrite/commit/ce6dc31be97213ad097009928ab8e18838b1e549))
+* **ui:** canonical Card primitive + full call-site migration (Task 6) ([2d4268b](https://github.com/saboteur-works/getwrite/commit/2d4268bc7c18cc483cbb5ff239934c041979cc27))
+* **ui:** canonical CollapsibleSection primitive + SidebarSection merge (Task 8) ([bc5f557](https://github.com/saboteur-works/getwrite/commit/bc5f557498917eb00a49034cfa24c252e57e08d7))
+* **ui:** canonical Dialog primitive + full modal migration (Task 5) ([56712ee](https://github.com/saboteur-works/getwrite/commit/56712ee4e0639d724c93212f1f76e47eb9f6e220))
+* **ui:** canonical Input/Textarea/Select/Checkbox primitives + full call-site migration (Task 7) ([8f04836](https://github.com/saboteur-works/getwrite/commit/8f04836df80e4a716d7ca564f3dce20564427380))
+* **ui:** Chip active/pressed state + TagsSection/SearchFilterPanel migration (Task 9) ([4157e33](https://github.com/saboteur-works/getwrite/commit/4157e33c90063486d9bd6572a80f5d8b4a5ae72c))
+* **ui:** replace hardcoded hex values with CSS tokens (Task 10) ([9764729](https://github.com/saboteur-works/getwrite/commit/9764729b1b17c3410e63b1ef54b68bd5c86fda59))
+* **ui:** scaffold simplify-design-system — spec, audit, decisions, and cva/shadcn foundation ([2cbf4f1](https://github.com/saboteur-works/getwrite/commit/2cbf4f1aa99c3c5c5ad084b50c30282b9920ad72))
+* **ui:** Simplify Design System — canonical primitives + full phase-one migration ([f620be4](https://github.com/saboteur-works/getwrite/commit/f620be430bbe78c99041735a71362d88474f6390))
+
+
+### Bug Fixes
+
+* **a11y:** remove manual id from DialogTitle asChild in CreateProjectModal ([c7d6d42](https://github.com/saboteur-works/getwrite/commit/c7d6d426384544714414bad107429251e1c33b46))
+* **a11y:** wrap modal titles with Radix DialogTitle ([f46f120](https://github.com/saboteur-works/getwrite/commit/f46f120a1f7fd6dd8b769d6e3f0d386ef4f397a7))
+* **e2e:** add searchSlice to Storybook mock store and align e2e assertions with actual component behaviour ([c1ab700](https://github.com/saboteur-works/getwrite/commit/c1ab7005e4422699c35259c535940e06e2c050f5))
+
 ## [0.2.32](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.31...getwrite-v0.2.32) (2026-05-19)
 
 
