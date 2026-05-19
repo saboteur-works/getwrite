@@ -184,7 +184,7 @@ export default function CreateProjectModal({
                 aria-busy={creating}
             >
                 <DialogTitle asChild>
-                    <h2 id="create-project-title" className="project-modal-title">
+                    <h2 className="project-modal-title">
                         Create Project
                     </h2>
                 </DialogTitle>
