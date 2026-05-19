@@ -3,7 +3,7 @@ import { toast } from "react-hot-toast";
 import { X, FolderPlus } from "lucide-react";
 import type { Project as CanonicalProject } from "../../src/lib/models/types";
 import Button from "../common/UI/Button/Button";
-import { Dialog, DialogContent } from "../common/UI/Dialog";
+import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import Input from "../common/UI/Input/Input";
 import Select from "../common/UI/Select/Select";
 
@@ -183,9 +183,11 @@ export default function CreateProjectModal({
                 onSubmit={handleSubmit}
                 aria-busy={creating}
             >
-                <h2 id="create-project-title" className="project-modal-title">
-                    Create Project
-                </h2>
+                <DialogTitle asChild>
+                    <h2 id="create-project-title" className="project-modal-title">
+                        Create Project
+                    </h2>
+                </DialogTitle>
 
                 <label className="project-modal-field">
                     <div className="project-modal-label">Name</div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import Button from "../common/UI/Button/Button";
-import { Dialog, DialogContent } from "../common/UI/Dialog";
+import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import Input from "../common/UI/Input/Input";
 
 export interface RenameProjectModalProps {
@@ -38,7 +38,9 @@ export default function RenameProjectModal({
                 aria-describedby={undefined}
                 onOpenAutoFocus={(e) => { e.preventDefault(); inputRef.current?.focus(); }}
             >
-                <h3 className="text-lg font-medium text-gw-primary">Rename project</h3>
+                <DialogTitle asChild>
+                    <h3 className="text-lg font-medium text-gw-primary">Rename project</h3>
+                </DialogTitle>
 
                 <div className="p-2">
                     <label className="text-sm font-medium text-gw-secondary">Name</label>

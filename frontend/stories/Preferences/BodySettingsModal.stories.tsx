@@ -2,10 +2,18 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import BodySettingsModal from "../../components/preferences/BodySettingsModal";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
+import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 
 const meta = {
     title: "Preferences/BodySettingsModal",
     component: BodySettingsModal,
+    decorators: [
+        (Story) => (
+            <Dialog open onOpenChange={() => undefined}>
+                <Story />
+            </Dialog>
+        ),
+    ],
 } satisfies Meta<typeof BodySettingsModal>;
 
 export default meta;

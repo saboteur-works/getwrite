@@ -2,10 +2,15 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import DefaultRevisionNameModal from "../components/preferences/DefaultRevisionNameModal";
+import { Dialog } from "../components/common/UI/Dialog/Dialog";
+
+function renderInDialog(ui: React.ReactElement) {
+    return render(<Dialog open onOpenChange={() => undefined}>{ui}</Dialog>);
+}
 
 describe("DefaultRevisionNameModal", () => {
     it("renders with the initial name pre-filled in the input", () => {
-        render(
+        renderInDialog(
             <DefaultRevisionNameModal
                 initialName="Initial Draft"
                 onClose={vi.fn()}
@@ -21,7 +26,7 @@ describe("DefaultRevisionNameModal", () => {
         const onClose = vi.fn();
         const onSave = vi.fn().mockResolvedValue(undefined);
 
-        render(
+        renderInDialog(
             <DefaultRevisionNameModal
                 initialName="Initial Draft"
                 onClose={onClose}
@@ -43,7 +48,7 @@ describe("DefaultRevisionNameModal", () => {
         const onClose = vi.fn();
         const onSave = vi.fn();
 
-        render(
+        renderInDialog(
             <DefaultRevisionNameModal
                 initialName="Initial Draft"
                 onClose={onClose}
@@ -60,7 +65,7 @@ describe("DefaultRevisionNameModal", () => {
     it("shows a validation error and does not call onSave for an empty input", async () => {
         const onSave = vi.fn();
 
-        render(
+        renderInDialog(
             <DefaultRevisionNameModal
                 initialName="Initial Draft"
                 onClose={vi.fn()}
@@ -82,7 +87,7 @@ describe("DefaultRevisionNameModal", () => {
     it("shows a validation error for a name longer than 100 characters", async () => {
         const onSave = vi.fn();
 
-        render(
+        renderInDialog(
             <DefaultRevisionNameModal
                 initialName="Initial Draft"
                 onClose={vi.fn()}
@@ -106,7 +111,7 @@ describe("DefaultRevisionNameModal", () => {
             .fn()
             .mockRejectedValue(new Error("Server error occurred"));
 
-        render(
+        renderInDialog(
             <DefaultRevisionNameModal
                 initialName="Initial Draft"
                 onClose={vi.fn()}
@@ -132,7 +137,7 @@ describe("DefaultRevisionNameModal", () => {
                 }),
         );
 
-        render(
+        renderInDialog(
             <DefaultRevisionNameModal
                 initialName="Initial Draft"
                 onClose={vi.fn()}

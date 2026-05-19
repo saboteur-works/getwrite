@@ -11,7 +11,7 @@ import {
     ROOT_ITEM_ID,
 } from "./compileSelection";
 import Button from "./UI/Button/Button";
-import { Dialog, DialogContent } from "./UI/Dialog";
+import { Dialog, DialogContent, DialogTitle } from "./UI/Dialog";
 import Checkbox from "./UI/Checkbox/Checkbox";
 import Select from "./UI/Select/Select";
 
@@ -79,7 +79,9 @@ export default function CompilePreviewModal(
                 data-testid="compile-preview-modal"
                 aria-describedby={undefined}
             >
-                <h3 className="compile-modal-title">Compile Project</h3>
+                <DialogTitle asChild>
+                    <h3 className="compile-modal-title">Compile Project</h3>
+                </DialogTitle>
                 <p className="compile-modal-description">
                     Select which resources to include in the compiled output.
                 </p>

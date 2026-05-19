@@ -7,6 +7,7 @@ import HeadingStyleField from "./HeadingStyleField";
 import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
 import Input from "../common/UI/Input/Input";
+import { DialogTitle } from "../common/UI/Dialog/Dialog";
 
 interface BodySettingsModalProps {
     initialBody?: EditorBodyConfig;
@@ -52,9 +53,11 @@ export default function BodySettingsModal({
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8 lg:px-10">
             <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-semibold text-gw-primary">
-                        Body Text Styles
-                    </h1>
+                    <DialogTitle asChild>
+                        <h1 className="text-2xl font-semibold text-gw-primary">
+                            Body Text Styles
+                        </h1>
+                    </DialogTitle>
                     <p className="max-w-2xl text-sm text-gw-secondary">
                         Configure default body text typography for this project.
                         These settings apply to all editor body text.

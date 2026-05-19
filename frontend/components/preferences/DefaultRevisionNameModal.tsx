@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
 import Input from "../common/UI/Input/Input";
+import { DialogTitle } from "../common/UI/Dialog/Dialog";
 
 export interface DefaultRevisionNameModalProps {
     initialName: string;
@@ -50,9 +51,11 @@ export default function DefaultRevisionNameModal({
             {/* Header */}
             <div className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
                 <div>
-                    <h2 className="text-2xl font-semibold text-gw-primary">
-                        Default Revision Name
-                    </h2>
+                    <DialogTitle asChild>
+                        <h2 className="text-2xl font-semibold text-gw-primary">
+                            Default Revision Name
+                        </h2>
+                    </DialogTitle>
                     <p className="mt-1 max-w-2xl text-sm text-gw-secondary">
                         The name given to the first saved revision when a new
                         text resource is created.

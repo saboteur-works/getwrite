@@ -17,6 +17,7 @@ import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
 import Input from "../common/UI/Input/Input";
 import Select from "../common/UI/Select/Select";
+import { DialogTitle } from "../common/UI/Dialog/Dialog";
 
 interface HeadingSettingsModalProps {
     initialHeadings?: EditorHeadingMap;
@@ -175,9 +176,11 @@ export default function HeadingSettingsModal({
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8 lg:px-10">
             <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-semibold text-gw-primary">
-                        Heading Settings
-                    </h1>
+                    <DialogTitle asChild>
+                        <h1 className="text-2xl font-semibold text-gw-primary">
+                            Heading Settings
+                        </h1>
+                    </DialogTitle>
                     <p className="max-w-2xl text-sm text-gw-secondary">
                         Configure project-specific heading styles for the
                         editor. H1 through H3 are always available, and you can

@@ -2,6 +2,7 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import HeadingSettingsModal from "../../components/preferences/HeadingSettingsModal";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
+import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 
 const initialHeadings: EditorHeadingMap = {
     h1: {
@@ -30,6 +31,13 @@ const initialHeadings: EditorHeadingMap = {
 const meta: Meta<typeof HeadingSettingsModal> = {
     title: "Preferences/HeadingSettingsModal",
     component: HeadingSettingsModal,
+    decorators: [
+        (Story) => (
+            <Dialog open onOpenChange={() => undefined}>
+                <Story />
+            </Dialog>
+        ),
+    ],
 };
 
 export default meta;

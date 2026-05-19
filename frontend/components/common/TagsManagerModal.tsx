@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import type { Tag } from "../../src/lib/models/types";
 import Button from "./UI/Button/Button";
 import Chip from "./UI/Chip";
+import { DialogTitle } from "./UI/Dialog/Dialog";
 
 function toColorInputValue(color: string | undefined): string {
     if (!color) return "#000000";
@@ -97,9 +98,11 @@ export default function TagsManagerModal({
         <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-6 py-8">
             <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gw-primary">
-                        Manage Tags
-                    </h1>
+                    <DialogTitle asChild>
+                        <h1 className="text-2xl font-semibold text-gw-primary">
+                            Manage Tags
+                        </h1>
+                    </DialogTitle>
                     <p className="mt-1 text-sm text-gw-secondary">
                         Create and delete project-scoped tags. Assign them to
                         resources from the metadata sidebar.

@@ -6,7 +6,7 @@ import type {
     Folder,
 } from "../../src/lib/models/types";
 import Button from "../common/UI/Button/Button";
-import { Dialog, DialogContent } from "../common/UI/Dialog";
+import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import Input from "../common/UI/Input/Input";
 import Select from "../common/UI/Select/Select";
 
@@ -84,9 +84,11 @@ export default function CreateResourceModal({
                 onOpenAutoFocus={(e) => { e.preventDefault(); inputRef.current?.focus(); }}
             >
             <div>
-                <h3 className="project-modal-title">
-                    {initialTitle ? "Create resource" : "New resource"}
-                </h3>
+                <DialogTitle asChild>
+                    <h3 className="project-modal-title">
+                        {initialTitle ? "Create resource" : "New resource"}
+                    </h3>
+                </DialogTitle>
 
                 <div className="project-modal-field">
                     <label
