@@ -66,7 +66,7 @@ async function addTestResource(
         name: string;
         content: string;
         folderId?: string;
-        statuses?: string[];
+        status?: string;
     },
 ): Promise<string> {
     const resourceId = opts.id ?? generateUUID();
@@ -77,10 +77,12 @@ async function addTestResource(
         name: opts.name,
         type: "text",
         folderId: opts.folderId ?? null,
-        statuses: opts.statuses ?? [],
         orderIndex: 0,
         createdAt: new Date().toISOString(),
         slug: opts.name.toLowerCase().replace(/\s+/g, "-"),
+        ...(opts.status !== undefined && {
+            userMetadata: { status: opts.status },
+        }),
     });
 
     // Write canonical revision
@@ -124,7 +126,7 @@ describe("executeSearch — happy path", () => {
             name: "Chapter One",
             content: "The hero crossed the dark forest alone.",
             folderId: "folder-abc",
-            statuses: ["Draft"],
+            status: "Draft",
         });
 
         const results = await executeSearch(projectRoot, "hero", {}, 50);
@@ -302,12 +304,12 @@ describe("executeSearch — filters", () => {
         await addTestResource(projectRoot, {
             name: "Draft Doc",
             content: "the quick brown fox",
-            statuses: ["Draft"],
+            status: "Draft",
         });
         await addTestResource(projectRoot, {
             name: "Done Doc",
             content: "the quick brown fox",
-            statuses: ["Complete"],
+            status: "Complete",
         });
 
         const results = await executeSearch(
@@ -355,21 +357,21 @@ describe("executeSearch — filters", () => {
             name: "Match",
             content: "starlight",
             folderId: "f1",
-            statuses: ["Draft"],
+            status: "Draft",
         });
         // Matches folder + status but not tag
         const idNoTag = await addTestResource(projectRoot, {
             name: "No Tag",
             content: "starlight",
             folderId: "f1",
-            statuses: ["Draft"],
+            status: "Draft",
         });
         // Matches tag but not folder
         const idWrongFolder = await addTestResource(projectRoot, {
             name: "Wrong Folder",
             content: "starlight",
             folderId: "f2",
-            statuses: ["Draft"],
+            status: "Draft",
         });
 
         const tag = await createTag(projectRoot, "Key");

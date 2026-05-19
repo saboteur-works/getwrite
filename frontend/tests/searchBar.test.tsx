@@ -36,6 +36,7 @@ async function flushThunkAndRender(): Promise<void> {
 describe("SearchBar", () => {
     beforeEach(() => {
         vi.useFakeTimers();
+        window.HTMLElement.prototype.scrollIntoView = vi.fn();
     });
 
     afterEach(() => {

@@ -212,17 +212,17 @@ export async function executeSearch(
 
         const title =
             typeof sidecar?.name === "string" ? sidecar.name : candidate.id;
-        const statuses = Array.isArray(sidecar?.statuses)
-            ? (sidecar.statuses as string[])
-            : [];
+        const status =
+            typeof sidecar?.userMetadata?.status === "string"
+                ? (sidecar.userMetadata.status as string)
+                : null;
         const folderId =
             typeof sidecar?.folderId === "string" ? sidecar.folderId : null;
         const resourceTags: string[] = tagAssignments[candidate.id] ?? [];
 
         // Apply filters — all active filters must match.
         if (filters.folder !== undefined && folderId !== filters.folder) continue;
-        if (filters.status !== undefined && !statuses.includes(filters.status))
-            continue;
+        if (filters.status !== undefined && status !== filters.status) continue;
         if (
             filters.tags !== undefined &&
             filters.tags.length > 0 &&
@@ -239,7 +239,7 @@ export async function executeSearch(
             resourceId: candidate.id,
             title,
             snippet,
-            status: statuses[0] ?? null,
+            status,
             folderId,
             tags: resourceTags,
         });
