@@ -24,6 +24,8 @@ export interface FieldPickerField {
     options?: string[];
     /** When true, the field is deprecated: queryable but rendered muted with a badge. */
     deprecated?: boolean;
+    /** For resource-ref / multi-resource-ref fields: the folder ID whose resources are candidates. */
+    refFolder?: string;
 }
 
 export interface FieldPickerProps {
@@ -90,6 +92,7 @@ export function buildFieldPickerFields(schema?: MetadataSchema): FieldPickerFiel
                 folderScope,
                 options: field.options,
                 deprecated: field.deprecated,
+                refFolder: field.refFolder,
             });
         }
     }

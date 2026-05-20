@@ -2,13 +2,15 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { GripVertical, MoreHorizontal } from "lucide-react";
-import type { MetadataFieldType } from "../../src/lib/models/types";
+import type { MetadataFieldType, ResourceRef } from "../../src/lib/models/types";
+import type { ResourceOption } from "../Sidebar/controls/ResourceRefInput";
 import {
     getDefaultOperator,
     getOperatorOption,
     getOperators,
 } from "./operator-utils";
 import FieldPicker, { type FieldPickerField, type FieldPickerSource } from "./FieldPicker";
+import { SingleRefInput } from "./ValuePicker";
 import "./filter-chip.css";
 
 // ─── Value types ──────────────────────────────────────────────────────────────
@@ -29,6 +31,7 @@ export type FilterChipValue =
     | string[]
     | RelativeDateValue
     | RangeValue
+    | ResourceRef
     | null;
 
 // ─── Field type ───────────────────────────────────────────────────────────────
@@ -39,6 +42,8 @@ export interface FilterChipField {
     type: MetadataFieldType;
     /** Allowed values for select / multiselect types. */
     options?: string[];
+    /** For resource-ref / multi-resource-ref fields: the folder ID whose resources are candidates. */
+    refFolder?: string;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -60,6 +65,11 @@ export interface FilterChipProps {
     refId?: string;
     /** Display name for the saved query referenced by refId. */
     refName?: string;
+    /**
+     * When provided, resource-ref / multi-resource-ref fields render a typeahead
+     * instead of a plain text input. Called with the field's refFolder to get candidates.
+     */
+    resolveResourceOptions?: (refFolder: string | undefined) => ResourceOption[];
     onFieldChange?: (field: FilterChipField | null) => void;
     onOperatorChange?: (operator: string | null) => void;
     onValueChange?: (value: FilterChipValue) => void;
@@ -142,11 +152,13 @@ function ValueInput({
     operatorValue,
     value,
     onChange,
+    resolveResourceOptions,
 }: {
     field: FilterChipField;
     operatorValue: string;
     value: FilterChipValue;
     onChange: (v: FilterChipValue) => void;
+    resolveResourceOptions?: (refFolder: string | undefined) => ResourceOption[];
 }): JSX.Element | null {
     const opOption = getOperatorOption(field.type, operatorValue);
     if (!opOption || opOption.noValue) return null;
@@ -322,7 +334,17 @@ function ValueInput({
             );
         }
         case "resource-ref":
-        case "multi-resource-ref":
+        case "multi-resource-ref": {
+            const resourceOptions = resolveResourceOptions?.(field.refFolder) ?? [];
+            if (resourceOptions.length > 0) {
+                return (
+                    <SingleRefInput
+                        value={value}
+                        resourceOptions={resourceOptions}
+                        onChange={(v) => onChange(v as FilterChipValue)}
+                    />
+                );
+            }
             return (
                 <input
                     type="text"
@@ -333,6 +355,7 @@ function ValueInput({
                     onChange={(e) => onChange(e.target.value)}
                 />
             );
+        }
         default:
             return (
                 <input
@@ -369,6 +392,7 @@ export default function FilterChip({
     error,
     refId,
     refName,
+    resolveResourceOptions,
     onFieldChange,
     onOperatorChange,
     onValueChange,
@@ -470,6 +494,7 @@ export default function FilterChip({
                         operatorValue={effectiveOperator}
                         value={value}
                         onChange={onValueChange ?? (() => undefined)}
+                        resolveResourceOptions={resolveResourceOptions}
                     />
                 </span>
             )}

@@ -253,6 +253,27 @@ describe("in predicate", () => {
         const result = await ids({ op: "in", field: "nonexistent", value: ["x"] });
         expect(result).toEqual([]);
     });
+
+    it("matches multi-resource-ref array element by name when predicate is a plain string", async () => {
+        // Simulates the QueryBuilder chip storing a typed name rather than a ResourceRef UUID.
+        // R1 has pov = { id: R2, name: "Bob" } — querying by name "Bob" should match.
+        const result = await ids({ op: "in", field: "pov", value: "Bob" });
+        expect(result).toContain(R1);
+        expect(result).not.toContain(R2);
+        expect(result).not.toContain(R3);
+    });
+
+    it("name matching is case-insensitive", async () => {
+        const result = await ids({ op: "in", field: "pov", value: "bob" });
+        expect(result).toContain(R1);
+    });
+
+    it("matches a ResourceRef element in an array by name string predicate", async () => {
+        // R1 has tags = [{ id: TAG_1, name: "Action" }, { id: TAG_2, name: "Drama" }]
+        const result = await ids({ op: "in", field: "tags", value: "Action" });
+        expect(result).toContain(R1);
+        expect(result).not.toContain(R2);
+    });
 });
 
 // ── exists predicate ──────────────────────────────────────────────────────

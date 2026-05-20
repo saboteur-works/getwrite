@@ -6,6 +6,7 @@ import FilterGroup, {
     type GroupCombinator,
 } from "./FilterGroup";
 import type { FilterChipField } from "./FilterChip";
+import type { ResourceOption } from "../Sidebar/controls/ResourceRefInput";
 import type { QueryAST } from "../../src/lib/models/query-ast";
 import AdvancedModeToggle from "./AdvancedModeToggle";
 import { groupsToAst } from "./ast-chip-bridge";
@@ -37,6 +38,8 @@ export interface QueryBuilderProps {
     availableFields?: FilterChipField[];
     /** Saved queries shown in the field picker's "Saved queries" section. */
     savedQueries?: Array<{id: string; name: string}>;
+    /** When provided, resource-ref / multi-resource-ref chips render a typeahead. */
+    resolveResourceOptions?: (refFolder: string | undefined) => ResourceOption[];
     /** Overall match count displayed in the footer. Omit to hide. */
     matchCount?: number;
     /**
@@ -88,6 +91,7 @@ export default function QueryBuilder({
     globalCombinator,
     availableFields,
     savedQueries,
+    resolveResourceOptions,
     matchCount,
     isAdvanced = false,
     rawAst,
@@ -191,6 +195,7 @@ export default function QueryBuilder({
                                     chips={group.chips}
                                     availableFields={availableFields}
                                     savedQueries={savedQueries}
+                                    resolveResourceOptions={resolveResourceOptions}
                                     matchCount={group.matchCount}
                                     onCombinatorChange={
                                         isAdvanced

@@ -117,6 +117,30 @@ describe("executeEvaluate — happy path", () => {
         expect(ids).not.toContain(idWithout);
     });
 
+    it("evaluates a field nested inside userMetadata", async () => {
+        const root = await makeTmpProject();
+        const id1 = generateUUID();
+        const id2 = generateUUID();
+        await fs.mkdir(path.join(root, "resources", id1), { recursive: true });
+        await fs.mkdir(path.join(root, "resources", id2), { recursive: true });
+        // Write sidecars as the real app does: user fields nested under userMetadata
+        await writeSidecar(root, id1, {
+            id: id1, name: "Scene A", type: "text", slug: "scene-a",
+            orderIndex: 0, createdAt: new Date().toISOString(), folderId: null,
+            userMetadata: { status: "Draft", characters: ["Alice"] },
+        } as Record<string, import("../../src/lib/models/types").MetadataValue>);
+        await writeSidecar(root, id2, {
+            id: id2, name: "Scene B", type: "text", slug: "scene-b",
+            orderIndex: 1, createdAt: new Date().toISOString(), folderId: null,
+            userMetadata: { status: "Polished" },
+        } as Record<string, import("../../src/lib/models/types").MetadataValue>);
+
+        const ids = await executeEvaluate(root, { op: "eq", field: "status", value: "Draft" });
+
+        expect(ids).toContain(id1);
+        expect(ids).not.toContain(id2);
+    });
+
     it("evaluates an or combinator", async () => {
         const root = await makeTmpProject();
         const idText = await addResource(root, { type: "text", name: "T" });

@@ -5,6 +5,7 @@ import FilterChip, {
     type FilterChipField,
     type FilterChipValue,
 } from "./FilterChip";
+import type { ResourceOption } from "../Sidebar/controls/ResourceRefInput";
 import "./filter-group.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -32,6 +33,8 @@ export interface FilterGroupProps {
     availableFields?: FilterChipField[];
     /** Saved queries shown in the field picker's "Saved queries" section. */
     savedQueries?: Array<{id: string; name: string}>;
+    /** When provided, resource-ref / multi-resource-ref chips render a typeahead. */
+    resolveResourceOptions?: (refFolder: string | undefined) => ResourceOption[];
     /** Optional match count shown in the footer. Omit to hide. */
     matchCount?: number;
     onCombinatorChange?: (combinator: GroupCombinator) => void;
@@ -54,6 +57,7 @@ export default function FilterGroup({
     chips,
     availableFields,
     savedQueries,
+    resolveResourceOptions,
     matchCount,
     onCombinatorChange,
     onChipUpdate,
@@ -149,6 +153,7 @@ export default function FilterGroup({
                                 value={chip.value}
                                 availableFields={availableFields}
                                 savedQueries={savedQueries}
+                                resolveResourceOptions={resolveResourceOptions}
                                 error={chip.error}
                                 refId={chip.refId}
                                 refName={chip.refName}

@@ -104,10 +104,19 @@ async function loadEvaluationInput(projectRoot: string): Promise<EvaluationInput
     const sidecars: Record<string, Record<string, MetadataValue>> = {};
 
     for (const id of resourceIds) {
-        const sidecar = await readSidecar(projectRoot, id);
-        if (!sidecar) continue;
+        const rawSidecar = await readSidecar(projectRoot, id);
+        if (!rawSidecar) continue;
+        // User metadata fields are nested under userMetadata in the JSON.
+        // Flatten them into the top level so the evaluator can look them up by key.
+        const userMeta = rawSidecar.userMetadata;
+        const sidecar =
+            userMeta !== null &&
+            typeof userMeta === "object" &&
+            !Array.isArray(userMeta)
+                ? { ...rawSidecar, ...(userMeta as Record<string, MetadataValue>) }
+                : rawSidecar;
         sidecars[id] = sidecar;
-        resources.push(sidecarToResourceBase(id, sidecar));
+        resources.push(sidecarToResourceBase(id, rawSidecar));
     }
 
     const resolveRef = async (id: string): Promise<QueryAST | null> => {

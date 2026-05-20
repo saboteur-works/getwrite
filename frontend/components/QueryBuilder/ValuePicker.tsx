@@ -380,7 +380,7 @@ function MultiOptionInput({
     );
 }
 
-function SingleRefInput({
+export function SingleRefInput({
     value,
     resourceOptions,
     onChange,

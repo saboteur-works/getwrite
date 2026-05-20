@@ -291,6 +291,15 @@ export default function AppShell({
         () => buildFieldPickerFields(metadataSchema),
         [metadataSchema],
     );
+    const resolveResourceOptions = React.useCallback(
+        (refFolder: string | undefined) => {
+            if (!refFolder) return [];
+            return (liveResources ?? [])
+                .filter((r) => r.folderId === refFolder)
+                .map((r) => ({ id: r.id, name: r.name ?? "" }));
+        },
+        [liveResources],
+    );
     const currentAst = React.useMemo(
         () => (qb.isAdvanced && qb.rawAst ? qb.rawAst : (qb.buildAst() ?? { op: "and" as const, children: [] })),
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1482,6 +1491,7 @@ export default function AppShell({
                                                                           rawAst={qb.rawAst}
                                                                           availableFields={availableFields}
                                                                           savedQueries={savedQueriesList}
+                                                                          resolveResourceOptions={resolveResourceOptions}
                                                                           matchCount={activeSmartFolderId ? queryResources.length : undefined}
                                                                           onGlobalCombinatorChange={qb.onGlobalCombinatorChange}
                                                                           onGroupCombinatorChange={qb.onGroupCombinatorChange}

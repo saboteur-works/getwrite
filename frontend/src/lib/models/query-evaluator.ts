@@ -246,15 +246,25 @@ function evalIn(fieldValue: MetadataValue | undefined, predValue: MetadataValue)
     if (Array.isArray(fieldValue)) {
         return (fieldValue as MetadataValue[]).some((fv) =>
             predArray.some((pv) => {
-                const fvId = extractId(fv as MetadataValue);
+                const fvTyped = fv as MetadataValue;
+                // Plain string predicate against a ResourceRef element: match by name or ID.
+                // This handles chips that store a typed name rather than a UUID.
+                if (typeof pv === "string" && isResourceRef(fvTyped)) {
+                    return fvTyped.id === pv || fvTyped.name.toLowerCase() === pv.toLowerCase();
+                }
+                const fvId = extractId(fvTyped);
                 const pvId = extractId(pv);
                 if (fvId !== null && pvId !== null) return fvId === pvId;
-                return valuesEqual(fv as MetadataValue, pv);
+                return valuesEqual(fvTyped, pv);
             }),
         );
     }
 
     return predArray.some((pv) => {
+        // Plain string predicate against a ResourceRef: match by name or ID.
+        if (typeof pv === "string" && isResourceRef(fieldValue)) {
+            return fieldValue.id === pv || fieldValue.name.toLowerCase() === pv.toLowerCase();
+        }
         const fvId = extractId(fieldValue);
         const pvId = extractId(pv);
         if (fvId !== null && pvId !== null) return fvId === pvId;
