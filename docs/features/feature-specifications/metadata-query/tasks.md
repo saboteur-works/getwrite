@@ -357,7 +357,7 @@ match-count updates as chips change.
   chip variant to support in this surface
 - `03-chip-ui.md` § Escape hatch — `advanced` tagging and read-only
   chip degradation
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 17: Text/AST escape hatch
 
