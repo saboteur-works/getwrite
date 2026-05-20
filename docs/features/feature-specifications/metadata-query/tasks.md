@@ -292,7 +292,7 @@ component for the ref hover preview
   ambiguous typeahead, out-of-domain select value rendering
 - `09-current-state.md` § Reusable components for new UI —
   `components/Sidebar/controls/` controls to reuse
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 14: Field picker dropdown
 
