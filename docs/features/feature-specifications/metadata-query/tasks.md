@@ -203,7 +203,7 @@ intervening sidecar write forces recompute; tests verify both.
 
 - `02-query-substrate.md` § Execution model — revision-counter cache
   invalidation strategy; "not reactive" rationale
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 10: Redux slice for queries
 
