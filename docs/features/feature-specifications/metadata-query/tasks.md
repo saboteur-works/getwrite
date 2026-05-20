@@ -6,6 +6,8 @@ outside the spec's functional requirements (e.g., sidebar conflict
 states, source-layer badges) are not included — they are tracked as
 follow-up work in the decisions docs.
 
+> Note: Decision reference files can be found in @docs/features/feature-specifications/metadata-query/decisions
+
 ### Task 1: Define query AST types and Zod schema
 
 **What:** TypeScript interfaces and matching Zod validators for the
@@ -19,7 +21,15 @@ through parse and serialize.
 **Estimate:** 2
 **Notes:** Mirror `MetadataValue`'s recursive Zod pattern. Leaf
 predicate values use the existing `MetadataValue` schema.
-**Done:** [x]
+**Decision refs:**
+
+- `02-query-substrate.md` § AST node types — canonical leaf, combinator,
+  and splice node shapes
+- `02-query-substrate.md` § Concrete AST sketch — sample JSON to use as
+  the round-trip fixture
+- `09-current-state.md` § MetadataValue (Zod-validated) — recursive
+  union pattern to mirror
+  **Done:** [x]
 
 ### Task 2: Intrinsic field registry
 
@@ -36,7 +46,18 @@ UI can enumerate them.
 **Estimate:** 3
 **Notes:** `tags` reads from `config.tagAssignments`;
 `linkedFrom` / `linksTo` from `BacklinkIndex`.
-**Done:** [ ]
+**Decision refs:**
+
+- `04-chip-internals.md` § Intrinsic fields — merged in at query time —
+  canonical type/source table for all nine fields
+- `05-schema-layer.md` § Intrinsic queryable fields — merged at query
+  time — same table with additional `charCount` entry and source
+  annotations
+- `05-schema-layer.md` § Tags are not a schema field — how `tags`
+  maps to `config.tagAssignments`
+- `09-current-state.md` § Backlinks — existing `BacklinkIndex` shape
+  feeding `linkedFrom` / `linksTo`
+  **Done:** [x]
 
 ### Task 3: Project metadata-revision counter
 
@@ -53,7 +74,13 @@ through `ProjectConfigSchema`; unit tests cover both write paths.
 **Estimate:** 2
 **Notes:** Use `withMetaLock` for the sidecar path; `acquireLock` for
 schema writes.
-**Done:** [ ]
+**Decision refs:**
+
+- `02-query-substrate.md` § Execution model — specifies the revision
+  counter and how sidecar writes trigger cache invalidation
+- `09-current-state.md` § Storage layout — `acquireLock` vs
+  `withMetaLock` ownership boundary
+  **Done:** [ ]
 
 ### Task 4: Backlinks extraction includes resource-ref values
 
@@ -66,7 +93,16 @@ appears as a backlink source for `<uuid>`; wiki-link behavior
 unchanged; tests added for the new path.
 **Depends on:** none
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `05-schema-layer.md` § Backlinks are derived from prose today —
+  explains the current gap and recommends option (a): extend the
+  extractor
+- `09-current-state.md` § Backlinks — existing `BacklinkIndex` shape
+  and wiki-link scanning behavior
+- `01-feature-catalog.md` § Backlink / reference graph queries (#8) —
+  feature motivation
+  **Done:** [ ]
 
 ### Task 5: Query AST evaluator (no caching, no refs)
 
@@ -80,7 +116,19 @@ boolean composition; `ref` nodes throw "not implemented" pending
 task 8.
 **Depends on:** 1, 2, 4
 **Estimate:** 5
-**Done:** [ ]
+**Decision refs:**
+
+- `02-query-substrate.md` § AST node types — complete operator list
+  the evaluator must dispatch
+- `02-query-substrate.md` § Execution model — full-text delegation to
+  `inverted-index.ts`; eager evaluation rationale
+- `04-chip-internals.md` § Operator vocabularies, by field type —
+  per-type operator semantics (e.g., `in the last` for dates)
+- `05-schema-layer.md` § Intrinsic queryable fields — field-source
+  dispatch table (resource record vs. sidecar vs. config vs. backlinks)
+- `09-current-state.md` § Indexing pipeline — `inverted-index.ts`
+  `search()` interface to delegate `contains` / `matches`
+  **Done:** [ ]
 
 ### Task 6: Saved-query persistence module
 
@@ -96,7 +144,13 @@ serialized by lock; tests pass.
 **Estimate:** 3
 **Notes:** A query file: `{ id, name, definition, view }`. The `view`
 shape stays minimal for now.
-**Done:** [ ]
+**Decision refs:**
+
+- `02-query-substrate.md` § Persistence — file path, JSON shape
+  (`id`, `name`, `definition`, `view`), project-local-only scope
+- `09-current-state.md` § Storage layout — `withMetaLock` ownership;
+  existing `meta/` directory conventions
+  **Done:** [ ]
 
 ### Task 7: HTTP API routes for queries
 
@@ -110,7 +164,11 @@ queries.
 tests exercise each action.
 **Depends on:** 5, 6
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `09-current-state.md` § Metadata schema system — action-discriminated
+  `POST /api/project/metadata-schema` is the pattern to follow
+  **Done:** [ ]
 
 ### Task 8: Saved-query reference resolution in evaluator
 
@@ -122,7 +180,14 @@ throw a clear, named error.
 A→B→A cycles throw `QueryCycleError`; tests cover both.
 **Depends on:** 5, 6
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `02-query-substrate.md` § AST node types — `ref` (splice node) shape
+  and set-operation reductions (∩/∪/\) that produce `ref` trees
+- `02-query-substrate.md` § Open questions — cycle detection
+  acknowledged as an open issue
+- `00-overview.md` § Open questions — cycle detection in `ref` nodes
+  **Done:** [ ]
 
 ### Task 9: Cache layer keyed by metadataRevision
 
@@ -134,7 +199,11 @@ A→B→A cycles throw `QueryCycleError`; tests cover both.
 intervening sidecar write forces recompute; tests verify both.
 **Depends on:** 3, 5, 6
 **Estimate:** 2
-**Done:** [ ]
+**Decision refs:**
+
+- `02-query-substrate.md` § Execution model — revision-counter cache
+  invalidation strategy; "not reactive" rationale
+  **Done:** [ ]
 
 ### Task 10: Redux slice for queries
 
@@ -149,7 +218,11 @@ dict, `activeQuery` AST + ids, per-id `loading` / `error`.
 slice patterns (use the `getwrite-redux-slice` skill).
 **Depends on:** 7
 **Estimate:** 5
-**Done:** [ ]
+**Decision refs:**
+
+- `02-query-substrate.md` § Persistence — saved-query JSON shape the
+  slice state mirrors
+  **Done:** [ ]
 
 ### Task 11: Chip primitive — field/operator/value cell
 
@@ -163,7 +236,20 @@ styles
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Reuse `components/common/UI/Chip` as the base shell.
-**Done:** [ ]
+**Decision refs:**
+
+- `04-chip-internals.md` § Anatomy — three-slot layout, polarity-
+  inside-operator design rationale
+- `04-chip-internals.md` § Mid-chip mutations — field-change reset vs.
+  operator-change preservation rules
+- `04-chip-internals.md` § Keyboard / power-user behavior — Tab, Enter,
+  ⌘D, ⌘C bindings
+- `03-chip-ui.md` § NOT is polarity, not a combinator — why polarity
+  lives in the operator slot
+- `03-chip-ui.md` § Reordering and editing — drag-handle metaphor
+- `09-current-state.md` § Reusable components for new UI —
+  `components/common/UI/Chip` primitive to reuse
+  **Done:** [ ]
 
 ### Task 12: Type-driven operator menu
 
@@ -175,7 +261,14 @@ list with the `is empty` / `has any value` divider; selecting emits
 a typed AST predicate stub.
 **Depends on:** 1
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `04-chip-internals.md` § Operator vocabularies, by field type —
+  complete operator tables for all eight `MetadataFieldType` values;
+  `is empty` / `has any value` divider rule
+- `02-query-substrate.md` § AST node types — operator → AST `op`
+  mapping (e.g., `is less than` → `lt`)
+  **Done:** [ ]
 
 ### Task 13: Type-driven value picker
 
@@ -190,7 +283,16 @@ component for the ref hover preview
 `is any of`, and the hover preview for refs.
 **Depends on:** 2, 11
 **Estimate:** 5
-**Done:** [ ]
+**Decision refs:**
+
+- `04-chip-internals.md` § Value pickers, by type — per-type control
+  mapping, `in the last` date pair, hover-preview as the differentiator
+  over plain `ResourceRefInput`
+- `04-chip-internals.md` § Validation — invalid-value chip error state,
+  ambiguous typeahead, out-of-domain select value rendering
+- `09-current-state.md` § Reusable components for new UI —
+  `components/Sidebar/controls/` controls to reuse
+  **Done:** [ ]
 
 ### Task 14: Field picker dropdown
 
@@ -203,7 +305,16 @@ project / system), with search and source-badge. Shows
 filters by key + label; selecting emits a `{key, type}` pair.
 **Depends on:** 2, 11
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `03-chip-ui.md` § Field-picker scoping — three-layer grouping
+  (Built-in / Project / System), source-layer badge, `folderId`
+  annotation on project fields, "Add a new field…" affordance
+- `05-schema-layer.md` § What's in the schema today — default schema
+  groups and project-extension distinction
+- `08-creation-paths.md` § Reverse navigability — "Edit in Schema
+  Manager" hover affordance on picker rows
+  **Done:** [ ]
 
 ### Task 15: Group container with local combinator
 
@@ -215,7 +326,15 @@ within-group drag-reorder, and a per-group match-count subtotal.
 toggles; drag reorders; `+ Add condition` inserts a blank chip.
 **Depends on:** 11
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `03-chip-ui.md` § Two-level model — local combinator ("All of" /
+  "Any of") dropdown design
+- `03-chip-ui.md` § Layout — ASCII wireframe showing group header,
+  chip list, `+ Add condition`, and hover subtotal
+- `03-chip-ui.md` § Reordering and editing — drag handle at group
+  border and chip level
+  **Done:** [ ]
 
 ### Task 16: Top-level query builder with global combinator
 
@@ -228,7 +347,17 @@ joins), `+ Add group` button, and overall match-count footer.
 match-count updates as chips change.
 **Depends on:** 5, 15
 **Estimate:** 5
-**Done:** [ ]
+**Decision refs:**
+
+- `03-chip-ui.md` § Two-level model — global combinator pill shared
+  across all between-group joins; no mixed `g1 AND g2 OR g3`
+- `03-chip-ui.md` § Layout — full ASCII wireframe with groups,
+  between-group pill, `+ Add group`, and `[ N matches ]` footer
+- `03-chip-ui.md` § Saved-query references are chips — `@query-name`
+  chip variant to support in this surface
+- `03-chip-ui.md` § Escape hatch — `advanced` tagging and read-only
+  chip degradation
+  **Done:** [ ]
 
 ### Task 17: Text/AST escape hatch
 
@@ -243,7 +372,13 @@ read-only.
 back; a 3-level AST stays in advanced mode with chips disabled.
 **Depends on:** 16
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `03-chip-ui.md` § Escape hatch — 3+-deep tree handling, `advanced`
+  tag, "edit in advanced mode" affordance; why not to grow the chip UI
+- `02-query-substrate.md` § Canonical form is an AST — AST is source
+  of truth; text mode is just another view
+  **Done:** [ ]
 
 ### Task 18: Cross-path dedup helper
 
@@ -257,7 +392,17 @@ Also derives slug from typed name and applies the existing
 `fuzzyMatch`; unit tests cover each routing decision.
 **Depends on:** none
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `08-creation-paths.md` § Deduplication safeguards — the three
+  safeguards (autocomplete, exact-name collapse, fuzzy-match warning)
+  that apply on every creation path
+- `07-metadata-sidebar.md` § Improved `+ Add field` flow — UX spec for
+  autocomplete, exact-match, and fuzzy-match interactions
+- `09-current-state.md` § Metadata schema system — `allFieldKeys`
+  uniqueness check in `metadata-schema.ts` that backs this at the API
+  layer
+  **Done:** [ ]
 
 ### Task 19: Chip UI "Add a new field…" → prefilled SchemaManager
 
@@ -274,7 +419,18 @@ the new field id and the chip UI consumes it.
 **Estimate:** 3
 **Notes:** `SchemaManager` needs an optional `prefill` prop +
 `onCreated` callback.
-**Done:** [ ]
+**Decision refs:**
+
+- `08-creation-paths.md` § Convergence model — prefill wire-up:
+  name → label derivation, group default from folder predicate,
+  post-creation toast copy
+- `08-creation-paths.md` § The paths — chip UI uses SchemaManager
+  form (not sidebar mini-form); commitment level rationale
+- `06-fields-panel.md` § Entry point integration — SchemaManager
+  must accept a prefill entry point from the chip UI
+- `08-creation-paths.md` § Group placement — folder-predicate →
+  group heuristic
+  **Done:** [ ]
 
 ### Task 20: Sidebar `+ Add field` augmentations
 
@@ -291,7 +447,16 @@ existing field; new field creation goes through the existing
 `addMetadataField` thunk.
 **Depends on:** 18
 **Estimate:** 5
-**Done:** [ ]
+**Decision refs:**
+
+- `07-metadata-sidebar.md` § Improved `+ Add field` flow — complete
+  mini-form spec including Name / Label / Type / Optional value / Group
+  fields, autocomplete behavior, exact-match and fuzzy-match routing
+- `08-creation-paths.md` § Group placement — folder-context → group
+  default heuristic
+- `09-current-state.md` § Sidebar — current `+ Add field` behavior
+  (generic key, first group) being replaced
+  **Done:** [ ]
 
 ### Task 21: Distinct-value enumeration utility
 
@@ -304,7 +469,14 @@ detection, and "used on N resources" displays.
 pass.
 **Depends on:** none
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `06-fields-panel.md` § Migration preview before destructive changes —
+  identifies distinct-value enumeration as shared infrastructure for
+  migration preview and stale-ref detection
+- `06-fields-panel.md` § Stale ref-target detection — `id === null`
+  handling; `[Show]` / `[Clear stale]` consumer
+  **Done:** [ ]
 
 ### Task 22: SchemaManager migration preview — changeFieldType
 
@@ -323,7 +495,16 @@ schema in one transaction under `withMetaLock`.
 **Depends on:** 21
 **Estimate:** 5
 **Notes:** Mirror the existing `renameFieldKey` migration pattern.
-**Done:** [ ]
+**Decision refs:**
+
+- `06-fields-panel.md` § Migration preview before destructive changes —
+  full UI mockup with distinct-value table, per-value resolution
+  dropdowns, affected-file preview, and three design principles
+- `05-schema-layer.md` § Schema evolution — `changeFieldType` gap:
+  currently writes without showing effects
+- `09-current-state.md` § Schema Manager — lists what SchemaManager
+  does NOT implement (migration preview)
+  **Done:** [ ]
 
 ### Task 23: SchemaManager migration preview — updateFieldOptions
 
@@ -336,7 +517,14 @@ option list and offer normalize / clear / add-to-options.
 resolution menu; commit applies the right sidecar updates.
 **Depends on:** 22
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `06-fields-panel.md` § Migration preview before destructive changes —
+  same three-principle preview pattern; option-removal is the
+  `updateFieldOptions` variant
+- `05-schema-layer.md` § Schema evolution — `updateFieldOptions` gap:
+  does not validate existing values against new options
+  **Done:** [ ]
 
 ### Task 24: SchemaManager deprecate-vs-clear on removeField
 
@@ -354,7 +542,16 @@ without touching sidecars; Clear runs sidecar migration to delete
 the key; both reflected in the picker.
 **Depends on:** 21
 **Estimate:** 5
-**Done:** [ ]
+**Decision refs:**
+
+- `06-fields-panel.md` § Deprecate vs. clear on field removal —
+  full dialog mockup; Deprecate keeps values + adds `deprecated`
+  flag; Clear migrates sidecars using `withMetaLock`
+- `06-fields-panel.md` § Source-layer markers — muted "deprecated"
+  badge in the schema manager field list
+- `05-schema-layer.md` § Schema evolution — `removeField` current
+  behavior (hard-delete, orphaned sidecar values)
+  **Done:** [ ]
 
 ### Task 25: Save-query dialog
 
@@ -368,7 +565,13 @@ saved-query list in Redux, closes the dialog; rename / overwrite
 handled.
 **Depends on:** 10, 16
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `02-query-substrate.md` § Persistence — query file shape (`id`,
+  `name`, `definition`, `view`) and the minimal `view` for now
+- `02-query-substrate.md` § Composition primitives — saved queries
+  as smart folders; `view.kind` field
+  **Done:** [ ]
 
 ### Task 26: Saved-query smart-folder list
 
@@ -383,7 +586,17 @@ shows live results (UUIDs resolved to resources); clicking a result
 navigates into it.
 **Depends on:** 10, 16
 **Estimate:** 5
-**Done:** [ ]
+**Decision refs:**
+
+- `02-query-substrate.md` § Composition primitives — named saved
+  queries as smart folders; `view` preference shapes `DataView`
+  rendering
+- `01-feature-catalog.md` § Saved queries as smart folders (#14) —
+  feature motivation; `components/ResourceTree/` as the integration
+  point
+- `09-current-state.md` § Reusable components for new UI —
+  `DataView` and `ResourceTree` surfaces
+  **Done:** [ ]
 
 ### Task 27: Saved-query references inside the chip UI
 
@@ -397,7 +610,14 @@ ref-resolution path (task 8); cycle-detection error surfaces with
 friendly UI copy.
 **Depends on:** 8, 11, 25
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `03-chip-ui.md` § Saved-query references are chips — `@query-name`
+  visual treatment, no field/operator/value triad, factoring-out as
+  the escape valve for the two-level cap
+- `02-query-substrate.md` § AST node types — `ref` splice node shape
+  and set-operation semantics
+  **Done:** [ ]
 
 ### Task 28: AST evaluator unit tests
 
@@ -410,7 +630,17 @@ fields, deleted ref targets).
 all tests pass under `pnpm test:ci`.
 **Depends on:** 5, 8, 9
 **Estimate:** 5
-**Done:** [ ]
+**Decision refs:**
+
+- `04-chip-internals.md` § Operator vocabularies, by field type —
+  complete operator × type matrix to drive test case enumeration
+- `05-schema-layer.md` § Intrinsic queryable fields — nine intrinsics
+  each needing at least one test
+- `02-query-substrate.md` § AST node types — all leaf, combinator,
+  and splice node shapes to exercise
+- `04-chip-internals.md` § Validation — edge cases: deleted ref
+  (`id: null`), ambiguous typeahead, out-of-domain select value
+  **Done:** [ ]
 
 ### Task 29: E2E — build a chip query and verify results
 
@@ -422,7 +652,13 @@ the resulting resource list rendered in `DataView`.
 Storybook server.
 **Depends on:** 16, 26
 **Estimate:** 3
-**Done:** [ ]
+**Decision refs:**
+
+- `03-chip-ui.md` § Layout — ASCII wireframe is the reference layout
+  the test should reproduce (two groups joined by OR)
+- `02-query-substrate.md` § Concrete AST sketch — sample multi-field
+  query to use as the seed scenario
+  **Done:** [ ]
 
 ## Summary
 
@@ -432,16 +668,16 @@ Storybook server.
   (≈ 35 SP). The chip UI and evaluator have to land before saved
   queries and smart folders are usable.
 - **Risks:**
-  - **Task 5 (evaluator)** is central and integrates intrinsics,
-    sidecar reads, and full-text delegation. Buggy here corrupts
-    every downstream feature.
-  - **Task 13 (value picker)** reuses many existing controls plus a
-    new hover-preview component; integration surface is broad.
-  - **Task 16 (query builder)** is the major UI assembly point;
-    rerender / state-management mistakes here are costly.
-  - **Tasks 22, 23, 24 (migration previews)** mutate sidecars in
-    bulk; atomicity and lock discipline must mirror
-    `renameFieldKey`'s existing pattern.
-  - **Task 26 (smart folders)** touches `ResourceTree`, `DataView`,
-    and Redux concurrently — coordinate carefully or split if
-    estimates blow up.
+    - **Task 5 (evaluator)** is central and integrates intrinsics,
+      sidecar reads, and full-text delegation. Buggy here corrupts
+      every downstream feature.
+    - **Task 13 (value picker)** reuses many existing controls plus a
+      new hover-preview component; integration surface is broad.
+    - **Task 16 (query builder)** is the major UI assembly point;
+      rerender / state-management mistakes here are costly.
+    - **Tasks 22, 23, 24 (migration previews)** mutate sidecars in
+      bulk; atomicity and lock discipline must mirror
+      `renameFieldKey`'s existing pattern.
+    - **Task 26 (smart folders)** touches `ResourceTree`, `DataView`,
+      and Redux concurrently — coordinate carefully or split if
+      estimates blow up.
