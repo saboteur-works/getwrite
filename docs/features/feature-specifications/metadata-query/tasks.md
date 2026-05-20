@@ -456,7 +456,7 @@ existing field; new field creation goes through the existing
   default heuristic
 - `09-current-state.md` § Sidebar — current `+ Add field` behavior
   (generic key, first group) being replaced
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 21: Distinct-value enumeration utility
 
