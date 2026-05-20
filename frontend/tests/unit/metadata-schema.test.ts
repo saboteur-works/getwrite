@@ -4,6 +4,12 @@ import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
+
+async function readMetadataRevision(dir: string): Promise<number | undefined> {
+    const raw = await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+    const proj = JSON.parse(raw) as { config?: { metadataRevision?: number } };
+    return proj.config?.metadataRevision;
+}
 import {
     getSchema,
     addField,
@@ -357,6 +363,39 @@ describe("reorderGroups", () => {
     it("throws when the new order length differs from the group count", async () => {
         const { dir } = await makeTmpProject(baseSchema());
         await expect(reorderGroups(dir, [])).rejects.toThrow();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// metadataRevision counter — bumped on every schema write
+// ---------------------------------------------------------------------------
+
+describe("metadataRevision counter", () => {
+    it("starts at 1 after the first schema mutation", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await addField(dir, GROUP_ID, { key: "rev-test", label: "Rev", type: "text" });
+        expect(await readMetadataRevision(dir)).toBe(1);
+    });
+
+    it("increments on each subsequent mutation", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await addField(dir, GROUP_ID, { key: "a-key", label: "A", type: "text" });
+        await addField(dir, GROUP_ID, { key: "b-key", label: "B", type: "number" });
+        expect(await readMetadataRevision(dir)).toBe(2);
+    });
+
+    it("increments across different mutation types", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await addField(dir, GROUP_ID, { key: "x-key", label: "X", type: "text" });
+        await renameField(dir, GROUP_ID, "x-key", "X Renamed");
+        await removeField(dir, GROUP_ID, "x-key");
+        expect(await readMetadataRevision(dir)).toBe(3);
+    });
+
+    it("increments when adding a group", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await addGroup(dir, { id: "extra-group", label: "Extra", fields: [] });
+        expect(await readMetadataRevision(dir)).toBe(1);
     });
 });
 

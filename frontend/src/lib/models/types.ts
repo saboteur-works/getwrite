@@ -77,6 +77,8 @@ export interface ProjectConfig {
     defaultRevisionName?: string;
     /** User-defined (and built-in locked) metadata field schema for the project. */
     metadataSchema?: MetadataSchema;
+    /** Monotonically-increasing counter bumped on every sidecar or schema write. Used as a cache-invalidation key by the query evaluator. */
+    metadataRevision?: number;
 }
 
 /** Allowed field types for user-defined metadata fields. */

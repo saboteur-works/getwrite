@@ -80,7 +80,7 @@ schema writes.
   counter and how sidecar writes trigger cache invalidation
 - `09-current-state.md` § Storage layout — `acquireLock` vs
   `withMetaLock` ownership boundary
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 4: Backlinks extraction includes resource-ref values
 

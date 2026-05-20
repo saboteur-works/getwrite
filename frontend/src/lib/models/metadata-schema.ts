@@ -37,6 +37,10 @@ async function writeProject(
     project: Project,
 ): Promise<void> {
     const p = path.join(projectRoot, PROJECT_FILENAME);
+    if (!project.config) {
+        project.config = { editorConfig: {} };
+    }
+    project.config.metadataRevision = (project.config.metadataRevision ?? 0) + 1;
     await fs.writeFile(p, JSON.stringify(project, null, 2), "utf8");
 }
 

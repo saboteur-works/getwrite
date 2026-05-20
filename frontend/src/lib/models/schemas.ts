@@ -175,6 +175,7 @@ export const ProjectConfigSchema = z.object({
     editorConfig: EditorConfigSchema.optional(),
     defaultRevisionName: z.string().optional(),
     metadataSchema: MetadataSchemaSchema.optional(),
+    metadataRevision: z.number().int().nonnegative().optional(),
 });
 
 /**
