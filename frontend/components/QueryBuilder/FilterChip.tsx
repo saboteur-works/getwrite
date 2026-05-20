@@ -8,6 +8,7 @@ import {
     getOperatorOption,
     getOperators,
 } from "./operator-utils";
+import FieldPicker, { type FieldPickerField, type FieldPickerSource } from "./FieldPicker";
 import "./filter-chip.css";
 
 // ─── Value types ──────────────────────────────────────────────────────────────
@@ -51,11 +52,19 @@ export interface FilterChipProps {
     value: FilterChipValue;
     /** All available fields shown in the field picker dropdown. */
     availableFields?: FilterChipField[];
+    /** Saved queries shown in the field picker's "Saved queries" section. */
+    savedQueries?: Array<{id: string; name: string}>;
     /** Validation error message. When set, chip renders in error state. */
     error?: string;
+    /** ID of the saved query this chip references. When set, renders as a ref chip. */
+    refId?: string;
+    /** Display name for the saved query referenced by refId. */
+    refName?: string;
     onFieldChange?: (field: FilterChipField | null) => void;
     onOperatorChange?: (operator: string | null) => void;
     onValueChange?: (value: FilterChipValue) => void;
+    /** Called when the user picks a saved query from the field picker. */
+    onRefChange?: (refId: string, refName: string) => void;
     onDuplicate?: () => void;
     onDelete?: () => void;
     onMove?: (direction: "up" | "down") => void;
@@ -337,6 +346,18 @@ function ValueInput({
     }
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function toPickerFields(fields: FilterChipField[]): FieldPickerField[] {
+    return fields.map((f) => ({
+        key: f.key,
+        label: f.label,
+        type: f.type,
+        source: "project" as FieldPickerSource,
+        options: f.options,
+    }));
+}
+
 // ─── FilterChip ───────────────────────────────────────────────────────────────
 
 export default function FilterChip({
@@ -344,10 +365,14 @@ export default function FilterChip({
     operator,
     value,
     availableFields,
+    savedQueries,
     error,
+    refId,
+    refName,
     onFieldChange,
     onOperatorChange,
     onValueChange,
+    onRefChange,
     onDuplicate,
     onDelete,
     onMove,
@@ -371,18 +396,6 @@ export default function FilterChip({
         return () => document.removeEventListener("mousedown", handleOutsideClick);
     }, [menuOpen, closeMenu]);
 
-    function handleFieldChange(e: React.ChangeEvent<HTMLSelectElement>): void {
-        if (!onFieldChange || !availableFields) return;
-        const found = availableFields.find((f) => f.key === e.target.value);
-        onFieldChange(found ?? null);
-        if (onOperatorChange && found) {
-            onOperatorChange(getDefaultOperator(found.type));
-        }
-        if (onValueChange) {
-            onValueChange(null);
-        }
-    }
-
     function handleOperatorChange(next: string): void {
         if (!onOperatorChange || !field) return;
         const nextOption = getOperatorOption(field.type, next);
@@ -402,6 +415,7 @@ export default function FilterChip({
         "chip--sharp",
         "chip--md",
         error ? "filter-chip--error" : "",
+        refId ? "filter-chip--ref" : "",
     ]
         .filter(Boolean)
         .join(" ");
@@ -415,28 +429,30 @@ export default function FilterChip({
             {/* Field slot */}
             <span className="filter-chip__slot filter-chip__slot--field">
                 {availableFields ? (
-                    <select
-                        className="filter-chip__select"
-                        value={field?.key ?? ""}
-                        aria-label="Field"
-                        onChange={handleFieldChange}
-                    >
-                        <option value="">field…</option>
-                        {availableFields.map((f) => (
-                            <option key={f.key} value={f.key}>
-                                {f.label}
-                            </option>
-                        ))}
-                    </select>
+                    <FieldPicker
+                        fields={toPickerFields(availableFields)}
+                        value={refId ? null : (field?.key ?? null)}
+                        refDisplay={refId ? (refName ?? "") : undefined}
+                        savedQueries={savedQueries}
+                        onSelect={(pickerField) => {
+                            const found = availableFields.find((f) => f.key === pickerField.key) ?? null;
+                            onFieldChange?.(found);
+                            if (found && onOperatorChange) {
+                                onOperatorChange(getDefaultOperator(found.type));
+                            }
+                            if (onValueChange) onValueChange(null);
+                        }}
+                        onSelectRef={onRefChange}
+                    />
                 ) : (
                     <span className="filter-chip__select" style={{ cursor: "default" }}>
-                        {field?.label ?? "field…"}
+                        {refId ? `@${refName ?? ""}` : (field?.label ?? "field…")}
                     </span>
                 )}
             </span>
 
-            {/* Operator slot */}
-            {field && effectiveOperator && (
+            {/* Operator slot — omitted for ref chips */}
+            {!refId && field && effectiveOperator && (
                 <span className="filter-chip__slot filter-chip__slot--operator">
                     <OperatorSelect
                         fieldType={field.type}
@@ -446,8 +462,8 @@ export default function FilterChip({
                 </span>
             )}
 
-            {/* Value slot */}
-            {field && effectiveOperator && (
+            {/* Value slot — omitted for ref chips */}
+            {!refId && field && effectiveOperator && (
                 <span className="filter-chip__slot filter-chip__slot--value">
                     <ValueInput
                         field={field}

@@ -52,6 +52,15 @@ export interface FieldPickerProps {
      * creating a duplicate.
      */
     schema?: MetadataSchema;
+    /** Saved queries to show in a dedicated section at the bottom of the dropdown. */
+    savedQueries?: Array<{id: string; name: string}>;
+    /** Called when the user picks a saved query from the saved-queries section. */
+    onSelectRef?: (id: string, name: string) => void;
+    /**
+     * When set, the trigger button shows `@{refDisplay}` to indicate the current
+     * selection is a saved-query reference rather than a field.
+     */
+    refDisplay?: string;
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -127,6 +136,9 @@ export default function FieldPicker({
     onEditField,
     disabled = false,
     schema,
+    savedQueries,
+    onSelectRef,
+    refDisplay,
 }: FieldPickerProps): JSX.Element {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -164,6 +176,14 @@ export default function FieldPicker({
         ? fields.filter((f) => matchesSearch(f, search))
         : fields;
 
+    const filteredSavedQueries = savedQueries
+        ? (search.trim()
+            ? savedQueries.filter((q) =>
+                  q.name.toLowerCase().includes(search.toLowerCase()),
+              )
+            : savedQueries)
+        : [];
+
     const groupedBySource: Record<FieldPickerSource, FieldPickerField[]> = {
         builtin: [],
         project: [],
@@ -200,16 +220,20 @@ export default function FieldPicker({
                 aria-haspopup="listbox"
                 aria-expanded={open}
                 aria-label={
-                    currentField
-                        ? `Field: ${currentField.label}`
-                        : "Select a field"
+                    refDisplay !== undefined
+                        ? `Saved query: @${refDisplay}`
+                        : currentField
+                          ? `Field: ${currentField.label}`
+                          : "Select a field"
                 }
                 onClick={() => {
                     if (!disabled) setOpen((v) => !v);
                 }}
             >
                 <span className="field-picker__trigger-label">
-                    {currentField?.label ?? "field…"}
+                    {refDisplay !== undefined
+                        ? `@${refDisplay}`
+                        : (currentField?.label ?? "field…")}
                 </span>
                 <span
                     className={
@@ -317,7 +341,44 @@ export default function FieldPicker({
                         );
                     })}
 
-                    {filteredFields.length === 0 && !showAddRow && !fuzzyField && (
+                    {filteredSavedQueries.length > 0 && (
+                        <div className="field-picker__section field-picker__section--saved">
+                            <div className="field-picker__section-header">
+                                Saved queries
+                            </div>
+                            {filteredSavedQueries.map((q) => (
+                                <div
+                                    key={q.id}
+                                    role="option"
+                                    aria-selected={false}
+                                    tabIndex={0}
+                                    className="field-picker__item field-picker__item--saved"
+                                    onClick={() => {
+                                        onSelectRef?.(q.id, q.name);
+                                        closeMenu();
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            onSelectRef?.(q.id, q.name);
+                                            closeMenu();
+                                        }
+                                    }}
+                                >
+                                    <span className="field-picker__item-label">
+                                        @{q.name}
+                                    </span>
+                                    <span className="field-picker__item-meta">
+                                        <span className="field-picker__badge field-picker__badge--saved">
+                                            saved
+                                        </span>
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {filteredFields.length === 0 && filteredSavedQueries.length === 0 && !showAddRow && !fuzzyField && (
                         <div className="field-picker__empty">
                             No fields match
                         </div>

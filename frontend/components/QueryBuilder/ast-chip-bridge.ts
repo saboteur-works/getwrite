@@ -4,6 +4,7 @@ import type {
     AndNode,
     OrNode,
     NotNode,
+    RefNode,
 } from "../../src/lib/models/query-ast";
 import type { MetadataValue } from "../../src/lib/models/types";
 import type { FilterChipField, FilterChipValue } from "./FilterChip";
@@ -22,10 +23,11 @@ function isLeaf(node: QueryAST): node is LeafNode {
     return LEAF_OPS.has(node.op);
 }
 
-/** A chip-compatible node is a leaf or not(leaf). */
-function isChipNode(node: QueryAST): node is LeafNode | NotNode {
+/** A chip-compatible node is a leaf, not(leaf), or a ref splice node. */
+function isChipNode(node: QueryAST): node is LeafNode | NotNode | RefNode {
     if (isLeaf(node)) return true;
     if (node.op === "not") return isLeaf(node.child);
+    if (node.op === "ref") return true;
     return false;
 }
 
@@ -58,6 +60,7 @@ function toMeta(v: FilterChipValue): MetadataValue {
 }
 
 function chipToAst(chip: GroupChip): QueryAST | null {
+    if (chip.refId) return { op: "ref", id: chip.refId };
     if (!chip.field || !chip.operator) return null;
     const f = chip.field.key;
     const v = chip.value;
@@ -188,10 +191,16 @@ function comparisonToOperator(
 }
 
 function astNodeToChip(
-    node: LeafNode | NotNode,
+    node: LeafNode | NotNode | RefNode,
     fields: FilterChipField[],
+    savedQueries?: Array<{id: string; name: string}>,
 ): GroupChip | null {
     const id = nextChipId();
+
+    if (node.op === "ref") {
+        const refName = savedQueries?.find((q) => q.id === node.id)?.name;
+        return { id, field: null, operator: null, value: null, refId: node.id, refName };
+    }
 
     if (node.op === "not") {
         const inner = node.child;
@@ -280,19 +289,20 @@ function astNodeToChip(
 }
 
 function astNodeToGroup(
-    node: LeafNode | NotNode | AndNode | OrNode,
+    node: LeafNode | NotNode | AndNode | OrNode | RefNode,
     fields: FilterChipField[],
+    savedQueries?: Array<{id: string; name: string}>,
 ): QueryGroup | null {
     const id = nextGroupId();
     if (isChipNode(node)) {
-        const chip = astNodeToChip(node, fields);
+        const chip = astNodeToChip(node, fields, savedQueries);
         if (!chip) return null;
         return { id, combinator: "and", chips: [chip] };
     }
     if (node.op === "and" || node.op === "or") {
         const chips = node.children
             .filter(isChipNode)
-            .map((c) => astNodeToChip(c, fields))
+            .map((c) => astNodeToChip(c, fields, savedQueries))
             .filter((c): c is GroupChip => c !== null);
         return { id, combinator: node.op as GroupCombinator, chips };
     }
@@ -302,16 +312,20 @@ function astNodeToGroup(
 /**
  * Converts a QueryAST back to chip groups. Returns null if the AST is not
  * two-level compatible (use `isTwoLevelCompatible` to check first).
+ *
+ * Pass `savedQueries` to resolve `ref` node IDs to human-readable names on
+ * the resulting ref chips.
  */
 export function astToGroups(
     ast: QueryAST,
     fields: FilterChipField[],
+    savedQueries?: Array<{id: string; name: string}>,
 ): { groups: QueryGroup[]; globalCombinator: GlobalCombinator } | null {
     if (!isTwoLevelCompatible(ast)) return null;
 
     // Single chip node
     if (isChipNode(ast)) {
-        const chip = astNodeToChip(ast, fields);
+        const chip = astNodeToChip(ast, fields, savedQueries);
         if (!chip) return null;
         return {
             groups: [{ id: nextGroupId(), combinator: "and", chips: [chip] }],
@@ -327,7 +341,7 @@ export function astToGroups(
         // Single group: the and/or IS the group combinator
         const chips = ast.children
             .filter(isChipNode)
-            .map((c) => astNodeToChip(c, fields))
+            .map((c) => astNodeToChip(c, fields, savedQueries))
             .filter((c): c is GroupChip => c !== null);
         return {
             groups: [{ id: nextGroupId(), combinator: ast.op as GroupCombinator, chips }],
@@ -339,7 +353,7 @@ export function astToGroups(
     const groups: QueryGroup[] = [];
     for (const child of ast.children) {
         if (!isGroupNode(child)) return null;
-        const group = astNodeToGroup(child, fields);
+        const group = astNodeToGroup(child, fields, savedQueries);
         if (!group) return null;
         groups.push(group);
     }

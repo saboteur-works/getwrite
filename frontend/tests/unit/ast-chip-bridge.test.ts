@@ -137,8 +137,8 @@ describe("isTwoLevelCompatible", () => {
         ).toBe(true); // it IS two-level compatible as a group, but the chip it came from is special
     });
 
-    it("rejects ref node", () => {
-        expect(isTwoLevelCompatible({ op: "ref", id: "saved-id" })).toBe(false);
+    it("accepts ref node as a chip-level node", () => {
+        expect(isTwoLevelCompatible({ op: "ref", id: "saved-id" })).toBe(true);
     });
 
     it("rejects param node", () => {
@@ -315,8 +315,17 @@ describe("groupsToAst", () => {
 // ─── astToGroups ──────────────────────────────────────────────────────────────
 
 describe("astToGroups", () => {
-    it("returns null for incompatible AST (ref node)", () => {
-        expect(astToGroups({ op: "ref", id: "x" }, FIELDS)).toBeNull();
+    it("ref node → 1 group with 1 ref chip", () => {
+        const SAVED = [{ id: "x", name: "My Query" }];
+        const result = astToGroups({ op: "ref", id: "x" }, FIELDS, SAVED);
+        expect(result).not.toBeNull();
+        expect(result!.groups).toHaveLength(1);
+        expect(result!.groups[0].chips).toHaveLength(1);
+        const chip = result!.groups[0].chips[0];
+        expect(chip.refId).toBe("x");
+        expect(chip.refName).toBe("My Query");
+        expect(chip.field).toBeNull();
+        expect(chip.operator).toBeNull();
     });
 
     it("returns null for 3-level AST", () => {
@@ -544,5 +553,89 @@ describe("groupsToAst → astToGroups round-trip", () => {
         const ast = groupsToAst(original, "and")!;
         const restored = astToGroups(ast, FIELDS)!;
         expect(restored.groups[0].chips[0].operator).toBe("is-empty");
+    });
+
+    it("round-trips a ref chip", () => {
+        const SAVED = [{ id: "q-abc", name: "My Query" }];
+        const original: QueryGroup[] = [
+            {
+                id: "g1",
+                combinator: "and",
+                chips: [{ id: "c1", field: null, operator: null, value: null, refId: "q-abc", refName: "My Query" }],
+            },
+        ];
+        const ast = groupsToAst(original, "and")!;
+        expect(ast).toEqual({ op: "ref", id: "q-abc" });
+        const restored = astToGroups(ast, FIELDS, SAVED)!;
+        expect(restored.groups[0].chips[0].refId).toBe("q-abc");
+        expect(restored.groups[0].chips[0].refName).toBe("My Query");
+    });
+});
+
+// ─── ref chip helpers ─────────────────────────────────────────────────────────
+
+describe("ref chips in groupsToAst", () => {
+    it("single ref chip → ref AST node", () => {
+        const groups: QueryGroup[] = [
+            {
+                id: "g1",
+                combinator: "and",
+                chips: [{ id: "c1", field: null, operator: null, value: null, refId: "q-1", refName: "Act 2" }],
+            },
+        ];
+        expect(groupsToAst(groups, "and")).toEqual({ op: "ref", id: "q-1" });
+    });
+
+    it("mixed group: ref chip + regular chip → and([ref, leaf])", () => {
+        const groups: QueryGroup[] = [
+            {
+                id: "g1",
+                combinator: "and",
+                chips: [
+                    { id: "c1", field: null, operator: null, value: null, refId: "q-1", refName: "Act 2" },
+                    { id: "c2", field: FIELDS[0], operator: "is", value: "hi" },
+                ],
+            },
+        ];
+        expect(groupsToAst(groups, "and")).toEqual({
+            op: "and",
+            children: [
+                { op: "ref", id: "q-1" },
+                { op: "eq", field: "synopsis", value: "hi" },
+            ],
+        });
+    });
+});
+
+describe("ref nodes in astToGroups", () => {
+    const SAVED = [{ id: "q-1", name: "Act 2 Scenes" }];
+
+    it("resolves refName from savedQueries", () => {
+        const result = astToGroups({ op: "ref", id: "q-1" }, FIELDS, SAVED);
+        expect(result!.groups[0].chips[0].refName).toBe("Act 2 Scenes");
+    });
+
+    it("refName is undefined when savedQueries omitted", () => {
+        const result = astToGroups({ op: "ref", id: "q-1" }, FIELDS);
+        expect(result!.groups[0].chips[0].refId).toBe("q-1");
+        expect(result!.groups[0].chips[0].refName).toBeUndefined();
+    });
+
+    it("and([ref, leaf]) → single group with 2 chips", () => {
+        const result = astToGroups(
+            {
+                op: "and",
+                children: [
+                    { op: "ref", id: "q-1" },
+                    { op: "eq", field: "synopsis", value: "hi" },
+                ],
+            },
+            FIELDS,
+            SAVED,
+        );
+        expect(result).not.toBeNull();
+        expect(result!.groups[0].chips).toHaveLength(2);
+        expect(result!.groups[0].chips[0].refId).toBe("q-1");
+        expect(result!.groups[0].chips[1].operator).toBe("is");
     });
 });

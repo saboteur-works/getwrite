@@ -246,6 +246,32 @@
     margin: 3px 0;
 }
 
+/* ── Ref chip variant ── */
+
+.filter-chip--ref {
+    border-radius: 8px;
+}
+
+.filter-chip--ref .filter-chip__drag {
+    border-radius: 8px 0 0 8px;
+}
+
+.filter-chip--ref .filter-chip__overflow-wrapper {
+    border-radius: 0 8px 8px 0;
+}
+
+.filter-chip--ref .field-picker__trigger {
+    color: var(--color-gw-primary);
+    border-color: transparent;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-style: italic;
+    letter-spacing: 0.06em;
+    text-transform: none;
+}
+
+/* ── Error state ── */
+
 .filter-chip--error {
     border-color: var(--color-gw-red-border);
 }

@@ -17,6 +17,10 @@ export interface GroupChip {
     operator: string | null;
     value: FilterChipValue;
     error?: string;
+    /** ID of a saved query this chip references, when set this is a ref chip. */
+    refId?: string;
+    /** Display name for the saved query (resolved from the query store). */
+    refName?: string;
 }
 
 export interface FilterGroupProps {
@@ -26,6 +30,8 @@ export interface FilterGroupProps {
     chips: GroupChip[];
     /** Fields available in each chip's field picker. */
     availableFields?: FilterChipField[];
+    /** Saved queries shown in the field picker's "Saved queries" section. */
+    savedQueries?: Array<{id: string; name: string}>;
     /** Optional match count shown in the footer. Omit to hide. */
     matchCount?: number;
     onCombinatorChange?: (combinator: GroupCombinator) => void;
@@ -47,6 +53,7 @@ export default function FilterGroup({
     combinator,
     chips,
     availableFields,
+    savedQueries,
     matchCount,
     onCombinatorChange,
     onChipUpdate,
@@ -141,15 +148,21 @@ export default function FilterGroup({
                                 operator={chip.operator}
                                 value={chip.value}
                                 availableFields={availableFields}
+                                savedQueries={savedQueries}
                                 error={chip.error}
+                                refId={chip.refId}
+                                refName={chip.refName}
                                 onFieldChange={(field) =>
-                                    onChipUpdate?.(chip.id, { field })
+                                    onChipUpdate?.(chip.id, { field, refId: undefined, refName: undefined })
                                 }
                                 onOperatorChange={(operator) =>
                                     onChipUpdate?.(chip.id, { operator })
                                 }
                                 onValueChange={(value) =>
                                     onChipUpdate?.(chip.id, { value })
+                                }
+                                onRefChange={(refId, refName) =>
+                                    onChipUpdate?.(chip.id, { refId, refName, field: null, operator: null, value: null })
                                 }
                                 onDuplicate={
                                     onChipDuplicate

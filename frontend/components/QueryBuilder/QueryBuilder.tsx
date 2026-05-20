@@ -35,6 +35,8 @@ export interface QueryBuilderProps {
     globalCombinator: GlobalCombinator;
     /** Fields available in every chip's field picker. */
     availableFields?: FilterChipField[];
+    /** Saved queries shown in the field picker's "Saved queries" section. */
+    savedQueries?: Array<{id: string; name: string}>;
     /** Overall match count displayed in the footer. Omit to hide. */
     matchCount?: number;
     /**
@@ -85,6 +87,7 @@ export default function QueryBuilder({
     groups,
     globalCombinator,
     availableFields,
+    savedQueries,
     matchCount,
     isAdvanced = false,
     rawAst,
@@ -187,6 +190,7 @@ export default function QueryBuilder({
                                     combinator={group.combinator}
                                     chips={group.chips}
                                     availableFields={availableFields}
+                                    savedQueries={savedQueries}
                                     matchCount={group.matchCount}
                                     onCombinatorChange={
                                         isAdvanced

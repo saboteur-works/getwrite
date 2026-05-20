@@ -73,3 +73,42 @@ The existing `schemaManager.test.tsx` suite is blocked by the pre-existing `Dial
 2. Select "Deprecate" and confirm — verify `deprecateMetadataField` is dispatched.
 3. Select "Clear" and confirm — verify `clearMetadataField` is dispatched.
 4. Click Cancel — verify neither thunk is dispatched.
+
+---
+
+## Task 27: Saved-query references inside the chip UI (completed 2026-05-20)
+
+### FilterChip field-slot source tagging
+
+`FilterChipField` has no `source` property, so when `availableFields` are
+converted to `FieldPickerField[]` inside `FilterChip`, all fields are assigned
+`source: "project"`. This means intrinsic/built-in fields also appear under the
+"Project" section in the FieldPicker dropdown used inside `FilterChip`.
+
+**Why deferred:** `FilterChipField` is a simpler, source-agnostic type used at
+the chip level. Adding `source` to it would require callers (QueryBuilder, etc.)
+to tag each field, which was out of scope for Task 27.
+
+**Recommended action:** Add an optional `source?: FieldPickerSource` to
+`FilterChipField`. Wherever `FilterChipField[]` is produced (e.g., via
+`buildFieldPickerFields`), carry the source tag through. The `toPickerFields`
+conversion in `FilterChip` can then use the real source instead of defaulting to
+`"project"`.
+
+### Cycle-detection error UI not yet surfaced
+
+Task 27's "Done when" includes "cycle-detection error surfaces with friendly UI
+copy." The `QueryCycleError` is thrown by the evaluator when ref chains form a
+cycle, but `FilterChip`/`FilterGroup` have no mechanism to receive or display
+this error back to the user yet.
+
+**Why deferred:** The evaluator and ref resolution happen asynchronously in the
+query execution path (Task 8), outside the chip UI layer. Surfacing the error
+requires the chip host (e.g., `DataView`) to catch `QueryCycleError`, identify
+the offending ref ID, and push an `error` prop to the corresponding `GroupChip`.
+
+**Recommended action:** In the query execution hook that calls the evaluator,
+catch `QueryCycleError`. Map `cyclePath[0]` (the entering ref ID) to the
+corresponding chip ID and update that chip's `error` field with friendly copy
+such as `"This saved query creates a circular reference."`. The `FilterChip`
+already renders error state via the `error` prop.

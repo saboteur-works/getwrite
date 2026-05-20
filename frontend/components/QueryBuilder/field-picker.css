@@ -358,3 +358,15 @@
     color: var(--color-gw-dim);
     flex-shrink: 0;
 }
+
+/* ── Saved queries ── */
+
+.field-picker__item--saved .field-picker__item-label {
+    font-style: italic;
+}
+
+.field-picker__badge--saved {
+    color: var(--color-gw-secondary);
+    border-color: var(--color-gw-border-md);
+    font-style: normal;
+}

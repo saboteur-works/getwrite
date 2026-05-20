@@ -617,7 +617,7 @@ friendly UI copy.
   the escape valve for the two-level cap
 - `02-query-substrate.md` § AST node types — `ref` splice node shape
   and set-operation semantics
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 28: AST evaluator unit tests
 
