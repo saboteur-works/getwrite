@@ -150,7 +150,7 @@ shape stays minimal for now.
   (`id`, `name`, `definition`, `view`), project-local-only scope
 - `09-current-state.md` § Storage layout — `withMetaLock` ownership;
   existing `meta/` directory conventions
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 7: HTTP API routes for queries
 
