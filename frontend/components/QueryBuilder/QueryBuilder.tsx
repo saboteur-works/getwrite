@@ -75,6 +75,8 @@ export interface QueryBuilderProps {
         groups: QueryGroup[],
         globalCombinator: GlobalCombinator,
     ) => void;
+    /** When provided, a "Save query" button appears in the footer. */
+    onSaveRequest?: () => void;
 }
 
 // ─── QueryBuilder ─────────────────────────────────────────────────────────────
@@ -96,6 +98,7 @@ export default function QueryBuilder({
     onChipDuplicate,
     onChipReorder,
     onRestoreFromAdvanced,
+    onSaveRequest,
 }: QueryBuilderProps): JSX.Element {
     const [editorOpen, setEditorOpen] = useState(false);
 
@@ -256,7 +259,7 @@ export default function QueryBuilder({
                 )}
             </div>
 
-            {/* ── Footer: add group + overall match count ── */}
+            {/* ── Footer: add group + overall match count + save ── */}
             <div className="query-builder__footer">
                 <button
                     type="button"
@@ -266,14 +269,25 @@ export default function QueryBuilder({
                 >
                     + Add group
                 </button>
-                {matchCount !== undefined && (
-                    <span className="query-builder__match-count">
-                        [{" "}
-                        {matchCount}{" "}
-                        {matchCount === 1 ? "match" : "matches"}{" "}
-                        ]
-                    </span>
-                )}
+                <div className="query-builder__footer-right">
+                    {matchCount !== undefined && (
+                        <span className="query-builder__match-count">
+                            [{" "}
+                            {matchCount}{" "}
+                            {matchCount === 1 ? "match" : "matches"}{" "}
+                            ]
+                        </span>
+                    )}
+                    {onSaveRequest && (
+                        <button
+                            type="button"
+                            className="query-builder__save"
+                            onClick={onSaveRequest}
+                        >
+                            Save query
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );

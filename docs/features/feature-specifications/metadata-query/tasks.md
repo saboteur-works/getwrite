@@ -571,7 +571,7 @@ handled.
   `name`, `definition`, `view`) and the minimal `view` for now
 - `02-query-substrate.md` § Composition primitives — saved queries
   as smart folders; `view.kind` field
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 26: Saved-query smart-folder list
 
