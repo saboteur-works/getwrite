@@ -314,7 +314,7 @@ filters by key + label; selecting emits a `{key, type}` pair.
   groups and project-extension distinction
 - `08-creation-paths.md` § Reverse navigability — "Edit in Schema
   Manager" hover affordance on picker rows
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 15: Group container with local combinator
 
