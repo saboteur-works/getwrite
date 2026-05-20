@@ -378,7 +378,7 @@ back; a 3-level AST stays in advanced mode with chips disabled.
   tag, "edit in advanced mode" affordance; why not to grow the chip UI
 - `02-query-substrate.md` § Canonical form is an AST — AST is source
   of truth; text mode is just another view
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 18: Cross-path dedup helper
 

@@ -1,11 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useState } from "react";
 import FilterGroup, {
     type GroupChip,
     type GroupCombinator,
 } from "./FilterGroup";
 import type { FilterChipField } from "./FilterChip";
+import type { QueryAST } from "../../src/lib/models/query-ast";
+import AdvancedModeToggle from "./AdvancedModeToggle";
+import { groupsToAst } from "./ast-chip-bridge";
 import "./query-builder.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -36,10 +39,16 @@ export interface QueryBuilderProps {
     matchCount?: number;
     /**
      * When true, the query uses nesting beyond two levels. Shows a banner
-     * and disables group/chip mutation. The actual text editor is wired
-     * in Task 17 via onEditAdvanced.
+     * and disables group/chip mutation.
      */
     isAdvanced?: boolean;
+    /**
+     * Raw AST for advanced queries that cannot be represented as chips.
+     * Used to pre-populate the JSON editor when the user opens advanced mode.
+     * If omitted when isAdvanced=true, the editor derives the AST from the
+     * current chip groups.
+     */
+    rawAst?: QueryAST;
     onGlobalCombinatorChange?: (combinator: GlobalCombinator) => void;
     onGroupCombinatorChange?: (groupId: string, combinator: GroupCombinator) => void;
     onGroupAdd?: () => void;
@@ -58,8 +67,14 @@ export interface QueryBuilderProps {
         fromIndex: number,
         toIndex: number,
     ) => void;
-    /** Opens the text/AST editor for advanced queries. Wired in Task 17. */
-    onEditAdvanced?: () => void;
+    /**
+     * Called when the user edits the AST in the JSON editor and the result
+     * is two-level compatible — the groups and combinator to restore.
+     */
+    onRestoreFromAdvanced?: (
+        groups: QueryGroup[],
+        globalCombinator: GlobalCombinator,
+    ) => void;
 }
 
 // ─── QueryBuilder ─────────────────────────────────────────────────────────────
@@ -70,6 +85,7 @@ export default function QueryBuilder({
     availableFields,
     matchCount,
     isAdvanced = false,
+    rawAst,
     onGlobalCombinatorChange,
     onGroupCombinatorChange,
     onGroupAdd,
@@ -79,29 +95,61 @@ export default function QueryBuilder({
     onChipDelete,
     onChipDuplicate,
     onChipReorder,
-    onEditAdvanced,
+    onRestoreFromAdvanced,
 }: QueryBuilderProps): JSX.Element {
+    const [editorOpen, setEditorOpen] = useState(false);
+
     const showGroupDelete = Boolean(onGroupDelete) && groups.length > 1 && !isAdvanced;
     const nextGlobal: GlobalCombinator = globalCombinator === "and" ? "or" : "and";
+
+    const handleOpenEditor = useCallback(() => {
+        setEditorOpen(true);
+    }, []);
+
+    const handleRestoreFromAdvanced = useCallback(
+        (restoredGroups: QueryGroup[], restoredCombinator: GlobalCombinator) => {
+            setEditorOpen(false);
+            onRestoreFromAdvanced?.(restoredGroups, restoredCombinator);
+        },
+        [onRestoreFromAdvanced],
+    );
+
+    const handleCancelEditor = useCallback(() => {
+        setEditorOpen(false);
+    }, []);
+
+    const editorJson = React.useMemo((): string => {
+        if (rawAst) return JSON.stringify(rawAst, null, 2);
+        const ast = groupsToAst(groups, globalCombinator);
+        return ast ? JSON.stringify(ast, null, 2) : "{}";
+    }, [rawAst, groups, globalCombinator]);
 
     return (
         <div className="query-builder">
             {/* ── Advanced mode banner ── */}
-            {isAdvanced && (
+            {isAdvanced && !editorOpen && (
                 <div className="query-builder__advanced" role="status">
                     <span className="query-builder__advanced-label">
                         Query uses advanced nesting — chip editing is disabled
                     </span>
-                    {onEditAdvanced && (
-                        <button
-                            type="button"
-                            className="query-builder__advanced-edit"
-                            onClick={onEditAdvanced}
-                        >
-                            Edit in advanced mode
-                        </button>
-                    )}
+                    <button
+                        type="button"
+                        className="query-builder__advanced-edit"
+                        onClick={handleOpenEditor}
+                    >
+                        Edit in advanced mode
+                    </button>
                 </div>
+            )}
+
+            {/* ── Advanced JSON editor ── */}
+            {editorOpen && (
+                <AdvancedModeToggle
+                    initialJson={editorJson}
+                    availableFields={availableFields}
+                    onRestore={handleRestoreFromAdvanced}
+                    onCancel={handleCancelEditor}
+                />
             )}
 
             {/* ── Group list ── */}

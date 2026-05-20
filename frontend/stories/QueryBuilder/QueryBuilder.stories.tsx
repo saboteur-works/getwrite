@@ -4,6 +4,7 @@ import QueryBuilder, {
     type GlobalCombinator,
     type QueryGroup,
 } from "../../components/QueryBuilder/QueryBuilder";
+import type { QueryAST } from "../../src/lib/models/query-ast";
 import type { GroupChip } from "../../components/QueryBuilder/FilterGroup";
 import type { FilterChipField } from "../../components/QueryBuilder/FilterChip";
 
@@ -145,9 +146,36 @@ export const Empty: Story = {
     },
 };
 
+// A 3-level AST that cannot be represented as chips
+const THREE_LEVEL_AST: QueryAST = {
+    op: "and",
+    children: [
+        {
+            op: "or",
+            children: [
+                {
+                    op: "and",
+                    children: [
+                        { op: "eq", field: "type", value: "text" },
+                        { op: "gt", field: "wordCount", value: 500 },
+                    ],
+                },
+                {
+                    op: "and",
+                    children: [
+                        { op: "eq", field: "status", value: "done" },
+                        { op: "exists", field: "synopsis" },
+                    ],
+                },
+            ],
+        },
+        { op: "eq", field: "type", value: "image" },
+    ],
+};
+
 /**
- * Advanced mode: query uses nesting beyond two levels. Shows the read-only
- * banner; mutation callbacks are suppressed. The text editor is Task 17.
+ * Advanced mode: query uses 3-level nesting. Shows the read-only banner;
+ * clicking "Edit in advanced mode" opens the JSON editor inline.
  */
 export const Advanced: Story = {
     args: {
@@ -156,7 +184,7 @@ export const Advanced: Story = {
         availableFields: FIELDS,
         matchCount: 46,
         isAdvanced: true,
-        onEditAdvanced: () => alert("Open text/AST editor (Task 17)"),
+        rawAst: THREE_LEVEL_AST,
         onGlobalCombinatorChange: () => undefined,
         onGroupAdd: () => undefined,
         onChipUpdate: () => undefined,
@@ -164,6 +192,60 @@ export const Advanced: Story = {
         onChipDelete: () => undefined,
         onChipDuplicate: () => undefined,
         onChipReorder: () => undefined,
+    },
+};
+
+/**
+ * Advanced mode with restore: editing the JSON and clicking "Back to chip view"
+ * restores the query to chip mode if the AST is two-level compatible.
+ */
+export const AdvancedInteractive: Story = {
+    args: {
+        groups: [GROUP_A, GROUP_B],
+        globalCombinator: "or",
+        availableFields: FIELDS,
+        matchCount: 46,
+        isAdvanced: true,
+        rawAst: THREE_LEVEL_AST,
+    },
+    render: (args) => {
+        const [groups, setGroups] = useState<QueryGroup[]>(args.groups);
+        const [globalCombinator, setGlobalCombinator] =
+            useState<GlobalCombinator>(args.globalCombinator);
+        const [isAdvanced, setIsAdvanced] = useState(true);
+
+        const handleRestoreFromAdvanced = useCallback(
+            (restoredGroups: QueryGroup[], restoredCombinator: GlobalCombinator) => {
+                setGroups(restoredGroups);
+                setGlobalCombinator(restoredCombinator);
+                setIsAdvanced(false);
+            },
+            [],
+        );
+
+        return (
+            <div style={{ padding: 24, maxWidth: 560, display: "flex", flexDirection: "column", gap: 16 }}>
+                <p style={{ fontFamily: "monospace", fontSize: 11, opacity: 0.5 }}>
+                    Click "Edit in advanced mode" → edit the JSON to a 2-level AST → "Back to chip view".
+                </p>
+                <QueryBuilder
+                    groups={groups}
+                    globalCombinator={globalCombinator}
+                    availableFields={args.availableFields}
+                    matchCount={args.matchCount}
+                    isAdvanced={isAdvanced}
+                    rawAst={isAdvanced ? args.rawAst : undefined}
+                    onRestoreFromAdvanced={handleRestoreFromAdvanced}
+                    onGlobalCombinatorChange={setGlobalCombinator}
+                    onGroupAdd={() => undefined}
+                    onChipUpdate={() => undefined}
+                    onChipAdd={() => undefined}
+                    onChipDelete={() => undefined}
+                    onChipDuplicate={() => undefined}
+                    onChipReorder={() => undefined}
+                />
+            </div>
+        );
     },
 };
 
