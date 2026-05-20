@@ -533,7 +533,13 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
             </Provider>,
         );
 
+        // Click opens the AddFieldForm inline mini-form (Task 20)
         fireEvent.click(screen.getByLabelText("add-metadata-field"));
+
+        // Fill in a name and submit the form
+        const nameInput = screen.getByLabelText("field-name");
+        fireEvent.change(nameInput, { target: { value: "new field" } });
+        fireEvent.submit(nameInput.closest("form")!);
 
         await waitFor(() => {
             expect(fetchSpy).toHaveBeenCalledWith(
@@ -560,7 +566,7 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
         expect(body.groupId).toBe(DEFAULT_METADATA_SCHEMA.groups[0].id);
         expect(body.field.type).toBe("text");
         expect(body.field.label).toBe("New Field");
-        expect(body.field.key).toMatch(/^field-\d+$/);
+        expect(body.field.key).toBe("new-field");
         expect(body.field.locked).toBeUndefined();
 
         // After API resolves the new field should appear in the sidebar

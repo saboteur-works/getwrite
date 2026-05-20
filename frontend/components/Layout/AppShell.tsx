@@ -26,6 +26,7 @@ import { shallowEqual } from "react-redux";
 import { removeResource } from "../../src/store/projectsSlice";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import ResourceTree from "../ResourceTree/ResourceTree";
+import SmartFolders from "../ResourceTree/SmartFolders";
 import ShellLayoutController from "./ShellLayoutController";
 import ShellSettingsMenu from "./ShellSettingsMenu";
 import ShellModalCoordinator from "./ShellModalCoordinator";
@@ -56,6 +57,14 @@ import {
 import Button from "../common/UI/Button/Button";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource, selectResources, selectFolders, setSelectedResourceId, updateResource, updateFolder } from "../../src/store/resourcesSlice";
+import {
+    loadSavedQueries,
+    evaluateQuery,
+    selectActiveQueryIds,
+    selectIsEvaluating,
+    type SavedQuery,
+} from "../../src/store/querySlice";
+import type { QueryAST } from "../../src/lib/models/query-ast";
 import {
     selectIsSavingRevision,
     selectDeletingRevisionId,
@@ -252,6 +261,7 @@ export default function AppShell({
         useState<boolean>(false);
     const [isCloseProjectConfirmOpen, setIsCloseProjectConfirmOpen] =
         useState<boolean>(false);
+    const [activeSmartFolderId, setActiveSmartFolderId] = useState<string | null>(null);
     const latestEditorEditVersionRef = useRef<number>(0);
     const combined = React.useMemo(() => {
         return [...(resources ?? []), ...(folders ?? [])];
@@ -262,14 +272,18 @@ export default function AppShell({
     );
     const liveResources = useAppSelector((s) => selectResources(s.resources));
     const liveFolders = useAppSelector((s) => selectFolders(s.resources));
+    const activeQueryIds = useAppSelector(selectActiveQueryIds);
+    const isQueryEvaluating = useAppSelector(selectIsEvaluating);
 
     useEffect(() => {
         if (selectedResource?.type === "text") {
             setView((current) => (current === "organizer" ? "edit" : current));
+            setActiveSmartFolderId(null);
         } else if (selectedResource?.type === "folder") {
             setView((current) =>
                 current === "edit" || current === "diff" ? "organizer" : current,
             );
+            setActiveSmartFolderId(null);
         }
     }, [selectedResource?.id, selectedResource?.type]);
 
@@ -509,6 +523,19 @@ export default function AppShell({
         }
     }, [project?.id]);
     const dispatch = useAppDispatch();
+
+    useEffect(() => {
+        if (project?.id) {
+            dispatch(loadSavedQueries({ projectId: project.id }));
+        }
+    }, [project?.id]);
+
+    const handleSmartFolderSelect = (query: SavedQuery): void => {
+        if (!project?.id) return;
+        setActiveSmartFolderId(query.id);
+        setView("data");
+        dispatch(evaluateQuery({ projectId: project.id, definition: query.definition as QueryAST }));
+    };
 
     /**
      * Persists editor content to resource API using debounced transport.
@@ -889,12 +916,18 @@ export default function AppShell({
                                 </div>
                                 <div className="appshell-sidebar-content p-4 pt-3">
                                     {project ? (
-                                        <ResourceTree
-                                            debug={false}
-                                            onResourceAction={
-                                                handleResourceAction
-                                            }
-                                        />
+                                        <>
+                                            <ResourceTree
+                                                debug={false}
+                                                onResourceAction={
+                                                    handleResourceAction
+                                                }
+                                            />
+                                            <SmartFolders
+                                                selectedQueryId={activeSmartFolderId ?? undefined}
+                                                onSelect={handleSmartFolderSelect}
+                                            />
+                                        </>
                                     ) : (
                                         <div className="space-y-2">
                                             <p>Loading Resource Tree</p>
@@ -1407,12 +1440,13 @@ export default function AppShell({
                                                           return (
                                                               <OrganizerView />
                                                           );
-                                                      case "data":
+                                                      case "data": {
+                                                          const queryResources = activeSmartFolderId
+                                                              ? liveResources.filter((r) => activeQueryIds.includes(r.id))
+                                                              : liveResources;
                                                           return (
                                                               <DataView
-                                                                  resources={
-                                                                      liveResources
-                                                                  }
+                                                                  resources={queryResources}
                                                                   project={
                                                                       project ??
                                                                       undefined
@@ -1420,12 +1454,18 @@ export default function AppShell({
                                                                   folders={
                                                                       liveFolders
                                                                   }
+                                                                  isEvaluating={activeSmartFolderId ? isQueryEvaluating : false}
+                                                                  onResourceClick={activeSmartFolderId ? (id) => {
+                                                                      dispatch(setSelectedResourceId(id));
+                                                                      setActiveSmartFolderId(null);
+                                                                  } : undefined}
                                                                   onSelectFolder={(folderId) => {
                                                                       dispatch(setSelectedResourceId(folderId));
                                                                       setView("organizer");
                                                                   }}
                                                               />
                                                           );
+                                                      }
                                                       case "timeline":
                                                           return (
                                                               <TimelineView />

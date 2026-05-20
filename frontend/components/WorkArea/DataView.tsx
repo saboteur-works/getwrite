@@ -33,6 +33,10 @@ export interface DataViewProps {
     folders?: Folder[];
     /** Called when the user clicks the jump button on a breakdown group row. */
     onSelectFolder?: (folderId: string) => void;
+    /** When provided, resource list items become clickable and call this with the resource ID. */
+    onResourceClick?: (id: string) => void;
+    /** When true, shows an evaluating banner above the resource list. */
+    isEvaluating?: boolean;
     className?: string;
 }
 
@@ -50,6 +54,8 @@ export default function DataView({
     resources,
     folders,
     onSelectFolder,
+    onResourceClick,
+    isEvaluating = false,
     className = "",
 }: DataViewProps): JSX.Element {
     const [sortOrder, setSortOrder] = React.useState<SortOrder>("lastEdited");
@@ -183,6 +189,11 @@ export default function DataView({
                     </div>
                 }
             >
+                {isEvaluating && (
+                    <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-gw-dim px-1 pb-2">
+                        Evaluating query…
+                    </p>
+                )}
                 <div className="max-h-80 overflow-y-auto">
                     <StubResourcesSection resources={stubResources} />
                     <ul className="workarea-list">
@@ -193,6 +204,7 @@ export default function DataView({
                                 type={r.type}
                                 wordCount={getWordCount(r)}
                                 lastEditedAt={r.updatedAt ?? r.createdAt}
+                                onClick={onResourceClick ? () => onResourceClick(r.id) : undefined}
                             />
                         ))}
                     </ul>

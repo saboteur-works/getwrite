@@ -596,7 +596,7 @@ navigates into it.
   point
 - `09-current-state.md` § Reusable components for new UI —
   `DataView` and `ResourceTree` surfaces
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 27: Saved-query references inside the chip UI
 

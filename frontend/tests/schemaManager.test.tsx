@@ -3,6 +3,7 @@ import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import SchemaManager from "../components/SchemaManager/SchemaManager";
+import { Dialog } from "../components/common/UI/Dialog/Dialog";
 import { makeStore } from "../src/store/store";
 import {
     setProject,
@@ -62,7 +63,9 @@ function setup(schema?: MetadataSchema) {
     const onClose = vi.fn();
     render(
         <Provider store={testStore}>
-            <SchemaManager onClose={onClose} />
+            <Dialog open onOpenChange={() => undefined}>
+                <SchemaManager onClose={onClose} />
+            </Dialog>
         </Provider>,
     );
     return { testStore, onClose };
@@ -166,8 +169,8 @@ describe("SchemaManager — locked fields", () => {
 
     it("unlocked fields show a delete button", () => {
         setup();
-        expect(screen.getByLabelText("Delete Field One")).toBeInTheDocument();
-        expect(screen.getByLabelText("Delete Field Two")).toBeInTheDocument();
+        expect(screen.getByLabelText("Remove Field One")).toBeInTheDocument();
+        expect(screen.getByLabelText("Remove Field Two")).toBeInTheDocument();
     });
 });
 
@@ -176,21 +179,21 @@ describe("SchemaManager — locked fields", () => {
 // ---------------------------------------------------------------------------
 
 describe("SchemaManager — delete field", () => {
-    it("clicking delete on a field opens a confirmation dialog", () => {
+    it("clicking delete on a field opens the deprecate-or-clear dialog", () => {
         setup();
-        fireEvent.click(screen.getByLabelText("Delete Field One"));
+        fireEvent.click(screen.getByLabelText("Remove Field One"));
         expect(screen.getByRole("dialog")).toBeInTheDocument();
-        expect(screen.getByText(/delete "field one"\?/i)).toBeInTheDocument();
+        expect(screen.getByText(/Remove field: Field One/i)).toBeInTheDocument();
     });
 
     it("cancelling the dialog closes it without dispatching", () => {
         setup();
-        fireEvent.click(screen.getByLabelText("Delete Field One"));
+        fireEvent.click(screen.getByLabelText("Remove Field One"));
         fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    it("confirming delete dispatches removeMetadataField", async () => {
+    it("confirming clear dispatches clearMetadataField", async () => {
         const updatedSchema: MetadataSchema = {
             groups: [
                 {
@@ -204,14 +207,16 @@ describe("SchemaManager — delete field", () => {
         const fetchSpy = mockFetchOk(updatedSchema);
 
         setup();
-        fireEvent.click(screen.getByLabelText("Delete Field One"));
-        fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+        fireEvent.click(screen.getByLabelText("Remove Field One"));
+        // Select "clear" option then confirm
+        fireEvent.click(screen.getByRole("radio", { name: /clear/i }));
+        fireEvent.click(screen.getByRole("button", { name: /^clear$/i }));
 
         await waitFor(() => {
             expect(fetchSpy).toHaveBeenCalledWith(
                 "/api/project/metadata-schema",
                 expect.objectContaining({
-                    body: expect.stringContaining('"action":"remove-field"'),
+                    body: expect.stringContaining('"action":"clear-field"'),
                 }),
             );
         });
@@ -220,7 +225,7 @@ describe("SchemaManager — delete field", () => {
             try {
                 return (
                     JSON.parse((init as RequestInit).body as string).action ===
-                    "remove-field"
+                    "clear-field"
                 );
             } catch {
                 return false;
@@ -586,7 +591,7 @@ describe("SchemaManager — options editing", () => {
         setup();
 
         const textarea = screen.getByLabelText("Options for Genre");
-        fireEvent.change(textarea, { target: { value: "Fantasy\nHorror\n" } });
+        fireEvent.change(textarea, { target: { value: "Fantasy\nSci-Fi\nHorror" } });
         fireEvent.blur(textarea);
 
         await waitFor(() => {
@@ -610,7 +615,7 @@ describe("SchemaManager — options editing", () => {
         });
         const body = JSON.parse((call![1] as RequestInit).body as string);
         expect(body.fieldKey).toBe("genre");
-        expect(body.options).toEqual(["Fantasy", "Horror"]);
+        expect(body.options).toEqual(["Fantasy", "Sci-Fi", "Horror"]);
     });
 });
 
@@ -796,35 +801,49 @@ describe("SchemaManager — multi-resource-ref field type", () => {
         expect(options).toContain("Multi Ref");
     });
 
-    it("selecting multi-resource-ref dispatches changeMetadataFieldType", async () => {
-        const fetchSpy = mockFetchOk(CUSTOM_SCHEMA);
+    it("selecting multi-resource-ref opens migration preview and applies on confirm", async () => {
+        vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+            const urlStr = typeof url === "string" ? url : (url as Request).url;
+            if (urlStr.includes("fieldKey=")) {
+                // GET: fetchFieldValues — return empty value list
+                return new Response(JSON.stringify({ values: [] }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                });
+            }
+            // POST: schema mutation — return schema unchanged
+            return new Response(JSON.stringify({ schema: CUSTOM_SCHEMA }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+            });
+        });
         setup();
 
         const select = screen.getByLabelText("Field type for Field One") as HTMLSelectElement;
         fireEvent.change(select, { target: { value: "multi-resource-ref" } });
 
+        // Migration preview should open
         await waitFor(() => {
-            expect(fetchSpy).toHaveBeenCalledWith(
-                "/api/project/metadata-schema",
-                expect.objectContaining({
-                    body: expect.stringContaining('"action":"change-field-type"'),
-                }),
-            );
+            expect(screen.getByRole("button", { name: /Apply migration/i })).toBeInTheDocument();
         });
 
-        const call = fetchSpy.mock.calls.find(([, init]) => {
-            try {
-                return (
-                    JSON.parse((init as RequestInit).body as string).action ===
-                    "change-field-type"
-                );
-            } catch {
-                return false;
-            }
+        fireEvent.click(screen.getByRole("button", { name: /Apply migration/i }));
+
+        await waitFor(() => {
+            const postCall = (vi.mocked(globalThis.fetch) as ReturnType<typeof vi.spyOn>).mock.calls.find(
+                ([, init]: [unknown, unknown]) => {
+                    try {
+                        return JSON.parse((init as RequestInit).body as string).action === "change-field-type-with-migration";
+                    } catch {
+                        return false;
+                    }
+                }
+            );
+            expect(postCall).toBeDefined();
+            const body = JSON.parse((postCall![1] as RequestInit).body as string);
+            expect(body.fieldKey).toBe("field-one");
+            expect(body.newType).toBe("multi-resource-ref");
         });
-        const body = JSON.parse((call![1] as RequestInit).body as string);
-        expect(body.fieldKey).toBe("field-one");
-        expect(body.newType).toBe("multi-resource-ref");
     });
 });
 
@@ -870,7 +889,9 @@ function setupWithFolders(schema: MetadataSchema, folders: Folder[] = []) {
     const onClose = vi.fn();
     render(
         <Provider store={testStore}>
-            <SchemaManager onClose={onClose} />
+            <Dialog open onOpenChange={() => undefined}>
+                <SchemaManager onClose={onClose} />
+            </Dialog>
         </Provider>,
     );
     return { testStore, onClose };

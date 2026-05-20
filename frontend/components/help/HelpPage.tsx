@@ -10,7 +10,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import Button from "../common/UI/Button/Button";
-import { DialogTitle } from "../common/UI/Dialog/Dialog";
 import HelpSectionCard, { renderHelpRichText } from "./HelpSectionCard";
 import { HELP_TABS, type HelpContentBlock, type HelpTab } from "./help-content";
 
@@ -138,23 +137,12 @@ export default function HelpPage({
         >
             <div className="help-header">
                 <div className="help-header-copy">
-                    {renderInModal ? (
-                        <DialogTitle asChild>
-                            <h2
-                                id={HELP_DIALOG_TITLE_ID}
-                                className="help-title help-heading"
-                            >
-                                Help &amp; Documentation
-                            </h2>
-                        </DialogTitle>
-                    ) : (
-                        <h2
-                            id={HELP_DIALOG_TITLE_ID}
-                            className="help-title help-heading"
-                        >
-                            Help &amp; Documentation
-                        </h2>
-                    )}
+                    <h2
+                        id={HELP_DIALOG_TITLE_ID}
+                        className="help-title help-heading"
+                    >
+                        Help &amp; Documentation
+                    </h2>
                     <p className="help-subtitle help-label">
                         Learn how to use GetWrite
                     </p>
