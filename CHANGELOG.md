@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.2.35](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.34...getwrite-v0.2.35) (2026-05-20)
+
+
+### Features
+
+* **storybook:** add Borders foundation story ([222d7ed](https://github.com/saboteur-works/getwrite/commit/222d7edfb790e119161f9f5bc06d255e11c68f17))
+* **storybook:** add brand palette section and clarify --color-gw-dim in Colors story ([344445f](https://github.com/saboteur-works/getwrite/commit/344445f186fb3d750187b20f6275ad195fb68eb8))
+* **storybook:** add card composition example to Borders story ([2900099](https://github.com/saboteur-works/getwrite/commit/2900099743b07b1c358518c0f30a24574c881042))
+* **storybook:** add Density foundations story ([1d6644d](https://github.com/saboteur-works/getwrite/commit/1d6644dc88102a44ebd49b92aa133635e174e4a7))
+* **storybook:** add Focus States foundations story ([bf3a697](https://github.com/saboteur-works/getwrite/commit/bf3a6977fddaaa25d11f750ac060f8e1b894685b))
+* **storybook:** add font weights and wordmark construction to Typography story ([94b77c6](https://github.com/saboteur-works/getwrite/commit/94b77c619998b375496ba288cb9e2aea8987572b))
+* **storybook:** add Layout Tokens foundation story ([24726f2](https://github.com/saboteur-works/getwrite/commit/24726f22ea77b55c9aa676df5cd1a583e7237804))
+* **storybook:** add Motion foundation story ([e7c558d](https://github.com/saboteur-works/getwrite/commit/e7c558d903677fa34af0808ddc94faa322e7082b))
+* **storybook:** add reduced motion section to Motion story ([6b50824](https://github.com/saboteur-works/getwrite/commit/6b50824d230f2e5c2e773ef9476db905e5ad9bc5))
+* **storybook:** add Spacing foundation story ([3f2af79](https://github.com/saboteur-works/getwrite/commit/3f2af7979c5c96284430a5c234180ac806ba2942))
+* **storybook:** add Surface Hierarchy foundations story ([c7cade2](https://github.com/saboteur-works/getwrite/commit/c7cade2089ef4b577388b25d13d26aeab8f6adf7))
+* **storybook:** add Typography foundation story ([03df19d](https://github.com/saboteur-works/getwrite/commit/03df19d5bbb64afb59cf267232536c3d3cbb5efa))
+* **storybook:** foundation enhancement — full design token coverage + a11y fixes ([6e7a52d](https://github.com/saboteur-works/getwrite/commit/6e7a52dee43873ab35773c74df33035947c4e0ff))
+* **storybook:** rename Layout Tokens story title to Layout ([7e37bbc](https://github.com/saboteur-works/getwrite/commit/7e37bbc32255618258832143dcdab9c88fa4cd5a))
+* **storybook:** rework Colors foundation story ([91fb48d](https://github.com/saboteur-works/getwrite/commit/91fb48dd54a2db108cde78ef469a156ecb63a618))
+
+
+### Bug Fixes
+
+* **a11y:** gate DialogTitle on renderInModal in dual-mode page components ([bc927fe](https://github.com/saboteur-works/getwrite/commit/bc927febcc45c8b87acd5f5c506c06e657bf787c))
+* **storybook:** add Dialog context decorator to all stories missing it ([5d2c084](https://github.com/saboteur-works/getwrite/commit/5d2c084ee38848abc4e9e7d663504893ad4133a7))
+* **storybook:** allow canvas to scroll past viewport height ([62e0f13](https://github.com/saboteur-works/getwrite/commit/62e0f132b13dca1070405018d18b9bb90b44ba06))
+
 ## [0.2.34](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.33...getwrite-v0.2.34) (2026-05-20)
 
 
