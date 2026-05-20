@@ -79,6 +79,19 @@ function createRootState(overrides?: {
             isLoading: false,
             errorMessage: "",
         },
+        queries: {
+            projectId: null,
+            requestedProjectId: null,
+            savedQueries: {},
+            isLoadingQueries: false,
+            isEvaluating: false,
+            evaluatingForProjectId: null,
+            activeQueryDefinition: null,
+            activeQueryIds: [],
+            savingQueryId: null,
+            deletingQueryId: null,
+            errorMessage: "",
+        },
     } as RootState;
 }
 

@@ -222,7 +222,7 @@ slice patterns (use the `getwrite-redux-slice` skill).
 
 - `02-query-substrate.md` § Persistence — saved-query JSON shape the
   slice state mirrors
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 11: Chip primitive — field/operator/value cell
 
