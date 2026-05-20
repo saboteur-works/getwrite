@@ -334,7 +334,7 @@ toggles; drag reorders; `+ Add condition` inserts a blank chip.
   chip list, `+ Add condition`, and hover subtotal
 - `03-chip-ui.md` § Reordering and editing — drag handle at group
   border and chip level
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 16: Top-level query builder with global combinator
 
