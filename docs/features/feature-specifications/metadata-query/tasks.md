@@ -402,7 +402,7 @@ Also derives slug from typed name and applies the existing
 - `09-current-state.md` § Metadata schema system — `allFieldKeys`
   uniqueness check in `metadata-schema.ts` that backs this at the API
   layer
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 19: Chip UI "Add a new field…" → prefilled SchemaManager
 
