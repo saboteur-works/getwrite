@@ -1,3 +1,4 @@
+import type { QueryAST } from "../../src/lib/models/query-ast";
 import type { MetadataFieldType } from "../../src/lib/models/types";
 
 export interface OperatorOption {
@@ -127,4 +128,84 @@ export function getDefaultOperator(type: MetadataFieldType): string {
         }
     }
     return "";
+}
+
+// ─── AST stub builders ────────────────────────────────────────────────────────
+
+type StubBuilder = (field: string) => QueryAST;
+
+const STUB_BUILDERS: Partial<Record<string, StubBuilder>> = {
+    // text
+    "is": (f) => ({ op: "eq", field: f, value: "" }),
+    "is-not": (f) => ({ op: "ne", field: f, value: "" }),
+    "contains": (f) => ({ op: "contains", field: f, value: "" }),
+    "does-not-contain": (f) => ({
+        op: "not",
+        child: { op: "contains", field: f, value: "" },
+    }),
+    "starts-with": (f) => ({ op: "matches", field: f, value: "" }),
+    "matches-regex": (f) => ({ op: "matches", field: f, value: "" }),
+    // number
+    "equals": (f) => ({ op: "eq", field: f, value: 0 }),
+    "does-not-equal": (f) => ({ op: "ne", field: f, value: 0 }),
+    "is-less-than": (f) => ({ op: "lt", field: f, value: 0 }),
+    "is-at-most": (f) => ({ op: "lte", field: f, value: 0 }),
+    "is-greater-than": (f) => ({ op: "gt", field: f, value: 0 }),
+    "is-at-least": (f) => ({ op: "gte", field: f, value: 0 }),
+    // date
+    "is-on": (f) => ({ op: "eq", field: f, value: "" }),
+    "is-before": (f) => ({ op: "lt", field: f, value: "" }),
+    "is-after": (f) => ({ op: "gt", field: f, value: "" }),
+    "in-the-last": (f) => ({ op: "gte", field: f, value: "" }),
+    // boolean
+    "is-true": (f) => ({ op: "eq", field: f, value: true }),
+    "is-false": (f) => ({ op: "eq", field: f, value: false }),
+    // select / resource-ref
+    "is-any-of": (f) => ({ op: "in", field: f, value: [] }),
+    "is-none-of": (f) => ({ op: "not", child: { op: "in", field: f, value: [] } }),
+    // multiselect / multi-resource-ref
+    "includes": (f) => ({ op: "in", field: f, value: "" }),
+    "does-not-include": (f) => ({
+        op: "not",
+        child: { op: "in", field: f, value: "" },
+    }),
+    "includes-all-of": (f) => ({
+        op: "and",
+        children: [{ op: "in", field: f, value: "" }],
+    }),
+    "includes-any-of": (f) => ({
+        op: "or",
+        children: [{ op: "in", field: f, value: "" }],
+    }),
+    "includes-none-of": (f) => ({
+        op: "not",
+        child: { op: "or", children: [{ op: "in", field: f, value: "" }] },
+    }),
+    // is-between is field-type dependent — handled in buildOperatorStub
+    // universal
+    "is-empty": (f) => ({ op: "not", child: { op: "exists", field: f } }),
+    "has-any-value": (f) => ({ op: "exists", field: f }),
+};
+
+/**
+ * Builds a typed AST predicate stub for the given field type + operator.
+ * Returns null for unknown operator values.
+ */
+export function buildOperatorStub(
+    fieldType: MetadataFieldType,
+    operatorValue: string,
+    fieldKey: string,
+): QueryAST | null {
+    if (operatorValue === "is-between") {
+        const zeroVal = fieldType === "number" ? 0 : "";
+        return {
+            op: "and",
+            children: [
+                { op: "gte", field: fieldKey, value: zeroVal },
+                { op: "lte", field: fieldKey, value: zeroVal },
+            ],
+        };
+    }
+    const builder = STUB_BUILDERS[operatorValue];
+    return builder ? builder(fieldKey) : null;
 }

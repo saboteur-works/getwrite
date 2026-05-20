@@ -268,7 +268,7 @@ a typed AST predicate stub.
   `is empty` / `has any value` divider rule
 - `02-query-substrate.md` § AST node types — operator → AST `op`
   mapping (e.g., `is less than` → `lt`)
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 13: Type-driven value picker
 
