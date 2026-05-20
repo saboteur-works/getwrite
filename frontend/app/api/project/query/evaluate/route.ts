@@ -21,10 +21,10 @@ import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { QueryASTSchema } from "../../../../../src/lib/models/query-ast";
 import type { QueryAST } from "../../../../../src/lib/models/query-ast";
-import { evaluate, EvaluatorNotImplementedError } from "../../../../../src/lib/models/query-evaluator";
+import { evaluate, EvaluatorNotImplementedError, QueryCycleError } from "../../../../../src/lib/models/query-evaluator";
 import type { EvaluationInput } from "../../../../../src/lib/models/query-evaluator";
-import { listResourceIds } from "../../../../../src/lib/models/backlinks";
-import { loadBacklinks } from "../../../../../src/lib/models/backlinks";
+import { listResourceIds, loadBacklinks } from "../../../../../src/lib/models/backlinks";
+import { readQuery } from "../../../../../src/lib/models/saved-queries";
 import { readSidecar } from "../../../../../src/lib/models/sidecar";
 import { PROJECT_FILENAME } from "../../../../../src/lib/models/project-config";
 import type { ResourceBase, ResourceType, MetadataValue, ProjectConfig, Project } from "../../../../../src/lib/models/types";
@@ -110,7 +110,12 @@ async function loadEvaluationInput(projectRoot: string): Promise<EvaluationInput
         resources.push(sidecarToResourceBase(id, sidecar));
     }
 
-    return { resources, sidecars, context: { config, backlinks } };
+    const resolveRef = async (id: string): Promise<QueryAST | null> => {
+        const saved = await readQuery(projectRoot, id);
+        return saved !== null ? (saved.definition as QueryAST) : null;
+    };
+
+    return { resources, sidecars, context: { config, backlinks }, resolveRef };
 }
 
 /**
@@ -168,6 +173,12 @@ export async function POST(
         if (err instanceof EvaluatorNotImplementedError) {
             return NextResponse.json(
                 { error: "Query feature not implemented", details: err.message },
+                { status: 400 },
+            );
+        }
+        if (err instanceof QueryCycleError) {
+            return NextResponse.json(
+                { error: "Cycle detected in saved-query refs", details: err.message },
                 { status: 400 },
             );
         }

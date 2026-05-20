@@ -1,7 +1,7 @@
 /**
  * @module query-evaluator
  *
- * Synchronous query AST evaluator for the metadata-query feature.
+ * Query AST evaluator for the metadata-query feature.
  * Accepts a QueryAST and an EvaluationInput, iterates over all resources,
  * and returns the UUIDs of resources that satisfy the predicate.
  *
@@ -9,8 +9,12 @@
  *   - Intrinsic fields (type, folderId, wordCount, …) → INTRINSIC_FIELDS registry
  *   - Declared schema fields → sidecar lookup
  *
- * Limitations (pending later tasks):
- *   - `ref` nodes (saved-query splices) throw EvaluatorNotImplementedError; resolved in task 8.
+ * Ref resolution:
+ *   - When `EvaluationInput.resolveRef` is provided, `ref` nodes are expanded
+ *     (spliced) before evaluation. Cycles throw `QueryCycleError`.
+ *   - When `resolveRef` is absent, `ref` nodes throw `EvaluatorNotImplementedError`.
+ *
+ * Limitations:
  *   - `param` nodes throw EvaluatorNotImplementedError.
  *   - Full-text prose delegation via inverted-index.ts is not wired here;
  *     `contains`/`matches` operate on string-valued sidecar/intrinsic fields only.
@@ -29,11 +33,18 @@ export interface EvaluationInput {
     sidecars: Record<string, Record<string, MetadataValue>>;
     /** Project config + backlink index for intrinsic field reads. */
     context: QueryContext;
+    /**
+     * Optional loader for saved-query ASTs by id. When provided, `ref` nodes
+     * in the AST are expanded (spliced) before evaluation. Returns `null` when
+     * the referenced query does not exist, which causes an Error to be thrown.
+     * If absent, `ref` nodes throw `EvaluatorNotImplementedError`.
+     */
+    resolveRef?: (id: string) => Promise<QueryAST | null>;
 }
 
 /**
- * Thrown when the evaluator encounters a node type that requires a future
- * task to implement (currently: `ref` and `param` splice nodes).
+ * Thrown when the evaluator encounters a node type that requires a resolver
+ * that was not provided (currently: `ref` without `resolveRef`, and `param`).
  */
 export class EvaluatorNotImplementedError extends Error {
     constructor(message: string) {
@@ -43,23 +54,90 @@ export class EvaluatorNotImplementedError extends Error {
 }
 
 /**
+ * Thrown when a cycle is detected while expanding `ref` nodes.
+ * `cyclePath` lists the query IDs in the order they were traversed,
+ * with the repeated ID appended at the end so the cycle is explicit.
+ */
+export class QueryCycleError extends Error {
+    readonly cyclePath: readonly string[];
+    constructor(cyclePath: string[]) {
+        super(`Cycle detected in saved-query refs: ${cyclePath.join(" → ")}`);
+        this.name = "QueryCycleError";
+        this.cyclePath = cyclePath;
+    }
+}
+
+// ─── Ref expansion ─────────────────────────────────────────────────────────
+
+/**
+ * Recursively replace `ref` nodes in `ast` with the definitions returned by
+ * `resolveRef`. Tracks the current expansion path in `seenPath` to detect
+ * cycles. Leaf and combinator nodes are traversed but not replaced.
+ */
+async function expandRefs(
+    ast: QueryAST,
+    resolveRef: (id: string) => Promise<QueryAST | null>,
+    seenPath: readonly string[],
+): Promise<QueryAST> {
+    switch (ast.op) {
+        case "ref": {
+            if (seenPath.includes(ast.id)) {
+                throw new QueryCycleError([...seenPath, ast.id]);
+            }
+            const loaded = await resolveRef(ast.id);
+            if (loaded === null) {
+                throw new Error(`Saved query ref not found: ${ast.id}`);
+            }
+            return expandRefs(loaded, resolveRef, [...seenPath, ast.id]);
+        }
+        case "and": {
+            const children = await Promise.all(
+                ast.children.map((c) => expandRefs(c, resolveRef, seenPath)),
+            );
+            return { op: "and", children };
+        }
+        case "or": {
+            const children = await Promise.all(
+                ast.children.map((c) => expandRefs(c, resolveRef, seenPath)),
+            );
+            return { op: "or", children };
+        }
+        case "not": {
+            const child = await expandRefs(ast.child, resolveRef, seenPath);
+            return { op: "not", child };
+        }
+        default:
+            // Leaf nodes and param — no refs to expand.
+            return ast;
+    }
+}
+
+// ─── Public evaluate function ──────────────────────────────────────────────
+
+/**
  * Evaluate a query AST against a set of resources and return the UUIDs of
  * all resources that satisfy the predicate.
+ *
+ * When `input.resolveRef` is provided, `ref` splice nodes are expanded before
+ * the resource loop. Cycles throw `QueryCycleError`; missing refs throw Error.
  */
 export async function evaluate(
     ast: QueryAST,
     input: EvaluationInput,
 ): Promise<string[]> {
-    const { resources, sidecars, context } = input;
-    const results: string[] = [];
+    const { resources, sidecars, context, resolveRef } = input;
 
+    const resolvedAst = resolveRef
+        ? await expandRefs(ast, resolveRef, [])
+        : ast;
+
+    const results: string[] = [];
     for (const resource of resources) {
         const sidecar = sidecars[resource.id] ?? {};
-        if (matchNode(ast, resource, sidecar, context)) {
+        if (matchNode(resolvedAst, resource, sidecar, context)) {
             results.push(resource.id);
         }
     }
-
     return results;
 }
 

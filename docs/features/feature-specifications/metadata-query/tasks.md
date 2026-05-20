@@ -187,7 +187,7 @@ A→B→A cycles throw `QueryCycleError`; tests cover both.
 - `02-query-substrate.md` § Open questions — cycle detection
   acknowledged as an open issue
 - `00-overview.md` § Open questions — cycle detection in `ref` nodes
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 9: Cache layer keyed by metadataRevision
 

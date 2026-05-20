@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evaluate, EvaluatorNotImplementedError } from "../../src/lib/models/query-evaluator";
+import { evaluate, EvaluatorNotImplementedError, QueryCycleError } from "../../src/lib/models/query-evaluator";
 import type { EvaluationInput } from "../../src/lib/models/query-evaluator";
 import type { QueryContext } from "../../src/lib/models/query-intrinsics";
 import type { ResourceBase, MetadataValue } from "../../src/lib/models/types";
@@ -448,13 +448,127 @@ describe("nested boolean composition", () => {
     });
 });
 
-// ── ref / param — not implemented ─────────────────────────────────────────
+// ── ref node — no resolveRef (backward compat) ────────────────────────────
 
-describe("ref node", () => {
-    it("throws EvaluatorNotImplementedError", async () => {
+describe("ref node — no resolveRef", () => {
+    it("throws EvaluatorNotImplementedError when resolveRef is not provided", async () => {
         await expect(
             ids({ op: "ref", id: "some-saved-query-id" }),
         ).rejects.toThrow(EvaluatorNotImplementedError);
+    });
+});
+
+// ── ref node — with resolveRef ─────────────────────────────────────────────
+
+const Q_TEXT = "q1111111-0000-4000-a000-000000000001";
+const Q_IMAGE = "q2222222-0000-4000-a000-000000000002";
+const Q_MISSING = "qmissing-0000-4000-a000-000000000099";
+
+/** Simple resolveRef that returns canned definitions for known query IDs. */
+function makeResolver(
+    entries: Record<string, QueryAST>,
+): (id: string) => Promise<QueryAST | null> {
+    return async (id) => entries[id] ?? null;
+}
+
+describe("ref node — with resolveRef", () => {
+    it("transparently splices a single-hop ref", async () => {
+        const resolveRef = makeResolver({
+            [Q_TEXT]: { op: "eq", field: "type", value: "text" },
+        });
+        const result = await evaluate(
+            { op: "ref", id: Q_TEXT },
+            input({ resolveRef }),
+        );
+        expect(result).toContain(R1);
+        expect(result).toContain(R3);
+        expect(result).not.toContain(R2);
+    });
+
+    it("splices a ref nested inside an `and` combinator", async () => {
+        const resolveRef = makeResolver({
+            [Q_TEXT]: { op: "eq", field: "type", value: "text" },
+        });
+        // and([ref(Q_TEXT), eq(active, true)]) — text resources where active=true
+        const result = await evaluate(
+            {
+                op: "and",
+                children: [
+                    { op: "ref", id: Q_TEXT },
+                    { op: "eq", field: "active", value: true },
+                ],
+            },
+            input({ resolveRef }),
+        );
+        expect(result).toContain(R1);  // text + active=true
+        expect(result).toContain(R3);  // text + active=true
+        expect(result).not.toContain(R2); // image
+    });
+
+    it("splices a ref nested inside a `not` combinator", async () => {
+        const resolveRef = makeResolver({
+            [Q_TEXT]: { op: "eq", field: "type", value: "text" },
+        });
+        // not(ref(Q_TEXT)) — non-text resources
+        const result = await evaluate(
+            { op: "not", child: { op: "ref", id: Q_TEXT } },
+            input({ resolveRef }),
+        );
+        expect(result).toContain(R2);
+        expect(result).not.toContain(R1);
+        expect(result).not.toContain(R3);
+    });
+
+    it("resolves a two-hop chain (A refs B which is a leaf)", async () => {
+        const resolveRef = makeResolver({
+            [Q_TEXT]: { op: "ref", id: Q_IMAGE },
+            [Q_IMAGE]: { op: "eq", field: "type", value: "image" },
+        });
+        const result = await evaluate(
+            { op: "ref", id: Q_TEXT },
+            input({ resolveRef }),
+        );
+        expect(result).toEqual([R2]);
+    });
+
+    it("throws QueryCycleError for a direct self-cycle (A → A)", async () => {
+        const resolveRef = makeResolver({
+            [Q_TEXT]: { op: "ref", id: Q_TEXT },
+        });
+        await expect(
+            evaluate({ op: "ref", id: Q_TEXT }, input({ resolveRef })),
+        ).rejects.toThrow(QueryCycleError);
+    });
+
+    it("throws QueryCycleError for a two-node cycle (A → B → A)", async () => {
+        const resolveRef = makeResolver({
+            [Q_TEXT]: { op: "ref", id: Q_IMAGE },
+            [Q_IMAGE]: { op: "ref", id: Q_TEXT },
+        });
+        await expect(
+            evaluate({ op: "ref", id: Q_TEXT }, input({ resolveRef })),
+        ).rejects.toThrow(QueryCycleError);
+    });
+
+    it("QueryCycleError message includes the cycle path", async () => {
+        const resolveRef = makeResolver({
+            [Q_TEXT]: { op: "ref", id: Q_IMAGE },
+            [Q_IMAGE]: { op: "ref", id: Q_TEXT },
+        });
+        const err = await evaluate({ op: "ref", id: Q_TEXT }, input({ resolveRef })).catch(
+            (e: unknown) => e,
+        );
+        expect(err).toBeInstanceOf(QueryCycleError);
+        const msg = (err as QueryCycleError).message;
+        expect(msg).toContain(Q_TEXT);
+        expect(msg).toContain(Q_IMAGE);
+    });
+
+    it("throws a descriptive Error when the ref target is not found", async () => {
+        const resolveRef = makeResolver({});
+        await expect(
+            evaluate({ op: "ref", id: Q_MISSING }, input({ resolveRef })),
+        ).rejects.toThrow(/not found/i);
     });
 });
 

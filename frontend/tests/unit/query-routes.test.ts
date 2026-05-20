@@ -138,13 +138,16 @@ describe("executeEvaluate — happy path", () => {
 });
 
 describe("executeEvaluate — error cases", () => {
-    it("throws EvaluatorNotImplementedError for ref nodes", async () => {
+    it("throws when a ref target does not exist", async () => {
         const root = await makeTmpProject();
         await addResource(root, { name: "A" });
 
         await expect(
-            executeEvaluate(root, { op: "ref", id: "some-saved-query-id" }),
-        ).rejects.toThrow("saved-query resolution");
+            executeEvaluate(root, {
+                op: "ref",
+                id: "550e8400-e29b-41d4-a716-000000000000",
+            }),
+        ).rejects.toThrow(/not found/i);
     });
 });
 
