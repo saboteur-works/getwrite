@@ -168,7 +168,7 @@ tests exercise each action.
 
 - `09-current-state.md` § Metadata schema system — action-discriminated
   `POST /api/project/metadata-schema` is the pattern to follow
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 8: Saved-query reference resolution in evaluator
 
