@@ -14,6 +14,17 @@ interface ColorSectionData {
     tokens: ColorToken[];
 }
 
+const BRAND_PALETTE: ColorToken[] = [
+    { token: "--color-brand-black", dark: "#0a0a0a", light: null, role: "Primary background — source of dark-mode chrome values" },
+    { token: "--color-brand-white", dark: "#f5f4f0", light: null, role: "Warm off-white — not pure white. Source of light-mode text and dark-mode fg values" },
+    { token: "--color-brand-red", dark: "#d44040", light: null, role: "Signal red — reserved for structure and interaction indicators only" },
+    { token: "--color-brand-mid", dark: "#6a6864", light: null, role: "Mid grey — secondary text, muted labels" },
+    { token: "--color-brand-dim", dark: "#2e2e2c", light: null, role: "Dark dim — default borders and rules in dark mode" },
+    { token: "--color-brand-rule", dark: "#1a1a18", light: null, role: "Near-black — divider lines in dark mode" },
+    { token: "--color-brand-surface", dark: "#111110", light: null, role: "Raised dark surface — panels, sidebars" },
+    { token: "--color-brand-surface2", dark: "#161614", light: null, role: "Deeper dark surface — nested cards, inputs" },
+];
+
 const CHROME_SURFACES: ColorToken[] = [
     { token: "--color-gw-bg", dark: "#0a0a0a", light: "#f5f4f0", role: "Application background" },
     { token: "--color-gw-chrome", dark: "#111110", light: "#f5f4f0", role: "Panels, sidebars, title bar" },
@@ -34,7 +45,7 @@ const TEXT_COLORS: ColorToken[] = [
     { token: "--color-gw-primary", dark: "#f5f4f0", light: "#0a0a0a", role: "Primary UI text" },
     { token: "--color-gw-secondary", dark: "#6a6864", light: "#7a7870", role: "Muted labels, panel headers" },
     { token: "--color-gw-secondary-light", dark: "#7a7870", light: null, role: "Light mode secondary reference — static" },
-    { token: "--color-gw-dim", dark: "#3a3a38", light: null, role: "Near-invisible text — folder items — static" },
+    { token: "--color-gw-dim", dark: "#3a3a38", light: null, role: "Near-invisible text on dark surfaces — folder tree items. Dark-mode only by design; no light-mode equivalent exists." },
     { token: "--color-gw-red", dark: "#d44040", light: null, role: "Signal red — cursor, canonical badge, active file — static" },
 ];
 
@@ -65,6 +76,11 @@ const TOAST_DIFF_COLORS: ColorToken[] = [
 ];
 
 const SECTIONS: ColorSectionData[] = [
+    {
+        title: "Brand Palette",
+        description: "Fixed raw brand colors from saboteur-base.css. These tokens do not cascade between light and dark — they are the source palette from which semantic --color-gw-* tokens are derived. The warm black (#0a0a0a) and off-white (#f5f4f0) are foundational: GetWrite is never pure black or pure white.",
+        tokens: BRAND_PALETTE,
+    },
     {
         title: "Chrome Surfaces",
         description: "Backgrounds outside the editor: app shell, panels, sidebars, title bar. In light mode, chrome surfaces shift to warm off-white values.",
