@@ -640,7 +640,7 @@ all tests pass under `pnpm test:ci`.
   and splice node shapes to exercise
 - `04-chip-internals.md` § Validation — edge cases: deleted ref
   (`id: null`), ambiguous typeahead, out-of-domain select value
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 29: E2E — build a chip query and verify results
 
