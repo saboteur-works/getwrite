@@ -1,13 +1,9 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { readSidecar } from "./sidecar";
 import type { MetadataValue } from "./types";
-
-// ─── Sentinel keys ────────────────────────────────────────────────────────────
-
-/** Map key used when a sidecar explicitly stores `null` for the field. */
-export const NULL_VALUE_KEY = "\0null";
-
-/** Map key used when a sidecar is absent (read failure) or does not contain the field key at all. */
-export const MISSING_VALUE_KEY = "\0missing";
+export { NULL_VALUE_KEY, MISSING_VALUE_KEY } from "./field-value-keys";
+import { NULL_VALUE_KEY, MISSING_VALUE_KEY } from "./field-value-keys";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -81,6 +77,29 @@ export function enumerateFieldValues(
 }
 
 // ─── Async filesystem scan ────────────────────────────────────────────────────
+
+/**
+ * Scans the `meta/` directory of a project and returns a frequency map of
+ * distinct values for `fieldKey` across all resources.
+ *
+ * Unreadable or missing sidecars are counted under `MISSING_VALUE_KEY`.
+ */
+export async function scanAllFieldValues(
+    projectRoot: string,
+    fieldKey: string,
+): Promise<Map<string, FieldValueCount>> {
+    const metaDir = path.join(projectRoot, "meta");
+    let entries: string[];
+    try {
+        entries = await fs.readdir(metaDir);
+    } catch {
+        return new Map();
+    }
+    const resourceIds = entries
+        .filter((e) => e.startsWith("resource-") && e.endsWith(".meta.json"))
+        .map((e) => e.slice("resource-".length, -".meta.json".length));
+    return scanFieldValues(projectRoot, resourceIds, fieldKey);
+}
 
 /**
  * Reads the sidecar for each resource ID in `resourceIds` and returns a

@@ -1,4 +1,6 @@
 import type { MetadataField, MetadataFieldType, MetadataGroup, MetadataSchema } from "../lib/models/types";
+import type { TypeMigrationEntry } from "../lib/models/metadata-schema";
+import type { FieldValueEntry } from "../../app/api/project/metadata-schema/route";
 
 export interface MetadataSchemaRequestContext {
     projectPath: string;
@@ -203,4 +205,39 @@ export async function postUpdateRefProperties(
         fieldKey,
         ...updates,
     });
+}
+
+export async function postChangeFieldTypeWithMigration(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+    newType: MetadataFieldType,
+    newOptions: string[],
+    migrations: Record<string, TypeMigrationEntry>,
+): Promise<MetadataSchema> {
+    return postToMetadataSchemaRoute({
+        action: "change-field-type-with-migration",
+        projectPath: context.projectPath,
+        groupId,
+        fieldKey,
+        newType,
+        newOptions,
+        migrations,
+    });
+}
+
+export async function fetchFieldValues(
+    projectPath: string,
+    fieldKey: string,
+): Promise<FieldValueEntry[]> {
+    const params = new URLSearchParams({ projectPath, fieldKey });
+    const response = await fetch(`/api/project/metadata-schema?${params.toString()}`);
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(
+            getApiErrorMessage(errorBody, "Failed to enumerate field values."),
+        );
+    }
+    const data = (await response.json()) as { values: FieldValueEntry[] };
+    return data.values;
 }

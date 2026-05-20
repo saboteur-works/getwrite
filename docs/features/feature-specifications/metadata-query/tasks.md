@@ -504,7 +504,7 @@ schema in one transaction under `withMetaLock`.
   currently writes without showing effects
 - `09-current-state.md` § Schema Manager — lists what SchemaManager
   does NOT implement (migration preview)
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 23: SchemaManager migration preview — updateFieldOptions
 

@@ -8,18 +8,19 @@ import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
     selectActiveProjectMetadataSchema,
     selectSelectedProjectId,
+    selectActiveProjectRootPath,
     addMetadataField,
     removeMetadataField,
     reorderMetadataFields,
     renameMetadataField,
     updateMetadataFieldOptions,
-    changeMetadataFieldType,
     addMetadataGroup,
     removeMetadataGroup,
     reorderMetadataGroups,
     renameMetadataFieldKey,
     updateMetadataRefProperties,
 } from "../../src/store/projectsSlice";
+import MigrationPreview from "./MigrationPreview";
 import type { Folder, MetadataFieldType } from "../../src/lib/models/types";
 import { slugifyName, deriveLabel } from "../../src/lib/models/field-dedup";
 import ConfirmDialog from "../common/ConfirmDialog";
@@ -53,6 +54,14 @@ interface KeyEditTarget {
     fieldLabel: string;
 }
 
+interface TypeChangeRequest {
+    groupId: string;
+    fieldKey: string;
+    fieldLabel: string;
+    oldType: MetadataFieldType;
+    newType: MetadataFieldType;
+}
+
 interface KeyRenameConfirm {
     groupId: string;
     oldKey: string;
@@ -82,12 +91,14 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
     const dispatch = useAppDispatch();
     const schema = useAppSelector(selectActiveProjectMetadataSchema);
     const projectId = useAppSelector(selectSelectedProjectId);
+    const projectPath = useAppSelector(selectActiveProjectRootPath);
     const folders = useAppSelector(
         (state) => (state.resources as unknown as { folders: Folder[] }).folders,
     );
 
     const [deleteTarget, setDeleteTarget] = React.useState<DeleteTarget | null>(null);
     const [editTarget, setEditTarget] = React.useState<EditTarget | null>(null);
+    const [typeChangeRequest, setTypeChangeRequest] = React.useState<TypeChangeRequest | null>(null);
     const [editValue, setEditValue] = React.useState<string>("");
     const [optionsEdits, setOptionsEdits] = React.useState<Record<string, string>>({});
     const [keyEditTarget, setKeyEditTarget] = React.useState<KeyEditTarget | null>(null);
@@ -650,14 +661,15 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
                                                             value={field.type}
                                                             onChange={(e) => {
                                                                 if (!projectId) return;
-                                                                void dispatch(
-                                                                    changeMetadataFieldType({
-                                                                        projectId,
-                                                                        groupId: group.id,
-                                                                        fieldKey: field.key,
-                                                                        newType: e.target.value as MetadataFieldType,
-                                                                    }),
-                                                                );
+                                                                const newType = e.target.value as MetadataFieldType;
+                                                                if (newType === field.type) return;
+                                                                setTypeChangeRequest({
+                                                                    groupId: group.id,
+                                                                    fieldKey: field.key,
+                                                                    fieldLabel: field.label,
+                                                                    oldType: field.type,
+                                                                    newType,
+                                                                });
                                                             }}
                                                             className="shrink-0 rounded border border-gw-border bg-transparent px-1.5 py-0.5 font-mono text-[10px] text-gw-secondary focus:outline-none focus:ring-1 focus:ring-gw-border"
                                                             aria-label={`Field type for ${field.label}`}
@@ -963,6 +975,21 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
                     </Button>
                 </div>
             </div>
+
+            {/* Type change migration preview */}
+            {typeChangeRequest !== null && projectPath !== null && projectId !== null && (
+                <MigrationPreview
+                    fieldKey={typeChangeRequest.fieldKey}
+                    fieldLabel={typeChangeRequest.fieldLabel}
+                    oldType={typeChangeRequest.oldType}
+                    newType={typeChangeRequest.newType}
+                    projectPath={projectPath}
+                    projectId={projectId}
+                    groupId={typeChangeRequest.groupId}
+                    onCancel={() => setTypeChangeRequest(null)}
+                    onApplied={() => setTypeChangeRequest(null)}
+                />
+            )}
 
             {/* Deletion confirmation */}
             <ConfirmDialog

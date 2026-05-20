@@ -13,6 +13,7 @@ import path from "node:path";
 import { acquireLock } from "./locks";
 import { PROJECT_FILENAME } from "./project-config";
 import { readSidecar, writeSidecar } from "./sidecar";
+import { canonicalValueKey } from "./field-values";
 import { DEFAULT_METADATA_SCHEMA } from "./default-metadata-schema";
 import type {
     Project,
@@ -23,6 +24,14 @@ import type {
     MetadataValue,
     UUID,
 } from "./types";
+
+// ─── Type migration types ─────────────────────────────────────────────────────
+
+export interface TypeMigrationEntry {
+    action: "keep" | "clear" | "normalize";
+    /** The replacement value when action is "normalize". */
+    normalizedTo?: string;
+}
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
@@ -483,6 +492,81 @@ export async function changeFieldType(
     }
 }
 
+async function migrateFieldTypeInSidecars(
+    projectRoot: string,
+    fieldKey: string,
+    migrations: Record<string, TypeMigrationEntry>,
+): Promise<void> {
+    if (Object.keys(migrations).length === 0) return;
+    const metaDir = path.join(projectRoot, "meta");
+    let entries: string[];
+    try {
+        entries = await fs.readdir(metaDir);
+    } catch {
+        return;
+    }
+    for (const entry of entries) {
+        if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) continue;
+        const resourceId = entry.slice("resource-".length, -".meta.json".length) as UUID;
+        const sidecar = await readSidecar(projectRoot, resourceId);
+        if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null) continue;
+        const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
+        const migration = migrations[key];
+        if (!migration || migration.action === "keep") continue;
+        if (migration.action === "clear") {
+            delete sidecar[fieldKey];
+        } else if (migration.action === "normalize" && migration.normalizedTo !== undefined) {
+            sidecar[fieldKey] = migration.normalizedTo;
+        }
+        await writeSidecar(projectRoot, resourceId, sidecar);
+    }
+}
+
+/**
+ * Changes a field's type and atomically migrates sidecar values according to
+ * the provided resolution map, then updates the schema under `acquireLock`.
+ *
+ * For `select` / `multiselect` types, `newOptions` replaces (or initialises)
+ * `field.options`. For all other types, `field.options` is removed.
+ *
+ * Each entry in `migrations` is keyed by `canonicalValueKey(value)`:
+ * - `"keep"` — leave the sidecar value unchanged
+ * - `"clear"` — delete the field key from the sidecar
+ * - `"normalize"` — replace the value with `entry.normalizedTo`
+ *
+ * Throws if the group or field does not exist, or if the field is locked.
+ */
+export async function changeFieldTypeWithMigration(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+    newType: MetadataFieldType,
+    newOptions: string[],
+    migrations: Record<string, TypeMigrationEntry>,
+): Promise<MetadataSchema> {
+    const release = await acquireLock(projectRoot);
+    let schema: MetadataSchema;
+    try {
+        const project = await readProject(projectRoot);
+        schema = getOrInitSchema(project);
+        const group = findGroup(schema, groupId);
+        const field = group.fields.find((f) => f.key === fieldKey);
+        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+        if (field.locked) throw new Error(`Cannot change type of locked field: "${fieldKey}"`);
+        field.type = newType;
+        if (newType === "select" || newType === "multiselect") {
+            field.options = newOptions;
+        } else {
+            delete field.options;
+        }
+        await writeProject(projectRoot, project);
+    } finally {
+        release();
+    }
+    await migrateFieldTypeInSidecars(projectRoot, fieldKey, migrations);
+    return schema;
+}
+
 /**
  * Renames the key of a field in the schema and migrates all sidecar values
  * that reference the old key to the new key project-wide.
@@ -522,6 +606,7 @@ const metadataSchema = {
     updateFieldOptions,
     updateRefProperties,
     changeFieldType,
+    changeFieldTypeWithMigration,
     addGroup,
     removeGroup,
     reorderGroups,
