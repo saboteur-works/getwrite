@@ -79,6 +79,7 @@ function renderSmartFolders(
     savedQueries: Record<string, SavedQuery> = {},
     selectedQueryId?: string,
     onSelect = vi.fn(),
+    extras: Partial<React.ComponentProps<typeof SmartFolders>> = {},
 ) {
     const store = makeStore(savedQueries);
     return render(
@@ -86,6 +87,7 @@ function renderSmartFolders(
             <SmartFolders
                 selectedQueryId={selectedQueryId}
                 onSelect={onSelect}
+                {...extras}
             />
         </Provider>,
     );
@@ -133,6 +135,59 @@ describe("SmartFolders", () => {
         renderSmartFolders({ [QUERY_A.id]: QUERY_A }, QUERY_B.id);
         const btn = screen.getByText("All drafts").closest("button");
         expect(btn?.className).not.toContain("selected");
+    });
+
+    it("renders nothing when no queries and onNewQuery not provided", () => {
+        renderSmartFolders({});
+        expect(screen.queryByText(/smart folders/i)).toBeNull();
+    });
+
+    it("renders the section header when no queries but onNewQuery is provided", () => {
+        renderSmartFolders({}, undefined, vi.fn(), { onNewQuery: vi.fn() });
+        expect(screen.getByText(/smart folders/i)).toBeTruthy();
+    });
+
+    it("calls onNewQuery when + button is clicked", () => {
+        const onNewQuery = vi.fn();
+        renderSmartFolders({}, undefined, vi.fn(), { onNewQuery });
+        fireEvent.click(screen.getByRole("button", { name: /new smart folder/i }));
+        expect(onNewQuery).toHaveBeenCalledOnce();
+    });
+
+    it("renders edit button for each row when onEditQuery is provided", () => {
+        const onEditQuery = vi.fn();
+        renderSmartFolders(
+            { [QUERY_A.id]: QUERY_A, [QUERY_B.id]: QUERY_B },
+            undefined,
+            vi.fn(),
+            { onEditQuery },
+        );
+        expect(screen.getAllByRole("button", { name: /^Edit /i })).toHaveLength(2);
+    });
+
+    it("calls onEditQuery with the query when edit button is clicked", () => {
+        const onEditQuery = vi.fn();
+        renderSmartFolders({ [QUERY_A.id]: QUERY_A }, undefined, vi.fn(), { onEditQuery });
+        fireEvent.click(screen.getByRole("button", { name: `Edit ${QUERY_A.name}` }));
+        expect(onEditQuery).toHaveBeenCalledWith(QUERY_A);
+    });
+
+    it("renders delete button for each row when onDeleteQuery is provided", () => {
+        const onDeleteQuery = vi.fn();
+        renderSmartFolders(
+            { [QUERY_A.id]: QUERY_A, [QUERY_B.id]: QUERY_B },
+            undefined,
+            vi.fn(),
+            { onDeleteQuery },
+        );
+        expect(screen.getAllByRole("button", { name: /^Delete /i })).toHaveLength(2);
+    });
+
+    it("calls onDeleteQuery with the queryId when delete button is clicked", () => {
+        const onDeleteQuery = vi.fn();
+        renderSmartFolders({ [QUERY_A.id]: QUERY_A }, undefined, vi.fn(), { onDeleteQuery });
+        fireEvent.click(screen.getByRole("button", { name: `Delete ${QUERY_A.name}` }));
+        expect(onDeleteQuery).toHaveBeenCalledWith(QUERY_A.id);
     });
 
     it("shows loading state while queries are loading", () => {

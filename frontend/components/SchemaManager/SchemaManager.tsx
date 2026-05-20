@@ -466,14 +466,13 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
                             <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-gw-secondary">
                                 Create a new field
                             </span>
-                            <button
-                                type="button"
+                            <Button
+                                variant="ghost"
                                 onClick={() => setPrefillVisible(false)}
-                                className="text-gw-dim transition-colors duration-150 hover:text-gw-secondary"
                                 aria-label="Dismiss create field form"
                             >
                                 <X size={13} aria-hidden="true" />
-                            </button>
+                            </Button>
                         </div>
 
                         <div className="flex flex-col gap-2">
@@ -1007,18 +1006,18 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
 
                                 {/* Add field within group */}
                                 <div className="border-t border-gw-border px-4 py-2">
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
                                         onClick={() =>
                                             handleAddFieldInGroup(group.id)
                                         }
                                         disabled={!projectId}
-                                        className="flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.12em] text-gw-secondary transition-colors duration-150 hover:text-gw-primary disabled:cursor-not-allowed disabled:opacity-40"
                                         aria-label={`Add field to ${group.label}`}
                                     >
                                         <Plus size={12} aria-hidden="true" />
                                         Add field
-                                    </button>
+                                    </Button>
                                 </div>
                             </Card>
                         );

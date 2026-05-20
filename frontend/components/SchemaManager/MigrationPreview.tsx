@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Button from "../common/UI/Button/Button";
 import { useAppDispatch } from "../../src/store/hooks";
 import { changeMetadataFieldTypeWithMigration } from "../../src/store/projectsSlice";
 import { fetchFieldValues } from "../../src/store/metadata-schema-transport-service";
@@ -280,22 +281,22 @@ export default function MigrationPreview({
 
                 {/* Footer */}
                 <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gw-border flex-shrink-0">
-                    <button
-                        type="button"
-                        className="font-mono text-[10px] uppercase tracking-[0.12em] text-gw-dim hover:text-gw-secondary transition-colors duration-150 disabled:opacity-40"
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={onCancel}
                         disabled={applying}
                     >
                         Cancel
-                    </button>
-                    <button
-                        type="button"
-                        className="font-mono text-[10px] uppercase tracking-[0.12em] border border-gw-border text-gw-secondary hover:border-gw-border-md hover:text-gw-primary px-3 py-1 rounded-sm transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => { void handleApply(); }}
                         disabled={applying || loading || Boolean(fetchError)}
                     >
                         {applying ? "Applying…" : "Apply migration"}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

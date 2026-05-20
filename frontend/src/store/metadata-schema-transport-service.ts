@@ -281,6 +281,6 @@ export async function fetchFieldValues(
             getApiErrorMessage(errorBody, "Failed to enumerate field values."),
         );
     }
-    const data = (await response.json()) as { values: FieldValueEntry[] };
-    return data.values;
+    const data = (await response.json()) as { values?: FieldValueEntry[] };
+    return data.values ?? [];
 }

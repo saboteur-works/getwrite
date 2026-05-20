@@ -2,6 +2,8 @@
 
 import React from "react";
 import Button from "../common/UI/Button/Button";
+import Input from "../common/UI/Input/Input";
+import Select from "../common/UI/Select/Select";
 import {
     Dialog,
     DialogContent,
@@ -111,15 +113,14 @@ export default function SaveQueryDialog({
                         >
                             Name
                         </label>
-                        <input
+                        <Input
                             id="save-query-name"
-                            type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g. Draft chapters"
                             autoFocus
                             disabled={isSaving}
-                            className="w-full rounded border border-gw-border bg-transparent px-3 py-2 font-mono text-[11px] text-gw-primary placeholder:text-gw-dim focus:outline-none focus:ring-1 focus:ring-gw-border-md disabled:opacity-50"
+                            className="w-full font-mono text-[11px]"
                         />
                     </div>
 
@@ -131,17 +132,17 @@ export default function SaveQueryDialog({
                             Default view{" "}
                             <span className="normal-case text-gw-dim">(optional)</span>
                         </label>
-                        <select
+                        <Select
                             id="save-query-view"
                             value={viewKind}
                             onChange={(e) => setViewKind(e.target.value)}
                             disabled={isSaving}
-                            className="w-full rounded border border-gw-border bg-gw-chrome2 px-3 py-2 font-mono text-[11px] text-gw-primary focus:outline-none focus:ring-1 focus:ring-gw-border-md disabled:opacity-50"
+                            className="w-full font-mono text-[11px]"
                         >
                             <option value="">None</option>
                             <option value="list">List</option>
                             <option value="table">Table</option>
-                        </select>
+                        </Select>
                     </div>
 
                     {displayError && (

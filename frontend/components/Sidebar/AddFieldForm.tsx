@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Button from "../common/UI/Button/Button";
 import { useAppDispatch } from "../../src/store/hooks";
 import { addMetadataField } from "../../src/store/projectsSlice";
 import type { MetadataFieldType, MetadataSchema } from "../../src/lib/models/types";
@@ -314,21 +315,22 @@ export default function AddFieldForm({
                 )}
 
                 <div className="flex items-center justify-end gap-2">
-                    <button
-                        type="button"
-                        className="text-[10px] font-mono uppercase tracking-[0.12em] text-gw-dim hover:text-gw-secondary transition-colors duration-150 disabled:opacity-40"
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={onCancel}
                         disabled={submitting}
                     >
                         Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="submit"
-                        className="text-[10px] font-mono uppercase tracking-[0.12em] border border-gw-border text-gw-secondary hover:border-gw-border-md hover:text-gw-primary px-2 py-0.5 rounded-sm transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                        variant="secondary"
+                        size="sm"
                         disabled={submitting || (!isExactMatch && !slug)}
                     >
                         {submitting ? "Adding…" : isExactMatch ? "Go to field" : "Add"}
-                    </button>
+                    </Button>
                 </div>
             </form>
         </div>
