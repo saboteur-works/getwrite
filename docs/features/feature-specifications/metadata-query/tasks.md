@@ -128,7 +128,7 @@ task 8.
   dispatch table (resource record vs. sidecar vs. config vs. backlinks)
 - `09-current-state.md` § Indexing pipeline — `inverted-index.ts`
   `search()` interface to delegate `contains` / `matches`
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 6: Saved-query persistence module
 
