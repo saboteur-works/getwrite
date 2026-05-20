@@ -125,6 +125,7 @@ export const MetadataFieldSchema = z.object({
     label: z.string(),
     type: MetadataFieldTypeSchema,
     locked: z.boolean().optional(),
+    deprecated: z.boolean().optional(),
     options: z.array(z.string()).optional(),
     multiple: z.boolean().optional(),
     /** Scopes autocomplete candidates to resources in this folder (by folder id). */

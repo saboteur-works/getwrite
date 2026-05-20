@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { writeSidecar } from "../../src/lib/models/sidecar";
-import { changeFieldTypeWithMigration, updateFieldOptionsWithMigration } from "../../src/lib/models/metadata-schema";
+import { changeFieldTypeWithMigration, updateFieldOptionsWithMigration, clearField } from "../../src/lib/models/metadata-schema";
 import type { MetadataField, MetadataSchema } from "../../src/lib/models/types";
 import { generateUUID } from "../../src/lib/models/uuid";
 
@@ -395,5 +395,56 @@ describe("updateFieldOptionsWithMigration", () => {
             dir, GROUP_ID, "genre", ["fantasy"], {},
         );
         expect(schema.groups[0].fields[0].options).toEqual(["fantasy"]);
+    });
+});
+
+// ─── clearField ───────────────────────────────────────────────────────────────
+
+describe("clearField", () => {
+    it("removes the field from the schema", async () => {
+        const dir = await makeTmpProject(simpleSchema());
+        const schema = await clearField(dir, GROUP_ID, "tone");
+        const group = schema.groups.find((g) => g.id === GROUP_ID)!;
+        expect(group.fields.map((f) => f.key)).not.toContain("tone");
+    });
+
+    it("deletes the field key from all sidecars", async () => {
+        const dir = await makeTmpProject(simpleSchema());
+        const id1 = generateUUID();
+        const id2 = generateUUID();
+        await writeSidecar(dir, id1, { tone: "ominous", other: "keep" });
+        await writeSidecar(dir, id2, { tone: "hopeful" });
+
+        await clearField(dir, GROUP_ID, "tone");
+
+        const s1 = await readSidecarRaw(dir, id1);
+        const s2 = await readSidecarRaw(dir, id2);
+        expect(s1["tone"]).toBeUndefined();
+        expect(s1["other"]).toBe("keep");
+        expect(s2["tone"]).toBeUndefined();
+    });
+
+    it("leaves sidecars without the field key untouched", async () => {
+        const dir = await makeTmpProject(simpleSchema());
+        const id = generateUUID();
+        await writeSidecar(dir, id, { unrelated: "value" });
+
+        await clearField(dir, GROUP_ID, "tone");
+
+        const sidecar = await readSidecarRaw(dir, id);
+        expect(sidecar["unrelated"]).toBe("value");
+    });
+
+    it("handles no sidecars gracefully", async () => {
+        const dir = await makeTmpProject(simpleSchema());
+        const schema = await clearField(dir, GROUP_ID, "tone");
+        expect(schema.groups[0].fields.map((f) => f.key)).not.toContain("tone");
+    });
+
+    it("throws when the field does not exist", async () => {
+        const dir = await makeTmpProject(simpleSchema());
+        await expect(
+            clearField(dir, GROUP_ID, "nonexistent"),
+        ).rejects.toThrow(/Field not found/);
     });
 });

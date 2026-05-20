@@ -19,6 +19,8 @@ import { NextRequest, NextResponse } from "next/server";
 import {
     addField,
     removeField,
+    deprecateField,
+    clearField,
     reorderFields,
     renameField,
     updateFieldOptions,
@@ -55,6 +57,20 @@ interface AddFieldRequest {
 
 interface RemoveFieldRequest {
     action: "remove-field";
+    projectPath: string;
+    groupId: string;
+    fieldKey: string;
+}
+
+interface DeprecateFieldRequest {
+    action: "deprecate-field";
+    projectPath: string;
+    groupId: string;
+    fieldKey: string;
+}
+
+interface ClearFieldRequest {
+    action: "clear-field";
     projectPath: string;
     groupId: string;
     fieldKey: string;
@@ -152,6 +168,8 @@ interface UpdateFieldOptionsWithMigrationRequest {
 type MetadataSchemaRequestBody =
     | AddFieldRequest
     | RemoveFieldRequest
+    | DeprecateFieldRequest
+    | ClearFieldRequest
     | ReorderFieldsRequest
     | RenameFieldRequest
     | UpdateFieldOptionsRequest
@@ -215,6 +233,24 @@ export async function POST(
 
         if (body.action === "remove-field") {
             const schema = await removeField(
+                body.projectPath,
+                body.groupId,
+                body.fieldKey,
+            );
+            return NextResponse.json({ schema });
+        }
+
+        if (body.action === "deprecate-field") {
+            const schema = await deprecateField(
+                body.projectPath,
+                body.groupId,
+                body.fieldKey,
+            );
+            return NextResponse.json({ schema });
+        }
+
+        if (body.action === "clear-field") {
+            const schema = await clearField(
                 body.projectPath,
                 body.groupId,
                 body.fieldKey,

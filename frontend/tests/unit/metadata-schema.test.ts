@@ -14,6 +14,7 @@ import {
     getSchema,
     addField,
     removeField,
+    deprecateField,
     reorderFields,
     renameField,
     updateFieldOptions,
@@ -154,6 +155,56 @@ describe("removeField", () => {
         const { dir } = await makeTmpProject(baseSchema());
         await expect(
             removeField(dir, "bad-group", "my-field"),
+        ).rejects.toThrow(/Group not found/);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// deprecateField
+// ---------------------------------------------------------------------------
+
+describe("deprecateField", () => {
+    it("sets deprecated: true on an unlocked field", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        const schema = await deprecateField(dir, GROUP_ID, "my-field");
+        const group = schema.groups.find((g) => g.id === GROUP_ID)!;
+        const field = group.fields.find((f) => f.key === "my-field")!;
+        expect(field.deprecated).toBe(true);
+    });
+
+    it("persists the deprecated flag to disk", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await deprecateField(dir, GROUP_ID, "my-field");
+        const schema = await getSchema(dir);
+        const field = schema.groups[0].fields.find((f) => f.key === "my-field")!;
+        expect(field.deprecated).toBe(true);
+    });
+
+    it("keeps the field in the schema (does not remove it)", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        const schema = await deprecateField(dir, GROUP_ID, "my-field");
+        const group = schema.groups.find((g) => g.id === GROUP_ID)!;
+        expect(group.fields.map((f) => f.key)).toContain("my-field");
+    });
+
+    it("throws when trying to deprecate a locked field", async () => {
+        const { dir } = await makeTmpProject(baseSchema(LOCKED_FIELD));
+        await expect(
+            deprecateField(dir, GROUP_ID, "locked-field"),
+        ).rejects.toThrow(/locked/i);
+    });
+
+    it("throws when the field does not exist", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await expect(
+            deprecateField(dir, GROUP_ID, "nonexistent"),
+        ).rejects.toThrow(/Field not found/);
+    });
+
+    it("throws when the group does not exist", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await expect(
+            deprecateField(dir, "bad-group", "my-field"),
         ).rejects.toThrow(/Group not found/);
     });
 });

@@ -193,6 +193,84 @@ export async function removeField(
 }
 
 /**
+ * Marks a field as deprecated by setting `deprecated: true`.
+ *
+ * Deprecated fields are hidden from the metadata sidebar but remain queryable
+ * in the chip UI (with a muted badge). Sidecar values are preserved untouched.
+ *
+ * Throws if:
+ * - the group does not exist
+ * - the field does not exist in the group
+ * - the field has `locked: true`
+ */
+export async function deprecateField(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+): Promise<MetadataSchema> {
+    const release = await acquireLock(projectRoot);
+    try {
+        const project = await readProject(projectRoot);
+        const schema = getOrInitSchema(project);
+        const group = findGroup(schema, groupId);
+        const field = group.fields.find((f) => f.key === fieldKey);
+        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+        if (field.locked) {
+            throw new Error(`Cannot deprecate locked field: "${fieldKey}"`);
+        }
+        field.deprecated = true;
+        await writeProject(projectRoot, project);
+        return schema;
+    } finally {
+        release();
+    }
+}
+
+async function clearFieldFromSidecars(
+    projectRoot: string,
+    fieldKey: string,
+): Promise<void> {
+    const metaDir = path.join(projectRoot, "meta");
+    let entries: string[];
+    try {
+        entries = await fs.readdir(metaDir);
+    } catch {
+        return;
+    }
+    for (const entry of entries) {
+        if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) continue;
+        const resourceId = entry.slice("resource-".length, -".meta.json".length) as UUID;
+        const sidecar = await readSidecar(projectRoot, resourceId);
+        if (!sidecar || !(fieldKey in sidecar)) continue;
+        delete sidecar[fieldKey];
+        await writeSidecar(projectRoot, resourceId, sidecar);
+    }
+}
+
+/**
+ * Removes a field from the schema and deletes its key from every sidecar
+ * project-wide. The schema update runs under the project lock; sidecar
+ * migration runs after the lock is released.
+ *
+ * This is a destructive, irreversible operation — all stored values for the
+ * field key are permanently deleted.
+ *
+ * Throws if:
+ * - the group does not exist
+ * - the field does not exist in the group
+ * - the field has `locked: true`
+ */
+export async function clearField(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+): Promise<MetadataSchema> {
+    const schema = await removeField(projectRoot, groupId, fieldKey);
+    await clearFieldFromSidecars(projectRoot, fieldKey);
+    return schema;
+}
+
+/**
  * Reorders the fields within a group to match `newKeyOrder`.
  *
  * `newKeyOrder` must contain exactly the same keys as the group's current
@@ -708,6 +786,8 @@ const metadataSchema = {
     getSchema,
     addField,
     removeField,
+    deprecateField,
+    clearField,
     reorderFields,
     renameField,
     updateFieldOptions,

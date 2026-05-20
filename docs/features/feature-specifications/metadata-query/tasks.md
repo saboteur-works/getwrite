@@ -551,7 +551,7 @@ the key; both reflected in the picker.
   badge in the schema manager field list
 - `05-schema-layer.md` § Schema evolution — `removeField` current
   behavior (hard-delete, orphaned sidecar values)
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 25: Save-query dialog
 

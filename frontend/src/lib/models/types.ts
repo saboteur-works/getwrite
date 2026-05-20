@@ -101,6 +101,8 @@ export interface MetadataField {
     type: MetadataFieldType;
     /** Locked fields cannot be removed or have their key renamed. */
     locked?: boolean;
+    /** When true, the field is hidden from the sidebar but remains queryable; sidecar values are preserved. */
+    deprecated?: boolean;
     /** Allowed values for `select` / `multiselect` types. */
     options?: string[];
     /** When true, a `resource-ref` field stores an array of refs. */

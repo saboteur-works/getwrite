@@ -86,6 +86,32 @@ export async function postRemoveField(
     });
 }
 
+export async function postDeprecateField(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+): Promise<MetadataSchema> {
+    return postToMetadataSchemaRoute({
+        action: "deprecate-field",
+        projectPath: context.projectPath,
+        groupId,
+        fieldKey,
+    });
+}
+
+export async function postClearField(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+): Promise<MetadataSchema> {
+    return postToMetadataSchemaRoute({
+        action: "clear-field",
+        projectPath: context.projectPath,
+        groupId,
+        fieldKey,
+    });
+}
+
 export async function postReorderFields(
     context: MetadataSchemaRequestContext,
     groupId: string,

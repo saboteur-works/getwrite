@@ -20,6 +20,8 @@ import {
     resolveMetadataSchemaRequestContext,
     postAddField,
     postRemoveField,
+    postDeprecateField,
+    postClearField,
     postReorderFields,
     postRenameField,
     postUpdateFieldOptions,
@@ -144,6 +146,52 @@ export const removeMetadataField = createAsyncThunk<
         }
         try {
             const schema = await postRemoveField(context, groupId, fieldKey);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const deprecateMetadataField = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; fieldKey: string },
+    { state: any; rejectValue: string }
+>(
+    "projects/deprecateMetadataField",
+    async ({ projectId, groupId, fieldKey }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postDeprecateField(context, groupId, fieldKey);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const clearMetadataField = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; fieldKey: string },
+    { state: any; rejectValue: string }
+>(
+    "projects/clearMetadataField",
+    async ({ projectId, groupId, fieldKey }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postClearField(context, groupId, fieldKey);
             return { projectId, schema };
         } catch (error) {
             return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
@@ -614,6 +662,8 @@ const projectsSlice = createSlice({
         const schemaThunks = [
             addMetadataField,
             removeMetadataField,
+            deprecateMetadataField,
+            clearMetadataField,
             reorderMetadataFields,
             renameMetadataField,
             updateMetadataFieldOptions,

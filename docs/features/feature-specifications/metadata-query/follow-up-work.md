@@ -51,3 +51,25 @@ update the "dispatches updateMetadataFieldOptions" test to use a scenario where 
 options are removed (e.g., `"Fantasy\nSci-Fi\nHorror\n"` — adding Horror without
 removing anything), and add a separate test for the options-removal preview path that
 verifies `OptionsRemovalPreview` is rendered when options are removed.
+
+---
+
+## Task 24: SchemaManager deprecate-vs-clear on removeField (completed 2026-05-20)
+
+### Affected-resource count not shown in DeprecateOrClearDialog
+
+The spec mockup shows the count of affected sidecars in the Clear option description (e.g., "Remove the field key from all 23 sidecars"). The current implementation omits this count.
+
+**Why deferred:** Showing the count requires an async API call (`fetchFieldValues`) before the dialog opens, which adds complexity. The "Done when" criteria does not require the count. The dialog still conveys the destructive nature of Clear without it.
+
+**Recommended action:** When the trash icon is clicked on a field, call `fetchFieldValues(projectPath, fieldKey)` to count non-null values (i.e., `entry.count` for any key that isn't `MISSING_VALUE_KEY`). Pass this count to `DeprecateOrClearDialog` as an optional `affectedCount?: number` prop and render it in the Clear description.
+
+### schemaManager.test.tsx — deprecate/clear dialog not covered
+
+The existing `schemaManager.test.tsx` suite is blocked by the pre-existing `DialogTitle`/`Dialog` context issue (see Task 23 follow-up). The new `DeprecateOrClearDialog` is not yet covered by component tests.
+
+**Recommended action:** Once the DialogTitle issue is fixed, add tests that:
+1. Click the trash icon on an unlocked field and verify `DeprecateOrClearDialog` renders.
+2. Select "Deprecate" and confirm — verify `deprecateMetadataField` is dispatched.
+3. Select "Clear" and confirm — verify `clearMetadataField` is dispatched.
+4. Click Cancel — verify neither thunk is dispatched.

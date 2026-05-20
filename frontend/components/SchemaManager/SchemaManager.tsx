@@ -11,6 +11,8 @@ import {
     selectActiveProjectRootPath,
     addMetadataField,
     removeMetadataField,
+    deprecateMetadataField,
+    clearMetadataField,
     reorderMetadataFields,
     renameMetadataField,
     updateMetadataFieldOptions,
@@ -22,6 +24,7 @@ import {
 } from "../../src/store/projectsSlice";
 import MigrationPreview from "./MigrationPreview";
 import OptionsRemovalPreview from "./OptionsRemovalPreview";
+import DeprecateOrClearDialog from "./DeprecateOrClearDialog";
 import type { Folder, MetadataFieldType } from "../../src/lib/models/types";
 import { slugifyName, deriveLabel } from "../../src/lib/models/field-dedup";
 import ConfirmDialog from "../common/ConfirmDialog";
@@ -40,9 +43,13 @@ const FIELD_TYPE_LABELS: Record<MetadataFieldType, string> = {
     "multi-resource-ref": "Multi Ref",
 };
 
-type DeleteTarget =
-    | { type: "field"; groupId: string; fieldKey: string; label: string }
-    | { type: "group"; groupId: string; label: string };
+type DeleteTarget = { type: "group"; groupId: string; label: string };
+
+interface FieldRemoveTarget {
+    groupId: string;
+    fieldKey: string;
+    label: string;
+}
 
 interface EditTarget {
     groupId: string;
@@ -107,6 +114,7 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
     );
 
     const [deleteTarget, setDeleteTarget] = React.useState<DeleteTarget | null>(null);
+    const [fieldRemoveTarget, setFieldRemoveTarget] = React.useState<FieldRemoveTarget | null>(null);
     const [editTarget, setEditTarget] = React.useState<EditTarget | null>(null);
     const [typeChangeRequest, setTypeChangeRequest] = React.useState<TypeChangeRequest | null>(null);
     const [optionsRemovalRequest, setOptionsRemovalRequest] = React.useState<OptionsRemovalRequest | null>(null);
@@ -297,23 +305,43 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
             setDeleteTarget(null);
             return;
         }
-        if (deleteTarget.type === "field") {
-            void dispatch(
-                removeMetadataField({
-                    projectId,
-                    groupId: deleteTarget.groupId,
-                    fieldKey: deleteTarget.fieldKey,
-                }),
-            );
-        } else {
-            void dispatch(
-                removeMetadataGroup({
-                    projectId,
-                    groupId: deleteTarget.groupId,
-                }),
-            );
-        }
+        void dispatch(
+            removeMetadataGroup({
+                projectId,
+                groupId: deleteTarget.groupId,
+            }),
+        );
         setDeleteTarget(null);
+    }
+
+    function handleFieldDeprecate(): void {
+        if (!fieldRemoveTarget || !projectId) {
+            setFieldRemoveTarget(null);
+            return;
+        }
+        void dispatch(
+            deprecateMetadataField({
+                projectId,
+                groupId: fieldRemoveTarget.groupId,
+                fieldKey: fieldRemoveTarget.fieldKey,
+            }),
+        );
+        setFieldRemoveTarget(null);
+    }
+
+    function handleFieldClear(): void {
+        if (!fieldRemoveTarget || !projectId) {
+            setFieldRemoveTarget(null);
+            return;
+        }
+        void dispatch(
+            clearMetadataField({
+                projectId,
+                groupId: fieldRemoveTarget.groupId,
+                fieldKey: fieldRemoveTarget.fieldKey,
+            }),
+        );
+        setFieldRemoveTarget(null);
     }
 
     function moveField(
@@ -718,6 +746,13 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
                                                         </span>
                                                     ) : null}
 
+                                                    {/* Deprecated badge */}
+                                                    {field.deprecated ? (
+                                                        <span className="shrink-0 rounded border border-gw-border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.10em] text-gw-dim opacity-70">
+                                                            deprecated
+                                                        </span>
+                                                    ) : null}
+
                                                     {/* Move up */}
                                                     <Button
                                                         variant="ghost"
@@ -758,20 +793,19 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
                                                         />
                                                     </Button>
 
-                                                    {/* Delete — only for non-locked fields */}
+                                                    {/* Remove — only for non-locked fields */}
                                                     {!field.locked ? (
                                                         <Button
                                                             variant="ghost"
                                                             className="shrink-0"
                                                             onClick={() =>
-                                                                setDeleteTarget({
-                                                                    type: "field",
+                                                                setFieldRemoveTarget({
                                                                     groupId: group.id,
                                                                     fieldKey: field.key,
                                                                     label: field.label,
                                                                 })
                                                             }
-                                                            aria-label={`Delete ${field.label}`}
+                                                            aria-label={`Remove ${field.label}`}
                                                         >
                                                             <Trash2
                                                                 size={13}
@@ -1036,19 +1070,20 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
                 />
             )}
 
-            {/* Deletion confirmation */}
+            {/* Field remove dialog — Deprecate or Clear */}
+            <DeprecateOrClearDialog
+                isOpen={fieldRemoveTarget !== null}
+                fieldLabel={fieldRemoveTarget?.label ?? ""}
+                onDeprecate={handleFieldDeprecate}
+                onClear={handleFieldClear}
+                onCancel={() => setFieldRemoveTarget(null)}
+            />
+
+            {/* Group deletion confirmation */}
             <ConfirmDialog
                 isOpen={deleteTarget !== null}
-                title={
-                    deleteTarget?.type === "field"
-                        ? `Delete "${deleteTarget.label}"?`
-                        : `Delete group "${deleteTarget?.label}"?`
-                }
-                description={
-                    deleteTarget?.type === "field"
-                        ? "Existing sidecar values for this field key will remain on disk but will no longer appear in the sidebar."
-                        : "All fields in this group will be removed."
-                }
+                title={`Delete group "${deleteTarget?.label}"?`}
+                description="All fields in this group will be removed."
                 confirmLabel="Delete"
                 cancelLabel="Cancel"
                 onConfirm={confirmDeleteTarget}

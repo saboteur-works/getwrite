@@ -22,6 +22,8 @@ export interface FieldPickerField {
     folderScope?: string;
     /** Options for select / multiselect field types. */
     options?: string[];
+    /** When true, the field is deprecated: queryable but rendered muted with a badge. */
+    deprecated?: boolean;
 }
 
 export interface FieldPickerProps {
@@ -78,6 +80,7 @@ export function buildFieldPickerFields(schema?: MetadataSchema): FieldPickerFiel
                 source: isBuiltin ? "builtin" : "project",
                 folderScope,
                 options: field.options,
+                deprecated: field.deprecated,
             });
         }
     }
@@ -254,11 +257,12 @@ export default function FieldPicker({
                                         role="option"
                                         aria-selected={field.key === value}
                                         tabIndex={0}
-                                        className={
+                                        className={[
                                             field.key === value
                                                 ? "field-picker__item field-picker__item--selected"
-                                                : "field-picker__item"
-                                        }
+                                                : "field-picker__item",
+                                            field.deprecated ? "field-picker__item--deprecated" : "",
+                                        ].join(" ").trim()}
                                         onClick={() => handleSelect(field)}
                                         onKeyDown={(e) => {
                                             if (
@@ -277,6 +281,11 @@ export default function FieldPicker({
                                             {field.folderScope && (
                                                 <span className="field-picker__scope">
                                                     {field.folderScope}
+                                                </span>
+                                            )}
+                                            {field.deprecated && (
+                                                <span className="field-picker__badge field-picker__badge--deprecated">
+                                                    deprecated
                                                 </span>
                                             )}
                                             <span
