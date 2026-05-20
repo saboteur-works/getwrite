@@ -310,11 +310,13 @@ export default function AppShell({
         if (selectedResource?.type === "text") {
             setView((current) => (current === "organizer" ? "edit" : current));
             setActiveSmartFolderId(null);
+            setQueryBuilderOpen(false);
         } else if (selectedResource?.type === "folder") {
             setView((current) =>
                 current === "edit" || current === "diff" ? "organizer" : current,
             );
             setActiveSmartFolderId(null);
+            setQueryBuilderOpen(false);
         }
     }, [selectedResource?.id, selectedResource?.type]);
 
