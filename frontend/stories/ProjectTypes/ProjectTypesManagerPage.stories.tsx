@@ -1,6 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import ProjectTypesManagerPage from "../../components/project-types/ProjectTypesManagerPage";
+import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 import type { ProjectTypeTemplateFile } from "../../src/types/project-types";
 
 const initialTemplates: ProjectTypeTemplateFile[] = [
@@ -30,6 +31,16 @@ const initialTemplates: ProjectTypeTemplateFile[] = [
 const meta: Meta<typeof ProjectTypesManagerPage> = {
     title: "ProjectTypes/ProjectTypesManagerPage",
     component: ProjectTypesManagerPage,
+    decorators: [
+        (Story) => (
+            <Dialog open onOpenChange={() => undefined}>
+                <Story />
+            </Dialog>
+        ),
+    ],
+    parameters: {
+        layout: "fullscreen",
+    },
 };
 
 export default meta;
