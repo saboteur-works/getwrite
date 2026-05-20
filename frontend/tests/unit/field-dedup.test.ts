@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { slugifyName, findExisting, fuzzyMatch } from "../../src/lib/models/field-dedup";
+import { slugifyName, findExisting, fuzzyMatch, deriveLabel } from "../../src/lib/models/field-dedup";
 import type { MetadataSchema } from "../../src/lib/models/types";
 
 // ─── Sample schema ─────────────────────────────────────────────────────────────
@@ -28,6 +28,34 @@ const SCHEMA: MetadataSchema = {
 };
 
 const EMPTY_SCHEMA: MetadataSchema = { groups: [] };
+
+// ─── deriveLabel ─────────────────────────────────────────────────────────────
+
+describe("deriveLabel", () => {
+    it("capitalizes the first letter of a single word", () => {
+        expect(deriveLabel("tension")).toBe("Tension");
+    });
+
+    it("title-cases multiple words", () => {
+        expect(deriveLabel("word count")).toBe("Word Count");
+    });
+
+    it("preserves all-caps words", () => {
+        expect(deriveLabel("POV")).toBe("POV");
+    });
+
+    it("handles already title-cased input", () => {
+        expect(deriveLabel("Point of View")).toBe("Point Of View");
+    });
+
+    it("trims leading and trailing whitespace", () => {
+        expect(deriveLabel("  tension  ")).toBe("Tension");
+    });
+
+    it("handles empty string", () => {
+        expect(deriveLabel("")).toBe("");
+    });
+});
 
 // ─── slugifyName ──────────────────────────────────────────────────────────────
 

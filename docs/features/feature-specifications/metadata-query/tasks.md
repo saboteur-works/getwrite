@@ -430,7 +430,7 @@ the new field id and the chip UI consumes it.
   must accept a prefill entry point from the chip UI
 - `08-creation-paths.md` § Group placement — folder-predicate →
   group heuristic
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 20: Sidebar `+ Add field` augmentations
 

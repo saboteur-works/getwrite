@@ -11,6 +11,21 @@ export interface FieldMatch {
     groupLabel: string;
 }
 
+// ─── deriveLabel ─────────────────────────────────────────────────────────────
+
+/**
+ * Derives a display label from a raw name string by title-casing each word.
+ *
+ * "tension"     → "Tension"
+ * "word count"  → "Word Count"
+ * "POV"         → "POV" (all-caps preserved)
+ */
+export function deriveLabel(name: string): string {
+    return name
+        .trim()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 // ─── slugifyName ──────────────────────────────────────────────────────────────
 
 /**

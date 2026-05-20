@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import type { MetadataFieldType, MetadataSchema } from "../../src/lib/models/types";
 import { DEFAULT_METADATA_SCHEMA } from "../../src/lib/models/default-metadata-schema";
 import { INTRINSIC_FIELDS } from "../../src/lib/models/query-intrinsics";
+import { fuzzyMatch } from "../../src/lib/models/field-dedup";
 import "./field-picker.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -42,6 +43,13 @@ export interface FieldPickerProps {
      */
     onEditField?: (fieldKey: string) => void;
     disabled?: boolean;
+    /**
+     * When provided, fuzzy-match dedup is active. If the search query produces
+     * no results but closely matches an existing field key, a "Did you mean?"
+     * row appears so the user can jump to the existing field instead of
+     * creating a duplicate.
+     */
+    schema?: MetadataSchema;
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -115,6 +123,7 @@ export default function FieldPicker({
     onAddField,
     onEditField,
     disabled = false,
+    schema,
 }: FieldPickerProps): JSX.Element {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -165,6 +174,14 @@ export default function FieldPicker({
         Boolean(onAddField) &&
         search.trim().length > 0 &&
         filteredFields.length === 0;
+
+    const fuzzyCandidate =
+        schema && search.trim().length > 0 && filteredFields.length === 0
+            ? fuzzyMatch(search.trim(), schema)
+            : null;
+    const fuzzyField = fuzzyCandidate
+        ? fields.find((f) => f.key === fuzzyCandidate.field.key) ?? null
+        : null;
 
     function handleSelect(field: FieldPickerField): void {
         onSelect(field);
@@ -291,9 +308,27 @@ export default function FieldPicker({
                         );
                     })}
 
-                    {filteredFields.length === 0 && !showAddRow && (
+                    {filteredFields.length === 0 && !showAddRow && !fuzzyField && (
                         <div className="field-picker__empty">
                             No fields match
+                        </div>
+                    )}
+
+                    {fuzzyField && (
+                        <div className="field-picker__fuzzy">
+                            <span className="field-picker__fuzzy-label">
+                                Did you mean
+                            </span>
+                            <button
+                                type="button"
+                                className="field-picker__fuzzy-match"
+                                onClick={() => handleSelect(fuzzyField)}
+                            >
+                                {fuzzyField.label}
+                            </button>
+                            <span className="field-picker__fuzzy-key">
+                                ({fuzzyField.key})
+                            </span>
                         </div>
                     )}
 

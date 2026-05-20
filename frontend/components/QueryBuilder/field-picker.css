@@ -294,3 +294,48 @@
     background: var(--color-gw-chrome3);
     color: var(--color-gw-secondary);
 }
+
+/* ── Fuzzy match "Did you mean?" row ── */
+
+.field-picker__fuzzy {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 7px 10px;
+    border-top: 0.5px solid var(--color-gw-border);
+    font-family: var(--font-mono);
+    font-size: 10px;
+}
+
+.field-picker__fuzzy-label {
+    color: var(--color-gw-dim);
+    flex-shrink: 0;
+}
+
+.field-picker__fuzzy-match {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-gw-secondary);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--color-gw-border-md);
+    transition: color 150ms ease;
+}
+
+.field-picker__fuzzy-match:hover {
+    color: var(--color-gw-primary);
+}
+
+.field-picker__fuzzy-match:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-gw-focus-ring);
+    border-radius: 2px;
+}
+
+.field-picker__fuzzy-key {
+    color: var(--color-gw-dim);
+    flex-shrink: 0;
+}
