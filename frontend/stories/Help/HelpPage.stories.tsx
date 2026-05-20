@@ -1,10 +1,21 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import HelpPage from "../../components/help/HelpPage";
+import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 
 const meta: Meta<typeof HelpPage> = {
     title: "Help/HelpPage",
     component: HelpPage,
+    decorators: [
+        (Story) => (
+            <Dialog open onOpenChange={() => undefined}>
+                <Story />
+            </Dialog>
+        ),
+    ],
+    parameters: {
+        layout: "fullscreen",
+    },
 };
 
 export default meta;

@@ -1,10 +1,21 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import UserPreferencesPage from "../../components/preferences/UserPreferencesPage";
+import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 
 const meta: Meta<typeof UserPreferencesPage> = {
     title: "Preferences/UserPreferencesPage",
     component: UserPreferencesPage,
+    decorators: [
+        (Story) => (
+            <Dialog open onOpenChange={() => undefined}>
+                <Story />
+            </Dialog>
+        ),
+    ],
+    parameters: {
+        layout: "fullscreen",
+    },
 };
 
 export default meta;

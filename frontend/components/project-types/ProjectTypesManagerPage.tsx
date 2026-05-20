@@ -137,11 +137,17 @@ export default function ProjectTypesManagerPage({
         <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-10">
             <header className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                    <DialogTitle asChild>
+                    {renderInModal ? (
+                        <DialogTitle asChild>
+                            <h1 className="text-2xl font-semibold text-gw-primary">
+                                Project Type Management
+                            </h1>
+                        </DialogTitle>
+                    ) : (
                         <h1 className="text-2xl font-semibold text-gw-primary">
                             Project Type Management
                         </h1>
-                    </DialogTitle>
+                    )}
                     <p className="text-sm text-gw-secondary">
                         View, create, and edit project type templates from
                         getwrite-config/templates/project-types.

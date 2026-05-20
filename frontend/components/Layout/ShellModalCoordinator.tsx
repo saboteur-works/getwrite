@@ -22,7 +22,7 @@ import HelpPage from "../help/HelpPage";
 import TagsManagerModal from "../common/TagsManagerModal";
 import SchemaManager from "../SchemaManager/SchemaManager";
 import DefaultRevisionNameModal from "../preferences/DefaultRevisionNameModal";
-import { Dialog, DialogContent } from "../common/UI/Dialog";
+import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
@@ -378,13 +378,19 @@ export default function ShellModalCoordinator({
             >
                 <DialogContent maxWidth="max-w-[1200px]" aria-describedby={undefined}>
                     {isProjectTypesLoading ? (
-                        <div className="appshell-modal-message">
-                            Loading project types...
-                        </div>
+                        <>
+                            <DialogTitle className="sr-only">Project Types</DialogTitle>
+                            <div className="appshell-modal-message">
+                                Loading project types...
+                            </div>
+                        </>
                     ) : projectTypesLoadError ? (
-                        <div className="appshell-modal-message appshell-modal-message--error">
-                            {projectTypesLoadError}
-                        </div>
+                        <>
+                            <DialogTitle className="sr-only">Project Types</DialogTitle>
+                            <div className="appshell-modal-message appshell-modal-message--error">
+                                {projectTypesLoadError}
+                            </div>
+                        </>
                     ) : (
                         <ProjectTypesManagerPage
                             initialTemplates={projectTypeTemplates}

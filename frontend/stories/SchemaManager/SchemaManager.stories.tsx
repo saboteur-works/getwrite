@@ -3,6 +3,7 @@ import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import SchemaManager from "../../components/SchemaManager/SchemaManager";
+import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 import projectReducer from "../../src/store/projectsSlice";
 import resourcesReducer from "../../src/store/resourcesSlice";
 import revisionsReducer from "../../src/store/revisionsSlice";
@@ -14,6 +15,13 @@ import type { MetadataSchema } from "../../src/lib/models/types";
 const meta: Meta<typeof SchemaManager> = {
     title: "SchemaManager/SchemaManager",
     component: SchemaManager,
+    decorators: [
+        (Story) => (
+            <Dialog open onOpenChange={() => undefined}>
+                <Story />
+            </Dialog>
+        ),
+    ],
 };
 
 export default meta;
