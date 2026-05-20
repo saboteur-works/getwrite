@@ -21,6 +21,7 @@ import {
     updateMetadataRefProperties,
 } from "../../src/store/projectsSlice";
 import MigrationPreview from "./MigrationPreview";
+import OptionsRemovalPreview from "./OptionsRemovalPreview";
 import type { Folder, MetadataFieldType } from "../../src/lib/models/types";
 import { slugifyName, deriveLabel } from "../../src/lib/models/field-dedup";
 import ConfirmDialog from "../common/ConfirmDialog";
@@ -62,6 +63,15 @@ interface TypeChangeRequest {
     newType: MetadataFieldType;
 }
 
+interface OptionsRemovalRequest {
+    groupId: string;
+    fieldKey: string;
+    fieldLabel: string;
+    fieldType: MetadataFieldType;
+    orphanedOptions: string[];
+    newOptions: string[];
+}
+
 interface KeyRenameConfirm {
     groupId: string;
     oldKey: string;
@@ -99,6 +109,7 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
     const [deleteTarget, setDeleteTarget] = React.useState<DeleteTarget | null>(null);
     const [editTarget, setEditTarget] = React.useState<EditTarget | null>(null);
     const [typeChangeRequest, setTypeChangeRequest] = React.useState<TypeChangeRequest | null>(null);
+    const [optionsRemovalRequest, setOptionsRemovalRequest] = React.useState<OptionsRemovalRequest | null>(null);
     const [editValue, setEditValue] = React.useState<string>("");
     const [optionsEdits, setOptionsEdits] = React.useState<Record<string, string>>({});
     const [keyEditTarget, setKeyEditTarget] = React.useState<KeyEditTarget | null>(null);
@@ -365,16 +376,34 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
         const key = getOptionsKey(groupId, fieldKey);
         const raw = optionsEdits[key];
         if (raw === undefined) return;
-        const options = raw
+        const newOptions = raw
             .split("\n")
             .map((o) => o.trim())
             .filter(Boolean);
-        void dispatch(updateMetadataFieldOptions({ projectId, groupId, fieldKey, options }));
+
+        const group = schema.groups.find((g) => g.id === groupId);
+        const field = group?.fields.find((f) => f.key === fieldKey);
+        const oldOptions = field?.options ?? [];
+        const orphanedOptions = oldOptions.filter((o) => !newOptions.includes(o));
+
         setOptionsEdits((prev) => {
             const next = { ...prev };
             delete next[key];
             return next;
         });
+
+        if (orphanedOptions.length > 0 && field) {
+            setOptionsRemovalRequest({
+                groupId,
+                fieldKey,
+                fieldLabel: field.label,
+                fieldType: field.type,
+                orphanedOptions,
+                newOptions,
+            });
+        } else {
+            void dispatch(updateMetadataFieldOptions({ projectId, groupId, fieldKey, options: newOptions }));
+        }
     }
 
     return (
@@ -988,6 +1017,22 @@ export default function SchemaManager({ onClose, prefill, onCreated }: SchemaMan
                     groupId={typeChangeRequest.groupId}
                     onCancel={() => setTypeChangeRequest(null)}
                     onApplied={() => setTypeChangeRequest(null)}
+                />
+            )}
+
+            {/* Options removal migration preview */}
+            {optionsRemovalRequest !== null && projectPath !== null && projectId !== null && (
+                <OptionsRemovalPreview
+                    fieldKey={optionsRemovalRequest.fieldKey}
+                    fieldLabel={optionsRemovalRequest.fieldLabel}
+                    fieldType={optionsRemovalRequest.fieldType}
+                    orphanedOptions={optionsRemovalRequest.orphanedOptions}
+                    newOptions={optionsRemovalRequest.newOptions}
+                    projectPath={projectPath}
+                    projectId={projectId}
+                    groupId={optionsRemovalRequest.groupId}
+                    onCancel={() => setOptionsRemovalRequest(null)}
+                    onApplied={() => setOptionsRemovalRequest(null)}
                 />
             )}
 

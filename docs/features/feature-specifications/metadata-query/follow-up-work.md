@@ -26,3 +26,28 @@ name is not available on the `ResourceBase` record alone. The evaluator only nee
 the `id` for predicate comparisons, so this is correct for evaluation. The chip UI
 will need to resolve the name separately (e.g., from the Redux resources store)
 for display purposes.
+
+---
+
+## Task 23: SchemaManager migration preview — updateFieldOptions (completed 2026-05-20)
+
+### schemaManager.test.tsx needs update for new commitOptions behavior
+
+The existing test "dispatches updateMetadataFieldOptions on textarea blur" (line 584)
+uses `"Fantasy\nHorror\n"` as the new option value for a field that previously had
+`["Fantasy", "Sci-Fi"]`. This removes "Sci-Fi", which now triggers the
+`OptionsRemovalPreview` modal instead of dispatching `updateMetadataFieldOptions` directly.
+
+The test was already failing before Task 23 due to a pre-existing `DialogTitle` context
+error (SchemaManager uses `DialogTitle` from Radix which must be wrapped in a `Dialog`).
+That wrapping is missing from the test setup.
+
+**Why deferred:** The entire `schemaManager.test.tsx` suite (57 tests) is already failing
+for the pre-existing DialogTitle/Dialog context issue. Fixing it requires wrapping
+the test render in a Dialog provider.
+
+**Recommended action:** Fix the test setup to wrap renders in a Dialog context, then
+update the "dispatches updateMetadataFieldOptions" test to use a scenario where no
+options are removed (e.g., `"Fantasy\nSci-Fi\nHorror\n"` — adding Horror without
+removing anything), and add a separate test for the options-removal preview path that
+verifies `OptionsRemovalPreview` is rendered when options are removed.

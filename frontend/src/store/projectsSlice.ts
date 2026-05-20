@@ -15,7 +15,7 @@ import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Project } from "../lib/models";
 import { DEFAULT_METADATA_SCHEMA } from "../lib/models/default-metadata-schema";
 import type { MetadataField, MetadataFieldType, MetadataGroup, MetadataSchema, MetadataValue } from "../lib/models/types";
-import type { TypeMigrationEntry } from "../lib/models/metadata-schema";
+import type { TypeMigrationEntry, OptionsMigrationEntry } from "../lib/models/metadata-schema";
 import {
     resolveMetadataSchemaRequestContext,
     postAddField,
@@ -23,6 +23,7 @@ import {
     postReorderFields,
     postRenameField,
     postUpdateFieldOptions,
+    postUpdateFieldOptionsWithMigration,
     postUpdateRefProperties,
     postChangeFieldType,
     postChangeFieldTypeWithMigration,
@@ -216,6 +217,41 @@ export const updateMetadataFieldOptions = createAsyncThunk<
                 groupId,
                 fieldKey,
                 options,
+            );
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const updateMetadataFieldOptionsWithMigration = createAsyncThunk<
+    SchemaActionResult,
+    {
+        projectId: string;
+        groupId: string;
+        fieldKey: string;
+        newOptions: string[];
+        migrations: Record<string, OptionsMigrationEntry>;
+    },
+    { state: any; rejectValue: string }
+>(
+    "projects/updateMetadataFieldOptionsWithMigration",
+    async ({ projectId, groupId, fieldKey, newOptions, migrations }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postUpdateFieldOptionsWithMigration(
+                context,
+                groupId,
+                fieldKey,
+                newOptions,
+                migrations,
             );
             return { projectId, schema };
         } catch (error) {
@@ -581,6 +617,7 @@ const projectsSlice = createSlice({
             reorderMetadataFields,
             renameMetadataField,
             updateMetadataFieldOptions,
+            updateMetadataFieldOptionsWithMigration,
             updateMetadataRefProperties,
             changeMetadataFieldType,
             changeMetadataFieldTypeWithMigration,

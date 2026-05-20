@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { writeSidecar } from "../../src/lib/models/sidecar";
-import { changeFieldTypeWithMigration } from "../../src/lib/models/metadata-schema";
+import { changeFieldTypeWithMigration, updateFieldOptionsWithMigration } from "../../src/lib/models/metadata-schema";
 import type { MetadataField, MetadataSchema } from "../../src/lib/models/types";
 import { generateUUID } from "../../src/lib/models/uuid";
 
@@ -212,5 +212,188 @@ describe("changeFieldTypeWithMigration", () => {
             dir, GROUP_ID, "tone", "number", [], {},
         );
         expect(schema.groups[0].fields[0].type).toBe("number");
+    });
+});
+
+// ─── updateFieldOptionsWithMigration ──────────────────────────────────────────
+
+const SELECT_FIELD: MetadataField = { key: "genre", label: "Genre", type: "select", options: ["fantasy", "sci-fi", "horror"] };
+const MULTI_FIELD: MetadataField = { key: "tags", label: "Tags", type: "multiselect", options: ["dark", "hopeful", "action"] };
+
+function selectSchema(): MetadataSchema {
+    return { groups: [{ id: GROUP_ID, label: "Plot", fields: [SELECT_FIELD] }] };
+}
+
+function multiSchema(): MetadataSchema {
+    return { groups: [{ id: GROUP_ID, label: "Plot", fields: [MULTI_FIELD] }] };
+}
+
+describe("updateFieldOptionsWithMigration", () => {
+    it("updates field.options in the schema to the new options list", async () => {
+        const dir = await makeTmpProject(selectSchema());
+        const schema = await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "genre", ["fantasy", "sci-fi"], {},
+        );
+        expect(schema.groups[0].fields[0].options).toEqual(["fantasy", "sci-fi"]);
+    });
+
+    it("appends add-to-options values to the stored options", async () => {
+        const dir = await makeTmpProject(selectSchema());
+        const schema = await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "genre", ["fantasy"], { horror: { action: "add-to-options" } },
+        );
+        expect(schema.groups[0].fields[0].options).toEqual(["fantasy", "horror"]);
+    });
+
+    it("rejects a non-existent field", async () => {
+        const dir = await makeTmpProject(selectSchema());
+        await expect(
+            updateFieldOptionsWithMigration(dir, GROUP_ID, "nonexistent", [], {}),
+        ).rejects.toThrow(/not found/i);
+    });
+
+    it("rejects a non-select/non-multiselect field", async () => {
+        const dir = await makeTmpProject(simpleSchema()); // tone is text
+        await expect(
+            updateFieldOptionsWithMigration(dir, GROUP_ID, "tone", [], {}),
+        ).rejects.toThrow(/select/i);
+    });
+
+    // ── select field sidecar migrations ─────────────────────────────────────────
+
+    it("clears a select value that matches an orphaned option", async () => {
+        const dir = await makeTmpProject(selectSchema());
+        const id = generateUUID();
+        await writeSidecar(dir, id, { genre: "horror" });
+
+        await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "genre", ["fantasy", "sci-fi"],
+            { horror: { action: "clear" } },
+        );
+
+        const sidecar = await readSidecarRaw(dir, id);
+        expect(sidecar["genre"]).toBeUndefined();
+    });
+
+    it("normalizes a select value to a valid option", async () => {
+        const dir = await makeTmpProject(selectSchema());
+        const id = generateUUID();
+        await writeSidecar(dir, id, { genre: "sci-fi" });
+
+        await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "genre", ["fantasy"],
+            { "sci-fi": { action: "normalize", normalizedTo: "fantasy" } },
+        );
+
+        const sidecar = await readSidecarRaw(dir, id);
+        expect(sidecar["genre"]).toBe("fantasy");
+    });
+
+    it("leaves a select value unchanged when action is add-to-options", async () => {
+        const dir = await makeTmpProject(selectSchema());
+        const id = generateUUID();
+        await writeSidecar(dir, id, { genre: "horror" });
+
+        await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "genre", ["fantasy"],
+            { horror: { action: "add-to-options" } },
+        );
+
+        const sidecar = await readSidecarRaw(dir, id);
+        expect(sidecar["genre"]).toBe("horror");
+    });
+
+    it("does not touch select sidecars with a value still in the new options", async () => {
+        const dir = await makeTmpProject(selectSchema());
+        const id = generateUUID();
+        await writeSidecar(dir, id, { genre: "fantasy" });
+
+        await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "genre", ["fantasy"],
+            { horror: { action: "clear" } },
+        );
+
+        const sidecar = await readSidecarRaw(dir, id);
+        expect(sidecar["genre"]).toBe("fantasy");
+    });
+
+    it("skips select sidecars where the field is null", async () => {
+        const dir = await makeTmpProject(selectSchema());
+        const id = generateUUID();
+        await writeSidecar(dir, id, { genre: null });
+
+        await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "genre", ["fantasy"],
+            { horror: { action: "clear" } },
+        );
+
+        const sidecar = await readSidecarRaw(dir, id);
+        expect(sidecar["genre"]).toBeNull();
+    });
+
+    // ── multiselect field sidecar migrations ─────────────────────────────────────
+
+    it("removes a matching element from a multiselect array when action is clear", async () => {
+        const dir = await makeTmpProject(multiSchema());
+        const id = generateUUID();
+        await writeSidecar(dir, id, { tags: ["dark", "action"] });
+
+        await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "tags", ["dark"],
+            { action: { action: "clear" } },
+        );
+
+        const sidecar = await readSidecarRaw(dir, id);
+        expect(sidecar["tags"]).toEqual(["dark"]);
+    });
+
+    it("normalizes a matching element in a multiselect array", async () => {
+        const dir = await makeTmpProject(multiSchema());
+        const id = generateUUID();
+        await writeSidecar(dir, id, { tags: ["dark", "hopeful"] });
+
+        await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "tags", ["dark", "positive"],
+            { hopeful: { action: "normalize", normalizedTo: "positive" } },
+        );
+
+        const sidecar = await readSidecarRaw(dir, id);
+        expect(sidecar["tags"]).toEqual(["dark", "positive"]);
+    });
+
+    it("leaves a multiselect array element unchanged when action is add-to-options", async () => {
+        const dir = await makeTmpProject(multiSchema());
+        const id = generateUUID();
+        await writeSidecar(dir, id, { tags: ["dark", "action"] });
+
+        await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "tags", ["dark"],
+            { action: { action: "add-to-options" } },
+        );
+
+        const sidecar = await readSidecarRaw(dir, id);
+        expect(sidecar["tags"]).toEqual(["dark", "action"]);
+    });
+
+    it("deletes the field key when all multiselect elements are cleared", async () => {
+        const dir = await makeTmpProject(multiSchema());
+        const id = generateUUID();
+        await writeSidecar(dir, id, { tags: ["action"] });
+
+        await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "tags", ["dark"],
+            { action: { action: "clear" } },
+        );
+
+        const sidecar = await readSidecarRaw(dir, id);
+        expect(sidecar["tags"]).toBeUndefined();
+    });
+
+    it("handles no sidecars in the project gracefully", async () => {
+        const dir = await makeTmpProject(selectSchema());
+        const schema = await updateFieldOptionsWithMigration(
+            dir, GROUP_ID, "genre", ["fantasy"], {},
+        );
+        expect(schema.groups[0].fields[0].options).toEqual(["fantasy"]);
     });
 });

@@ -22,6 +22,7 @@ import {
     reorderFields,
     renameField,
     updateFieldOptions,
+    updateFieldOptionsWithMigration,
     updateRefProperties,
     changeFieldType,
     changeFieldTypeWithMigration,
@@ -30,7 +31,7 @@ import {
     reorderGroups,
     renameFieldKey,
 } from "../../../../src/lib/models/metadata-schema";
-import type { TypeMigrationEntry } from "../../../../src/lib/models/metadata-schema";
+import type { TypeMigrationEntry, OptionsMigrationEntry } from "../../../../src/lib/models/metadata-schema";
 import { scanAllFieldValues, NULL_VALUE_KEY, MISSING_VALUE_KEY } from "../../../../src/lib/models/field-values";
 import type {
     MetadataField,
@@ -139,6 +140,15 @@ interface ChangeFieldTypeWithMigrationRequest {
     migrations: Record<string, TypeMigrationEntry>;
 }
 
+interface UpdateFieldOptionsWithMigrationRequest {
+    action: "update-field-options-with-migration";
+    projectPath: string;
+    groupId: string;
+    fieldKey: string;
+    newOptions: string[];
+    migrations: Record<string, OptionsMigrationEntry>;
+}
+
 type MetadataSchemaRequestBody =
     | AddFieldRequest
     | RemoveFieldRequest
@@ -151,7 +161,8 @@ type MetadataSchemaRequestBody =
     | RenameFieldKeyRequest
     | ChangeFieldTypeRequest
     | UpdateRefPropertiesRequest
-    | ChangeFieldTypeWithMigrationRequest;
+    | ChangeFieldTypeWithMigrationRequest
+    | UpdateFieldOptionsWithMigrationRequest;
 
 // ---------------------------------------------------------------------------
 // Response shapes
@@ -293,6 +304,17 @@ export async function POST(
                 body.groupId,
                 body.fieldKey,
                 body.newType,
+                body.newOptions,
+                body.migrations,
+            );
+            return NextResponse.json({ schema });
+        }
+
+        if (body.action === "update-field-options-with-migration") {
+            const schema = await updateFieldOptionsWithMigration(
+                body.projectPath,
+                body.groupId,
+                body.fieldKey,
                 body.newOptions,
                 body.migrations,
             );

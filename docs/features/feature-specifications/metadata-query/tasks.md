@@ -524,7 +524,7 @@ resolution menu; commit applies the right sidecar updates.
   `updateFieldOptions` variant
 - `05-schema-layer.md` § Schema evolution — `updateFieldOptions` gap:
   does not validate existing values against new options
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 24: SchemaManager deprecate-vs-clear on removeField
 

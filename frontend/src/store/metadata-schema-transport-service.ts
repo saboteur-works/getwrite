@@ -1,5 +1,5 @@
 import type { MetadataField, MetadataFieldType, MetadataGroup, MetadataSchema } from "../lib/models/types";
-import type { TypeMigrationEntry } from "../lib/models/metadata-schema";
+import type { TypeMigrationEntry, OptionsMigrationEntry } from "../lib/models/metadata-schema";
 import type { FieldValueEntry } from "../../app/api/project/metadata-schema/route";
 
 export interface MetadataSchemaRequestContext {
@@ -204,6 +204,23 @@ export async function postUpdateRefProperties(
         groupId,
         fieldKey,
         ...updates,
+    });
+}
+
+export async function postUpdateFieldOptionsWithMigration(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+    newOptions: string[],
+    migrations: Record<string, OptionsMigrationEntry>,
+): Promise<MetadataSchema> {
+    return postToMetadataSchemaRoute({
+        action: "update-field-options-with-migration",
+        projectPath: context.projectPath,
+        groupId,
+        fieldKey,
+        newOptions,
+        migrations,
     });
 }
 

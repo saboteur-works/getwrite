@@ -33,6 +33,12 @@ export interface TypeMigrationEntry {
     normalizedTo?: string;
 }
 
+export interface OptionsMigrationEntry {
+    action: "keep" | "clear" | "normalize" | "add-to-options";
+    /** The replacement value when action is "normalize". */
+    normalizedTo?: string;
+}
+
 const SLUG_RE = /^[a-z0-9-]+$/;
 
 async function readProject(projectRoot: string): Promise<Project> {
@@ -597,6 +603,107 @@ export async function renameFieldKey(
     return schema;
 }
 
+async function migrateFieldOptionsInSidecars(
+    projectRoot: string,
+    fieldKey: string,
+    migrations: Record<string, OptionsMigrationEntry>,
+    fieldType: MetadataFieldType,
+): Promise<void> {
+    if (Object.keys(migrations).length === 0) return;
+    const metaDir = path.join(projectRoot, "meta");
+    let entries: string[];
+    try {
+        entries = await fs.readdir(metaDir);
+    } catch {
+        return;
+    }
+    for (const entry of entries) {
+        if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) continue;
+        const resourceId = entry.slice("resource-".length, -".meta.json".length) as UUID;
+        const sidecar = await readSidecar(projectRoot, resourceId);
+        if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null) continue;
+
+        if (fieldType === "multiselect" && Array.isArray(sidecar[fieldKey])) {
+            const arr = sidecar[fieldKey] as string[];
+            let changed = false;
+            const newArr: string[] = [];
+            for (const element of arr) {
+                const migration = migrations[element];
+                if (!migration || migration.action === "keep" || migration.action === "add-to-options") {
+                    newArr.push(element);
+                } else if (migration.action === "normalize" && migration.normalizedTo !== undefined) {
+                    newArr.push(migration.normalizedTo);
+                    changed = true;
+                } else if (migration.action === "clear") {
+                    changed = true;
+                }
+            }
+            if (!changed) continue;
+            if (newArr.length === 0) {
+                delete sidecar[fieldKey];
+            } else {
+                sidecar[fieldKey] = newArr;
+            }
+            await writeSidecar(projectRoot, resourceId, sidecar);
+        } else {
+            const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
+            const migration = migrations[key];
+            if (!migration || migration.action === "keep" || migration.action === "add-to-options") continue;
+            if (migration.action === "clear") {
+                delete sidecar[fieldKey];
+            } else if (migration.action === "normalize" && migration.normalizedTo !== undefined) {
+                sidecar[fieldKey] = migration.normalizedTo;
+            }
+            await writeSidecar(projectRoot, resourceId, sidecar);
+        }
+    }
+}
+
+/**
+ * Updates a `select` or `multiselect` field's options list and atomically
+ * migrates sidecar values for any orphaned option values, then writes the
+ * schema under `acquireLock`.
+ *
+ * Entries in `migrations` are keyed by orphaned option value string:
+ * - `"keep"` — leave the sidecar value unchanged
+ * - `"clear"` — for select: delete the field key; for multiselect: remove the element
+ * - `"normalize"` — replace with `entry.normalizedTo`
+ * - `"add-to-options"` — leave unchanged; the value is appended to `newOptions`
+ *
+ * Throws if the field does not exist or is not a select/multiselect type.
+ */
+export async function updateFieldOptionsWithMigration(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+    newOptions: string[],
+    migrations: Record<string, OptionsMigrationEntry>,
+): Promise<MetadataSchema> {
+    const release = await acquireLock(projectRoot);
+    let schema: MetadataSchema;
+    let fieldType: MetadataFieldType;
+    try {
+        const project = await readProject(projectRoot);
+        schema = getOrInitSchema(project);
+        const group = findGroup(schema, groupId);
+        const field = group.fields.find((f) => f.key === fieldKey);
+        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+        if (field.type !== "select" && field.type !== "multiselect") {
+            throw new Error(`Field "${fieldKey}" is not a select or multiselect field.`);
+        }
+        fieldType = field.type;
+        const addToOptionsValues = Object.entries(migrations)
+            .filter(([, m]) => m.action === "add-to-options")
+            .map(([v]) => v);
+        field.options = [...newOptions, ...addToOptionsValues];
+        await writeProject(projectRoot, project);
+    } finally {
+        release();
+    }
+    await migrateFieldOptionsInSidecars(projectRoot, fieldKey, migrations, fieldType);
+    return schema;
+}
+
 const metadataSchema = {
     getSchema,
     addField,
@@ -604,6 +711,7 @@ const metadataSchema = {
     reorderFields,
     renameField,
     updateFieldOptions,
+    updateFieldOptionsWithMigration,
     updateRefProperties,
     changeFieldType,
     changeFieldTypeWithMigration,
