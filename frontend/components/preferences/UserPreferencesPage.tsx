@@ -147,11 +147,17 @@ export default function UserPreferencesPage({
         <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8 lg:px-10">
             <header className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                    <DialogTitle asChild>
+                    {renderInModal ? (
+                        <DialogTitle asChild>
+                            <h1 className="text-2xl font-semibold text-gw-primary">
+                                User Preferences
+                            </h1>
+                        </DialogTitle>
+                    ) : (
                         <h1 className="text-2xl font-semibold text-gw-primary">
                             User Preferences
                         </h1>
-                    </DialogTitle>
+                    )}
                     <p className="text-sm text-gw-secondary">
                         Personal settings stored in the selected project&apos;s
                         metadata.
