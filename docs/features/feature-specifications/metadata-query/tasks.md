@@ -102,7 +102,7 @@ unchanged; tests added for the new path.
   and wiki-link scanning behavior
 - `01-feature-catalog.md` § Backlink / reference graph queries (#8) —
   feature motivation
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 5: Query AST evaluator (no caching, no refs)
 
