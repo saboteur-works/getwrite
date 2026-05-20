@@ -170,7 +170,7 @@ const withStore = (
         <Provider store={mockStore}>
             <div
                 className={`appshell-shell ${colorMode === "dark" ? "appshell-theme-dark" : ""}`}
-                style={{ padding: 16 }}
+                style={{ padding: 16, height: "auto", maxHeight: "none", overflow: "auto" }}
             >
                 <Story />
             </div>
