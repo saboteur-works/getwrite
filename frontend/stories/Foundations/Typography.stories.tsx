@@ -21,6 +21,12 @@ interface FontFamilyEntry {
     specimen: string;
 }
 
+interface FontWeightEntry {
+    token: string;
+    value: number;
+    use: string;
+}
+
 interface TrackingEntry {
     token: string;
     value: string;
@@ -188,6 +194,12 @@ const FONT_FAMILIES: FontFamilyEntry[] = [
     },
 ];
 
+const FONT_WEIGHTS: FontWeightEntry[] = [
+    { token: "--font-weight-regular", value: 400, use: "Body text, labels, default UI" },
+    { token: "--font-weight-medium", value: 500, use: "Emphasized labels, panel subheadings" },
+    { token: "--font-weight-bold", value: 700, use: "Headings, wordmarks, active state indicators" },
+];
+
 const TRACKING_SCALE: TrackingEntry[] = [
     { token: "--tracking-wordmark", value: "-0.04em", use: "Condensed wordmark at hero size" },
     { token: "--tracking-display", value: "-0.03em", use: "Display headings" },
@@ -286,6 +298,34 @@ function FontFamilyRow({ entry }: { entry: FontFamilyEntry }): JSX.Element {
     );
 }
 
+function FontWeightRow({ entry }: { entry: FontWeightEntry }): JSX.Element {
+    return (
+        <div
+            style={{
+                display: "grid",
+                gridTemplateColumns: "220px 1fr",
+                gap: 24,
+                alignItems: "center",
+                padding: "12px 0",
+                borderBottom: "0.5px solid var(--color-gw-rule)",
+            }}
+        >
+            <div>
+                <code style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--color-gw-secondary)", marginBottom: 4 }}>
+                    {entry.token}
+                </code>
+                <div style={{ display: "flex", gap: 8 }}>
+                    <code style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--color-gw-dim)" }}>{entry.value}</code>
+                    <span style={{ fontFamily: "var(--font-sans)", fontSize: 10, color: "var(--color-gw-dim)" }}>· {entry.use}</span>
+                </div>
+            </div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: 22, fontWeight: entry.value, color: "var(--color-gw-primary)", letterSpacing: "-0.01em" }}>
+                GetWrite
+            </div>
+        </div>
+    );
+}
+
 function TrackingRow({ entry }: { entry: TrackingEntry }): JSX.Element {
     return (
         <div
@@ -362,6 +402,35 @@ function TypographyShowcase(): JSX.Element {
                 {FONT_FAMILIES.map((entry) => (
                     <FontFamilyRow key={entry.token} entry={entry} />
                 ))}
+            </section>
+            <section style={{ marginBottom: 48 }}>
+                <SectionHeader
+                    title="Font Weights"
+                    description="Three weight tokens from saboteur-base.css. Only regular, medium, and bold are used — no lighter or heavier variants exist in the system."
+                />
+                {FONT_WEIGHTS.map((entry) => (
+                    <FontWeightRow key={entry.token} entry={entry} />
+                ))}
+            </section>
+            <section style={{ marginBottom: 48 }}>
+                <SectionHeader
+                    title="Wordmark Construction"
+                    description='The GetWrite wordmark is a mandatory two-part pattern: "Get" renders in regular weight and "Write" renders in bold, always separated by a 4px red vertical bar. This split is the primary brand signal — never use a single-weight wordmark.'
+                />
+                <div style={{ borderTop: "0.5px solid var(--color-gw-border)", padding: "24px 0", borderBottom: "0.5px solid var(--color-gw-rule)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontFamily: "var(--font-display)", fontSize: "var(--font-size-gw-hero)", fontWeight: 400, letterSpacing: "var(--tracking-wordmark)", color: "var(--color-gw-primary)", lineHeight: 1 }}>
+                            Get
+                        </span>
+                        <div style={{ width: 4, height: "0.8em", backgroundColor: "var(--color-gw-red)", flexShrink: 0 }} />
+                        <span style={{ fontFamily: "var(--font-display)", fontSize: "var(--font-size-gw-hero)", fontWeight: 700, letterSpacing: "var(--tracking-wordmark)", color: "var(--color-gw-primary)", lineHeight: 1 }}>
+                            Write
+                        </span>
+                    </div>
+                    <p style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--color-gw-secondary)", margin: "12px 0 0", letterSpacing: "0.08em" }}>
+                        font-display · hero size · weight-regular + 4px --color-gw-red bar + weight-bold
+                    </p>
+                </div>
             </section>
             <section style={{ marginBottom: 48 }}>
                 <SectionHeader
