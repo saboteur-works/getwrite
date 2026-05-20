@@ -476,7 +476,7 @@ pass.
   migration preview and stale-ref detection
 - `06-fields-panel.md` § Stale ref-target detection — `id === null`
   handling; `[Show]` / `[Clear stale]` consumer
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 22: SchemaManager migration preview — changeFieldType
 
