@@ -19,7 +19,7 @@ through parse and serialize.
 **Estimate:** 2
 **Notes:** Mirror `MetadataValue`'s recursive Zod pattern. Leaf
 predicate values use the existing `MetadataValue` schema.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Intrinsic field registry
 

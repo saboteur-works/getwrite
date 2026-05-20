@@ -10,6 +10,9 @@
  * - Validate project-type JSON specs from memory or file.
  */
 import { z } from "zod";
+import { QueryASTSchema } from "./query-ast";
+export type { QueryAST, LeafNode, CombinatorNode, SpliceNode, ComparisonNode, ComparisonOp, InNode, ExistsNode, TextNode, TextOp, LinksToNode, LinkedFromNode, AndNode, OrNode, NotNode, RefNode, ParamNode } from "./query-ast";
+export { QueryASTSchema, ComparisonNodeSchema, InNodeSchema, ExistsNodeSchema, TextNodeSchema, LinksToNodeSchema, LinkedFromNodeSchema, RefNodeSchema, ParamNodeSchema, ComparisonOpSchema, TextOpSchema } from "./query-ast";
 
 /**
  * Canonical UUID v4 string validator used across model schemas.
@@ -345,6 +348,7 @@ export const Schemas = {
     ResourceTemplateSchema,
     TipTapDocumentSchema,
     TipTapNodeSchema,
+    QueryASTSchema,
 };
 
 /**
