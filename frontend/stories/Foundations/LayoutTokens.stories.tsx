@@ -171,7 +171,7 @@ function LayoutTokensShowcase(): JSX.Element {
 }
 
 const meta: Meta<typeof LayoutTokensShowcase> = {
-    title: "Foundations/Layout Tokens",
+    title: "Foundations/Layout",
     component: LayoutTokensShowcase,
 };
 
