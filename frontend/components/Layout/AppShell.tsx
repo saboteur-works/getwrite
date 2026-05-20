@@ -30,6 +30,7 @@ import SmartFolders from "../ResourceTree/SmartFolders";
 import QueryBuilder from "../QueryBuilder/QueryBuilder";
 import SaveQueryDialog from "../QueryBuilder/SaveQueryDialog";
 import { buildFieldPickerFields } from "../QueryBuilder/FieldPicker";
+import { filterResourceOptionsByScope } from "../Sidebar/folderScope";
 import { astToGroups } from "../QueryBuilder/ast-chip-bridge";
 import { useQueryBuilderState } from "../QueryBuilder/useQueryBuilderState";
 import ShellLayoutController from "./ShellLayoutController";
@@ -292,13 +293,15 @@ export default function AppShell({
         [metadataSchema],
     );
     const resolveResourceOptions = React.useCallback(
-        (refFolder: string | undefined) => {
-            if (!refFolder) return [];
-            return (liveResources ?? [])
-                .filter((r) => r.folderId === refFolder)
-                .map((r) => ({ id: r.id, name: r.name ?? "" }));
+        (refFolder: string | undefined, includeSubfolders?: boolean) => {
+            return filterResourceOptionsByScope(
+                (liveResources ?? []).map((r) => ({ id: r.id, name: r.name ?? "", folderId: r.folderId })),
+                liveFolders ?? [],
+                refFolder,
+                includeSubfolders,
+            );
         },
-        [liveResources],
+        [liveResources, liveFolders],
     );
     const currentAst = React.useMemo(
         () => (qb.isAdvanced && qb.rawAst ? qb.rawAst : (qb.buildAst() ?? { op: "and" as const, children: [] })),

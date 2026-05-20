@@ -26,6 +26,8 @@ export interface FieldPickerField {
     deprecated?: boolean;
     /** For resource-ref / multi-resource-ref fields: the folder ID whose resources are candidates. */
     refFolder?: string;
+    /** When true, resources in descendant folders of refFolder are also candidates. */
+    includeSubfolders?: boolean;
 }
 
 export interface FieldPickerProps {
@@ -93,6 +95,7 @@ export function buildFieldPickerFields(schema?: MetadataSchema): FieldPickerFiel
                 options: field.options,
                 deprecated: field.deprecated,
                 refFolder: field.refFolder,
+                includeSubfolders: field.includeSubfolders,
             });
         }
     }

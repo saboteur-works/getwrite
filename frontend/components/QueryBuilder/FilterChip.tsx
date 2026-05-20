@@ -44,6 +44,8 @@ export interface FilterChipField {
     options?: string[];
     /** For resource-ref / multi-resource-ref fields: the folder ID whose resources are candidates. */
     refFolder?: string;
+    /** When true, resources in descendant folders of refFolder are also candidates. */
+    includeSubfolders?: boolean;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -69,7 +71,7 @@ export interface FilterChipProps {
      * When provided, resource-ref / multi-resource-ref fields render a typeahead
      * instead of a plain text input. Called with the field's refFolder to get candidates.
      */
-    resolveResourceOptions?: (refFolder: string | undefined) => ResourceOption[];
+    resolveResourceOptions?: (refFolder: string | undefined, includeSubfolders?: boolean) => ResourceOption[];
     onFieldChange?: (field: FilterChipField | null) => void;
     onOperatorChange?: (operator: string | null) => void;
     onValueChange?: (value: FilterChipValue) => void;
@@ -158,7 +160,7 @@ function ValueInput({
     operatorValue: string;
     value: FilterChipValue;
     onChange: (v: FilterChipValue) => void;
-    resolveResourceOptions?: (refFolder: string | undefined) => ResourceOption[];
+    resolveResourceOptions?: (refFolder: string | undefined, includeSubfolders?: boolean) => ResourceOption[];
 }): JSX.Element | null {
     const opOption = getOperatorOption(field.type, operatorValue);
     if (!opOption || opOption.noValue) return null;
@@ -335,7 +337,7 @@ function ValueInput({
         }
         case "resource-ref":
         case "multi-resource-ref": {
-            const resourceOptions = resolveResourceOptions?.(field.refFolder) ?? [];
+            const resourceOptions = resolveResourceOptions?.(field.refFolder, field.includeSubfolders) ?? [];
             if (resourceOptions.length > 0) {
                 return (
                     <SingleRefInput

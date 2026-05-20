@@ -34,7 +34,7 @@ export interface FilterGroupProps {
     /** Saved queries shown in the field picker's "Saved queries" section. */
     savedQueries?: Array<{id: string; name: string}>;
     /** When provided, resource-ref / multi-resource-ref chips render a typeahead. */
-    resolveResourceOptions?: (refFolder: string | undefined) => ResourceOption[];
+    resolveResourceOptions?: (refFolder: string | undefined, includeSubfolders?: boolean) => ResourceOption[];
     /** Optional match count shown in the footer. Omit to hide. */
     matchCount?: number;
     onCombinatorChange?: (combinator: GroupCombinator) => void;

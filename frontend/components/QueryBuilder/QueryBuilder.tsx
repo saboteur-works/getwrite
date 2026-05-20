@@ -39,7 +39,7 @@ export interface QueryBuilderProps {
     /** Saved queries shown in the field picker's "Saved queries" section. */
     savedQueries?: Array<{id: string; name: string}>;
     /** When provided, resource-ref / multi-resource-ref chips render a typeahead. */
-    resolveResourceOptions?: (refFolder: string | undefined) => ResourceOption[];
+    resolveResourceOptions?: (refFolder: string | undefined, includeSubfolders?: boolean) => ResourceOption[];
     /** Overall match count displayed in the footer. Omit to hide. */
     matchCount?: number;
     /**
