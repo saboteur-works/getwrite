@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.34](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.33...getwrite-v0.2.34) (2026-05-20)
+
+
+### Features
+
+* **design-system:** second-pass simplification — new primitives, menu hook, autocomplete migrations, CI hex gate ([bbacc4e](https://github.com/saboteur-works/getwrite/commit/bbacc4ea30b55d620647ad265763bc0030fbbef2))
+* **design-system:** simplify design system — second pass ([34a31f1](https://github.com/saboteur-works/getwrite/commit/34a31f11f9fc84b9e42bdefe97034650015af1a8))
+
+
+### Bug Fixes
+
+* **a11y:** add DialogTitle to SchemaManager (metadata fields dialog) ([9ce62cc](https://github.com/saboteur-works/getwrite/commit/9ce62ccff6b2fab15e803f3213fc915d8cf42371))
+* **a11y:** add DialogTitle to UserPreferencesPage and ProjectTypesManagerPage ([3534fe6](https://github.com/saboteur-works/getwrite/commit/3534fe612bffd04dd2de357759b7c056610b7d85))
+* **searchbar:** restore snippet layout and match highlighting in search results ([cb0ed22](https://github.com/saboteur-works/getwrite/commit/cb0ed22b543b6e1b3eb12fb7673232e94e044563))
+
 ## [0.2.33](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.32...getwrite-v0.2.33) (2026-05-19)
 
 
