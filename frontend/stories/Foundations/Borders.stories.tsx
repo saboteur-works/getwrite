@@ -91,6 +91,29 @@ function BorderWidthRow({ token, px, use }: BorderWidthToken): JSX.Element {
     );
 }
 
+function CompositionExample(): JSX.Element {
+    return (
+        <div
+            style={{
+                padding: 20,
+                backgroundColor: "var(--color-gw-chrome2)",
+                border: "var(--border-width-hairline) solid var(--color-gw-border)",
+                borderRadius: "var(--radius-lg)",
+                maxWidth: 320,
+            }}
+        >
+            <div style={{ marginBottom: 12, borderBottom: "var(--border-width-hairline) solid var(--color-gw-rule)", paddingBottom: 12 }}>
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 700, color: "var(--color-gw-primary)" }}>
+                    Chapter Overview
+                </span>
+            </div>
+            <p style={{ fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--color-gw-secondary)", margin: 0, lineHeight: 1.6 }}>
+                Scene structure, character arcs, and pacing notes for Part II.
+            </p>
+        </div>
+    );
+}
+
 function BordersShowcase(): JSX.Element {
     return (
         <div style={{ maxWidth: 640 }}>
@@ -114,6 +137,18 @@ function BordersShowcase(): JSX.Element {
                     {BORDER_WIDTH_TOKENS.map((t) => (
                         <BorderWidthRow key={t.token} {...t} />
                     ))}
+                </div>
+            </section>
+            <section style={{ marginBottom: 48 }}>
+                <SectionHeader
+                    title="Composition"
+                    description="A typical card: --radius-lg corners + --border-width-hairline (0.5px) border in --color-gw-border on a --color-gw-chrome2 surface. This is the standard card pattern throughout the app."
+                />
+                <div style={{ borderTop: "0.5px solid var(--color-gw-border)", paddingTop: 20 }}>
+                    <CompositionExample />
+                    <p style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--color-gw-secondary)", margin: "14px 0 0", letterSpacing: "0.06em" }}>
+                        --radius-lg · --border-width-hairline · --color-gw-border · --color-gw-chrome2
+                    </p>
                 </div>
             </section>
         </div>
