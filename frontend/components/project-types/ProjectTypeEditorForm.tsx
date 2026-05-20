@@ -837,7 +837,7 @@ function LabeledColorInput({
             <div className="project-type-editor-color-row">
                 <input
                     type="color"
-                    value={value || "#000000"}
+                    value={value || "#000000" /* GW-HEX-EXEMPT: color picker placeholder — user-selected arbitrary colors */}
                     onChange={(e) => onChange(e.target.value)}
                     className="project-type-editor-color-input"
                 />

@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { Plus, Copy, Files, Trash2, Download, Pencil } from "lucide-react";
 import MenuItemButton from "../common/MenuItemButton";
+import useDismissableMenu from "../common/UI/hooks/useDismissableMenu";
 
 /** Allowed context menu actions exposed to callers; UI-only signals. */
 export type ResourceContextAction =
@@ -47,30 +48,10 @@ export default function ResourceContextMenu({
     onAction,
     className = "",
 }: ResourceContextMenuProps) {
-    const containerRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        const root = containerRef.current;
-        function onDocumentClick(e: MouseEvent) {
-            // only close when clicking outside the menu
-            if (!root) return;
-            const target = e.target as Node | null;
-            if (target && root.contains(target)) return;
-            onClose?.();
-        }
-
-        if (open) {
-            // attach in capture phase to ensure we observe clicks before other handlers
-            document.addEventListener("mousedown", onDocumentClick, {
-                capture: true,
-            });
-            return () =>
-                document.removeEventListener("mousedown", onDocumentClick, {
-                    capture: true,
-                } as EventListenerOptions);
-        }
-        return undefined;
-    }, [open, onClose]);
+    const { containerRef } = useDismissableMenu({
+        isOpen: open,
+        onClose: () => onClose?.(),
+    });
 
     const handle = (action: ResourceContextAction) => {
         onAction?.(action, resourceId);
@@ -78,38 +59,6 @@ export default function ResourceContextMenu({
     };
 
     const menuTitle = resourceName ?? resourceTitle;
-
-    // Focus management: focus the first menu item when opened and allow
-    // arrow-key navigation + Escape to close.
-    useEffect(() => {
-        if (!open) return;
-        const root = containerRef.current;
-        if (!root) return;
-        const items = Array.from(
-            root.querySelectorAll<HTMLElement>('[role="menuitem"]'),
-        );
-        items[0]?.focus();
-
-        function onKey(e: KeyboardEvent) {
-            const active = document.activeElement as HTMLElement | null;
-            const idx = items.indexOf(active as HTMLElement);
-            if (e.key === "ArrowDown") {
-                const next = items[idx + 1] ?? items[0];
-                next?.focus();
-                e.preventDefault();
-            } else if (e.key === "ArrowUp") {
-                const prev = items[idx - 1] ?? items[items.length - 1];
-                prev?.focus();
-                e.preventDefault();
-            } else if (e.key === "Escape") {
-                onClose?.();
-                e.preventDefault();
-            }
-        }
-
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [open, onClose]);
 
     if (!open) return null;
 

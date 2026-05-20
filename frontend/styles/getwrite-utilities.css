@@ -34,7 +34,7 @@
      * in the component-scoped timeline.css, regardless of stylesheet load order.
      * var(--color-gw-*) references lazy-resolve to whichever mode is active. */
     --timeline-bg: var(--color-gw-chrom2);
-    --timeline-track-bg: #eceae3;
+    --timeline-track-bg: var(--color-gw-chrome);
     --timeline-axis-color: var(--color-gw-border);
     --timeline-axis-label-size: 9px;
     --timeline-axis-label-color: var(--color-gw-secondary);
@@ -54,6 +54,7 @@
     --timeline-focus-ring: var(--color-gw-focus-ring);
     --timeline-rule-color: var(--color-gw-rule);
     --timeline-row-tint: rgba(0, 0, 0, 0.011);
+    --timeline-active-color: var(--color-gw-red-border);
 
     /* POV chip palette — deeper for contrast on the light paper surface */
     --timeline-pov-0: #4a6e94;
@@ -2368,6 +2369,149 @@
         outline-offset: 1px;
     }
 
+    /* ── LISTBOX ── */
+    .listbox {
+        list-style: none;
+        margin: 0;
+        padding: 2px 0;
+        background: var(--color-gw-chrome);
+        border: 0.5px solid var(--color-gw-border);
+        border-radius: 2px;
+        max-height: 240px;
+        overflow-y: auto;
+        z-index: 50;
+    }
+
+    .listbox--anchored {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 2px;
+    }
+
+    .listbox-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        padding: 6px 10px;
+        font-size: 13px;
+        color: var(--color-gw-primary);
+        background: transparent;
+        border: none;
+        text-align: left;
+        cursor: pointer;
+        transition: background-color 0.1s ease;
+    }
+
+    .listbox-option--stacked {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    .listbox-option--highlighted,
+    .listbox-option:hover {
+        background: var(--color-gw-chrome2);
+    }
+
+    .listbox-option-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .listbox-option-label {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .listbox-option-meta {
+        flex-shrink: 0;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--color-gw-secondary);
+    }
+
+    .listbox-option-description {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        font-size: 11px;
+        color: var(--color-gw-secondary);
+        line-height: 1.5;
+        width: 100%;
+    }
+
+    /* ── TABS ── */
+    .tabs-root {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tabs-list {
+        display: flex;
+        align-items: center;
+        border-bottom: 0.5px solid var(--color-gw-border);
+        gap: 0;
+        flex-shrink: 0;
+    }
+
+    .tabs-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--color-gw-secondary);
+        background: transparent;
+        border: none;
+        border-bottom: 1.5px solid transparent;
+        cursor: pointer;
+        transition:
+            color 0.12s ease,
+            border-color 0.12s ease;
+        white-space: nowrap;
+        margin-bottom: -0.5px;
+    }
+
+    .tabs-trigger:hover:not(:disabled) {
+        color: var(--color-gw-primary);
+    }
+
+    .tabs-trigger:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .tabs-trigger--active {
+        color: var(--color-gw-primary);
+        border-bottom-color: var(--color-gw-red-border);
+    }
+
+    .tabs-trigger:focus-visible {
+        outline: 1px solid var(--color-gw-border-md);
+        outline-offset: -1px;
+    }
+
+    .tabs-content {
+        flex: 1;
+        min-height: 0;
+    }
+
     /* ── CHIP ── */
     .chip {
         display: inline-flex;
@@ -2452,6 +2596,13 @@
         background-color: var(--color-gw-chrome3);
         border-color: var(--color-gw-border-md);
         color: var(--color-gw-primary);
+    }
+
+    /* Assigned-tag active state: red border + text, never red fill (FR 6). */
+    .chip--tag-active {
+        border-color: var(--color-gw-red-border);
+        color: var(--color-gw-red);
+        background-color: transparent;
     }
 
     button.chip:hover:not(:disabled) {

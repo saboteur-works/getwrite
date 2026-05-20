@@ -17,12 +17,13 @@ import {
 } from "lucide-react";
 import MenuItemButton from "../common/MenuItemButton";
 import Button from "../common/UI/Button/Button";
+import useDismissableMenu from "../common/UI/hooks/useDismissableMenu";
 
 export interface ShellSettingsMenuProps {
     projectName?: string;
     isDarkMode: boolean;
     isOpen: boolean;
-    menuRef: React.RefObject<HTMLDivElement | null>;
+    onClose: () => void;
     onToggleOpen: () => void;
     onOpenPreferences: () => void;
     onOpenHeadingSettings: () => void;
@@ -36,7 +37,7 @@ export interface ShellSettingsMenuProps {
     onCloseProject: () => void;
     hasProject: boolean;
     isProjectMenuOpen: boolean;
-    projectMenuRef: React.RefObject<HTMLDivElement | null>;
+    onCloseProjectMenu: () => void;
     onToggleProjectMenuOpen: () => void;
     onOpenCompile: () => void;
 }
@@ -45,7 +46,7 @@ export default function ShellSettingsMenu({
     projectName,
     isDarkMode,
     isOpen,
-    menuRef,
+    onClose,
     onToggleOpen,
     onOpenPreferences,
     onOpenHeadingSettings,
@@ -59,10 +60,19 @@ export default function ShellSettingsMenu({
     onCloseProject,
     hasProject,
     isProjectMenuOpen,
-    projectMenuRef,
+    onCloseProjectMenu,
     onToggleProjectMenuOpen,
     onOpenCompile,
 }: ShellSettingsMenuProps): JSX.Element {
+    const { containerRef: settingsMenuRef } = useDismissableMenu({
+        isOpen,
+        onClose,
+    });
+    const { containerRef: projectMenuRef } = useDismissableMenu({
+        isOpen: isProjectMenuOpen,
+        onClose: onCloseProjectMenu,
+    });
+
     return (
         <header className="appshell-topbar">
             <div
@@ -104,7 +114,7 @@ export default function ShellSettingsMenu({
                     </div>
                 ) : null}
 
-                <div className="appshell-topbar-menu" ref={menuRef}>
+                <div className="appshell-topbar-menu" ref={settingsMenuRef}>
                     <Button
                         variant="icon"
                         aria-haspopup="menu"

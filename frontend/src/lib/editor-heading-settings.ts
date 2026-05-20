@@ -48,7 +48,7 @@ export const HEADING_FIELD_DEFINITIONS: EditorHeadingFieldDefinition[] = [
     {
         key: "color",
         label: "Color",
-        placeholder: "e.g. #D44040",
+        placeholder: "e.g. #D44040", // GW-HEX-EXEMPT: placeholder example text — not a live color value
     },
 ];
 

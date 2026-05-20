@@ -51,6 +51,15 @@ describe("a11y: Chip primitive", () => {
         ).toBeInTheDocument();
     });
 
+    it("tagActive chip renders with chip--tag-active class and no fill style", () => {
+        const { container } = render(
+            <Chip label="Fiction" shape="sharp" onClick={vi.fn()} tagActive />,
+        );
+        const el = container.querySelector("button") as HTMLElement;
+        expect(el.className).toContain("chip--tag-active");
+        expect(el.style.backgroundColor).toBe("");
+    });
+
     it("chip with color and active=true has white text for contrast", () => {
         const { container } = render(
             <Chip

@@ -70,6 +70,7 @@ export type ToolbarCommandItem =
     | ToolbarInputCommand
     | ToolbarColorCommand;
 
+// GW-HEX-EXEMPT-START: TipTap editor text/highlight color palettes — user-selectable arbitrary colors, not brand tokens
 const TEXT_COLOR_OPTIONS = [
     "#111827",
     "#1f2937",
@@ -102,6 +103,7 @@ const HIGHLIGHT_COLOR_OPTIONS = [
     "#d9f99d",
     "#ddd6fe",
 ];
+// GW-HEX-EXEMPT-END
 
 function insertBlockMath(context: ToolbarCommandContext): boolean {
     const { editor } = context;

@@ -10,6 +10,8 @@ export interface ChipProps {
     size?: "sm" | "md" | "lg";
     color?: string;
     active?: boolean;
+    /** Renders with red border + red text (no fill) for assigned-tag canonical state. */
+    tagActive?: boolean;
     onClick?: () => void;
     onDismiss?: () => void;
     tooltip?: string;
@@ -34,16 +36,22 @@ export default function Chip({
     size = "md",
     color,
     active,
+    tagActive,
     onClick,
     onDismiss,
     tooltip,
     tooltipId,
 }: ChipProps): JSX.Element {
-    const activeModifier = active && !color ? " chip--active" : "";
+    const activeModifier =
+        tagActive && !color
+            ? " chip--tag-active"
+            : active && !color
+              ? " chip--active"
+              : "";
     const className = `chip chip--${shape} chip--${size}${activeModifier}`;
     const style: React.CSSProperties | undefined = color
         ? active
-            ? { borderColor: color, backgroundColor: color, color: "#fff" }
+            ? { borderColor: color, backgroundColor: color, color: "#fff" } // GW-HEX-EXEMPT: white contrast text on user-chosen chip color
             : { borderColor: color, color }
         : undefined;
     const hasTooltip = Boolean(tooltip && tooltipId);
@@ -89,7 +97,7 @@ export default function Chip({
                 className={className}
                 style={style}
                 onClick={onClick}
-                aria-pressed={active}
+                aria-pressed={active !== undefined || tagActive !== undefined ? !!active || !!tagActive : undefined}
                 {...tooltipAnchorProps}
             >
                 {label}

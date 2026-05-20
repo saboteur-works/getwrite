@@ -5,6 +5,7 @@ import type { CompileSection } from "./compile-text";
 // Uses only built-in PDF fonts (no network fetch required).
 // Times-Roman is the closest built-in analog to IBM Plex Serif.
 // Helvetica-Bold is the closest built-in analog to IBM Plex Sans.
+// GW-HEX-EXEMPT-START: @react-pdf/renderer StyleSheet — CSS variables are not supported in PDF rendering context
 const styles = StyleSheet.create({
     page: {
         fontFamily: "Times-Roman",
@@ -40,6 +41,7 @@ const styles = StyleSheet.create({
         lineHeight: 1.8,
     },
 });
+// GW-HEX-EXEMPT-END
 
 export interface CompilePDFFallbackDocumentProps {
     sections: CompileSection[];

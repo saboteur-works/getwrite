@@ -3,6 +3,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
+import Listbox from "../common/UI/Listbox/Listbox";
+import type { ListboxOption } from "../common/UI/Listbox/Listbox";
+import Input from "../common/UI/Input/Input";
+import useDismissableMenu from "../common/UI/hooks/useDismissableMenu";
 import { setSelectedResourceId, selectFolders } from "../../src/store/resourcesSlice";
 import {
     selectSelectedProjectId,
@@ -69,27 +73,9 @@ export default function SearchBar({
     const [availableTags, setAvailableTags] = useState<Tag[]>([]);
 
     const inputRef = useRef<HTMLInputElement | null>(null);
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const activeItemRef = useRef<HTMLLIElement | null>(null);
-
-    useEffect(() => {
-        function onDocClick(e: MouseEvent) {
-            if (
-                containerRef.current &&
-                !containerRef.current.contains(e.target as Node)
-            ) {
-                setOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", onDocClick);
-        return () => document.removeEventListener("mousedown", onDocClick);
-    }, []);
+    const { containerRef } = useDismissableMenu({ isOpen: open, onClose: () => setOpen(false) });
 
     useEffect(() => setHighlight(0), [query]);
-
-    useEffect(() => {
-        activeItemRef.current?.scrollIntoView({ block: "nearest" });
-    }, [highlight]);
 
     useEffect(() => {
         const platform =
@@ -180,7 +166,7 @@ export default function SearchBar({
                         aria-hidden="true"
                         className="searchbar-icon"
                     />
-                    <input
+                    <Input
                         ref={inputRef}
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
@@ -223,42 +209,26 @@ export default function SearchBar({
                 />
             )}
 
-            {open && results.length > 0 ? (
-                <ul className="searchbar-results">
-                    {results.map((result, i) => (
-                        <li
-                            key={result.resourceId}
-                            ref={i === highlight ? activeItemRef : null}
-                            className="searchbar-result-item"
-                        >
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    dispatch(
-                                        setSelectedResourceId(result.resourceId),
-                                    );
-                                    onSelect?.(result.resourceId);
-                                    setOpen(false);
-                                    setQuery("");
-                                }}
-                                className={`searchbar-result-button${
-                                    i === highlight
-                                        ? " searchbar-result-button-active"
-                                        : ""
-                                }`}
-                            >
-                                <span className="font-semibold">
-                                    {result.title}
-                                </span>
-                                {result.snippet ? (
-                                    <span className="searchbar-result-snippet">
-                                        {renderSnippet(result.snippet, query)}
-                                    </span>
-                                ) : null}
-                            </button>
-                        </li>
-                    ))}
-                </ul>
+            {open ? (
+                <Listbox
+                    options={results.map((r) => ({
+                        value: r.resourceId,
+                        label: r.title,
+                        description: r.snippet
+                            ? renderSnippet(r.snippet, query)
+                            : undefined,
+                    }))}
+                    highlightedIndex={highlight}
+                    onSelect={(resourceId) => {
+                        dispatch(setSelectedResourceId(resourceId));
+                        onSelect?.(resourceId);
+                        setOpen(false);
+                        setQuery("");
+                    }}
+                    onHighlightChange={setHighlight}
+                    aria-label="Search results"
+                    className="searchbar-results"
+                />
             ) : null}
         </div>
     );

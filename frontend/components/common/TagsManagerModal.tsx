@@ -8,11 +8,11 @@ import Chip from "./UI/Chip";
 import { DialogTitle } from "./UI/Dialog/Dialog";
 
 function toColorInputValue(color: string | undefined): string {
-    if (!color) return "#000000";
+    if (!color) return "#000000"; // GW-HEX-EXEMPT: color picker placeholder — user-selected arbitrary colors
     const normalized = color.trim();
     return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(normalized)
         ? normalized
-        : "#000000";
+        : "#000000"; // GW-HEX-EXEMPT: color picker placeholder — user-selected arbitrary colors
 }
 
 export interface TagsManagerModalProps {
@@ -31,7 +31,7 @@ export default function TagsManagerModal({
 }: TagsManagerModalProps): JSX.Element {
     const [tags, setTags] = useState<Tag[]>([]);
     const [newName, setNewName] = useState<string>("");
-    const [newColor, setNewColor] = useState<string>("#000000");
+    const [newColor, setNewColor] = useState<string>("#000000"); // GW-HEX-EXEMPT: color picker initial value — user-selected arbitrary colors
     const [useColor, setUseColor] = useState<boolean>(false);
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const nameInputRef = useRef<HTMLInputElement>(null);
