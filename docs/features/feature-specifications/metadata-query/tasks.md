@@ -249,7 +249,7 @@ styles
 - `03-chip-ui.md` § Reordering and editing — drag-handle metaphor
 - `09-current-state.md` § Reusable components for new UI —
   `components/common/UI/Chip` primitive to reuse
-  **Done:** [ ]
+  **Done:** [x]
 
 ### Task 12: Type-driven operator menu
 
