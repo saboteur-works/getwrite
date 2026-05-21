@@ -610,19 +610,6 @@
     margin-bottom: 12px;
   }
 
-  .workarea-stat-card {
-    border: 0.5px solid var(--color-gw-border);
-    border-radius: var(--radius-md);
-    background-color: var(--color-gw-chrome);
-    padding: 16px;
-  }
-
-  .workarea-stat-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--color-gw-primary);
-  }
-
   .workarea-stat-label {
     font-family: var(--font-mono);
     font-size: 9px;
