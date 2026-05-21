@@ -7,6 +7,7 @@ import {
     loadProjectConfig,
     PROJECT_FILENAME,
 } from "../../src/lib/models/project-config";
+import { ProjectConfigSchema } from "../../src/lib/models/schemas";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
 
@@ -37,6 +38,27 @@ describe("models/project-config", () => {
         }
     });
 
+    it("preserves metadataRevision through loadProject normalization", async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-pcfg-"));
+        try {
+            const proj = {
+                id: generateUUID(),
+                name: "RevTest",
+                createdAt: new Date().toISOString(),
+                config: { metadataRevision: 7, editorConfig: {} },
+            };
+            await fs.writeFile(
+                path.join(tmp, PROJECT_FILENAME),
+                JSON.stringify(proj, null, 2),
+                "utf8",
+            );
+            const loaded = await loadProject(tmp);
+            expect(loaded.config?.metadataRevision).toBe(7);
+        } finally {
+            await removeDirRetry(tmp);
+        }
+    });
+
     it("throws when project.json is invalid JSON", async () => {
         const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-pcfg-"));
         try {
@@ -49,5 +71,24 @@ describe("models/project-config", () => {
         } finally {
             await removeDirRetry(tmp);
         }
+    });
+});
+
+describe("ProjectConfigSchema — metadataRevision", () => {
+    it("accepts and preserves metadataRevision", () => {
+        const result = ProjectConfigSchema.parse({ metadataRevision: 42 });
+        expect(result.metadataRevision).toBe(42);
+    });
+
+    it("accepts config without metadataRevision", () => {
+        expect(() => ProjectConfigSchema.parse({})).not.toThrow();
+    });
+
+    it("rejects negative metadataRevision", () => {
+        expect(() => ProjectConfigSchema.parse({ metadataRevision: -1 })).toThrow();
+    });
+
+    it("rejects non-integer metadataRevision", () => {
+        expect(() => ProjectConfigSchema.parse({ metadataRevision: 1.5 })).toThrow();
     });
 });

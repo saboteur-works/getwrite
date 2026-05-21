@@ -10,6 +10,9 @@
  * - Validate project-type JSON specs from memory or file.
  */
 import { z } from "zod";
+import { QueryASTSchema } from "./query-ast";
+export type { QueryAST, LeafNode, CombinatorNode, SpliceNode, ComparisonNode, ComparisonOp, InNode, ExistsNode, TextNode, TextOp, LinksToNode, LinkedFromNode, AndNode, OrNode, NotNode, RefNode, ParamNode } from "./query-ast";
+export { QueryASTSchema, ComparisonNodeSchema, InNodeSchema, ExistsNodeSchema, TextNodeSchema, LinksToNodeSchema, LinkedFromNodeSchema, RefNodeSchema, ParamNodeSchema, ComparisonOpSchema, TextOpSchema } from "./query-ast";
 
 /**
  * Canonical UUID v4 string validator used across model schemas.
@@ -122,6 +125,7 @@ export const MetadataFieldSchema = z.object({
     label: z.string(),
     type: MetadataFieldTypeSchema,
     locked: z.boolean().optional(),
+    deprecated: z.boolean().optional(),
     options: z.array(z.string()).optional(),
     multiple: z.boolean().optional(),
     /** Scopes autocomplete candidates to resources in this folder (by folder id). */
@@ -172,6 +176,7 @@ export const ProjectConfigSchema = z.object({
     editorConfig: EditorConfigSchema.optional(),
     defaultRevisionName: z.string().optional(),
     metadataSchema: MetadataSchemaSchema.optional(),
+    metadataRevision: z.number().int().nonnegative().optional(),
 });
 
 /**
@@ -345,6 +350,7 @@ export const Schemas = {
     ResourceTemplateSchema,
     TipTapDocumentSchema,
     TipTapNodeSchema,
+    QueryASTSchema,
 };
 
 /**

@@ -19,6 +19,7 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
         autoPrune: config?.autoPrune ?? DEFAULT_AUTO_PRUNE,
         editorConfig: config?.editorConfig ?? {},
         defaultRevisionName: config?.defaultRevisionName,
+        metadataRevision: config?.metadataRevision,
     };
 }
 

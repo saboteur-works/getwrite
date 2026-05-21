@@ -23,9 +23,16 @@ import type {
     ResourceRef,
 } from "../../src/lib/models/types";
 import { shallowEqual } from "react-redux";
-import { removeResource } from "../../src/store/projectsSlice";
+import { removeResource, selectActiveProjectMetadataSchema } from "../../src/store/projectsSlice";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import ResourceTree from "../ResourceTree/ResourceTree";
+import SmartFolders from "../ResourceTree/SmartFolders";
+import QueryBuilder from "../QueryBuilder/QueryBuilder";
+import SaveQueryDialog from "../QueryBuilder/SaveQueryDialog";
+import { buildFieldPickerFields } from "../QueryBuilder/FieldPicker";
+import { filterResourceOptionsByScope } from "../Sidebar/folderScope";
+import { astToGroups } from "../QueryBuilder/ast-chip-bridge";
+import { useQueryBuilderState } from "../QueryBuilder/useQueryBuilderState";
 import ShellLayoutController from "./ShellLayoutController";
 import ShellSettingsMenu from "./ShellSettingsMenu";
 import ShellModalCoordinator from "./ShellModalCoordinator";
@@ -56,6 +63,16 @@ import {
 import Button from "../common/UI/Button/Button";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource, selectResources, selectFolders, setSelectedResourceId, updateResource, updateFolder } from "../../src/store/resourcesSlice";
+import {
+    loadSavedQueries,
+    evaluateQuery,
+    deleteQuery,
+    selectActiveQueryIds,
+    selectIsEvaluating,
+    selectSavedQueriesList,
+    type SavedQuery,
+} from "../../src/store/querySlice";
+import type { QueryAST } from "../../src/lib/models/query-ast";
 import {
     selectIsSavingRevision,
     selectDeletingRevisionId,
@@ -252,6 +269,10 @@ export default function AppShell({
         useState<boolean>(false);
     const [isCloseProjectConfirmOpen, setIsCloseProjectConfirmOpen] =
         useState<boolean>(false);
+    const [activeSmartFolderId, setActiveSmartFolderId] = useState<string | null>(null);
+    const [queryBuilderOpen, setQueryBuilderOpen] = useState(false);
+    const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+    const [editingQuery, setEditingQuery] = useState<SavedQuery | null>(null);
     const latestEditorEditVersionRef = useRef<number>(0);
     const combined = React.useMemo(() => {
         return [...(resources ?? []), ...(folders ?? [])];
@@ -262,14 +283,43 @@ export default function AppShell({
     );
     const liveResources = useAppSelector((s) => selectResources(s.resources));
     const liveFolders = useAppSelector((s) => selectFolders(s.resources));
+    const activeQueryIds = useAppSelector(selectActiveQueryIds);
+    const isQueryEvaluating = useAppSelector(selectIsEvaluating);
+    const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
+    const savedQueriesList = useAppSelector(selectSavedQueriesList);
+    const qb = useQueryBuilderState();
+    const availableFields = React.useMemo(
+        () => buildFieldPickerFields(metadataSchema),
+        [metadataSchema],
+    );
+    const resolveResourceOptions = React.useCallback(
+        (refFolder: string | undefined, includeSubfolders?: boolean) => {
+            return filterResourceOptionsByScope(
+                (liveResources ?? []).map((r) => ({ id: r.id, name: r.name ?? "", folderId: r.folderId })),
+                liveFolders ?? [],
+                refFolder,
+                includeSubfolders,
+            );
+        },
+        [liveResources, liveFolders],
+    );
+    const currentAst = React.useMemo(
+        () => (qb.isAdvanced && qb.rawAst ? qb.rawAst : (qb.buildAst() ?? { op: "and" as const, children: [] })),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [qb.isAdvanced, qb.rawAst, qb.groups, qb.globalCombinator],
+    );
 
     useEffect(() => {
         if (selectedResource?.type === "text") {
             setView((current) => (current === "organizer" ? "edit" : current));
+            setActiveSmartFolderId(null);
+            setQueryBuilderOpen(false);
         } else if (selectedResource?.type === "folder") {
             setView((current) =>
                 current === "edit" || current === "diff" ? "organizer" : current,
             );
+            setActiveSmartFolderId(null);
+            setQueryBuilderOpen(false);
         }
     }, [selectedResource?.id, selectedResource?.type]);
 
@@ -509,6 +559,74 @@ export default function AppShell({
         }
     }, [project?.id]);
     const dispatch = useAppDispatch();
+
+    useEffect(() => {
+        if (project?.id) {
+            dispatch(loadSavedQueries({ projectId: project.id }));
+        }
+    }, [project?.id]);
+
+    const handleSmartFolderSelect = (query: SavedQuery): void => {
+        if (!project?.id) return;
+        setActiveSmartFolderId(query.id);
+        setView("data");
+        dispatch(evaluateQuery({ projectId: project.id, definition: query.definition as QueryAST }));
+        // Pre-populate QueryBuilder with the query so the user can refine it
+        const restored = astToGroups(query.definition as QueryAST, availableFields, savedQueriesList);
+        if (restored) {
+            qb.reset({ groups: restored.groups, combinator: restored.globalCombinator });
+        } else {
+            qb.reset({ rawAst: query.definition as QueryAST });
+        }
+        setEditingQuery(query);
+        setQueryBuilderOpen(true);
+    };
+
+    const handleNewQuery = (): void => {
+        qb.reset();
+        setEditingQuery(null);
+        setActiveSmartFolderId(null);
+        setQueryBuilderOpen(true);
+        setView("data");
+    };
+
+    const handleEditQuery = (query: SavedQuery): void => {
+        const restored = astToGroups(query.definition as QueryAST, availableFields, savedQueriesList);
+        if (restored) {
+            qb.reset({ groups: restored.groups, combinator: restored.globalCombinator });
+        } else {
+            qb.reset({ rawAst: query.definition as QueryAST });
+        }
+        setEditingQuery(query);
+        setQueryBuilderOpen(true);
+        setActiveSmartFolderId(query.id);
+        setView("data");
+        if (project?.id) {
+            dispatch(evaluateQuery({ projectId: project.id, definition: query.definition as QueryAST }));
+        }
+    };
+
+    const handleDeleteQuery = (queryId: string): void => {
+        if (!project?.id) return;
+        dispatch(deleteQuery({ projectId: project.id, queryId }));
+        if (activeSmartFolderId === queryId) {
+            setActiveSmartFolderId(null);
+            setQueryBuilderOpen(false);
+            setEditingQuery(null);
+        }
+    };
+
+    const handleSaveRequest = (): void => {
+        setSaveDialogOpen(true);
+    };
+
+    const handleQuerySaved = (savedId: string): void => {
+        setSaveDialogOpen(false);
+        setEditingQuery(null);
+        if (!project?.id) return;
+        setActiveSmartFolderId(savedId);
+        dispatch(evaluateQuery({ projectId: project.id, definition: currentAst }));
+    };
 
     /**
      * Persists editor content to resource API using debounced transport.
@@ -889,12 +1007,21 @@ export default function AppShell({
                                 </div>
                                 <div className="appshell-sidebar-content p-4 pt-3">
                                     {project ? (
-                                        <ResourceTree
-                                            debug={false}
-                                            onResourceAction={
-                                                handleResourceAction
-                                            }
-                                        />
+                                        <>
+                                            <ResourceTree
+                                                debug={false}
+                                                onResourceAction={
+                                                    handleResourceAction
+                                                }
+                                            />
+                                            <SmartFolders
+                                                selectedQueryId={activeSmartFolderId ?? undefined}
+                                                onSelect={handleSmartFolderSelect}
+                                                onNewQuery={handleNewQuery}
+                                                onEditQuery={handleEditQuery}
+                                                onDeleteQuery={handleDeleteQuery}
+                                            />
+                                        </>
                                     ) : (
                                         <div className="space-y-2">
                                             <p>Loading Resource Tree</p>
@@ -1351,9 +1478,67 @@ export default function AppShell({
                                 ) : null}
                                 <div className="max-w-full mx-auto">
                                     <div className="workarea-container">
-                                        {/* If a resource is selected, render the chosen view; otherwise render empty state or children. */}
-                                        {selectedResource && combined
+                                        {/* If a resource is selected, or the data view is active, render the chosen view; otherwise render empty state or children. */}
+                                        {(selectedResource && combined) || view === "data"
                                             ? (() => {
+                                                  if (view === "data") {
+                                                      const queryResources = activeSmartFolderId
+                                                          ? liveResources.filter((r) => activeQueryIds.includes(r.id))
+                                                          : liveResources;
+                                                      return (
+                                                          <>
+                                                              {queryBuilderOpen && (
+                                                                  <div className="mb-4">
+                                                                      <QueryBuilder
+                                                                          groups={qb.groups}
+                                                                          globalCombinator={qb.globalCombinator}
+                                                                          isAdvanced={qb.isAdvanced}
+                                                                          rawAst={qb.rawAst}
+                                                                          availableFields={availableFields}
+                                                                          savedQueries={savedQueriesList}
+                                                                          resolveResourceOptions={resolveResourceOptions}
+                                                                          matchCount={activeSmartFolderId ? queryResources.length : undefined}
+                                                                          onGlobalCombinatorChange={qb.onGlobalCombinatorChange}
+                                                                          onGroupCombinatorChange={qb.onGroupCombinatorChange}
+                                                                          onGroupAdd={qb.onGroupAdd}
+                                                                          onGroupDelete={qb.onGroupDelete}
+                                                                          onChipUpdate={qb.onChipUpdate}
+                                                                          onChipAdd={qb.onChipAdd}
+                                                                          onChipDelete={qb.onChipDelete}
+                                                                          onChipDuplicate={qb.onChipDuplicate}
+                                                                          onChipReorder={qb.onChipReorder}
+                                                                          onRestoreFromAdvanced={qb.onRestoreFromAdvanced}
+                                                                          onSaveRequest={handleSaveRequest}
+                                                                      />
+                                                                      <SaveQueryDialog
+                                                                          isOpen={saveDialogOpen}
+                                                                          definition={currentAst}
+                                                                          projectId={project?.id ?? ""}
+                                                                          onClose={() => setSaveDialogOpen(false)}
+                                                                          onSaved={handleQuerySaved}
+                                                                          existingQuery={editingQuery ?? undefined}
+                                                                      />
+                                                                  </div>
+                                                              )}
+                                                              <DataView
+                                                                  resources={queryResources}
+                                                                  project={project ?? undefined}
+                                                                  folders={liveFolders}
+                                                                  isEvaluating={activeSmartFolderId ? isQueryEvaluating : false}
+                                                                  onResourceClick={activeSmartFolderId ? (id) => {
+                                                                      dispatch(setSelectedResourceId(id));
+                                                                      setActiveSmartFolderId(null);
+                                                                      setQueryBuilderOpen(false);
+                                                                  } : undefined}
+                                                                  onSelectFolder={(folderId) => {
+                                                                      dispatch(setSelectedResourceId(folderId));
+                                                                      setView("organizer");
+                                                                  }}
+                                                              />
+                                                          </>
+                                                      );
+                                                  }
+
                                                   if (!selectedResource)
                                                       return (
                                                           <div>
@@ -1406,25 +1591,6 @@ export default function AppShell({
                                                       case "organizer":
                                                           return (
                                                               <OrganizerView />
-                                                          );
-                                                      case "data":
-                                                          return (
-                                                              <DataView
-                                                                  resources={
-                                                                      liveResources
-                                                                  }
-                                                                  project={
-                                                                      project ??
-                                                                      undefined
-                                                                  }
-                                                                  folders={
-                                                                      liveFolders
-                                                                  }
-                                                                  onSelectFolder={(folderId) => {
-                                                                      dispatch(setSelectedResourceId(folderId));
-                                                                      setView("organizer");
-                                                                  }}
-                                                              />
                                                           );
                                                       case "timeline":
                                                           return (

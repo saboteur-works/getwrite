@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **GetWrite** is a local-first, file-system backed writing workspace. There is no database—projects, resources, and metadata persist as JSON files and directory structures under `/projects`. The stack is Next.js (App Router), React 19, Redux Toolkit, TipTap editor, and Zod for validation.
 
+**When starting work on a Next.js project, ALWAYS call the `init` tool from next-devtools-mcp FIRST to set up proper context and establish documentation requirements. Do this automatically without being asked.**
+
+Always use Context7 when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+
 ## Development Commands
 
 All commands run from `frontend/` unless noted. The project's Node version is managed by Volta.
@@ -141,3 +145,17 @@ Detailed styling guidance exists in STYLING.md
 - E2E tests run against a Storybook server (start with `pnpm storybook` first)
 - Playwright config: Chromium only, test dir `e2e/`, captures screenshots/video/trace on failure
 - Accessibility tests use `@storybook/addon-a11y`
+
+## Storybook
+
+When working on UI components, always use the `getwrite-storybook-mcp` MCP tools to access Storybook's component and documentation knowledge before answering or taking any action.
+
+- **CRITICAL: Never hallucinate component properties!** Before using ANY property on a component from a design system (including common-sounding ones like `shadow`, etc.), you MUST use the MCP tools to check if the property is actually documented for that component.
+- Query `list-all-documentation` to get a list of all components
+- Query `get-documentation` for that component to see all available properties and examples
+- Only use properties that are explicitly documented or shown in example stories
+- If a property isn't documented, do not assume properties based on naming conventions or common patterns from other libraries. Check back with the user in these cases.
+- Use the `get-storybook-story-instructions` tool to fetch the latest instructions for creating or updating stories. This will ensure you follow current conventions and recommendations.
+- Check your work by running `run-story-tests`.
+
+Remember: A story name might not reflect the property name correctly, so always verify properties through documentation or example stories before using them.

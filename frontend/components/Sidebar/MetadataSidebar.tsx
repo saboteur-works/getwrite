@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import AddFieldForm from "./AddFieldForm";
 import SynopsisInput from "./controls/SynopsisInput";
 import NotesInput from "./controls/NotesInput";
 import Input from "../common/UI/Input/Input";
@@ -17,7 +20,7 @@ import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
 import TagsSection from "./TagsSection";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
-import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
+import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
 import { createSelector } from "@reduxjs/toolkit";
 import { selectResource } from "../../src/store/resourcesSlice";
@@ -25,7 +28,6 @@ import {
     selectActiveProjectStatuses,
     selectActiveProjectMetadataSchema,
     selectSelectedProjectId,
-    addMetadataField,
 } from "../../src/store/projectsSlice";
 import type {
     Folder,
@@ -112,7 +114,6 @@ export default function MetadataSidebar({
     onChangeField,
     className = "",
 }: MetadataSidebarProps): JSX.Element {
-    const dispatch = useAppDispatch();
     const schema = useAppSelector(selectActiveProjectMetadataSchema);
     const selectedProjectId = useAppSelector(selectSelectedProjectId);
 
@@ -126,6 +127,7 @@ export default function MetadataSidebar({
     );
 
     const [pendingFocusKey, setPendingFocusKey] = React.useState<string | null>(null);
+    const [showAddForm, setShowAddForm] = React.useState(false);
     const sidebarRef = React.useRef<HTMLElement | null>(null);
 
     React.useEffect(() => {
@@ -140,22 +142,14 @@ export default function MetadataSidebar({
         }
     }, [schema, pendingFocusKey]);
 
-    async function handleAddField(): Promise<void> {
-        if (!selectedProjectId) return;
-        const firstGroup = schema.groups[0];
-        if (!firstGroup) return;
-        const key = `field-${Date.now()}`;
-        setPendingFocusKey(key);
-        const result = await dispatch(
-            addMetadataField({
-                projectId: selectedProjectId,
-                groupId: firstGroup.id,
-                field: { key, label: "New Field", type: "text" },
-            }),
-        );
-        if (addMetadataField.rejected.match(result)) {
-            setPendingFocusKey(null);
-        }
+    function handleFieldFocused(fieldKey: string): void {
+        setShowAddForm(false);
+        setPendingFocusKey(fieldKey);
+    }
+
+    function handleFieldCreated(fieldKey: string): void {
+        setShowAddForm(false);
+        setPendingFocusKey(fieldKey);
     }
 
     const allResourceOptions = useAppSelector(selectAllResourceOptions, shallowEqual);
@@ -387,16 +381,29 @@ export default function MetadataSidebar({
                             <TagsSection />
                         </CollapsibleSection>
                     </div>
-                    <div className="flex-shrink-0 mt-2 pt-3 border-t border-gw-border">
-                        <button
-                            type="button"
-                            onClick={() => { void handleAddField(); }}
-                            disabled={!selectedProjectId || schema.groups.length === 0}
-                            className="flex w-full items-center gap-1.5 py-1 text-[11px] font-mono uppercase tracking-[0.12em] text-gw-secondary hover:text-gw-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                            aria-label="add-metadata-field"
-                        >
-                            + Add field
-                        </button>
+                    <div className="flex-shrink-0 mt-2">
+                        {showAddForm && selectedProjectId ? (
+                            <AddFieldForm
+                                schema={schema}
+                                selectedProjectId={selectedProjectId}
+                                currentFolderId={selectedResource.folderId}
+                                onCancel={() => setShowAddForm(false)}
+                                onFieldFocused={handleFieldFocused}
+                                onCreated={handleFieldCreated}
+                            />
+                        ) : (
+                            <div className="pt-3 border-t border-gw-border">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddForm(true)}
+                                    disabled={!selectedProjectId || schema.groups.length === 0}
+                                    className="flex w-full items-center gap-1.5 py-1 text-[11px] font-mono uppercase tracking-[0.12em] text-gw-secondary hover:text-gw-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    aria-label="add-metadata-field"
+                                >
+                                    + Add field
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </React.Fragment>
             ) : (

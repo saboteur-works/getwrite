@@ -7,6 +7,7 @@ import resourcesReducer from "../src/store/resourcesSlice";
 import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
 import searchReducer from "../src/store/searchSlice";
+import queryReducer from "../src/store/querySlice";
 import {
     APPEARANCE_CHANGED_EVENT,
     GLOBAL_APPEARANCE_STORAGE_KEY,
@@ -89,6 +90,7 @@ const mockStore = configureStore({
         revisions: revisionsReducer,
         editorConfig: editorConfigReducer,
         search: searchReducer,
+        queries: queryReducer,
     },
     preloadedState: {
         projects: {

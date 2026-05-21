@@ -1,4 +1,6 @@
 import type { MetadataField, MetadataFieldType, MetadataGroup, MetadataSchema } from "../lib/models/types";
+import type { TypeMigrationEntry, OptionsMigrationEntry } from "../lib/models/metadata-schema";
+import type { FieldValueEntry } from "../../app/api/project/metadata-schema/route";
 
 export interface MetadataSchemaRequestContext {
     projectPath: string;
@@ -78,6 +80,32 @@ export async function postRemoveField(
 ): Promise<MetadataSchema> {
     return postToMetadataSchemaRoute({
         action: "remove-field",
+        projectPath: context.projectPath,
+        groupId,
+        fieldKey,
+    });
+}
+
+export async function postDeprecateField(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+): Promise<MetadataSchema> {
+    return postToMetadataSchemaRoute({
+        action: "deprecate-field",
+        projectPath: context.projectPath,
+        groupId,
+        fieldKey,
+    });
+}
+
+export async function postClearField(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+): Promise<MetadataSchema> {
+    return postToMetadataSchemaRoute({
+        action: "clear-field",
         projectPath: context.projectPath,
         groupId,
         fieldKey,
@@ -203,4 +231,56 @@ export async function postUpdateRefProperties(
         fieldKey,
         ...updates,
     });
+}
+
+export async function postUpdateFieldOptionsWithMigration(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+    newOptions: string[],
+    migrations: Record<string, OptionsMigrationEntry>,
+): Promise<MetadataSchema> {
+    return postToMetadataSchemaRoute({
+        action: "update-field-options-with-migration",
+        projectPath: context.projectPath,
+        groupId,
+        fieldKey,
+        newOptions,
+        migrations,
+    });
+}
+
+export async function postChangeFieldTypeWithMigration(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+    newType: MetadataFieldType,
+    newOptions: string[],
+    migrations: Record<string, TypeMigrationEntry>,
+): Promise<MetadataSchema> {
+    return postToMetadataSchemaRoute({
+        action: "change-field-type-with-migration",
+        projectPath: context.projectPath,
+        groupId,
+        fieldKey,
+        newType,
+        newOptions,
+        migrations,
+    });
+}
+
+export async function fetchFieldValues(
+    projectPath: string,
+    fieldKey: string,
+): Promise<FieldValueEntry[]> {
+    const params = new URLSearchParams({ projectPath, fieldKey });
+    const response = await fetch(`/api/project/metadata-schema?${params.toString()}`);
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(
+            getApiErrorMessage(errorBody, "Failed to enumerate field values."),
+        );
+    }
+    const data = (await response.json()) as { values?: FieldValueEntry[] };
+    return data.values ?? [];
 }

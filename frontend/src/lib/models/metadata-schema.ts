@@ -13,6 +13,7 @@ import path from "node:path";
 import { acquireLock } from "./locks";
 import { PROJECT_FILENAME } from "./project-config";
 import { readSidecar, writeSidecar } from "./sidecar";
+import { canonicalValueKey } from "./field-values";
 import { DEFAULT_METADATA_SCHEMA } from "./default-metadata-schema";
 import type {
     Project,
@@ -23,6 +24,20 @@ import type {
     MetadataValue,
     UUID,
 } from "./types";
+
+// ─── Type migration types ─────────────────────────────────────────────────────
+
+export interface TypeMigrationEntry {
+    action: "keep" | "clear" | "normalize";
+    /** The replacement value when action is "normalize". */
+    normalizedTo?: string;
+}
+
+export interface OptionsMigrationEntry {
+    action: "keep" | "clear" | "normalize" | "add-to-options";
+    /** The replacement value when action is "normalize". */
+    normalizedTo?: string;
+}
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
@@ -37,6 +52,10 @@ async function writeProject(
     project: Project,
 ): Promise<void> {
     const p = path.join(projectRoot, PROJECT_FILENAME);
+    if (!project.config) {
+        project.config = { editorConfig: {} };
+    }
+    project.config.metadataRevision = (project.config.metadataRevision ?? 0) + 1;
     await fs.writeFile(p, JSON.stringify(project, null, 2), "utf8");
 }
 
@@ -171,6 +190,84 @@ export async function removeField(
     } finally {
         release();
     }
+}
+
+/**
+ * Marks a field as deprecated by setting `deprecated: true`.
+ *
+ * Deprecated fields are hidden from the metadata sidebar but remain queryable
+ * in the chip UI (with a muted badge). Sidecar values are preserved untouched.
+ *
+ * Throws if:
+ * - the group does not exist
+ * - the field does not exist in the group
+ * - the field has `locked: true`
+ */
+export async function deprecateField(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+): Promise<MetadataSchema> {
+    const release = await acquireLock(projectRoot);
+    try {
+        const project = await readProject(projectRoot);
+        const schema = getOrInitSchema(project);
+        const group = findGroup(schema, groupId);
+        const field = group.fields.find((f) => f.key === fieldKey);
+        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+        if (field.locked) {
+            throw new Error(`Cannot deprecate locked field: "${fieldKey}"`);
+        }
+        field.deprecated = true;
+        await writeProject(projectRoot, project);
+        return schema;
+    } finally {
+        release();
+    }
+}
+
+async function clearFieldFromSidecars(
+    projectRoot: string,
+    fieldKey: string,
+): Promise<void> {
+    const metaDir = path.join(projectRoot, "meta");
+    let entries: string[];
+    try {
+        entries = await fs.readdir(metaDir);
+    } catch {
+        return;
+    }
+    for (const entry of entries) {
+        if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) continue;
+        const resourceId = entry.slice("resource-".length, -".meta.json".length) as UUID;
+        const sidecar = await readSidecar(projectRoot, resourceId);
+        if (!sidecar || !(fieldKey in sidecar)) continue;
+        delete sidecar[fieldKey];
+        await writeSidecar(projectRoot, resourceId, sidecar);
+    }
+}
+
+/**
+ * Removes a field from the schema and deletes its key from every sidecar
+ * project-wide. The schema update runs under the project lock; sidecar
+ * migration runs after the lock is released.
+ *
+ * This is a destructive, irreversible operation — all stored values for the
+ * field key are permanently deleted.
+ *
+ * Throws if:
+ * - the group does not exist
+ * - the field does not exist in the group
+ * - the field has `locked: true`
+ */
+export async function clearField(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+): Promise<MetadataSchema> {
+    const schema = await removeField(projectRoot, groupId, fieldKey);
+    await clearFieldFromSidecars(projectRoot, fieldKey);
+    return schema;
 }
 
 /**
@@ -479,6 +576,81 @@ export async function changeFieldType(
     }
 }
 
+async function migrateFieldTypeInSidecars(
+    projectRoot: string,
+    fieldKey: string,
+    migrations: Record<string, TypeMigrationEntry>,
+): Promise<void> {
+    if (Object.keys(migrations).length === 0) return;
+    const metaDir = path.join(projectRoot, "meta");
+    let entries: string[];
+    try {
+        entries = await fs.readdir(metaDir);
+    } catch {
+        return;
+    }
+    for (const entry of entries) {
+        if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) continue;
+        const resourceId = entry.slice("resource-".length, -".meta.json".length) as UUID;
+        const sidecar = await readSidecar(projectRoot, resourceId);
+        if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null) continue;
+        const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
+        const migration = migrations[key];
+        if (!migration || migration.action === "keep") continue;
+        if (migration.action === "clear") {
+            delete sidecar[fieldKey];
+        } else if (migration.action === "normalize" && migration.normalizedTo !== undefined) {
+            sidecar[fieldKey] = migration.normalizedTo;
+        }
+        await writeSidecar(projectRoot, resourceId, sidecar);
+    }
+}
+
+/**
+ * Changes a field's type and atomically migrates sidecar values according to
+ * the provided resolution map, then updates the schema under `acquireLock`.
+ *
+ * For `select` / `multiselect` types, `newOptions` replaces (or initialises)
+ * `field.options`. For all other types, `field.options` is removed.
+ *
+ * Each entry in `migrations` is keyed by `canonicalValueKey(value)`:
+ * - `"keep"` — leave the sidecar value unchanged
+ * - `"clear"` — delete the field key from the sidecar
+ * - `"normalize"` — replace the value with `entry.normalizedTo`
+ *
+ * Throws if the group or field does not exist, or if the field is locked.
+ */
+export async function changeFieldTypeWithMigration(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+    newType: MetadataFieldType,
+    newOptions: string[],
+    migrations: Record<string, TypeMigrationEntry>,
+): Promise<MetadataSchema> {
+    const release = await acquireLock(projectRoot);
+    let schema: MetadataSchema;
+    try {
+        const project = await readProject(projectRoot);
+        schema = getOrInitSchema(project);
+        const group = findGroup(schema, groupId);
+        const field = group.fields.find((f) => f.key === fieldKey);
+        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+        if (field.locked) throw new Error(`Cannot change type of locked field: "${fieldKey}"`);
+        field.type = newType;
+        if (newType === "select" || newType === "multiselect") {
+            field.options = newOptions;
+        } else {
+            delete field.options;
+        }
+        await writeProject(projectRoot, project);
+    } finally {
+        release();
+    }
+    await migrateFieldTypeInSidecars(projectRoot, fieldKey, migrations);
+    return schema;
+}
+
 /**
  * Renames the key of a field in the schema and migrates all sidecar values
  * that reference the old key to the new key project-wide.
@@ -509,15 +681,120 @@ export async function renameFieldKey(
     return schema;
 }
 
+async function migrateFieldOptionsInSidecars(
+    projectRoot: string,
+    fieldKey: string,
+    migrations: Record<string, OptionsMigrationEntry>,
+    fieldType: MetadataFieldType,
+): Promise<void> {
+    if (Object.keys(migrations).length === 0) return;
+    const metaDir = path.join(projectRoot, "meta");
+    let entries: string[];
+    try {
+        entries = await fs.readdir(metaDir);
+    } catch {
+        return;
+    }
+    for (const entry of entries) {
+        if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) continue;
+        const resourceId = entry.slice("resource-".length, -".meta.json".length) as UUID;
+        const sidecar = await readSidecar(projectRoot, resourceId);
+        if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null) continue;
+
+        if (fieldType === "multiselect" && Array.isArray(sidecar[fieldKey])) {
+            const arr = sidecar[fieldKey] as string[];
+            let changed = false;
+            const newArr: string[] = [];
+            for (const element of arr) {
+                const migration = migrations[element];
+                if (!migration || migration.action === "keep" || migration.action === "add-to-options") {
+                    newArr.push(element);
+                } else if (migration.action === "normalize" && migration.normalizedTo !== undefined) {
+                    newArr.push(migration.normalizedTo);
+                    changed = true;
+                } else if (migration.action === "clear") {
+                    changed = true;
+                }
+            }
+            if (!changed) continue;
+            if (newArr.length === 0) {
+                delete sidecar[fieldKey];
+            } else {
+                sidecar[fieldKey] = newArr;
+            }
+            await writeSidecar(projectRoot, resourceId, sidecar);
+        } else {
+            const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
+            const migration = migrations[key];
+            if (!migration || migration.action === "keep" || migration.action === "add-to-options") continue;
+            if (migration.action === "clear") {
+                delete sidecar[fieldKey];
+            } else if (migration.action === "normalize" && migration.normalizedTo !== undefined) {
+                sidecar[fieldKey] = migration.normalizedTo;
+            }
+            await writeSidecar(projectRoot, resourceId, sidecar);
+        }
+    }
+}
+
+/**
+ * Updates a `select` or `multiselect` field's options list and atomically
+ * migrates sidecar values for any orphaned option values, then writes the
+ * schema under `acquireLock`.
+ *
+ * Entries in `migrations` are keyed by orphaned option value string:
+ * - `"keep"` — leave the sidecar value unchanged
+ * - `"clear"` — for select: delete the field key; for multiselect: remove the element
+ * - `"normalize"` — replace with `entry.normalizedTo`
+ * - `"add-to-options"` — leave unchanged; the value is appended to `newOptions`
+ *
+ * Throws if the field does not exist or is not a select/multiselect type.
+ */
+export async function updateFieldOptionsWithMigration(
+    projectRoot: string,
+    groupId: string,
+    fieldKey: string,
+    newOptions: string[],
+    migrations: Record<string, OptionsMigrationEntry>,
+): Promise<MetadataSchema> {
+    const release = await acquireLock(projectRoot);
+    let schema: MetadataSchema;
+    let fieldType: MetadataFieldType;
+    try {
+        const project = await readProject(projectRoot);
+        schema = getOrInitSchema(project);
+        const group = findGroup(schema, groupId);
+        const field = group.fields.find((f) => f.key === fieldKey);
+        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+        if (field.type !== "select" && field.type !== "multiselect") {
+            throw new Error(`Field "${fieldKey}" is not a select or multiselect field.`);
+        }
+        fieldType = field.type;
+        const addToOptionsValues = Object.entries(migrations)
+            .filter(([, m]) => m.action === "add-to-options")
+            .map(([v]) => v);
+        field.options = [...newOptions, ...addToOptionsValues];
+        await writeProject(projectRoot, project);
+    } finally {
+        release();
+    }
+    await migrateFieldOptionsInSidecars(projectRoot, fieldKey, migrations, fieldType);
+    return schema;
+}
+
 const metadataSchema = {
     getSchema,
     addField,
     removeField,
+    deprecateField,
+    clearField,
     reorderFields,
     renameField,
     updateFieldOptions,
+    updateFieldOptionsWithMigration,
     updateRefProperties,
     changeFieldType,
+    changeFieldTypeWithMigration,
     addGroup,
     removeGroup,
     reorderGroups,

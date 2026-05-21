@@ -12,6 +12,48 @@ const UUID_REGEX =
 
 const WIKI_LINK_REGEX = /\[\[([^\]]+)\]\]/g;
 
+/**
+ * Type guard for a single `ResourceRef` value shape `{ id: string|null, name: string }`.
+ * Detects resource-ref sidecar values structurally without consulting the metadata schema.
+ */
+function isResourceRef(
+    value: unknown,
+): value is { id: string | null; name: string } {
+    if (value === null || typeof value !== "object" || Array.isArray(value))
+        return false;
+    const v = value as Record<string, unknown>;
+    return (
+        "id" in v &&
+        "name" in v &&
+        (typeof v.id === "string" || v.id === null) &&
+        typeof v.name === "string"
+    );
+}
+
+/**
+ * Returns all non-null, non-self resource UUIDs referenced by `resource-ref`
+ * and `multi-resource-ref` sidecar field values.
+ *
+ * Detection is structural: any sidecar value matching `{ id, name }` or an
+ * array of such values is treated as a resource reference. The schema is not
+ * consulted so this works even for undeclared fields.
+ */
+function extractSidecarRefIds(
+    sidecar: Record<string, unknown>,
+): string[] {
+    const ids = new Set<string>();
+    for (const value of Object.values(sidecar)) {
+        if (isResourceRef(value)) {
+            if (value.id !== null) ids.add(value.id);
+        } else if (Array.isArray(value)) {
+            for (const elem of value) {
+                if (isResourceRef(elem) && elem.id !== null) ids.add(elem.id);
+            }
+        }
+    }
+    return Array.from(ids);
+}
+
 export type BacklinkIndex = Record<string, string[]>;
 
 /** List resource ids present under projectRoot/resources/ */
@@ -141,6 +183,16 @@ export async function computeBacklinks(
             const primary = inner.split("|")[0].trim();
             const resolved = resolveTarget(primary, redirects, maps as any);
             if (resolved && resolved !== id) refs.add(resolved);
+        }
+
+        // resource-ref and multi-resource-ref sidecar values
+        const sidecar = await readSidecar(projectRoot, id);
+        if (sidecar) {
+            for (const refId of extractSidecarRefIds(
+                sidecar as Record<string, unknown>,
+            )) {
+                if (refId !== id) refs.add(refId);
+            }
         }
 
         index[id] = Array.from(refs);

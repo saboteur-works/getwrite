@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { UUID, MetadataValue } from "./types";
 import { withMetaLock } from "./meta-locks";
+import { PROJECT_FILENAME } from "./project-config";
 
 /**
  * Compute the canonical sidecar filename for a resource id.
@@ -20,6 +21,30 @@ export function sidecarPathForProject(
     resourceId: UUID,
 ): string {
     return path.join(projectRoot, "meta", sidecarFilename(resourceId));
+}
+
+async function bumpMetadataRevision(projectRoot: string): Promise<void> {
+    const projectPath = path.join(projectRoot, PROJECT_FILENAME);
+    try {
+        const raw = await fs.readFile(projectPath, "utf8");
+        const project = JSON.parse(raw) as {
+            config?: { metadataRevision?: number; [key: string]: unknown };
+            [key: string]: unknown;
+        };
+        if (!project.config) project.config = {};
+        project.config.metadataRevision = (project.config.metadataRevision ?? 0) + 1;
+        await fs.writeFile(projectPath, JSON.stringify(project, null, 2), "utf8");
+    } catch (err: unknown) {
+        if (
+            err &&
+            typeof err === "object" &&
+            "code" in err &&
+            (err as NodeJS.ErrnoException).code === "ENOENT"
+        ) {
+            return;
+        }
+        throw err;
+    }
 }
 
 async function ensureDir(dirPath: string): Promise<void> {
@@ -77,6 +102,7 @@ export async function writeSidecar(
     await withMetaLock(projectRoot, async () => {
         await ensureDir(dir);
         await fs.writeFile(filePath, json, "utf8");
+        await bumpMetadataRevision(projectRoot);
     });
     // Enqueue background indexing after sidecar update. Use dynamic import
     // to avoid circular static imports between sidecar and the indexer queue.

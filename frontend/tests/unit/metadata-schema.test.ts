@@ -4,10 +4,17 @@ import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
+
+async function readMetadataRevision(dir: string): Promise<number | undefined> {
+    const raw = await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+    const proj = JSON.parse(raw) as { config?: { metadataRevision?: number } };
+    return proj.config?.metadataRevision;
+}
 import {
     getSchema,
     addField,
     removeField,
+    deprecateField,
     reorderFields,
     renameField,
     updateFieldOptions,
@@ -148,6 +155,56 @@ describe("removeField", () => {
         const { dir } = await makeTmpProject(baseSchema());
         await expect(
             removeField(dir, "bad-group", "my-field"),
+        ).rejects.toThrow(/Group not found/);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// deprecateField
+// ---------------------------------------------------------------------------
+
+describe("deprecateField", () => {
+    it("sets deprecated: true on an unlocked field", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        const schema = await deprecateField(dir, GROUP_ID, "my-field");
+        const group = schema.groups.find((g) => g.id === GROUP_ID)!;
+        const field = group.fields.find((f) => f.key === "my-field")!;
+        expect(field.deprecated).toBe(true);
+    });
+
+    it("persists the deprecated flag to disk", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await deprecateField(dir, GROUP_ID, "my-field");
+        const schema = await getSchema(dir);
+        const field = schema.groups[0].fields.find((f) => f.key === "my-field")!;
+        expect(field.deprecated).toBe(true);
+    });
+
+    it("keeps the field in the schema (does not remove it)", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        const schema = await deprecateField(dir, GROUP_ID, "my-field");
+        const group = schema.groups.find((g) => g.id === GROUP_ID)!;
+        expect(group.fields.map((f) => f.key)).toContain("my-field");
+    });
+
+    it("throws when trying to deprecate a locked field", async () => {
+        const { dir } = await makeTmpProject(baseSchema(LOCKED_FIELD));
+        await expect(
+            deprecateField(dir, GROUP_ID, "locked-field"),
+        ).rejects.toThrow(/locked/i);
+    });
+
+    it("throws when the field does not exist", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await expect(
+            deprecateField(dir, GROUP_ID, "nonexistent"),
+        ).rejects.toThrow(/Field not found/);
+    });
+
+    it("throws when the group does not exist", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await expect(
+            deprecateField(dir, "bad-group", "my-field"),
         ).rejects.toThrow(/Group not found/);
     });
 });
@@ -357,6 +414,39 @@ describe("reorderGroups", () => {
     it("throws when the new order length differs from the group count", async () => {
         const { dir } = await makeTmpProject(baseSchema());
         await expect(reorderGroups(dir, [])).rejects.toThrow();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// metadataRevision counter — bumped on every schema write
+// ---------------------------------------------------------------------------
+
+describe("metadataRevision counter", () => {
+    it("starts at 1 after the first schema mutation", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await addField(dir, GROUP_ID, { key: "rev-test", label: "Rev", type: "text" });
+        expect(await readMetadataRevision(dir)).toBe(1);
+    });
+
+    it("increments on each subsequent mutation", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await addField(dir, GROUP_ID, { key: "a-key", label: "A", type: "text" });
+        await addField(dir, GROUP_ID, { key: "b-key", label: "B", type: "number" });
+        expect(await readMetadataRevision(dir)).toBe(2);
+    });
+
+    it("increments across different mutation types", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await addField(dir, GROUP_ID, { key: "x-key", label: "X", type: "text" });
+        await renameField(dir, GROUP_ID, "x-key", "X Renamed");
+        await removeField(dir, GROUP_ID, "x-key");
+        expect(await readMetadataRevision(dir)).toBe(3);
+    });
+
+    it("increments when adding a group", async () => {
+        const { dir } = await makeTmpProject(baseSchema());
+        await addGroup(dir, { id: "extra-group", label: "Extra", fields: [] });
+        expect(await readMetadataRevision(dir)).toBe(1);
     });
 });
 

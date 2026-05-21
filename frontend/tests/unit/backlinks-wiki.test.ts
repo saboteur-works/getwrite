@@ -9,6 +9,12 @@ import { waitForDrain } from "../../src/lib/models/indexer-queue";
 import { writeSidecar } from "../../src/lib/models/sidecar";
 import { computeBacklinks } from "../../src/lib/models/backlinks";
 import { generateUUID } from "../../src/lib/models/uuid";
+import type { TipTapDocument } from "../../src/lib/models/types";
+
+const emptyDoc = (): TipTapDocument => ({
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: "" }] }],
+});
 
 describe("backlinks wiki-links and redirects", () => {
     beforeEach(() => {
@@ -91,5 +97,118 @@ describe("backlinks wiki-links and redirects", () => {
 
         const idx = await computeBacklinks(projectRoot);
         expect(idx[src]).toEqual([target]);
+    });
+});
+
+describe("backlinks — sidecar resource-ref extraction", () => {
+    beforeEach(() => {
+        const mem = createMemoryAdapter();
+        setStorageAdapter(mem);
+    });
+
+    afterEach(async () => {
+        await waitForDrain(2000);
+    });
+
+    it("extracts a backlink from a single resource-ref sidecar field", async () => {
+        const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-sidecar-"));
+        const source = generateUUID();
+        const target = generateUUID();
+
+        await persistResourceContent(projectRoot, source, emptyDoc() as any);
+        await persistResourceContent(projectRoot, target, emptyDoc() as any);
+
+        await writeSidecar(projectRoot, source, {
+            pov: { id: target, name: "Target Character" },
+        });
+
+        const idx = await computeBacklinks(projectRoot);
+        expect(idx[source]).toContain(target);
+        expect(idx[target]).not.toContain(source);
+    });
+
+    it("extracts backlinks from a multi-resource-ref sidecar field", async () => {
+        const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-sidecar-"));
+        const source = generateUUID();
+        const t1 = generateUUID();
+        const t2 = generateUUID();
+
+        await persistResourceContent(projectRoot, source, emptyDoc() as any);
+        await persistResourceContent(projectRoot, t1, emptyDoc() as any);
+        await persistResourceContent(projectRoot, t2, emptyDoc() as any);
+
+        await writeSidecar(projectRoot, source, {
+            characters: [
+                { id: t1, name: "Alice" },
+                { id: t2, name: "Bob" },
+            ],
+        });
+
+        const idx = await computeBacklinks(projectRoot);
+        expect(idx[source]).toContain(t1);
+        expect(idx[source]).toContain(t2);
+    });
+
+    it("skips resource-ref entries with a null id (deleted target)", async () => {
+        const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-sidecar-"));
+        const source = generateUUID();
+
+        await persistResourceContent(projectRoot, source, emptyDoc() as any);
+
+        await writeSidecar(projectRoot, source, {
+            pov: { id: null, name: "Deleted Character" },
+        });
+
+        const idx = await computeBacklinks(projectRoot);
+        expect(idx[source]).toEqual([]);
+    });
+
+    it("excludes self-references from sidecar refs", async () => {
+        const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-sidecar-"));
+        const source = generateUUID();
+
+        await persistResourceContent(projectRoot, source, emptyDoc() as any);
+
+        await writeSidecar(projectRoot, source, {
+            self: { id: source, name: "Itself" },
+        });
+
+        const idx = await computeBacklinks(projectRoot);
+        expect(idx[source]).toEqual([]);
+    });
+
+    it("combines sidecar refs with prose refs without duplicates", async () => {
+        const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-sidecar-"));
+        const source = generateUUID();
+        const target = generateUUID();
+
+        await persistResourceContent(projectRoot, source, {
+            type: "doc",
+            content: [{ type: "paragraph", content: [{ type: "text", text: `ref ${target}` }] }],
+        } as any);
+        await persistResourceContent(projectRoot, target, emptyDoc() as any);
+
+        await writeSidecar(projectRoot, source, {
+            pov: { id: target, name: "Same Target" },
+        });
+
+        const idx = await computeBacklinks(projectRoot);
+        expect(idx[source].filter((id) => id === target)).toHaveLength(1);
+    });
+
+    it("does not treat plain string/number sidecar values as refs", async () => {
+        const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-sidecar-"));
+        const source = generateUUID();
+
+        await persistResourceContent(projectRoot, source, emptyDoc() as any);
+
+        await writeSidecar(projectRoot, source, {
+            title: "My Scene",
+            wordCount: 500,
+            tags: ["action", "drama"],
+        });
+
+        const idx = await computeBacklinks(projectRoot);
+        expect(idx[source]).toEqual([]);
     });
 });

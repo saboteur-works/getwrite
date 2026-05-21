@@ -15,15 +15,20 @@ import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Project } from "../lib/models";
 import { DEFAULT_METADATA_SCHEMA } from "../lib/models/default-metadata-schema";
 import type { MetadataField, MetadataFieldType, MetadataGroup, MetadataSchema, MetadataValue } from "../lib/models/types";
+import type { TypeMigrationEntry, OptionsMigrationEntry } from "../lib/models/metadata-schema";
 import {
     resolveMetadataSchemaRequestContext,
     postAddField,
     postRemoveField,
+    postDeprecateField,
+    postClearField,
     postReorderFields,
     postRenameField,
     postUpdateFieldOptions,
+    postUpdateFieldOptionsWithMigration,
     postUpdateRefProperties,
     postChangeFieldType,
+    postChangeFieldTypeWithMigration,
     postAddGroup,
     postRemoveGroup,
     postReorderGroups,
@@ -148,6 +153,52 @@ export const removeMetadataField = createAsyncThunk<
     },
 );
 
+export const deprecateMetadataField = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; fieldKey: string },
+    { state: any; rejectValue: string }
+>(
+    "projects/deprecateMetadataField",
+    async ({ projectId, groupId, fieldKey }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postDeprecateField(context, groupId, fieldKey);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const clearMetadataField = createAsyncThunk<
+    SchemaActionResult,
+    { projectId: string; groupId: string; fieldKey: string },
+    { state: any; rejectValue: string }
+>(
+    "projects/clearMetadataField",
+    async ({ projectId, groupId, fieldKey }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postClearField(context, groupId, fieldKey);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
 export const reorderMetadataFields = createAsyncThunk<
     SchemaActionResult,
     { projectId: string; groupId: string; newKeyOrder: string[] },
@@ -214,6 +265,41 @@ export const updateMetadataFieldOptions = createAsyncThunk<
                 groupId,
                 fieldKey,
                 options,
+            );
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const updateMetadataFieldOptionsWithMigration = createAsyncThunk<
+    SchemaActionResult,
+    {
+        projectId: string;
+        groupId: string;
+        fieldKey: string;
+        newOptions: string[];
+        migrations: Record<string, OptionsMigrationEntry>;
+    },
+    { state: any; rejectValue: string }
+>(
+    "projects/updateMetadataFieldOptionsWithMigration",
+    async ({ projectId, groupId, fieldKey, newOptions, migrations }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postUpdateFieldOptionsWithMigration(
+                context,
+                groupId,
+                fieldKey,
+                newOptions,
+                migrations,
             );
             return { projectId, schema };
         } catch (error) {
@@ -330,6 +416,38 @@ export const changeMetadataFieldType = createAsyncThunk<
         }
         try {
             const schema = await postChangeFieldType(context, groupId, fieldKey, newType);
+            return { projectId, schema };
+        } catch (error) {
+            return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
+        }
+    },
+);
+
+export const changeMetadataFieldTypeWithMigration = createAsyncThunk<
+    SchemaActionResult,
+    {
+        projectId: string;
+        groupId: string;
+        fieldKey: string;
+        newType: MetadataFieldType;
+        newOptions: string[];
+        migrations: Record<string, TypeMigrationEntry>;
+    },
+    { state: any; rejectValue: string }
+>(
+    "projects/changeMetadataFieldTypeWithMigration",
+    async ({ projectId, groupId, fieldKey, newType, newOptions, migrations }, thunkApi) => {
+        const context = resolveMetadataSchemaRequestContext(
+            thunkApi.getState(),
+            projectId,
+        );
+        if ("error" in context) {
+            return thunkApi.rejectWithValue(context.error);
+        }
+        try {
+            const schema = await postChangeFieldTypeWithMigration(
+                context, groupId, fieldKey, newType, newOptions, migrations,
+            );
             return { projectId, schema };
         } catch (error) {
             return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
@@ -544,11 +662,15 @@ const projectsSlice = createSlice({
         const schemaThunks = [
             addMetadataField,
             removeMetadataField,
+            deprecateMetadataField,
+            clearMetadataField,
             reorderMetadataFields,
             renameMetadataField,
             updateMetadataFieldOptions,
+            updateMetadataFieldOptionsWithMigration,
             updateMetadataRefProperties,
             changeMetadataFieldType,
+            changeMetadataFieldTypeWithMigration,
             addMetadataGroup,
             removeMetadataGroup,
             reorderMetadataGroups,
@@ -656,6 +778,11 @@ export const selectActiveProjectStatuses = (state: any): string[] => {
 export const selectActiveProjectMetadataSchema = (state: any): MetadataSchema => {
     const id = state?.projects?.selectedProjectId;
     return state?.projects?.projects?.[id]?.metadataSchema ?? DEFAULT_METADATA_SCHEMA;
+};
+
+export const selectActiveProjectRootPath = (state: any): string | null => {
+    const id = state?.projects?.selectedProjectId;
+    return state?.projects?.projects?.[id]?.rootPath ?? null;
 };
 
 /**

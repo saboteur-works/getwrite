@@ -77,6 +77,8 @@ export interface ProjectConfig {
     defaultRevisionName?: string;
     /** User-defined (and built-in locked) metadata field schema for the project. */
     metadataSchema?: MetadataSchema;
+    /** Monotonically-increasing counter bumped on every sidecar or schema write. Used as a cache-invalidation key by the query evaluator. */
+    metadataRevision?: number;
 }
 
 /** Allowed field types for user-defined metadata fields. */
@@ -99,6 +101,8 @@ export interface MetadataField {
     type: MetadataFieldType;
     /** Locked fields cannot be removed or have their key renamed. */
     locked?: boolean;
+    /** When true, the field is hidden from the sidebar but remains queryable; sidecar values are preserved. */
+    deprecated?: boolean;
     /** Allowed values for `select` / `multiselect` types. */
     options?: string[];
     /** When true, a `resource-ref` field stores an array of refs. */

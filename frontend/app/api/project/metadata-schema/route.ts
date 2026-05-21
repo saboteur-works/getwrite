@@ -19,16 +19,22 @@ import { NextRequest, NextResponse } from "next/server";
 import {
     addField,
     removeField,
+    deprecateField,
+    clearField,
     reorderFields,
     renameField,
     updateFieldOptions,
+    updateFieldOptionsWithMigration,
     updateRefProperties,
     changeFieldType,
+    changeFieldTypeWithMigration,
     addGroup,
     removeGroup,
     reorderGroups,
     renameFieldKey,
 } from "../../../../src/lib/models/metadata-schema";
+import type { TypeMigrationEntry, OptionsMigrationEntry } from "../../../../src/lib/models/metadata-schema";
+import { scanAllFieldValues, NULL_VALUE_KEY, MISSING_VALUE_KEY } from "../../../../src/lib/models/field-values";
 import type {
     MetadataField,
     MetadataFieldType,
@@ -51,6 +57,20 @@ interface AddFieldRequest {
 
 interface RemoveFieldRequest {
     action: "remove-field";
+    projectPath: string;
+    groupId: string;
+    fieldKey: string;
+}
+
+interface DeprecateFieldRequest {
+    action: "deprecate-field";
+    projectPath: string;
+    groupId: string;
+    fieldKey: string;
+}
+
+interface ClearFieldRequest {
+    action: "clear-field";
     projectPath: string;
     groupId: string;
     fieldKey: string;
@@ -126,9 +146,30 @@ interface UpdateRefPropertiesRequest {
     maxSelections?: number | null;
 }
 
+interface ChangeFieldTypeWithMigrationRequest {
+    action: "change-field-type-with-migration";
+    projectPath: string;
+    groupId: string;
+    fieldKey: string;
+    newType: MetadataFieldType;
+    newOptions: string[];
+    migrations: Record<string, TypeMigrationEntry>;
+}
+
+interface UpdateFieldOptionsWithMigrationRequest {
+    action: "update-field-options-with-migration";
+    projectPath: string;
+    groupId: string;
+    fieldKey: string;
+    newOptions: string[];
+    migrations: Record<string, OptionsMigrationEntry>;
+}
+
 type MetadataSchemaRequestBody =
     | AddFieldRequest
     | RemoveFieldRequest
+    | DeprecateFieldRequest
+    | ClearFieldRequest
     | ReorderFieldsRequest
     | RenameFieldRequest
     | UpdateFieldOptionsRequest
@@ -137,7 +178,9 @@ type MetadataSchemaRequestBody =
     | ReorderGroupsRequest
     | RenameFieldKeyRequest
     | ChangeFieldTypeRequest
-    | UpdateRefPropertiesRequest;
+    | UpdateRefPropertiesRequest
+    | ChangeFieldTypeWithMigrationRequest
+    | UpdateFieldOptionsWithMigrationRequest;
 
 // ---------------------------------------------------------------------------
 // Response shapes
@@ -190,6 +233,24 @@ export async function POST(
 
         if (body.action === "remove-field") {
             const schema = await removeField(
+                body.projectPath,
+                body.groupId,
+                body.fieldKey,
+            );
+            return NextResponse.json({ schema });
+        }
+
+        if (body.action === "deprecate-field") {
+            const schema = await deprecateField(
+                body.projectPath,
+                body.groupId,
+                body.fieldKey,
+            );
+            return NextResponse.json({ schema });
+        }
+
+        if (body.action === "clear-field") {
+            const schema = await clearField(
                 body.projectPath,
                 body.groupId,
                 body.fieldKey,
@@ -273,6 +334,29 @@ export async function POST(
             return NextResponse.json({ schema });
         }
 
+        if (body.action === "change-field-type-with-migration") {
+            const schema = await changeFieldTypeWithMigration(
+                body.projectPath,
+                body.groupId,
+                body.fieldKey,
+                body.newType,
+                body.newOptions,
+                body.migrations,
+            );
+            return NextResponse.json({ schema });
+        }
+
+        if (body.action === "update-field-options-with-migration") {
+            const schema = await updateFieldOptionsWithMigration(
+                body.projectPath,
+                body.groupId,
+                body.fieldKey,
+                body.newOptions,
+                body.migrations,
+            );
+            return NextResponse.json({ schema });
+        }
+
         if (body.action === "update-ref-properties") {
             const updates: { refFolder?: string | null; includeSubfolders?: boolean | null; maxSelections?: number | null } = {};
             if ("refFolder" in body) updates.refFolder = body.refFolder;
@@ -313,6 +397,46 @@ export async function POST(
 
         return NextResponse.json(
             { error: "Metadata schema operation failed", details: message },
+            { status: 500 },
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/project/metadata-schema?projectPath=...&fieldKey=...
+// Returns a serialized frequency map of distinct values for a single field.
+// ---------------------------------------------------------------------------
+
+export interface FieldValueEntry {
+    /** Canonical string key (use NULL_VALUE_KEY / MISSING_VALUE_KEY sentinels). */
+    canonicalKey: string;
+    count: number;
+    /** One representative value for display and type introspection. */
+    sample: unknown;
+}
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+    const { searchParams } = request.nextUrl;
+    const projectPath = searchParams.get("projectPath");
+    const fieldKey = searchParams.get("fieldKey");
+
+    if (!projectPath) {
+        return NextResponse.json({ error: "projectPath is required" }, { status: 400 });
+    }
+    if (!fieldKey) {
+        return NextResponse.json({ error: "fieldKey is required" }, { status: 400 });
+    }
+
+    try {
+        const map = await scanAllFieldValues(projectPath, fieldKey);
+        const values: FieldValueEntry[] = [];
+        for (const [canonicalKey, entry] of map.entries()) {
+            values.push({ canonicalKey, count: entry.count, sample: entry.sample });
+        }
+        return NextResponse.json({ values, nullKey: NULL_VALUE_KEY, missingKey: MISSING_VALUE_KEY });
+    } catch (error) {
+        return NextResponse.json(
+            { error: "Failed to enumerate field values", details: (error as Error).message },
             { status: 500 },
         );
     }
