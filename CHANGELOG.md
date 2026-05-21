@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.2.36](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.35...getwrite-v0.2.36) (2026-05-21)
+
+
+### Features
+
+* **metadata-query:** AddFieldForm inline mini-form replaces old + Add field button (Task 20) ([1495f9c](https://github.com/saboteur-works/getwrite/commit/1495f9c0417a04baefdee163b9ef55a1e602301c))
+* **metadata-query:** cross-path field dedup helper — slugifyName, findExisting, fuzzyMatch (Task 18) ([6e612e5](https://github.com/saboteur-works/getwrite/commit/6e612e55f6e9a86aab7b80469972e6aa678b3afc))
+* **metadata-query:** define query AST types and Zod schema (Task 1) ([01fce6f](https://github.com/saboteur-works/getwrite/commit/01fce6f0124daadc97d7cdd3bdc05d41cc7a724f))
+* **metadata-query:** deprecate-vs-clear on removeField (Task 24) ([5acfcdb](https://github.com/saboteur-works/getwrite/commit/5acfcdba116435f324a6ba7e54033c35e1e48316))
+* **metadata-query:** distinct-value enumeration utility (Task 21) ([ddc189c](https://github.com/saboteur-works/getwrite/commit/ddc189caa6eb096ebcf36db7cbad5eb1ac69a286))
+* **metadata-query:** extend backlinks extractor to include resource-ref sidecar values (Task 4) ([374fafc](https://github.com/saboteur-works/getwrite/commit/374fafc8b6dbf9ec8c2bf99051c4881f2d32bda7))
+* **metadata-query:** FieldPicker dropdown — three-layer field enumeration with search and source badges (Task 14) ([53c9c00](https://github.com/saboteur-works/getwrite/commit/53c9c00f7808760ee92b6cfc872c88aaee505428))
+* **metadata-query:** FilterChip component — three-slot field/operator/value chip (Task 11) ([7cc6cc8](https://github.com/saboteur-works/getwrite/commit/7cc6cc82466d73762c087ac5d7c1f8c68c5ce071))
+* **metadata-query:** FilterGroup container — combinator header, drag-reorder, and match count (Task 15) ([516ada6](https://github.com/saboteur-works/getwrite/commit/516ada673ef2ea89f44f1c7ba09f3c78136296b1))
+* **metadata-query:** HTTP API routes for query evaluate and saved CRUD (Task 7) ([9043f7a](https://github.com/saboteur-works/getwrite/commit/9043f7a59fedd4cc6b8a4496063a4787442bae19))
+* **metadata-query:** in-memory query cache keyed by metadataRevision (Task 9) ([a0c78fd](https://github.com/saboteur-works/getwrite/commit/a0c78fd5a7116198eb7ea642069420b9923a21ca))
+* **metadata-query:** intrinsic field registry and decision refs in tasks (Tasks 2 + docs) ([f62b98e](https://github.com/saboteur-works/getwrite/commit/f62b98ed5bbdfa93bf7450dd07d1e4c3a68a69bc))
+* **metadata-query:** OperatorMenu component with AST stub emission (Task 12) ([8becbbf](https://github.com/saboteur-works/getwrite/commit/8becbbf61667bd6a087b1ec01ff3aa9fd99c1749))
+* **metadata-query:** OptionsRemovalPreview for updateFieldOptions (Task 23) ([9df75d8](https://github.com/saboteur-works/getwrite/commit/9df75d8b2edeb26c662c26fa6129681ce7e01105))
+* **metadata-query:** prefilled SchemaManager + FieldPicker fuzzy dedup (Task 19) ([b92b6ba](https://github.com/saboteur-works/getwrite/commit/b92b6ba86487d95f411ed092c83896f5f70c7b0c))
+* **metadata-query:** project metadata-revision counter (Task 3) ([30b5adc](https://github.com/saboteur-works/getwrite/commit/30b5adc97a8d1143ee6db6897d4ba5552f846ef1))
+* **metadata-query:** query AST evaluator — no caching, no refs (Task 5) ([6cc9454](https://github.com/saboteur-works/getwrite/commit/6cc9454a94bd1a5896ecf609e4d219e8dde47b51))
+* **metadata-query:** QueryBuilder top-level — global combinator pill, group CRUD, and match-count footer (Task 16) ([a627532](https://github.com/saboteur-works/getwrite/commit/a6275329f119f7613e50ff728b5f1a5cc268a387))
+* **metadata-query:** QueryBuilder with smart folder filtering and resource-ref typeahead ([078d706](https://github.com/saboteur-works/getwrite/commit/078d70643fdd28849a511f4c9417e38c6115185c))
+* **metadata-query:** Redux slice for queries — transport, guards, and thunks (Task 10) ([1f4aff2](https://github.com/saboteur-works/getwrite/commit/1f4aff28d93e3546915dfda3ba7254aaad28635c))
+* **metadata-query:** ref node resolution with cycle detection (Task 8) ([2863801](https://github.com/saboteur-works/getwrite/commit/286380119ca85e2ce96ef2ea4cee26802e5aa8b1))
+* **metadata-query:** save-query dialog launched from QueryBuilder (Task 25) ([a6e97f7](https://github.com/saboteur-works/getwrite/commit/a6e97f7ceb3e993250ae8636b03f3bb8db379c46))
+* **metadata-query:** saved-query persistence module (Task 6) ([6e57fe2](https://github.com/saboteur-works/getwrite/commit/6e57fe240d101c5349063a14b3d9403b2858e2db))
+* **metadata-query:** saved-query ref chips in the chip UI (Task 27) ([f1e9f92](https://github.com/saboteur-works/getwrite/commit/f1e9f924b24b7397bddbec75b29a331e2087d854))
+* **metadata-query:** SchemaManager migration preview for type changes (Task 22) ([f15b1ec](https://github.com/saboteur-works/getwrite/commit/f15b1ec6842ab331e87e55baf4ffd2f74de9a315))
+* **metadata-query:** SmartFolders in ResourceTree + fix DialogTitle/Dialog test failures (Tasks 26 & fixup) ([d70b523](https://github.com/saboteur-works/getwrite/commit/d70b523def8afc5a5638a38c4e23e0bec6661c4c))
+* **metadata-query:** Text/AST escape hatch with round-trip bridge (Task 17) ([01a6730](https://github.com/saboteur-works/getwrite/commit/01a673018cc747693ea073975d40cbdc2645fce2))
+* **metadata-query:** ValuePicker component — type-driven value inputs with ref hover preview (Task 13) ([f088668](https://github.com/saboteur-works/getwrite/commit/f088668ddf62b41a5a9b07db524fe59e5be232c0))
+* **metadata-query:** wire QueryBuilder into AppShell — full query integration ([75199b0](https://github.com/saboteur-works/getwrite/commit/75199b08c01a39331cc7869dee505557a880716e))
+
+
+### Bug Fixes
+
+* **metadata-query:** close QueryBuilder when navigating to non-smart folder ([08179e0](https://github.com/saboteur-works/getwrite/commit/08179e09044509bfbf738c68c8382de1eccf06a2))
+* **metadata-query:** resource-ref query matching — flatten userMetadata + name fallback + typeahead ([0a0e6c2](https://github.com/saboteur-works/getwrite/commit/0a0e6c206cafb192462428d7374be6ed20807bab))
+* **metadata-query:** resource-ref typeahead respects includeSubfolders in QueryBuilder ([0ae8122](https://github.com/saboteur-works/getwrite/commit/0ae8122bf737fa288dcf0784915deb48326610e7))
+
 ## [0.2.35](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.34...getwrite-v0.2.35) (2026-05-20)
 
 
