@@ -1325,7 +1325,7 @@ export default function AppShell({
               <div className="appshell-work-area-content">
                 {resources ? (
                   <div className="w-full">
-                    <div className="workarea-header">
+                    <div className="workarea-header border-b-hairline border-gw-border">
                       <ViewSwitcher
                         view={view}
                         onChange={setView}
@@ -1487,7 +1487,7 @@ export default function AppShell({
                       : project && showSidebars
                         ? (() => {
                             return (
-                              <section className="mx-auto w-full max-w-4xl rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-6 md:p-8">
+                              <section className="mx-auto w-full max-w-4xl bg-gw-chrome p-6 md:p-8">
                                 <div className="flex flex-wrap items-start justify-between gap-4">
                                   <div>
                                     <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-gw-secondary">
@@ -1503,7 +1503,7 @@ export default function AppShell({
                                   </div>
 
                                   <Button
-                                    variant="outline"
+                                    variant="secondary"
                                     onClick={() =>
                                       setCreateModal({
                                         open: true,
