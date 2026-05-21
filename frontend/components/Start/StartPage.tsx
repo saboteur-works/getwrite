@@ -566,14 +566,16 @@ export default function StartPage({
                 Create a project to scaffold your workspace, organize folders,
                 and start drafting in GetWrite.
               </p>
-              <button
-                type="button"
+              <Button
+                variant="default"
                 onClick={handleCreateClick}
-                className="start-page-secondary-button mt-6 inline-flex items-center"
+                title="Start a New Projct"
+                aria-label="Start a new project"
+                className=" mt-6 inline-flex items-center"
               >
                 <Plus size={15} aria-hidden="true" />
                 Create the first project
-              </button>
+              </Button>
             </article>
           ) : null}
 
