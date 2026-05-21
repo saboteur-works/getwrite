@@ -40,7 +40,8 @@ export default function EndDateInput({
     }, [overrideValue]);
 
     const inputValue =
-        overrideValue ?? (computedEndDate ? toDatetimeLocalValue(computedEndDate) : "");
+        overrideValue ??
+        (computedEndDate ? toDatetimeLocalValue(computedEndDate) : "");
 
     const displayValue = overrideValue ?? computedEndDate;
 
@@ -51,7 +52,7 @@ export default function EndDateInput({
                     <input
                         type="datetime-local"
                         aria-label="story-end-date-input"
-                        className="w-full p-2 border rounded text-sm"
+                        className="w-full p-2 border text-sm"
                         value={inputValue}
                         onChange={(e) => onChange?.(e.target.value)}
                     />

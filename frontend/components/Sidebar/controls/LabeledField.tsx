@@ -1,9 +1,9 @@
 import React from "react";
 
 export interface LabeledFieldProps {
-    label: string;
-    children: React.ReactNode;
-    className?: string;
+  label: string;
+  children: React.ReactNode;
+  className?: string;
 }
 
 /**
@@ -11,14 +11,14 @@ export interface LabeledFieldProps {
  * above the provided control slot.
  */
 export default function LabeledField({
-    label,
-    children,
-    className = "",
+  label,
+  children,
+  className = "",
 }: LabeledFieldProps): JSX.Element {
-    return (
-        <div className={className}>
-            <label className="text-sm font-medium">{label}</label>
-            {children}
-        </div>
-    );
+  return (
+    <div className={className}>
+      <label className="text-gw-label font-medium font-mono">{label}</label>
+      {children}
+    </div>
+  );
 }
