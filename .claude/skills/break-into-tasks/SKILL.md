@@ -1,15 +1,15 @@
 ---
 name: break-into-tasks
 description: Breaks a feature specification into an implementation task list. The output is a markdown document suitable for review, task tracking, and as context for an implementation skill or prompt.
-argument-hint: feature spec, granularity
+argument-hint: feature spec
 ---
 
 Break the following feature spec into an implementation task list.
 
 Spec:
-$1
+$1 OR [the content of the file at @docs/features/feature-specifications/[feature-name]/[feature-name]-spec.md, where `feature-name` is a kebab-case version of the feature name]
 
-Granularity: $2
+Granularity: story points (1/2/3/5/8)
 
 Rules for each task:
 
@@ -30,7 +30,7 @@ Output format — one entry per task:
 **Files:** [files to create or modify, or "TBD if unknown"]
 **Done when:** [specific, verifiable condition]
 **Depends on:** [task numbers this task requires, or "none"]
-**Estimate:** [$2 — your estimate for this task]
+**Estimate:** [story points (1/2/3/5/8) — your estimate for this task]
 **Notes:** [assumptions, risks, or implementation hints. Omit if none.]
 **Done:** [checkbox to track completion]
 
@@ -44,4 +44,13 @@ After the task list, add:
   elapsed time, e.g. "Tasks 1 → 3 → 5 → 6"]
 - Risks: [any tasks with high uncertainty or dependency risk]
 
-When complete, write the document to @docs/features/feature-specifications/[feature-name]/[tasks].md, where `feature-name` is a kebab-case version of the feature name.
+---
+
+When complete, write the document to @docs/features/feature-specifications/[feature-name]/tasks.md, where `feature-name` is a kebab-case version of the feature name.
+
+## Follow Up
+
+After the task list has been saved, ask the user if they would like to:
+
+- Proceed with implementation, if story points are 8 or less and no high-risk tasks. If so, invoke the `implement-feature` skill with the task list as context.
+- Review and adjust estimates or dependencies, if there are any concerns about the task breakdown. If so, allow the user to specify changes and then update the task list and summary accordingly.

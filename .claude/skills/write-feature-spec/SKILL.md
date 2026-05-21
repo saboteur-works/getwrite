@@ -50,6 +50,8 @@ during implementation. If none, write "None identified."
 Bullet list of related features or improvements that are intentionally
 deferred to a future iteration.
 
+---
+
 Rules for the entire document:
 
 - Be specific and concrete. Avoid vague language like "improve",
@@ -60,4 +62,16 @@ Rules for the entire document:
 - Keep the document under 500 words. If more is needed, the scope is
   likely too large — note this at the top.
 
-When complete, write the document to @docs/features/feature-specifications/[feature-name]/[feature-name-spec].md, where `feature-name` is a kebab-case version of the feature name.
+## Resolve Open Questions
+
+If there are any open questions in the spec, present the user with 3-5 options for how to resolve each one, along with pros and cons for each option. Wait until the user selects an option before proceeding further. The user can opt to skip any question if they are unsure or want to defer the decision.
+
+If there are no open questions, or after all questions have been resolved, proceed to the next step.
+
+## Save the spec
+
+If the open questions have received answers, write the document to @docs/features/feature-specifications/[feature-name]/[feature-name]-spec.md, where `feature-name` is a kebab-case version of the feature name.
+
+## Follow Up
+
+After you have saved the spec, ask the user if they would like to break it into implementation tasks or if they need to make any edits to the spec. If they want to break it into tasks, invoke the `break-into-tasks` skill with the feature name as an argument. If they want to edit the spec, allow them to provide additional input and update the document accordingly.
