@@ -221,6 +221,8 @@ export default function Timeline({
         position: "relative",
         overflow: "hidden",
         marginTop: "1rem",
+        paddingLeft: "var(--spacing-4)",
+        paddingRight: "var(--spacing-4)",
       }}
     >
       {/* ── Toolbar ── */}
