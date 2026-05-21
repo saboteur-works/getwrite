@@ -1350,7 +1350,7 @@ export default function AppShell({
                   </div>
                 ) : null}
                 <div className="max-w-full mx-auto">
-                  <div className="workarea-container">
+                  <div className="flex-1 min-h-0 overflow-y-auto text-gw-primary">
                     {/* If a resource is selected, or the data view is active, render the chosen view; otherwise render empty state or children. */}
                     {(selectedResource && combined) || view === "data"
                       ? (() => {
