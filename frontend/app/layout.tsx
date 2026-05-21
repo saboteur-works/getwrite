@@ -6,39 +6,37 @@ import AppToaster from "../components/notifications/Toaster";
 import AppearanceRuntime from "../components/preferences/AppearanceRuntime";
 
 /** Page metadata for Next.js layout — basic title for dev/storybook. */
-export const metadata = {
-    title: `GetWrite`,
-};
+export const metadata = { title: `GetWrite` };
 
 /** Application root layout wrapping `children` with global background and font color; imports global CSS. */
 export default function RootLayout({
-    children,
+  children,
 }: {
-    children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-    return (
-        <html lang="en">
-            <head>
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link
-                    rel="preconnect"
-                    href="https://fonts.gstatic.com"
-                    crossOrigin="anonymous"
-                />
-                <link
-                    rel="stylesheet"
-                    href="https://fonts.googleapis.com/css2?family=Domine:wght@400..700&display=swap"
-                />
-            </head>
-            <body>
-                <ClientProvider>
-                    <AppearanceRuntime />
-                    <div className="min-h-screen bg-gw-surface text-gw-primary">
-                        {children}
-                        <AppToaster />
-                    </div>
-                </ClientProvider>
-            </body>
-        </html>
-    );
+  return (
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Domine:wght@400..700&display=swap"
+        />
+      </head>
+      <body>
+        <ClientProvider>
+          <AppearanceRuntime />
+          <div className="min-h-screen bg-gw-chrome text-gw-primary">
+            {children}
+            <AppToaster />
+          </div>
+        </ClientProvider>
+      </body>
+    </html>
+  );
 }
