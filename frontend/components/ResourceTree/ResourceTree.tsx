@@ -28,37 +28,37 @@
  * ```
  */
 import {
-    hotkeysCoreFeature,
-    selectionFeature,
-    syncDataLoaderFeature,
-    dragAndDropFeature,
-    FeatureImplementation,
-    ItemInstance,
+  hotkeysCoreFeature,
+  selectionFeature,
+  syncDataLoaderFeature,
+  dragAndDropFeature,
+  FeatureImplementation,
+  ItemInstance,
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
 import { AnyResource } from "../../src/lib/models";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
-    selectFoldersAndResources,
-    setSelectedResourceId,
+  selectFoldersAndResources,
+  setSelectedResourceId,
 } from "../../src/store/resourcesSlice";
 import ResourceContextMenu, {
-    ResourceContextAction,
+  ResourceContextAction,
 } from "./ResourceContextMenu";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { shallowEqual } from "react-redux";
 import {
-    ChevronDown,
-    ChevronRight,
-    FileTextIcon,
-    ImageIcon,
-    AudioIcon,
-    FolderIcon,
+  ChevronDown,
+  ChevronRight,
+  FileTextIcon,
+  ImageIcon,
+  AudioIcon,
+  FolderIcon,
 } from "./ResourceTreeIcons";
 import {
-    buildResourceTree,
-    ResourceItemData,
-    ROOT_ITEM_ID,
+  buildResourceTree,
+  ResourceItemData,
+  ROOT_ITEM_ID,
 } from "./buildResourceTree";
 import { useResourceReorder } from "./useResourceReorder";
 
@@ -77,49 +77,49 @@ const INDENTATION_WIDTH = 14;
  * receive their callbacks.
  */
 const customClickBehavior: FeatureImplementation = {
-    itemInstance: {
-        getProps: ({ tree, item, prev }) => ({
-            ...prev?.(),
-            onClick: (e: MouseEvent) => {
-                if (e.shiftKey) {
-                    item.selectUpTo(e.ctrlKey || e.metaKey);
-                } else if (e.ctrlKey || e.metaKey) {
-                    item.toggleSelect();
-                } else {
-                    tree.setSelectedItems([item.getItemMeta().itemId]);
-                }
+  itemInstance: {
+    getProps: ({ tree, item, prev }) => ({
+      ...prev?.(),
+      onClick: (e: MouseEvent) => {
+        if (e.shiftKey) {
+          item.selectUpTo(e.ctrlKey || e.metaKey);
+        } else if (e.ctrlKey || e.metaKey) {
+          item.toggleSelect();
+        } else {
+          tree.setSelectedItems([item.getItemMeta().itemId]);
+        }
 
-                item.setFocused();
-                prev?.()?.onClick?.(e);
-                return {
-                    selectedItems: tree.getSelectedItems(),
-                    focusedItem: item.getItemMeta().itemId,
-                };
-            },
-        }),
-    },
+        item.setFocused();
+        prev?.()?.onClick?.(e);
+        return {
+          selectedItems: tree.getSelectedItems(),
+          focusedItem: item.getItemMeta().itemId,
+        };
+      },
+    }),
+  },
 };
 
 /**
  * Props accepted by the {@link ResourceTree} component.
  */
 interface ResourceTreeProps {
-    /**
-     * Called when the user selects a context-menu action on a resource.
-     *
-     * @param action     - The action that was chosen (e.g. `"rename"`, `"delete"`).
-     * @param resourceId - ID of the resource the action targets, if applicable.
-     */
-    onResourceAction?: (
-        action: ResourceContextAction,
-        resourceId?: string,
-        resourceTitle?: string,
-    ) => void;
-    /**
-     * When `true`, enables additional debug logging inside the component.
-     * Intended for development use only.
-     */
-    debug?: boolean;
+  /**
+   * Called when the user selects a context-menu action on a resource.
+   *
+   * @param action     - The action that was chosen (e.g. `"rename"`, `"delete"`).
+   * @param resourceId - ID of the resource the action targets, if applicable.
+   */
+  onResourceAction?: (
+    action: ResourceContextAction,
+    resourceId?: string,
+    resourceTitle?: string,
+  ) => void;
+  /**
+   * When `true`, enables additional debug logging inside the component.
+   * Intended for development use only.
+   */
+  debug?: boolean;
 }
 
 /**
@@ -133,279 +133,269 @@ interface ResourceTreeProps {
  * @param props - See {@link ResourceTreeProps}.
  */
 export default function ResourceTree({
-    onResourceAction,
-    debug,
+  onResourceAction,
+  debug,
 }: ResourceTreeProps) {
-    const dispatch = useAppDispatch();
+  const dispatch = useAppDispatch();
 
-    const currentProject = useAppSelector(
-        (s) => s.projects.projects[s.projects.selectedProjectId ?? ""] ?? null,
-    );
+  const currentProject = useAppSelector(
+    (s) => s.projects.projects[s.projects.selectedProjectId ?? ""] ?? null,
+  );
 
-    const rawResources = useAppSelector(
-        (s) => selectFoldersAndResources(s.resources),
-        shallowEqual,
-    );
+  const rawResources = useAppSelector(
+    (s) => selectFoldersAndResources(s.resources),
+    shallowEqual,
+  );
 
-    const selectedResourceId = useAppSelector(
-        (s) => s.resources.selectedResourceId,
-    );
+  const selectedResourceId = useAppSelector(
+    (s) => s.resources.selectedResourceId,
+  );
 
-    const transformedResourceData = useMemo(() => {
-        return buildResourceTree(rawResources);
-    }, [rawResources]);
+  const transformedResourceData = useMemo(() => {
+    return buildResourceTree(rawResources);
+  }, [rawResources]);
 
-    const onDrop = useResourceReorder({
-        dispatch,
-        currentProject,
-        rawResources,
-        transformedResourceData,
-        rootItemId: ROOT_ITEM_ID,
+  const onDrop = useResourceReorder({
+    dispatch,
+    currentProject,
+    rawResources,
+    transformedResourceData,
+    rootItemId: ROOT_ITEM_ID,
+  });
+
+  const [contextMenu, setContextMenu] = useState<{
+    open: boolean;
+    x: number;
+    y: number;
+    resourceId?: string;
+    resourceTitle?: string;
+  }>({ open: false, x: 0, y: 0 });
+
+  /**
+   * Handles a primary (left) click on a tree item.
+   *
+   * Delegates to the `customClickBehavior` feature to determine the new
+   * selection set, then mirrors the result to the Redux store via
+   * `setSelectedResourceId` so that the rest of the app reacts to the change.
+   *
+   * @param e    - The originating mouse event.
+   * @param item - The `@headless-tree` item instance that was clicked.
+   */
+  const handleClick = (
+    e: React.MouseEvent,
+    item: ItemInstance<ResourceItemData>,
+  ) => {
+    item.setFocused();
+
+    const modificationData = item.getProps().onClick?.(e);
+
+    if (modificationData.selectedItems.length === 1) {
+      tree.setSelectedItems([item.getItemMeta().itemId]);
+      dispatch(setSelectedResourceId(item.getId()));
+    } else {
+      tree.setSelectedItems(modificationData.selectedItems);
+      item.selectUpTo(e.ctrlKey || e.metaKey);
+      dispatch(setSelectedResourceId(modificationData.focusedItem));
+    }
+  };
+
+  /**
+   * Opens the context menu for a tree item at the cursor position.
+   *
+   * Prevents the browser's native context menu, captures the pointer
+   * coordinates, and stores them together with the target resource's ID and
+   * name in local state so that `ResourceContextMenu` can render at the
+   * correct location.
+   *
+   * @param e    - The originating mouse event (right-click or context-menu key).
+   * @param item - The `@headless-tree` item instance the menu was invoked on.
+   */
+  const handleContextMenu = (
+    e: React.MouseEvent,
+    item: ItemInstance<ResourceItemData>,
+  ) => {
+    e.preventDefault();
+    // open context menu at mouse position for this resource
+    const rectX = e.clientX;
+    const rectY = e.clientY;
+    setContextMenu({
+      open: true,
+      x: rectX,
+      y: rectY,
+      resourceId: item.getId(),
+      resourceTitle: item.getItemName(),
     });
+  };
 
-    const [contextMenu, setContextMenu] = useState<{
-        open: boolean;
-        x: number;
-        y: number;
-        resourceId?: string;
-        resourceTitle?: string;
-    }>({ open: false, x: 0, y: 0 });
+  /**
+   * Returns the appropriate icon element for a tree node based on resource type.
+   *
+   * - Folders receive a `FolderIcon`
+   * - Text resources receive a `FileTextIcon`
+   * - Image resources receive an `ImageIcon`
+   * - Audio resources receive an `AudioIcon`
+   *
+   * @param item - The tree item to render an icon for.
+   * @returns A React icon element matching the resource type.
+   */
+  const renderResourceIcon = (item: ItemInstance<ResourceItemData>) => {
+    const resourceType = item.getItemData().resourceType;
 
-    /**
-     * Handles a primary (left) click on a tree item.
-     *
-     * Delegates to the `customClickBehavior` feature to determine the new
-     * selection set, then mirrors the result to the Redux store via
-     * `setSelectedResourceId` so that the rest of the app reacts to the change.
-     *
-     * @param e    - The originating mouse event.
-     * @param item - The `@headless-tree` item instance that was clicked.
-     */
-    const handleClick = (
-        e: React.MouseEvent,
-        item: ItemInstance<ResourceItemData>,
-    ) => {
-        item.setFocused();
+    switch (resourceType) {
+      case "folder":
+        return <FolderIcon />;
+      case "text":
+        return <FileTextIcon />;
+      case "image":
+        return <ImageIcon />;
+      case "audio":
+        return <AudioIcon />;
+      default:
+        return <FileTextIcon />;
+    }
+  };
 
-        const modificationData = item.getProps().onClick?.(e);
+  /**
+   * Returns the expand/collapse chevron icon for a folder node.
+   *
+   * Renders `ChevronDown` when the folder is expanded and `ChevronRight`
+   * when it is collapsed, giving the user a visual affordance for the
+   * current state.
+   *
+   * @param item - The folder item to render an expander icon for.
+   * @returns A React icon element representing the collapsed/expanded state.
+   */
+  const renderExpandableStateIcon = (item: ItemInstance<ResourceItemData>) => {
+    return item.isExpanded() ? <ChevronDown /> : <ChevronRight />;
+  };
 
-        if (modificationData.selectedItems.length === 1) {
-            tree.setSelectedItems([item.getItemMeta().itemId]);
-            dispatch(setSelectedResourceId(item.getId()));
-        } else {
-            tree.setSelectedItems(modificationData.selectedItems);
-            item.selectUpTo(e.ctrlKey || e.metaKey);
-            dispatch(setSelectedResourceId(modificationData.focusedItem));
-        }
-    };
+  const tree = useTree<ResourceItemData>({
+    rootItemId: ROOT_ITEM_ID,
+    getItemName: (item) => {
+      return item.getItemData().name;
+    },
+    isItemFolder: (item) => item.getItemData().isFolder,
+    dataLoader: {
+      getItem: (itemId) =>
+        transformedResourceData[itemId] ?? {
+          resourceId: itemId,
+          name: "",
+          children: [],
+          isFolder: false,
+          parentId: null,
+          orderIndex: 0,
+          resourceType: "text" as const,
+        },
+      getChildren: (itemId) => {
+        return transformedResourceData[itemId].children.sort((a, b) => {
+          const aData = transformedResourceData[a];
+          const bData = transformedResourceData[b];
 
-    /**
-     * Opens the context menu for a tree item at the cursor position.
-     *
-     * Prevents the browser's native context menu, captures the pointer
-     * coordinates, and stores them together with the target resource's ID and
-     * name in local state so that `ResourceContextMenu` can render at the
-     * correct location.
-     *
-     * @param e    - The originating mouse event (right-click or context-menu key).
-     * @param item - The `@headless-tree` item instance the menu was invoked on.
-     */
-    const handleContextMenu = (
-        e: React.MouseEvent,
-        item: ItemInstance<ResourceItemData>,
-    ) => {
-        e.preventDefault();
-        // open context menu at mouse position for this resource
-        const rectX = e.clientX;
-        const rectY = e.clientY;
-        setContextMenu({
-            open: true,
-            x: rectX,
-            y: rectY,
-            resourceId: item.getId(),
-            resourceTitle: item.getItemName(),
+          return (
+            (transformedResourceData[aData.resourceId]?.orderIndex || 0) -
+            (transformedResourceData[bData.resourceId]?.orderIndex || 0)
+          );
         });
-    };
+      },
+    },
+    indent: INDENTATION_WIDTH,
+    onPrimaryAction: (item) => {
+      dispatch(setSelectedResourceId(item.getId()));
+    },
+    onDrop,
+    setDragImage: () => ({
+      imgElement: document.getElementById("dragpreview")!,
+      xOffset: -40,
+      yOffset: -40,
+    }),
+    canReorder: true,
+    features: [
+      syncDataLoaderFeature,
+      selectionFeature,
+      hotkeysCoreFeature,
+      customClickBehavior,
+      dragAndDropFeature,
+    ],
+  });
+  useEffect(() => {
+    tree.rebuildTree();
+  }, [transformedResourceData]);
 
-    /**
-     * Returns the appropriate icon element for a tree node based on resource type.
-     *
-     * - Folders receive a `FolderIcon`
-     * - Text resources receive a `FileTextIcon`
-     * - Image resources receive an `ImageIcon`
-     * - Audio resources receive an `AudioIcon`
-     *
-     * @param item - The tree item to render an icon for.
-     * @returns A React icon element matching the resource type.
-     */
-    const renderResourceIcon = (item: ItemInstance<ResourceItemData>) => {
-        const resourceType = item.getItemData().resourceType;
+  useEffect(() => {
+    tree.setSelectedItems(selectedResourceId ? [selectedResourceId] : []);
+  }, [selectedResourceId]);
 
-        switch (resourceType) {
-            case "folder":
-                return <FolderIcon />;
-            case "text":
-                return <FileTextIcon />;
-            case "image":
-                return <ImageIcon />;
-            case "audio":
-                return <AudioIcon />;
-            default:
-                return <FileTextIcon />;
-        }
-    };
-
-    /**
-     * Returns the expand/collapse chevron icon for a folder node.
-     *
-     * Renders `ChevronDown` when the folder is expanded and `ChevronRight`
-     * when it is collapsed, giving the user a visual affordance for the
-     * current state.
-     *
-     * @param item - The folder item to render an expander icon for.
-     * @returns A React icon element representing the collapsed/expanded state.
-     */
-    const renderExpandableStateIcon = (
-        item: ItemInstance<ResourceItemData>,
-    ) => {
-        return item.isExpanded() ? <ChevronDown /> : <ChevronRight />;
-    };
-
-    const tree = useTree<ResourceItemData>({
-        rootItemId: ROOT_ITEM_ID,
-        getItemName: (item) => {
-            return item.getItemData().name;
-        },
-        isItemFolder: (item) => item.getItemData().isFolder,
-        dataLoader: {
-            getItem: (itemId) =>
-                transformedResourceData[itemId] ?? {
-                    resourceId: itemId,
-                    name: "",
-                    children: [],
-                    isFolder: false,
-                    parentId: null,
-                    orderIndex: 0,
-                    resourceType: "text" as const,
-                },
-            getChildren: (itemId) => {
-                return transformedResourceData[itemId].children.sort((a, b) => {
-                    const aData = transformedResourceData[a];
-                    const bData = transformedResourceData[b];
-
-                    return (
-                        (transformedResourceData[aData.resourceId]
-                            ?.orderIndex || 0) -
-                        (transformedResourceData[bData.resourceId]
-                            ?.orderIndex || 0)
-                    );
-                });
-            },
-        },
-        indent: INDENTATION_WIDTH,
-        onPrimaryAction: (item) => {
-            dispatch(setSelectedResourceId(item.getId()));
-        },
-        onDrop,
-        setDragImage: () => ({
-            imgElement: document.getElementById("dragpreview")!,
-            xOffset: -40,
-            yOffset: -40,
-        }),
-        canReorder: true,
-        features: [
-            syncDataLoaderFeature,
-            selectionFeature,
-            hotkeysCoreFeature,
-            customClickBehavior,
-            dragAndDropFeature,
-        ],
-    });
-    useEffect(() => {
-        tree.rebuildTree();
-    }, [transformedResourceData]);
-
-    useEffect(() => {
-        tree.setSelectedItems(selectedResourceId ? [selectedResourceId] : []);
-    }, [selectedResourceId]);
-
-    const draggedItems = tree.getState().dnd?.draggedItems;
-    return (
+  const draggedItems = tree.getState().dnd?.draggedItems;
+  return (
+    <div
+      {...tree.getContainerProps()}
+      aria-label="Resource tree"
+      className="flex flex-col items-start mb-8"
+    >
+      {tree.getItems().map((item) => (
         <div
-            {...tree.getContainerProps()}
-            aria-label="Resource tree"
-            className="flex flex-col items-start mb-8"
+          key={item.getId()}
+          style={{
+            paddingLeft: `${item.getItemMeta().level * INDENTATION_WIDTH}px`,
+          }}
+          className={`resource-tree-item ${item.isSelected() ? "resource-tree-item--selected" : ""}`}
+          onContextMenu={(e) => {
+            handleContextMenu(e, item);
+          }}
         >
-            {tree.getItems().map((item) => (
-                <div
-                    key={item.getId()}
-                    style={{
-                        paddingLeft: `${item.getItemMeta().level * INDENTATION_WIDTH}px`,
-                    }}
-                    className="resource-tree-item"
-                    onContextMenu={(e) => {
-                        handleContextMenu(e, item);
-                    }}
-                >
-                    {item.isFolder() && (
-                        <button
-                            className="resource-tree-icon-button"
-                            onClick={
-                                item.isExpanded() ? item.collapse : item.expand
-                            }
-                        >
-                            {renderExpandableStateIcon(item)}
-                        </button>
-                    )}
-                    <button
-                        {...item.getProps()}
-                        key={item.getId()}
-                        onClick={(e) => {
-                            handleClick(e, item);
-                        }}
-                        className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""}`}
-                    >
-                        <div
-                            className={`resource-tree-item-row ${item.isDragTarget() ? "resource-tree-item-row--drag-target" : ""}`}
-                        >
-                            {renderResourceIcon(item)}
-                            <div
-                                className={`truncate ${item.isSelected() ? "font-bold" : ""}`}
-                            >
-                                {item.getItemName()}
-                            </div>
-                        </div>
-                    </button>
-                </div>
-            ))}
-            <div style={tree.getDragLineStyle()} className="dragline" />
-            <div
-                id="dragpreview"
-                style={{
-                    // move the drag preview off-screen by default
-                    position: "absolute",
-                    left: "-9999px",
-                }}
-                className="resource-tree-drag-preview"
+          {item.isFolder() && (
+            <button
+              className="resource-tree-icon-button"
+              onClick={item.isExpanded() ? item.collapse : item.expand}
             >
-                {draggedItems
-                    ?.slice(0, 3)
-                    .map((item) => item.getItemName())
-                    .join(", ")}
-                {(draggedItems?.length ?? 0) > 3 &&
-                    ` and ${(draggedItems?.length ?? 0) - 3} more`}
+              {renderExpandableStateIcon(item)}
+            </button>
+          )}
+          <button
+            {...item.getProps()}
+            key={item.getId()}
+            onClick={(e) => {
+              handleClick(e, item);
+            }}
+            className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""} ${item.isFolder() ? "text-[11px] text-gw-dim" : ""}`}
+          >
+            <div
+              className={`resource-tree-item-row ${item.isDragTarget() ? "resource-tree-item-row--drag-target" : ""}`}
+            >
+              {renderResourceIcon(item)}
+              <div className={`truncate`}>{item.getItemName()}</div>
             </div>
-            <ResourceContextMenu
-                open={contextMenu.open}
-                x={contextMenu.x}
-                y={contextMenu.y}
-                resourceId={contextMenu.resourceId}
-                resourceTitle={contextMenu.resourceTitle}
-                onClose={() => setContextMenu((s) => ({ ...s, open: false }))}
-                onAction={(action, resourceId) => {
-                    onResourceAction?.(action, resourceId, contextMenu.resourceTitle);
-                }}
-            />
+          </button>
         </div>
-    );
+      ))}
+      <div style={tree.getDragLineStyle()} className="dragline" />
+      <div
+        id="dragpreview"
+        style={{
+          // move the drag preview off-screen by default
+          position: "absolute",
+          left: "-9999px",
+        }}
+        className="resource-tree-drag-preview"
+      >
+        {draggedItems
+          ?.slice(0, 3)
+          .map((item) => item.getItemName())
+          .join(", ")}
+        {(draggedItems?.length ?? 0) > 3 &&
+          ` and ${(draggedItems?.length ?? 0) - 3} more`}
+      </div>
+      <ResourceContextMenu
+        open={contextMenu.open}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        resourceId={contextMenu.resourceId}
+        resourceTitle={contextMenu.resourceTitle}
+        onClose={() => setContextMenu((s) => ({ ...s, open: false }))}
+        onAction={(action, resourceId) => {
+          onResourceAction?.(action, resourceId, contextMenu.resourceTitle);
+        }}
+      />
+    </div>
+  );
 }

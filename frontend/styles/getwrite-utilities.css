@@ -69,7 +69,7 @@
 
 /* Dark mode: restore @theme defaults */
 .appshell-shell.appshell-theme-dark {
-    --color-gw-bg: #0a0a0a;
+    --color-gw-bg: #111110;
     --color-gw-chrome: #111110;
     --color-gw-chrome2: #161614;
     --color-gw-chrome3: #1a1a18;
@@ -540,7 +540,6 @@
         padding: 16px;
     }
 
-
     .project-type-editor-row-end {
         display: flex;
         align-items: center;
@@ -655,7 +654,7 @@
         flex: 1;
         min-height: 0;
         overflow-y: auto;
-        padding: 24px;
+        /* padding: 24px; */
         background-color: var(--color-gw-chrome2);
         color: var(--color-gw-primary);
         /* No box-shadow — surfaces communicate elevation via color only (D10) */
@@ -663,31 +662,30 @@
 
     .workarea-header {
         display: flex;
-        align-items: center;
+        /* align-items: center; */
         justify-content: space-between;
         gap: 16px;
-        margin-bottom: 24px;
+        /* margin-bottom: 24px; */
         flex-wrap: wrap;
     }
 
     .workarea-view-tabs {
         display: flex;
-        align-items: center;
+        align-items: flex-end;
         gap: 8px;
     }
 
     /* Tab button — D9: no blue fill */
     .workarea-tab-button {
         display: inline-flex;
-        align-items: center;
+        align-items: flex-end;
+        height: 100%;
         gap: 6px;
         padding: 6px 12px;
-        border-radius: var(--radius-md);
         font-family: var(--font-mono);
         font-size: 10px;
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        border: 0.5px solid var(--color-gw-border);
         cursor: pointer;
         transition:
             background-color 150ms ease,
@@ -703,7 +701,6 @@
     .workarea-tab-button[role="tab"][aria-selected="false"]:not(:disabled) {
         background-color: var(--color-gw-chrome);
         color: var(--color-gw-secondary);
-        border-color: var(--color-gw-border);
     }
 
     .workarea-tab-button[role="tab"][aria-selected="false"]:not(
@@ -716,7 +713,6 @@
     .workarea-tab-button[role="tab"][aria-selected="true"] {
         background-color: var(--color-gw-chrome2);
         color: var(--color-gw-primary);
-        border-color: var(--color-gw-border-md);
     }
 
     .workarea-pane {
@@ -880,6 +876,10 @@
         align-items: center;
         height: var(--height-gw-tree-item, 32px);
         width: 100%;
+    }
+    .resource-tree-item--selected {
+        border-left: var(--color-gw-red-border) solid 2px;
+        background-color: var(--color-gw-chrome2);
     }
 
     .resource-tree-icon-button {
@@ -1186,13 +1186,13 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        font-size: var(--font-size-gw-small);
+        font-size: var(--text-gw-small);
         color: var(--color-gw-secondary);
     }
 
     .resource-palette-hint {
         font-family: var(--font-mono);
-        font-size: var(--font-size-gw-nano);
+        font-size: var(--text-gw-nano);
         letter-spacing: var(--tracking-label);
         color: var(--color-gw-secondary);
         text-transform: uppercase;
@@ -1242,7 +1242,7 @@
 
     .resource-palette-item-type {
         font-family: var(--font-mono);
-        font-size: var(--font-size-gw-nano);
+        font-size: var(--text-gw-nano);
         letter-spacing: var(--tracking-label);
         color: var(--color-gw-secondary);
         text-transform: uppercase;
@@ -1252,7 +1252,7 @@
     .resource-palette-empty {
         padding: 24px 16px;
         text-align: center;
-        font-size: var(--font-size-gw-small);
+        font-size: var(--text-gw-small);
         color: var(--color-gw-secondary);
     }
 
@@ -1267,7 +1267,8 @@
     .searchbar-input-row {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 4px;
+        padding-right: 0.5rem;
     }
 
     .searchbar-filter-toggle {
@@ -1280,7 +1281,9 @@
         background-color: var(--color-gw-chrome2);
         color: var(--color-gw-secondary);
         cursor: pointer;
-        transition: border-color 150ms ease, color 150ms ease;
+        transition:
+            border-color 150ms ease,
+            color 150ms ease;
         flex-shrink: 0;
     }
 
@@ -1365,9 +1368,6 @@
         flex-grow: 1;
         align-items: center;
         gap: 8px;
-        border: 0.5px solid var(--color-gw-border);
-        border-radius: var(--radius-md);
-        background-color: var(--color-gw-chrome2);
         padding: 6px 10px;
         transition: border-color 150ms ease;
     }
@@ -1492,7 +1492,6 @@
         width: 100%;
         background-color: var(--color-gw-chrome2);
         border: 0.5px solid var(--color-brand-dim);
-        border-radius: var(--radius-sm);
         padding: 6px 8px;
         font-size: 12px;
         color: var(--color-gw-primary);
@@ -2013,7 +2012,6 @@
         flex-shrink: 0;
     }
 
-
     .appshell-topbar-dropdown {
         position: absolute;
         top: calc(100% + 0.5rem);
@@ -2098,9 +2096,8 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        height: 44px;
+        height: 32px;
         padding: 0 16px;
-        border-bottom: 0.5px solid var(--color-gw-border);
     }
 
     .appshell-sidebar-content {
@@ -2109,7 +2106,6 @@
         overflow-y: auto;
         overflow-x: hidden;
     }
-
 
     .appshell-resize-handle {
         flex-shrink: 0;
@@ -2129,7 +2125,6 @@
     .appshell-resize-handle:active {
         background-color: var(--color-gw-border-md);
     }
-
 
     .appshell-work-area {
         flex: 1;
@@ -2208,7 +2203,6 @@
         padding-top: 16px;
         border-top: 0.5px solid var(--color-gw-border);
     }
-
 
     /* ── DENSITY VARIANTS ── */
     .gw-density-compact .appshell-topbar {
@@ -2457,14 +2451,16 @@
     .tabs-root {
         display: flex;
         flex-direction: column;
+        /* height: 100%; */
     }
 
     .tabs-list {
         display: flex;
-        align-items: center;
-        border-bottom: 0.5px solid var(--color-gw-border);
+        align-items: flex-end;
+        /* border-bottom: 0.5px solid var(--color-gw-border); */
         gap: 0;
         flex-shrink: 0;
+        height: 100%;
     }
 
     .tabs-trigger {
@@ -2479,13 +2475,14 @@
         color: var(--color-gw-secondary);
         background: transparent;
         border: none;
-        border-bottom: 1.5px solid transparent;
+        /* border-bottom: 1.5px solid transparent; */
         cursor: pointer;
         transition:
             color 0.12s ease,
             border-color 0.12s ease;
         white-space: nowrap;
         margin-bottom: -0.5px;
+        height: 100%;
     }
 
     .tabs-trigger:hover:not(:disabled) {
@@ -2499,7 +2496,8 @@
 
     .tabs-trigger--active {
         color: var(--color-gw-primary);
-        border-bottom-color: var(--color-gw-red-border);
+        border-bottom: 1.5px solid var(--color-gw-red-border);
+        /* border-bottom-color: var(--color-gw-red-border); */
     }
 
     .tabs-trigger:focus-visible {
