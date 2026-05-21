@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Provider } from "react-redux";
@@ -131,6 +131,10 @@ function createEditorDouble(options: MockEditorOptions = {}) {
         },
         insertBlockMath: (payload: { latex: string }) => {
             actions.push({ name: "insertBlockMath", payload });
+            return chainApi;
+        },
+        setParagraphLeading: (value: string) => {
+            actions.push({ name: "setParagraphLeading", payload: value });
             return chainApi;
         },
         sinkListItem: () => {
@@ -401,6 +405,8 @@ describe("MenuBar", () => {
 });
 
 import { toolbarCommandSchema } from "../components/Editor/MenuBar/toolbar-command-schema";
+import { useToolbarCommands } from "../components/Editor/MenuBar/useToolbarCommand";
+import type { MenuBarState } from "../components/Editor/MenuBar/menuBarState";
 
 describe("Schema parity", () => {
     it("exports exactly 10 top-level command groups", () => {
@@ -439,5 +445,86 @@ describe("Schema parity", () => {
         group.items.forEach((item, i) => {
             expect(item.tooltipContent).toBe(expected[i]);
         });
+    });
+});
+
+describe("useToolbarCommands parity", () => {
+    const mockState: MenuBarState = {
+        canUndo: true,
+        canRedo: true,
+        canBold: true,
+        canItalic: true,
+        canUnderline: true,
+        canStrike: true,
+        canCode: true,
+        canClearMarks: true,
+        isBold: false,
+        isItalic: false,
+        isUnderline: false,
+        isStrike: false,
+        isCode: false,
+        isParagraph: true,
+        isHeading1: false,
+        isHeading2: false,
+        isHeading3: false,
+        isHeading4: false,
+        isHeading5: false,
+        isHeading6: false,
+        isCodeBlock: false,
+        isBulletList: false,
+        isOrderedList: false,
+        isBlockquote: false,
+        isAlignLeft: true,
+        isAlignCenter: false,
+        isAlignRight: false,
+        isAlignJustify: false,
+        isHighlight: false,
+        canHighlight: true,
+        textColor: "#111827",
+        backgroundColor: "#fff8b3",
+        fontSize: "14px",
+        isDomine: true,
+        getWriteParagraphLeading: "1.5",
+    };
+
+    it("returns one resolved group per schema group", () => {
+        const { editor } = createEditorDouble();
+        const { result } = renderHook(() =>
+            useToolbarCommands(editor as never, mockState),
+        );
+        expect(result.current).toHaveLength(toolbarCommandSchema.length);
+    });
+
+    it("each resolved item has the same id and kind as its schema counterpart", () => {
+        const { editor } = createEditorDouble();
+        const { result } = renderHook(() =>
+            useToolbarCommands(editor as never, mockState),
+        );
+        result.current.forEach((resolvedGroup, groupIndex) => {
+            const schemaGroup = toolbarCommandSchema[groupIndex];
+            resolvedGroup.items.forEach((item, itemIndex) => {
+                const schemaItem = schemaGroup.items[itemIndex];
+                expect(item.id).toBe(schemaItem.id);
+                expect(item.kind).toBe(schemaItem.kind);
+            });
+        });
+    });
+
+    it("every resolved item has its action callback bound as a function", () => {
+        const { editor } = createEditorDouble();
+        const { result } = renderHook(() =>
+            useToolbarCommands(editor as never, mockState),
+        );
+        for (const group of result.current) {
+            for (const item of group.items) {
+                if (item.kind === "icon") {
+                    expect(typeof item.onClick).toBe("function");
+                } else if (item.kind === "input") {
+                    expect(typeof item.onChange).toBe("function");
+                } else {
+                    expect(typeof item.onSelectColor).toBe("function");
+                }
+            }
+        }
     });
 });
