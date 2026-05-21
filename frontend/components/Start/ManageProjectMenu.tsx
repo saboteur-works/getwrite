@@ -4,146 +4,144 @@ import ConfirmDialog from "../common/ConfirmDialog";
 import RenameProjectModal from "./RenameProjectModal";
 import MenuItemButton from "../common/MenuItemButton";
 import {
-    deleteProject as deleteProjectInStore,
-    renameProject as renameProjectInStore,
-    selectProject,
+  deleteProject as deleteProjectInStore,
+  renameProject as renameProjectInStore,
+  selectProject,
 } from "../../src/store/projectsSlice";
 import { useAppDispatch, useAppSelector } from "../../src/store/hooks";
 import { projectActionsController } from "../../src/store/project-actions-controller";
 import { toastService } from "../../src/lib/toast-service";
 import useDismissableMenu from "../common/UI/hooks/useDismissableMenu";
+import Button from "../common/UI/Button";
 
 export interface ManageProjectMenuProps {
-    projectId: string;
-    projectName?: string;
-    onRename?: (projectId: string, newName: string) => void;
-    onDelete?: (projectId: string) => void;
-    /** Called when the project packaging flow completes. Receives projectId and optional selected resource ids. */
-    onPackage?: (projectId: string, selectedIds?: string[]) => void;
-    /** Called when the user triggers the compile/package flow. The modal is rendered by the caller. */
-    onRequestCompile?: () => void;
+  projectId: string;
+  projectName?: string;
+  onRename?: (projectId: string, newName: string) => void;
+  onDelete?: (projectId: string) => void;
+  /** Called when the project packaging flow completes. Receives projectId and optional selected resource ids. */
+  onPackage?: (projectId: string, selectedIds?: string[]) => void;
+  /** Called when the user triggers the compile/package flow. The modal is rendered by the caller. */
+  onRequestCompile?: () => void;
 }
 
 /**
  * Callbacks: `onRename`, `onDelete`, and `onPackage`. These are UI signals; actual effects are the caller's responsibility.
  */
 export default function ManageProjectMenu({
-    projectId,
-    projectName = "",
-    onRename,
-    onDelete,
-    onPackage,
-    onRequestCompile,
+  projectId,
+  projectName = "",
+  onRename,
+  onDelete,
+  onPackage,
+  onRequestCompile,
 }: ManageProjectMenuProps): JSX.Element {
-    const dispatch = useAppDispatch();
-    const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
-    const [open, setOpen] = useState<boolean>(false);
-    const [name, setName] = useState<string>(projectName);
-    const [renameOpen, setRenameOpen] = useState<boolean>(false);
-    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
-    const { containerRef: menuRef } = useDismissableMenu({
-        isOpen: open,
-        onClose: () => setOpen(false),
-    });
+  const dispatch = useAppDispatch();
+  const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
+  const [open, setOpen] = useState<boolean>(false);
+  const [name, setName] = useState<string>(projectName);
+  const [renameOpen, setRenameOpen] = useState<boolean>(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
+  const { containerRef: menuRef } = useDismissableMenu({
+    isOpen: open,
+    onClose: () => setOpen(false),
+  });
 
-    useEffect(() => {
-        setName(projectName);
-    }, [projectName]);
+  useEffect(() => {
+    setName(projectName);
+  }, [projectName]);
 
-    const handleDeleteConfirm = (): void => {
-        void projectActionsController
-            .deleteProject({
-                projectId,
-                projectPath: projectFromStore?.rootPath,
-                onDelete,
-            })
-            .catch((err) => {
-                console.error("Failed to delete project:", err);
-                toastService.error(
-                    "Failed to delete project",
-                    "Please try again",
-                );
-            });
+  const handleDeleteConfirm = (): void => {
+    void projectActionsController
+      .deleteProject({
+        projectId,
+        projectPath: projectFromStore?.rootPath,
+        onDelete,
+      })
+      .catch((err) => {
+        console.error("Failed to delete project:", err);
+        toastService.error("Failed to delete project", "Please try again");
+      });
 
-        dispatch(deleteProjectInStore({ projectId }));
-        setConfirmDeleteOpen(false);
-        setOpen(false);
-        toastService.success("Project deleted", projectName);
-    };
+    dispatch(deleteProjectInStore({ projectId }));
+    setConfirmDeleteOpen(false);
+    setOpen(false);
+    toastService.success("Project deleted", projectName);
+  };
 
-    return (
-        <div className="relative inline-block" ref={menuRef}>
-            <button
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={open}
-                onClick={() => setOpen((v) => !v)}
-                className="inline-flex items-center justify-center px-2 py-1 border border-gw-border rounded text-sm text-gw-secondary hover:border-gw-border-md hover:text-gw-primary transition-colors duration-150"
-            >
-                <MoreHorizontal size={16} aria-hidden="true" />
-            </button>
+  return (
+    <div className="relative inline-block" ref={menuRef}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center justify-center px-2 py-1 border border-gw-border text-sm text-gw-secondary hover:border-gw-border-md hover:text-gw-primary transition-colors duration-150"
+      >
+        <MoreHorizontal size={16} aria-hidden="true" />
+      </button>
 
-            {open ? (
-                <div
-                    role="menu"
-                    aria-label="Manage project"
-                    className="absolute right-0 mt-2 w-56 bg-gw-chrome border border-gw-border rounded z-20"
-                >
-                    <div className="p-2">
-                        <>
-                            <MenuItemButton
-                                icon={<Pencil size={14} aria-hidden="true" />}
-                                label="Rename"
-                                onClick={() => setRenameOpen(true)}
-                            />
+      {open ? (
+        <div
+          role="menu"
+          aria-label="Manage project"
+          className="absolute right-0 mt-2 w-56 bg-gw-chrome border border-gw-border rounded z-20"
+        >
+          <div className="p-2">
+            <>
+              <MenuItemButton
+                icon={<Pencil size={14} aria-hidden="true" />}
+                label="Rename"
+                onClick={() => setRenameOpen(true)}
+              />
 
-                            <MenuItemButton
-                                icon={<Trash2 size={14} aria-hidden="true" />}
-                                label="Delete"
-                                danger
-                                onClick={() => setConfirmDeleteOpen(true)}
-                            />
+              <MenuItemButton
+                icon={<Trash2 size={14} aria-hidden="true" />}
+                label="Delete"
+                danger
+                onClick={() => setConfirmDeleteOpen(true)}
+              />
 
-                            <MenuItemButton
-                                icon={<Package size={14} aria-hidden="true" />}
-                                label="Package"
-                                onClick={() => {
-                                    setOpen(false);
-                                    onRequestCompile?.();
-                                }}
-                            />
-                        </>
-                    </div>
-                </div>
-            ) : null}
-
-            <ConfirmDialog
-                isOpen={confirmDeleteOpen}
-                title="Delete project"
-                description="This will permanently remove the project and its resources. Are you sure?"
-                confirmLabel="Delete"
-                cancelLabel="Cancel"
-                onConfirm={handleDeleteConfirm}
-                onCancel={() => setConfirmDeleteOpen(false)}
-            />
-
-            <RenameProjectModal
-                isOpen={renameOpen}
-                initialName={name}
-                onClose={() => setRenameOpen(false)}
-                onConfirm={async (newName) => {
-                    await projectActionsController.renameProject({
-                        projectId,
-                        projectPath: projectFromStore?.rootPath,
-                        newName,
-                        onRename,
-                    });
-                    dispatch(renameProjectInStore({ projectId, newName }));
-                    setName(newName);
-                    setRenameOpen(false);
-                    setOpen(false);
+              <MenuItemButton
+                icon={<Package size={14} aria-hidden="true" />}
+                label="Package"
+                onClick={() => {
+                  setOpen(false);
+                  onRequestCompile?.();
                 }}
-            />
+              />
+            </>
+          </div>
         </div>
-    );
+      ) : null}
+
+      <ConfirmDialog
+        isOpen={confirmDeleteOpen}
+        title="Delete project"
+        description="This will permanently remove the project and its resources. Are you sure?"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      <RenameProjectModal
+        isOpen={renameOpen}
+        initialName={name}
+        onClose={() => setRenameOpen(false)}
+        onConfirm={async (newName) => {
+          await projectActionsController.renameProject({
+            projectId,
+            projectPath: projectFromStore?.rootPath,
+            newName,
+            onRename,
+          });
+          dispatch(renameProjectInStore({ projectId, newName }));
+          setName(newName);
+          setRenameOpen(false);
+          setOpen(false);
+        }}
+      />
+    </div>
+  );
 }
