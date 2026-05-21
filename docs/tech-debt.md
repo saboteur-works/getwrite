@@ -51,10 +51,11 @@ Table of contents
 
 ### Styling
 
-- Token drift / hard-coded styles — Severity: Medium
-    - Description: Some components use ad-hoc CSS values instead of design tokens, risking theme and dark-mode inconsistency.
-    - Example files: various components under `frontend/components/` (audit needed)
-    - Suggested remediation: Run a token-first audit, replace raw values with `var(--...)` tokens, and add PR guidance enforcing token usage.
+- Token drift / hard-coded styles — ~~Severity: Medium~~ **Resolved in `feat/simplify-design-system` + `feat/simplify-design-system-second-pass`**
+    - ~~Description: Some components use ad-hoc CSS values instead of design tokens, risking theme and dark-mode inconsistency.~~
+    - ~~Example files: various components under `frontend/components/` (audit needed)~~
+    - ~~Suggested remediation: Run a token-first audit, replace raw values with `var(--...)` tokens, and add PR guidance enforcing token usage.~~
+    - Resolution: Full token audit completed across both design-system passes. All hardcoded hex values replaced with `var(--color-gw-*)` tokens (Toaster, TimelineTooltip, and all migrated components). CI enforcement gate added: `scripts/check-no-hardcoded-hex.mjs` + `frontend-checks.yml` workflow blocks new violations at the PR level.
 
 ### Performance
 
@@ -78,9 +79,10 @@ Table of contents
 
 ### Immediate Risks
 
-- Invariant-sensitive hotspots — Severity: High
+- Invariant-sensitive hotspots — Severity: High *(partially mitigated)*
     - Description: Refactors touching `revisionsSlice`, `projectsSlice`, `resource-templates`, or `ResourceTree` risk breaking canonical invariants if done without tests/verification gates.
     - Suggested remediation: Treat these as guarded refactors: add verification gates, unit tests, and small incremental PRs that preserve behavior.
+    - Partial mitigation: Canonical invariant now enforced at the API boundary (POST sets canonical, DELETE rejects canonical target). Tests in `revision-route-canonical.test.ts` and `revision-invariants.test.ts`. Slice-layer guard coverage and `ResourceTree`/`resource-templates` verification gates remain open.
 
 ### High-Priority Action Items (Stage 3)
 

@@ -7,11 +7,13 @@ This skill allows Claude to use the `sab-pos` CLI tool to manage and interact wi
 
 ## The CLI Tool
 
-You will primarily use the `sab` command to manage tasks and notes within a Saboteur project. Below are the available commands and their descriptions.
+You will primarily use for the `sab` command to manage tasks and notes within a Saboteur project. Below are the available commands and their descriptions.
 
 **The commands listed in this skill are the only ones you should use. Do not attempt to use any other commands or access the filesystem directly.**
 
 ### Managing Tasks
+
+Commands:
 
 - Create a new task with `sab task add <title>`.
 - List tasks with `sab task list`.
@@ -30,10 +32,31 @@ Tasks State Machine:
 
 ### Managing Notes
 
-- Create a new note with `sab note new <title>`.
+Commands:
+
+- Create a new note with `sab note new <title> --body <text|@path>`.
 - List notes with `sab note list`.
 - View note details with `sab note view <id>`.
-- Edit notes with `sab note edit <id>`.
+- Edit notes with `sab note edit <id> --body <text|@path>`.
 - Find notes by tag or task with `sab note find`.
 
 Wiki-links: [[note_id]] or [[title-slug]] — unresolved shows as [[broken: slug]].
+
+`sab note edit <id> --body <text|@path>` always overwrites all content. When editing, you must provide the full content of the note, not just the changes. To append or modify specific sections, you should first retrieve the existing content with `sab note view <id>`, make your changes, and then submit the full updated content with the edit command.
+
+## User Requests
+
+When a user asks you to manage tasks or notes, respond with the appropriate `sab` command.
+
+## Naming Conventions
+
+- Use concise, descriptive titles for tasks and notes.
+- Use tags to categorize notes and tasks when relevant.
+
+## Best Practices
+
+- Always confirm the project context before executing commands.
+- Use the linking features to maintain clear relationships between tasks and notes.
+- Regularly review and update task states to reflect current progress.
+- Write all notes in Markdown format.
+- Notes are not intended for information that belongs in the codebase or documentation; they are for project management, brainstorming, and non-code information.
