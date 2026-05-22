@@ -96,19 +96,19 @@ export default function ManageProjectMenu({
               />
 
               <MenuItemButton
-                icon={<Trash2 size={14} aria-hidden="true" />}
-                label="Delete"
-                danger
-                onClick={() => setConfirmDeleteOpen(true)}
-              />
-
-              <MenuItemButton
                 icon={<Package size={14} aria-hidden="true" />}
                 label="Package"
                 onClick={() => {
                   setOpen(false);
                   onRequestCompile?.();
                 }}
+              />
+
+              <MenuItemButton
+                icon={<Trash2 size={14} aria-hidden="true" />}
+                label="Delete"
+                danger
+                onClick={() => setConfirmDeleteOpen(true)}
               />
             </>
           </div>

@@ -357,7 +357,7 @@ export default function ResourceTree({
             onClick={(e) => {
               handleClick(e, item);
             }}
-            className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""} ${item.isFolder() ? "text-[11px] text-gw-dim" : ""}`}
+            className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""} ${item.isFolder() ? "text-[11px] text-gw-secondary" : ""}`}
           >
             <div
               className={`resource-tree-item-row ${item.isDragTarget() ? "resource-tree-item-row--drag-target" : ""}`}
