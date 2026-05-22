@@ -35,7 +35,9 @@ export default function DurationInput({
     className = "",
 }: DurationInputProps) {
     const init =
-        value != null ? detectUnit(value) : { quantity: "", unit: "minutes" as DurationUnit };
+        value != null
+            ? detectUnit(value)
+            : { quantity: "", unit: "minutes" as DurationUnit };
 
     const [quantity, setQuantity] = React.useState<string>(init.quantity);
     const [unit, setUnit] = React.useState<DurationUnit>(init.unit);
@@ -66,7 +68,7 @@ export default function DurationInput({
                 <input
                     type="number"
                     aria-label="story-duration-quantity"
-                    className="w-full p-2 border rounded text-sm"
+                    className="w-full p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
                     min={0}
                     value={quantity}
                     onChange={(e) => {
@@ -76,7 +78,7 @@ export default function DurationInput({
                 />
                 <select
                     aria-label="story-duration-unit"
-                    className="p-2 border rounded text-sm"
+                    className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
                     value={unit}
                     onChange={(e) => {
                         const u = e.target.value as DurationUnit;

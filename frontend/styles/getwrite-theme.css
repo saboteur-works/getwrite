@@ -79,21 +79,21 @@
     --color-gw-toast-error-fg: #f0d8a8; /* Warm light amber text */
 
     /* ── PRODUCT TYPE SCALE ── */
-    --font-size-gw-hero: clamp(
+    --text-gw-hero: clamp(
         60px,
         9vw,
         88px
     ); /* text-gw-hero    | Hero wordmark */
-    --font-size-gw-display: 48px; /* text-gw-display */
-    --font-size-gw-h1: 28px; /* text-gw-h1      | Project/page titles */
-    --font-size-gw-h2: 18px; /* text-gw-h2      | Section headings */
-    --font-size-gw-h3: 14px; /* text-gw-h3      | Card titles, panel headings */
-    --font-size-gw-body: 14px; /* text-gw-body    | UI body */
-    --font-size-gw-small: 13px; /* text-gw-small   | Secondary body */
-    --font-size-gw-editor: 15px; /* text-gw-editor  | Editor body (IBM Plex Serif) */
-    --font-size-gw-label: 11px; /* text-gw-label   | Panel section headers */
-    --font-size-gw-micro: 10px; /* text-gw-micro   | Timestamps, metadata values */
-    --font-size-gw-nano: 9px; /* text-gw-nano    | Tab labels, kb shortcuts */
+    --text-gw-display: 48px; /* text-gw-display */
+    --text-gw-h1: 28px; /* text-gw-h1      | Project/page titles */
+    --text-gw-h2: 18px; /* text-gw-h2      | Section headings */
+    --text-gw-h3: 14px; /* text-gw-h3      | Card titles, panel headings */
+    --text-gw-body: 14px; /* text-gw-body    | UI body */
+    --text-gw-small: 13px; /* text-gw-small   | Secondary body */
+    --text-gw-editor: 15px; /* text-gw-editor  | Editor body (IBM Plex Serif) */
+    --text-gw-label: 11px; /* text-gw-label   | Panel section headers */
+    --text-gw-micro: 10px; /* text-gw-micro   | Timestamps, metadata values */
+    --text-gw-nano: 9px; /* text-gw-nano    | Tab labels, kb shortcuts */
 
     /* ── LAYOUT ── */
     --width-gw-resource-panel: 200px; /* w-gw-resource  | Resource tree panel width */

@@ -11,16 +11,8 @@ import type { SearchResult } from "../src/store/searchSlice";
 import type { Folder } from "../src/lib/models/types";
 
 const mockResults: SearchResult[] = [
-    {
-        resourceId: "r1",
-        title: "Alpha",
-        snippet: "...contains alpha content...",
-    },
-    {
-        resourceId: "r2",
-        title: "Gamma",
-        snippet: "...gamma related text...",
-    },
+  { resourceId: "r1", title: "Alpha", snippet: "...contains alpha content..." },
+  { resourceId: "r2", title: "Gamma", snippet: "...gamma related text..." },
 ];
 
 /**
@@ -30,390 +22,390 @@ const mockResults: SearchResult[] = [
  * avoids that pitfall.
  */
 async function flushThunkAndRender(): Promise<void> {
-    for (let i = 0; i < 10; i++) await Promise.resolve();
+  for (let i = 0; i < 10; i++) await Promise.resolve();
 }
 
 describe("SearchBar", () => {
-    beforeEach(() => {
-        vi.useFakeTimers();
-        window.HTMLElement.prototype.scrollIntoView = vi.fn();
+  beforeEach(() => {
+    vi.useFakeTimers();
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("shows API results and calls onSelect when clicked", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => mockResults,
+    } as Response);
+
+    const onSelect = vi.fn();
+    const testStore = makeStore();
+    testStore.dispatch(setSelectedProjectId("project-1"));
+
+    render(
+      <Provider store={testStore}>
+        <SearchBar onSelect={onSelect} />
+      </Provider>,
+    );
+
+    const input = screen.getByLabelText("resource-search") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "al" } });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await flushThunkAndRender();
     });
 
-    afterEach(() => {
-        vi.useRealTimers();
-        vi.restoreAllMocks();
+    expect(screen.getByRole("button", { name: /Alpha/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Gamma/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/i }));
+    expect(onSelect).toHaveBeenCalledWith("r1");
+  });
+
+  it("does not fire an API call for fewer than 2 characters", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({ ok: true, json: async () => [] } as Response);
+
+    const testStore = makeStore();
+    testStore.dispatch(setSelectedProjectId("project-1"));
+
+    render(
+      <Provider store={testStore}>
+        <SearchBar />
+      </Provider>,
+    );
+
+    const input = screen.getByLabelText("resource-search") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "a" } });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await flushThunkAndRender();
     });
 
-    it("shows API results and calls onSelect when clicked", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue({
-            ok: true,
-            json: async () => mockResults,
-        } as Response);
+    // The reindex effect fires once on mount (project selected), but no
+    // search call should be made for a sub-2-character query.
+    const searchCalls = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes("/search"),
+    );
+    expect(searchCalls).toHaveLength(0);
+  });
 
-        const onSelect = vi.fn();
-        const testStore = makeStore();
-        testStore.dispatch(setSelectedProjectId("project-1"));
+  it("disables the input when no project is selected", () => {
+    const testStore = makeStore();
 
-        render(
-            <Provider store={testStore}>
-                <SearchBar onSelect={onSelect} />
-            </Provider>,
-        );
+    render(
+      <Provider store={testStore}>
+        <SearchBar />
+      </Provider>,
+    );
 
-        const input = screen.getByLabelText(
-            "resource-search",
-        ) as HTMLInputElement;
-        fireEvent.change(input, { target: { value: "al" } });
+    const input = screen.getByLabelText("resource-search") as HTMLInputElement;
+    expect(input).toBeDisabled();
+  });
 
-        await act(async () => {
-            vi.advanceTimersByTime(200);
-            await flushThunkAndRender();
-        });
+  it("navigates results with keyboard and selects on Enter", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => mockResults,
+    } as Response);
 
-        expect(
-            screen.getByRole("button", { name: /Alpha/i }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole("button", { name: /Gamma/i }),
-        ).toBeInTheDocument();
+    const onSelect = vi.fn();
+    const testStore = makeStore();
+    testStore.dispatch(setSelectedProjectId("project-1"));
 
-        fireEvent.click(screen.getByRole("button", { name: /Alpha/i }));
-        expect(onSelect).toHaveBeenCalledWith("r1");
+    render(
+      <Provider store={testStore}>
+        <SearchBar onSelect={onSelect} />
+      </Provider>,
+    );
+
+    const input = screen.getByLabelText("resource-search") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "al" } });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await flushThunkAndRender();
     });
 
-    it("does not fire an API call for fewer than 2 characters", async () => {
-        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-            ok: true,
-            json: async () => [],
-        } as Response);
+    expect(screen.getByRole("button", { name: /Alpha/i })).toBeInTheDocument();
 
-        const testStore = makeStore();
-        testStore.dispatch(setSelectedProjectId("project-1"));
+    // ArrowDown moves highlight from 0 → 1 (Gamma), Enter selects it
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
 
-        render(
-            <Provider store={testStore}>
-                <SearchBar />
-            </Provider>,
-        );
+    expect(onSelect).toHaveBeenCalledWith("r2");
+  });
 
-        const input = screen.getByLabelText(
-            "resource-search",
-        ) as HTMLInputElement;
-        fireEvent.change(input, { target: { value: "a" } });
+  it("includes status filter in search URL when a chip is selected via SearchBar", async () => {
+    let capturedUrl = "";
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async (input: RequestInfo | URL) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url.includes("/search")) capturedUrl = url;
+        return {
+          ok: true,
+          json: async () =>
+            url.includes("/search") ? mockResults : { tags: [] },
+        } as Response;
+      },
+    );
 
-        await act(async () => {
-            vi.advanceTimersByTime(200);
-            await flushThunkAndRender();
-        });
-
-        // The reindex effect fires once on mount (project selected), but no
-        // search call should be made for a sub-2-character query.
-        const searchCalls = fetchSpy.mock.calls.filter(([url]) =>
-            String(url).includes("/search"),
-        );
-        expect(searchCalls).toHaveLength(0);
+    const testStore = makeStore();
+    testStore.dispatch(setSelectedProjectId("project-1"));
+    // Inject statuses so the SearchBar reads them from Redux
+    testStore.dispatch({
+      type: "projects/setProject",
+      payload: {
+        id: "project-1",
+        rootPath: "/tmp/p1",
+        statuses: ["Draft", "Final"],
+      },
     });
 
-    it("disables the input when no project is selected", () => {
-        const testStore = makeStore();
+    render(
+      <Provider store={testStore}>
+        <SearchBar />
+      </Provider>,
+    );
 
-        render(
-            <Provider store={testStore}>
-                <SearchBar />
-            </Provider>,
-        );
+    const input = screen.getByLabelText("resource-search") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "al" } });
 
-        const input = screen.getByLabelText(
-            "resource-search",
-        ) as HTMLInputElement;
-        expect(input).toBeDisabled();
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await flushThunkAndRender();
     });
 
-    it("navigates results with keyboard and selects on Enter", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue({
-            ok: true,
-            json: async () => mockResults,
-        } as Response);
+    fireEvent.click(
+      screen.getByRole("button", { name: /Toggle search filters/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Draft" }));
 
-        const onSelect = vi.fn();
-        const testStore = makeStore();
-        testStore.dispatch(setSelectedProjectId("project-1"));
-
-        render(
-            <Provider store={testStore}>
-                <SearchBar onSelect={onSelect} />
-            </Provider>,
-        );
-
-        const input = screen.getByLabelText(
-            "resource-search",
-        ) as HTMLInputElement;
-        fireEvent.change(input, { target: { value: "al" } });
-
-        await act(async () => {
-            vi.advanceTimersByTime(200);
-            await flushThunkAndRender();
-        });
-
-        expect(
-            screen.getByRole("button", { name: /Alpha/i }),
-        ).toBeInTheDocument();
-
-        // ArrowDown moves highlight from 0 → 1 (Gamma), Enter selects it
-        fireEvent.keyDown(input, { key: "ArrowDown" });
-        fireEvent.keyDown(input, { key: "Enter" });
-
-        expect(onSelect).toHaveBeenCalledWith("r2");
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await flushThunkAndRender();
     });
 
-    it("includes status filter in search URL when a chip is selected via SearchBar", async () => {
-        let capturedUrl = "";
-        vi.spyOn(globalThis, "fetch").mockImplementation(
-            async (input: RequestInfo | URL) => {
-                const url =
-                    typeof input === "string" ? input : input.toString();
-                if (url.includes("/search")) capturedUrl = url;
-                return {
-                    ok: true,
-                    json: async () =>
-                        url.includes("/search") ? mockResults : { tags: [] },
-                } as Response;
-            },
-        );
+    expect(capturedUrl).toContain("status=Draft");
+  });
 
-        const testStore = makeStore();
-        testStore.dispatch(setSelectedProjectId("project-1"));
-        // Inject statuses so the SearchBar reads them from Redux
-        testStore.dispatch({
-            type: "projects/setProject",
-            payload: {
-                id: "project-1",
-                rootPath: "/tmp/p1",
-                statuses: ["Draft", "Final"],
-            },
-        });
+  it("closes the results list on Escape", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => mockResults,
+    } as Response);
 
-        render(
-            <Provider store={testStore}>
-                <SearchBar />
-            </Provider>,
-        );
+    const testStore = makeStore();
+    testStore.dispatch(setSelectedProjectId("project-1"));
 
-        const input = screen.getByLabelText("resource-search") as HTMLInputElement;
-        fireEvent.change(input, { target: { value: "al" } });
+    render(
+      <Provider store={testStore}>
+        <SearchBar />
+      </Provider>,
+    );
 
-        await act(async () => {
-            vi.advanceTimersByTime(200);
-            await flushThunkAndRender();
-        });
+    const input = screen.getByLabelText("resource-search") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "al" } });
 
-        fireEvent.click(
-            screen.getByRole("button", { name: /Toggle search filters/i }),
-        );
-        fireEvent.click(screen.getByRole("button", { name: "Draft" }));
-
-        await act(async () => {
-            vi.advanceTimersByTime(200);
-            await flushThunkAndRender();
-        });
-
-        expect(capturedUrl).toContain("status=Draft");
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await flushThunkAndRender();
     });
 
-    it("closes the results list on Escape", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue({
-            ok: true,
-            json: async () => mockResults,
-        } as Response);
+    expect(screen.getByRole("button", { name: /Alpha/i })).toBeInTheDocument();
 
-        const testStore = makeStore();
-        testStore.dispatch(setSelectedProjectId("project-1"));
+    fireEvent.keyDown(input, { key: "Escape" });
 
-        render(
-            <Provider store={testStore}>
-                <SearchBar />
-            </Provider>,
-        );
-
-        const input = screen.getByLabelText(
-            "resource-search",
-        ) as HTMLInputElement;
-        fireEvent.change(input, { target: { value: "al" } });
-
-        await act(async () => {
-            vi.advanceTimersByTime(200);
-            await flushThunkAndRender();
-        });
-
-        expect(
-            screen.getByRole("button", { name: /Alpha/i }),
-        ).toBeInTheDocument();
-
-        fireEvent.keyDown(input, { key: "Escape" });
-
-        expect(
-            screen.queryByRole("button", { name: /Alpha/i }),
-        ).not.toBeInTheDocument();
-    });
+    expect(
+      screen.queryByRole("button", { name: /Alpha/i }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("SearchFilterPanel", () => {
-    afterEach(() => {
-        vi.restoreAllMocks();
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const now = new Date().toISOString();
+
+  const mockFolders: Folder[] = [
+    {
+      id: "folder-1",
+      name: "Chapter One",
+      slug: "chapter-one",
+      type: "folder",
+      orderIndex: 0,
+      createdAt: now,
+      userMetadata: {},
+    },
+  ];
+
+  it("opens and closes the filter panel via toggle button", () => {
+    const testStore = makeStore();
+    testStore.dispatch(setSelectedProjectId("project-1"));
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ tags: [] }),
+    } as Response);
+
+    render(
+      <Provider store={testStore}>
+        <SearchBar />
+      </Provider>,
+    );
+
+    expect(
+      screen.queryByRole("region", { name: /Search filters/i }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Toggle search filters/i }),
+    );
+
+    expect(
+      screen.getByRole("region", { name: /Search filters/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Toggle search filters/i }),
+    );
+
+    expect(
+      screen.queryByRole("region", { name: /Search filters/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders status chips and toggles active state", () => {
+    const onFilterChange = vi.fn();
+
+    render(
+      <SearchFilterPanel
+        folders={[]}
+        statuses={["Draft", "Final"]}
+        tags={[]}
+        activeFilters={{}}
+        onFilterChange={onFilterChange}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Toggle search filters/i }),
+    );
+
+    const draftChip = screen.getByRole("button", { name: "Draft" });
+    expect(draftChip).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(draftChip);
+    expect(onFilterChange).toHaveBeenCalledWith({ status: "Draft" });
+  });
+
+  it("combines multiple filters in a single onFilterChange call", () => {
+    const onFilterChange = vi.fn();
+
+    render(
+      <SearchFilterPanel
+        folders={mockFolders}
+        statuses={["Draft"]}
+        tags={[
+          { id: "tag-1", name: "Romance" },
+          { id: "tag-2", name: "Fantasy" },
+        ]}
+        activeFilters={{ status: "Draft" }}
+        onFilterChange={onFilterChange}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Toggle search filters/i }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Romance" }));
+    expect(onFilterChange).toHaveBeenCalledWith({
+      status: "Draft",
+      tags: ["tag-1"],
     });
+  });
 
-    const now = new Date().toISOString();
+  it("clears a filter by clicking its chip again", () => {
+    const onFilterChange = vi.fn();
 
-    const mockFolders: Folder[] = [
-        {
-            id: "folder-1",
-            name: "Chapter One",
-            slug: "chapter-one",
-            type: "folder",
-            orderIndex: 0,
-            createdAt: now,
-            userMetadata: {},
-        },
-    ];
+    render(
+      <SearchFilterPanel
+        folders={[]}
+        statuses={["Draft", "Final"]}
+        tags={[]}
+        activeFilters={{ status: "Draft" }}
+        onFilterChange={onFilterChange}
+      />,
+    );
 
-    it("opens and closes the filter panel via toggle button", () => {
-        const testStore = makeStore();
-        testStore.dispatch(setSelectedProjectId("project-1"));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Toggle search filters/i }),
+    );
 
-        vi.spyOn(globalThis, "fetch").mockResolvedValue({
-            ok: true,
-            json: async () => ({ tags: [] }),
-        } as Response);
+    const draftChip = screen.getByRole("button", { name: "Draft" });
+    expect(draftChip).toHaveAttribute("aria-pressed", "true");
 
-        render(
-            <Provider store={testStore}>
-                <SearchBar />
-            </Provider>,
-        );
+    fireEvent.click(draftChip);
+    expect(onFilterChange).toHaveBeenCalledWith({ status: undefined });
+  });
 
-        expect(
-            screen.queryByRole("region", { name: /Search filters/i }),
-        ).not.toBeInTheDocument();
+  it("renders a folder selector when folders are provided", () => {
+    const onFilterChange = vi.fn();
 
-        fireEvent.click(
-            screen.getByRole("button", { name: /Toggle search filters/i }),
-        );
+    render(
+      <SearchFilterPanel
+        folders={mockFolders}
+        statuses={[]}
+        tags={[]}
+        activeFilters={{}}
+        onFilterChange={onFilterChange}
+      />,
+    );
 
-        expect(
-            screen.getByRole("region", { name: /Search filters/i }),
-        ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Toggle search filters/i }),
+    );
 
-        fireEvent.click(
-            screen.getByRole("button", { name: /Toggle search filters/i }),
-        );
+    const select = screen.getByRole("combobox", {
+      name: /Filter by folder/i,
+    }) as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
 
-        expect(
-            screen.queryByRole("region", { name: /Search filters/i }),
-        ).not.toBeInTheDocument();
-    });
+    fireEvent.change(select, { target: { value: "folder-1" } });
+    expect(onFilterChange).toHaveBeenCalledWith({ folder: "folder-1" });
+  });
 
-    it("renders status chips and toggles active state", () => {
-        const onFilterChange = vi.fn();
+  it("clears folder filter when 'All folders' is selected", () => {
+    const onFilterChange = vi.fn();
 
-        render(
-            <SearchFilterPanel
-                folders={[]}
-                statuses={["Draft", "Final"]}
-                tags={[]}
-                activeFilters={{}}
-                onFilterChange={onFilterChange}
-            />,
-        );
+    render(
+      <SearchFilterPanel
+        folders={mockFolders}
+        statuses={[]}
+        tags={[]}
+        activeFilters={{ folder: "folder-1" }}
+        onFilterChange={onFilterChange}
+      />,
+    );
 
-        const draftChip = screen.getByRole("button", { name: "Draft" });
-        expect(draftChip).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(
+      screen.getByRole("button", { name: /Toggle search filters/i }),
+    );
 
-        fireEvent.click(draftChip);
-        expect(onFilterChange).toHaveBeenCalledWith({ status: "Draft" });
-    });
-
-    it("combines multiple filters in a single onFilterChange call", () => {
-        const onFilterChange = vi.fn();
-
-        render(
-            <SearchFilterPanel
-                folders={mockFolders}
-                statuses={["Draft"]}
-                tags={[
-                    { id: "tag-1", name: "Romance" },
-                    { id: "tag-2", name: "Fantasy" },
-                ]}
-                activeFilters={{ status: "Draft" }}
-                onFilterChange={onFilterChange}
-            />,
-        );
-
-        fireEvent.click(screen.getByRole("button", { name: "Romance" }));
-        expect(onFilterChange).toHaveBeenCalledWith({
-            status: "Draft",
-            tags: ["tag-1"],
-        });
-    });
-
-    it("clears a filter by clicking its chip again", () => {
-        const onFilterChange = vi.fn();
-
-        render(
-            <SearchFilterPanel
-                folders={[]}
-                statuses={["Draft", "Final"]}
-                tags={[]}
-                activeFilters={{ status: "Draft" }}
-                onFilterChange={onFilterChange}
-            />,
-        );
-
-        const draftChip = screen.getByRole("button", { name: "Draft" });
-        expect(draftChip).toHaveAttribute("aria-pressed", "true");
-
-        fireEvent.click(draftChip);
-        expect(onFilterChange).toHaveBeenCalledWith({ status: undefined });
-    });
-
-    it("renders a folder selector when folders are provided", () => {
-        const onFilterChange = vi.fn();
-
-        render(
-            <SearchFilterPanel
-                folders={mockFolders}
-                statuses={[]}
-                tags={[]}
-                activeFilters={{}}
-                onFilterChange={onFilterChange}
-            />,
-        );
-
-        const select = screen.getByRole("combobox", {
-            name: /Filter by folder/i,
-        }) as HTMLSelectElement;
-        expect(select).toBeInTheDocument();
-
-        fireEvent.change(select, { target: { value: "folder-1" } });
-        expect(onFilterChange).toHaveBeenCalledWith({ folder: "folder-1" });
-    });
-
-    it("clears folder filter when 'All folders' is selected", () => {
-        const onFilterChange = vi.fn();
-
-        render(
-            <SearchFilterPanel
-                folders={mockFolders}
-                statuses={[]}
-                tags={[]}
-                activeFilters={{ folder: "folder-1" }}
-                onFilterChange={onFilterChange}
-            />,
-        );
-
-        const select = screen.getByRole("combobox", {
-            name: /Filter by folder/i,
-        }) as HTMLSelectElement;
-        fireEvent.change(select, { target: { value: "" } });
-        expect(onFilterChange).toHaveBeenCalledWith({ folder: undefined });
-    });
+    const select = screen.getByRole("combobox", {
+      name: /Filter by folder/i,
+    }) as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "" } });
+    expect(onFilterChange).toHaveBeenCalledWith({ folder: undefined });
+  });
 });

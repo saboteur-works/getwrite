@@ -21,13 +21,16 @@ export default function StatusSelector({
     options = DEFAULT_OPTIONS,
 }: StatusSelectorProps) {
     const defaultValue = options[0] ?? "";
-    const [status, setStatus] = useSyncedControlledValue(value ?? defaultValue, onChange);
+    const [status, setStatus] = useSyncedControlledValue(
+        value ?? defaultValue,
+        onChange,
+    );
 
     return (
         <LabeledField label="Status" className={className}>
             <select
                 aria-label={ariaLabel}
-                className="w-full mt-2 p-2 border rounded text-sm"
+                className="w-full mt-2 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
             >

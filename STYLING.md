@@ -196,11 +196,11 @@ GetWrite uses a fixed three-panel layout in the workspace view:
 [Resource tree: 200px fixed] | [Editor: flex 1] | [Metadata: 220px fixed]
 ```
 
-Panel widths are not user-resizable in the base implementation (resizability can be added, but the defaults above should be the starting point). The editor panel takes all remaining space.
+Panel widths are user-resizable. The editor panel takes all remaining space.
 
 Each panel has a title bar: 44px height, `0.5px solid --color-dim` bottom border. Panel section headers inside panels: IBM Plex Mono 400, 9px, uppercase, `letter-spacing: 0.18em`, `--color-mid`.
 
-The application title bar (above all panels) is 44px. It displays: wordmark (left), project name / file name breadcrumb (center-left), save status (right). The title bar background matches `--color-surface` in dark mode, `--color-chrome-light` in light mode.
+The application title bar (above all panels) is 44px. It displays: wordmark (left), project name / file name breadcrumb (center-left), compile & shell menus (right). The title bar background matches `--color-surface` in dark mode, `--color-chrome-light` in light mode.
 
 ---
 
@@ -230,8 +230,6 @@ Border radius:
 
 ```
 --radius-sm:  3px    /* chips, tags, badges */
---radius-md:  5px    /* buttons, inputs, small cards */
---radius-lg:  8px    /* panel cards, modals */
 ```
 
 No drop shadows. Elevation is communicated through surface color alone.

@@ -148,7 +148,7 @@ export default function ResourceRefInput({
                     autoComplete="off"
                 />
                 {suggestions.length > 0 && (
-                    <ul className="absolute top-full left-0 right-0 mt-1 bg-gw-chrome border border-gw-border rounded shadow-md max-h-48 overflow-y-auto z-10">
+                    <ul className="absolute top-full left-0 right-0 mt-1 bg-gw-chrome border border-gw-border shadow-md max-h-48 overflow-y-auto z-10">
                         {suggestions.map((opt) => (
                             <li
                                 key={opt.id}
