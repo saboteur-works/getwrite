@@ -1115,7 +1115,7 @@ export default function AppShell({
                   projectTypesLoadError={projectTypesLoadError}
                   projectTypeTemplates={projectTypeTemplates}
                   resources={resources}
-                  folders={folders}
+                  folders={liveFolders}
                   project={project}
                   hasUnsavedEditorChanges={hasUnsavedEditorChanges}
                   syncBlockers={syncBlockers}
