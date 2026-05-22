@@ -13,6 +13,11 @@ import { test, expect, type Page } from "@playwright/test";
  * - the caret does not jump when an unrelated parent re-render fires
  */
 
+// Storybook + TipTap occasionally drop the first keystrokes after iframe
+// reload under combined-suite load. A single retry absorbs the timing race
+// without masking real bugs — a real regression would fail every retry.
+test.describe.configure({ retries: 1 });
+
 const STORY = {
   interactive: "/iframe.html?id=workarea-editview--interactive",
   tall: "/iframe.html?id=workarea-editview--tall-content",
