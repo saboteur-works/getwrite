@@ -44,21 +44,18 @@ const CustomHeading = Heading.extend<CustomHeadingOptions>(() => {
             fontFamily: "Inter, sans-serif",
             fontWeight: "700",
             letterSpacing: "0.14em",
-            color: "white",
           },
           h2: {
             fontSize: "16px",
             fontFamily: "Times, serif",
             fontWeight: "700",
             letterSpacing: "0.14em",
-            color: "white",
           },
           h3: {
             fontSize: "14px",
             fontFamily: "Inter, sans-serif",
             fontWeight: "700",
             letterSpacing: "0.14em",
-            color: "white",
           },
         },
       };
