@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.37](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.36...getwrite-v0.2.37) (2026-05-22)
+
+
+### Features
+
+* **SearchFilterPanel:** Convert filter panel to a Radix popover ([bc322ef](https://github.com/saboteur-works/getwrite/commit/bc322effd5e57846214fe0896735bf2845a22893))
+
+
+### Bug Fixes
+
+* **theme:** Propagate light/dark tokens to document root for portal content ([8022aa4](https://github.com/saboteur-works/getwrite/commit/8022aa49afaa5fd7d72e861bc325034dd9adb4e4))
+
 ## [0.2.36](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.35...getwrite-v0.2.36) (2026-05-21)
 
 
