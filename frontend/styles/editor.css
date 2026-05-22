@@ -143,6 +143,41 @@
     background-color: var(--color-gw-chrome2);
 }
 
+/* Tables */
+.tiptap table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 16px;
+    margin-bottom: 16px;
+    table-layout: fixed;
+    overflow: hidden;
+}
+
+.tiptap table th,
+.tiptap table td {
+    border: 1px solid var(--color-gw-border);
+    padding: 8px 12px;
+    vertical-align: top;
+    line-height: var(--gw-body-line-height, 1.8);
+    font-size: var(--gw-body-font-size, var(--text-gw-editor));
+    color: var(--color-gw-ink);
+    word-wrap: break-word;
+}
+
+.tiptap table th {
+    background-color: var(--color-gw-chrome2);
+    font-weight: 600;
+    text-align: left;
+}
+
+.tiptap table td {
+    background-color: var(--color-gw-surface);
+}
+
+.tiptap table .selectedCell {
+    background-color: var(--color-gw-chrome2);
+}
+
 /* Named font classes — for dynamic font selection system */
 .domine-400 {
     font-family: "Domine", serif;

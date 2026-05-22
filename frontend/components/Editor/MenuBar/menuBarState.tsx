@@ -6,59 +6,62 @@ import type { EditorStateSnapshot } from "@tiptap/react";
  * Extracts the relevant editor state for rendering menu buttons.
  */
 export function menuBarStateSelector(ctx: EditorStateSnapshot<Editor>) {
-    return {
-        // Text formatting
-        isBold: ctx.editor.isActive("bold") ?? false,
-        canBold: ctx.editor.can().chain().toggleBold().run() ?? false,
-        isItalic: ctx.editor.isActive("italic") ?? false,
-        canItalic: ctx.editor.can().chain().toggleItalic().run() ?? false,
-        isUnderline: ctx.editor.isActive("underline") ?? false,
-        canUnderline: ctx.editor.can().chain().toggleUnderline().run() ?? false,
-        isStrike: ctx.editor.isActive("strike") ?? false,
-        canStrike: ctx.editor.can().chain().toggleStrike().run() ?? false,
-        isCode: ctx.editor.isActive("code") ?? false,
-        canCode: ctx.editor.can().chain().toggleCode().run() ?? false,
-        canClearMarks: ctx.editor.can().chain().unsetAllMarks().run() ?? false,
+  return {
+    // Text formatting
+    isBold: ctx.editor.isActive("bold") ?? false,
+    canBold: ctx.editor.can().chain().toggleBold().run() ?? false,
+    isItalic: ctx.editor.isActive("italic") ?? false,
+    canItalic: ctx.editor.can().chain().toggleItalic().run() ?? false,
+    isUnderline: ctx.editor.isActive("underline") ?? false,
+    canUnderline: ctx.editor.can().chain().toggleUnderline().run() ?? false,
+    isStrike: ctx.editor.isActive("strike") ?? false,
+    canStrike: ctx.editor.can().chain().toggleStrike().run() ?? false,
+    isCode: ctx.editor.isActive("code") ?? false,
+    canCode: ctx.editor.can().chain().toggleCode().run() ?? false,
+    canClearMarks: ctx.editor.can().chain().unsetAllMarks().run() ?? false,
 
-        // Block types
-        isParagraph: ctx.editor.isActive("paragraph") ?? false,
-        isHeading1: ctx.editor.isActive("heading", { level: 1 }) ?? false,
-        isHeading2: ctx.editor.isActive("heading", { level: 2 }) ?? false,
-        isHeading3: ctx.editor.isActive("heading", { level: 3 }) ?? false,
-        isHeading4: ctx.editor.isActive("heading", { level: 4 }) ?? false,
-        isHeading5: ctx.editor.isActive("heading", { level: 5 }) ?? false,
-        isHeading6: ctx.editor.isActive("heading", { level: 6 }) ?? false,
+    // Block types
+    isParagraph: ctx.editor.isActive("paragraph") ?? false,
+    isHeading1: ctx.editor.isActive("heading", { level: 1 }) ?? false,
+    isHeading2: ctx.editor.isActive("heading", { level: 2 }) ?? false,
+    isHeading3: ctx.editor.isActive("heading", { level: 3 }) ?? false,
+    isHeading4: ctx.editor.isActive("heading", { level: 4 }) ?? false,
+    isHeading5: ctx.editor.isActive("heading", { level: 5 }) ?? false,
+    isHeading6: ctx.editor.isActive("heading", { level: 6 }) ?? false,
 
-        // Lists and blocks
-        isBulletList: ctx.editor.isActive("bulletList") ?? false,
-        isOrderedList: ctx.editor.isActive("orderedList") ?? false,
-        isCodeBlock: ctx.editor.isActive("codeBlock") ?? false,
-        isBlockquote: ctx.editor.isActive("blockquote") ?? false,
-        isAlignLeft: ctx.editor.isActive({ textAlign: "left" }) ?? false,
-        isAlignCenter: ctx.editor.isActive({ textAlign: "center" }) ?? false,
-        isAlignRight: ctx.editor.isActive({ textAlign: "right" }) ?? false,
-        isAlignJustify: ctx.editor.isActive({ textAlign: "justify" }) ?? false,
+    // Lists and blocks
+    isBulletList: ctx.editor.isActive("bulletList") ?? false,
+    isOrderedList: ctx.editor.isActive("orderedList") ?? false,
+    isCodeBlock: ctx.editor.isActive("codeBlock") ?? false,
+    isBlockquote: ctx.editor.isActive("blockquote") ?? false,
+    isAlignLeft: ctx.editor.isActive({ textAlign: "left" }) ?? false,
+    isAlignCenter: ctx.editor.isActive({ textAlign: "center" }) ?? false,
+    isAlignRight: ctx.editor.isActive({ textAlign: "right" }) ?? false,
+    isAlignJustify: ctx.editor.isActive({ textAlign: "justify" }) ?? false,
 
-        // History
-        canUndo: ctx.editor.can().chain().undo().run() ?? false,
-        canRedo: ctx.editor.can().chain().redo().run() ?? false,
+    // History
+    canUndo: ctx.editor.can().chain().undo().run() ?? false,
+    canRedo: ctx.editor.can().chain().redo().run() ?? false,
 
-        // Highlight
-        isHighlight: ctx.editor.isActive("highlight") ?? false,
-        canHighlight: ctx.editor.can().chain().toggleHighlight().run() ?? false,
+    // Highlight
+    isHighlight: ctx.editor.isActive("highlight") ?? false,
+    canHighlight: ctx.editor.can().chain().toggleHighlight().run() ?? false,
 
-        // Text style (color, background)
-        textColor: ctx.editor.getAttributes("textStyle").color,
-        backgroundColor: ctx.editor.getAttributes("textStyle").backgroundColor,
+    // Text style (color, background)
+    textColor: ctx.editor.getAttributes("textStyle").color,
+    backgroundColor: ctx.editor.getAttributes("textStyle").backgroundColor,
 
-        fontSize: ctx.editor.getAttributes("textStyle").fontSize,
-        isDomine: ctx.editor.isActive("textStyle", { fontFamily: "Domine" }),
+    fontSize: ctx.editor.getAttributes("textStyle").fontSize,
+    isDomine: ctx.editor.isActive("textStyle", { fontFamily: "Domine" }),
 
-        // Custom extensions
-        // Example: GetWriteParagraphLeading extension state
-        getWriteParagraphLeading:
-            ctx.editor.getAttributes("paragraph").paragraphLeading,
-    };
+    // Custom extensions
+    // Example: GetWriteParagraphLeading extension state
+    getWriteParagraphLeading:
+      ctx.editor.getAttributes("paragraph").paragraphLeading,
+
+    // Table context
+    isInsideTable: ctx.editor.isActive("table") ?? false,
+  };
 }
 
 export type MenuBarState = ReturnType<typeof menuBarStateSelector>;
