@@ -28,13 +28,13 @@ const ICON_SIZE = 16;
  * Props for {@link MenuBar}.
  */
 export interface MenuBarProps {
-    /** Active TipTap editor instance used to execute toolbar commands. */
-    editor: Editor;
-    /**
-     * Optional state snapshot override used by Storybook/tests to render
-     * deterministic toolbar active/disabled states without editor subscriptions.
-     */
-    stateOverride?: MenuBarState;
+  /** Active TipTap editor instance used to execute toolbar commands. */
+  editor: Editor;
+  /**
+   * Optional state snapshot override used by Storybook/tests to render
+   * deterministic toolbar active/disabled states without editor subscriptions.
+   */
+  stateOverride?: MenuBarState;
 }
 
 /**
@@ -53,78 +53,82 @@ export interface MenuBarProps {
  * <MenuBar editor={editor} />
  */
 export const MenuBar = ({ editor, stateOverride }: MenuBarProps) => {
-    const selectedEditorState = useEditorState({
-        editor,
-        selector: menuBarStateSelector,
-    });
-    const editorState = stateOverride ?? selectedEditorState;
-    const editorProjectConfig = useSelector(selectEditorConfig);
+  const selectedEditorState = useEditorState({
+    editor,
+    selector: menuBarStateSelector,
+  });
+  const editorState = stateOverride ?? selectedEditorState;
+  const editorProjectConfig = useSelector(selectEditorConfig);
 
-    const toolbarGroups = useToolbarCommands(editor, editorState, editorProjectConfig);
+  const toolbarGroups = useToolbarCommands(
+    editor,
+    editorState,
+    editorProjectConfig,
+  );
 
-    if (!editor) {
-        return null;
-    }
+  if (!editor) {
+    return null;
+  }
 
-    return (
-        <div id="editor-menu-bar" className="editor-menubar">
-            {toolbarGroups.map((group) => (
-                <EditorMenuIconGroup
-                    key={group.groupId}
-                    groupName={group.groupName}
-                    groupId={group.groupId}
-                >
-                    {group.items.map((item) => {
-                        if (item.kind === "icon") {
-                            return (
-                                <EditorMenuIcon
-                                    key={item.id}
-                                    onClick={item.onClick}
-                                    Icon={item.icon}
-                                    disabled={item.disabled}
-                                    active={item.active}
-                                    iconSize={ICON_SIZE}
-                                    tooltipContent={item.tooltipContent}
-                                />
-                            );
-                        }
+  return (
+    <div id="editor-menu-bar" className="editor-menubar">
+      {toolbarGroups.map((group) => (
+        <EditorMenuIconGroup
+          key={group.groupId}
+          groupName={group.groupName}
+          groupId={group.groupId}
+        >
+          {group.items.map((item) => {
+            if (item.kind === "icon") {
+              return (
+                <EditorMenuIcon
+                  key={item.id}
+                  onClick={item.onClick}
+                  Icon={item.icon}
+                  disabled={item.disabled}
+                  active={item.active}
+                  iconSize={ICON_SIZE}
+                  tooltipContent={item.tooltipContent}
+                />
+              );
+            }
 
-                        if (item.kind === "input") {
-                            return (
-                                <EditorMenuInput
-                                    key={item.id}
-                                    Icon={item.icon}
-                                    iconSize={ICON_SIZE}
-                                    tooltipContent={item.tooltipContent}
-                                    type={item.inputType}
-                                    options={item.options}
-                                    initialValue={item.initialValue}
-                                    rotate={item.rotate}
-                                    onChange={(event) => {
-                                        item.onChange(
-                                            event.currentTarget.value,
-                                        );
-                                    }}
-                                />
-                            );
-                        }
+            if (item.kind === "input") {
+              return (
+                <EditorMenuInput
+                  key={item.id}
+                  Icon={item.icon}
+                  iconSize={ICON_SIZE}
+                  tooltipContent={item.tooltipContent}
+                  type={item.inputType}
+                  options={item.options}
+                  initialValue={item.initialValue}
+                  rotate={item.rotate}
+                  onChange={(event) => {
+                    item.onChange(event.currentTarget.value);
+                  }}
+                />
+              );
+            }
 
-                        return (
-                            <EditorMenuColorSubmenu
-                                key={item.id}
-                                iconName={item.icon}
-                                iconSize={ICON_SIZE}
-                                tooltipContent={item.tooltipContent}
-                                colors={item.colors}
-                                activeColor={item.activeColor}
-                                disabled={item.disabled}
-                                onSelectColor={item.onSelectColor}
-                            />
-                        );
-                    })}
-                </EditorMenuIconGroup>
-            ))}
-            <Tooltip id="my-tooltip" place="top" />
-        </div>
-    );
+            return (
+              <EditorMenuColorSubmenu
+                key={item.id}
+                iconName={item.icon}
+                iconSize={ICON_SIZE}
+                tooltipContent={item.tooltipContent}
+                colors={item.colors}
+                activeColor={item.activeColor}
+                disabled={item.disabled}
+                onSelectColor={item.onSelectColor}
+                onClearColor={item.onClearColor}
+                clearLabel={item.clearLabel}
+              />
+            );
+          })}
+        </EditorMenuIconGroup>
+      ))}
+      <Tooltip id="my-tooltip" place="top" />
+    </div>
+  );
 };

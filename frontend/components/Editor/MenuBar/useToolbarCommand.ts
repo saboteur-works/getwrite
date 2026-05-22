@@ -50,6 +50,8 @@ export interface ResolvedToolbarColorCommand extends ResolvedToolbarItemBase {
   disabled: boolean;
   rotate?: false | "45" | "90";
   onSelectColor: (color: string) => void;
+  onClearColor?: () => void;
+  clearLabel?: string;
 }
 
 export type ResolvedToolbarItem =
@@ -101,6 +103,7 @@ function resolveGroup(
         } satisfies ResolvedToolbarInputCommand;
       }
 
+      const onClearColor = item.onClearColor;
       return {
         kind: "color-submenu",
         id: item.id,
@@ -112,6 +115,12 @@ function resolveGroup(
         onSelectColor: (color: string) => {
           item.onSelectColor(context, color);
         },
+        onClearColor: onClearColor
+          ? () => {
+              onClearColor(context);
+            }
+          : undefined,
+        clearLabel: item.clearLabel,
         rotate: item.rotate,
       } satisfies ResolvedToolbarColorCommand;
     }),

@@ -111,12 +111,24 @@ function createEditorDouble(options: MockEditorOptions = {}) {
       actions.push({ name: "setHighlight", payload });
       return chainApi;
     },
+    unsetHighlight: () => {
+      actions.push({ name: "unsetHighlight" });
+      return chainApi;
+    },
     setColor: (value: string) => {
       actions.push({ name: "setColor", payload: value });
       return chainApi;
     },
+    unsetColor: () => {
+      actions.push({ name: "unsetColor" });
+      return chainApi;
+    },
     setBackgroundColor: (value: string) => {
       actions.push({ name: "setBackgroundColor", payload: value });
+      return chainApi;
+    },
+    unsetBackgroundColor: () => {
+      actions.push({ name: "unsetBackgroundColor" });
       return chainApi;
     },
     setFontSize: (value: string) => {
@@ -283,6 +295,70 @@ describe("MenuBar", () => {
     expect(actions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: "setColor", payload: "#2563eb" }),
+      ]),
+    );
+  });
+
+  it("clears text color when the clear tile is selected", async () => {
+    const user = userEvent.setup();
+    const { editor, actions } = createEditorDouble();
+
+    render(
+      <Provider store={makeStore()}>
+        <MenuBar editor={editor as never} />
+      </Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Text Color/i }));
+    await user.click(
+      screen.getByRole("menuitem", { name: /Clear text color/i }),
+    );
+
+    expect(actions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "unsetColor" })]),
+    );
+  });
+
+  it("clears highlight when the clear tile is selected", async () => {
+    const user = userEvent.setup();
+    const { editor, actions } = createEditorDouble();
+
+    render(
+      <Provider store={makeStore()}>
+        <MenuBar editor={editor as never} />
+      </Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /^Highlight$/i }));
+    await user.click(
+      screen.getByRole("menuitem", { name: /Clear highlight/i }),
+    );
+
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "unsetHighlight" }),
+      ]),
+    );
+  });
+
+  it("clears background color when the clear tile is selected", async () => {
+    const user = userEvent.setup();
+    const { editor, actions } = createEditorDouble();
+
+    render(
+      <Provider store={makeStore()}>
+        <MenuBar editor={editor as never} />
+      </Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Background Color/i }));
+    await user.click(
+      screen.getByRole("menuitem", { name: /Clear background color/i }),
+    );
+
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "unsetBackgroundColor" }),
       ]),
     );
   });

@@ -2153,6 +2153,20 @@ html.gw-theme-dark {
     outline-offset: 1px;
   }
 
+  .editor-menu-color-option-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0.5px dashed var(--color-gw-border-md);
+    background-color: transparent;
+    color: var(--color-gw-secondary);
+  }
+
+  .editor-menu-color-option-clear:hover {
+    border-color: var(--color-gw-primary);
+    color: var(--color-gw-primary);
+  }
+
   /* ── LISTBOX ── */
   .listbox {
     list-style: none;

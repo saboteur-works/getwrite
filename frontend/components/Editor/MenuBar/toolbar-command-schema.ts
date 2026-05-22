@@ -63,6 +63,8 @@ export interface ToolbarColorCommand extends ToolbarCommandItemBase {
     context: ToolbarCommandContext,
     color: string,
   ) => boolean | void;
+  onClearColor?: (context: ToolbarCommandContext) => boolean | void;
+  clearLabel?: string;
   isDisabled?: (context: ToolbarCommandContext) => boolean;
 }
 
@@ -428,6 +430,9 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
         getActiveColor: ({ editor }) => editor.getAttributes("highlight").color,
         onSelectColor: ({ editor }, color) =>
           editor.chain().focus().setHighlight({ color }).run(),
+        onClearColor: ({ editor }) =>
+          editor.chain().focus().unsetHighlight().run(),
+        clearLabel: "Clear highlight",
       },
       {
         id: "text-color",
@@ -438,6 +443,8 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
         getActiveColor: ({ state }) => state.textColor,
         onSelectColor: ({ editor }, color) =>
           editor.chain().focus().setColor(color).run(),
+        onClearColor: ({ editor }) => editor.chain().focus().unsetColor().run(),
+        clearLabel: "Clear text color",
       },
       {
         id: "background-color",
@@ -448,6 +455,9 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
         getActiveColor: ({ state }) => state.backgroundColor,
         onSelectColor: ({ editor }, color) =>
           editor.chain().focus().setBackgroundColor(color).run(),
+        onClearColor: ({ editor }) =>
+          editor.chain().focus().unsetBackgroundColor().run(),
+        clearLabel: "Clear background color",
       },
     ],
   },
