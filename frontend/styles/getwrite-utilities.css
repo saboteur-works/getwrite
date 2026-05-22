@@ -9,6 +9,9 @@
  *
  * Theming: .appshell-shell reassigns --color-gw-* tokens for light mode.
  *          .appshell-shell.appshell-theme-dark restores dark mode values.
+ *          html.gw-theme-light / html.gw-theme-dark mirror these on the
+ *          document root so Radix portals (rendered to document.body, outside
+ *          .appshell-shell) inherit the correct theme tokens.
  *          All component classes below use semantic tokens only — no explicit
  *          per-component dark mode overrides are needed.
  */
@@ -99,6 +102,40 @@
   --timeline-track-bg: #0c0c0b;
   --timeline-outline-stripe: rgba(0, 0, 0, 0.28);
   --timeline-row-tint: rgba(255, 255, 255, 0.011);
+}
+
+/* Mirror the shell cascade on the document root so Radix portals (rendered to
+   document.body, outside .appshell-shell) inherit the correct theme tokens.
+   AppearanceRuntime toggles gw-theme-light / gw-theme-dark on <html>. */
+html.gw-theme-light {
+  --color-gw-bg: var(--color-gw-chrome-light);
+  --color-gw-chrome: var(--color-gw-chrome-light);
+  --color-gw-chrome2: var(--color-gw-chrome2-light);
+  --color-gw-chrome3: var(--color-gw-chrome3-light);
+  --color-gw-primary: #0a0a0a;
+  --color-gw-secondary: var(--color-gw-secondary-light);
+  --color-gw-border: var(--color-gw-border-light);
+  --color-gw-border-md: #b0ada8;
+  --color-gw-rule: var(--color-gw-rule-light);
+  --color-gw-editor: var(--color-gw-paper);
+  --color-gw-diff-added: rgba(80, 160, 100, 0.18);
+  --color-gw-diff-removed: rgba(80, 130, 180, 0.18);
+}
+
+html.gw-theme-dark {
+  --color-gw-bg: #111110;
+  --color-gw-chrome: #111110;
+  --color-gw-chrome2: #161614;
+  --color-gw-chrome3: #1a1a18;
+  --color-gw-primary: #f5f4f0;
+  --color-gw-secondary: #6a6864;
+  --color-gw-border: #2e2e2c;
+  --color-gw-border-md: #3a3a38;
+  --color-gw-rule: #1a1a18;
+  --color-gw-editor: #1c1c1a;
+  --color-gw-ink: var(--color-gw-primary);
+  --color-gw-diff-added: rgba(80, 160, 100, 0.24);
+  --color-gw-diff-removed: rgba(80, 130, 180, 0.24);
 }
 
 /* ── REDUCED MOTION ── (only permitted !important blocks in this file) */
