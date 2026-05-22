@@ -36,29 +36,7 @@ const CustomHeading = Heading.extend<CustomHeadingOptions>(() => {
   return {
     name: "heading",
     addOptions() {
-      return {
-        levels: [1, 2, 3, 4, 5, 6],
-        customStyles: {
-          h1: {
-            fontSize: "20px",
-            fontFamily: "Inter, sans-serif",
-            fontWeight: "700",
-            letterSpacing: "0.14em",
-          },
-          h2: {
-            fontSize: "16px",
-            fontFamily: "Times, serif",
-            fontWeight: "700",
-            letterSpacing: "0.14em",
-          },
-          h3: {
-            fontSize: "14px",
-            fontFamily: "Inter, sans-serif",
-            fontWeight: "700",
-            letterSpacing: "0.14em",
-          },
-        },
-      };
+      return { levels: [1, 2, 3, 4, 5, 6], customStyles: {} };
     },
     renderHTML({ node, HTMLAttributes }) {
       const customStyles = this.options.customStyles;

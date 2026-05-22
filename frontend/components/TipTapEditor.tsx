@@ -49,7 +49,7 @@ import GetWriteParagraphLeading from "./Editor/Extensions/GetWriteParagraphLeadi
 import CustomHeading from "./Editor/Extensions/CustomHeading";
 import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
 import { useSelector } from "react-redux";
-import { selectEditorConfig } from "../src/store/editorConfigSlice";
+import { selectResolvedEditorConfig } from "../src/store/editorConfigSlice";
 /**
  * Props accepted by {@link TipTapEditor}.
  */
@@ -132,7 +132,7 @@ export default function TipTapEditor({
   id,
   readonly = false,
 }: TipTapEditorProps) {
-  const editorProjectConfig = useSelector(selectEditorConfig);
+  const editorProjectConfig = useSelector(selectResolvedEditorConfig);
   /** True when executing in browser context (guards SSR/hydration paths). */
   const isClient = typeof window !== "undefined";
 

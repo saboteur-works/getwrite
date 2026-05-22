@@ -89,6 +89,28 @@
                         "h5": { "$ref": "#/$defs/editorHeading" },
                         "h6": { "$ref": "#/$defs/editorHeading" }
                     }
+                },
+                "body": {
+                    "type": "object",
+                    "description": "Default body text styles applied to paragraphs.",
+                    "properties": {
+                        "fontFamily": {
+                            "type": "string",
+                            "description": "CSS font-family value for body text. e.g. \"IBM Plex Serif\""
+                        },
+                        "fontSize": {
+                            "type": "string",
+                            "description": "CSS font-size for body text. e.g. \"15px\""
+                        },
+                        "lineHeight": {
+                            "type": "string",
+                            "description": "CSS line-height for body text. Unitless multipliers recommended. Minimum 1.8. e.g. \"1.8\""
+                        },
+                        "paragraphSpacing": {
+                            "type": "string",
+                            "description": "CSS margin applied above and below each paragraph. e.g. \"16px\" or \"1em\""
+                        }
+                    }
                 }
             }
         },
@@ -104,8 +126,26 @@
         "editorHeading": {
             "type": "object",
             "properties": {
-                "fontSize": { "type": "string" },
-                "fontWeight": { "type": "string" }
+                "fontSize": {
+                    "type": "string",
+                    "description": "CSS font-size for the heading. e.g. \"32px\""
+                },
+                "fontFamily": {
+                    "type": "string",
+                    "description": "CSS font-family for the heading. e.g. \"IBM Plex Serif\""
+                },
+                "fontWeight": {
+                    "type": "string",
+                    "description": "CSS font-weight for the heading. e.g. \"400\" or \"700\""
+                },
+                "letterSpacing": {
+                    "type": "string",
+                    "description": "CSS letter-spacing for the heading. Em units recommended. e.g. \"0.05em\""
+                },
+                "color": {
+                    "type": "string",
+                    "description": "CSS color for the heading. Hex values only. Note: hard-coding a color bypasses the theme-aware ink token and will not respond to light/dark mode."
+                }
             }
         }
     }
