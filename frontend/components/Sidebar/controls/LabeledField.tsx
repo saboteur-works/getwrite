@@ -17,7 +17,7 @@ export default function LabeledField({
 }: LabeledFieldProps): JSX.Element {
   return (
     <div className={className}>
-      <label className="text-gw-label font-medium font-mono">{label}</label>
+      <label className="text-gw-micro font-medium font-mono">{label}</label>
       {children}
     </div>
   );
