@@ -97,7 +97,7 @@ export const extensions = [
   UniqueID.configure({
     types: ["paragraph", "heading", "blockquote", "codeBlock", "table"],
   }),
-  TableKit,
+  TableKit.configure({ table: { resizable: true } }),
   Placeholder.configure({ placeholder: "Start writing here..." }),
   Selection,
   Typography,
