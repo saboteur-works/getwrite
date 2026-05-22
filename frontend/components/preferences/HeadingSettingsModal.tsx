@@ -328,6 +328,25 @@ export default function HeadingSettingsModal({
                   </div>
                 </HeadingStyleField>
               </div>
+
+              <div className="mt-4 border-t border-gw-border pt-4">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
+                  Preview
+                </span>
+                <p
+                  aria-label={`${getHeadingLabel(level)} preview`}
+                  className="mt-2 leading-snug"
+                  style={{
+                    fontFamily: heading.fontFamily || undefined,
+                    fontSize: heading.fontSize || undefined,
+                    fontWeight: heading.fontWeight || undefined,
+                    letterSpacing: heading.letterSpacing || undefined,
+                    color: heading.color || "var(--color-gw-ink)",
+                  }}
+                >
+                  The quick brown fox jumps over the lazy dog
+                </p>
+              </div>
             </Card>
           );
         })}
