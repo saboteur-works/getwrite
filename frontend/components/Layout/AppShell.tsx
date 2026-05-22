@@ -102,6 +102,7 @@ import {
 } from "../../src/lib/user-preferences";
 import type { MetadataValue } from "../../src/lib/models/types";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
+import { selectEditorConfig } from "../../src/store/editorConfigSlice";
 import { toastService } from "../../src/lib/toast-service";
 
 /**
@@ -288,6 +289,7 @@ export default function AppShell({
   const isQueryEvaluating = useAppSelector(selectIsEvaluating);
   const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
   const savedQueriesList = useAppSelector(selectSavedQueriesList);
+  const liveEditorConfig = useAppSelector(selectEditorConfig);
   const qb = useQueryBuilderState();
   const availableFields = React.useMemo(
     () => buildFieldPickerFields(metadataSchema),
@@ -1081,12 +1083,10 @@ export default function AppShell({
                   onRenameConfirm={handleRenameConfirm}
                   isHeadingSettingsModalOpen={isHeadingSettingsModalOpen}
                   setIsHeadingSettingsModalOpen={setIsHeadingSettingsModalOpen}
-                  initialHeadingSettings={
-                    project?.config?.editorConfig?.headings
-                  }
+                  initialHeadingSettings={liveEditorConfig.headings}
                   isBodySettingsModalOpen={isBodySettingsModalOpen}
                   setIsBodySettingsModalOpen={setIsBodySettingsModalOpen}
-                  initialBodySettings={project?.config?.editorConfig?.body}
+                  initialBodySettings={liveEditorConfig.body}
                   onSaveBodySettings={handleSaveBodySettings}
                   isDefaultRevisionNameModalOpen={
                     isDefaultRevisionNameModalOpen
