@@ -133,7 +133,6 @@ export default function TipTapEditor({
   readonly = false,
 }: TipTapEditorProps) {
   const editorProjectConfig = useSelector(selectEditorConfig);
-  console.log("Editor config from store:", editorProjectConfig);
   /** True when executing in browser context (guards SSR/hydration paths). */
   const isClient = typeof window !== "undefined";
 
@@ -155,93 +154,101 @@ export default function TipTapEditor({
   // full editor lifecycle and extension loading can be brittle in jsdom.
   // Return a lightweight mock rendering instead and keep EditView's local
   // state consistent via the `initialContent` prop.
-  const editor = useEditor({
-    shouldRerenderOnTransaction: true,
-    extensions: [
-      ...extensions,
-      CustomHeading.configure({
-        customStyles: editorProjectConfig.headings || {},
-      }),
-      NormalizePastedText.configure({
-        bodyFontSize: editorProjectConfig.body?.fontSize,
-      }),
-      Math.configure({
-        blockOptions: {
-          /**
-           * Handles block-math click edits by prompting and updating
-           * the selected node in-place.
-           */
-          onClick: (node, pos) => {
-            const newCalculation = prompt(
-              "Enter new calculation:",
-              node.attrs.latex,
-            );
-            if (newCalculation && editor) {
-              editor
-                .chain()
-                .setNodeSelection(pos)
-                .updateBlockMath({ latex: newCalculation })
-                .focus()
-                .run();
-            }
+  // Serialized so that string value equality is used for comparison — TipTap
+  // uses Object.is on each dep, and object references change on every Redux
+  // dispatch even when the heading config is unchanged.
+  const headingsConfigKey = JSON.stringify(editorProjectConfig.headings);
+
+  const editor = useEditor(
+    {
+      shouldRerenderOnTransaction: true,
+      extensions: [
+        ...extensions,
+        CustomHeading.configure({
+          customStyles: editorProjectConfig.headings || {},
+        }),
+        NormalizePastedText.configure({
+          bodyFontSize: editorProjectConfig.body?.fontSize,
+        }),
+        Math.configure({
+          blockOptions: {
+            /**
+             * Handles block-math click edits by prompting and updating
+             * the selected node in-place.
+             */
+            onClick: (node, pos) => {
+              const newCalculation = prompt(
+                "Enter new calculation:",
+                node.attrs.latex,
+              );
+              if (newCalculation && editor) {
+                editor
+                  .chain()
+                  .setNodeSelection(pos)
+                  .updateBlockMath({ latex: newCalculation })
+                  .focus()
+                  .run();
+              }
+            },
           },
-        },
-        inlineOptions: {
-          /**
-           * Handles inline-math click edits by prompting and updating
-           * the selected inline node.
-           */
-          onClick: (node) => {
-            const newCalculation = prompt(
-              "Enter new calculation:",
-              node.attrs.latex,
-            );
-            if (newCalculation && editor) {
-              editor
-                .chain()
-                .updateInlineMath({ latex: newCalculation })
-                .focus()
-                .run();
-            }
+          inlineOptions: {
+            /**
+             * Handles inline-math click edits by prompting and updating
+             * the selected inline node.
+             */
+            onClick: (node) => {
+              const newCalculation = prompt(
+                "Enter new calculation:",
+                node.attrs.latex,
+              );
+              if (newCalculation && editor) {
+                editor
+                  .chain()
+                  .updateInlineMath({ latex: newCalculation })
+                  .focus()
+                  .run();
+              }
+            },
           },
+        }),
+      ],
+      content: value || "",
+      editable: !readonly,
+      /**
+       * Emits both HTML and JSON representations for parent persistence flows.
+       */
+      onUpdate: ({ editor }) => {
+        const html = editor.getHTML();
+        const doc = editor.getJSON() as TipTapDocument;
+        lastEmittedDocRef.current = doc;
+        if (onChange) onChange(html, doc);
+      },
+      /**
+       * Migrates legacy math string representations to node-based format.
+       */
+      onCreate: ({ editor }) => {
+        migrateMathStrings(editor);
+        editor
+          .chain()
+          .selectAll()
+          .setParagraphLeading("1.5")
+          .setTextSelection(0) // collapse cursor to start, or wherever you want
+          .run();
+      },
+      // avoid SSR hydration mismatches by explicitly opting out of
+      // immediate render on the server
+      immediatelyRender: false,
+      editorProps: {
+        attributes: {
+          // Use focus:outline-none to remove the default browser outline
+          // and optionally focus:ring-0 to remove the ring added by
+          // the Tailwind CSS forms plugin (if used)
+          class: "focus:outline-none focus:ring-0 h-full min-h-full px-4 py-4",
         },
-      }),
-    ],
-    content: value || "",
-    editable: !readonly,
-    /**
-     * Emits both HTML and JSON representations for parent persistence flows.
-     */
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      const doc = editor.getJSON() as TipTapDocument;
-      lastEmittedDocRef.current = doc;
-      if (onChange) onChange(html, doc);
-    },
-    /**
-     * Migrates legacy math string representations to node-based format.
-     */
-    onCreate: ({ editor }) => {
-      migrateMathStrings(editor);
-      editor
-        .chain()
-        .selectAll()
-        .setParagraphLeading("1.5")
-        .setTextSelection(0) // collapse cursor to start, or wherever you want
-        .run();
-    },
-    // avoid SSR hydration mismatches by explicitly opting out of
-    // immediate render on the server
-    immediatelyRender: false,
-    editorProps: {
-      attributes: {
-        // Use focus:outline-none to remove the default browser outline
-        // and optionally focus:ring-0 to remove the ring added by
-        // the Tailwind CSS forms plugin (if used)
-        class: "focus:outline-none focus:ring-0 h-full min-h-full px-4 py-4",
       },
     },
-  });
+    [headingsConfigKey],
+  );
 
   /**
    * Synchronizes externally provided `value` into TipTap when it diverges
