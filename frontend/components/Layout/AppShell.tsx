@@ -1330,7 +1330,7 @@ export default function AppShell({
             <main className="appshell-work-area">
               <div className="appshell-work-area-content">
                 {resources ? (
-                  <div className="w-full">
+                  <div className="shrink-0 w-full">
                     <div className="workarea-header border-b-hairline border-b-gw-border">
                       <ViewSwitcher
                         view={view}
@@ -1355,8 +1355,16 @@ export default function AppShell({
                     </div>
                   </div>
                 ) : null}
-                <div className="max-w-full mx-auto">
-                  <div className="flex-1 min-h-0 overflow-y-auto text-gw-primary">
+                <div className="flex-1 min-h-0 max-w-full mx-auto w-full flex flex-col">
+                  <div
+                    className={`flex-1 min-h-0 text-gw-primary flex flex-col ${
+                      view === "edit" &&
+                      Boolean(selectedResource) &&
+                      selectedResource?.type === "text"
+                        ? ""
+                        : "overflow-y-auto"
+                    }`}
+                  >
                     {/* If a resource is selected, or the data view is active, render the chosen view; otherwise render empty state or children. */}
                     {(selectedResource && combined) || view === "data"
                       ? (() => {
