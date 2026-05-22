@@ -1325,7 +1325,7 @@ export default function AppShell({
               <div className="appshell-work-area-content">
                 {resources ? (
                   <div className="w-full">
-                    <div className="workarea-header border-b-hairline border-gw-border">
+                    <div className="workarea-header border-b-hairline border-b-gw-border">
                       <ViewSwitcher
                         view={view}
                         onChange={setView}
