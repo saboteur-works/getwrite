@@ -23,35 +23,35 @@
 import { useEffect, useState } from "react";
 import useAppSelector, { useAppDispatch } from "../src/store/hooks";
 import {
-    setProject,
-    setSelectedProjectId,
-    addResource,
-    removeResource,
-    setProjects as setProjectsInStore,
+  setProject,
+  setSelectedProjectId,
+  addResource,
+  removeResource,
+  setProjects as setProjectsInStore,
 } from "../src/store/projectsSlice";
 import AppShell from "../components/Layout/AppShell";
 import StartPage, {
-    type StartPageProjectEntry,
-    type StartPageCreateResult,
+  type StartPageProjectEntry,
+  type StartPageCreateResult,
 } from "../components/Start/StartPage";
 import type { Folder, AnyResource, ResourceBase } from "../src/lib/models";
 import type { MetadataValue, ResourceRef } from "../src/lib/models/types";
 import { buildProjectView } from "../src/lib/models/project-view";
 import {
-    setResources,
-    setSelectedResourceId as setResourceId,
-    updateResource as updateResourceInStore,
-    addResource as addResourceInStore,
-    removeResource as removeResourceFromStore,
-    setFolders,
-    selectResource,
+  setResources,
+  setSelectedResourceId as setResourceId,
+  updateResource as updateResourceInStore,
+  addResource as addResourceInStore,
+  removeResource as removeResourceFromStore,
+  setFolders,
+  selectResource,
 } from "../src/store/resourcesSlice";
 import { shallowEqual } from "react-redux";
 import { toastService } from "../src/lib/toast-service";
 import { setEditorConfig } from "../src/store/editorConfigSlice";
 import {
-    compileToText,
-    type CompileSection,
+  compileToText,
+  type CompileSection,
 } from "../src/lib/export/compile-text";
 import { slugify } from "../src/lib/utils";
 
@@ -63,20 +63,20 @@ import { slugify } from "../src/lib/utils";
  * for in-session resource mutations (sidecar updates, CRUD actions, etc.).
  */
 interface SelectedProjectState {
-    /** Stable unique identifier for the project. */
-    id: string;
-    /** Human-readable project name shown in the editor header. */
-    name: string;
-    /** Absolute path to the project root directory on disk. */
-    rootPath: string;
-    /** All folder entries belonging to the project. */
-    folders: Folder[];
-    /** All resource files (text documents, etc.) belonging to the project. */
-    resources: AnyResource[];
-    /** Optional project-level metadata from `project.json`. */
-    metadata?: Record<string, MetadataValue>;
-    /** Subset of project config needed by the editor shell (e.g. word count goal). */
-    config?: { wordCountGoal?: number };
+  /** Stable unique identifier for the project. */
+  id: string;
+  /** Human-readable project name shown in the editor header. */
+  name: string;
+  /** Absolute path to the project root directory on disk. */
+  rootPath: string;
+  /** All folder entries belonging to the project. */
+  folders: Folder[];
+  /** All resource files (text documents, etc.) belonging to the project. */
+  resources: AnyResource[];
+  /** Optional project-level metadata from `project.json`. */
+  metadata?: Record<string, MetadataValue>;
+  /** Subset of project config needed by the editor shell (e.g. word count goal). */
+  config?: { wordCountGoal?: number };
 }
 
 /**
@@ -90,655 +90,640 @@ interface SelectedProjectState {
  * @returns The root application page element.
  */
 export default function Home(): JSX.Element {
-    /** All projects known to the app, fetched from `GET /api/projects` on mount. */
-    const [projects, setProjects] = useState<StartPageProjectEntry[]>([]);
+  /** All projects known to the app, fetched from `GET /api/projects` on mount. */
+  const [projects, setProjects] = useState<StartPageProjectEntry[]>([]);
 
+  /**
+   * The project currently open in the editor, or `null` when the user is
+   * on the project-selection / start screen.
+   */
+  const [selectedProject, setSelectedProject] =
+    useState<SelectedProjectState | null>(null);
+
+  const selectedResource = useAppSelector(
+    (state) => selectResource(state.resources),
+    shallowEqual,
+  );
+
+  const dispatch = useAppDispatch();
+
+  // Fetch existing projects on mount
+  useEffect(() => {
     /**
-     * The project currently open in the editor, or `null` when the user is
-     * on the project-selection / start screen.
-     */
-    const [selectedProject, setSelectedProject] =
-        useState<SelectedProjectState | null>(null);
-
-    const selectedResource = useAppSelector(
-        (state) => selectResource(state.resources),
-        shallowEqual,
-    );
-
-    const dispatch = useAppDispatch();
-
-    // Fetch existing projects on mount
-    useEffect(() => {
-        /**
-         * Loads all projects from the API and maps them into
-         * {@link StartPageProjectEntry}-compatible view objects.
-         *
-         * @returns Resolved array of project view objects.
-         * @throws {Error} When the HTTP response is not OK.
-         */
-        async function fetchProjects() {
-            const res = await fetch("/api/projects", {
-                method: "GET",
-                headers: { "Content-Type": "application/json" },
-            });
-            if (!res.ok) {
-                const body = await res.json().catch(() => null);
-                throw new Error(body?.error || `Status ${res.status}`);
-            }
-            const body = await res.json().catch(() => null);
-            const views = body.map((p: any) => {
-                const buildView = buildProjectView({
-                    project: p.project,
-                    folders: p.folders,
-                    resources: p.resources,
-                });
-
-                return buildView;
-            });
-            return views;
-        }
-        fetchProjects()
-            .then((data) => {
-                if (Array.isArray(data)) {
-                    dispatch(setProjectsInStore(data));
-                    setProjects(data);
-                }
-            })
-            .catch((err) => {
-                console.error("Error fetching projects:", err);
-            });
-    }, []);
-
-    /**
-     * Called by {@link StartPage} after a new project has been successfully
-     * created on disk.
+     * Loads all projects from the API and maps them into
+     * {@link StartPageProjectEntry}-compatible view objects.
      *
-     * Adds the new project to the local project list, upserts it in the Redux
-     * `projects` slice, sets it as the selected project, and hydrates the
-     * `resources` slice with the scaffold's initial folders and resources.
-     *
-     * @param projectFiles - Creation result containing the project record,
-     *   initial folder list, and any scaffolded resources.
-     */
-    const handleCreate = (projectFiles: StartPageCreateResult) => {
-        setProjects((prev) => [
-            {
-                project: projectFiles.project,
-                folders: projectFiles.folders,
-                resources: projectFiles.resources,
-            },
-            ...prev,
-        ]);
-        // persist project in redux store and mark selected
-        dispatch(
-            setProject({
-                id: projectFiles.project.id,
-                name: projectFiles.project.name,
-                rootPath: projectFiles.project.rootPath ?? "",
-                folders: (projectFiles as any).folders ?? [],
-                resources: (projectFiles as any).resources
-                    ? (projectFiles as any).resources.map(
-                          (r: ResourceBase) => ({
-                              id: r.id,
-                              name: r.name,
-                              userMetadata: r.userMetadata ?? {},
-                              folderId: r.folderId ?? null,
-                          }),
-                      )
-                    : [],
-                metadata: projectFiles.project.metadata,
-                statuses: projectFiles.project.config?.statuses ?? [],
-                metadataSchema: projectFiles.project.config?.metadataSchema,
-            }),
-        );
-        dispatch(setSelectedProjectId(projectFiles.project.id));
-        dispatch(setResources(projectFiles.resources));
-        dispatch(setFolders(projectFiles.folders));
-        setSelectedProject({
-            id: projectFiles.project.id,
-            name: projectFiles.project.name,
-            rootPath: projectFiles.project.rootPath ?? "",
-            folders: (projectFiles as any).folders ?? [],
-            resources: (projectFiles as any).resources ?? [],
-            metadata: projectFiles.project.metadata,
-            config: { wordCountGoal: projectFiles.project.config?.wordCountGoal },
-        });
-        toastService.success("Project created", projectFiles.project.name);
-    };
-
-    /**
-     * Opens an existing project by its root path.
-     *
-     * Calls `POST /api/project` with the project's root path, hydrates the
-     * Redux `projects` and `resources` slices with the response, and stores
-     * the opened project in local `selectedProject` state so the editor shell
-     * becomes visible.
-     *
-     * @param id - The root path of the project to open (used as the
-     *   `projectPath` request body field).
+     * @returns Resolved array of project view objects.
      * @throws {Error} When the HTTP response is not OK.
      */
-    const handleOpen = async (id: string) => {
-        const res = await fetch("/api/project", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                projectPath: id,
-            }),
-        });
-
-        if (!res.ok) {
-            const body = await res.json().catch(() => null);
-            throw new Error(body?.error || `Status ${res.status}`);
-        }
-
+    async function fetchProjects() {
+      const res = await fetch("/api/projects", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
         const body = await res.json().catch(() => null);
-        const p = body;
-        if (p) {
-            // ensure project exists in redux and mark selected
-            dispatch(
-                setProject({
-                    id: p.project.id,
-                    name: p.project.name,
-                    rootPath: p.project.rootPath ?? "",
-                    folders: (p as any).folders ?? [],
-                    resources: (p as any).resources
-                        ? (p as any).resources.map((r: any) => ({
-                              id: r.id,
-                              name: r.name,
-                              folderId: r.folderId ?? null,
-                              userMetadata: r.userMetadata ?? {},
-                              plaintext: r.plaintext,
-                          }))
-                        : [],
-                    metadata: p.project.metadata,
-                    statuses: p.project.config?.statuses ?? [],
-                    metadataSchema: p.project.config?.metadataSchema,
-                }),
-            );
-            dispatch(
-                setEditorConfig({
-                    headings: p.project.config.editorConfig?.headings ?? {},
-                    body: p.project.config.editorConfig?.body,
-                }),
-            );
-
-            dispatch(setSelectedProjectId(p.project.id));
-
-            // Add Resources to redux store
-            dispatch(setResources(p.resources));
-            dispatch(setFolders(p.folders));
-            setSelectedProject({
-                id: p.project.id,
-                name: p.project.name,
-                rootPath: p.project.rootPath ?? "",
-                folders: p.folders,
-                resources: p.resources,
-                metadata: p.project.metadata,
-                config: { wordCountGoal: p.project.config?.wordCountGoal },
-            });
-        }
-    };
-
-    /**
-     * Marks a resource as selected in both the Redux store and local state.
-     *
-     * Dispatches `setResourceId` so that the sidebar, editor, and other
-     * resource-aware components can display the chosen resource.
-     *
-     * @param id - The ID of the resource to select.
-     */
-    const handleResourceSelect = (id: string) => {
-        dispatch(setResourceId(id));
-    };
-
-    /**
-     * Applies an immutable update to a single resource within the selected
-     * project.
-     *
-     * The updated resource is:
-     * 1. Persisted to the sidecar file via `POST /api/resource/:id/sidecar`.
-     * 2. Dispatched to the Redux store via `updateResourceInStore`.
-     * 3. Applied to both the `projects` list and `selectedProject` local state
-     *    so the UI reflects the change immediately while the network call is
-     *    in flight.
-     *
-     * @param resourceId - ID of the resource to update.
-     * @param updater    - Pure function that receives the current resource and
-     *   returns the updated version.
-     */
-    const updateResource = (
-        resourceId: string,
-        updater: (r: AnyResource) => AnyResource,
-    ): void => {
-        if (!selectedProject) return;
-        const resource = selectedProject.resources.find(
-            (r) => r.id === resourceId,
-        );
-        if (!resource) {
-            console.warn(
-                `updateResource: resource ${resourceId} not found in selectedProject`,
-            );
-            return;
-        }
-
-        fetch(`/api/resource/${resourceId}/sidecar`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                projectRoot: selectedProject.rootPath,
-                updatedResource: updater(resource),
-            }),
-        }).catch((err) => {
-            console.error("Error updating resource metadata:", err);
+        throw new Error(body?.error || `Status ${res.status}`);
+      }
+      const body = await res.json().catch(() => null);
+      const views = body.map((p: any) => {
+        const buildView = buildProjectView({
+          project: p.project,
+          folders: p.folders,
+          resources: p.resources,
         });
 
-        dispatch(updateResourceInStore(updater(resource)));
-
-        setProjects((prev) =>
-            prev.map((p) => {
-                if (p.project.id !== selectedProject.id) return p;
-
-                const resources = p.resources.map((r) =>
-                    r.id === resourceId ? updater(r) : r,
-                );
-                return { ...p, resources };
-            }),
-        );
-
-        // Also update the local selectedProject reference so UI reflects changes immediately
-        setSelectedProject((prev) => {
-            if (!prev || prev.id !== selectedProject.id) return prev;
-            const resources = prev.resources.map((r) =>
-                r.id === resourceId ? updater(r) : r,
-            );
-            return { ...prev, resources, updatedAt: new Date().toISOString() };
-        });
-    };
-
-    /**
-     * Updates the free-text notes field in a resource's metadata.
-     *
-     * @param text       - New notes content.
-     * @param resourceId - ID of the target resource.
-     */
-    const handleChangeSynopsis = (text: string, resourceId: string) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, synopsis: text },
-        }));
-    };
-
-    const handleChangeNotes = (text: string, resourceId: string) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, notes: text },
-        }));
-    };
-
-    /**
-     * Updates the publication status in a resource's metadata.
-     *
-     * @param status     - The new status value (`"draft"`, `"in-review"`, or
-     *   `"published"`).
-     * @param resourceId - ID of the target resource.
-     */
-    const handleChangeStatus = (
-        status: "draft" | "in-review" | "published",
-        resourceId: string,
-    ) => {
-        console.log("Updating status to", status, "for resource", resourceId);
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, status },
-        }));
-    };
-
-    const handleChangeDynamicMetadata = (
-        metadata: Record<string, string[]>,
-        resourceId: string,
-    ) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, ...metadata },
-        }));
-    };
-
-    /**
-     * Updates the point-of-view (POV) character field in a resource's metadata.
-     *
-     * @param pov        - Name of the POV character, or `null` to clear it.
-     * @param resourceId - ID of the target resource.
-     */
-    const handleChangePOV = (pov: ResourceRef, resourceId: string) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, pov },
-        }));
-    };
-
-    const handleChangeStoryDate = (date: string, resourceId: string) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, storyDate: date },
-        }));
-    };
-
-    const handleChangeStoryDuration = (
-        duration: number | null,
-        resourceId: string,
-    ) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, storyDuration: duration },
-        }));
-    };
-
-    const handleChangeStoryEndDate = (
-        endDate: string | null,
-        resourceId: string,
-    ) => {
-        updateResource(resourceId, (r) => ({
-            ...r,
-            userMetadata: { ...r.userMetadata, storyEndDate: endDate },
-        }));
-    };
-
-    /**
-     * Dispatches a CRUD or utility action on a resource.
-     *
-     * Supported actions:
-     * - `"create"` — POSTs a new resource to `POST /api/resource`, adds it to
-     *   the Redux store, and marks it as selected.
-     * - `"copy"` / `"duplicate"` — Clones the resource on disk via
-     *   `POST /api/resource/:id` and appends the copy to local state.
-     * - `"delete"` — Removes the resource from disk and from local + Redux state.
-     * - `"export"` — Shows a placeholder export alert (not yet implemented).
-     *
-     * @param action     - The action to perform.
-     * @param resourceId - ID of the target resource (required for all actions
-     *   except `"create"`).
-     * @param opts       - Additional options for the `"create"` action:
-     *   - `type`     — Resource type (e.g. `"text"`, `"folder"`).
-     *   - `title`    — Initial display name for the new resource.
-     *   - `folderId` — ID of the parent folder, if any.
-     */
-    const handleResourceAction = async (
-        action: "create" | "rename" | "copy" | "duplicate" | "delete" | "export",
-        resourceId?: string,
-        opts?: {
-            /** Resource type to create (e.g. `"text"` or `"folder"`). */
-            type?: string;
-            /** Initial display name for the new resource. */
-            title?: string;
-            /** Parent folder ID for the new resource. */
-            folderId?: string;
-            /** Resolved leaf resource IDs to export (used by the export action). */
-            resourceIds?: string[];
-        },
-    ) => {
-        if (!selectedProject) return;
-
-        if (action === "create") {
-            const title = opts?.title ?? "New Resource";
-            const payload = {
-                name: title,
-                folderId: opts?.folderId ?? null,
-                type: opts?.type ?? "text",
-            };
-
-            if (opts?.type === "text" || !opts?.type) {
-                // `text` is not declared on the minimal payload type; cast to
-                // pass the extended shape through to the API.
-                (payload as any).text = {
-                    plainText: "",
-                    tiptap: undefined,
-                };
-            }
-
-            const result = await fetch("/api/resource", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    resourceData: payload,
-                    projectPath: selectedProject.rootPath,
-                }),
-            });
-            const resBody = await result.json();
-            const res: AnyResource = resBody.resource;
-            dispatch(addResourceInStore(res));
-            if (opts?.type === "folder") {
-                setSelectedProject((prev) =>
-                    prev
-                        ? { ...prev, folders: [...prev.folders, res as Folder] }
-                        : prev,
-                );
-            } else {
-                // update redux store
-                dispatch(
-                    // This addResource is deprecated
-                    addResource({
-                        projectId: selectedProject.id,
-                        resource: {
-                            id: res.id,
-                            userMetadata: res.userMetadata,
-                            name: res.name,
-                            folderId: res.folderId ?? null,
-                        } as any,
-                    }),
-                );
-                setSelectedProject((prev) =>
-                    prev
-                        ? {
-                              ...prev,
-                              resources: [
-                                  ...prev.resources,
-                                  res,
-                              ] as AnyResource[],
-                          }
-                        : prev,
-                );
-            }
-
-            toastService.success(
-                "Resource created",
-                `${opts?.title ?? "New Resource"} created`,
-            );
-            return;
+        return buildView;
+      });
+      return views;
+    }
+    fetchProjects()
+      .then((data) => {
+        if (Array.isArray(data)) {
+          dispatch(setProjectsInStore(data));
+          setProjects(data);
         }
+      })
+      .catch((err) => {
+        console.error("Error fetching projects:", err);
+      });
+  }, []);
 
-        if (action === "copy" || action === "duplicate") {
-            if (!resourceId) return;
-            const src = selectedProject.resources.find(
-                (r) => r.id === resourceId,
-            );
-            if (!src) return;
-            const newName = opts?.title ?? `${src.name} (Copy)`;
-
-            const resp = await fetch(`/api/resource/${resourceId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "copy",
-                    newName,
-                    projectRoot: selectedProject.rootPath,
-                }),
-            });
-            const { resource: newResource } = await resp.json();
-
-            dispatch(addResourceInStore(newResource as AnyResource));
-            setProjects((prev) =>
-                prev.map((p) =>
-                    p.project.id === selectedProject.id
-                        ? {
-                              ...p,
-                              resources: [
-                                  ...p.resources,
-                                  newResource,
-                              ] as AnyResource[],
-                          }
-                        : p,
-                ),
-            );
-            setSelectedProject((prev) =>
-                prev
-                    ? {
-                          ...prev,
-                          resources: [
-                              ...prev.resources,
-                              newResource,
-                          ] as AnyResource[],
-                      }
-                    : prev,
-            );
-            toastService.success("Resource copied", newResource.name as string);
-            return;
-        }
-
-        if (action === "delete") {
-            if (!resourceId) return;
-            await fetch(`/api/resource/${resourceId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "delete",
-                    projectRoot: selectedProject.rootPath,
-                }),
-            });
-            setProjects((prev) =>
-                prev.map((p) =>
-                    p.project.id === selectedProject.id
-                        ? {
-                              ...p,
-                              resources: p.resources.filter(
-                                  (r) => r.id !== resourceId,
-                              ),
-                          }
-                        : p,
-                ),
-            );
-            setSelectedProject((prev) =>
-                prev
-                    ? {
-                          ...prev,
-                          resources: prev.resources.filter(
-                              (r) => r.id !== resourceId,
-                          ),
-                          updatedAt: new Date().toISOString(),
-                      }
-                    : prev,
-            );
-            // update redux store
-            dispatch(
-                removeResource({ projectId: selectedProject.id, resourceId }),
-            );
-            dispatch(removeResourceFromStore(resourceId));
-            const resourceName =
-                selectedProject.resources.find((r) => r.id === resourceId)
-                    ?.name ?? "Resource";
-            toastService.success("Resource deleted", resourceName);
-            return;
-        }
-
-        if (action === "export") {
-            const resolvedIds: string[] =
-                opts?.resourceIds ?? (resourceId ? [resourceId] : []);
-            if (resolvedIds.length === 0) return;
-
-            const exportNode =
-                selectedProject.resources.find((x) => x.id === resourceId) ??
-                selectedProject.folders.find((x) => x.id === resourceId);
-            const exportName = exportNode?.name ?? "export";
-
-            // Build a lookup map for content from already-loaded resources.
-            // Resources have a `plaintext` field loaded when the project opened.
-            const contentById = new Map(
-                selectedProject.resources.map((r) => [
-                    r.id,
-                    (r as any).plaintext ?? (r as any).plainText ?? "",
-                ]),
-            );
-            const nameById = new Map(
-                [...selectedProject.resources, ...selectedProject.folders].map(
-                    (r) => [r.id, r.name],
-                ),
-            );
-
-            // Only include text resources in the exported output.
-            const textIds = resolvedIds.filter(
-                (id) =>
-                    (selectedProject.resources.find((r) => r.id === id) as any)
-                        ?.type === "text",
-            );
-
-            const sections: CompileSection[] = textIds.map((id) => ({
-                name: nameById.get(id) ?? id,
-                content: contentById.get(id) ?? "",
-            }));
-
-            const includeHeaders = textIds.length > 1;
-            const text = compileToText(sections, { includeHeaders });
-            const filename = `${slugify(exportName)}.txt`;
-
-            const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            toastService.success("Exported", filename);
-            return;
-        }
-    };
-
-    const handleCloseProject = (): void => {
-        setSelectedProject(null);
-        dispatch(setSelectedProjectId(null));
-        dispatch(setResourceId(null));
-        dispatch(setResources([]));
-        dispatch(setFolders([]));
-    };
-
-    return (
-        <AppShell
-            showSidebars={Boolean(selectedProject)}
-            resources={selectedProject?.resources}
-            folders={selectedProject?.folders}
-            project={selectedProject as any}
-            onResourceSelect={handleResourceSelect}
-            onResourceAction={handleResourceAction}
-            onCloseProject={handleCloseProject}
-            selectedResourceId={selectedResource?.id ?? null}
-            onChangeSynopsis={handleChangeSynopsis}
-            onChangeNotes={handleChangeNotes}
-            onChangeStatus={handleChangeStatus}
-            onChangeDynamicMetadata={handleChangeDynamicMetadata}
-            onChangePOV={handleChangePOV}
-            onChangeStoryDate={handleChangeStoryDate}
-            onChangeStoryDuration={handleChangeStoryDuration}
-            onChangeStoryEndDate={handleChangeStoryEndDate}
-        >
-            {!selectedProject ? (
-                <StartPage
-                    projects={projects}
-                    onCreate={handleCreate}
-                    onOpen={handleOpen}
-                />
-            ) : (
-                <section className="p-6">
-                    <h1 className="text-2xl font-semibold">
-                        {selectedProject.name}
-                    </h1>
-                    <p className="mt-4 text-gw-secondary">
-                        Open a resource from the left-hand contents list, or
-                        create a new resource to get started.
-                    </p>
-                </section>
-            )}
-        </AppShell>
+  /**
+   * Called by {@link StartPage} after a new project has been successfully
+   * created on disk.
+   *
+   * Adds the new project to the local project list, upserts it in the Redux
+   * `projects` slice, sets it as the selected project, and hydrates the
+   * `resources` slice with the scaffold's initial folders and resources.
+   *
+   * @param projectFiles - Creation result containing the project record,
+   *   initial folder list, and any scaffolded resources.
+   */
+  const handleCreate = (projectFiles: StartPageCreateResult) => {
+    setProjects((prev) => [
+      {
+        project: projectFiles.project,
+        folders: projectFiles.folders,
+        resources: projectFiles.resources,
+      },
+      ...prev,
+    ]);
+    // persist project in redux store and mark selected
+    dispatch(
+      setProject({
+        id: projectFiles.project.id,
+        name: projectFiles.project.name,
+        rootPath: projectFiles.project.rootPath ?? "",
+        folders: (projectFiles as any).folders ?? [],
+        resources: (projectFiles as any).resources
+          ? (projectFiles as any).resources.map((r: ResourceBase) => ({
+              id: r.id,
+              name: r.name,
+              userMetadata: r.userMetadata ?? {},
+              folderId: r.folderId ?? null,
+            }))
+          : [],
+        metadata: projectFiles.project.metadata,
+        statuses: projectFiles.project.config?.statuses ?? [],
+        metadataSchema: projectFiles.project.config?.metadataSchema,
+      }),
     );
+    dispatch(setSelectedProjectId(projectFiles.project.id));
+    dispatch(setResources(projectFiles.resources));
+    dispatch(setFolders(projectFiles.folders));
+    setSelectedProject({
+      id: projectFiles.project.id,
+      name: projectFiles.project.name,
+      rootPath: projectFiles.project.rootPath ?? "",
+      folders: (projectFiles as any).folders ?? [],
+      resources: (projectFiles as any).resources ?? [],
+      metadata: projectFiles.project.metadata,
+      config: { wordCountGoal: projectFiles.project.config?.wordCountGoal },
+    });
+    toastService.success("Project created", projectFiles.project.name);
+  };
+
+  /**
+   * Opens an existing project by its root path.
+   *
+   * Calls `POST /api/project` with the project's root path, hydrates the
+   * Redux `projects` and `resources` slices with the response, and stores
+   * the opened project in local `selectedProject` state so the editor shell
+   * becomes visible.
+   *
+   * @param id - The root path of the project to open (used as the
+   *   `projectPath` request body field).
+   * @throws {Error} When the HTTP response is not OK.
+   */
+  const handleOpen = async (id: string) => {
+    const res = await fetch("/api/project", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectPath: id }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error || `Status ${res.status}`);
+    }
+
+    const body = await res.json().catch(() => null);
+    const p = body;
+    if (p) {
+      // ensure project exists in redux and mark selected
+      dispatch(
+        setProject({
+          id: p.project.id,
+          name: p.project.name,
+          rootPath: p.project.rootPath ?? "",
+          folders: (p as any).folders ?? [],
+          resources: (p as any).resources
+            ? (p as any).resources.map((r: any) => ({
+                id: r.id,
+                name: r.name,
+                folderId: r.folderId ?? null,
+                userMetadata: r.userMetadata ?? {},
+                plaintext: r.plaintext,
+              }))
+            : [],
+          metadata: p.project.metadata,
+          statuses: p.project.config?.statuses ?? [],
+          metadataSchema: p.project.config?.metadataSchema,
+        }),
+      );
+      dispatch(
+        setEditorConfig({
+          headings: p.project.config.editorConfig?.headings ?? {},
+          body: p.project.config.editorConfig?.body,
+        }),
+      );
+
+      dispatch(setSelectedProjectId(p.project.id));
+
+      // Add Resources to redux store
+      dispatch(setResources(p.resources));
+      dispatch(setFolders(p.folders));
+      setSelectedProject({
+        id: p.project.id,
+        name: p.project.name,
+        rootPath: p.project.rootPath ?? "",
+        folders: p.folders,
+        resources: p.resources,
+        metadata: p.project.metadata,
+        config: { wordCountGoal: p.project.config?.wordCountGoal },
+      });
+    }
+  };
+
+  /**
+   * Marks a resource as selected in both the Redux store and local state.
+   *
+   * Dispatches `setResourceId` so that the sidebar, editor, and other
+   * resource-aware components can display the chosen resource.
+   *
+   * @param id - The ID of the resource to select.
+   */
+  const handleResourceSelect = (id: string) => {
+    dispatch(setResourceId(id));
+  };
+
+  /**
+   * Applies an immutable update to a single resource within the selected
+   * project.
+   *
+   * The updated resource is:
+   * 1. Persisted to the sidecar file via `POST /api/resource/:id/sidecar`.
+   * 2. Dispatched to the Redux store via `updateResourceInStore`.
+   * 3. Applied to both the `projects` list and `selectedProject` local state
+   *    so the UI reflects the change immediately while the network call is
+   *    in flight.
+   *
+   * @param resourceId - ID of the resource to update.
+   * @param updater    - Pure function that receives the current resource and
+   *   returns the updated version.
+   */
+  const updateResource = (
+    resourceId: string,
+    updater: (r: AnyResource) => AnyResource,
+  ): void => {
+    if (!selectedProject) return;
+    const resource = selectedProject.resources.find((r) => r.id === resourceId);
+    if (!resource) {
+      console.warn(
+        `updateResource: resource ${resourceId} not found in selectedProject`,
+      );
+      return;
+    }
+
+    fetch(`/api/resource/${resourceId}/sidecar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectRoot: selectedProject.rootPath,
+        updatedResource: updater(resource),
+      }),
+    }).catch((err) => {
+      console.error("Error updating resource metadata:", err);
+    });
+
+    dispatch(updateResourceInStore(updater(resource)));
+
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.project.id !== selectedProject.id) return p;
+
+        const resources = p.resources.map((r) =>
+          r.id === resourceId ? updater(r) : r,
+        );
+        return { ...p, resources };
+      }),
+    );
+
+    // Also update the local selectedProject reference so UI reflects changes immediately
+    setSelectedProject((prev) => {
+      if (!prev || prev.id !== selectedProject.id) return prev;
+      const resources = prev.resources.map((r) =>
+        r.id === resourceId ? updater(r) : r,
+      );
+      return { ...prev, resources, updatedAt: new Date().toISOString() };
+    });
+  };
+
+  /**
+   * Updates the free-text notes field in a resource's metadata.
+   *
+   * @param text       - New notes content.
+   * @param resourceId - ID of the target resource.
+   */
+  const handleChangeSynopsis = (text: string, resourceId: string) => {
+    updateResource(resourceId, (r) => ({
+      ...r,
+      userMetadata: { ...r.userMetadata, synopsis: text },
+    }));
+  };
+
+  const handleChangeNotes = (text: string, resourceId: string) => {
+    updateResource(resourceId, (r) => ({
+      ...r,
+      userMetadata: { ...r.userMetadata, notes: text },
+    }));
+  };
+
+  /**
+   * Updates the publication status in a resource's metadata.
+   *
+   * @param status     - The new status value (`"draft"`, `"in-review"`, or
+   *   `"published"`).
+   * @param resourceId - ID of the target resource.
+   */
+  const handleChangeStatus = (
+    status: "draft" | "in-review" | "published",
+    resourceId: string,
+  ) => {
+    console.log("Updating status to", status, "for resource", resourceId);
+    updateResource(resourceId, (r) => ({
+      ...r,
+      userMetadata: { ...r.userMetadata, status },
+    }));
+  };
+
+  const handleChangeDynamicMetadata = (
+    metadata: Record<string, string[]>,
+    resourceId: string,
+  ) => {
+    updateResource(resourceId, (r) => ({
+      ...r,
+      userMetadata: { ...r.userMetadata, ...metadata },
+    }));
+  };
+
+  /**
+   * Updates the point-of-view (POV) character field in a resource's metadata.
+   *
+   * @param pov        - Name of the POV character, or `null` to clear it.
+   * @param resourceId - ID of the target resource.
+   */
+  const handleChangePOV = (pov: ResourceRef, resourceId: string) => {
+    updateResource(resourceId, (r) => ({
+      ...r,
+      userMetadata: { ...r.userMetadata, pov },
+    }));
+  };
+
+  const handleChangeStoryDate = (date: string, resourceId: string) => {
+    updateResource(resourceId, (r) => ({
+      ...r,
+      userMetadata: { ...r.userMetadata, storyDate: date },
+    }));
+  };
+
+  const handleChangeStoryDuration = (
+    duration: number | null,
+    resourceId: string,
+  ) => {
+    updateResource(resourceId, (r) => ({
+      ...r,
+      userMetadata: { ...r.userMetadata, storyDuration: duration },
+    }));
+  };
+
+  const handleChangeStoryEndDate = (
+    endDate: string | null,
+    resourceId: string,
+  ) => {
+    updateResource(resourceId, (r) => ({
+      ...r,
+      userMetadata: { ...r.userMetadata, storyEndDate: endDate },
+    }));
+  };
+
+  /**
+   * Dispatches a CRUD or utility action on a resource.
+   *
+   * Supported actions:
+   * - `"create"` — POSTs a new resource to `POST /api/resource`, adds it to
+   *   the Redux store, and marks it as selected.
+   * - `"copy"` / `"duplicate"` — Clones the resource on disk via
+   *   `POST /api/resource/:id` and appends the copy to local state.
+   * - `"delete"` — Removes the resource from disk and from local + Redux state.
+   * - `"export"` — Shows a placeholder export alert (not yet implemented).
+   *
+   * @param action     - The action to perform.
+   * @param resourceId - ID of the target resource (required for all actions
+   *   except `"create"`).
+   * @param opts       - Additional options for the `"create"` action:
+   *   - `type`     — Resource type (e.g. `"text"`, `"folder"`).
+   *   - `title`    — Initial display name for the new resource.
+   *   - `folderId` — ID of the parent folder, if any.
+   */
+  const handleResourceAction = async (
+    action: "create" | "rename" | "copy" | "duplicate" | "delete" | "export",
+    resourceId?: string,
+    opts?: {
+      /** Resource type to create (e.g. `"text"` or `"folder"`). */
+      type?: string;
+      /** Initial display name for the new resource. */
+      title?: string;
+      /** Parent folder ID for the new resource. */
+      folderId?: string;
+      /** Resolved leaf resource IDs to export (used by the export action). */
+      resourceIds?: string[];
+    },
+  ) => {
+    if (!selectedProject) return;
+
+    if (action === "create") {
+      const title = opts?.title ?? "New Resource";
+      const targetFolderId = opts?.folderId ?? null;
+      const allItems = [
+        ...selectedProject.resources,
+        ...selectedProject.folders,
+      ] as AnyResource[];
+      const siblings = allItems.filter((r) => {
+        const effectiveParentId =
+          r.type === "folder"
+            ? ((r as Folder).parentId ?? r.folderId ?? null)
+            : (r.folderId ?? null);
+        return effectiveParentId === targetFolderId;
+      });
+      const maxSiblingOrder = siblings.reduce(
+        (max, s) => Math.max(max, s.orderIndex ?? 0),
+        -1,
+      );
+      const payload = {
+        name: title,
+        folderId: targetFolderId,
+        type: opts?.type ?? "text",
+        orderIndex: maxSiblingOrder + 1,
+      };
+
+      if (opts?.type === "text" || !opts?.type) {
+        // `text` is not declared on the minimal payload type; cast to
+        // pass the extended shape through to the API.
+        (payload as any).text = { plainText: "", tiptap: undefined };
+      }
+
+      const result = await fetch("/api/resource", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resourceData: payload,
+          projectPath: selectedProject.rootPath,
+        }),
+      });
+      const resBody = await result.json();
+      const res: AnyResource = resBody.resource;
+      dispatch(addResourceInStore(res));
+      if (opts?.type === "folder") {
+        setSelectedProject((prev) =>
+          prev ? { ...prev, folders: [...prev.folders, res as Folder] } : prev,
+        );
+      } else {
+        // update redux store
+        dispatch(
+          // This addResource is deprecated
+          addResource({
+            projectId: selectedProject.id,
+            resource: {
+              id: res.id,
+              userMetadata: res.userMetadata,
+              name: res.name,
+              folderId: res.folderId ?? null,
+            } as any,
+          }),
+        );
+        setSelectedProject((prev) =>
+          prev
+            ? { ...prev, resources: [...prev.resources, res] as AnyResource[] }
+            : prev,
+        );
+      }
+
+      toastService.success(
+        "Resource created",
+        `${opts?.title ?? "New Resource"} created`,
+      );
+      return;
+    }
+
+    if (action === "copy" || action === "duplicate") {
+      if (!resourceId) return;
+      const src = selectedProject.resources.find((r) => r.id === resourceId);
+      if (!src) return;
+      const newName = opts?.title ?? `${src.name} (Copy)`;
+
+      const resp = await fetch(`/api/resource/${resourceId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "copy",
+          newName,
+          projectRoot: selectedProject.rootPath,
+        }),
+      });
+      const { resource: newResource } = await resp.json();
+
+      dispatch(addResourceInStore(newResource as AnyResource));
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.project.id === selectedProject.id
+            ? {
+                ...p,
+                resources: [...p.resources, newResource] as AnyResource[],
+              }
+            : p,
+        ),
+      );
+      setSelectedProject((prev) =>
+        prev
+          ? {
+              ...prev,
+              resources: [...prev.resources, newResource] as AnyResource[],
+            }
+          : prev,
+      );
+      toastService.success("Resource copied", newResource.name as string);
+      return;
+    }
+
+    if (action === "delete") {
+      if (!resourceId) return;
+      await fetch(`/api/resource/${resourceId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          projectRoot: selectedProject.rootPath,
+        }),
+      });
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.project.id === selectedProject.id
+            ? {
+                ...p,
+                resources: p.resources.filter((r) => r.id !== resourceId),
+              }
+            : p,
+        ),
+      );
+      setSelectedProject((prev) =>
+        prev
+          ? {
+              ...prev,
+              resources: prev.resources.filter((r) => r.id !== resourceId),
+              updatedAt: new Date().toISOString(),
+            }
+          : prev,
+      );
+      // update redux store
+      dispatch(removeResource({ projectId: selectedProject.id, resourceId }));
+      dispatch(removeResourceFromStore(resourceId));
+      const resourceName =
+        selectedProject.resources.find((r) => r.id === resourceId)?.name ??
+        "Resource";
+      toastService.success("Resource deleted", resourceName);
+      return;
+    }
+
+    if (action === "export") {
+      const resolvedIds: string[] =
+        opts?.resourceIds ?? (resourceId ? [resourceId] : []);
+      if (resolvedIds.length === 0) return;
+
+      const exportNode =
+        selectedProject.resources.find((x) => x.id === resourceId) ??
+        selectedProject.folders.find((x) => x.id === resourceId);
+      const exportName = exportNode?.name ?? "export";
+
+      // Build a lookup map for content from already-loaded resources.
+      // Resources have a `plaintext` field loaded when the project opened.
+      const contentById = new Map(
+        selectedProject.resources.map((r) => [
+          r.id,
+          (r as any).plaintext ?? (r as any).plainText ?? "",
+        ]),
+      );
+      const nameById = new Map(
+        [...selectedProject.resources, ...selectedProject.folders].map((r) => [
+          r.id,
+          r.name,
+        ]),
+      );
+
+      // Only include text resources in the exported output.
+      const textIds = resolvedIds.filter(
+        (id) =>
+          (selectedProject.resources.find((r) => r.id === id) as any)?.type ===
+          "text",
+      );
+
+      const sections: CompileSection[] = textIds.map((id) => ({
+        name: nameById.get(id) ?? id,
+        content: contentById.get(id) ?? "",
+      }));
+
+      const includeHeaders = textIds.length > 1;
+      const text = compileToText(sections, { includeHeaders });
+      const filename = `${slugify(exportName)}.txt`;
+
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toastService.success("Exported", filename);
+      return;
+    }
+  };
+
+  const handleCloseProject = (): void => {
+    setSelectedProject(null);
+    dispatch(setSelectedProjectId(null));
+    dispatch(setResourceId(null));
+    dispatch(setResources([]));
+    dispatch(setFolders([]));
+  };
+
+  return (
+    <AppShell
+      showSidebars={Boolean(selectedProject)}
+      resources={selectedProject?.resources}
+      folders={selectedProject?.folders}
+      project={selectedProject as any}
+      onResourceSelect={handleResourceSelect}
+      onResourceAction={handleResourceAction}
+      onCloseProject={handleCloseProject}
+      selectedResourceId={selectedResource?.id ?? null}
+      onChangeSynopsis={handleChangeSynopsis}
+      onChangeNotes={handleChangeNotes}
+      onChangeStatus={handleChangeStatus}
+      onChangeDynamicMetadata={handleChangeDynamicMetadata}
+      onChangePOV={handleChangePOV}
+      onChangeStoryDate={handleChangeStoryDate}
+      onChangeStoryDuration={handleChangeStoryDuration}
+      onChangeStoryEndDate={handleChangeStoryEndDate}
+    >
+      {!selectedProject ? (
+        <StartPage
+          projects={projects}
+          onCreate={handleCreate}
+          onOpen={handleOpen}
+        />
+      ) : (
+        <section className="p-6">
+          <h1 className="text-2xl font-semibold">{selectedProject.name}</h1>
+          <p className="mt-4 text-gw-secondary">
+            Open a resource from the left-hand contents list, or create a new
+            resource to get started.
+          </p>
+        </section>
+      )}
+    </AppShell>
+  );
 }

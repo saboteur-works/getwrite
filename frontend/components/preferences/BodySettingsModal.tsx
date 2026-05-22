@@ -2,108 +2,124 @@
 
 import React, { useState } from "react";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
-import { BODY_FIELD_DEFINITIONS, sanitizeEditorBody } from "../../src/lib/editor-body-settings";
+import {
+  BODY_FIELD_DEFINITIONS,
+  sanitizeEditorBody,
+} from "../../src/lib/editor-body-settings";
 import HeadingStyleField from "./HeadingStyleField";
+import FontFamilyInput from "./FontFamilyInput";
 import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
 import Input from "../common/UI/Input/Input";
 import { DialogTitle } from "../common/UI/Dialog/Dialog";
 
 interface BodySettingsModalProps {
-    initialBody?: EditorBodyConfig;
-    onClose: () => void;
-    onSave: (body: EditorBodyConfig) => Promise<void>;
+  initialBody?: EditorBodyConfig;
+  onClose: () => void;
+  onSave: (body: EditorBodyConfig) => Promise<void>;
 }
 
 export default function BodySettingsModal({
-    initialBody,
-    onClose,
-    onSave,
+  initialBody,
+  onClose,
+  onSave,
 }: BodySettingsModalProps): JSX.Element {
-    const [draft, setDraft] = useState<EditorBodyConfig>(initialBody ?? {});
-    const [isSaving, setIsSaving] = useState<boolean>(false);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [draft, setDraft] = useState<EditorBodyConfig>(initialBody ?? {});
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const handleFieldChange = (
-        key: keyof EditorBodyConfig,
-        value: string,
-    ): void => {
-        setDraft((prev) => ({ ...prev, [key]: value }));
-    };
+  const handleFieldChange = (
+    key: keyof EditorBodyConfig,
+    value: string,
+  ): void => {
+    setDraft((prev) => ({ ...prev, [key]: value }));
+  };
 
-    const handleSave = async (): Promise<void> => {
-        setIsSaving(true);
-        setErrorMessage(null);
+  const handleSave = async (): Promise<void> => {
+    setIsSaving(true);
+    setErrorMessage(null);
 
-        try {
-            await onSave(sanitizeEditorBody(draft) ?? {});
-            onClose();
-        } catch (error) {
-            setErrorMessage(
-                error instanceof Error
-                    ? error.message
-                    : "Failed to save body text settings.",
-            );
-        } finally {
-            setIsSaving(false);
-        }
-    };
+    try {
+      await onSave(sanitizeEditorBody(draft) ?? {});
+      onClose();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to save body text settings.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-    return (
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8 lg:px-10">
-            <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
-                <div className="space-y-1">
-                    <DialogTitle asChild>
-                        <h1 className="text-2xl font-semibold text-gw-primary">
-                            Body Text Styles
-                        </h1>
-                    </DialogTitle>
-                    <p className="max-w-2xl text-sm text-gw-secondary">
-                        Configure default body text typography for this project.
-                        These settings apply to all editor body text.
-                    </p>
-                </div>
-                <Button variant="secondary" size="sm" onClick={onClose}>
-                    Close
-                </Button>
-            </header>
-
-            <Card as="section" padding="lg">
-                <div className="grid gap-3 md:grid-cols-2">
-                    {BODY_FIELD_DEFINITIONS.map(({ key, label, placeholder }) => (
-                        <HeadingStyleField key={key} id={`body-${key}`} label={label}>
-                            <Input
-                                id={`body-${key}`}
-                                aria-label={label}
-                                value={draft[key] ?? ""}
-                                placeholder={placeholder}
-                                onChange={(event) =>
-                                    handleFieldChange(key, event.target.value)
-                                }
-                            />
-                        </HeadingStyleField>
-                    ))}
-                </div>
-            </Card>
-
-            {errorMessage ? (
-                <p className="text-sm text-gw-secondary" role="alert">
-                    {errorMessage}
-                </p>
-            ) : null}
-
-            <footer className="flex justify-end gap-3 border-t border-gw-border pt-5">
-                <Button variant="secondary" onClick={onClose} disabled={isSaving}>
-                    Cancel
-                </Button>
-                <Button
-                    variant="default"
-                    onClick={() => void handleSave()}
-                    disabled={isSaving}
-                >
-                    {isSaving ? "Saving…" : "Save"}
-                </Button>
-            </footer>
+  return (
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8 lg:px-10">
+      <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
+        <div className="space-y-1">
+          <DialogTitle asChild>
+            <h1 className="text-2xl font-semibold text-gw-primary">
+              Body Text Styles
+            </h1>
+          </DialogTitle>
+          <p className="max-w-2xl text-sm text-gw-secondary">
+            Configure default body text typography for this project. These
+            settings apply to all editor body text.
+          </p>
         </div>
-    );
+        <Button variant="secondary" size="sm" onClick={onClose}>
+          Close
+        </Button>
+      </header>
+
+      <Card as="section" padding="lg">
+        <div className="grid gap-3 md:grid-cols-2">
+          {BODY_FIELD_DEFINITIONS.map(({ key, label, placeholder }) => (
+            <HeadingStyleField key={key} id={`body-${key}`} label={label}>
+              {key === "fontFamily" ? (
+                <FontFamilyInput
+                  id={`body-${key}`}
+                  aria-label={label}
+                  value={draft[key] ?? ""}
+                  placeholder={placeholder}
+                  onChange={(event) =>
+                    handleFieldChange(key, event.target.value)
+                  }
+                />
+              ) : (
+                <Input
+                  id={`body-${key}`}
+                  aria-label={label}
+                  value={draft[key] ?? ""}
+                  placeholder={placeholder}
+                  onChange={(event) =>
+                    handleFieldChange(key, event.target.value)
+                  }
+                />
+              )}
+            </HeadingStyleField>
+          ))}
+        </div>
+      </Card>
+
+      {errorMessage ? (
+        <p className="text-sm text-gw-secondary" role="alert">
+          {errorMessage}
+        </p>
+      ) : null}
+
+      <footer className="flex justify-end gap-3 border-t border-gw-border pt-5">
+        <Button variant="secondary" onClick={onClose} disabled={isSaving}>
+          Cancel
+        </Button>
+        <Button
+          variant="default"
+          onClick={() => void handleSave()}
+          disabled={isSaving}
+        >
+          {isSaving ? "Saving…" : "Save"}
+        </Button>
+      </footer>
+    </div>
+  );
 }
