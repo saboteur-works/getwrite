@@ -310,6 +310,12 @@ export default function AppShell({
     },
     [liveResources, liveFolders],
   );
+
+  const resolveFolderOptions = React.useCallback(() => {
+    return (liveFolders ?? [])
+      .filter((f) => f.name)
+      .map((f) => ({ id: f.id, name: f.name }));
+  }, [liveFolders]);
   const currentAst = React.useMemo(
     () =>
       qb.isAdvanced && qb.rawAst
@@ -1373,6 +1379,9 @@ export default function AppShell({
                                       savedQueries={savedQueriesList}
                                       resolveResourceOptions={
                                         resolveResourceOptions
+                                      }
+                                      resolveFolderOptions={
+                                        resolveFolderOptions
                                       }
                                       matchCount={
                                         activeSmartFolderId
