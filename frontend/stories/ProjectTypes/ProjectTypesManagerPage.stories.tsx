@@ -5,42 +5,40 @@ import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 import type { ProjectTypeTemplateFile } from "../../src/types/project-types";
 
 const initialTemplates: ProjectTypeTemplateFile[] = [
-    {
-        fileName: "novel.json",
-        definition: {
-            id: "novel",
-            name: "Novel",
-            description: "Long-form fiction project type",
-            folders: [
-                { name: "Workspace", special: true },
-                { name: "Characters", special: true },
-            ],
-        },
+  {
+    fileName: "novel.json",
+    definition: {
+      id: "novel",
+      name: "Novel",
+      description: "Long-form fiction project type",
+      folders: [
+        { name: "Workspace", special: true },
+        { name: "Characters", special: true },
+      ],
     },
-    {
-        fileName: "short-story.json",
-        definition: {
-            id: "short-story",
-            name: "Short Story",
-            description: "Compact story drafting",
-            folders: [{ name: "Workspace", special: true }],
-        },
+  },
+  {
+    fileName: "short-story.json",
+    definition: {
+      id: "short-story",
+      name: "Short Story",
+      description: "Compact story drafting",
+      folders: [{ name: "Workspace", special: true }],
     },
+  },
 ];
 
 const meta: Meta<typeof ProjectTypesManagerPage> = {
-    title: "ProjectTypes/ProjectTypesManagerPage",
-    component: ProjectTypesManagerPage,
-    decorators: [
-        (Story) => (
-            <Dialog open onOpenChange={() => undefined}>
-                <Story />
-            </Dialog>
-        ),
-    ],
-    parameters: {
-        layout: "fullscreen",
-    },
+  title: "ProjectTypes/ProjectTypesManagerPage",
+  component: ProjectTypesManagerPage,
+  decorators: [
+    (Story: React.ComponentType) => (
+      <Dialog open onOpenChange={() => undefined}>
+        <Story />
+      </Dialog>
+    ),
+  ],
+  parameters: { layout: "fullscreen" },
 };
 
 export default meta;
@@ -48,9 +46,9 @@ export default meta;
 type Story = StoryObj<typeof ProjectTypesManagerPage>;
 
 export const ModalMode: Story = {
-    args: {
-        initialTemplates,
-        renderInModal: true,
-        onClose: () => console.log("close"),
-    },
+  args: {
+    initialTemplates,
+    renderInModal: true,
+    onClose: () => console.log("close"),
+  },
 };

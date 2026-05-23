@@ -4,18 +4,16 @@ import UserPreferencesPage from "../../components/preferences/UserPreferencesPag
 import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 
 const meta: Meta<typeof UserPreferencesPage> = {
-    title: "Preferences/UserPreferencesPage",
-    component: UserPreferencesPage,
-    decorators: [
-        (Story) => (
-            <Dialog open onOpenChange={() => undefined}>
-                <Story />
-            </Dialog>
-        ),
-    ],
-    parameters: {
-        layout: "fullscreen",
-    },
+  title: "Preferences/UserPreferencesPage",
+  component: UserPreferencesPage,
+  decorators: [
+    (Story: React.ComponentType) => (
+      <Dialog open onOpenChange={() => undefined}>
+        <Story />
+      </Dialog>
+    ),
+  ],
+  parameters: { layout: "fullscreen" },
 };
 
 export default meta;
@@ -23,49 +21,27 @@ export default meta;
 type Story = StoryObj<typeof UserPreferencesPage>;
 
 export const ModalMode: Story = {
-    args: {
-        renderInModal: true,
-        onClose: () => console.log("close"),
-    },
+  args: { renderInModal: true, onClose: () => console.log("close") },
 };
 
 export const Interactive: Story = {
-    render: (args) => {
-        const [isOpen, setIsOpen] = React.useState(true);
-        const [lastSaved, setLastSaved] = React.useState<string | null>(null);
-        return (
-            <div>
-                <UserPreferencesPage
-                    {...args}
-                    renderInModal={true}
-                    onClose={() => {
-                        setIsOpen(false);
-                        args.onClose?.();
-                    }}
-                    onSave={(prefs) => {
-                        setLastSaved(JSON.stringify(prefs));
-                        args.onSave?.(prefs);
-                    }}
-                />
-                <div
-                    data-testid="is-open"
-                    aria-hidden
-                    style={{ display: "none" }}
-                >
-                    {String(isOpen)}
-                </div>
-                <div
-                    data-testid="last-saved"
-                    aria-hidden
-                    style={{ display: "none" }}
-                >
-                    {lastSaved}
-                </div>
-            </div>
-        );
-    },
-    args: {
-        renderInModal: true,
-        onClose: () => console.log("close"),
-    },
+  render: (args: React.ComponentProps<typeof UserPreferencesPage>) => {
+    const [isOpen, setIsOpen] = React.useState(true);
+    return (
+      <div>
+        <UserPreferencesPage
+          {...args}
+          renderInModal={true}
+          onClose={() => {
+            setIsOpen(false);
+            args.onClose?.();
+          }}
+        />
+        <div data-testid="is-open" aria-hidden style={{ display: "none" }}>
+          {String(isOpen)}
+        </div>
+      </div>
+    );
+  },
+  args: { renderInModal: true, onClose: () => console.log("close") },
 };

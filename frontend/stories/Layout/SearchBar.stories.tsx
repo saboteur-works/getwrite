@@ -4,103 +4,87 @@ import SearchBar from "../../components/SearchBar/SearchBar";
 import type { AnyResource } from "../../src/lib/models/types";
 
 const resources: AnyResource[] = [
-    {
-        id: "res-1",
-        slug: "resource-1",
-        name: "Resource 1",
-        type: "text",
-        folderId: "folder-1",
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: "res-2",
-        slug: "resource-2",
-        name: "Resource 2",
-        type: "image",
-        folderId: "folder-1",
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: "res-3",
-        slug: "resource-3",
-        name: "Resource 3",
-        type: "audio",
-        createdAt: new Date().toISOString(),
-    },
+  {
+    id: "res-1",
+    slug: "resource-1",
+    name: "Resource 1",
+    type: "text",
+    folderId: "folder-1",
+    createdAt: new Date().toISOString(),
+    orderIndex: 0,
+  },
+  {
+    id: "res-2",
+    slug: "resource-2",
+    name: "Resource 2",
+    type: "image",
+    folderId: "folder-1",
+    createdAt: new Date().toISOString(),
+    orderIndex: 1,
+  },
+  {
+    id: "res-3",
+    slug: "resource-3",
+    name: "Resource 3",
+    type: "audio",
+    createdAt: new Date().toISOString(),
+    orderIndex: 2,
+  },
 ];
 
 const meta: Meta<typeof SearchBar> = {
-    title: "Layout/SearchBar",
-    component: SearchBar,
-    argTypes: {
-        onSelect: { action: "select" },
-        resources: { control: "object" },
-        placeholder: { control: "text" },
-    },
+  title: "Layout/SearchBar",
+  component: SearchBar,
+  argTypes: {
+    onSelect: { action: "select" },
+    resources: { control: "object" },
+    placeholder: { control: "text" },
+  },
 };
 
 export default meta;
 type Story = StoryObj<typeof SearchBar>;
 
 export const Default: Story = {
-    args: {
-        resources: [],
-        placeholder: "Search resources...",
-    },
+  args: { resources: [], placeholder: "Search resources..." },
 };
 
 export const WithResults: Story = {
-    render: (args) => (
-        <div>
-            <SearchBar {...args} />
-            <div
-                data-testid="result-count"
-                aria-hidden
-                style={{ display: "none" }}
-            >
-                {String(args.resources?.length ?? 0)}
-            </div>
-        </div>
-    ),
-    args: {
-        resources,
-        placeholder: "Search resources...",
-    },
+  render: (args: React.ComponentProps<typeof SearchBar>) => (
+    <div>
+      <SearchBar {...args} />
+    </div>
+  ),
+  args: { placeholder: "Search resources..." },
 };
 
 export const Interactive: Story = {
-    render: (args: React.ComponentProps<typeof SearchBar>) => {
-        const Wrapper = () => {
-            const [selected, setSelected] = React.useState<string | null>(null);
-            const [query, setQuery] = React.useState<string>("");
-            return (
-                <div>
-                    <SearchBar
-                        {...args}
-                        onSelect={(id: string) => setSelected(id)}
-                    />
-                    <div
-                        data-testid="search-selected-id"
-                        aria-hidden
-                        style={{ display: "none" }}
-                    >
-                        {selected}
-                    </div>
-                    <div
-                        data-testid="search-query"
-                        aria-hidden
-                        style={{ display: "none" }}
-                    >
-                        {query}
-                    </div>
-                </div>
-            );
-        };
+  render: (args: React.ComponentProps<typeof SearchBar>) => {
+    const Wrapper = () => {
+      const [selected, setSelected] = React.useState<string | null>(null);
+      const [query, setQuery] = React.useState<string>("");
+      return (
+        <div>
+          <SearchBar {...args} onSelect={(id: string) => setSelected(id)} />
+          <div
+            data-testid="search-selected-id"
+            aria-hidden
+            style={{ display: "none" }}
+          >
+            {selected}
+          </div>
+          <div
+            data-testid="search-query"
+            aria-hidden
+            style={{ display: "none" }}
+          >
+            {query}
+          </div>
+        </div>
+      );
+    };
 
-        return <Wrapper />;
-    },
-    args: {
-        resources,
-        placeholder: "Search resources...",
-    },
+    return <Wrapper />;
+  },
+  args: { resources, placeholder: "Search resources..." },
 };

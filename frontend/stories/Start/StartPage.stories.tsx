@@ -40,6 +40,7 @@ const resources: AnyResource[] = [
     type: "text",
     folderId: "folder-1",
     createdAt: new Date().toISOString(),
+    orderIndex: 0,
   },
   {
     id: "res-2",
@@ -48,6 +49,7 @@ const resources: AnyResource[] = [
     type: "image",
     folderId: "folder-1",
     createdAt: new Date().toISOString(),
+    orderIndex: 1,
   },
   {
     id: "res-3",
@@ -55,6 +57,7 @@ const resources: AnyResource[] = [
     name: "Resource 3",
     type: "audio",
     createdAt: new Date().toISOString(),
+    orderIndex: 2,
   },
 ];
 
