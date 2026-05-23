@@ -37,7 +37,9 @@ import { filterResourceOptionsByScope } from "../Sidebar/folderScope";
 import { astToGroups } from "../QueryBuilder/ast-chip-bridge";
 import { useQueryBuilderState } from "../QueryBuilder/useQueryBuilderState";
 import ShellLayoutController from "./ShellLayoutController";
-import ShellSettingsMenu from "./ShellSettingsMenu";
+import ShellSettingsMenu, {
+  type SettingsMenuAction,
+} from "./ShellSettingsMenu";
 import ShellModalCoordinator from "./ShellModalCoordinator";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
@@ -831,49 +833,51 @@ export default function AppShell({
     });
   };
 
-  const handleOpenProjectTypeManager = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsProjectTypesModalOpen(true);
-  };
-
-  const handleOpenPreferences = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsPreferencesModalOpen(true);
-  };
-
-  const handleOpenHeadingSettings = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsHeadingSettingsModalOpen(true);
-  };
-
-  const handleOpenBodySettings = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsBodySettingsModalOpen(true);
-  };
-
-  const handleOpenDefaultRevisionNameSettings = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsDefaultRevisionNameModalOpen(true);
-  };
-
-  const handleOpenTagsManager = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsTagsManagerOpen(true);
-  };
-
-  const handleOpenMetadataManager = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsSchemaManagerOpen(true);
-  };
-
-  const handleOpenHelp = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsHelpModalOpen(true);
-  };
-
-  const handleOpenCompile = (): void => {
-    setIsProjectMenuOpen(false);
-    setCompileModal({ open: true });
+  const handleSettingsMenuAction = (action: SettingsMenuAction): void => {
+    switch (action) {
+      case "preferences":
+        setIsSettingsMenuOpen(false);
+        setIsPreferencesModalOpen(true);
+        break;
+      case "heading-styles":
+        setIsSettingsMenuOpen(false);
+        setIsHeadingSettingsModalOpen(true);
+        break;
+      case "body-text-styles":
+        setIsSettingsMenuOpen(false);
+        setIsBodySettingsModalOpen(true);
+        break;
+      case "default-revision-name":
+        setIsSettingsMenuOpen(false);
+        setIsDefaultRevisionNameModalOpen(true);
+        break;
+      case "project-type-manager":
+        setIsSettingsMenuOpen(false);
+        setIsProjectTypesModalOpen(true);
+        break;
+      case "tags-manager":
+        setIsSettingsMenuOpen(false);
+        setIsTagsManagerOpen(true);
+        break;
+      case "metadata":
+        setIsSettingsMenuOpen(false);
+        setIsSchemaManagerOpen(true);
+        break;
+      case "toggle-color-mode":
+        handleToggleColorMode();
+        break;
+      case "help":
+        setIsSettingsMenuOpen(false);
+        setIsHelpModalOpen(true);
+        break;
+      case "close-project":
+        handleCloseProject();
+        break;
+      case "compile":
+        setIsProjectMenuOpen(false);
+        setCompileModal({ open: true });
+        break;
+    }
   };
 
   const handleCloseProject = (): void => {
@@ -987,23 +991,11 @@ export default function AppShell({
         isOpen={isSettingsMenuOpen}
         onClose={() => setIsSettingsMenuOpen(false)}
         onToggleOpen={() => setIsSettingsMenuOpen((prev) => !prev)}
-        onOpenPreferences={handleOpenPreferences}
-        onOpenHeadingSettings={handleOpenHeadingSettings}
-        onOpenBodySettings={handleOpenBodySettings}
-        onOpenDefaultRevisionNameSettings={
-          handleOpenDefaultRevisionNameSettings
-        }
-        onOpenProjectTypeManager={handleOpenProjectTypeManager}
-        onOpenTagsManager={handleOpenTagsManager}
-        onOpenMetadataManager={handleOpenMetadataManager}
-        onToggleColorMode={handleToggleColorMode}
-        onOpenHelp={handleOpenHelp}
-        onCloseProject={handleCloseProject}
         hasProject={Boolean(project)}
         isProjectMenuOpen={isProjectMenuOpen}
         onCloseProjectMenu={() => setIsProjectMenuOpen(false)}
         onToggleProjectMenuOpen={() => setIsProjectMenuOpen((prev) => !prev)}
-        onOpenCompile={handleOpenCompile}
+        onAction={handleSettingsMenuAction}
       />
 
       <ShellLayoutController>

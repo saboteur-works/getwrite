@@ -44,10 +44,11 @@ Table of contents
 
 ### Duplication
 
-- Menu/help wiring duplication — Severity: Medium
-    - Description: Similar help/toolbar wiring duplicated across multiple components; extraction recommended to prevent divergence.
-    - Example files: `frontend/components/help/`, `frontend/components/Editor/MenuBar/`
-    - Suggested remediation: Consolidate help/menu wiring and add a small adapter layer.
+- Menu/help wiring duplication — ~~Severity: Medium~~ **Resolved in `fix/tech-debt`**
+    - ~~Description: Similar help/toolbar wiring duplicated across multiple components; extraction recommended to prevent divergence.~~
+    - ~~Example files: `frontend/components/help/`, `frontend/components/Editor/MenuBar/`~~
+    - ~~Suggested remediation: Consolidate help/menu wiring and add a small adapter layer.~~
+    - Resolution: Introduced `SettingsMenuAction` union type in `ShellSettingsMenu.tsx`. Replaced 11 individual `onOpen*` callback props with a single `onAction: (action: SettingsMenuAction) => void`. Collapsed 9 repetitive `handleOpen*` functions in `AppShell.tsx` into one `handleSettingsMenuAction` switch dispatcher. Storybook stories updated to the new API.
 
 ### Styling
 
