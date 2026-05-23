@@ -78,10 +78,9 @@ Table of contents
 
 ### Immediate Risks
 
-- Invariant-sensitive hotspots — Severity: High *(partially mitigated)*
-    - Description: Refactors touching `revisionsSlice`, `projectsSlice`, `resource-templates`, or `ResourceTree` risk breaking canonical invariants if done without tests/verification gates.
-    - Suggested remediation: Treat these as guarded refactors: add verification gates, unit tests, and small incremental PRs that preserve behavior.
-    - Partial mitigation: Canonical invariant now enforced at the API boundary (POST sets canonical, DELETE rejects canonical target). Tests in `revision-route-canonical.test.ts` and `revision-invariants.test.ts`. Slice-layer guard coverage and `ResourceTree`/`resource-templates` verification gates remain open.
+- Invariant-sensitive hotspots — ~~Severity: High~~ **Resolved in `fix/tech-debt`**
+    - ~~Description: Refactors touching `revisionsSlice`, `projectsSlice`, `resource-templates`, or `ResourceTree` risk breaking canonical invariants if done without tests/verification gates.~~
+    - Resolution: All remaining open gates closed. Added to `revision-canonical-guards.test.ts`: stale-requestedResourceId load guard (race condition), `setSelectedResourceId` reset behaviour, delete-current-revision auto-advance to canonical, stale save/fetch/delete cross-resource guards, and `clearRevisions` reset. Added `resources-slice-guards.test.ts` covering the cross-slice `renameMetadataFieldKey.fulfilled` coupling in `resourcesSlice` and `removeResource` folder/resource fan-out. Added `projectsSlice` `updateProjectMetadataSchema` no-op guard to `projects-slice-controller.test.ts`. Added `resource-templates` integrity gates: `dryRun` writes no resource files, `loadResourceTemplate` throws on missing template, `scaffoldResourcesFromTemplate` count invariant.
 
 ### High-Priority Action Items (Stage 3)
 
