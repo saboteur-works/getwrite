@@ -361,7 +361,6 @@ export default function Home(): JSX.Element {
     status: "draft" | "in-review" | "published",
     resourceId: string,
   ) => {
-    console.log("Updating status to", status, "for resource", resourceId);
     updateResource(resourceId, (r) => ({
       ...r,
       userMetadata: { ...r.userMetadata, status },
