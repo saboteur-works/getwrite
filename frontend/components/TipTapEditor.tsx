@@ -48,6 +48,7 @@ import { TableKit } from "@tiptap/extension-table";
 import GetWriteParagraphLeading from "./Editor/Extensions/GetWriteParagraphLeading";
 import CustomHeading from "./Editor/Extensions/CustomHeading";
 import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
+import WikiLinkDecoration from "./Editor/Extensions/WikiLinkDecoration";
 import { useSelector } from "react-redux";
 import { selectResolvedEditorConfig } from "../src/store/editorConfigSlice";
 /**
@@ -107,6 +108,7 @@ export const extensions = [
   TextAlign.configure({ types: ["heading", "paragraph"] }),
   FontFamily,
   GetWriteParagraphLeading,
+  WikiLinkDecoration,
 ];
 
 /**

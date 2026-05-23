@@ -198,6 +198,16 @@
     z-index: 1;
 }
 
+/* Wiki-style backlinks — `[[Target]]` text decorated by WikiLinkDecoration.
+   Styled as a link until richer click/resolve behavior is added. */
+.tiptap .wiki-link {
+    color: var(--color-gw-accent, #2563eb);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
 /* Named font classes — for dynamic font selection system */
 .domine-400 {
     font-family: "Domine", serif;

@@ -102,7 +102,9 @@ export const getLocalResources = (projectPath: string): AnyResource[] => {
   const metaFiles = fs.readdirSync(metaDir).sort();
   const resources: AnyResource[] = [];
   for (const metaFile of metaFiles) {
-    if (!metaFile.endsWith(".json")) {
+    // Only resource sidecars match this pattern; skip ancillary meta files
+    // like backlinks.json, redirects.json, or the index/ subdirectory.
+    if (!metaFile.startsWith("resource-") || !metaFile.endsWith(".meta.json")) {
       continue;
     }
     const metaPath = path.join(metaDir, metaFile);

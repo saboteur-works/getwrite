@@ -23,6 +23,19 @@ export const Default: Story = {
   },
 };
 
+/**
+ * Demonstrates wiki-style backlink decoration. Text matching `[[Target]]` in
+ * the editor surface is decorated with the `.wiki-link` class so it renders
+ * with link styling without altering the underlying document.
+ */
+export const WikiLinkStyling: Story = {
+  args: {
+    initialContent:
+      "<p>This scene continues from [[Opening]] and references [[The Bureau]].</p>",
+    apiKey: undefined,
+  },
+};
+
 export const Interactive: Story = {
   render: (args: EditViewProps) => {
     const [content, setContent] = React.useState(args.initialContent ?? "");

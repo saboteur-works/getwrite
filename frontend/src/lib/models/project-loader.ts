@@ -7,22 +7,22 @@ import { readFolderTree } from "./folder-utils";
 
 /** A resource entry assembled from its sidecar metadata and plaintext content. */
 export interface LoadedResource {
-    id: string;
-    name?: string;
-    type?: string;
-    createdAt?: string;
-    folderId?: string | null;
-    slug?: string | null;
-    metadata?: Record<string, unknown>;
-    plaintext: string;
-    wordCount?: number;
+  id: string;
+  name?: string;
+  type?: string;
+  createdAt?: string;
+  folderId?: string | null;
+  slug?: string | null;
+  metadata?: Record<string, unknown>;
+  plaintext: string;
+  wordCount?: number;
 }
 
 /** The full project payload loaded from disk. */
 export interface LoadedProject {
-    project: Project;
-    folders: unknown[];
-    resources: LoadedResource[];
+  project: Project;
+  folders: unknown[];
+  resources: LoadedResource[];
 }
 
 /**
@@ -38,60 +38,58 @@ export interface LoadedProject {
  * @param projectPath - Absolute path to the project root directory.
  */
 export async function loadProjectFromDisk(
-    projectPath: string,
+  projectPath: string,
 ): Promise<LoadedProject> {
-    const projectFile = await fs.readFile(
-        path.join(projectPath, "project.json"),
+  const projectFile = await fs.readFile(
+    path.join(projectPath, "project.json"),
+    { encoding: "utf-8" },
+  );
+  const project = JSON.parse(projectFile) as Project;
+
+  const foldersDir = path.join(projectPath, "folders");
+  const metadataDir = path.join(projectPath, "meta");
+  const resourcesDir = path.join(projectPath, "resources");
+
+  const folders = await readFolderTree(foldersDir);
+
+  let metadataEntries: string[];
+  try {
+    metadataEntries = await fs.readdir(metadataDir);
+  } catch {
+    metadataEntries = [];
+  }
+
+  const resourcePromises = metadataEntries
+    .filter(
+      (name) => name.startsWith("resource-") && name.endsWith(".meta.json"),
+    )
+    .map(async (metadataName) => {
+      const sidecar = await readSidecar(
+        projectPath,
+        metadataName.replace("resource-", "").replace(".meta.json", ""),
+      );
+      const sidecarId =
+        sidecar && typeof sidecar.id === "string" ? sidecar.id : "";
+      const resourcePlaintext = fsSync.readFileSync(
+        path.join(resourcesDir, sidecarId, "content.txt"),
         { encoding: "utf-8" },
-    );
-    const project = JSON.parse(projectFile) as Project;
+      );
+      const type =
+        sidecar && typeof sidecar.type === "string" ? sidecar.type : "";
+      const wordCount =
+        type === "text"
+          ? resourcePlaintext.trim() === ""
+            ? 0
+            : resourcePlaintext.trim().split(/\s+/).length
+          : undefined;
+      return {
+        ...sidecar,
+        plaintext: resourcePlaintext,
+        ...(wordCount !== undefined && { wordCount }),
+      } as LoadedResource;
+    });
 
-    const foldersDir = path.join(projectPath, "folders");
-    const metadataDir = path.join(projectPath, "meta");
-    const resourcesDir = path.join(projectPath, "resources");
+  const resources = await Promise.all(resourcePromises);
 
-    const folders = await readFolderTree(foldersDir);
-
-    let metadataEntries: string[];
-    try {
-        metadataEntries = await fs.readdir(metadataDir);
-    } catch {
-        metadataEntries = [];
-    }
-
-    const resourcePromises = metadataEntries
-        .filter((name) => name.includes("."))
-        .map(async (metadataName) => {
-            const sidecar = await readSidecar(
-                projectPath,
-                metadataName
-                    .replace("resource-", "")
-                    .replace(".meta.json", ""),
-            );
-            const sidecarId =
-                sidecar && typeof sidecar.id === "string" ? sidecar.id : "";
-            const resourcePlaintext = fsSync.readFileSync(
-                path.join(resourcesDir, sidecarId, "content.txt"),
-                { encoding: "utf-8" },
-            );
-            const type =
-                sidecar && typeof sidecar.type === "string"
-                    ? sidecar.type
-                    : "";
-            const wordCount =
-                type === "text"
-                    ? resourcePlaintext.trim() === ""
-                        ? 0
-                        : resourcePlaintext.trim().split(/\s+/).length
-                    : undefined;
-            return {
-                ...sidecar,
-                plaintext: resourcePlaintext,
-                ...(wordCount !== undefined && { wordCount }),
-            } as LoadedResource;
-        });
-
-    const resources = await Promise.all(resourcePromises);
-
-    return { project, folders, resources };
+  return { project, folders, resources };
 }
