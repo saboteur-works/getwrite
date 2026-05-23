@@ -20,7 +20,7 @@
  * {@link AppShell} with the open project's data otherwise.
  */
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useAppSelector, { useAppDispatch } from "../src/store/hooks";
 import {
   setProject,
@@ -119,39 +119,36 @@ export default function Home(): JSX.Element {
 
   const dispatch = useAppDispatch();
 
-  // Fetch existing projects on mount
-  useEffect(() => {
-    /**
-     * Loads all projects from the API and maps them into
-     * {@link StartPageProjectEntry}-compatible view objects.
-     *
-     * @returns Resolved array of project view objects.
-     * @throws {Error} When the HTTP response is not OK.
-     */
-    async function fetchProjects(): Promise<StartPageProjectEntry[]> {
+  /**
+   * Loads all projects from the API and maps them into
+   * {@link StartPageProjectEntry}-compatible view objects.
+   */
+  const refreshProjects = useCallback(async (): Promise<void> => {
+    try {
       const entries = await listProjects();
       // buildProjectView expects TextResource[] and returns UIResource[]; the original
       // code cast through `any` (p: any) to bypass both constraints. We preserve that
       // runtime behaviour with a targeted cast rather than a blanket any.
-      return entries.map((p) =>
+      const data = entries.map((p) =>
         buildProjectView({
           project: p.project,
           folders: p.folders,
           resources: p.resources as unknown as TextResource[],
         }),
       ) as unknown as StartPageProjectEntry[];
+      if (Array.isArray(data)) {
+        dispatch(setProjectsInStore(data));
+        setProjects(data);
+      }
+    } catch (err) {
+      console.error("Error fetching projects:", err);
     }
-    fetchProjects()
-      .then((data) => {
-        if (Array.isArray(data)) {
-          dispatch(setProjectsInStore(data));
-          setProjects(data);
-        }
-      })
-      .catch((err) => {
-        console.error("Error fetching projects:", err);
-      });
-  }, []);
+  }, [dispatch]);
+
+  // Fetch existing projects on mount
+  useEffect(() => {
+    void refreshProjects();
+  }, [refreshProjects]);
 
   /**
    * Called by {@link StartPage} after a new project has been successfully
@@ -648,6 +645,7 @@ export default function Home(): JSX.Element {
     dispatch(setResourceId(null));
     dispatch(setResources([]));
     dispatch(setFolders([]));
+    void refreshProjects();
   };
 
   return (

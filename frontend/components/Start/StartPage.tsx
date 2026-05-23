@@ -206,6 +206,21 @@ export default function StartPage({
   /** Tick used to keep relative timestamps fresh while the page is open. */
   const [timestampTick, setTimestampTick] = useState<number>(Date.now());
 
+  /** Projects sorted by most recent activity (newest first). */
+  const sortedProjects = useMemo<StartPageProjectEntry[]>(() => {
+    return [...localProjects].sort((left, right) => {
+      const leftTimestamp = Date.parse(
+        getProjectLastEditedTimestamp(left) ?? "",
+      );
+      const rightTimestamp = Date.parse(
+        getProjectLastEditedTimestamp(right) ?? "",
+      );
+      const leftSafe = Number.isNaN(leftTimestamp) ? 0 : leftTimestamp;
+      const rightSafe = Number.isNaN(rightTimestamp) ? 0 : rightTimestamp;
+      return rightSafe - leftSafe;
+    });
+  }, [localProjects]);
+
   /** Total non-folder resources across all visible projects. */
   const totalRenderableResources = useMemo<number>(() => {
     return localProjects.reduce((total, projectEntry) => {
@@ -527,7 +542,7 @@ export default function StartPage({
             </article>
           ) : null}
 
-          {localProjects.map((projectEntry) => {
+          {sortedProjects.map((projectEntry) => {
             /** Non-folder resources shown in summaries and package flow. */
             const resourceList =
               projectEntry.resources.filter(isRenderableResource);
