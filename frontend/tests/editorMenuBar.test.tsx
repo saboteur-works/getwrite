@@ -505,7 +505,11 @@ describe("MenuBar", () => {
 });
 
 import { toolbarCommandSchema } from "../components/Editor/MenuBar/toolbar-command-schema";
-import { useToolbarCommands } from "../components/Editor/MenuBar/useToolbarCommand";
+import {
+  useToolbarCommands,
+  type ResolvedToolbarGroup,
+  type ResolvedToolbarItem,
+} from "../components/Editor/MenuBar/useToolbarCommand";
 import type { MenuBarState } from "../components/Editor/MenuBar/menuBarState";
 
 describe("Schema parity", () => {
@@ -632,14 +636,18 @@ describe("useToolbarCommands parity", () => {
     const { result } = renderHook(() =>
       useToolbarCommands(editor as never, mockState),
     );
-    result.current.forEach((resolvedGroup, groupIndex) => {
-      const schemaGroup = toolbarCommandSchema[groupIndex];
-      resolvedGroup.items.forEach((item, itemIndex) => {
-        const schemaItem = schemaGroup.items[itemIndex];
-        expect(item.id).toBe(schemaItem.id);
-        expect(item.kind).toBe(schemaItem.kind);
-      });
-    });
+    result.current.forEach(
+      (resolvedGroup: ResolvedToolbarGroup, groupIndex: number) => {
+        const schemaGroup = toolbarCommandSchema[groupIndex];
+        resolvedGroup.items.forEach(
+          (item: ResolvedToolbarItem, itemIndex: number) => {
+            const schemaItem = schemaGroup.items[itemIndex];
+            expect(item.id).toBe(schemaItem.id);
+            expect(item.kind).toBe(schemaItem.kind);
+          },
+        );
+      },
+    );
   });
 
   it("every resolved item has its action callback bound as a function", () => {
