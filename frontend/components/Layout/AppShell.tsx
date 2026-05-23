@@ -1301,15 +1301,19 @@ export default function AppShell({
                                       ? isQueryEvaluating
                                       : false
                                   }
-                                  onResourceClick={
-                                    activeSmartFolderId
-                                      ? (id) => {
-                                          dispatch(setSelectedResourceId(id));
-                                          setActiveSmartFolderId(null);
-                                          setQueryBuilderOpen(false);
-                                        }
-                                      : undefined
-                                  }
+                                  onResourceClick={(id) => {
+                                    dispatch(setSelectedResourceId(id));
+                                    const clicked = queryResources.find(
+                                      (r) => r.id === id,
+                                    );
+                                    if (clicked?.type === "text") {
+                                      setView("edit");
+                                    }
+                                    if (activeSmartFolderId) {
+                                      setActiveSmartFolderId(null);
+                                      setQueryBuilderOpen(false);
+                                    }
+                                  }}
                                   onSelectFolder={(folderId) => {
                                     dispatch(setSelectedResourceId(folderId));
                                     setView("organizer");

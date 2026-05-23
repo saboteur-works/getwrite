@@ -212,7 +212,10 @@ export default function DataView({
           </p>
         )}
         <div className="max-h-80 overflow-y-auto">
-          <StubResourcesSection resources={stubResources} />
+          <StubResourcesSection
+            resources={stubResources}
+            onResourceClick={onResourceClick}
+          />
           <ul className="workarea-list">
             {contentResources.map((r: AnyResource) => (
               <ResourceListItem
