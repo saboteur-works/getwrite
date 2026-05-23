@@ -100,6 +100,16 @@ export type StorageAdapter = {
    * @param newPath - New destination path.
    */
   rename(oldPath: string, newPath: string): Promise<void>;
+  /**
+   * Flushes file data to disk so it survives sudden shutdown.
+   *
+   * Real filesystem adapters should open the file, call `fsync`, and close.
+   * In-memory or test adapters may treat this as a no-op since their writes
+   * have no on-disk durability concern.
+   *
+   * @param path - Existing file path.
+   */
+  fsyncFile?(path: string): Promise<void>;
 };
 
 /**
@@ -118,6 +128,14 @@ let adapter: StorageAdapter = {
   stat: (p) => fs.stat(p) as Promise<Stats>,
   rm: (p, o) => fs.rm(p, o as any),
   rename: (a, b) => fs.rename(a, b),
+  fsyncFile: async (p) => {
+    const handle = await fs.open(p, "r+");
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  },
 };
 
 /**
@@ -209,25 +227,80 @@ export const rm = (p: string, o?: { recursive?: boolean; force?: boolean }) =>
 export const rename = (a: string, b: string) => adapter.rename(a, b);
 
 /**
+ * Flushes file data to disk using the active storage adapter. No-op when the
+ * adapter does not implement {@link StorageAdapter.fsyncFile}.
+ *
+ * @param p - File path to fsync.
+ */
+export const fsyncFile = async (p: string): Promise<void> => {
+  if (adapter.fsyncFile) await adapter.fsyncFile(p);
+};
+
+/**
+ * Options accepted by {@link atomicWriteFile}.
+ */
+export interface AtomicWriteOptions {
+  /**
+   * Underlying write options forwarded to the storage adapter's `writeFile`.
+   */
+  writeOptions?: string | object;
+  /**
+   * When `true`, fsync the temp file before renaming so data survives a
+   * sudden shutdown. Adds latency; intended for index/backlinks meta writes
+   * where loss would force an expensive rebuild.
+   */
+  durable?: boolean;
+}
+
+/**
  * Writes file data atomically: writes to `<path>.tmp` then renames into place.
  *
  * On POSIX systems rename is atomic within a filesystem, so a crash between
  * the write and the rename leaves the original file intact rather than
- * producing a partially-written result.
+ * producing a partially-written result. When `opts.durable` is true, also
+ * fsyncs the temp file before rename so committed data survives a crash.
+ *
+ * For backwards compatibility, callers may still pass a plain options object
+ * — it is forwarded directly to the underlying `writeFile`.
  *
  * @param p - Destination file path.
  * @param data - File contents as text or binary.
- * @param o - Optional write options forwarded to the underlying writeFile.
+ * @param opts - Either underlying write options or {@link AtomicWriteOptions}.
  * @returns Resolves when the rename completes.
  */
 export async function atomicWriteFile(
   p: string,
   data: string | Buffer,
-  o?: string | object,
+  opts?: string | object | AtomicWriteOptions,
 ): Promise<void> {
   const tmp = `${p}.tmp`;
-  await writeFile(tmp, data, o);
+  const normalized = normalizeAtomicWriteOptions(opts);
+  await writeFile(tmp, data, normalized.writeOptions);
+  if (normalized.durable) {
+    try {
+      await fsyncFile(tmp);
+    } catch (err) {
+      // Best-effort: a missing fsync impl or a permission error must not
+      // block the rename, since the atomic guarantee still holds without it.
+      console.warn("[io] fsync before rename failed:", err);
+    }
+  }
   await rename(tmp, p);
+}
+
+function normalizeAtomicWriteOptions(
+  opts?: string | object | AtomicWriteOptions,
+): { writeOptions?: string | object; durable: boolean } {
+  if (opts == null) return { writeOptions: undefined, durable: false };
+  if (typeof opts === "string") return { writeOptions: opts, durable: false };
+  const maybe = opts as AtomicWriteOptions;
+  if ("durable" in maybe || "writeOptions" in maybe) {
+    return {
+      writeOptions: maybe.writeOptions,
+      durable: maybe.durable === true,
+    };
+  }
+  return { writeOptions: opts, durable: false };
 }
 
 export default { setStorageAdapter, getStorageAdapter };

@@ -206,7 +206,10 @@ export async function persistBacklinks(
   }
   const out = path.join(metaDir, "backlinks.json");
   await withMetaLock(projectRoot, async () => {
-    await atomicWriteFile(out, JSON.stringify(index, null, 2), "utf8");
+    await atomicWriteFile(out, JSON.stringify(index, null, 2), {
+      writeOptions: "utf8",
+      durable: process.env.GETWRITE_DURABLE_META === "1",
+    });
   });
 }
 

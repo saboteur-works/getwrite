@@ -79,7 +79,10 @@ async function saveIndex(projectRoot: string, index: InvertedIndex) {
   await ensureIndexDir(projectRoot);
   const p = path.join(projectRoot, INDEX_DIR, INDEX_FILE);
   await withMetaLock(projectRoot, async () => {
-    await atomicWriteFile(p, JSON.stringify(index, null, 2), "utf8");
+    await atomicWriteFile(p, JSON.stringify(index, null, 2), {
+      writeOptions: "utf8",
+      durable: process.env.GETWRITE_DURABLE_META === "1",
+    });
   });
 }
 

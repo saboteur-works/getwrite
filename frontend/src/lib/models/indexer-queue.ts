@@ -11,7 +11,9 @@ type Task = { projectRoot: string; resourceId: string };
 
 const queue: Task[] = [];
 let running = false;
-const activeBacklinkWatchers = new Set<string>();
+let stopped = false;
+const activeBacklinkWatchers = new Map<string, () => void>();
+let shutdownHooksInstalled = false;
 
 /**
  * Ensures a backlink watcher is running for the project. The watcher
@@ -21,12 +23,33 @@ const activeBacklinkWatchers = new Set<string>();
  */
 function ensureBacklinkWatcher(projectRoot: string): void {
   if (activeBacklinkWatchers.has(projectRoot)) return;
-  activeBacklinkWatchers.add(projectRoot);
   try {
-    startBacklinkWatcher(projectRoot);
+    const stop = startBacklinkWatcher(projectRoot);
+    activeBacklinkWatchers.set(projectRoot, stop);
   } catch {
-    activeBacklinkWatchers.delete(projectRoot);
+    // Watcher could not start (e.g. resources dir missing on cold start) —
+    // leave the slot empty so a later enqueue can retry.
   }
+}
+
+/**
+ * Installs SIGTERM/SIGINT/beforeExit handlers that drain the indexer queue
+ * before the process exits. Idempotent; safe to call from any enqueue path.
+ * The hooks call {@link shutdownIndexer} and then `process.exit(0)` so the
+ * Next.js server can gracefully wind down when Electron's `before-quit`
+ * sends a termination signal to the spawned child.
+ */
+export function installShutdownHooks(): void {
+  if (shutdownHooksInstalled) return;
+  shutdownHooksInstalled = true;
+  const handle = (signal: NodeJS.Signals | "beforeExit") => () => {
+    void shutdownIndexer().finally(() => {
+      if (signal !== "beforeExit") process.exit(0);
+    });
+  };
+  process.on("SIGTERM", handle("SIGTERM"));
+  process.on("SIGINT", handle("SIGINT"));
+  process.on("beforeExit", handle("beforeExit"));
 }
 
 async function runTask(t: Task) {
@@ -117,6 +140,12 @@ export function enqueueIndex(
   projectRoot: string,
   resourceId: string,
 ): Promise<void> {
+  if (stopped) {
+    // After shutdown, accept no new work. Resolve immediately so callers
+    // (e.g. background save handlers) don't hang the request.
+    return Promise.resolve();
+  }
+  installShutdownHooks();
   ensureBacklinkWatcher(projectRoot);
   return new Promise((resolve) => {
     queue.push({ projectRoot, resourceId });
@@ -159,4 +188,52 @@ export function flushIndexer(timeout = 5000): Promise<void> {
 /** Alias for {@link flushIndexer} — standard drain API. */
 export const waitForDrain = flushIndexer;
 
-export default { enqueueIndex, flushIndexer, waitForDrain };
+/**
+ * Gracefully shuts down the indexer queue. Stops accepting new tasks,
+ * waits for any in-flight or queued tasks to finish (up to `timeoutMs`),
+ * and stops all backlinks watchers started by this module.
+ *
+ * Calling more than once is safe — additional calls await the original
+ * drain without re-stopping watchers.
+ */
+export async function shutdownIndexer(timeoutMs = 5000): Promise<void> {
+  stopped = true;
+  try {
+    await flushIndexer(timeoutMs);
+  } finally {
+    for (const stop of activeBacklinkWatchers.values()) {
+      try {
+        stop();
+      } catch {
+        // ignore individual watcher errors during shutdown
+      }
+    }
+    activeBacklinkWatchers.clear();
+  }
+}
+
+/**
+ * Test-only helper that resets the stopped flag so a fresh enqueue path can
+ * be exercised after a `shutdownIndexer` call. Not exported via default.
+ */
+export function __resetIndexerForTests(): void {
+  stopped = false;
+  queue.length = 0;
+  running = false;
+  for (const stop of activeBacklinkWatchers.values()) {
+    try {
+      stop();
+    } catch {
+      // ignore
+    }
+  }
+  activeBacklinkWatchers.clear();
+}
+
+export default {
+  enqueueIndex,
+  flushIndexer,
+  waitForDrain,
+  shutdownIndexer,
+  installShutdownHooks,
+};

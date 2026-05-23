@@ -11,6 +11,8 @@ import {
   enqueueIndex,
   flushIndexer,
   waitForDrain,
+  shutdownIndexer,
+  __resetIndexerForTests,
 } from "../../src/lib/models/indexer-queue";
 
 async function waitForIndex(
@@ -133,5 +135,44 @@ describe("waitForDrain export (T-INDEXER-DRAIN)", () => {
     await expect(waitForDrain(2000)).resolves.toBeUndefined();
 
     errSpy.mockRestore();
+  });
+});
+
+describe("shutdownIndexer (graceful shutdown)", () => {
+  beforeEach(() => {
+    setStorageAdapter(createMemoryAdapter());
+    __resetIndexerForTests();
+  });
+
+  afterEach(() => {
+    __resetIndexerForTests();
+  });
+
+  it("drains any pending work before resolving", async () => {
+    const errSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    const projectRoot = "/proj-shutdown-" + Date.now();
+    void enqueueIndex(projectRoot, "resource-a");
+    void enqueueIndex(projectRoot, "resource-b");
+
+    await expect(shutdownIndexer(2000)).resolves.toBeUndefined();
+
+    errSpy.mockRestore();
+  });
+
+  it("ignores further enqueueIndex calls after shutdown", async () => {
+    await shutdownIndexer(1);
+
+    // After shutdown, new enqueues must not push work or hang the caller.
+    await expect(
+      enqueueIndex("/proj-after-shutdown", "ghost-resource"),
+    ).resolves.toBeUndefined();
+  });
+
+  it("is safe to call more than once", async () => {
+    await shutdownIndexer(1);
+    await expect(shutdownIndexer(1)).resolves.toBeUndefined();
   });
 });
