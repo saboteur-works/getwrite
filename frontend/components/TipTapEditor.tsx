@@ -82,6 +82,9 @@ export const extensions = [
     bulletList: false, // disabled — BulletList registered explicitly below
     orderedList: false, // disabled — OrderedList registered explicitly below
     listItem: false, // disabled — ListItem registered explicitly below
+    blockquote: false, // disabled — Blockquote registered explicitly below
+    codeBlock: false, // disabled — CodeBlock registered explicitly below
+    listKeymap: false, // disabled — ListKeymap registered explicitly below
   }),
   TextStyle,
   Color,

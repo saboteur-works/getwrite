@@ -510,6 +510,7 @@ export default function Home(): JSX.Element {
             ? { ...prev, resources: [...prev.resources, res] as AnyResource[] }
             : prev,
         );
+        dispatch(setResourceId(res.id));
       }
 
       toastService.success(
