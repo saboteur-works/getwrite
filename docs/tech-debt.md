@@ -1,6 +1,6 @@
 # Tech debt inventory
 
-Date: 2026-04-08
+Date: 2026-05-23
 
 ## Purpose
 
@@ -25,15 +25,17 @@ Table of contents
 
 ### Architecture
 
-- Editor toolbar duplication — Severity: High
-    - Description: Toolbar rendering contains duplicated action wiring and submenu scaffolding across multiple files, increasing drift risk and maintenance cost.
-    - Example files: `frontend/components/Editor/MenuBar/MenuBar.tsx`, `frontend/components/Editor/MenuBar/EditorMenuInput.tsx`, `frontend/components/Editor/MenuBar/EditorMenuColorSubmenu.tsx`
-    - Suggested remediation: Extract a typed `CommandDescriptor` and render toolbar from a declarative config; add parity tests to verify behavior.
+- Editor toolbar duplication — ~~Severity: High~~ **Resolved in `feat/editor-command-descriptor`**
+    - ~~Description: Toolbar rendering contains duplicated action wiring and submenu scaffolding across multiple files, increasing drift risk and maintenance cost.~~
+    - ~~Example files: `frontend/components/Editor/MenuBar/MenuBar.tsx`, `frontend/components/Editor/MenuBar/EditorMenuInput.tsx`, `frontend/components/Editor/MenuBar/EditorMenuColorSubmenu.tsx`~~
+    - ~~Suggested remediation: Extract a typed `CommandDescriptor` and render toolbar from a declarative config; add parity tests to verify behavior.~~
+    - Resolution: Introduced `toolbar-command-schema.ts` with a single typed `toolbarCommandSchema: ToolbarCommandGroup[]`. `useToolbarCommands` hook binds editor/state context and returns fully resolved `ResolvedToolbarGroup[]`; `MenuBar.tsx` now renders purely from those descriptors with no direct TipTap command calls. `EditorMenuInput` and `EditorMenuColorSubmenu` are pure presentational components. Parity tests in `editorMenuBar.test.tsx` enforce group-count, id/kind, and callback-binding invariants.
 
-- Revision / canonical guards — Severity: High
-    - Description: Canonical revision invariants are critical but lack comprehensive unit tests and guard functions in model/slice layers.
-    - Example files: `frontend/src/lib/revision.ts`, `frontend/src/store/revisionsSlice.ts` (review these paths for exact locations)
-    - Suggested remediation: Implement canonical guard helpers, add unit tests for promotion/deletion/prune behavior, and harden model factories with zod validation.
+- Revision / canonical guards — ~~Severity: High~~ **Resolved across `fix/p0-blockers` + `fix/tech-debt`**
+    - ~~Description: Canonical revision invariants are critical but lack comprehensive unit tests and guard functions in model/slice layers.~~
+    - ~~Example files: `frontend/src/lib/revision.ts`, `frontend/src/store/revisionsSlice.ts` (review these paths for exact locations)~~
+    - ~~Suggested remediation: Implement canonical guard helpers, add unit tests for promotion/deletion/prune behavior, and harden model factories with zod validation.~~
+    - Resolution: Canonical guard added to POST handler (`setCanonicalRevision` after `writeRevision`) and DELETE handler (HTTP 400 on canonical target). Slice-level guards cover stale-requestedResourceId, `setSelectedResourceId` reset, delete-current-revision auto-advance, stale save/fetch/delete cross-resource, and `clearRevisions` reset. See `revision-route-canonical.test.ts`, `revision-invariants.test.ts`, and `revision-canonical-guards.test.ts`.
 
 ### Tests
 
@@ -66,10 +68,11 @@ Table of contents
 
 ### Dependencies
 
-- Lodash import drift — Severity: Medium
-    - Description: Full-package lodash imports and non-path imports are present in places, increasing bundle weight and violating the allowlist policy.
-    - Example files: `frontend/components/ResourceTree/ResourceTree.tsx`, `frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx`
-    - Suggested remediation: Replace full-package imports with path imports (e.g., `lodash/uniq`), prefer native array methods, and add an ESLint rule or PR checklist.
+- Lodash import drift — ~~Severity: Medium~~ **Resolved in `fix/tech-debt`**
+    - ~~Description: Full-package lodash imports and non-path imports are present in places, increasing bundle weight and violating the allowlist policy.~~
+    - ~~Example files: `frontend/components/ResourceTree/ResourceTree.tsx`, `frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx`~~
+    - ~~Suggested remediation: Replace full-package imports with path imports (e.g., `lodash/uniq`), prefer native array methods, and add an ESLint rule or PR checklist.~~
+    - Resolution: Audit confirmed all lodash usages were already path imports (`lodash/debounce`). Added `no-restricted-imports` ESLint rule in `frontend/eslint.config.mjs` to enforce path-only imports — any future `import { x } from 'lodash'` or `import _ from 'lodash'` will error at lint time.
 
 ### Docs & Standards
 
@@ -93,15 +96,13 @@ Table of contents
     - ~~Description: Replace any polling-based flush semantics with a deterministic, promise-based `waitForDrain()` on the indexer queue.~~
     - Resolution: Exported `waitForDrain` alias from `frontend/src/lib/models/indexer-queue.ts` (same semantics as existing `flushIndexer`). Added error logging in the queue `catch` block. Added `getwrite reindex [projectRoot]` CLI command (`frontend/src/cli/commands/reindex.ts`) to rebuild the inverted index and backlinks from scratch. Tests added in `frontend/tests/unit/indexer-queue.test.ts` and `frontend/tests/cli/reindex.test.ts`.
 
-- `chore/toolbar-consolidation` — Owner: TBD — Priority: P1
-    - Description: Consolidate toolbar/menu wiring into a typed `CommandDescriptor` and central generator to eliminate duplicated wiring and submenu scaffolding.
-    - Example files: frontend/components/Editor/MenuBar/MenuBar.tsx, frontend/components/Editor/MenuBar/EditorMenuInput.tsx, frontend/components/Editor/MenuBar/EditorMenuColorSubmenu.tsx, frontend/components/Editor/MenuBar/toolbar-command-schema.ts
-    - Suggested remediation: Extract declarative config, migrate incremental tests, and open PR `chore/toolbar-consolidation`.
+- `feat/editor-command-descriptor` — ~~Owner: TBD — Priority: P1~~ **Resolved**
+    - ~~Description: Consolidate toolbar/menu wiring into a typed `CommandDescriptor` and central generator to eliminate duplicated wiring and submenu scaffolding.~~
+    - Resolution: Feature complete on `feat/editor-command-descriptor`. Declarative schema, resolver hook, pure presentational subcomponents, and parity tests all shipped. See `docs/features/feature-specifications/editor-command-descriptor/`.
 
-- `chore/lodash-import-cleanup` — Owner: TBD — Priority: P1
-    - Description: Audit and replace non-path lodash imports with path imports (e.g. `lodash/debounce`) or native methods to reduce bundle pressure and match the repo policy.
-    - Example files: frontend/components/ResourceTree/ResourceTree.tsx, frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx, frontend/components/workarea/useCanonicalAutosave.ts
-    - Suggested remediation: Add an ESLint rule/CI check, perform automated codemod for common cases, and open PR `chore/lodash-import-cleanup`.
+- `chore/lodash-import-cleanup` — ~~Owner: TBD — Priority: P1~~ **Resolved in `fix/tech-debt`**
+    - ~~Description: Audit and replace non-path lodash imports with path imports (e.g. `lodash/debounce`) or native methods to reduce bundle pressure and match the repo policy.~~
+    - Resolution: Audit found no full-package violations. ESLint `no-restricted-imports` rule added to `frontend/eslint.config.mjs` to block any future `import { x } from 'lodash'`.
 
 ---
 

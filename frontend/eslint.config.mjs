@@ -42,6 +42,20 @@ const eslintConfig = [
             // Extensive pre-existing any usage; warn rather than error until
             // addressed systematically per docs/standards/typescript-implementation.md
             "@typescript-eslint/no-explicit-any": "warn",
+            // Enforce path imports for lodash to avoid full-package bundle weight.
+            // Use lodash/debounce, lodash/uniq, etc. — not import { x } from 'lodash'.
+            "no-restricted-imports": [
+                "error",
+                {
+                    paths: [
+                        {
+                            name: "lodash",
+                            message:
+                                "Use path imports instead (e.g. lodash/debounce, lodash/uniq).",
+                        },
+                    ],
+                },
+            ],
         },
     },
 ];
