@@ -2,6 +2,8 @@ import React from "react";
 import debounce from "lodash/debounce";
 import type { TipTapDocument } from "../../src/lib/models";
 import { patchRevisionContent } from "../../src/lib/api/resources";
+import { useAppDispatch } from "../../src/store/hooks";
+import { updateResource } from "../../src/store/resourcesSlice";
 
 export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
@@ -27,13 +29,14 @@ export function useCanonicalAutosave({
   currentRevisionId,
   canonicalRevisionId,
 }: UseCanonicalAutosaveOptions): UseCanonicalAutosaveResult {
+  const dispatch = useAppDispatch();
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
   const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
   const [failedSaveDoc, setFailedSaveDoc] =
     React.useState<TipTapDocument | null>(null);
 
   const persistCanonicalRevisionContent = React.useCallback(
-    async (doc: TipTapDocument) => {
+    async (doc: TipTapDocument): Promise<{ updatedAt: string } | undefined> => {
       if (
         !projectRootPath ||
         !selectedResourceId ||
@@ -43,7 +46,7 @@ export function useCanonicalAutosave({
         return;
       }
 
-      await patchRevisionContent(
+      return patchRevisionContent(
         selectedResourceId,
         projectRootPath,
         currentRevisionId,
@@ -63,17 +66,25 @@ export function useCanonicalAutosave({
       setSaveStatus("saving");
 
       try {
-        await persistCanonicalRevisionContent(doc);
+        const result = await persistCanonicalRevisionContent(doc);
         setSaveStatus("saved");
         setLastSavedAt(new Date());
         setFailedSaveDoc(null);
+        if (selectedResourceId && result?.updatedAt) {
+          dispatch(
+            updateResource({
+              id: selectedResourceId,
+              updatedAt: result.updatedAt,
+            }),
+          );
+        }
       } catch (error) {
         console.error("Failed to persist canonical revision content", error);
         setSaveStatus("error");
         setFailedSaveDoc(doc);
       }
     },
-    [persistCanonicalRevisionContent],
+    [persistCanonicalRevisionContent, selectedResourceId, dispatch],
   );
 
   const debouncedPersistCanonicalRevisionContent = React.useMemo(

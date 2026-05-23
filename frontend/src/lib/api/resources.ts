@@ -130,7 +130,7 @@ export async function patchRevisionContent(
   projectPath: string,
   revisionId: string,
   content: string,
-): Promise<void> {
+): Promise<{ updatedAt: string }> {
   const response = await fetch(`/api/resource/revision/${resourceId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -139,6 +139,8 @@ export async function patchRevisionContent(
   if (!response.ok) {
     throw new Error(`Failed to persist revision (${response.status})`);
   }
+  const data = (await response.json()) as { updatedAt?: string };
+  return { updatedAt: data.updatedAt ?? new Date().toISOString() };
 }
 
 export async function reorderResources(

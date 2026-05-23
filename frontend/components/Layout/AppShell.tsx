@@ -366,11 +366,8 @@ export default function AppShell({
   );
 
   const recentResources = React.useMemo(() => {
-    const sortableResources = (resources ?? []).filter(
-      (resource) => resource.type !== "folder",
-    );
-
-    return [...sortableResources]
+    return [...liveResources]
+      .filter((resource) => resource.type !== "folder")
       .sort((left, right) => {
         const leftTimestamp = Date.parse(
           left.updatedAt ?? left.createdAt ?? "",
@@ -378,14 +375,12 @@ export default function AppShell({
         const rightTimestamp = Date.parse(
           right.updatedAt ?? right.createdAt ?? "",
         );
-
         const leftSafe = Number.isNaN(leftTimestamp) ? 0 : leftTimestamp;
         const rightSafe = Number.isNaN(rightTimestamp) ? 0 : rightTimestamp;
-
         return rightSafe - leftSafe;
       })
       .slice(0, 6);
-  }, [resources]);
+  }, [liveResources]);
 
   const syncBlockers = React.useMemo<SyncBlocker[]>(() => {
     const blockers: SyncBlocker[] = [];
@@ -1455,7 +1450,7 @@ export default function AppShell({
                                               </span>
                                               <span className="text-xs text-gw-secondary">
                                                 {resource.updatedAt
-                                                  ? `Updated ${formatRelativeTimestamp(resource.updatedAt)}`
+                                                  ? `Edited ${formatRelativeTimestamp(resource.updatedAt)}`
                                                   : `Created ${formatRelativeTimestamp(resource.createdAt)}`}
                                               </span>
                                             </button>
