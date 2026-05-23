@@ -1,470 +1,559 @@
 import type { Editor } from "@tiptap/core";
 import type {
-    EditorMenuColorIconName,
-    EditorMenuIconName,
-    EditorMenuInputIconName,
+  EditorMenuColorIconName,
+  EditorMenuIconName,
+  EditorMenuInputIconName,
 } from "./editor-toolbar-icons";
 import type { EditorMenuInputType } from "./EditorMenuInput";
 import type { MenuBarState } from "./menuBarState";
 import type {
-    EditorBodyConfig,
-    EditorHeading,
-    EditorHeadings,
+  EditorBodyConfig,
+  EditorHeading,
+  EditorHeadings,
 } from "../../../src/lib/models/types";
 import { FONT_OPTIONS } from "../../../src/lib/fonts/fonts";
 import { loadGoogleFont } from "../../../src/lib/fonts/loadGoogleFont";
 
 export interface ToolbarCommandContext {
-    editor: Editor;
-    state: MenuBarState;
-    editorConfig?: {
-        headings: { [key in EditorHeadings]?: EditorHeading };
-        body?: EditorBodyConfig;
-    };
+  editor: Editor;
+  state: MenuBarState;
+  editorConfig?: {
+    headings: { [key in EditorHeadings]?: EditorHeading };
+    body?: EditorBodyConfig;
+  };
 }
 
 export interface ToolbarCommandGroup {
-    groupName: string;
-    groupId: string;
-    items: ToolbarCommandItem[];
+  groupName: string;
+  groupId: string;
+  items: ToolbarCommandItem[];
+  shouldRender?: (context: ToolbarCommandContext) => boolean;
 }
 
 interface ToolbarCommandItemBase {
-    id: string;
-    tooltipContent: string;
-    rotate?: false | "45" | "90";
-    initialValue?: string;
+  id: string;
+  tooltipContent: string;
+  rotate?: false | "45" | "90";
+  initialValue?: string;
 }
 
 export interface ToolbarIconCommand extends ToolbarCommandItemBase {
-    kind: "icon";
-    icon: EditorMenuIconName;
-    isDisabled?: (context: ToolbarCommandContext) => boolean;
-    isActive?: (context: ToolbarCommandContext) => boolean;
-    run: (context: ToolbarCommandContext) => boolean | void;
+  kind: "icon";
+  icon: EditorMenuIconName;
+  isDisabled?: (context: ToolbarCommandContext) => boolean;
+  isActive?: (context: ToolbarCommandContext) => boolean;
+  run: (context: ToolbarCommandContext) => boolean | void;
 }
 
 export interface ToolbarInputCommand extends ToolbarCommandItemBase {
-    kind: "input";
-    icon: EditorMenuInputIconName;
-    inputType: EditorMenuInputType;
-    options?: string[];
-    getValue: (context: ToolbarCommandContext) => string;
-    onChange: (context: ToolbarCommandContext, value: string) => void;
+  kind: "input";
+  icon: EditorMenuInputIconName;
+  inputType: EditorMenuInputType;
+  options?: string[];
+  getValue: (context: ToolbarCommandContext) => string;
+  onChange: (context: ToolbarCommandContext, value: string) => void;
 }
 
 export interface ToolbarColorCommand extends ToolbarCommandItemBase {
-    kind: "color-submenu";
-    icon: EditorMenuColorIconName;
-    colors: string[];
-    getActiveColor: (context: ToolbarCommandContext) => string | undefined;
-    onSelectColor: (
-        context: ToolbarCommandContext,
-        color: string,
-    ) => boolean | void;
-    isDisabled?: (context: ToolbarCommandContext) => boolean;
+  kind: "color-submenu";
+  icon: EditorMenuColorIconName;
+  colors: string[];
+  getActiveColor: (context: ToolbarCommandContext) => string | undefined;
+  onSelectColor: (
+    context: ToolbarCommandContext,
+    color: string,
+  ) => boolean | void;
+  onClearColor?: (context: ToolbarCommandContext) => boolean | void;
+  clearLabel?: string;
+  isDisabled?: (context: ToolbarCommandContext) => boolean;
 }
 
 export type ToolbarCommandItem =
-    | ToolbarIconCommand
-    | ToolbarInputCommand
-    | ToolbarColorCommand;
+  | ToolbarIconCommand
+  | ToolbarInputCommand
+  | ToolbarColorCommand;
 
 // GW-HEX-EXEMPT-START: TipTap editor text/highlight color palettes — user-selectable arbitrary colors, not brand tokens
 const TEXT_COLOR_OPTIONS = [
-    "#111827",
-    "#1f2937",
-    "#0ea5ff",
-    "#2563eb",
-    "#059669",
-    "#b45309",
-    "#be123c",
-    "#7c3aed",
+  "#111827",
+  "#1f2937",
+  "#0ea5ff",
+  "#2563eb",
+  "#059669",
+  "#b45309",
+  "#be123c",
+  "#7c3aed",
 ];
 
 const BACKGROUND_COLOR_OPTIONS = [
-    "#fff8b3",
-    "#ffe4e6",
-    "#dbeafe",
-    "#dcfce7",
-    "#fef3c7",
-    "#e9d5ff",
-    "#f3f4f6",
-    "#ffffff",
+  "#fff8b3",
+  "#ffe4e6",
+  "#dbeafe",
+  "#dcfce7",
+  "#fef3c7",
+  "#e9d5ff",
+  "#f3f4f6",
+  "#ffffff",
 ];
 
 const HIGHLIGHT_COLOR_OPTIONS = [
-    "#fff8b3",
-    "#fde68a",
-    "#fecaca",
-    "#fed7aa",
-    "#bfdbfe",
-    "#c7d2fe",
-    "#d9f99d",
-    "#ddd6fe",
+  "#fff8b3",
+  "#fde68a",
+  "#fecaca",
+  "#fed7aa",
+  "#bfdbfe",
+  "#c7d2fe",
+  "#d9f99d",
+  "#ddd6fe",
 ];
 // GW-HEX-EXEMPT-END
 
 function insertBlockMath(context: ToolbarCommandContext): boolean {
-    const { editor } = context;
-    const hasSelection = !editor.state.selection.empty;
+  const { editor } = context;
+  const hasSelection = !editor.state.selection.empty;
 
-    if (hasSelection) {
-        const { from, to } = editor.state.selection;
-        const latex = editor.state.doc.textBetween(from, to, " ");
-        return editor.chain().insertBlockMath({ latex }).focus().run();
-    }
-
-    const latex = prompt("Enter block math expression:", "");
-    if (latex === null) {
-        return false;
-    }
-
+  if (hasSelection) {
+    const { from, to } = editor.state.selection;
+    const latex = editor.state.doc.textBetween(from, to, " ");
     return editor.chain().insertBlockMath({ latex }).focus().run();
+  }
+
+  const latex = prompt("Enter block math expression:", "");
+  if (latex === null) {
+    return false;
+  }
+
+  return editor.chain().insertBlockMath({ latex }).focus().run();
 }
 
 const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;
 type HeadingLevel = (typeof HEADING_LEVELS)[number];
 
 const headingCommands: ToolbarIconCommand[] = HEADING_LEVELS.map(
-    (level: HeadingLevel) => ({
-        id: `heading-${level}`,
-        kind: "icon" as const,
-        icon: `heading${level}` as EditorMenuIconName,
-        tooltipContent: `Heading ${level}`,
-        isActive: ({ state }: ToolbarCommandContext) =>
-            state[`isHeading${level}` as keyof MenuBarState] as boolean,
-        run: ({ editor }: ToolbarCommandContext) =>
-            editor.chain().focus().toggleHeading({ level }).run(),
-    }),
+  (level: HeadingLevel) => ({
+    id: `heading-${level}`,
+    kind: "icon" as const,
+    icon: `heading${level}` as EditorMenuIconName,
+    tooltipContent: `Heading ${level}`,
+    isActive: ({ state }: ToolbarCommandContext) =>
+      state[`isHeading${level}` as keyof MenuBarState] as boolean,
+    run: ({ editor }: ToolbarCommandContext) =>
+      editor.chain().focus().toggleHeading({ level }).run(),
+  }),
 );
 
 const ALIGN_OPTIONS = [
-    { dir: "left",    icon: "alignLeft",    label: "Align Left",    stateKey: "isAlignLeft"    },
-    { dir: "center",  icon: "alignCenter",  label: "Align Center",  stateKey: "isAlignCenter"  },
-    { dir: "right",   icon: "alignRight",   label: "Align Right",   stateKey: "isAlignRight"   },
-    { dir: "justify", icon: "alignJustify", label: "Align Justify", stateKey: "isAlignJustify" },
+  {
+    dir: "left",
+    icon: "alignLeft",
+    label: "Align Left",
+    stateKey: "isAlignLeft",
+  },
+  {
+    dir: "center",
+    icon: "alignCenter",
+    label: "Align Center",
+    stateKey: "isAlignCenter",
+  },
+  {
+    dir: "right",
+    icon: "alignRight",
+    label: "Align Right",
+    stateKey: "isAlignRight",
+  },
+  {
+    dir: "justify",
+    icon: "alignJustify",
+    label: "Align Justify",
+    stateKey: "isAlignJustify",
+  },
 ] as const;
 
 const alignmentCommands: ToolbarIconCommand[] = ALIGN_OPTIONS.map(
-    ({ dir, icon, label, stateKey }) => ({
-        id: `align-${dir}`,
-        kind: "icon" as const,
-        icon: icon as EditorMenuIconName,
-        tooltipContent: label,
-        isActive: ({ state }: ToolbarCommandContext) =>
-            state[stateKey] as boolean,
-        run: ({ editor }: ToolbarCommandContext) =>
-            editor.chain().focus().setTextAlign(dir).run(),
-    }),
+  ({ dir, icon, label, stateKey }) => ({
+    id: `align-${dir}`,
+    kind: "icon" as const,
+    icon: icon as EditorMenuIconName,
+    tooltipContent: label,
+    isActive: ({ state }: ToolbarCommandContext) => state[stateKey] as boolean,
+    run: ({ editor }: ToolbarCommandContext) =>
+      editor.chain().focus().setTextAlign(dir).run(),
+  }),
 );
 
 export const toolbarCommandSchema: ToolbarCommandGroup[] = [
-    {
-        groupName: "Typography",
-        groupId: "typography-controls",
-        items: [
-            {
-                id: "font-size",
-                kind: "input",
-                icon: "fontSize",
-                inputType: "number",
-                tooltipContent: "Font Size",
-                getValue: ({ editor, state, editorConfig }) => {
-                    const explicit =
-                        editor.getAttributes("textStyle").fontSize;
-                    if (explicit) return explicit.replace("px", "");
+  {
+    groupName: "Typography",
+    groupId: "typography-controls",
+    items: [
+      {
+        id: "font-size",
+        kind: "input",
+        icon: "fontSize",
+        inputType: "number",
+        tooltipContent: "Font Size",
+        getValue: ({ editor, state, editorConfig }) => {
+          const explicit = editor.getAttributes("textStyle").fontSize;
+          if (explicit) return explicit.replace("px", "");
 
-                    const activeLevel =
-                        state.isHeading1
-                            ? 1
-                            : state.isHeading2
-                              ? 2
-                              : state.isHeading3
-                                ? 3
-                                : state.isHeading4
-                                  ? 4
-                                  : state.isHeading5
-                                    ? 5
-                                    : state.isHeading6
-                                      ? 6
-                                      : null;
+          const activeLevel = state.isHeading1
+            ? 1
+            : state.isHeading2
+              ? 2
+              : state.isHeading3
+                ? 3
+                : state.isHeading4
+                  ? 4
+                  : state.isHeading5
+                    ? 5
+                    : state.isHeading6
+                      ? 6
+                      : null;
 
-                    if (activeLevel !== null) {
-                        const key = `h${activeLevel}` as EditorHeadings;
-                        const size =
-                            editorConfig?.headings?.[key]?.fontSize;
-                        if (size) return size.replace("px", "");
-                    }
+          if (activeLevel !== null) {
+            const key = `h${activeLevel}` as EditorHeadings;
+            const size = editorConfig?.headings?.[key]?.fontSize;
+            if (size) return size.replace("px", "");
+          }
 
-                    return (
-                        editorConfig?.body?.fontSize?.replace("px", "") ??
-                        "15"
-                    );
-                },
-                onChange: ({ editor }, value) => {
-                    if (!value) {
-                        return;
-                    }
+          return editorConfig?.body?.fontSize?.replace("px", "") ?? "15";
+        },
+        onChange: ({ editor }, value) => {
+          if (!value) {
+            return;
+          }
 
-                    editor.chain().setFontSize(`${value}px`).run();
-                },
-            },
-            {
-                id: "font-family",
-                kind: "input",
-                icon: "fontStyle",
-                inputType: "select",
-                tooltipContent: "Font Family",
-                options: FONT_OPTIONS.map((option) => option.label),
-                getValue: ({ editor }) =>
-                    editor.getAttributes("textStyle").fontFamily ?? "Domine",
-                onChange: ({ editor }, value) => {
-                    // editor.chain().focus().setFontFamily(value).run();
-                    const selected = FONT_OPTIONS.find(
-                        (f) => f.label === value,
-                    );
-                    if (!selected) return;
+          editor.chain().setFontSize(`${value}px`).run();
+        },
+      },
+      {
+        id: "font-family",
+        kind: "input",
+        icon: "fontStyle",
+        inputType: "select",
+        tooltipContent: "Font Family",
+        options: FONT_OPTIONS.map((option) => option.label),
+        getValue: ({ editor }) =>
+          editor.getAttributes("textStyle").fontFamily ?? "Domine",
+        onChange: ({ editor }, value) => {
+          // editor.chain().focus().setFontFamily(value).run();
+          const selected = FONT_OPTIONS.find((f) => f.label === value);
+          if (!selected) return;
 
-                    loadGoogleFont(
-                        selected.value.replace(/\+/g, " "),
-                        selected.weights,
-                    );
+          loadGoogleFont(selected.value.replace(/\+/g, " "), selected.weights);
 
-                    editor.chain().focus().setFontFamily(selected.label).run();
-                },
-            },
-        ],
-    },
-    {
-        groupName: "History",
-        groupId: "history-controls",
-        items: [
-            {
-                id: "undo",
-                kind: "icon",
-                icon: "undo",
-                tooltipContent: "Undo",
-                isDisabled: ({ state }) => !state.canUndo,
-                run: ({ editor }) => editor.chain().focus().undo().run(),
-            },
-            {
-                id: "redo",
-                kind: "icon",
-                icon: "redo",
-                tooltipContent: "Redo",
-                isDisabled: ({ state }) => !state.canRedo,
-                run: ({ editor }) => editor.chain().focus().redo().run(),
-            },
-        ],
-    },
-    {
-        groupName: "Text Formatting",
-        groupId: "text-formatting-controls",
-        items: [
-            {
-                id: "bold",
-                kind: "icon",
-                icon: "bold",
-                tooltipContent: "Bold",
-                isDisabled: ({ state }) => !state.canBold,
-                isActive: ({ state }) => state.isBold,
-                run: ({ editor }) => editor.chain().focus().toggleBold().run(),
-            },
-            {
-                id: "italic",
-                kind: "icon",
-                icon: "italic",
-                tooltipContent: "Italic",
-                isDisabled: ({ state }) => !state.canItalic,
-                isActive: ({ state }) => state.isItalic,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleItalic().run(),
-            },
-            {
-                id: "underline",
-                kind: "icon",
-                icon: "underline",
-                tooltipContent: "Underline",
-                isDisabled: ({ state }) => !state.canUnderline,
-                isActive: ({ state }) => state.isUnderline,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleUnderline().run(),
-            },
-            {
-                id: "strikethrough",
-                kind: "icon",
-                icon: "strikethrough",
-                tooltipContent: "Strikethrough",
-                isDisabled: ({ state }) => !state.canStrike,
-                isActive: ({ state }) => state.isStrike,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleStrike().run(),
-            },
-            {
-                id: "inline-code",
-                kind: "icon",
-                icon: "code",
-                tooltipContent: "Inline code",
-                isDisabled: ({ state }) => !state.canCode,
-                isActive: ({ state }) => state.isCode,
-                run: ({ editor }) => editor.chain().focus().toggleCode().run(),
-            },
-        ],
-    },
-    {
-        groupName: "Alignment",
-        groupId: "alignment-controls",
-        items: alignmentCommands,
-    },
-    {
-        groupName: "Format Type",
-        groupId: "format-type-controls",
-        items: [
-            {
-                id: "paragraph",
-                kind: "icon",
-                icon: "pilcrow",
-                tooltipContent: "Paragraph",
-                isActive: ({ state }) => state.isParagraph,
-                run: ({ editor }) =>
-                    editor.chain().focus().setParagraph().run(),
-            },
-            {
-                id: "code-block",
-                kind: "icon",
-                icon: "codeSquare",
-                tooltipContent: "Code block",
-                isActive: ({ state }) => state.isCodeBlock,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleCodeBlock().run(),
-            },
-            {
-                id: "line-height",
-                kind: "input",
-                icon: "lineHeight",
-                inputType: "number",
-                tooltipContent: "Line Height",
-                rotate: "90",
-                initialValue: "1.5",
-                getValue: ({ state }) => state.getWriteParagraphLeading,
-                onChange: ({ editor }, value) => {
-                    editor.chain().setParagraphLeading(value).run();
-                },
-            },
-        ],
-    },
-    {
-        groupName: "Headings",
-        groupId: "heading-controls",
-        items: [
-            {
-                id: "hard-break",
-                kind: "icon",
-                icon: "textWrap",
-                tooltipContent: "Hard break",
-                run: ({ editor }) =>
-                    editor.chain().focus().setHardBreak().run(),
-            },
-            ...headingCommands,
-        ],
-    },
-    {
-        groupName: "Lists and Blocks",
-        groupId: "list-block-controls",
-        items: [
-            {
-                id: "bullet-list",
-                kind: "icon",
-                icon: "list",
-                tooltipContent: "Bullet list",
-                isActive: ({ state }) => state.isBulletList,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleBulletList().run(),
-            },
-            {
-                id: "ordered-list",
-                kind: "icon",
-                icon: "listOrdered",
-                tooltipContent: "Ordered list",
-                isActive: ({ state }) => state.isOrderedList,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleOrderedList().run(),
-            },
-        ],
-    },
-    {
-        groupName: "Blockquote and Horizontal Rule",
-        groupId: "blockquote-hr-controls",
-        items: [
-            {
-                id: "blockquote",
-                kind: "icon",
-                icon: "quote",
-                tooltipContent: "Blockquote",
-                isActive: ({ state }) => state.isBlockquote,
-                run: ({ editor }) =>
-                    editor.chain().focus().toggleBlockquote().run(),
-            },
-            {
-                id: "horizontal-rule",
-                kind: "icon",
-                icon: "minus",
-                tooltipContent: "Horizontal rule",
-                run: ({ editor }) =>
-                    editor.chain().focus().setHorizontalRule().run(),
-            },
-        ],
-    },
-    {
-        groupName: "Highlight",
-        groupId: "highlight-controls",
-        items: [
-            {
-                id: "highlight-color",
-                kind: "color-submenu",
-                icon: "highlight",
-                tooltipContent: "Highlight",
-                colors: HIGHLIGHT_COLOR_OPTIONS,
-                getActiveColor: ({ editor }) =>
-                    editor.getAttributes("highlight").color,
-                onSelectColor: ({ editor }, color) =>
-                    editor.chain().focus().setHighlight({ color }).run(),
-            },
-            {
-                id: "text-color",
-                kind: "color-submenu",
-                icon: "fontColor",
-                tooltipContent: "Text Color",
-                colors: TEXT_COLOR_OPTIONS,
-                getActiveColor: ({ state }) => state.textColor,
-                onSelectColor: ({ editor }, color) =>
-                    editor.chain().focus().setColor(color).run(),
-            },
-            {
-                id: "background-color",
-                kind: "color-submenu",
-                icon: "fontColor",
-                tooltipContent: "Background Color",
-                colors: BACKGROUND_COLOR_OPTIONS,
-                getActiveColor: ({ state }) => state.backgroundColor,
-                onSelectColor: ({ editor }, color) =>
-                    editor.chain().focus().setBackgroundColor(color).run(),
-            },
-        ],
-    },
-    {
-        groupName: "Math",
-        groupId: "math-controls",
-        items: [
-            {
-                id: "block-math",
-                kind: "icon",
-                icon: "latex",
-                tooltipContent: "Coming Soon!",
-                isDisabled: () => true,
-                run: insertBlockMath,
-            },
-        ],
-    },
+          editor.chain().focus().setFontFamily(selected.label).run();
+        },
+      },
+    ],
+  },
+  {
+    groupName: "History",
+    groupId: "history-controls",
+    items: [
+      {
+        id: "undo",
+        kind: "icon",
+        icon: "undo",
+        tooltipContent: "Undo",
+        isDisabled: ({ state }) => !state.canUndo,
+        run: ({ editor }) => editor.chain().focus().undo().run(),
+      },
+      {
+        id: "redo",
+        kind: "icon",
+        icon: "redo",
+        tooltipContent: "Redo",
+        isDisabled: ({ state }) => !state.canRedo,
+        run: ({ editor }) => editor.chain().focus().redo().run(),
+      },
+    ],
+  },
+  {
+    groupName: "Text Formatting",
+    groupId: "text-formatting-controls",
+    items: [
+      {
+        id: "bold",
+        kind: "icon",
+        icon: "bold",
+        tooltipContent: "Bold",
+        isDisabled: ({ state }) => !state.canBold,
+        isActive: ({ state }) => state.isBold,
+        run: ({ editor }) => editor.chain().focus().toggleBold().run(),
+      },
+      {
+        id: "italic",
+        kind: "icon",
+        icon: "italic",
+        tooltipContent: "Italic",
+        isDisabled: ({ state }) => !state.canItalic,
+        isActive: ({ state }) => state.isItalic,
+        run: ({ editor }) => editor.chain().focus().toggleItalic().run(),
+      },
+      {
+        id: "underline",
+        kind: "icon",
+        icon: "underline",
+        tooltipContent: "Underline",
+        isDisabled: ({ state }) => !state.canUnderline,
+        isActive: ({ state }) => state.isUnderline,
+        run: ({ editor }) => editor.chain().focus().toggleUnderline().run(),
+      },
+      {
+        id: "strikethrough",
+        kind: "icon",
+        icon: "strikethrough",
+        tooltipContent: "Strikethrough",
+        isDisabled: ({ state }) => !state.canStrike,
+        isActive: ({ state }) => state.isStrike,
+        run: ({ editor }) => editor.chain().focus().toggleStrike().run(),
+      },
+      {
+        id: "inline-code",
+        kind: "icon",
+        icon: "code",
+        tooltipContent: "Inline code",
+        isDisabled: ({ state }) => !state.canCode,
+        isActive: ({ state }) => state.isCode,
+        run: ({ editor }) => editor.chain().focus().toggleCode().run(),
+      },
+    ],
+  },
+  {
+    groupName: "Alignment",
+    groupId: "alignment-controls",
+    items: alignmentCommands,
+  },
+  {
+    groupName: "Format Type",
+    groupId: "format-type-controls",
+    items: [
+      {
+        id: "paragraph",
+        kind: "icon",
+        icon: "pilcrow",
+        tooltipContent: "Paragraph",
+        isActive: ({ state }) => state.isParagraph,
+        run: ({ editor }) => editor.chain().focus().setParagraph().run(),
+      },
+      {
+        id: "code-block",
+        kind: "icon",
+        icon: "codeSquare",
+        tooltipContent: "Code block",
+        isActive: ({ state }) => state.isCodeBlock,
+        run: ({ editor }) => editor.chain().focus().toggleCodeBlock().run(),
+      },
+      {
+        id: "line-height",
+        kind: "input",
+        icon: "lineHeight",
+        inputType: "number",
+        tooltipContent: "Line Height",
+        rotate: "90",
+        initialValue: "1.5",
+        getValue: ({ state }) => state.getWriteParagraphLeading,
+        onChange: ({ editor }, value) => {
+          editor.chain().setParagraphLeading(value).run();
+        },
+      },
+    ],
+  },
+  {
+    groupName: "Headings",
+    groupId: "heading-controls",
+    items: [
+      {
+        id: "hard-break",
+        kind: "icon",
+        icon: "textWrap",
+        tooltipContent: "Hard break",
+        run: ({ editor }) => editor.chain().focus().setHardBreak().run(),
+      },
+      ...headingCommands,
+    ],
+  },
+  {
+    groupName: "Lists and Blocks",
+    groupId: "list-block-controls",
+    items: [
+      {
+        id: "bullet-list",
+        kind: "icon",
+        icon: "list",
+        tooltipContent: "Bullet list",
+        isActive: ({ state }) => state.isBulletList,
+        run: ({ editor }) => editor.chain().focus().toggleBulletList().run(),
+      },
+      {
+        id: "ordered-list",
+        kind: "icon",
+        icon: "listOrdered",
+        tooltipContent: "Ordered list",
+        isActive: ({ state }) => state.isOrderedList,
+        run: ({ editor }) => editor.chain().focus().toggleOrderedList().run(),
+      },
+    ],
+  },
+  {
+    groupName: "Blockquote and Horizontal Rule",
+    groupId: "blockquote-hr-controls",
+    items: [
+      {
+        id: "blockquote",
+        kind: "icon",
+        icon: "quote",
+        tooltipContent: "Blockquote",
+        isActive: ({ state }) => state.isBlockquote,
+        run: ({ editor }) => editor.chain().focus().toggleBlockquote().run(),
+      },
+      {
+        id: "horizontal-rule",
+        kind: "icon",
+        icon: "minus",
+        tooltipContent: "Horizontal rule",
+        run: ({ editor }) => editor.chain().focus().setHorizontalRule().run(),
+      },
+    ],
+  },
+  {
+    groupName: "Highlight",
+    groupId: "highlight-controls",
+    items: [
+      {
+        id: "highlight-color",
+        kind: "color-submenu",
+        icon: "highlight",
+        tooltipContent: "Highlight",
+        colors: HIGHLIGHT_COLOR_OPTIONS,
+        getActiveColor: ({ editor }) => editor.getAttributes("highlight").color,
+        onSelectColor: ({ editor }, color) =>
+          editor.chain().focus().setHighlight({ color }).run(),
+        onClearColor: ({ editor }) =>
+          editor.chain().focus().unsetHighlight().run(),
+        clearLabel: "Clear highlight",
+      },
+      {
+        id: "text-color",
+        kind: "color-submenu",
+        icon: "fontColor",
+        tooltipContent: "Text Color",
+        colors: TEXT_COLOR_OPTIONS,
+        getActiveColor: ({ state }) => state.textColor,
+        onSelectColor: ({ editor }, color) =>
+          editor.chain().focus().setColor(color).run(),
+        onClearColor: ({ editor }) => editor.chain().focus().unsetColor().run(),
+        clearLabel: "Clear text color",
+      },
+      {
+        id: "background-color",
+        kind: "color-submenu",
+        icon: "fontColor",
+        tooltipContent: "Background Color",
+        colors: BACKGROUND_COLOR_OPTIONS,
+        getActiveColor: ({ state }) => state.backgroundColor,
+        onSelectColor: ({ editor }, color) =>
+          editor.chain().focus().setBackgroundColor(color).run(),
+        onClearColor: ({ editor }) =>
+          editor.chain().focus().unsetBackgroundColor().run(),
+        clearLabel: "Clear background color",
+      },
+    ],
+  },
+  {
+    groupName: "Math",
+    groupId: "math-controls",
+    items: [
+      {
+        id: "block-math",
+        kind: "icon",
+        icon: "latex",
+        tooltipContent: "Coming Soon!",
+        isDisabled: () => true,
+        run: insertBlockMath,
+      },
+    ],
+  },
+  {
+    groupName: "Tables",
+    groupId: "table-insert-controls",
+    items: [
+      {
+        id: "insert-table",
+        kind: "icon",
+        icon: "insertTable",
+        tooltipContent: "Insert Table",
+        run: ({ editor }) =>
+          editor
+            .chain()
+            .focus()
+            .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+            .run(),
+      },
+    ],
+  },
+  {
+    groupName: "Table Operations",
+    groupId: "table-ops-controls",
+    shouldRender: ({ state }) => state.isInsideTable,
+    items: [
+      {
+        id: "add-row-before",
+        kind: "icon",
+        icon: "addRowBefore",
+        tooltipContent: "Add Row Before",
+        run: ({ editor }) => editor.chain().focus().addRowBefore().run(),
+      },
+      {
+        id: "add-row-after",
+        kind: "icon",
+        icon: "addRowAfter",
+        tooltipContent: "Add Row After",
+        run: ({ editor }) => editor.chain().focus().addRowAfter().run(),
+      },
+      {
+        id: "delete-row",
+        kind: "icon",
+        icon: "deleteRow",
+        tooltipContent: "Delete Row",
+        run: ({ editor }) => editor.chain().focus().deleteRow().run(),
+      },
+      {
+        id: "add-column-before",
+        kind: "icon",
+        icon: "addColumnBefore",
+        tooltipContent: "Add Column Before",
+        run: ({ editor }) => editor.chain().focus().addColumnBefore().run(),
+      },
+      {
+        id: "add-column-after",
+        kind: "icon",
+        icon: "addColumnAfter",
+        tooltipContent: "Add Column After",
+        run: ({ editor }) => editor.chain().focus().addColumnAfter().run(),
+      },
+      {
+        id: "delete-column",
+        kind: "icon",
+        icon: "deleteColumn",
+        tooltipContent: "Delete Column",
+        run: ({ editor }) => editor.chain().focus().deleteColumn().run(),
+      },
+      {
+        id: "merge-or-split",
+        kind: "icon",
+        icon: "mergeCells",
+        tooltipContent: "Merge / Split Cells",
+        run: ({ editor }) => editor.chain().focus().mergeOrSplit().run(),
+      },
+      {
+        id: "delete-table",
+        kind: "icon",
+        icon: "deleteTable",
+        tooltipContent: "Delete Table",
+        run: ({ editor }) => editor.chain().focus().deleteTable().run(),
+      },
+    ],
+  },
 ];

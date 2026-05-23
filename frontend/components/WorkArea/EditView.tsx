@@ -303,19 +303,24 @@ export default function EditView({
   };
 
   return (
-    <div className="flex h-full min-w-0 w-full flex-col overflow-hidden">
-      <div className="flex-1 min-h-0 w-full min-w-0 p-2">
-        <div className="mx-auto h-full w-full">
-          <header className="flex gap-2 px-4 py-3">
-            <h2 className="text-gw-primary text-gw-h3 font-bold text-base truncate">
-              {documentTitle}
-            </h2>
-            <p className="text-gw-secondary">|</p>
-            <p className="font-mono tracking-label mt-1 text-gw-micro uppercase text-gw-secondary">
-              {documentSubtitle}
-            </p>
-          </header>
+    <div
+      data-testid="editview-shell"
+      className="editview-shell flex h-full min-h-0 min-w-0 w-full flex-col overflow-hidden"
+    >
+      <div className="editview-scroll-region flex-1 min-h-0 min-w-0 w-full flex flex-col">
+        <header className="shrink-0 flex gap-2 px-4 py-3">
+          <h2 className="text-gw-primary text-gw-h3 font-bold text-base truncate">
+            {documentTitle}
+          </h2>
+          <p className="text-gw-secondary">|</p>
+          <p className="font-mono tracking-label mt-1 text-gw-micro uppercase text-gw-secondary">
+            {documentSubtitle}
+          </p>
+        </header>
+        <div className="shrink-0">
           <RevisionControl />
+        </div>
+        <div className="flex-1 min-h-0 min-w-0 w-full">
           <TipTapEditor
             id="editview-editor"
             value={tipTapDoc ?? content} // prefer loaded doc, fallback to initial/plain content
@@ -327,7 +332,7 @@ export default function EditView({
 
       <footer
         id="editview-footer"
-        className="border-t border-gw-border px-4 py-2 bg-gw-chrome text-sm flex items-center justify-between"
+        className="shrink-0 border-t border-gw-border px-4 py-2 bg-gw-chrome text-sm flex items-center justify-between"
       >
         <div className="text-gw-secondary text-gw-small">
           Words: <strong>{wordCount}</strong>

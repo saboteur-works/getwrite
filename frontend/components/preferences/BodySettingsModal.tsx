@@ -99,6 +99,24 @@ export default function BodySettingsModal({
               )}
             </HeadingStyleField>
           ))}
+
+          <div className="mt-4 border-t border-gw-border pt-4">
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
+              Preview
+            </span>
+            <p
+              aria-label="Body text preview"
+              className="mt-2 text-gw-ink"
+              style={{
+                fontFamily: draft.fontFamily || undefined,
+                fontSize: draft.fontSize || undefined,
+                lineHeight: draft.lineHeight || undefined,
+              }}
+            >
+              The quick brown fox jumps over the lazy dog. Writers shape worlds
+              from words, one sentence at a time.
+            </p>
+          </div>
         </div>
       </Card>
 

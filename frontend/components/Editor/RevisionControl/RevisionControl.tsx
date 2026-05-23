@@ -41,7 +41,7 @@ export default function RevisionControl() {
     shallowEqual,
   );
 
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [revisionName, setRevisionName] = useState<string>("");
   const [collapsedPreviewRevisionIds, setCollapsedPreviewRevisionIds] =
     useState<Record<string, boolean>>({});

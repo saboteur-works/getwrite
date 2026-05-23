@@ -15,27 +15,27 @@ import "katex/dist/katex.min.css";
 
 import React, { useEffect, useRef } from "react";
 import {
-    useEditor,
-    EditorContent,
-    EditorContext,
-    Content,
+  useEditor,
+  EditorContent,
+  EditorContext,
+  Content,
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
 import {
-    FontSize,
-    FontFamily,
-    TextStyle,
-    Color,
-    BackgroundColor,
+  FontSize,
+  FontFamily,
+  TextStyle,
+  Color,
+  BackgroundColor,
 } from "@tiptap/extension-text-style";
 import Blockquote from "@tiptap/extension-blockquote";
 import {
-    BulletList,
-    ListItem,
-    ListKeymap,
-    OrderedList,
+  BulletList,
+  ListItem,
+  ListKeymap,
+  OrderedList,
 } from "@tiptap/extension-list";
 import CodeBlock from "@tiptap/extension-code-block";
 import Highlight from "@tiptap/extension-highlight";
@@ -44,72 +44,66 @@ import { Placeholder, Selection } from "@tiptap/extensions";
 import Typography from "@tiptap/extension-typography";
 import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import TextAlign from "@tiptap/extension-text-align";
+import { TableKit } from "@tiptap/extension-table";
 import GetWriteParagraphLeading from "./Editor/Extensions/GetWriteParagraphLeading";
 import CustomHeading from "./Editor/Extensions/CustomHeading";
 import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
 import { useSelector } from "react-redux";
-import { selectEditorConfig } from "../src/store/editorConfigSlice";
+import { selectResolvedEditorConfig } from "../src/store/editorConfigSlice";
 /**
  * Props accepted by {@link TipTapEditor}.
  */
 export interface TipTapEditorProps {
-    /**
-     * Initial/controlled content provided to TipTap.
-     *
-     * Accepts any TipTap `Content` shape; when omitted, defaults to empty text.
-     */
-    value?: Content;
-    /**
-     * Called whenever editor content changes.
-     *
-     * @param content - Current editor content serialized as HTML.
-     * @param doc - Current TipTap document serialized as JSON.
-     */
-    onChange?: (content: string, doc: TipTapDocument) => void;
-    /** Optional DOM id applied to the `EditorContent` element. */
-    id?: string;
-    /** When true, disables editing interactions. */
-    readonly?: boolean;
+  /**
+   * Initial/controlled content provided to TipTap.
+   *
+   * Accepts any TipTap `Content` shape; when omitted, defaults to empty text.
+   */
+  value?: Content;
+  /**
+   * Called whenever editor content changes.
+   *
+   * @param content - Current editor content serialized as HTML.
+   * @param doc - Current TipTap document serialized as JSON.
+   */
+  onChange?: (content: string, doc: TipTapDocument) => void;
+  /** Optional DOM id applied to the `EditorContent` element. */
+  id?: string;
+  /** When true, disables editing interactions. */
+  readonly?: boolean;
 }
 
 /**
  * Shared base extension list for all runtime editor instances.
  */
 export const extensions = [
-    StarterKit.configure({
-        heading: false, // disabled — CustomHeading is used instead
-        bulletList: false, // disabled — BulletList registered explicitly below
-        orderedList: false, // disabled — OrderedList registered explicitly below
-        listItem: false, // disabled — ListItem registered explicitly below
-    }),
-    TextStyle,
-    Color,
-    BackgroundColor,
-    FontSize,
-    Blockquote,
-    BulletList,
-    OrderedList,
-    ListItem,
-    ListKeymap,
-    Highlight.configure({
-        multicolor: true,
-    }),
-    CodeBlock.configure({
-        enableTabIndentation: true,
-    }),
-    UniqueID.configure({
-        types: ["paragraph", "heading", "blockquote", "codeBlock"],
-    }),
-    Placeholder.configure({
-        placeholder: "Start writing here...",
-    }),
-    Selection,
-    Typography,
-    TextAlign.configure({
-        types: ["heading", "paragraph"],
-    }),
-    FontFamily,
-    GetWriteParagraphLeading,
+  StarterKit.configure({
+    heading: false, // disabled — CustomHeading is used instead
+    bulletList: false, // disabled — BulletList registered explicitly below
+    orderedList: false, // disabled — OrderedList registered explicitly below
+    listItem: false, // disabled — ListItem registered explicitly below
+  }),
+  TextStyle,
+  Color,
+  BackgroundColor,
+  FontSize,
+  Blockquote,
+  BulletList,
+  OrderedList,
+  ListItem,
+  ListKeymap,
+  Highlight.configure({ multicolor: true }),
+  CodeBlock.configure({ enableTabIndentation: true }),
+  UniqueID.configure({
+    types: ["paragraph", "heading", "blockquote", "codeBlock", "table"],
+  }),
+  TableKit.configure({ table: { resizable: true } }),
+  Placeholder.configure({ placeholder: "Start writing here..." }),
+  Selection,
+  Typography,
+  TextAlign.configure({ types: ["heading", "paragraph"] }),
+  FontFamily,
+  GetWriteParagraphLeading,
 ];
 
 /**
@@ -133,176 +127,183 @@ export const extensions = [
  * />
  */
 export default function TipTapEditor({
-    value = "",
-    onChange,
-    id,
-    readonly = false,
+  value = "",
+  onChange,
+  id,
+  readonly = false,
 }: TipTapEditorProps) {
-    const editorProjectConfig = useSelector(selectEditorConfig);
-    console.log("Editor config from store:", editorProjectConfig);
-    /** True when executing in browser context (guards SSR/hydration paths). */
-    const isClient = typeof window !== "undefined";
+  const editorProjectConfig = useSelector(selectResolvedEditorConfig);
+  /** True when executing in browser context (guards SSR/hydration paths). */
+  const isClient = typeof window !== "undefined";
 
-    /**
-     * Test-environment guard used to bypass full ProseMirror lifecycle in jsdom.
-     */
-    const inTestEnv =
-        typeof process !== "undefined" &&
-        (process.env?.VITEST === "true" || process.env?.NODE_ENV === "test");
+  /**
+   * Test-environment guard used to bypass full ProseMirror lifecycle in jsdom.
+   */
+  const inTestEnv =
+    typeof process !== "undefined" &&
+    (process.env?.VITEST === "true" || process.env?.NODE_ENV === "test");
 
-    // Tracks the TipTapDocument object most recently emitted by onUpdate so that
-    // the content-sync useEffect can skip setContent when value was produced by
-    // the editor itself (same object reference). Without this guard, every edit
-    // triggers setContent → cursor reset because an object value never equals
-    // the string returned by editor.getHTML().
-    const lastEmittedDocRef = useRef<unknown>(null);
+  // Tracks the TipTapDocument object most recently emitted by onUpdate so that
+  // the content-sync useEffect can skip setContent when value was produced by
+  // the editor itself (same object reference). Without this guard, every edit
+  // triggers setContent → cursor reset because an object value never equals
+  // the string returned by editor.getHTML().
+  const lastEmittedDocRef = useRef<unknown>(null);
 
-    // During unit tests we avoid initializing TipTap (ProseMirror) because the
-    // full editor lifecycle and extension loading can be brittle in jsdom.
-    // Return a lightweight mock rendering instead and keep EditView's local
-    // state consistent via the `initialContent` prop.
-    const editor = useEditor({
-        shouldRerenderOnTransaction: true,
-        extensions: [
-            ...extensions,
-            CustomHeading.configure({
-                customStyles: editorProjectConfig.headings || {},
-            }),
-            NormalizePastedText.configure({
-                bodyFontSize: editorProjectConfig.body?.fontSize,
-            }),
-            Math.configure({
-                blockOptions: {
-                    /**
-                     * Handles block-math click edits by prompting and updating
-                     * the selected node in-place.
-                     */
-                    onClick: (node, pos) => {
-                        const newCalculation = prompt(
-                            "Enter new calculation:",
-                            node.attrs.latex,
-                        );
-                        if (newCalculation && editor) {
-                            editor
-                                .chain()
-                                .setNodeSelection(pos)
-                                .updateBlockMath({ latex: newCalculation })
-                                .focus()
-                                .run();
-                        }
-                    },
-                },
-                inlineOptions: {
-                    /**
-                     * Handles inline-math click edits by prompting and updating
-                     * the selected inline node.
-                     */
-                    onClick: (node) => {
-                        const newCalculation = prompt(
-                            "Enter new calculation:",
-                            node.attrs.latex,
-                        );
-                        if (newCalculation && editor) {
-                            editor
-                                .chain()
-                                .updateInlineMath({ latex: newCalculation })
-                                .focus()
-                                .run();
-                        }
-                    },
-                },
-            }),
-        ],
-        content: value || "",
-        editable: !readonly,
-        /**
-         * Emits both HTML and JSON representations for parent persistence flows.
-         */
-        onUpdate: ({ editor }) => {
-            const html = editor.getHTML();
-            const doc = editor.getJSON() as TipTapDocument;
-            lastEmittedDocRef.current = doc;
-            if (onChange) onChange(html, doc);
-        },
-        /**
-         * Migrates legacy math string representations to node-based format.
-         */
-        onCreate: ({ editor }) => {
-            migrateMathStrings(editor);
-            editor
-                .chain()
-                .selectAll()
-                .setParagraphLeading("1.5")
-                .setTextSelection(0) // collapse cursor to start, or wherever you want
-                .run();
-        },
-        // avoid SSR hydration mismatches by explicitly opting out of
-        // immediate render on the server
-        immediatelyRender: false,
-        editorProps: {
-            attributes: {
-                // Use focus:outline-none to remove the default browser outline
-                // and optionally focus:ring-0 to remove the ring added by
-                // the Tailwind CSS forms plugin (if used)
-                class: "focus:outline-none focus:ring-0 h-full min-h-full px-4 py-4",
+  // During unit tests we avoid initializing TipTap (ProseMirror) because the
+  // full editor lifecycle and extension loading can be brittle in jsdom.
+  // Return a lightweight mock rendering instead and keep EditView's local
+  // state consistent via the `initialContent` prop.
+  // Serialized so that string value equality is used for comparison — TipTap
+  // uses Object.is on each dep, and object references change on every Redux
+  // dispatch even when the heading config is unchanged.
+  const headingsConfigKey = JSON.stringify(editorProjectConfig.headings);
+
+  const editor = useEditor(
+    {
+      shouldRerenderOnTransaction: true,
+      extensions: [
+        ...extensions,
+        CustomHeading.configure({
+          customStyles: editorProjectConfig.headings || {},
+        }),
+        NormalizePastedText.configure({
+          bodyFontSize: editorProjectConfig.body?.fontSize,
+        }),
+        Math.configure({
+          blockOptions: {
+            /**
+             * Handles block-math click edits by prompting and updating
+             * the selected node in-place.
+             */
+            onClick: (node, pos) => {
+              const newCalculation = prompt(
+                "Enter new calculation:",
+                node.attrs.latex,
+              );
+              if (newCalculation && editor) {
+                editor
+                  .chain()
+                  .setNodeSelection(pos)
+                  .updateBlockMath({ latex: newCalculation })
+                  .focus()
+                  .run();
+              }
             },
+          },
+          inlineOptions: {
+            /**
+             * Handles inline-math click edits by prompting and updating
+             * the selected inline node.
+             */
+            onClick: (node) => {
+              const newCalculation = prompt(
+                "Enter new calculation:",
+                node.attrs.latex,
+              );
+              if (newCalculation && editor) {
+                editor
+                  .chain()
+                  .updateInlineMath({ latex: newCalculation })
+                  .focus()
+                  .run();
+              }
+            },
+          },
+        }),
+      ],
+      content: value || "",
+      editable: !readonly,
+      /**
+       * Emits both HTML and JSON representations for parent persistence flows.
+       */
+      onUpdate: ({ editor }) => {
+        const html = editor.getHTML();
+        const doc = editor.getJSON() as TipTapDocument;
+        lastEmittedDocRef.current = doc;
+        if (onChange) onChange(html, doc);
+      },
+      /**
+       * Migrates legacy math string representations to node-based format.
+       */
+      onCreate: ({ editor }) => {
+        migrateMathStrings(editor);
+        editor
+          .chain()
+          .selectAll()
+          .setParagraphLeading("1.5")
+          .setTextSelection(0) // collapse cursor to start, or wherever you want
+          .run();
+      },
+      // avoid SSR hydration mismatches by explicitly opting out of
+      // immediate render on the server
+      immediatelyRender: false,
+      editorProps: {
+        attributes: {
+          // Use focus:outline-none to remove the default browser outline
+          // and optionally focus:ring-0 to remove the ring added by
+          // the Tailwind CSS forms plugin (if used)
+          class: "focus:outline-none focus:ring-0 h-full min-h-full px-4 py-4",
         },
-    });
+      },
+    },
+    [headingsConfigKey],
+  );
 
-    /**
-     * Synchronizes externally provided `value` into TipTap when it diverges
-     * from the editor's current content.
-     *
-     * Skip when `value` is the exact object most recently emitted by `onUpdate`
-     * — the editor already has that content, and calling setContent would reset
-     * the cursor. Only call setContent for external changes (loading a revision,
-     * switching resources) where `value` is a different object reference.
-     */
-    useEffect(() => {
-        if (!editor) return;
-        // If value is the same reference we just emitted, the editor already
-        // has this content. Calling setContent would reset the cursor position.
-        if (value === lastEmittedDocRef.current) return;
-        const current = editor.getHTML();
-        if (value !== current) {
-            // Use a minimal, explicit cast to satisfy the Tiptap typing
-            // while preserving the previous behaviour (no-emitted update).
-            // TODO: refine to the precise options type when migrating tiptap types.
-            editor.commands.setContent(value || "", false as any);
-        }
-    }, [value, editor]);
-
-    if (!isClient) return <div>Loading editor...</div>;
-
-    if (inTestEnv) {
-        // Minimal mock for tests: render content as plain HTML so components
-        // that read initial content (like EditView) behave deterministically.
-        return (
-            <div data-testid="tiptap-mock" className="tiptap-editor-shell">
-                <div dangerouslySetInnerHTML={{ __html: value || "" }} />
-            </div>
-        );
+  /**
+   * Synchronizes externally provided `value` into TipTap when it diverges
+   * from the editor's current content.
+   *
+   * Skip when `value` is the exact object most recently emitted by `onUpdate`
+   * — the editor already has that content, and calling setContent would reset
+   * the cursor. Only call setContent for external changes (loading a revision,
+   * switching resources) where `value` is a different object reference.
+   */
+  useEffect(() => {
+    if (!editor) return;
+    // If value is the same reference we just emitted, the editor already
+    // has this content. Calling setContent would reset the cursor position.
+    if (value === lastEmittedDocRef.current) return;
+    const current = editor.getHTML();
+    if (value !== current) {
+      // Use a minimal, explicit cast to satisfy the Tiptap typing
+      // while preserving the previous behaviour (no-emitted update).
+      // TODO: refine to the precise options type when migrating tiptap types.
+      editor.commands.setContent(value || "", false as any);
     }
+  }, [value, editor]);
 
-    if (!editor) return <div>Loading editor...</div>;
+  if (!isClient) return <div>Loading editor...</div>;
 
-    const bodyStyle = {
-        "--gw-body-font-family": editorProjectConfig.body?.fontFamily,
-        "--gw-body-font-size": editorProjectConfig.body?.fontSize,
-        "--gw-body-line-height": editorProjectConfig.body?.lineHeight,
-        "--gw-paragraph-spacing": editorProjectConfig.body?.paragraphSpacing,
-    } as React.CSSProperties;
-
+  if (inTestEnv) {
+    // Minimal mock for tests: render content as plain HTML so components
+    // that read initial content (like EditView) behave deterministically.
     return (
-        <EditorContext.Provider value={{ editor }}>
-            <div className="tiptap-editor-shell" style={bodyStyle}>
-                <MenuBar editor={editor} />
-                <EditorContent
-                    editor={editor}
-                    id={id}
-                    className="tiptap tiptap-editor-content"
-                />
-            </div>
-        </EditorContext.Provider>
+      <div data-testid="tiptap-mock" className="tiptap-editor-shell">
+        <div dangerouslySetInnerHTML={{ __html: value || "" }} />
+      </div>
     );
+  }
+
+  if (!editor) return <div>Loading editor...</div>;
+
+  const bodyStyle = {
+    "--gw-body-font-family": editorProjectConfig.body?.fontFamily,
+    "--gw-body-font-size": editorProjectConfig.body?.fontSize,
+    "--gw-body-line-height": editorProjectConfig.body?.lineHeight,
+    "--gw-paragraph-spacing": editorProjectConfig.body?.paragraphSpacing,
+  } as React.CSSProperties;
+
+  return (
+    <EditorContext.Provider value={{ editor }}>
+      <div className="tiptap-editor-shell" style={bodyStyle}>
+        <MenuBar editor={editor} />
+        <EditorContent
+          editor={editor}
+          id={id}
+          className="tiptap tiptap-editor-content"
+        />
+      </div>
+    </EditorContext.Provider>
+  );
 }

@@ -3,37 +3,37 @@
 
 // Storybook module shim (lightweight)
 declare module "@storybook/react" {
-    export type Meta<T = any> = any;
-    export type StoryObj<T = any> = any;
-    export const Meta: any;
+  export type Meta<T = any> = any;
+  export type StoryObj<T = any> = any;
+  export const Meta: any;
 }
 
 // Minimal test globals used in story play functions
 declare const expect: any;
 
 declare module "@testing-library/dom" {
-    export const screen: any;
-    export const within: any;
+  export const screen: any;
+  export const within: any;
 }
 
 // Provide minimal JSX namespace so focused tsc can typecheck components
 declare namespace JSX {
-    // Use React's ReactElement so function components are compatible with React types
-    type Element = import("react").ReactElement<any, any>;
-    interface IntrinsicElements {
-        [elemName: string]: any;
-    }
-    interface ElementAttributesProperty {
-        props: any;
-    }
-    interface ElementChildrenAttribute {
-        children: any;
-    }
+  // Use React's ReactElement so function components are compatible with React types
+  type Element = import("react").ReactElement<any, any>;
+  interface IntrinsicElements {
+    [elemName: string]: any;
+  }
+  interface ElementAttributesProperty {
+    props: any;
+  }
+  interface ElementChildrenAttribute {
+    children: any;
+  }
 }
 
 // Storybook fast shim for the nextjs-vite preset used in stories
 declare module "@storybook/nextjs-vite" {
-    export * from "@storybook/react";
+  export * from "@storybook/react";
 }
 
 // Testing-library shims used by focused Storybook type-checking.
@@ -41,12 +41,20 @@ declare module "@storybook/nextjs-vite" {
 // module does not cause "no exported member" errors when full package types
 // are unavailable in lightweight environments.
 declare module "@testing-library/react" {
-    export * from "@testing-library/dom";
-    export function render(...args: any[]): any;
-    export const fireEvent: any;
-    export function cleanup(): void;
-    export function act<T>(cb: () => T | Promise<T>): Promise<T>;
-    export function waitFor(fn: any, opts?: any): Promise<any>;
-    export const screen: any;
-    export function within(...args: any[]): any;
+  export * from "@testing-library/dom";
+  export function render(...args: any[]): any;
+  export const fireEvent: any;
+  export function cleanup(): void;
+  export function act<T>(cb: () => T | Promise<T>): Promise<T>;
+  export function waitFor(fn: any, opts?: any): Promise<any>;
+  export const screen: any;
+  export function within(...args: any[]): any;
+  export function renderHook<Result, Props>(
+    render: (initialProps: Props) => Result,
+    options?: any,
+  ): {
+    result: { current: Result };
+    rerender: (props?: Props) => void;
+    unmount: () => void;
+  };
 }

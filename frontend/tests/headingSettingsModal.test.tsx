@@ -136,4 +136,76 @@ describe("HeadingSettingsModal", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onSave).not.toHaveBeenCalled();
   });
+
+  describe("heading preview", () => {
+    it("renders a preview paragraph for each visible heading level", () => {
+      renderInDialog(
+        <HeadingSettingsModal
+          initialHeadings={{}}
+          onClose={vi.fn()}
+          onSave={vi.fn().mockResolvedValue(undefined)}
+        />,
+      );
+
+      expect(screen.getByLabelText("H1 preview")).toBeInTheDocument();
+      expect(screen.getByLabelText("H2 preview")).toBeInTheDocument();
+      expect(screen.getByLabelText("H3 preview")).toBeInTheDocument();
+    });
+
+    it("preview reflects the initial font size", () => {
+      renderInDialog(
+        <HeadingSettingsModal
+          initialHeadings={{ h1: { fontSize: "40px" } }}
+          onClose={vi.fn()}
+          onSave={vi.fn().mockResolvedValue(undefined)}
+        />,
+      );
+
+      const preview = screen.getByLabelText("H1 preview") as HTMLElement;
+      expect(preview.style.fontSize).toBe("40px");
+    });
+
+    it("preview updates when font size field changes", () => {
+      renderInDialog(
+        <HeadingSettingsModal
+          initialHeadings={{}}
+          onClose={vi.fn()}
+          onSave={vi.fn().mockResolvedValue(undefined)}
+        />,
+      );
+
+      fireEvent.change(screen.getByLabelText("H1 Font Size"), {
+        target: { value: "28" },
+      });
+
+      const preview = screen.getByLabelText("H1 preview") as HTMLElement;
+      expect(preview.style.fontSize).toBe("28px");
+    });
+
+    it("preview uses ink color token when no color is set", () => {
+      renderInDialog(
+        <HeadingSettingsModal
+          initialHeadings={{}}
+          onClose={vi.fn()}
+          onSave={vi.fn().mockResolvedValue(undefined)}
+        />,
+      );
+
+      const preview = screen.getByLabelText("H1 preview") as HTMLElement;
+      expect(preview.style.color).toBe("var(--color-gw-ink)");
+    });
+
+    it("preview uses the user-set color when provided", () => {
+      renderInDialog(
+        <HeadingSettingsModal
+          initialHeadings={{ h2: { color: "#cc0000" } }}
+          onClose={vi.fn()}
+          onSave={vi.fn().mockResolvedValue(undefined)}
+        />,
+      );
+
+      const preview = screen.getByLabelText("H2 preview") as HTMLElement;
+      expect(preview.style.color).toBe("rgb(204, 0, 0)");
+    });
+  });
 });

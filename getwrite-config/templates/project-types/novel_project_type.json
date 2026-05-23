@@ -58,19 +58,26 @@
         "headings": {
             "h1": {
                 "fontSize": "40px",
-                "fontWeight": "700"
+                "fontFamily": "IBM Plex Serif",
+                "fontWeight": "700",
+                "letterSpacing": "0.01em"
             },
             "h2": {
-                "fontSize": "32px",
+                "fontSize": "28px",
+                "fontFamily": "IBM Plex Serif",
                 "fontWeight": "700"
             },
             "h3": {
-                "fontSize": "24px",
+                "fontSize": "20px",
+                "fontFamily": "IBM Plex Serif",
                 "fontWeight": "500"
             }
         },
         "body": {
-            "lineHeight": "1.8"
+            "fontFamily": "IBM Plex Serif",
+            "fontSize": "15px",
+            "lineHeight": "1.8",
+            "paragraphSpacing": "16px"
         }
     },
     "defaultResources": [

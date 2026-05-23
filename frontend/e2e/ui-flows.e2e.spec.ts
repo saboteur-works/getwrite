@@ -1,38 +1,39 @@
 import { test, expect } from "@playwright/test";
 
 test("data view shows resources and counts are correct", async ({ page }) => {
-    await page.goto("/iframe.html?id=workarea-dataview--with-resources");
+  await page.goto("/iframe.html?id=workarea-dataview--with-resources");
 
-    // CollapsibleSection renders its title inside a <button>, not a <h*> element.
-    const header = page.getByRole("button", { name: /Data\s*—/i });
-    await expect(header).toBeVisible();
+  // CollapsibleSection renders its title inside a <button>, not a <h*> element.
+  // Title is "{project.name} Overview" — match on Overview since the project name varies.
+  const header = page.getByRole("button", { name: /overview/i });
+  await expect(header).toBeVisible();
 
-    // list should contain a placeholder resource from the story
-    const item = page.getByText("Resource 1");
-    await expect(item).toBeVisible();
+  // list should contain a placeholder resource from the story
+  const item = page.getByText("Resource 1");
+  await expect(item).toBeVisible();
 
-    // resources card should show a numeric count in the sibling div
-    const resourcesParent = page.getByText("Resources").locator("..");
-    const resourcesCountEl = resourcesParent.locator("div").nth(1);
-    await expect(resourcesCountEl).toBeVisible();
-    const countText = await resourcesCountEl.textContent();
-    expect(countText && /\d+/.test(countText)).toBeTruthy();
+  // resources card should show a numeric count in the sibling div
+  const resourcesParent = page.getByText("Resources").locator("..");
+  const resourcesCountEl = resourcesParent.locator("div").nth(1);
+  await expect(resourcesCountEl).toBeVisible();
+  const countText = await resourcesCountEl.textContent();
+  expect(countText && /\d+/.test(countText)).toBeTruthy();
 });
 
 test("create project modal can be filled and submitted", async ({ page }) => {
-    await page.goto("/iframe.html?id=start-createprojectmodal--open");
+  await page.goto("/iframe.html?id=start-createprojectmodal--open");
 
-    const name = page.locator("input").first();
-    await expect(name).toBeVisible();
-    await name.fill("E2E Project");
-    await expect(name).toHaveValue("E2E Project");
+  const name = page.locator("input").first();
+  await expect(name).toBeVisible();
+  await name.fill("E2E Project");
+  await expect(name).toHaveValue("E2E Project");
 });
 
 test("edit view editor accepts input and updates word count", async ({
-    page,
+  page,
 }) => {
-    await page.goto("/iframe.html?id=workarea-editview--interactive");
+  await page.goto("/iframe.html?id=workarea-editview--interactive");
 
-    const editor = page.locator('[contenteditable="true"]').first();
-    await expect(editor).toBeAttached();
+  const editor = page.locator('[contenteditable="true"]').first();
+  await expect(editor).toBeAttached();
 });
