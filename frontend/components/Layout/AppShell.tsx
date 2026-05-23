@@ -708,7 +708,7 @@ export default function AppShell({
         setHasUnsavedEditorChanges(false);
         return;
       }
-      console.log("Persisting content for", selectedResourceId);
+
       try {
         await persistResourceContent(selectedResourceId, project.rootPath, doc);
 

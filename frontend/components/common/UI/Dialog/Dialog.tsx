@@ -55,7 +55,7 @@ const DialogContent = React.forwardRef<
         ref={ref}
         className={cn(
           "fixed left-[50%] z-50 -translate-x-1/2 w-[94vw] outline-none",
-          "border-hairline border-gw-border bg-gw-chrome",
+          "border-gw-border border-[0.05rem] bg-gw-chrome",
           "max-h-[92vh] overflow-y-auto",
           topAlign ? "top-[8%] translate-y-0" : "top-[50%] -translate-y-1/2",
           maxWidth,
