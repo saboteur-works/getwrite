@@ -5,6 +5,11 @@ import { shallowEqual } from "react-redux";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
 import type { Tag } from "../../src/lib/models/types";
+import {
+  listTags,
+  listTagAssignments,
+  assignTag,
+} from "../../src/lib/api/tags";
 import LabeledField from "./controls/LabeledField";
 import Chip from "../common/UI/Chip";
 
@@ -34,13 +39,8 @@ export default function TagsSection(): JSX.Element | null {
   // Load project tag list when projectPath becomes available
   useEffect(() => {
     if (!projectPath) return;
-    fetch("/api/project/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "list", projectPath }),
-    })
-      .then((r) => r.json())
-      .then((data: { tags?: Tag[] }) => setAllTags(data.tags ?? []))
+    listTags(projectPath)
+      .then(setAllTags)
       .catch(() => setAllTags([]));
   }, [projectPath]);
 
@@ -50,15 +50,8 @@ export default function TagsSection(): JSX.Element | null {
       setAssignedTagIds([]);
       return;
     }
-    fetch("/api/project/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "assignments", projectPath, resourceId }),
-    })
-      .then((r) => r.json())
-      .then((data: { tagIds?: string[] }) =>
-        setAssignedTagIds(data.tagIds ?? []),
-      )
+    listTagAssignments(projectPath, resourceId)
+      .then(setAssignedTagIds)
       .catch(() => setAssignedTagIds([]));
   }, [projectPath, resourceId]);
 
@@ -70,16 +63,7 @@ export default function TagsSection(): JSX.Element | null {
       isAssigned ? prev.filter((id) => id !== tagId) : [...prev, tagId],
     );
     try {
-      await fetch("/api/project/tags/assign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectPath,
-          resourceId,
-          tagId,
-          assign: !isAssigned,
-        }),
-      });
+      await assignTag(projectPath, resourceId, tagId, !isAssigned);
     } catch {
       // Revert optimistic update on failure
       setAssignedTagIds((prev) =>

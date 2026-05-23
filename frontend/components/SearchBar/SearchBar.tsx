@@ -22,6 +22,8 @@ import {
 } from "../../src/store/searchSlice";
 import type { SearchFilters } from "../../src/store/search-transport-service";
 import type { Tag } from "../../src/lib/models/types";
+import { listTags } from "../../src/lib/api/tags";
+import { reindexProject } from "../../src/lib/api/projects";
 import SearchFilterPanel from "./SearchFilterPanel";
 
 function renderSnippet(snippet: string, query: string): React.ReactNode {
@@ -92,7 +94,7 @@ export default function SearchBar({
 
   useEffect(() => {
     if (!selectedProjectId) return;
-    void fetch(`/api/project/${selectedProjectId}/reindex`, { method: "POST" });
+    void reindexProject(selectedProjectId);
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -100,13 +102,8 @@ export default function SearchBar({
       setAvailableTags([]);
       return;
     }
-    fetch("/api/project/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "list", projectPath }),
-    })
-      .then((r) => r.json())
-      .then((data: { tags?: Tag[] }) => setAvailableTags(data.tags ?? []))
+    listTags(projectPath)
+      .then(setAvailableTags)
       .catch(() => setAvailableTags([]));
   }, [projectPath]);
 

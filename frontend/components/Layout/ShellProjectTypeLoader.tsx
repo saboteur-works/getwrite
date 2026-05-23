@@ -2,109 +2,101 @@
 
 import React from "react";
 import type {
-    ProjectTypeDefinition,
-    ProjectTypeTemplateFile,
+  ProjectTypeDefinition,
+  ProjectTypeTemplateFile,
 } from "../../src/types/project-types";
+import { listProjectTypes } from "../../src/lib/api/project-types";
 
 export interface ShellProjectTypeLoaderState {
-    projectTypeTemplates: ProjectTypeTemplateFile[];
-    isProjectTypesLoading: boolean;
-    projectTypesLoadError: string | null;
+  projectTypeTemplates: ProjectTypeTemplateFile[];
+  isProjectTypesLoading: boolean;
+  projectTypesLoadError: string | null;
 }
 
 export interface ShellProjectTypeLoaderProps {
-    isOpen: boolean;
-    children: (state: ShellProjectTypeLoaderState) => React.ReactNode;
+  isOpen: boolean;
+  children: (state: ShellProjectTypeLoaderState) => React.ReactNode;
 }
 
 export default function ShellProjectTypeLoader({
-    isOpen,
-    children,
+  isOpen,
+  children,
 }: ShellProjectTypeLoaderProps): JSX.Element {
-    const [projectTypeTemplates, setProjectTypeTemplates] = React.useState<
-        ProjectTypeTemplateFile[]
-    >([]);
-    const [isProjectTypesLoading, setIsProjectTypesLoading] =
-        React.useState<boolean>(false);
-    const [projectTypesLoadError, setProjectTypesLoadError] = React.useState<
-        string | null
-    >(null);
+  const [projectTypeTemplates, setProjectTypeTemplates] = React.useState<
+    ProjectTypeTemplateFile[]
+  >([]);
+  const [isProjectTypesLoading, setIsProjectTypesLoading] =
+    React.useState<boolean>(false);
+  const [projectTypesLoadError, setProjectTypesLoadError] = React.useState<
+    string | null
+  >(null);
 
-    React.useEffect(() => {
-        if (!isOpen) {
-            return;
+  React.useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadProjectTypes = async (): Promise<void> => {
+      setIsProjectTypesLoading(true);
+      setProjectTypesLoadError(null);
+
+      try {
+        const definitions = await listProjectTypes();
+
+        if (isCancelled) {
+          return;
         }
 
-        let isCancelled = false;
+        const templates: ProjectTypeTemplateFile[] = definitions.map(
+          (definition, index) => {
+            return {
+              fileName:
+                definition.id?.trim().length > 0
+                  ? `${definition.id}.json`
+                  : `template-${index + 1}.json`,
+              definition: {
+                ...definition,
+                folders: definition.folders ?? [],
+                defaultResources: definition.defaultResources ?? [],
+              },
+            };
+          },
+        );
 
-        const loadProjectTypes = async (): Promise<void> => {
-            setIsProjectTypesLoading(true);
-            setProjectTypesLoadError(null);
+        setProjectTypeTemplates(templates);
+      } catch (error) {
+        if (isCancelled) {
+          return;
+        }
 
-            try {
-                const response = await fetch("/api/project-types");
-                if (!response.ok) {
-                    throw new Error(
-                        `Failed to load project types (${response.status})`,
-                    );
-                }
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to load project types";
+        setProjectTypesLoadError(message);
+      } finally {
+        if (!isCancelled) {
+          setIsProjectTypesLoading(false);
+        }
+      }
+    };
 
-                const definitions =
-                    (await response.json()) as ProjectTypeDefinition[];
+    void loadProjectTypes();
 
-                if (isCancelled) {
-                    return;
-                }
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen]);
 
-                const templates: ProjectTypeTemplateFile[] = definitions.map(
-                    (definition, index) => {
-                        return {
-                            fileName:
-                                definition.id?.trim().length > 0
-                                    ? `${definition.id}.json`
-                                    : `template-${index + 1}.json`,
-                            definition: {
-                                ...definition,
-                                folders: definition.folders ?? [],
-                                defaultResources:
-                                    definition.defaultResources ?? [],
-                            },
-                        };
-                    },
-                );
-
-                setProjectTypeTemplates(templates);
-            } catch (error) {
-                if (isCancelled) {
-                    return;
-                }
-
-                const message =
-                    error instanceof Error
-                        ? error.message
-                        : "Failed to load project types";
-                setProjectTypesLoadError(message);
-            } finally {
-                if (!isCancelled) {
-                    setIsProjectTypesLoading(false);
-                }
-            }
-        };
-
-        void loadProjectTypes();
-
-        return () => {
-            isCancelled = true;
-        };
-    }, [isOpen]);
-
-    return (
-        <>
-            {children({
-                projectTypeTemplates,
-                isProjectTypesLoading,
-                projectTypesLoadError,
-            })}
-        </>
-    );
+  return (
+    <>
+      {children({
+        projectTypeTemplates,
+        isProjectTypesLoading,
+        projectTypesLoadError,
+      })}
+    </>
+  );
 }

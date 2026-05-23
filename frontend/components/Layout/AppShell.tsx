@@ -54,6 +54,23 @@ import SearchBar from "../SearchBar/SearchBar";
 import debounce from "lodash/debounce";
 import { tiptapToPlainText } from "../../src/lib/tiptap-text";
 import { countWords } from "../../src/lib/word-count";
+import {
+  saveHeadingSettings,
+  saveBodySettings,
+} from "../../src/lib/api/editor-config";
+import {
+  saveProjectPreferences,
+  saveRevisionSettings,
+} from "../../src/lib/api/preferences";
+import {
+  renameResource,
+  persistContent as persistResourceContent,
+} from "../../src/lib/api/resources";
+import {
+  compilePdf,
+  compileDocx,
+  compileText,
+} from "../../src/lib/api/compile";
 import { formatRelativeTimestamp as _formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 import {
   PanelLeftClose,
@@ -524,16 +541,13 @@ export default function AppShell({
     const resourceId = renameModal.resourceId;
     const isFolder = (folders ?? []).some((f) => f.id === resourceId);
     try {
-      const res = await fetch(`/api/resource/${resourceId}/rename`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectRoot: project.rootPath,
-          newName,
-          resourceType: isFolder ? "folder" : "resource",
-        }),
-      });
-      if (!res.ok) return;
+      const ok = await renameResource(
+        resourceId,
+        project.rootPath,
+        newName,
+        isFolder ? "folder" : "resource",
+      );
+      if (!ok) return;
       if (isFolder) {
         dispatch(updateFolder({ id: resourceId, name: newName }));
       } else {
@@ -704,18 +718,7 @@ export default function AppShell({
     }
     console.log("Persisting content for", selectedResourceId);
     try {
-      const response = await fetch(
-        `/api/resource/${selectedResourceId}/content`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectPath: project.rootPath, doc }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to persist content (${response.status})`);
-      }
+      await persistResourceContent(selectedResourceId, project.rootPath, doc);
 
       const wordCount = countWords(tiptapToPlainText(doc));
       dispatch(updateResource({ id: selectedResourceId, wordCount }));
@@ -812,14 +815,7 @@ export default function AppShell({
     }
 
     try {
-      await fetch("/api/project/preferences", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectPath: project.rootPath,
-          preferences: { colorMode: nextMode },
-        }),
-      });
+      await saveProjectPreferences(project.rootPath, { colorMode: nextMode });
     } catch (error) {
       console.error("Failed to persist project user preferences", error);
     }
@@ -909,24 +905,11 @@ export default function AppShell({
       throw new Error("Project path unavailable for heading settings.");
     }
 
-    const response = await fetch("/api/project/editor-config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectPath: project.rootPath, headings }),
-    });
-    const body = (await response.json().catch(() => null)) as {
-      editorConfig?: { headings?: EditorHeadingMap; body?: EditorBodyConfig };
-      error?: string;
-    } | null;
-
-    if (!response.ok) {
-      throw new Error(body?.error ?? "Failed to save heading settings.");
-    }
-
+    const body = await saveHeadingSettings(project.rootPath, headings);
     dispatch(
       setEditorConfig({
-        headings: body?.editorConfig?.headings ?? {},
-        body: body?.editorConfig?.body,
+        headings: body.editorConfig?.headings ?? {},
+        body: body.editorConfig?.body,
       }),
     );
   };
@@ -938,24 +921,11 @@ export default function AppShell({
       throw new Error("Project path unavailable for body settings.");
     }
 
-    const response = await fetch("/api/project/editor-config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectPath: project.rootPath, body: bodyConfig }),
-    });
-    const responseBody = (await response.json().catch(() => null)) as {
-      editorConfig?: { headings?: EditorHeadingMap; body?: EditorBodyConfig };
-      error?: string;
-    } | null;
-
-    if (!response.ok) {
-      throw new Error(responseBody?.error ?? "Failed to save body settings.");
-    }
-
+    const responseBody = await saveBodySettings(project.rootPath, bodyConfig);
     dispatch(
       setEditorConfig({
-        headings: responseBody?.editorConfig?.headings ?? {},
-        body: responseBody?.editorConfig?.body,
+        headings: responseBody.editorConfig?.headings ?? {},
+        body: responseBody.editorConfig?.body,
       }),
     );
   };
@@ -964,21 +934,7 @@ export default function AppShell({
     if (!project?.rootPath) {
       throw new Error("Project path unavailable.");
     }
-    const response = await fetch("/api/project/revision-settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectPath: project.rootPath,
-        defaultRevisionName: name,
-      }),
-    });
-    const body = (await response.json().catch(() => null)) as {
-      defaultRevisionName?: string;
-      error?: string;
-    } | null;
-    if (!response.ok) {
-      throw new Error(body?.error ?? "Failed to save default revision name.");
-    }
+    await saveRevisionSettings(project.rootPath, name);
   };
 
   return (
@@ -1151,58 +1107,37 @@ export default function AppShell({
                   }}
                   onConfirmCompile={async (selectedIds, options) => {
                     if (!project?.rootPath) return;
+                    const compileBody = {
+                      projectPath: project.rootPath,
+                      resourceIds: selectedIds,
+                      resources: (resources ?? []).map((r) => ({
+                        id: r.id,
+                        name: r.name,
+                        type: r.type,
+                      })),
+                      includeHeaders: options.includeHeaders,
+                      projectName: project.name ?? "project",
+                    };
+                    const rawName = options.compilationName.trim();
                     try {
                       if (options.format === "pdf") {
-                        const pdfResponse = await fetch("/api/compile/pdf", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            projectPath: project.rootPath,
-                            resourceIds: selectedIds,
-                            resources: (resources ?? []).map((r) => ({
-                              id: r.id,
-                              name: r.name,
-                              type: r.type,
-                            })),
-                            includeHeaders: options.includeHeaders,
-                            projectName: project.name ?? "project",
-                          }),
-                        });
-                        if (!pdfResponse.ok) {
-                          toastService.error(
-                            "Compile failed",
-                            "Could not generate PDF",
-                          );
-                          return;
-                        }
-                        if (
-                          pdfResponse.headers.get("X-Compile-Warning") ===
-                          "font-fallback"
-                        ) {
+                        const result = await compilePdf(compileBody);
+                        if (result.warning === "font-fallback") {
                           toastService.info(
                             "PDF compiled with fallback fonts — IBM Plex fonts were unreachable",
                           );
                         }
-                        const arrayBuffer = await pdfResponse.arrayBuffer();
-                        const blob = new Blob([arrayBuffer], {
+                        const blob = new Blob([result.arrayBuffer], {
                           type: "application/pdf",
                         });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement("a");
                         a.href = url;
-                        const rawName = options.compilationName.trim();
-                        const disposition =
-                          pdfResponse.headers.get("Content-Disposition") ?? "";
-                        const serverFilename =
-                          disposition.match(/filename="([^"]+)"/)?.[1] ??
-                          "project.pdf";
-                        if (rawName) {
-                          a.download = rawName.endsWith(".pdf")
+                        a.download = rawName
+                          ? rawName.endsWith(".pdf")
                             ? rawName
-                            : `${rawName}.pdf`;
-                        } else {
-                          a.download = serverFilename;
-                        }
+                            : `${rawName}.pdf`
+                          : result.filename;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
@@ -1210,89 +1145,36 @@ export default function AppShell({
                         return;
                       }
                       if (options.format === "docx") {
-                        const docxResponse = await fetch("/api/compile/docx", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            projectPath: project.rootPath,
-                            resourceIds: selectedIds,
-                            resources: (resources ?? []).map((r) => ({
-                              id: r.id,
-                              name: r.name,
-                              type: r.type,
-                            })),
-                            includeHeaders: options.includeHeaders,
-                            projectName: project.name ?? "project",
-                          }),
-                        });
-                        if (!docxResponse.ok) {
-                          toastService.error(
-                            "Compile failed",
-                            "Could not generate DOCX",
-                          );
-                          return;
-                        }
-                        const arrayBuffer = await docxResponse.arrayBuffer();
-                        const blob = new Blob([arrayBuffer], {
+                        const result = await compileDocx(compileBody);
+                        const blob = new Blob([result.arrayBuffer], {
                           type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement("a");
                         a.href = url;
-                        const rawName = options.compilationName.trim();
-                        const disposition =
-                          docxResponse.headers.get("Content-Disposition") ?? "";
-                        const serverFilename =
-                          disposition.match(/filename="([^"]+)"/)?.[1] ??
-                          "project.docx";
-                        if (rawName) {
-                          a.download = rawName.endsWith(".docx")
+                        a.download = rawName
+                          ? rawName.endsWith(".docx")
                             ? rawName
-                            : `${rawName}.docx`;
-                        } else {
-                          a.download = serverFilename;
-                        }
+                            : `${rawName}.docx`
+                          : result.filename;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
                         URL.revokeObjectURL(url);
                         return;
                       }
-
-                      const response = await fetch("/api/compile/text", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          projectPath: project.rootPath,
-                          resourceIds: selectedIds,
-                          resources: (resources ?? []).map((r) => ({
-                            id: r.id,
-                            name: r.name,
-                            type: r.type,
-                          })),
-                          includeHeaders: options.includeHeaders,
-                          projectName: project.name ?? "project",
-                        }),
-                      });
-                      if (!response.ok) return;
-                      const { text, filename } = (await response.json()) as {
-                        text: string;
-                        filename: string;
-                      };
-                      const blob = new Blob([text], {
+                      const result = await compileText(compileBody);
+                      const blob = new Blob([result.text], {
                         type: "text/plain;charset=utf-8",
                       });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      const rawName = options.compilationName.trim();
-                      if (rawName) {
-                        a.download = rawName.endsWith(".txt")
+                      a.download = rawName
+                        ? rawName.endsWith(".txt")
                           ? rawName
-                          : `${rawName}.txt`;
-                      } else {
-                        a.download = filename;
-                      }
+                          : `${rawName}.txt`
+                        : result.filename;
                       document.body.appendChild(a);
                       a.click();
                       document.body.removeChild(a);
