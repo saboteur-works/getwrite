@@ -112,7 +112,7 @@ export default function TagsManagerModal({
             {tags.map((tag) => (
               <li
                 key={tag.id}
-                className="flex items-center justify-between gap-2 rounded-md border-[0.5px] border-gw-border bg-gw-chrome px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-md border-hairline border-gw-border bg-gw-chrome px-3 py-2"
               >
                 <Chip
                   label={tag.name}
@@ -135,7 +135,7 @@ export default function TagsManagerModal({
 
         {/* New tag form */}
         <form
-          className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-4 flex flex-col gap-3"
+          className="rounded-lg border-hairline border-gw-border bg-gw-chrome p-4 flex flex-col gap-3"
           onSubmit={(e) => void handleCreate(e)}
         >
           <p className="text-sm font-semibold text-gw-primary">New Tag</p>

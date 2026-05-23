@@ -11,7 +11,7 @@
  * create/export/compile flows, resizable/collapsible split panes, and debounced persistence
  * of editor content.
  */
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import type {
   AnyResource,
   EditorBodyConfig,
@@ -128,7 +128,7 @@ import { toastService } from "../../src/lib/toast-service";
  * Optional payload bag forwarded to `onResourceAction` callbacks.
  */
 export interface AppShellResourceActionOptions {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -430,8 +430,9 @@ export default function AppShell({
    * @param r - Resource-like object that may expose `name` or `title`.
    * @returns Resolved display name, or empty string when unavailable.
    */
-  const getResourceName = (r: AnyResource | any) =>
-    (r && ((r as any).name ?? (r as any).title ?? "")) || "";
+  const getResourceName = (
+    r: { name?: string; title?: string } | null | undefined,
+  ): string => (r && (r.name ?? r.title ?? "")) || "";
 
   /**
    * Returns plain-text content used by edit/diff views.
@@ -439,7 +440,8 @@ export default function AppShell({
    * @param r - Resource-like object containing persisted plain-text content.
    * @returns Plain-text content for view rendering.
    */
-  const getResourceContent = (r: AnyResource | any) => r.plaintext;
+  const getResourceContent = (r: unknown): string | undefined =>
+    (r as { plaintext?: string } | null | undefined)?.plaintext;
 
   const [contextAction, setContextAction] = useState<ContextActionState>({
     open: false,
@@ -568,7 +570,6 @@ export default function AppShell({
   const handleCreateConfirmed = async (
     payload: { title: string; type: ResourceType | string; folderId?: string },
     parentId?: string,
-    _opts?: AppShellResourceActionOptions,
   ) => {
     if (createModal.sourceResourceId) {
       await onResourceAction?.("copy", createModal.sourceResourceId, {
@@ -606,7 +607,7 @@ export default function AppShell({
     if (project?.id) {
       dispatch(loadSavedQueries({ projectId: project.id }));
     }
-  }, [project?.id]);
+  }, [project?.id, dispatch]);
 
   const handleSmartFolderSelect = (query: SavedQuery): void => {
     if (!project?.id) return;
@@ -700,37 +701,35 @@ export default function AppShell({
    * Guard clauses ensure this only runs for open projects with selected
    * resources and known `rootPath`.
    *
-   * @param content - Current plain-text editor content (reserved for parity/logging).
    * @param doc - Current TipTap document snapshot to persist.
    */
-  const persistContent = async (
-    content: string,
-    doc: TipTapDocument,
-    editVersion: number,
-  ): Promise<void> => {
-    if (!project || !selectedResourceId) {
-      setHasUnsavedEditorChanges(false);
-      return;
-    }
-    if (!project.rootPath) {
-      setHasUnsavedEditorChanges(false);
-      return;
-    }
-    console.log("Persisting content for", selectedResourceId);
-    try {
-      await persistResourceContent(selectedResourceId, project.rootPath, doc);
-
-      const wordCount = countWords(tiptapToPlainText(doc));
-      dispatch(updateResource({ id: selectedResourceId, wordCount }));
-
-      if (latestEditorEditVersionRef.current === editVersion) {
+  const persistContent = useCallback(
+    async (doc: TipTapDocument, editVersion: number): Promise<void> => {
+      if (!project || !selectedResourceId) {
         setHasUnsavedEditorChanges(false);
+        return;
       }
-    } catch (err) {
-      console.error("Failed to persist content:", err);
-      setHasUnsavedEditorChanges(true);
-    }
-  };
+      if (!project.rootPath) {
+        setHasUnsavedEditorChanges(false);
+        return;
+      }
+      console.log("Persisting content for", selectedResourceId);
+      try {
+        await persistResourceContent(selectedResourceId, project.rootPath, doc);
+
+        const wordCount = countWords(tiptapToPlainText(doc));
+        dispatch(updateResource({ id: selectedResourceId, wordCount }));
+
+        if (latestEditorEditVersionRef.current === editVersion) {
+          setHasUnsavedEditorChanges(false);
+        }
+      } catch (err) {
+        console.error("Failed to persist content:", err);
+        setHasUnsavedEditorChanges(true);
+      }
+    },
+    [project, selectedResourceId, dispatch],
+  );
 
   /**
    * Debounced content persistence function to limit API write frequency while
@@ -747,11 +746,11 @@ export default function AppShell({
    * @param content - Latest plain-text content.
    * @param doc - Latest TipTap document snapshot.
    */
-  const handlerEditorChange = (content: string, doc: TipTapDocument) => {
+  const handlerEditorChange = (_content: string, doc: TipTapDocument) => {
     latestEditorEditVersionRef.current += 1;
     const nextEditVersion = latestEditorEditVersionRef.current;
     setHasUnsavedEditorChanges(true);
-    debouncedPersistContent(content, doc, nextEditVersion);
+    debouncedPersistContent(doc, nextEditVersion);
   };
 
   useEffect(() => {
@@ -964,7 +963,7 @@ export default function AppShell({
                 style={{ width: layout.leftWidth }}
               >
                 <div className="appshell-sidebar-header">
-                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] font-semibold text-gw-secondary">
+                  <span className="font-mono text-gw-nano uppercase tracking-label-wide font-semibold text-gw-secondary">
                     Resources
                   </span>
                   <Button
@@ -1002,7 +1001,7 @@ export default function AppShell({
 
             {/* Left Sidebar Collapsed Toggle */}
             {showSidebars && !layout.leftOpen ? (
-              <div className="hidden sm:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-r border-[0.5px] border-gw-border">
+              <div className="hidden sm:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-r border-hairline border-gw-border">
                 <Button
                   variant="icon"
                   className="w-10 h-10"
@@ -1381,7 +1380,7 @@ export default function AppShell({
                               <section className="mx-auto w-full max-w-4xl bg-gw-chrome p-6 md:p-8">
                                 <div className="flex flex-wrap items-start justify-between gap-4">
                                   <div>
-                                    <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-gw-secondary">
+                                    <p className="font-mono text-gw-nano uppercase tracking-label-wide text-gw-secondary">
                                       Work Area
                                     </p>
                                     <h2 className="mt-2 text-3xl font-semibold text-gw-primary">
@@ -1410,7 +1409,7 @@ export default function AppShell({
 
                                 <div className="mt-8">
                                   <div className="mb-3 flex items-center justify-between">
-                                    <h3 className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-gw-secondary">
+                                    <h3 className="font-mono text-gw-nano font-semibold uppercase tracking-[0.16em] text-gw-secondary">
                                       Recent Files
                                     </h3>
                                     <span className="text-xs text-gw-secondary">
@@ -1419,7 +1418,7 @@ export default function AppShell({
                                   </div>
 
                                   {recentResources.length > 0 ? (
-                                    <ul className="divide-y divide-gw-border rounded-lg border-[0.5px] border-gw-border bg-gw-chrome">
+                                    <ul className="divide-y divide-gw-border rounded-lg border-hairline border-gw-border bg-gw-chrome">
                                       {recentResources.map((resource) => {
                                         const icon =
                                           resource.type === "image"
@@ -1535,7 +1534,10 @@ export default function AppShell({
                           onChangeNotes?.(value as string, id);
                           break;
                         case "status":
-                          onChangeStatus?.(value as any, id);
+                          onChangeStatus?.(
+                            value as "draft" | "in-review" | "published",
+                            id,
+                          );
                           break;
                         case "pov":
                           onChangePOV?.(value as ResourceRef, id);
@@ -1564,7 +1566,7 @@ export default function AppShell({
 
             {/* Right Sidebar Collapsed Toggle */}
             {showSidebars && !layout.rightOpen ? (
-              <div className="hidden lg:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-l border-[0.5px] border-gw-border">
+              <div className="hidden lg:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-l border-hairline border-gw-border">
                 <Button
                   variant="icon"
                   className="w-10 h-10"
