@@ -59,10 +59,9 @@ Table of contents
 
 ### Performance
 
-- Indexer durability and incremental writes — Severity: High
-    - Description: Index/backlink persistence and reindex durability need verification; partial or naive writes can lose index state.
-    - Example files: `src/lib/backlinks.ts`, `src/lib/indexer.ts`, `pruneExecutor.ts` (verify exact locations)
-    - Suggested remediation: Add durable write paths, a `reindex` CLI, and tests for incremental index updates and crash-recovery.
+- Indexer durability and incremental writes — ~~Severity: High~~ **Resolved in `fix/tech-debt`**
+    - ~~Description: Index/backlink persistence and reindex durability need verification; partial or naive writes can lose index state.~~
+    - Resolution: Added `atomicWriteFile` to `frontend/src/lib/models/io.ts` (write-to-tmp + rename, atomic on POSIX). `saveIndex` in `inverted-index.ts` and `persistBacklinks` in `backlinks.ts` now use it. Tests added in `io.test.ts` (atomic write semantics), `inverted-index.test.ts` (incremental preservation, corrupt JSON recovery, no .tmp left behind), and `backlinks.test.ts` (corrupt JSON recovery). `waitForDrain`, `reindex` CLI, and `reindexMissingResources` were resolved earlier in `fix/p0-blockers`.
 
 ### Dependencies
 
