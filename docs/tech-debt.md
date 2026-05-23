@@ -39,10 +39,9 @@ Table of contents
 
 ### Tests
 
-- Missing Storybook & unit coverage for WorkArea views — Severity: Medium
-    - Description: Core flows (Start → Open → Edit, Organizer, Data) lack Storybook stories and vitest coverage, slowing QA.
-    - Example files/dirs: `frontend/stories/`, `frontend/components/WorkArea/`
-    - Suggested remediation: Add Storybook stories for `EditView`, `OrganizerView`, and `DataView`; add Vitest unit/integration tests for critical flows.
+- Missing Storybook & unit coverage for WorkArea views — ~~Severity: Medium~~ **Stale — coverage exists**
+    - ~~Description: Core flows (Start → Open → Edit, Organizer, Data) lack Storybook stories and vitest coverage, slowing QA.~~
+    - Resolution: All WorkArea components now have Storybook stories (`frontend/stories/WorkArea/`), Vitest unit tests (`frontend/tests/{editView,dataView,organizerView,…}.test.tsx`), integration tests (`editViewAutosave.test.tsx`), and a11y tests (`tests/a11y/workarea.a11y.test.tsx`). E2e coverage for `OrganizerView` exists in `frontend/e2e/`; remaining view-level e2e specs are planned separately.
 
 ### Duplication
 
