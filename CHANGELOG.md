@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.2.38](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.37...getwrite-v0.2.38) (2026-05-23)
+
+
+### Features
+
+* **editor:** add clear option to color submenus ([3365fe8](https://github.com/saboteur-works/getwrite/commit/3365fe8e4d3edab04111f1d1765e031e156e12c9))
+* **editor:** add table support and canonical heading/body defaults ([4e730f1](https://github.com/saboteur-works/getwrite/commit/4e730f1e9f4461fd4ed8d657c39f0a25d01286fd))
+* **editor:** add table support via TipTap TableKit ([514b631](https://github.com/saboteur-works/getwrite/commit/514b631e64ac4eaec49eafd8587cccd12dc4f840))
+* **editor:** enable table column resizing and strip pasted table styles ([030bc48](https://github.com/saboteur-works/getwrite/commit/030bc4837773e1b0b8d4f5e0255856e02db0e385))
+* **editor:** establish canonical heading/body defaults and apply them at runtime ([7d90fb0](https://github.com/saboteur-works/getwrite/commit/7d90fb0ff952ad45ba373d9f747509b1ff560fc9))
+* **editor:** pin footer, scroll editor between toolbar and footer ([de79dd9](https://github.com/saboteur-works/getwrite/commit/de79dd93f38ddd21267983da2f0be56c493b78ae))
+* **preferences:** add live style previews to heading and body settings modals ([fde4350](https://github.com/saboteur-works/getwrite/commit/fde43502f9abff931179065dd7decf29a3cd6f37))
+
+
+### Bug Fixes
+
+* **editor:** ensure headings use ink color token and render correct tag level ([2b55714](https://github.com/saboteur-works/getwrite/commit/2b55714ec345c29e6266380955467afc655739d3))
+* **editor:** reinit TipTap when heading config changes so styles apply live ([fb5ea64](https://github.com/saboteur-works/getwrite/commit/fb5ea6426d1d72467eca2a6077597e1ea1a1a230))
+* **editor:** remove hardcoded white heading color from CustomHeading defaults ([8fea866](https://github.com/saboteur-works/getwrite/commit/8fea8667003df919dac4c8095048cfe580829a50))
+* **types:** resolve typecheck errors in editorMenuBar test ([a0b4a20](https://github.com/saboteur-works/getwrite/commit/a0b4a202cdace7b9ec92893a907d84e7abf0345c))
+
 ## [0.2.37](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.36...getwrite-v0.2.37) (2026-05-22)
 
 
