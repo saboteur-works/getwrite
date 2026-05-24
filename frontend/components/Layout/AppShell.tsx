@@ -43,6 +43,7 @@ import ShellSettingsMenu, {
 import ShellModalCoordinator from "./ShellModalCoordinator";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
+import SidebarContextMenu from "../ResourceTree/SidebarContextMenu";
 import ViewSwitcher from "../WorkArea/ViewSwitcher";
 import EditView from "../WorkArea/EditView";
 import DiffViewController from "../WorkArea/DiffViewController";
@@ -488,6 +489,11 @@ export default function AppShell({
 
     if (action === "rename") {
       setRenameModal({ open: true, resourceId, resourceTitle });
+      return;
+    }
+
+    if (action === "smart-folder") {
+      handleNewQuery();
       return;
     }
 
@@ -970,27 +976,29 @@ export default function AppShell({
                     <PanelLeftClose size={16} aria-hidden="true" />
                   </Button>
                 </div>
-                <div className="appshell-sidebar-content">
-                  {project ? (
-                    <>
-                      <ResourceTree
-                        debug={false}
-                        onResourceAction={handleResourceAction}
-                      />
-                      <SmartFolders
-                        selectedQueryId={activeSmartFolderId ?? undefined}
-                        onSelect={handleSmartFolderSelect}
-                        onNewQuery={handleNewQuery}
-                        onEditQuery={handleEditQuery}
-                        onDeleteQuery={handleDeleteQuery}
-                      />
-                    </>
-                  ) : (
-                    <div className="space-y-2">
-                      <p>Loading Resource Tree</p>
-                    </div>
-                  )}
-                </div>
+                {project ? (
+                  <SidebarContextMenu
+                    className="appshell-sidebar-content"
+                    onCreateResource={() => handleResourceAction("create")}
+                    onCreateSmartFolder={handleNewQuery}
+                  >
+                    <ResourceTree
+                      debug={false}
+                      onResourceAction={handleResourceAction}
+                    />
+                    <SmartFolders
+                      selectedQueryId={activeSmartFolderId ?? undefined}
+                      onSelect={handleSmartFolderSelect}
+                      onNewQuery={handleNewQuery}
+                      onEditQuery={handleEditQuery}
+                      onDeleteQuery={handleDeleteQuery}
+                    />
+                  </SidebarContextMenu>
+                ) : (
+                  <div className="appshell-sidebar-content space-y-2">
+                    <p>Loading Resource Tree</p>
+                  </div>
+                )}
               </aside>
             ) : null}
 

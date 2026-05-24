@@ -73,6 +73,20 @@ describe("ResourceContextMenu", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("renders New Smart Folder item and calls onAction with 'smart-folder'", () => {
+    const onAction = vi.fn();
+    const onClose = vi.fn();
+    renderMenu({ onAction, onClose });
+    openMenu();
+
+    const smartFolderBtn = screen.getByText("New Smart Folder");
+    expect(smartFolderBtn).toBeTruthy();
+
+    fireEvent.click(smartFolderBtn);
+    expect(onAction).toHaveBeenCalledWith("smart-folder", "res_test");
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it("renders Rename item and calls onAction with 'rename'", () => {
     const onAction = vi.fn();
     const onClose = vi.fn();

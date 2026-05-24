@@ -1,10 +1,19 @@
 import React from "react";
-import { Plus, Copy, Files, Trash2, Download, Pencil } from "lucide-react";
+import {
+  Plus,
+  Copy,
+  Files,
+  Trash2,
+  Download,
+  Pencil,
+  Search,
+} from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuLabel,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "../common/UI/ContextMenu";
 
@@ -15,7 +24,8 @@ export type ResourceContextAction =
   | "copy"
   | "duplicate"
   | "delete"
-  | "export";
+  | "export"
+  | "smart-folder";
 
 export interface ResourceContextMenuProps {
   resourceId?: string;
@@ -49,7 +59,19 @@ export default function ResourceContextMenu({
         if (!open) onClose?.();
       }}
     >
-      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      <ContextMenuTrigger asChild>
+        {/*
+         * display:contents makes this span invisible to layout while keeping it
+         * in the event path. stopPropagation prevents the contextmenu event from
+         * bubbling to an ancestor SidebarContextMenu so only one menu opens.
+         */}
+        <span
+          onContextMenu={(e) => e.stopPropagation()}
+          style={{ display: "contents" }}
+        >
+          {children}
+        </span>
+      </ContextMenuTrigger>
       <ContextMenuContent
         aria-label={menuTitle ? `${menuTitle} options` : "Resource options"}
         className={`resource-context-menu ${className}`}
@@ -71,6 +93,14 @@ export default function ResourceContextMenu({
         </ContextMenuItem>
         <ContextMenuItem
           className="resource-context-menu-item"
+          onSelect={() => handle("smart-folder")}
+        >
+          <Search size={14} className="resource-context-menu-item-icon" />
+          New Smart Folder
+        </ContextMenuItem>
+        <ContextMenuSeparator className="resource-context-menu-separator" />
+        <ContextMenuItem
+          className="resource-context-menu-item"
           onSelect={() => handle("rename")}
         >
           <Pencil size={14} className="resource-context-menu-item-icon" />
@@ -90,6 +120,7 @@ export default function ResourceContextMenu({
           <Files size={14} className="resource-context-menu-item-icon" />
           Duplicate
         </ContextMenuItem>
+        <ContextMenuSeparator className="resource-context-menu-separator" />
         <ContextMenuItem
           className="resource-context-menu-item resource-context-menu-item-danger"
           onSelect={() => handle("delete")}
