@@ -1,17 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { waitForEditorReady, typeIntoEditor } from "./helpers/editor";
 
 const INTERACTIVE_STORY = "/iframe.html?id=workarea-editview--interactive";
 
 test.describe("Wiki-link live decoration", () => {
   test("typed [[Target]] gets a wiki-link decoration", async ({ page }) => {
     await page.goto(INTERACTIVE_STORY);
-
-    const editor = page
-      .locator('[role="textbox"], [contenteditable="true"]')
-      .first();
-    await expect(editor).toBeVisible();
-    await editor.click();
-    await page.keyboard.type("See [[Target]]");
+    await waitForEditorReady(page);
+    await typeIntoEditor(page, "See [[Target]]");
 
     const wikiLinks = page.locator(".wiki-link");
     await expect(wikiLinks).toHaveCount(1);
@@ -20,12 +16,8 @@ test.describe("Wiki-link live decoration", () => {
 
   test("multiple [[refs]] each get their own decoration", async ({ page }) => {
     await page.goto(INTERACTIVE_STORY);
-
-    const editor = page
-      .locator('[role="textbox"], [contenteditable="true"]')
-      .first();
-    await editor.click();
-    await page.keyboard.type("Linking [[Alpha]] and [[Beta]] together.");
+    await waitForEditorReady(page);
+    await typeIntoEditor(page, "Linking [[Alpha]] and [[Beta]] together.");
 
     const wikiLinks = page.locator(".wiki-link");
     await expect(wikiLinks).toHaveCount(2);
@@ -35,17 +27,14 @@ test.describe("Wiki-link live decoration", () => {
 
   test("breaking the [[ pattern removes the decoration", async ({ page }) => {
     await page.goto(INTERACTIVE_STORY);
-
-    const editor = page
-      .locator('[role="textbox"], [contenteditable="true"]')
-      .first();
-    await editor.click();
-    await page.keyboard.type("Hold [[Target]]");
+    await waitForEditorReady(page);
+    await typeIntoEditor(page, "Hold [[Target]]");
 
     const wikiLinks = page.locator(".wiki-link");
     await expect(wikiLinks).toHaveCount(1);
 
-    // Delete the closing brackets to break the pattern (cursor is at the end).
+    // Delete the closing brackets to break the pattern (cursor is at the end
+    // after typeIntoEditor's final keystroke).
     await page.keyboard.press("Backspace");
     await page.keyboard.press("Backspace");
 

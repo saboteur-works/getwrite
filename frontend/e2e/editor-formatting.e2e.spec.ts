@@ -1,4 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
+import {
+  editorBody,
+  waitForEditorReady,
+  typeIntoEditor,
+} from "./helpers/editor";
 
 /**
  * Tier-2 regression coverage for editor formatting commands. These tests
@@ -13,43 +18,16 @@ import { test, expect, type Page } from "@playwright/test";
 
 const INTERACTIVE_STORY = "/iframe.html?id=workarea-editview--interactive";
 
-function editorBody(page: Page) {
-  return page.locator('[role="textbox"], [contenteditable="true"]').first();
-}
-
 function contentScope(page: Page) {
   return page.locator(".tiptap-editor-content");
-}
-
-async function waitForEditorReady(page: Page): Promise<void> {
-  // Three signals that together prove TipTap is fully initialized.
-  await page.locator("#editor-menu-bar").waitFor({ state: "visible" });
-  await page
-    .getByRole("button", { name: /^Bold$/i })
-    .waitFor({ state: "visible" });
-  // The ProseMirror placeholder decoration only renders once TipTap has
-  // populated its initial document state. Waiting for it removes the
-  // race against the first user keystroke.
-  await page
-    .locator(".ProseMirror [data-placeholder]")
-    .first()
-    .waitFor({ state: "attached" });
 }
 
 async function prepareEditor(page: Page, text = "hello world"): Promise<void> {
   await page.goto(INTERACTIVE_STORY);
   await waitForEditorReady(page);
-
-  const editor = editorBody(page);
-  await editor.click();
-  await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.type(text);
-  // Self-heal against TipTap init races: wait until the typed text is
-  // actually committed before continuing. Without this, the first few
-  // keystrokes can land during editor initialization and get dropped,
-  // causing assertions further down to fail intermittently.
-  await expect(editor).toContainText(text);
+  // typeIntoEditor clears and retypes until the text actually commits, so the
+  // TipTap init race that used to drop the first keystrokes can't leak through.
+  await typeIntoEditor(page, text);
   // Triple-click the specific element that contains the typed text so
   // the selection always lands on that block (TipTap can leave behind a
   // placeholder block during init that an editor-body triple-click
@@ -114,10 +92,10 @@ test.describe("Inline marks", () => {
   }
 });
 
-// Storybook + TipTap occasionally drop the first keystrokes after iframe
-// reload under combined-suite load. Each test is fast and self-contained,
-// so a single retry absorbs the timing race without masking real bugs — a
-// real regression in the editor wiring would fail every retry.
+// typeIntoEditor removes the first-keystroke-drop race, but block-level
+// transforms still chain a toolbar click onto a fresh selection, which can
+// occasionally lose under combined-suite CPU load. A single retry absorbs that
+// without masking real bugs — a broken command would fail every attempt.
 test.describe.configure({ retries: 1 });
 
 test.describe("Headings", () => {
