@@ -40,7 +40,7 @@ const meta: Meta<typeof SearchFilterPanel> = {
   title: "SearchBar/SearchFilterPanel",
   component: SearchFilterPanel,
   decorators: [
-    (Story) => (
+    (Story: React.ComponentType) => (
       <div
         style={{
           display: "flex",
@@ -77,7 +77,7 @@ export const Open: Story = {
     activeFilters: {},
     onFilterChange: () => {},
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const trigger = within(canvasElement).getByRole("button", {
       name: "Toggle search filters",
     });
@@ -107,7 +107,7 @@ export const ActiveFiltersOpen: Story = {
     activeFilters: { status: "Draft", tags: ["tag-1"] },
     onFilterChange: () => {},
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const trigger = within(canvasElement).getByRole("button", {
       name: "Toggle search filters",
     });
@@ -158,7 +158,7 @@ export const Interactive: Story = {
     activeFilters: {},
     onFilterChange: () => {},
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof SearchFilterPanel>) => {
     const [filters, setFilters] = useState<SearchFilters>({});
     return (
       <div
@@ -187,7 +187,7 @@ export const Interactive: Story = {
       </div>
     );
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const trigger = within(canvasElement).getByRole("button", {
       name: "Toggle search filters",
     });

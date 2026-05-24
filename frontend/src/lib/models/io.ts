@@ -34,72 +34,82 @@ export type ReaddirResult = string[] | Dirent[];
  * test-double, as long as they preserve method semantics.
  */
 export type StorageAdapter = {
-    /**
-     * Creates a directory.
-     *
-     * @param path - Directory path to create.
-     * @param opts - Optional creation flags.
-     * @param opts.recursive - When `true`, creates parent directories as needed.
-     */
-    mkdir(path: string, opts?: { recursive?: boolean }): Promise<void>;
-    /**
-     * Writes file data to disk.
-     *
-     * @param path - Target file path.
-     * @param data - File contents as text or binary buffer.
-     * @param opts - Optional write options accepted by the implementation.
-     */
-    writeFile(
-        path: string,
-        data: string | Buffer,
-        opts?: string | object,
-    ): Promise<void>;
-    /**
-     * Reads a file as text.
-     *
-     * @param path - File path to read.
-     * @param encoding - Optional text encoding.
-     * @returns File contents as a string.
-     */
-    readFile(path: string, encoding?: BufferEncoding): Promise<string>;
-    /**
-     * Reads directory entries.
-     *
-     * @param path - Directory path to read.
-     * @param opts - Optional flags controlling entry shape.
-     * @param opts.withFileTypes - When `true`, returns `Dirent[]`.
-     * @returns Either names (`string[]`) or typed entries (`Dirent[]`).
-     */
-    readdir(
-        path: string,
-        opts?: { withFileTypes?: boolean } | undefined,
-    ): Promise<ReaddirResult>;
-    /**
-     * Retrieves filesystem metadata for a path.
-     *
-     * @param path - File or directory path.
-     * @returns Node `Stats` object for the path.
-     */
-    stat(path: string): Promise<Stats>;
-    /**
-     * Removes a file or directory.
-     *
-     * @param path - Path to remove.
-     * @param opts - Optional removal flags.
-     * @param opts.recursive - When `true`, removes directories recursively.
-     * @param opts.force - When `true`, ignores missing paths.
-     */
-    rm(
-        path: string,
-        opts?: { recursive?: boolean; force?: boolean } | undefined,
-    ): Promise<void>;
-    /**
-     * Renames or moves a file/directory.
-     *
-     * @param oldPath - Existing path.
-     * @param newPath - New destination path.
-     */
-    rename(oldPath: string, newPath: string): Promise<void>;
+  /**
+   * Creates a directory.
+   *
+   * @param path - Directory path to create.
+   * @param opts - Optional creation flags.
+   * @param opts.recursive - When `true`, creates parent directories as needed.
+   */
+  mkdir(path: string, opts?: { recursive?: boolean }): Promise<void>;
+  /**
+   * Writes file data to disk.
+   *
+   * @param path - Target file path.
+   * @param data - File contents as text or binary buffer.
+   * @param opts - Optional write options accepted by the implementation.
+   */
+  writeFile(
+    path: string,
+    data: string | Buffer,
+    opts?: string | object,
+  ): Promise<void>;
+  /**
+   * Reads a file as text.
+   *
+   * @param path - File path to read.
+   * @param encoding - Optional text encoding.
+   * @returns File contents as a string.
+   */
+  readFile(path: string, encoding?: BufferEncoding): Promise<string>;
+  /**
+   * Reads directory entries.
+   *
+   * @param path - Directory path to read.
+   * @param opts - Optional flags controlling entry shape.
+   * @param opts.withFileTypes - When `true`, returns `Dirent[]`.
+   * @returns Either names (`string[]`) or typed entries (`Dirent[]`).
+   */
+  readdir(
+    path: string,
+    opts?: { withFileTypes?: boolean } | undefined,
+  ): Promise<ReaddirResult>;
+  /**
+   * Retrieves filesystem metadata for a path.
+   *
+   * @param path - File or directory path.
+   * @returns Node `Stats` object for the path.
+   */
+  stat(path: string): Promise<Stats>;
+  /**
+   * Removes a file or directory.
+   *
+   * @param path - Path to remove.
+   * @param opts - Optional removal flags.
+   * @param opts.recursive - When `true`, removes directories recursively.
+   * @param opts.force - When `true`, ignores missing paths.
+   */
+  rm(
+    path: string,
+    opts?: { recursive?: boolean; force?: boolean } | undefined,
+  ): Promise<void>;
+  /**
+   * Renames or moves a file/directory.
+   *
+   * @param oldPath - Existing path.
+   * @param newPath - New destination path.
+   */
+  rename(oldPath: string, newPath: string): Promise<void>;
+  /**
+   * Flushes file data to disk so it survives sudden shutdown.
+   *
+   * Real filesystem adapters should open the file, call `fsync`, and close.
+   * In-memory or test adapters may treat this as a no-op since their writes
+   * have no on-disk durability concern.
+   *
+   * @param path - Existing file path.
+   */
+  fsyncFile?(path: string): Promise<void>;
 };
 
 /**
@@ -109,15 +119,23 @@ export type StorageAdapter = {
  * {@link setStorageAdapter} for tests.
  */
 let adapter: StorageAdapter = {
-    mkdir: async (p, o) => {
-        await fs.mkdir(p, o);
-    },
-    writeFile: (p, d, o) => fs.writeFile(p, d, o as any),
-    readFile: (p, e) => fs.readFile(p, e ?? "utf8") as Promise<string>,
-    readdir: (p, o) => fs.readdir(p, o as any) as Promise<ReaddirResult>,
-    stat: (p) => fs.stat(p) as Promise<Stats>,
-    rm: (p, o) => fs.rm(p, o as any),
-    rename: (a, b) => fs.rename(a, b),
+  mkdir: async (p, o) => {
+    await fs.mkdir(p, o);
+  },
+  writeFile: (p, d, o) => fs.writeFile(p, d, o as any),
+  readFile: (p, e) => fs.readFile(p, e ?? "utf8") as Promise<string>,
+  readdir: (p, o) => fs.readdir(p, o as any) as Promise<ReaddirResult>,
+  stat: (p) => fs.stat(p) as Promise<Stats>,
+  rm: (p, o) => fs.rm(p, o as any),
+  rename: (a, b) => fs.rename(a, b),
+  fsyncFile: async (p) => {
+    const handle = await fs.open(p, "r+");
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  },
 };
 
 /**
@@ -128,7 +146,7 @@ let adapter: StorageAdapter = {
  * @param a - New storage adapter implementation to use.
  */
 export function setStorageAdapter(a: StorageAdapter) {
-    adapter = a;
+  adapter = a;
 }
 
 /**
@@ -137,7 +155,7 @@ export function setStorageAdapter(a: StorageAdapter) {
  * @returns Active {@link StorageAdapter} instance.
  */
 export function getStorageAdapter(): StorageAdapter {
-    return adapter;
+  return adapter;
 }
 
 /**
@@ -148,7 +166,7 @@ export function getStorageAdapter(): StorageAdapter {
  * @returns Resolves when the directory operation completes.
  */
 export const mkdir = (p: string, o?: { recursive?: boolean }) =>
-    adapter.mkdir(p, o);
+  adapter.mkdir(p, o);
 
 /**
  * Writes file data using the active storage adapter.
@@ -159,7 +177,7 @@ export const mkdir = (p: string, o?: { recursive?: boolean }) =>
  * @returns Resolves when the write completes.
  */
 export const writeFile = (p: string, d: string | Buffer, o?: string | object) =>
-    adapter.writeFile(p, d, o);
+  adapter.writeFile(p, d, o);
 
 /**
  * Reads a text file using the active storage adapter.
@@ -169,7 +187,7 @@ export const writeFile = (p: string, d: string | Buffer, o?: string | object) =>
  * @returns File contents as a string.
  */
 export const readFile = (p: string, e?: BufferEncoding) =>
-    adapter.readFile(p, e);
+  adapter.readFile(p, e);
 
 /**
  * Reads directory entries using the active storage adapter.
@@ -179,7 +197,7 @@ export const readFile = (p: string, e?: BufferEncoding) =>
  * @returns Directory entries as `string[]` or `Dirent[]`.
  */
 export const readdir = (p: string, o?: { withFileTypes?: boolean }) =>
-    adapter.readdir(p, o);
+  adapter.readdir(p, o);
 
 /**
  * Reads filesystem metadata for a path.
@@ -197,7 +215,7 @@ export const stat = (p: string) => adapter.stat(p);
  * @returns Resolves when removal completes.
  */
 export const rm = (p: string, o?: { recursive?: boolean; force?: boolean }) =>
-    adapter.rm(p, o);
+  adapter.rm(p, o);
 
 /**
  * Renames or moves a file/directory using the active storage adapter.
@@ -207,5 +225,82 @@ export const rm = (p: string, o?: { recursive?: boolean; force?: boolean }) =>
  * @returns Resolves when rename completes.
  */
 export const rename = (a: string, b: string) => adapter.rename(a, b);
+
+/**
+ * Flushes file data to disk using the active storage adapter. No-op when the
+ * adapter does not implement {@link StorageAdapter.fsyncFile}.
+ *
+ * @param p - File path to fsync.
+ */
+export const fsyncFile = async (p: string): Promise<void> => {
+  if (adapter.fsyncFile) await adapter.fsyncFile(p);
+};
+
+/**
+ * Options accepted by {@link atomicWriteFile}.
+ */
+export interface AtomicWriteOptions {
+  /**
+   * Underlying write options forwarded to the storage adapter's `writeFile`.
+   */
+  writeOptions?: string | object;
+  /**
+   * When `true`, fsync the temp file before renaming so data survives a
+   * sudden shutdown. Adds latency; intended for index/backlinks meta writes
+   * where loss would force an expensive rebuild.
+   */
+  durable?: boolean;
+}
+
+/**
+ * Writes file data atomically: writes to `<path>.tmp` then renames into place.
+ *
+ * On POSIX systems rename is atomic within a filesystem, so a crash between
+ * the write and the rename leaves the original file intact rather than
+ * producing a partially-written result. When `opts.durable` is true, also
+ * fsyncs the temp file before rename so committed data survives a crash.
+ *
+ * For backwards compatibility, callers may still pass a plain options object
+ * — it is forwarded directly to the underlying `writeFile`.
+ *
+ * @param p - Destination file path.
+ * @param data - File contents as text or binary.
+ * @param opts - Either underlying write options or {@link AtomicWriteOptions}.
+ * @returns Resolves when the rename completes.
+ */
+export async function atomicWriteFile(
+  p: string,
+  data: string | Buffer,
+  opts?: string | object | AtomicWriteOptions,
+): Promise<void> {
+  const tmp = `${p}.tmp`;
+  const normalized = normalizeAtomicWriteOptions(opts);
+  await writeFile(tmp, data, normalized.writeOptions);
+  if (normalized.durable) {
+    try {
+      await fsyncFile(tmp);
+    } catch (err) {
+      // Best-effort: a missing fsync impl or a permission error must not
+      // block the rename, since the atomic guarantee still holds without it.
+      console.warn("[io] fsync before rename failed:", err);
+    }
+  }
+  await rename(tmp, p);
+}
+
+function normalizeAtomicWriteOptions(
+  opts?: string | object | AtomicWriteOptions,
+): { writeOptions?: string | object; durable: boolean } {
+  if (opts == null) return { writeOptions: undefined, durable: false };
+  if (typeof opts === "string") return { writeOptions: opts, durable: false };
+  const maybe = opts as AtomicWriteOptions;
+  if ("durable" in maybe || "writeOptions" in maybe) {
+    return {
+      writeOptions: maybe.writeOptions,
+      durable: maybe.durable === true,
+    };
+  }
+  return { writeOptions: opts, durable: false };
+}
 
 export default { setStorageAdapter, getStorageAdapter };

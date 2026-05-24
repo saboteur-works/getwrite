@@ -4,15 +4,15 @@ import DefaultRevisionNameModal from "../../components/preferences/DefaultRevisi
 import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 
 const meta: Meta<typeof DefaultRevisionNameModal> = {
-    title: "Preferences/DefaultRevisionNameModal",
-    component: DefaultRevisionNameModal,
-    decorators: [
-        (Story) => (
-            <Dialog open onOpenChange={() => undefined}>
-                <Story />
-            </Dialog>
-        ),
-    ],
+  title: "Preferences/DefaultRevisionNameModal",
+  component: DefaultRevisionNameModal,
+  decorators: [
+    (Story: React.ComponentType) => (
+      <Dialog open onOpenChange={() => undefined}>
+        <Story />
+      </Dialog>
+    ),
+  ],
 };
 
 export default meta;
@@ -20,50 +20,50 @@ export default meta;
 type Story = StoryObj<typeof DefaultRevisionNameModal>;
 
 export const Default: Story = {
-    args: {
-        initialName: "Initial Draft",
-        onClose: () => console.log("close"),
-        onSave: async (name: string) => console.log("save", name),
-    },
+  args: {
+    initialName: "Initial Draft",
+    onClose: () => console.log("close"),
+    onSave: async (name: string) => console.log("save", name),
+  },
 };
 
 export const Prefilled: Story = {
-    args: {
-        initialName: "First Draft",
-        onClose: () => console.log("close"),
-        onSave: async (name: string) => console.log("save", name),
-    },
+  args: {
+    initialName: "First Draft",
+    onClose: () => console.log("close"),
+    onSave: async (name: string) => console.log("save", name),
+  },
 };
 
 export const Interactive: Story = {
-    render: (args) => {
-        const [savedName, setSavedName] = React.useState<string | null>(null);
-        return (
-            <div>
-                <DefaultRevisionNameModal
-                    {...args}
-                    onSave={async (name: string) => {
-                        setSavedName(name);
-                        args.onSave?.(name);
-                    }}
-                />
-                {savedName ? (
-                    <p
-                        style={{
-                            marginTop: "1rem",
-                            fontFamily: "monospace",
-                            fontSize: "12px",
-                        }}
-                    >
-                        Saved: {savedName}
-                    </p>
-                ) : null}
-            </div>
-        );
-    },
-    args: {
-        initialName: "Initial Draft",
-        onClose: () => console.log("close"),
-        onSave: async (name: string) => console.log("save", name),
-    },
+  render: (args: React.ComponentProps<typeof DefaultRevisionNameModal>) => {
+    const [savedName, setSavedName] = React.useState<string | null>(null);
+    return (
+      <div>
+        <DefaultRevisionNameModal
+          {...args}
+          onSave={async (name: string) => {
+            setSavedName(name);
+            args.onSave?.(name);
+          }}
+        />
+        {savedName ? (
+          <p
+            style={{
+              marginTop: "1rem",
+              fontFamily: "monospace",
+              fontSize: "12px",
+            }}
+          >
+            Saved: {savedName}
+          </p>
+        ) : null}
+      </div>
+    );
+  },
+  args: {
+    initialName: "Initial Draft",
+    onClose: () => console.log("close"),
+    onSave: async (name: string) => console.log("save", name),
+  },
 };

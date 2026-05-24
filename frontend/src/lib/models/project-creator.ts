@@ -45,14 +45,14 @@ import { createProject } from "./project";
 import { generateUUID } from "./uuid";
 import { validateProjectTypeFile, validateProjectType } from "./schemas";
 import type {
-    Project,
-    Folder,
-    TextResource,
-    ResourceType,
-    MetadataSource,
-    EditorHeadings,
-    EditorHeading,
-    EditorBodyConfig,
+  Project,
+  Folder,
+  TextResource,
+  ResourceType,
+  MetadataSource,
+  EditorHeadings,
+  EditorHeading,
+  EditorBodyConfig,
 } from "./types";
 import { createResourceOfType, writeResourceToFile } from "./resource";
 import { writeRevision } from "./revision";
@@ -65,14 +65,14 @@ import { slugify } from "../utils";
  * templates stored under `getwrite-config/templates/project-types`.
  */
 export interface ProjectTypeSpecFolder {
-    /** Human-friendly folder name (displayed in the UI). */
-    name: string;
-    /**
-     * Optional flag for special folders (e.g. workspace, drafts). Implementation
-     * may choose to treat `special` folders differently in ordering or UI.
-     */
-    special?: boolean;
-    metadataSource?: MetadataSource;
+  /** Human-friendly folder name (displayed in the UI). */
+  name: string;
+  /**
+   * Optional flag for special folders (e.g. workspace, drafts). Implementation
+   * may choose to treat `special` folders differently in ordering or UI.
+   */
+  special?: boolean;
+  metadataSource?: MetadataSource;
 }
 
 /**
@@ -85,17 +85,17 @@ export interface ProjectTypeSpecFolder {
  * - `template` contains initial text content for text resources.
  */
 export interface ProjectTypeSpecResource {
-    /**
-     * Optional folder name (not slug) to place the resource under.
-     * When omitted, callers should default placement to the first folder.
-     */
-    folder?: string;
-    /** Display name for the resource. */
-    name: string;
-    /** Resource type; aligns with runtime `ResourceType`. */
-    type: ResourceType;
-    /** Optional template content used when creating text resources. */
-    template?: string;
+  /**
+   * Optional folder name (not slug) to place the resource under.
+   * When omitted, callers should default placement to the first folder.
+   */
+  folder?: string;
+  /** Display name for the resource. */
+  name: string;
+  /** Resource type; aligns with runtime `ResourceType`. */
+  type: ResourceType;
+  /** Optional template content used when creating text resources. */
+  template?: string;
 }
 
 /**
@@ -105,10 +105,10 @@ export interface ProjectTypeSpecResource {
  * - `name` is the human-friendly name for the subfolder.
  */
 export interface ProjectTypeSpecDefaultFolder {
-    folder: string;
-    name: string;
-    special?: boolean;
-    metadataSource?: MetadataSource;
+  folder: string;
+  name: string;
+  special?: boolean;
+  metadataSource?: MetadataSource;
 }
 
 /**
@@ -119,29 +119,27 @@ export interface ProjectTypeSpecDefaultFolder {
  * `createProjectFromType`.
  */
 export interface ProjectTypeSpec {
-    /** Stable identifier for the project type (used when persisting). */
-    id: string;
-    /** Human-friendly name shown in the UI for the template. */
-    name: string;
-    /** Optional longer description explaining the template's intent. */
-    description?: string;
-    /** List of folders to create for the new project. */
-    folders: ProjectTypeSpecFolder[];
-    /** Optional list of default resources to scaffold inside the folders. */
-    defaultResources?: ProjectTypeSpecResource[];
-    /** Optional list of subfolders to scaffold under named parent folders. */
-    defaultFolders?: ProjectTypeSpecDefaultFolder[];
-    /** Optional default project configuration to apply when creating a project. */
-    editorConfig?: {
-        headings?: {
-            [index in EditorHeadings]?: EditorHeading;
-        };
-        body?: EditorBodyConfig;
-    };
-    /** Default project-scoped status values to seed on creation. */
-    statuses?: string[];
-    /** Target word count for the project. */
-    wordCountGoal?: number;
+  /** Stable identifier for the project type (used when persisting). */
+  id: string;
+  /** Human-friendly name shown in the UI for the template. */
+  name: string;
+  /** Optional longer description explaining the template's intent. */
+  description?: string;
+  /** List of folders to create for the new project. */
+  folders: ProjectTypeSpecFolder[];
+  /** Optional list of default resources to scaffold inside the folders. */
+  defaultResources?: ProjectTypeSpecResource[];
+  /** Optional list of subfolders to scaffold under named parent folders. */
+  defaultFolders?: ProjectTypeSpecDefaultFolder[];
+  /** Optional default project configuration to apply when creating a project. */
+  editorConfig?: {
+    headings?: { [index in EditorHeadings]?: EditorHeading };
+    body?: EditorBodyConfig;
+  };
+  /** Default project-scoped status values to seed on creation. */
+  statuses?: string[];
+  /** Target word count for the project. */
+  wordCountGoal?: number;
 }
 
 /**
@@ -176,186 +174,173 @@ export interface ProjectTypeSpec {
  * });
  */
 export async function createProjectFromType(options: {
-    /** Root path where the project will be created. */
-    projectRoot: string;
-    /** Project-type specification, either as an object or a path to a JSON file. */
-    spec: ProjectTypeSpec | string;
-    /** Optional name for the project; if not provided, will use the name from the spec. */
-    name?: string;
+  /** Root path where the project will be created. */
+  projectRoot: string;
+  /** Project-type specification, either as an object or a path to a JSON file. */
+  spec: ProjectTypeSpec | string;
+  /** Optional name for the project; if not provided, will use the name from the spec. */
+  name?: string;
 }): Promise<{
-    project: Project;
-    folders: Folder[];
-    resources: TextResource[];
+  project: Project;
+  folders: Folder[];
+  resources: TextResource[];
 }> {
-    const { projectRoot, spec, name } = options;
+  const { projectRoot, spec, name } = options;
 
-    // Load and validate spec (file path or object)
-    /** The spec for this project */
-    let specObj: ProjectTypeSpec;
-    if (typeof spec === "string") {
-        const res = await validateProjectTypeFile(spec);
+  // Load and validate spec (file path or object)
+  /** The spec for this project */
+  let specObj: ProjectTypeSpec;
+  if (typeof spec === "string") {
+    const res = await validateProjectTypeFile(spec);
 
-        if (!res.success || !("value" in res))
-            throw new Error(
-                `Invalid project-type spec file: ${JSON.stringify(res.errors)}`,
-            );
-        if (!res.value)
-            throw new Error("Invalid project-type spec file: missing value");
-        specObj = res.value;
-    } else {
-        const res = validateProjectType(spec);
-        if (!res.success || !("value" in res))
-            throw new Error(
-                `Invalid project-type spec object: ${JSON.stringify(res.errors)}`,
-            );
-        if (!res.value)
-            throw new Error("Invalid project-type spec object: missing value");
-        specObj = res.value;
-    }
-    console.log("SPEC", specObj);
+    if (!res.success || !("value" in res))
+      throw new Error(
+        `Invalid project-type spec file: ${JSON.stringify(res.errors)}`,
+      );
+    if (!res.value)
+      throw new Error("Invalid project-type spec file: missing value");
+    specObj = res.value;
+  } else {
+    const res = validateProjectType(spec);
+    if (!res.success || !("value" in res))
+      throw new Error(
+        `Invalid project-type spec object: ${JSON.stringify(res.errors)}`,
+      );
+    if (!res.value)
+      throw new Error("Invalid project-type spec object: missing value");
+    specObj = res.value;
+  }
 
-    // Ensure project root exists
-    await fs.mkdir(projectRoot, { recursive: true });
-    const projectName = name ?? specObj.name;
-    // Create Project JSON
-    const project = createProject({
-        name: projectName,
-        projectType: specObj.id,
-        rootPath: projectRoot,
-        slug: slugify(projectName),
-        config: {
-            editorConfig: specObj.editorConfig ?? {},
-            statuses: specObj.statuses,
-            wordCountGoal: specObj.wordCountGoal,
-        },
-    });
+  // Ensure project root exists
+  await fs.mkdir(projectRoot, { recursive: true });
+  const projectName = name ?? specObj.name;
+  // Create Project JSON
+  const project = createProject({
+    name: projectName,
+    projectType: specObj.id,
+    rootPath: projectRoot,
+    slug: slugify(projectName),
+    config: {
+      editorConfig: specObj.editorConfig ?? {},
+      statuses: specObj.statuses,
+      wordCountGoal: specObj.wordCountGoal,
+    },
+  });
 
-    const projectJsonPath = path.join(projectRoot, "project.json");
+  const projectJsonPath = path.join(projectRoot, "project.json");
+  await fs.writeFile(projectJsonPath, JSON.stringify(project, null, 2), "utf8");
+
+  // Create folders (directories) and folder model objects
+  const foldersDir = path.join(projectRoot, "folders");
+  await fs.mkdir(foldersDir, { recursive: true });
+  const folders: Folder[] = [];
+  // Tracks the relative path from foldersDir to each folder (keyed by folder ID).
+  // Needed so subfolders of subfolders resolve the correct on-disk path rather
+  // than collapsing to the bare slug at the top level.
+  const folderRelPaths = new Map<string, string>();
+
+  for (let i = 0; i < specObj.folders.length; i += 1) {
+    const f = specObj.folders[i];
+    const id = generateUUID();
+    const slug = slugify(String(f.name));
+    const dir = path.join(foldersDir, slug);
+    await fs.mkdir(dir, { recursive: true });
+    const now = new Date().toISOString();
+    const folderObj: Folder = {
+      id,
+      slug,
+      name: f.name,
+      parentId: null,
+      orderIndex: i,
+      createdAt: now,
+      type: "folder",
+      special: f.special,
+      metadataSource: f.metadataSource ?? { isMetadataSource: false },
+    };
+    folders.push(folderObj);
+    folderRelPaths.set(id, slug);
+    // write a small folder descriptor file so the structure is discoverable
     await fs.writeFile(
-        projectJsonPath,
-        JSON.stringify(project, null, 2),
-        "utf8",
+      path.join(dir, "folder.json"),
+      JSON.stringify(folderObj, null, 2),
+      "utf8",
     );
+  }
 
-    // Create folders (directories) and folder model objects
-    const foldersDir = path.join(projectRoot, "folders");
-    await fs.mkdir(foldersDir, { recursive: true });
-    const folders: Folder[] = [];
-    // Tracks the relative path from foldersDir to each folder (keyed by folder ID).
-    // Needed so subfolders of subfolders resolve the correct on-disk path rather
-    // than collapsing to the bare slug at the top level.
-    const folderRelPaths = new Map<string, string>();
-
-    for (let i = 0; i < specObj.folders.length; i += 1) {
-        const f = specObj.folders[i];
-        const id = generateUUID();
-        const slug = slugify(String(f.name));
-        const dir = path.join(foldersDir, slug);
-        await fs.mkdir(dir, { recursive: true });
-        const now = new Date().toISOString();
-        const folderObj: Folder = {
-            id,
-            slug,
-            name: f.name,
-            parentId: null,
-            orderIndex: i,
-            createdAt: now,
-            type: "folder",
-            special: f.special,
-            metadataSource: f.metadataSource ?? { isMetadataSource: false },
-        };
-        folders.push(folderObj);
-        folderRelPaths.set(id, slug);
-        // write a small folder descriptor file so the structure is discoverable
-        await fs.writeFile(
-            path.join(dir, "folder.json"),
-            JSON.stringify(folderObj, null, 2),
-            "utf8",
-        );
+  // Create subfolders declared via defaultFolders
+  const subfolderOrderCounters = new Map<string, number>();
+  for (const sf of specObj.defaultFolders ?? []) {
+    const parentSlug = slugify(sf.folder);
+    const parentFolder = folders.find((f) => f.slug === parentSlug);
+    if (!parentFolder) {
+      console.warn(`defaultFolders: parent "${sf.folder}" not found, skipping`);
+      continue;
     }
+    const orderIndex = subfolderOrderCounters.get(parentFolder.id) ?? 0;
+    subfolderOrderCounters.set(parentFolder.id, orderIndex + 1);
+    const subId = generateUUID();
+    const subSlug = slugify(sf.name);
+    const parentRelPath =
+      folderRelPaths.get(parentFolder.id) ?? parentFolder.slug;
+    const relPath = `${parentRelPath}/${subSlug}`;
+    const subDir = path.join(foldersDir, relPath);
+    await fs.mkdir(subDir, { recursive: true });
+    const now = new Date().toISOString();
+    const subFolder: Folder = {
+      id: subId,
+      slug: subSlug,
+      name: sf.name,
+      parentId: parentFolder.id,
+      orderIndex,
+      createdAt: now,
+      type: "folder",
+      special: sf.special,
+      metadataSource: sf.metadataSource ?? { isMetadataSource: false },
+    };
+    folders.push(subFolder);
+    folderRelPaths.set(subId, relPath);
+    await fs.writeFile(
+      path.join(subDir, "folder.json"),
+      JSON.stringify(subFolder, null, 2),
+      "utf8",
+    );
+  }
 
-    // Create subfolders declared via defaultFolders
-    const subfolderOrderCounters = new Map<string, number>();
-    for (const sf of specObj.defaultFolders ?? []) {
-        const parentSlug = slugify(sf.folder);
-        const parentFolder = folders.find((f) => f.slug === parentSlug);
-        if (!parentFolder) {
-            console.warn(
-                `defaultFolders: parent "${sf.folder}" not found, skipping`,
-            );
-            continue;
-        }
-        const orderIndex = subfolderOrderCounters.get(parentFolder.id) ?? 0;
-        subfolderOrderCounters.set(parentFolder.id, orderIndex + 1);
-        const subId = generateUUID();
-        const subSlug = slugify(sf.name);
-        const parentRelPath = folderRelPaths.get(parentFolder.id) ?? parentFolder.slug;
-        const relPath = `${parentRelPath}/${subSlug}`;
-        const subDir = path.join(foldersDir, relPath);
-        await fs.mkdir(subDir, { recursive: true });
-        const now = new Date().toISOString();
-        const subFolder: Folder = {
-            id: subId,
-            slug: subSlug,
-            name: sf.name,
-            parentId: parentFolder.id,
-            orderIndex,
-            createdAt: now,
-            type: "folder",
-            special: sf.special,
-            metadataSource: sf.metadataSource ?? { isMetadataSource: false },
-        };
-        folders.push(subFolder);
-        folderRelPaths.set(subId, relPath);
-        await fs.writeFile(
-            path.join(subDir, "folder.json"),
-            JSON.stringify(subFolder, null, 2),
-            "utf8",
-        );
+  // Create default resources (placeholders) and sidecars
+  const resources: TextResource[] = [];
+  const resourcesDir = path.join(projectRoot, "resources");
+  await fs.mkdir(resourcesDir, { recursive: true });
+
+  for (let j = 0; j < (specObj.defaultResources ?? []).length; j += 1) {
+    const r = specObj.defaultResources![j];
+    const folderSlug = r.folder ? slugify(String(r.folder)) : folders[0].slug;
+    const folder = folders.find((ff) => ff.slug === folderSlug) ?? folders[0];
+
+    // For MVP, only support text resource templates
+    if (r.type === "text") {
+      const typedResource = createResourceOfType("text", {
+        name: r.name,
+        slug: slugify(r.name),
+        type: "text",
+        folderId: folder.id,
+        text: { plainText: r.template ?? "" },
+        orderIndex: j,
+      });
+      const seededTextResource = typedResource as TextResource;
+
+      resources.push(seededTextResource);
+      await writeResourceToFile(projectRoot, seededTextResource);
+      await writeRevision(
+        projectRoot,
+        seededTextResource.id,
+        1,
+        seededTextResource.plainText ?? "",
+        { isCanonical: true },
+      );
     }
+  }
 
-    // Create default resources (placeholders) and sidecars
-    const resources: TextResource[] = [];
-    const resourcesDir = path.join(projectRoot, "resources");
-    await fs.mkdir(resourcesDir, { recursive: true });
-
-    for (let j = 0; j < (specObj.defaultResources ?? []).length; j += 1) {
-        const r = specObj.defaultResources![j];
-        const folderSlug = r.folder
-            ? slugify(String(r.folder))
-            : folders[0].slug;
-        const folder =
-            folders.find((ff) => ff.slug === folderSlug) ?? folders[0];
-
-        // For MVP, only support text resource templates
-        if (r.type === "text") {
-            const typedResource = createResourceOfType("text", {
-                name: r.name,
-                slug: slugify(r.name),
-                type: "text",
-                folderId: folder.id,
-                text: {
-                    plainText: r.template ?? "",
-                },
-                orderIndex: j,
-            });
-            const seededTextResource = typedResource as TextResource;
-
-            resources.push(seededTextResource);
-            await writeResourceToFile(projectRoot, seededTextResource);
-            await writeRevision(
-                projectRoot,
-                seededTextResource.id,
-                1,
-                seededTextResource.plainText ?? "",
-                {
-                    isCanonical: true,
-                },
-            );
-        }
-    }
-
-    return { project, folders, resources };
+  return { project, folders, resources };
 }
 
 export default { createProjectFromType };

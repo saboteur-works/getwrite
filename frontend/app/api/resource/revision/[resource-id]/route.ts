@@ -20,21 +20,25 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import {
-    listRevisions,
-    revisionDir,
-    setCanonicalRevision,
-    writeRevision,
+  listRevisions,
+  revisionDir,
+  setCanonicalRevision,
+  writeRevision,
 } from "../../../../../src/lib/models/revision";
+import {
+  readSidecar,
+  writeSidecar,
+} from "../../../../../src/lib/models/sidecar";
 import type { Revision } from "../../../../../src/lib/models/types";
 
 /**
  * Shape of the response returned by the GET handler.
  */
 interface GetRevisionResponse {
-    /** Revision metadata. */
-    revision: Revision;
-    /** Raw revision content as a UTF-8 string. */
-    content: string;
+  /** Revision metadata. */
+  revision: Revision;
+  /** Raw revision content as a UTF-8 string. */
+  content: string;
 }
 
 /**
@@ -44,41 +48,41 @@ interface GetRevisionResponse {
  * content from the filesystem.
  */
 interface SaveRevisionBody {
-    /** Absolute path to the project root on the server filesystem. */
-    projectPath: string;
-    /**
-     * Revision content to persist in `content.bin`.
-     * When omitted, the current resource content is read from the filesystem.
-     */
-    content?: string;
-    /** Optional author identifier or display name stored in metadata. */
-    author?: string;
-    /** When true, marks the new revision as canonical. Defaults to false. */
-    isCanonical?: boolean;
-    /** Optional arbitrary metadata to persist with the revision (e.g. user-provided name). */
-    metadata?: Record<string, unknown>;
+  /** Absolute path to the project root on the server filesystem. */
+  projectPath: string;
+  /**
+   * Revision content to persist in `content.bin`.
+   * When omitted, the current resource content is read from the filesystem.
+   */
+  content?: string;
+  /** Optional author identifier or display name stored in metadata. */
+  author?: string;
+  /** When true, marks the new revision as canonical. Defaults to false. */
+  isCanonical?: boolean;
+  /** Optional arbitrary metadata to persist with the revision (e.g. user-provided name). */
+  metadata?: Record<string, unknown>;
 }
 
 /**
  * Expected shape of the DELETE request body.
  */
 interface DeleteRevisionBody {
-    /** Absolute path to the project root on the server filesystem. */
-    projectPath: string;
-    /** Revision UUID to delete. */
-    revisionId: string;
+  /** Absolute path to the project root on the server filesystem. */
+  projectPath: string;
+  /** Revision UUID to delete. */
+  revisionId: string;
 }
 
 /**
  * Expected shape of the PATCH request body.
  */
 interface SetCanonicalRevisionBody {
-    /** Absolute path to the project root on the server filesystem. */
-    projectPath: string;
-    /** Revision UUID to mark canonical. */
-    revisionId: string;
-    /** Optional revision content to persist in-place for canonical revisions. */
-    content?: string;
+  /** Absolute path to the project root on the server filesystem. */
+  projectPath: string;
+  /** Revision UUID to mark canonical. */
+  revisionId: string;
+  /** Optional revision content to persist in-place for canonical revisions. */
+  content?: string;
 }
 
 /**
@@ -91,16 +95,16 @@ interface SetCanonicalRevisionBody {
  * @throws {Error} If the revision is not found.
  */
 async function findRevisionById(
-    projectPath: string,
-    resourceId: string,
-    revisionId: string,
+  projectPath: string,
+  resourceId: string,
+  revisionId: string,
 ): Promise<Revision> {
-    const revisions = await listRevisions(projectPath, resourceId);
-    const match = revisions.find((r) => r.id === revisionId);
-    if (!match) {
-        throw new Error(`Revision ${revisionId} not found.`);
-    }
-    return match;
+  const revisions = await listRevisions(projectPath, resourceId);
+  const match = revisions.find((r) => r.id === revisionId);
+  if (!match) {
+    throw new Error(`Revision ${revisionId} not found.`);
+  }
+  return match;
 }
 
 /**
@@ -113,15 +117,15 @@ async function findRevisionById(
  * @throws {Error} If `content.bin` cannot be read.
  */
 async function readRevisionContent(
-    projectPath: string,
-    resourceId: string,
-    versionNumber: number,
+  projectPath: string,
+  resourceId: string,
+  versionNumber: number,
 ): Promise<string> {
-    const contentPath = path.join(
-        revisionDir(projectPath, resourceId, versionNumber),
-        "content.bin",
-    );
-    return fs.readFile(contentPath, "utf8");
+  const contentPath = path.join(
+    revisionDir(projectPath, resourceId, versionNumber),
+    "content.bin",
+  );
+  return fs.readFile(contentPath, "utf8");
 }
 
 /**
@@ -133,16 +137,16 @@ async function readRevisionContent(
  * @param content - Raw content string to persist.
  */
 async function writeRevisionContent(
-    projectPath: string,
-    resourceId: string,
-    versionNumber: number,
-    content: string,
+  projectPath: string,
+  resourceId: string,
+  versionNumber: number,
+  content: string,
 ): Promise<void> {
-    const contentPath = path.join(
-        revisionDir(projectPath, resourceId, versionNumber),
-        "content.bin",
-    );
-    await fs.writeFile(contentPath, content, "utf8");
+  const contentPath = path.join(
+    revisionDir(projectPath, resourceId, versionNumber),
+    "content.bin",
+  );
+  await fs.writeFile(contentPath, content, "utf8");
 }
 
 /**
@@ -157,26 +161,26 @@ async function writeRevisionContent(
  * @throws {Error} If no readable content file is found.
  */
 async function readCurrentResourceContent(
-    projectPath: string,
-    resourceId: string,
+  projectPath: string,
+  resourceId: string,
 ): Promise<string> {
-    const resourceDir = path.join(projectPath, "resources", resourceId);
+  const resourceDir = path.join(projectPath, "resources", resourceId);
 
-    const tiptapPath = path.join(resourceDir, "content.tiptap.json");
-    try {
-        return await fs.readFile(tiptapPath, "utf8");
-    } catch {
-        // Fall through to plaintext
-    }
+  const tiptapPath = path.join(resourceDir, "content.tiptap.json");
+  try {
+    return await fs.readFile(tiptapPath, "utf8");
+  } catch {
+    // Fall through to plaintext
+  }
 
-    const plaintextPath = path.join(resourceDir, "content.txt");
-    try {
-        return await fs.readFile(plaintextPath, "utf8");
-    } catch {
-        throw new Error(
-            `No readable content file found for resource ${resourceId}.`,
-        );
-    }
+  const plaintextPath = path.join(resourceDir, "content.txt");
+  try {
+    return await fs.readFile(plaintextPath, "utf8");
+  } catch {
+    throw new Error(
+      `No readable content file found for resource ${resourceId}.`,
+    );
+  }
 }
 
 /**
@@ -190,13 +194,13 @@ async function readCurrentResourceContent(
  * @returns The next version number to assign.
  */
 async function resolveNextVersionNumber(
-    projectPath: string,
-    resourceId: string,
+  projectPath: string,
+  resourceId: string,
 ): Promise<number> {
-    const existing = await listRevisions(projectPath, resourceId);
-    if (existing.length === 0) return 1;
-    const highest = Math.max(...existing.map((r) => r.versionNumber));
-    return highest + 1;
+  const existing = await listRevisions(projectPath, resourceId);
+  if (existing.length === 0) return 1;
+  const highest = Math.max(...existing.map((r) => r.versionNumber));
+  return highest + 1;
 }
 
 /**
@@ -209,25 +213,25 @@ async function resolveNextVersionNumber(
  * @throws {Error} If the revision does not exist or deletion fails.
  */
 async function deleteRevisionById(
-    projectPath: string,
-    resourceId: string,
-    revisionId: string,
+  projectPath: string,
+  resourceId: string,
+  revisionId: string,
 ) {
-    const revisions = await listRevisions(projectPath, resourceId);
-    const revision = revisions.find((entry) => entry.id === revisionId);
+  const revisions = await listRevisions(projectPath, resourceId);
+  const revision = revisions.find((entry) => entry.id === revisionId);
 
-    if (!revision) {
-        throw new Error(`Revision ${revisionId} not found.`);
-    }
+  if (!revision) {
+    throw new Error(`Revision ${revisionId} not found.`);
+  }
 
-    const directory = revisionDir(
-        projectPath,
-        resourceId,
-        revision.versionNumber,
-    );
-    await fs.rm(directory, { recursive: true, force: true });
+  const directory = revisionDir(
+    projectPath,
+    resourceId,
+    revision.versionNumber,
+  );
+  await fs.rm(directory, { recursive: true, force: true });
 
-    return revision;
+  return revision;
 }
 
 /**
@@ -248,52 +252,50 @@ async function deleteRevisionById(
  * @returns JSON response containing revision metadata and content.
  */
 export async function GET(
-    req: NextRequest,
-    { params }: { params: Promise<{ "resource-id": string }> },
+  req: NextRequest,
+  { params }: { params: Promise<{ "resource-id": string }> },
 ) {
-    const resourceId = (await params)["resource-id"];
-    const { searchParams } = new URL(req.url);
+  const resourceId = (await params)["resource-id"];
+  const { searchParams } = new URL(req.url);
 
-    const projectPath = searchParams.get("projectPath");
-    const revisionId = searchParams.get("revisionId");
+  const projectPath = searchParams.get("projectPath");
+  const revisionId = searchParams.get("revisionId");
 
-    if (!projectPath) {
-        return NextResponse.json(
-            { error: "Missing required query param: projectPath." },
-            { status: 400 },
-        );
-    }
+  if (!projectPath) {
+    return NextResponse.json(
+      { error: "Missing required query param: projectPath." },
+      { status: 400 },
+    );
+  }
 
-    if (!revisionId) {
-        return NextResponse.json(
-            { error: "Missing required query param: revisionId." },
-            { status: 400 },
-        );
-    }
+  if (!revisionId) {
+    return NextResponse.json(
+      { error: "Missing required query param: revisionId." },
+      { status: 400 },
+    );
+  }
 
-    try {
-        const revision = await findRevisionById(
-            projectPath,
-            resourceId,
-            revisionId,
-        );
+  try {
+    const revision = await findRevisionById(
+      projectPath,
+      resourceId,
+      revisionId,
+    );
 
-        const content = await readRevisionContent(
-            projectPath,
-            resourceId,
-            revision.versionNumber,
-        );
+    const content = await readRevisionContent(
+      projectPath,
+      resourceId,
+      revision.versionNumber,
+    );
 
-        const responseBody: GetRevisionResponse = { revision, content };
-        return NextResponse.json(responseBody, { status: 200 });
-    } catch (error) {
-        const message =
-            error instanceof Error
-                ? error.message
-                : "Failed to retrieve revision.";
-        const status = message.includes("not found") ? 404 : 500;
-        return NextResponse.json({ error: message }, { status });
-    }
+    const responseBody: GetRevisionResponse = { revision, content };
+    return NextResponse.json(responseBody, { status: 200 });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to retrieve revision.";
+    const status = message.includes("not found") ? 404 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
 }
 
 /**
@@ -311,68 +313,61 @@ export async function GET(
  * @returns JSON response containing the saved revision or an error message.
  */
 export async function POST(
-    req: NextRequest,
-    { params }: { params: Promise<{ "resource-id": string }> },
+  req: NextRequest,
+  { params }: { params: Promise<{ "resource-id": string }> },
 ) {
-    const resourceId = (await params)["resource-id"];
+  const resourceId = (await params)["resource-id"];
 
-    let body: SaveRevisionBody;
-    try {
-        body = (await req.json()) as SaveRevisionBody;
-    } catch {
-        return NextResponse.json(
-            { error: "Invalid JSON body." },
-            { status: 400 },
-        );
+  let body: SaveRevisionBody;
+  try {
+    body = (await req.json()) as SaveRevisionBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const {
+    projectPath,
+    content: bodyContent,
+    author,
+    isCanonical,
+    metadata,
+  } = body;
+
+  if (!projectPath || typeof projectPath !== "string") {
+    return NextResponse.json(
+      { error: "Missing required field: projectPath." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const content =
+      bodyContent ??
+      (await readCurrentResourceContent(projectPath, resourceId));
+
+    const versionNumber = await resolveNextVersionNumber(
+      projectPath,
+      resourceId,
+    );
+
+    const revision = await writeRevision(
+      projectPath,
+      resourceId,
+      versionNumber,
+      content,
+      { author, isCanonical: isCanonical ?? false, metadata },
+    );
+
+    if (isCanonical) {
+      await setCanonicalRevision(projectPath, resourceId, versionNumber);
     }
 
-    const {
-        projectPath,
-        content: bodyContent,
-        author,
-        isCanonical,
-        metadata,
-    } = body;
-
-    if (!projectPath || typeof projectPath !== "string") {
-        return NextResponse.json(
-            { error: "Missing required field: projectPath." },
-            { status: 400 },
-        );
-    }
-
-    try {
-        const content =
-            bodyContent ??
-            (await readCurrentResourceContent(projectPath, resourceId));
-
-        const versionNumber = await resolveNextVersionNumber(
-            projectPath,
-            resourceId,
-        );
-
-        const revision = await writeRevision(
-            projectPath,
-            resourceId,
-            versionNumber,
-            content,
-            {
-                author,
-                isCanonical: isCanonical ?? false,
-                metadata,
-            },
-        );
-
-        if (isCanonical) {
-            await setCanonicalRevision(projectPath, resourceId, versionNumber);
-        }
-
-        return NextResponse.json(revision, { status: 201 });
-    } catch (error) {
-        const message =
-            error instanceof Error ? error.message : "Failed to save revision.";
-        return NextResponse.json({ error: message }, { status: 500 });
-    }
+    return NextResponse.json(revision, { status: 201 });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to save revision.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 /**
@@ -391,72 +386,68 @@ export async function POST(
  * @returns JSON response containing the deleted revision or an error message.
  */
 export async function DELETE(
-    req: NextRequest,
-    { params }: { params: Promise<{ "resource-id": string }> },
+  req: NextRequest,
+  { params }: { params: Promise<{ "resource-id": string }> },
 ) {
-    const resourceId = (await params)["resource-id"];
+  const resourceId = (await params)["resource-id"];
 
-    let body: DeleteRevisionBody;
-    try {
-        body = (await req.json()) as DeleteRevisionBody;
-    } catch {
-        return NextResponse.json(
-            { error: "Invalid JSON body." },
-            { status: 400 },
-        );
+  let body: DeleteRevisionBody;
+  try {
+    body = (await req.json()) as DeleteRevisionBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const { projectPath, revisionId } = body;
+
+  if (!projectPath || typeof projectPath !== "string") {
+    return NextResponse.json(
+      { error: "Missing required field: projectPath." },
+      { status: 400 },
+    );
+  }
+
+  if (!revisionId || typeof revisionId !== "string") {
+    return NextResponse.json(
+      { error: "Missing required field: revisionId." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const revisions = await listRevisions(projectPath, resourceId);
+    const target = revisions.find((r) => r.id === revisionId);
+
+    if (!target) {
+      return NextResponse.json(
+        { error: `Revision ${revisionId} not found.` },
+        { status: 404 },
+      );
     }
 
-    const { projectPath, revisionId } = body;
-
-    if (!projectPath || typeof projectPath !== "string") {
-        return NextResponse.json(
-            { error: "Missing required field: projectPath." },
-            { status: 400 },
-        );
+    if (target.isCanonical) {
+      return NextResponse.json(
+        {
+          error:
+            "Cannot delete the canonical revision; promote another revision first.",
+        },
+        { status: 400 },
+      );
     }
 
-    if (!revisionId || typeof revisionId !== "string") {
-        return NextResponse.json(
-            { error: "Missing required field: revisionId." },
-            { status: 400 },
-        );
-    }
+    const deletedRevision = await deleteRevisionById(
+      projectPath,
+      resourceId,
+      revisionId,
+    );
 
-    try {
-        const revisions = await listRevisions(projectPath, resourceId);
-        const target = revisions.find((r) => r.id === revisionId);
-
-        if (!target) {
-            return NextResponse.json(
-                { error: `Revision ${revisionId} not found.` },
-                { status: 404 },
-            );
-        }
-
-        if (target.isCanonical) {
-            return NextResponse.json(
-                {
-                    error: "Cannot delete the canonical revision; promote another revision first.",
-                },
-                { status: 400 },
-            );
-        }
-
-        const deletedRevision = await deleteRevisionById(
-            projectPath,
-            resourceId,
-            revisionId,
-        );
-
-        return NextResponse.json(deletedRevision, { status: 200 });
-    } catch (error) {
-        const message =
-            error instanceof Error
-                ? error.message
-                : "Failed to delete revision.";
-        const status = message.includes("not found") ? 404 : 500;
-        return NextResponse.json({ error: message }, { status });
-    }
+    return NextResponse.json(deletedRevision, { status: 200 });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to delete revision.";
+    const status = message.includes("not found") ? 404 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
 }
 
 /**
@@ -475,87 +466,89 @@ export async function DELETE(
  * @returns JSON response containing the updated revision or an error message.
  */
 export async function PATCH(
-    req: NextRequest,
-    { params }: { params: Promise<{ "resource-id": string }> },
+  req: NextRequest,
+  { params }: { params: Promise<{ "resource-id": string }> },
 ) {
-    const resourceId = (await params)["resource-id"];
+  const resourceId = (await params)["resource-id"];
 
-    let body: SetCanonicalRevisionBody;
-    try {
-        body = (await req.json()) as SetCanonicalRevisionBody;
-    } catch {
+  let body: SetCanonicalRevisionBody;
+  try {
+    body = (await req.json()) as SetCanonicalRevisionBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const { projectPath, revisionId, content } = body;
+
+  if (!projectPath || typeof projectPath !== "string") {
+    return NextResponse.json(
+      { error: "Missing required field: projectPath." },
+      { status: 400 },
+    );
+  }
+
+  if (!revisionId || typeof revisionId !== "string") {
+    return NextResponse.json(
+      { error: "Missing required field: revisionId." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const revisions = await listRevisions(projectPath, resourceId);
+    const target = revisions.find((revision) => revision.id === revisionId);
+
+    if (!target) {
+      return NextResponse.json(
+        { error: `Revision ${revisionId} not found.` },
+        { status: 404 },
+      );
+    }
+
+    if (typeof content === "string") {
+      if (!target.isCanonical) {
         return NextResponse.json(
-            { error: "Invalid JSON body." },
-            { status: 400 },
+          { error: "Only the canonical revision can be updated in place." },
+          { status: 400 },
         );
+      }
+
+      await writeRevisionContent(
+        projectPath,
+        resourceId,
+        target.versionNumber,
+        content,
+      );
+
+      const updatedAt = new Date().toISOString();
+      const existingSidecar = await readSidecar(projectPath, resourceId);
+      await writeSidecar(projectPath, resourceId, {
+        ...(existingSidecar ?? {}),
+        updatedAt,
+      });
+
+      return NextResponse.json({ ...target, updatedAt }, { status: 200 });
     }
 
-    const { projectPath, revisionId, content } = body;
+    const canonicalRevision = await setCanonicalRevision(
+      projectPath,
+      resourceId,
+      target.versionNumber,
+    );
 
-    if (!projectPath || typeof projectPath !== "string") {
-        return NextResponse.json(
-            { error: "Missing required field: projectPath." },
-            { status: 400 },
-        );
+    if (!canonicalRevision) {
+      return NextResponse.json(
+        { error: `Revision ${revisionId} not found.` },
+        { status: 404 },
+      );
     }
 
-    if (!revisionId || typeof revisionId !== "string") {
-        return NextResponse.json(
-            { error: "Missing required field: revisionId." },
-            { status: 400 },
-        );
-    }
-
-    try {
-        const revisions = await listRevisions(projectPath, resourceId);
-        const target = revisions.find((revision) => revision.id === revisionId);
-
-        if (!target) {
-            return NextResponse.json(
-                { error: `Revision ${revisionId} not found.` },
-                { status: 404 },
-            );
-        }
-
-        if (typeof content === "string") {
-            if (!target.isCanonical) {
-                return NextResponse.json(
-                    {
-                        error: "Only the canonical revision can be updated in place.",
-                    },
-                    { status: 400 },
-                );
-            }
-
-            await writeRevisionContent(
-                projectPath,
-                resourceId,
-                target.versionNumber,
-                content,
-            );
-
-            return NextResponse.json(target, { status: 200 });
-        }
-
-        const canonicalRevision = await setCanonicalRevision(
-            projectPath,
-            resourceId,
-            target.versionNumber,
-        );
-
-        if (!canonicalRevision) {
-            return NextResponse.json(
-                { error: `Revision ${revisionId} not found.` },
-                { status: 404 },
-            );
-        }
-
-        return NextResponse.json(canonicalRevision, { status: 200 });
-    } catch (error) {
-        const message =
-            error instanceof Error
-                ? error.message
-                : "Failed to set canonical revision.";
-        return NextResponse.json({ error: message }, { status: 500 });
-    }
+    return NextResponse.json(canonicalRevision, { status: 200 });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to set canonical revision.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

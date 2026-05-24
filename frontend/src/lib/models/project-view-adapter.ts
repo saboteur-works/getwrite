@@ -1,8 +1,8 @@
 import type {
-    Folder as FolderType,
-    MetadataValue,
-    Project as ProjectType,
-    TextResource,
+  Folder as FolderType,
+  MetadataValue,
+  Project as ProjectType,
+  TextResource,
 } from "./types";
 
 /**
@@ -10,55 +10,55 @@ import type {
  * We keep this local to the adapter to avoid changing legacy UI types.
  */
 export interface UIResource {
-    id: string;
-    projectId: string;
-    parentId?: string | null;
-    title: string;
-    type: string;
-    content?: string;
-    createdAt: string;
-    updatedAt?: string;
-    userMetadata?: Record<string, MetadataValue>;
-    _orderIndex: number;
+  id: string;
+  projectId: string;
+  parentId?: string | null;
+  title: string;
+  type: string;
+  content?: string;
+  createdAt: string;
+  updatedAt?: string;
+  userMetadata?: Record<string, MetadataValue>;
+  _orderIndex: number;
 }
 
 export interface FolderWithResources extends FolderType {
-    resources: UIResource[];
+  resources: UIResource[];
 }
 
 export interface BuildProjectViewOptions {
-    project: ProjectType;
-    folders: FolderType[];
-    resources: TextResource[];
+  project: ProjectType;
+  folders: FolderType[];
+  resources: TextResource[];
 }
 
 function toUIResource(resource: TextResource, projectId: string): UIResource {
-    return {
-        id: resource.id,
-        projectId,
-        parentId: undefined,
-        title: resource.name,
-        type: resource.type,
-        content: resource.plainText,
-        createdAt: resource.createdAt,
-        updatedAt: resource.updatedAt,
-        userMetadata: resource.userMetadata,
-        _orderIndex: resource.orderIndex,
-    };
+  return {
+    id: resource.id,
+    projectId,
+    parentId: undefined,
+    title: resource.name,
+    type: resource.type,
+    content: resource.plainText,
+    createdAt: resource.createdAt,
+    updatedAt: resource.updatedAt,
+    userMetadata: resource.userMetadata,
+    _orderIndex: resource.orderIndex,
+  };
 }
 
 function toFolderEntry(folder: FolderType, projectId: string): UIResource {
-    return {
-        id: folder.id,
-        projectId,
-        parentId: undefined,
-        title: folder.name,
-        type: "folder",
-        createdAt: folder.createdAt,
-        updatedAt: folder.updatedAt,
-        userMetadata: {},
-        _orderIndex: folder.orderIndex ?? 0,
-    };
+  return {
+    id: folder.id,
+    projectId,
+    parentId: undefined,
+    title: folder.name,
+    type: "folder",
+    createdAt: folder.createdAt,
+    updatedAt: folder.updatedAt,
+    userMetadata: {},
+    _orderIndex: folder.orderIndex ?? 0,
+  };
 }
 
 /**
@@ -67,44 +67,45 @@ function toFolderEntry(folder: FolderType, projectId: string): UIResource {
  * `orderIndex` and resources per-folder by `resource.orderIndex`.
  */
 export function buildProjectViewAdapter(options: BuildProjectViewOptions): {
-    project: ProjectType;
-    folders: FolderWithResources[];
-    resources: UIResource[];
+  project: ProjectType;
+  folders: FolderWithResources[];
+  resources: UIResource[];
 } {
-    const { project, folders, resources } = options;
+  const { project, folders, resources } = options;
 
-    const folderMap = new Map<string, FolderWithResources>();
-    for (const folder of folders) {
-        folderMap.set(folder.id, { ...folder, resources: [] });
+  const folderMap = new Map<string, FolderWithResources>();
+  for (const folder of folders) {
+    folderMap.set(folder.id, { ...folder, resources: [] });
+  }
+
+  const rootResources: UIResource[] = [];
+  for (const resource of resources) {
+    const uiResource = toUIResource(resource, project.id);
+    const targetFolder = folderMap.get(resource.folderId ?? "") ?? null;
+    if (targetFolder) {
+      targetFolder.resources.push(uiResource);
+    } else {
+      rootResources.push(uiResource);
     }
+  }
 
-    for (const resource of resources) {
-        const uiResource = toUIResource(resource, project.id);
-        const targetFolder = folderMap.get(resource.folderId ?? "") ?? null;
-        if (targetFolder) {
-            targetFolder.resources.push(uiResource);
-        }
-    }
+  rootResources.sort((left, right) => left._orderIndex - right._orderIndex);
 
-    const sortedFolders = Array.from(folderMap.values()).sort(
-        (left, right) => left.orderIndex - right.orderIndex,
+  const sortedFolders = Array.from(folderMap.values()).sort(
+    (left, right) => left.orderIndex - right.orderIndex,
+  );
+
+  for (const folder of sortedFolders) {
+    folder.resources.sort(
+      (left, right) => left._orderIndex - right._orderIndex,
     );
+  }
 
-    for (const folder of sortedFolders) {
-        folder.resources.sort(
-            (left, right) => left._orderIndex - right._orderIndex,
-        );
-    }
+  const flatResources: UIResource[] = [...rootResources];
+  for (const folder of sortedFolders) {
+    flatResources.push(toFolderEntry(folder, project.id));
+    flatResources.push(...folder.resources);
+  }
 
-    const flatResources: UIResource[] = [];
-    for (const folder of sortedFolders) {
-        flatResources.push(toFolderEntry(folder, project.id));
-        flatResources.push(...folder.resources);
-    }
-
-    return {
-        project,
-        folders: sortedFolders,
-        resources: flatResources,
-    };
+  return { project, folders: sortedFolders, resources: flatResources };
 }

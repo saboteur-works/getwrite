@@ -126,26 +126,45 @@ export default function DiffViewController() {
     );
   }, [canInteract, dispatch, project?.rootPath, selectedResource?.id]);
 
-  // Once revisions are loaded, fetch the canonical revision content.
+  // Once revisions are loaded, fetch the canonical revision content. Re-fetch
+  // when the canonical revision changes (e.g. the user promoted a new revision
+  // in the editor) so the canonical pane never shows a stale prior canonical.
+  const currentCanonicalId = useMemo(
+    () => revisionItems.find((r) => r.isCanonical)?.id ?? null,
+    [revisionItems],
+  );
+
   useEffect(() => {
     if (!canInteract || !selectedResource?.id) return;
-    if (canonicalContent !== null) return;
-    if (pendingFetchPurpose.current === "canonical") return;
+    if (!currentCanonicalId) return;
+    if (
+      canonicalRevisionId === currentCanonicalId &&
+      canonicalContent !== null
+    ) {
+      return;
+    }
+    if (
+      pendingFetchPurpose.current === "canonical" &&
+      canonicalRevisionId === currentCanonicalId
+    ) {
+      return;
+    }
 
-    const canonical = revisionItems.find((r) => r.isCanonical);
-    if (!canonical) return;
-
-    setCanonicalRevisionId(canonical.id);
+    // Drop stale content from the prior canonical before fetching the new one
+    // so the pane shows the loading state rather than the wrong revision.
+    setCanonicalContent(null);
+    setCanonicalRevisionId(currentCanonicalId);
     pendingFetchPurpose.current = "canonical";
     void dispatch(
       fetchRevisionContentForSelectedResource({
         resourceId: selectedResource.id,
-        revisionId: canonical.id,
+        revisionId: currentCanonicalId,
       }),
     );
   }, [
     canInteract,
-    revisionItems,
+    currentCanonicalId,
+    canonicalRevisionId,
     canonicalContent,
     selectedResource?.id,
     dispatch,
@@ -190,8 +209,14 @@ export default function DiffViewController() {
     ? extractPlainText(canonicalContent)
     : null;
 
+  // Only treat Redux's currentRevisionContent as the historical-pane content
+  // when DiffView itself selected the revision. Otherwise we'd surface
+  // content fetched elsewhere (e.g. the editor's set-canonical flow leaving
+  // the new canonical's content in the slice).
   const selectedPlain =
-    pendingFetchPurpose.current !== "canonical" && currentRevisionContent
+    selectedRevisionId !== null &&
+    currentRevisionId === selectedRevisionId &&
+    currentRevisionContent
       ? extractPlainText(currentRevisionContent)
       : null;
 

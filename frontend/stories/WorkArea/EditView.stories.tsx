@@ -7,6 +7,7 @@ import {
   setSelectedResourceId,
 } from "../../src/store/resourcesSlice";
 import { createTextResource } from "../../src/lib/models/resource";
+import { setEditorConfig } from "../../src/store/editorConfigSlice";
 
 const meta: Meta<typeof EditView> = {
   title: "WorkArea/EditView",
@@ -19,6 +20,19 @@ type Story = StoryObj<typeof EditView>;
 export const Default: Story = {
   args: {
     initialContent: "<h2>Opening</h2><p>The sun sets over the harbor.</p>",
+    apiKey: undefined,
+  },
+};
+
+/**
+ * Demonstrates wiki-style backlink decoration. Text matching `[[Target]]` in
+ * the editor surface is decorated with the `.wiki-link` class so it renders
+ * with link styling without altering the underlying document.
+ */
+export const WikiLinkStyling: Story = {
+  args: {
+    initialContent:
+      "<p>This scene continues from [[Opening]] and references [[The Bureau]].</p>",
     apiKey: undefined,
   },
 };
@@ -174,6 +188,209 @@ export const WithNonCanonicalRevision: Story = {
     <StoryWithSeededRevisions
       initialContent="<p>Initial draft.</p>"
       selectCanonical={false}
+    />
+  ),
+};
+
+interface SwitchableResource {
+  id: string;
+  name: string;
+  revisionId: string;
+  contentJson: string;
+}
+
+function SwitchableEditViewStory({
+  resources,
+  initialId,
+}: {
+  resources: SwitchableResource[];
+  initialId: string;
+}): JSX.Element {
+  const dispatch = useDispatch();
+  const [activeId, setActiveId] = React.useState<string>(initialId);
+  const [ready, setReady] = React.useState(false);
+
+  const loadRevisionFor = React.useCallback(
+    (resource: SwitchableResource) => {
+      dispatch({
+        type: "revisions/loadRevisionsForSelectedResource/pending",
+        meta: { arg: { resourceId: resource.id } },
+      });
+      dispatch({
+        type: "revisions/loadRevisionsForSelectedResource/fulfilled",
+        payload: {
+          resourceId: resource.id,
+          revisions: [
+            {
+              id: resource.revisionId,
+              resourceId: resource.id,
+              versionNumber: 1,
+              createdAt: new Date().toISOString(),
+              filePath: `/tmp/${resource.revisionId}.json`,
+              isCanonical: true,
+              displayName: "Canonical",
+            },
+          ],
+          currentRevisionId: resource.revisionId,
+        },
+      });
+      dispatch({
+        type: "revisions/fetchRevisionContentForSelectedResource/fulfilled",
+        payload: {
+          resourceId: resource.id,
+          revisionId: resource.revisionId,
+          content: resource.contentJson,
+        },
+      });
+    },
+    [dispatch],
+  );
+
+  React.useEffect(() => {
+    // Construct resources directly rather than via createTextResource so the
+    // ids are stable and match the buttons / setSelectedResourceId dispatch.
+    const now = new Date().toISOString();
+    const seeded = resources.map((r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.id,
+      type: "text" as const,
+      folderId: null,
+      createdAt: now,
+      plainText: "seed",
+      wordCount: 1,
+      charCount: 4,
+      paragraphCount: 1,
+      orderIndex: 0,
+    }));
+    dispatch(setResources(seeded));
+    dispatch(setSelectedResourceId(initialId));
+
+    const initial = resources.find((r) => r.id === initialId);
+    if (initial) loadRevisionFor(initial);
+    setReady(true);
+  }, [dispatch, initialId, resources, loadRevisionFor]);
+
+  const handleSwitch = (id: string) => {
+    setActiveId(id);
+    dispatch(setSelectedResourceId(id));
+    const target = resources.find((r) => r.id === id);
+    if (target) loadRevisionFor(target);
+  };
+
+  if (!ready) return <div data-testid="seeding">Seeding…</div>;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      <div style={{ padding: "8px", display: "flex", gap: "8px" }}>
+        {resources.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            data-testid={`switch-${r.id}`}
+            onClick={() => handleSwitch(r.id)}
+            aria-pressed={activeId === r.id}
+          >
+            Open {r.name}
+          </button>
+        ))}
+        <span data-testid="active-resource-id" aria-hidden>
+          {activeId}
+        </span>
+      </div>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <EditView />
+      </div>
+    </div>
+  );
+}
+
+const switchableResources: SwitchableResource[] = [
+  {
+    id: "res-alpha",
+    name: "Alpha Resource",
+    revisionId: "rev-alpha",
+    contentJson: JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Alpha document body." }],
+        },
+      ],
+    }),
+  },
+  {
+    id: "res-beta",
+    name: "Beta Resource",
+    revisionId: "rev-beta",
+    contentJson: JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Beta document body." }],
+        },
+      ],
+    }),
+  },
+];
+
+/**
+ * Seeds two text resources, each with its own canonical revision. The story
+ * exposes Open buttons to switch the active resource via setSelectedResourceId
+ * so e2e tests can verify the editor swaps content and header title in step
+ * with the selection.
+ */
+export const ResourceSwitching: Story = {
+  render: () => (
+    <SwitchableEditViewStory
+      resources={switchableResources}
+      initialId="res-alpha"
+    />
+  ),
+};
+
+function EditorBodyConfigStory({
+  fontFamily,
+  fontSize,
+  lineHeight,
+  paragraphSpacing,
+}: {
+  fontFamily: string;
+  fontSize: string;
+  lineHeight: string;
+  paragraphSpacing: string;
+}): JSX.Element {
+  const dispatch = useDispatch();
+  const [ready, setReady] = React.useState(false);
+
+  React.useEffect(() => {
+    dispatch(
+      setEditorConfig({
+        headings: {},
+        body: { fontFamily, fontSize, lineHeight, paragraphSpacing },
+      }),
+    );
+    setReady(true);
+  }, [dispatch, fontFamily, fontSize, lineHeight, paragraphSpacing]);
+
+  if (!ready) return <div data-testid="seeding">Seeding…</div>;
+  return <EditView initialContent="<p>Configured body.</p>" />;
+}
+
+/**
+ * Pre-dispatches a known EditorBodyConfig into the store so e2e tests can
+ * verify the configured font/line-height values propagate to the TipTap
+ * editor shell as CSS variables.
+ */
+export const WithEditorBodyConfig: Story = {
+  render: () => (
+    <EditorBodyConfigStory
+      fontFamily="Georgia, serif"
+      fontSize="18px"
+      lineHeight="2.1"
+      paragraphSpacing="1.4em"
     />
   ),
 };

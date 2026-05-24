@@ -11,7 +11,7 @@
  * create/export/compile flows, resizable/collapsible split panes, and debounced persistence
  * of editor content.
  */
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import type {
   AnyResource,
   EditorBodyConfig,
@@ -37,7 +37,9 @@ import { filterResourceOptionsByScope } from "../Sidebar/folderScope";
 import { astToGroups } from "../QueryBuilder/ast-chip-bridge";
 import { useQueryBuilderState } from "../QueryBuilder/useQueryBuilderState";
 import ShellLayoutController from "./ShellLayoutController";
-import ShellSettingsMenu from "./ShellSettingsMenu";
+import ShellSettingsMenu, {
+  type SettingsMenuAction,
+} from "./ShellSettingsMenu";
 import ShellModalCoordinator from "./ShellModalCoordinator";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
@@ -52,6 +54,23 @@ import SearchBar from "../SearchBar/SearchBar";
 import debounce from "lodash/debounce";
 import { tiptapToPlainText } from "../../src/lib/tiptap-text";
 import { countWords } from "../../src/lib/word-count";
+import {
+  saveHeadingSettings,
+  saveBodySettings,
+} from "../../src/lib/api/editor-config";
+import {
+  saveProjectPreferences,
+  saveRevisionSettings,
+} from "../../src/lib/api/preferences";
+import {
+  renameResource,
+  persistContent as persistResourceContent,
+} from "../../src/lib/api/resources";
+import {
+  compilePdf,
+  compileDocx,
+  compileText,
+} from "../../src/lib/api/compile";
 import { formatRelativeTimestamp as _formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 import {
   PanelLeftClose,
@@ -109,7 +128,7 @@ import { toastService } from "../../src/lib/toast-service";
  * Optional payload bag forwarded to `onResourceAction` callbacks.
  */
 export interface AppShellResourceActionOptions {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -347,11 +366,8 @@ export default function AppShell({
   );
 
   const recentResources = React.useMemo(() => {
-    const sortableResources = (resources ?? []).filter(
-      (resource) => resource.type !== "folder",
-    );
-
-    return [...sortableResources]
+    return [...liveResources]
+      .filter((resource) => resource.type !== "folder")
       .sort((left, right) => {
         const leftTimestamp = Date.parse(
           left.updatedAt ?? left.createdAt ?? "",
@@ -359,14 +375,12 @@ export default function AppShell({
         const rightTimestamp = Date.parse(
           right.updatedAt ?? right.createdAt ?? "",
         );
-
         const leftSafe = Number.isNaN(leftTimestamp) ? 0 : leftTimestamp;
         const rightSafe = Number.isNaN(rightTimestamp) ? 0 : rightTimestamp;
-
         return rightSafe - leftSafe;
       })
       .slice(0, 6);
-  }, [resources]);
+  }, [liveResources]);
 
   const syncBlockers = React.useMemo<SyncBlocker[]>(() => {
     const blockers: SyncBlocker[] = [];
@@ -411,8 +425,9 @@ export default function AppShell({
    * @param r - Resource-like object that may expose `name` or `title`.
    * @returns Resolved display name, or empty string when unavailable.
    */
-  const getResourceName = (r: AnyResource | any) =>
-    (r && ((r as any).name ?? (r as any).title ?? "")) || "";
+  const getResourceName = (
+    r: { name?: string; title?: string } | null | undefined,
+  ): string => (r && (r.name ?? r.title ?? "")) || "";
 
   /**
    * Returns plain-text content used by edit/diff views.
@@ -420,7 +435,8 @@ export default function AppShell({
    * @param r - Resource-like object containing persisted plain-text content.
    * @returns Plain-text content for view rendering.
    */
-  const getResourceContent = (r: AnyResource | any) => r.plaintext;
+  const getResourceContent = (r: unknown): string | undefined =>
+    (r as { plaintext?: string } | null | undefined)?.plaintext;
 
   const [contextAction, setContextAction] = useState<ContextActionState>({
     open: false,
@@ -522,16 +538,13 @@ export default function AppShell({
     const resourceId = renameModal.resourceId;
     const isFolder = (folders ?? []).some((f) => f.id === resourceId);
     try {
-      const res = await fetch(`/api/resource/${resourceId}/rename`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectRoot: project.rootPath,
-          newName,
-          resourceType: isFolder ? "folder" : "resource",
-        }),
-      });
-      if (!res.ok) return;
+      const ok = await renameResource(
+        resourceId,
+        project.rootPath,
+        newName,
+        isFolder ? "folder" : "resource",
+      );
+      if (!ok) return;
       if (isFolder) {
         dispatch(updateFolder({ id: resourceId, name: newName }));
       } else {
@@ -552,7 +565,6 @@ export default function AppShell({
   const handleCreateConfirmed = async (
     payload: { title: string; type: ResourceType | string; folderId?: string },
     parentId?: string,
-    _opts?: AppShellResourceActionOptions,
   ) => {
     if (createModal.sourceResourceId) {
       await onResourceAction?.("copy", createModal.sourceResourceId, {
@@ -590,7 +602,7 @@ export default function AppShell({
     if (project?.id) {
       dispatch(loadSavedQueries({ projectId: project.id }));
     }
-  }, [project?.id]);
+  }, [project?.id, dispatch]);
 
   const handleSmartFolderSelect = (query: SavedQuery): void => {
     if (!project?.id) return;
@@ -684,48 +696,35 @@ export default function AppShell({
    * Guard clauses ensure this only runs for open projects with selected
    * resources and known `rootPath`.
    *
-   * @param content - Current plain-text editor content (reserved for parity/logging).
    * @param doc - Current TipTap document snapshot to persist.
    */
-  const persistContent = async (
-    content: string,
-    doc: TipTapDocument,
-    editVersion: number,
-  ): Promise<void> => {
-    if (!project || !selectedResourceId) {
-      setHasUnsavedEditorChanges(false);
-      return;
-    }
-    if (!project.rootPath) {
-      setHasUnsavedEditorChanges(false);
-      return;
-    }
-    console.log("Persisting content for", selectedResourceId);
-    try {
-      const response = await fetch(
-        `/api/resource/${selectedResourceId}/content`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectPath: project.rootPath, doc }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to persist content (${response.status})`);
-      }
-
-      const wordCount = countWords(tiptapToPlainText(doc));
-      dispatch(updateResource({ id: selectedResourceId, wordCount }));
-
-      if (latestEditorEditVersionRef.current === editVersion) {
+  const persistContent = useCallback(
+    async (doc: TipTapDocument, editVersion: number): Promise<void> => {
+      if (!project || !selectedResourceId) {
         setHasUnsavedEditorChanges(false);
+        return;
       }
-    } catch (err) {
-      console.error("Failed to persist content:", err);
-      setHasUnsavedEditorChanges(true);
-    }
-  };
+      if (!project.rootPath) {
+        setHasUnsavedEditorChanges(false);
+        return;
+      }
+
+      try {
+        await persistResourceContent(selectedResourceId, project.rootPath, doc);
+
+        const wordCount = countWords(tiptapToPlainText(doc));
+        dispatch(updateResource({ id: selectedResourceId, wordCount }));
+
+        if (latestEditorEditVersionRef.current === editVersion) {
+          setHasUnsavedEditorChanges(false);
+        }
+      } catch (err) {
+        console.error("Failed to persist content:", err);
+        setHasUnsavedEditorChanges(true);
+      }
+    },
+    [project, selectedResourceId, dispatch],
+  );
 
   /**
    * Debounced content persistence function to limit API write frequency while
@@ -742,11 +741,11 @@ export default function AppShell({
    * @param content - Latest plain-text content.
    * @param doc - Latest TipTap document snapshot.
    */
-  const handlerEditorChange = (content: string, doc: TipTapDocument) => {
+  const handlerEditorChange = (_content: string, doc: TipTapDocument) => {
     latestEditorEditVersionRef.current += 1;
     const nextEditVersion = latestEditorEditVersionRef.current;
     setHasUnsavedEditorChanges(true);
-    debouncedPersistContent(content, doc, nextEditVersion);
+    debouncedPersistContent(doc, nextEditVersion);
   };
 
   useEffect(() => {
@@ -810,14 +809,7 @@ export default function AppShell({
     }
 
     try {
-      await fetch("/api/project/preferences", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectPath: project.rootPath,
-          preferences: { colorMode: nextMode },
-        }),
-      });
+      await saveProjectPreferences(project.rootPath, { colorMode: nextMode });
     } catch (error) {
       console.error("Failed to persist project user preferences", error);
     }
@@ -831,49 +823,51 @@ export default function AppShell({
     });
   };
 
-  const handleOpenProjectTypeManager = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsProjectTypesModalOpen(true);
-  };
-
-  const handleOpenPreferences = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsPreferencesModalOpen(true);
-  };
-
-  const handleOpenHeadingSettings = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsHeadingSettingsModalOpen(true);
-  };
-
-  const handleOpenBodySettings = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsBodySettingsModalOpen(true);
-  };
-
-  const handleOpenDefaultRevisionNameSettings = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsDefaultRevisionNameModalOpen(true);
-  };
-
-  const handleOpenTagsManager = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsTagsManagerOpen(true);
-  };
-
-  const handleOpenMetadataManager = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsSchemaManagerOpen(true);
-  };
-
-  const handleOpenHelp = (): void => {
-    setIsSettingsMenuOpen(false);
-    setIsHelpModalOpen(true);
-  };
-
-  const handleOpenCompile = (): void => {
-    setIsProjectMenuOpen(false);
-    setCompileModal({ open: true });
+  const handleSettingsMenuAction = (action: SettingsMenuAction): void => {
+    switch (action) {
+      case "preferences":
+        setIsSettingsMenuOpen(false);
+        setIsPreferencesModalOpen(true);
+        break;
+      case "heading-styles":
+        setIsSettingsMenuOpen(false);
+        setIsHeadingSettingsModalOpen(true);
+        break;
+      case "body-text-styles":
+        setIsSettingsMenuOpen(false);
+        setIsBodySettingsModalOpen(true);
+        break;
+      case "default-revision-name":
+        setIsSettingsMenuOpen(false);
+        setIsDefaultRevisionNameModalOpen(true);
+        break;
+      case "project-type-manager":
+        setIsSettingsMenuOpen(false);
+        setIsProjectTypesModalOpen(true);
+        break;
+      case "tags-manager":
+        setIsSettingsMenuOpen(false);
+        setIsTagsManagerOpen(true);
+        break;
+      case "metadata":
+        setIsSettingsMenuOpen(false);
+        setIsSchemaManagerOpen(true);
+        break;
+      case "toggle-color-mode":
+        handleToggleColorMode();
+        break;
+      case "help":
+        setIsSettingsMenuOpen(false);
+        setIsHelpModalOpen(true);
+        break;
+      case "close-project":
+        handleCloseProject();
+        break;
+      case "compile":
+        setIsProjectMenuOpen(false);
+        setCompileModal({ open: true });
+        break;
+    }
   };
 
   const handleCloseProject = (): void => {
@@ -905,24 +899,11 @@ export default function AppShell({
       throw new Error("Project path unavailable for heading settings.");
     }
 
-    const response = await fetch("/api/project/editor-config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectPath: project.rootPath, headings }),
-    });
-    const body = (await response.json().catch(() => null)) as {
-      editorConfig?: { headings?: EditorHeadingMap; body?: EditorBodyConfig };
-      error?: string;
-    } | null;
-
-    if (!response.ok) {
-      throw new Error(body?.error ?? "Failed to save heading settings.");
-    }
-
+    const body = await saveHeadingSettings(project.rootPath, headings);
     dispatch(
       setEditorConfig({
-        headings: body?.editorConfig?.headings ?? {},
-        body: body?.editorConfig?.body,
+        headings: body.editorConfig?.headings ?? {},
+        body: body.editorConfig?.body,
       }),
     );
   };
@@ -934,24 +915,11 @@ export default function AppShell({
       throw new Error("Project path unavailable for body settings.");
     }
 
-    const response = await fetch("/api/project/editor-config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectPath: project.rootPath, body: bodyConfig }),
-    });
-    const responseBody = (await response.json().catch(() => null)) as {
-      editorConfig?: { headings?: EditorHeadingMap; body?: EditorBodyConfig };
-      error?: string;
-    } | null;
-
-    if (!response.ok) {
-      throw new Error(responseBody?.error ?? "Failed to save body settings.");
-    }
-
+    const responseBody = await saveBodySettings(project.rootPath, bodyConfig);
     dispatch(
       setEditorConfig({
-        headings: responseBody?.editorConfig?.headings ?? {},
-        body: responseBody?.editorConfig?.body,
+        headings: responseBody.editorConfig?.headings ?? {},
+        body: responseBody.editorConfig?.body,
       }),
     );
   };
@@ -960,21 +928,7 @@ export default function AppShell({
     if (!project?.rootPath) {
       throw new Error("Project path unavailable.");
     }
-    const response = await fetch("/api/project/revision-settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectPath: project.rootPath,
-        defaultRevisionName: name,
-      }),
-    });
-    const body = (await response.json().catch(() => null)) as {
-      defaultRevisionName?: string;
-      error?: string;
-    } | null;
-    if (!response.ok) {
-      throw new Error(body?.error ?? "Failed to save default revision name.");
-    }
+    await saveRevisionSettings(project.rootPath, name);
   };
 
   return (
@@ -987,23 +941,11 @@ export default function AppShell({
         isOpen={isSettingsMenuOpen}
         onClose={() => setIsSettingsMenuOpen(false)}
         onToggleOpen={() => setIsSettingsMenuOpen((prev) => !prev)}
-        onOpenPreferences={handleOpenPreferences}
-        onOpenHeadingSettings={handleOpenHeadingSettings}
-        onOpenBodySettings={handleOpenBodySettings}
-        onOpenDefaultRevisionNameSettings={
-          handleOpenDefaultRevisionNameSettings
-        }
-        onOpenProjectTypeManager={handleOpenProjectTypeManager}
-        onOpenTagsManager={handleOpenTagsManager}
-        onOpenMetadataManager={handleOpenMetadataManager}
-        onToggleColorMode={handleToggleColorMode}
-        onOpenHelp={handleOpenHelp}
-        onCloseProject={handleCloseProject}
         hasProject={Boolean(project)}
         isProjectMenuOpen={isProjectMenuOpen}
         onCloseProjectMenu={() => setIsProjectMenuOpen(false)}
         onToggleProjectMenuOpen={() => setIsProjectMenuOpen((prev) => !prev)}
-        onOpenCompile={handleOpenCompile}
+        onAction={handleSettingsMenuAction}
       />
 
       <ShellLayoutController>
@@ -1016,7 +958,7 @@ export default function AppShell({
                 style={{ width: layout.leftWidth }}
               >
                 <div className="appshell-sidebar-header">
-                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] font-semibold text-gw-secondary">
+                  <span className="font-mono text-gw-nano uppercase tracking-label-wide font-semibold text-gw-secondary">
                     Resources
                   </span>
                   <Button
@@ -1054,7 +996,7 @@ export default function AppShell({
 
             {/* Left Sidebar Collapsed Toggle */}
             {showSidebars && !layout.leftOpen ? (
-              <div className="hidden sm:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-r border-[0.5px] border-gw-border">
+              <div className="hidden sm:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-r border-hairline border-gw-border">
                 <Button
                   variant="icon"
                   className="w-10 h-10"
@@ -1159,58 +1101,37 @@ export default function AppShell({
                   }}
                   onConfirmCompile={async (selectedIds, options) => {
                     if (!project?.rootPath) return;
+                    const compileBody = {
+                      projectPath: project.rootPath,
+                      resourceIds: selectedIds,
+                      resources: (resources ?? []).map((r) => ({
+                        id: r.id,
+                        name: r.name,
+                        type: r.type,
+                      })),
+                      includeHeaders: options.includeHeaders,
+                      projectName: project.name ?? "project",
+                    };
+                    const rawName = options.compilationName.trim();
                     try {
                       if (options.format === "pdf") {
-                        const pdfResponse = await fetch("/api/compile/pdf", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            projectPath: project.rootPath,
-                            resourceIds: selectedIds,
-                            resources: (resources ?? []).map((r) => ({
-                              id: r.id,
-                              name: r.name,
-                              type: r.type,
-                            })),
-                            includeHeaders: options.includeHeaders,
-                            projectName: project.name ?? "project",
-                          }),
-                        });
-                        if (!pdfResponse.ok) {
-                          toastService.error(
-                            "Compile failed",
-                            "Could not generate PDF",
-                          );
-                          return;
-                        }
-                        if (
-                          pdfResponse.headers.get("X-Compile-Warning") ===
-                          "font-fallback"
-                        ) {
+                        const result = await compilePdf(compileBody);
+                        if (result.warning === "font-fallback") {
                           toastService.info(
                             "PDF compiled with fallback fonts — IBM Plex fonts were unreachable",
                           );
                         }
-                        const arrayBuffer = await pdfResponse.arrayBuffer();
-                        const blob = new Blob([arrayBuffer], {
+                        const blob = new Blob([result.arrayBuffer], {
                           type: "application/pdf",
                         });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement("a");
                         a.href = url;
-                        const rawName = options.compilationName.trim();
-                        const disposition =
-                          pdfResponse.headers.get("Content-Disposition") ?? "";
-                        const serverFilename =
-                          disposition.match(/filename="([^"]+)"/)?.[1] ??
-                          "project.pdf";
-                        if (rawName) {
-                          a.download = rawName.endsWith(".pdf")
+                        a.download = rawName
+                          ? rawName.endsWith(".pdf")
                             ? rawName
-                            : `${rawName}.pdf`;
-                        } else {
-                          a.download = serverFilename;
-                        }
+                            : `${rawName}.pdf`
+                          : result.filename;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
@@ -1218,89 +1139,36 @@ export default function AppShell({
                         return;
                       }
                       if (options.format === "docx") {
-                        const docxResponse = await fetch("/api/compile/docx", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            projectPath: project.rootPath,
-                            resourceIds: selectedIds,
-                            resources: (resources ?? []).map((r) => ({
-                              id: r.id,
-                              name: r.name,
-                              type: r.type,
-                            })),
-                            includeHeaders: options.includeHeaders,
-                            projectName: project.name ?? "project",
-                          }),
-                        });
-                        if (!docxResponse.ok) {
-                          toastService.error(
-                            "Compile failed",
-                            "Could not generate DOCX",
-                          );
-                          return;
-                        }
-                        const arrayBuffer = await docxResponse.arrayBuffer();
-                        const blob = new Blob([arrayBuffer], {
+                        const result = await compileDocx(compileBody);
+                        const blob = new Blob([result.arrayBuffer], {
                           type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement("a");
                         a.href = url;
-                        const rawName = options.compilationName.trim();
-                        const disposition =
-                          docxResponse.headers.get("Content-Disposition") ?? "";
-                        const serverFilename =
-                          disposition.match(/filename="([^"]+)"/)?.[1] ??
-                          "project.docx";
-                        if (rawName) {
-                          a.download = rawName.endsWith(".docx")
+                        a.download = rawName
+                          ? rawName.endsWith(".docx")
                             ? rawName
-                            : `${rawName}.docx`;
-                        } else {
-                          a.download = serverFilename;
-                        }
+                            : `${rawName}.docx`
+                          : result.filename;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
                         URL.revokeObjectURL(url);
                         return;
                       }
-
-                      const response = await fetch("/api/compile/text", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          projectPath: project.rootPath,
-                          resourceIds: selectedIds,
-                          resources: (resources ?? []).map((r) => ({
-                            id: r.id,
-                            name: r.name,
-                            type: r.type,
-                          })),
-                          includeHeaders: options.includeHeaders,
-                          projectName: project.name ?? "project",
-                        }),
-                      });
-                      if (!response.ok) return;
-                      const { text, filename } = (await response.json()) as {
-                        text: string;
-                        filename: string;
-                      };
-                      const blob = new Blob([text], {
+                      const result = await compileText(compileBody);
+                      const blob = new Blob([result.text], {
                         type: "text/plain;charset=utf-8",
                       });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      const rawName = options.compilationName.trim();
-                      if (rawName) {
-                        a.download = rawName.endsWith(".txt")
+                      a.download = rawName
+                        ? rawName.endsWith(".txt")
                           ? rawName
-                          : `${rawName}.txt`;
-                      } else {
-                        a.download = filename;
-                      }
+                          : `${rawName}.txt`
+                        : result.filename;
                       document.body.appendChild(a);
                       a.click();
                       document.body.removeChild(a);
@@ -1433,15 +1301,19 @@ export default function AppShell({
                                       ? isQueryEvaluating
                                       : false
                                   }
-                                  onResourceClick={
-                                    activeSmartFolderId
-                                      ? (id) => {
-                                          dispatch(setSelectedResourceId(id));
-                                          setActiveSmartFolderId(null);
-                                          setQueryBuilderOpen(false);
-                                        }
-                                      : undefined
-                                  }
+                                  onResourceClick={(id) => {
+                                    dispatch(setSelectedResourceId(id));
+                                    const clicked = queryResources.find(
+                                      (r) => r.id === id,
+                                    );
+                                    if (clicked?.type === "text") {
+                                      setView("edit");
+                                    }
+                                    if (activeSmartFolderId) {
+                                      setActiveSmartFolderId(null);
+                                      setQueryBuilderOpen(false);
+                                    }
+                                  }}
                                   onSelectFolder={(folderId) => {
                                     dispatch(setSelectedResourceId(folderId));
                                     setView("organizer");
@@ -1507,7 +1379,7 @@ export default function AppShell({
                               <section className="mx-auto w-full max-w-4xl bg-gw-chrome p-6 md:p-8">
                                 <div className="flex flex-wrap items-start justify-between gap-4">
                                   <div>
-                                    <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-gw-secondary">
+                                    <p className="font-mono text-gw-nano uppercase tracking-label-wide text-gw-secondary">
                                       Work Area
                                     </p>
                                     <h2 className="mt-2 text-3xl font-semibold text-gw-primary">
@@ -1536,7 +1408,7 @@ export default function AppShell({
 
                                 <div className="mt-8">
                                   <div className="mb-3 flex items-center justify-between">
-                                    <h3 className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-gw-secondary">
+                                    <h3 className="font-mono text-gw-nano font-semibold uppercase tracking-[0.16em] text-gw-secondary">
                                       Recent Files
                                     </h3>
                                     <span className="text-xs text-gw-secondary">
@@ -1545,7 +1417,7 @@ export default function AppShell({
                                   </div>
 
                                   {recentResources.length > 0 ? (
-                                    <ul className="divide-y divide-gw-border rounded-lg border-[0.5px] border-gw-border bg-gw-chrome">
+                                    <ul className="divide-y divide-gw-border rounded-lg border-hairline border-gw-border bg-gw-chrome">
                                       {recentResources.map((resource) => {
                                         const icon =
                                           resource.type === "image"
@@ -1582,7 +1454,7 @@ export default function AppShell({
                                               </span>
                                               <span className="text-xs text-gw-secondary">
                                                 {resource.updatedAt
-                                                  ? `Updated ${formatRelativeTimestamp(resource.updatedAt)}`
+                                                  ? `Edited ${formatRelativeTimestamp(resource.updatedAt)}`
                                                   : `Created ${formatRelativeTimestamp(resource.createdAt)}`}
                                               </span>
                                             </button>
@@ -1661,7 +1533,10 @@ export default function AppShell({
                           onChangeNotes?.(value as string, id);
                           break;
                         case "status":
-                          onChangeStatus?.(value as any, id);
+                          onChangeStatus?.(
+                            value as "draft" | "in-review" | "published",
+                            id,
+                          );
                           break;
                         case "pov":
                           onChangePOV?.(value as ResourceRef, id);
@@ -1690,7 +1565,7 @@ export default function AppShell({
 
             {/* Right Sidebar Collapsed Toggle */}
             {showSidebars && !layout.rightOpen ? (
-              <div className="hidden lg:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-l border-[0.5px] border-gw-border">
+              <div className="hidden lg:flex flex-col items-center justify-start h-full p-2 bg-gw-chrome border-l border-hairline border-gw-border">
                 <Button
                   variant="icon"
                   className="w-10 h-10"

@@ -20,7 +20,7 @@
  * {@link AppShell} with the open project's data otherwise.
  */
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useAppSelector, { useAppDispatch } from "../src/store/hooks";
 import {
   setProject,
@@ -34,9 +34,21 @@ import StartPage, {
   type StartPageProjectEntry,
   type StartPageCreateResult,
 } from "../components/Start/StartPage";
-import type { Folder, AnyResource, ResourceBase } from "../src/lib/models";
+import type {
+  Folder,
+  AnyResource,
+  ResourceBase,
+  TextResource,
+} from "../src/lib/models";
 import type { MetadataValue, ResourceRef } from "../src/lib/models/types";
 import { buildProjectView } from "../src/lib/models/project-view";
+import { listProjects, openProject } from "../src/lib/api/projects";
+import {
+  createResource,
+  copyResource,
+  deleteResource,
+  updateSidecar,
+} from "../src/lib/api/resources";
 import {
   setResources,
   setSelectedResourceId as setResourceId,
@@ -107,47 +119,36 @@ export default function Home(): JSX.Element {
 
   const dispatch = useAppDispatch();
 
-  // Fetch existing projects on mount
-  useEffect(() => {
-    /**
-     * Loads all projects from the API and maps them into
-     * {@link StartPageProjectEntry}-compatible view objects.
-     *
-     * @returns Resolved array of project view objects.
-     * @throws {Error} When the HTTP response is not OK.
-     */
-    async function fetchProjects() {
-      const res = await fetch("/api/projects", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error || `Status ${res.status}`);
-      }
-      const body = await res.json().catch(() => null);
-      const views = body.map((p: any) => {
-        const buildView = buildProjectView({
+  /**
+   * Loads all projects from the API and maps them into
+   * {@link StartPageProjectEntry}-compatible view objects.
+   */
+  const refreshProjects = useCallback(async (): Promise<void> => {
+    try {
+      const entries = await listProjects();
+      // buildProjectView expects TextResource[] and returns UIResource[]; the original
+      // code cast through `any` (p: any) to bypass both constraints. We preserve that
+      // runtime behaviour with a targeted cast rather than a blanket any.
+      const data = entries.map((p) =>
+        buildProjectView({
           project: p.project,
           folders: p.folders,
-          resources: p.resources,
-        });
-
-        return buildView;
-      });
-      return views;
+          resources: p.resources as unknown as TextResource[],
+        }),
+      ) as unknown as StartPageProjectEntry[];
+      if (Array.isArray(data)) {
+        dispatch(setProjectsInStore(data));
+        setProjects(data);
+      }
+    } catch (err) {
+      console.error("Error fetching projects:", err);
     }
-    fetchProjects()
-      .then((data) => {
-        if (Array.isArray(data)) {
-          dispatch(setProjectsInStore(data));
-          setProjects(data);
-        }
-      })
-      .catch((err) => {
-        console.error("Error fetching projects:", err);
-      });
-  }, []);
+  }, [dispatch]);
+
+  // Fetch existing projects on mount
+  useEffect(() => {
+    void refreshProjects();
+  }, [refreshProjects]);
 
   /**
    * Called by {@link StartPage} after a new project has been successfully
@@ -217,63 +218,42 @@ export default function Home(): JSX.Element {
    * @throws {Error} When the HTTP response is not OK.
    */
   const handleOpen = async (id: string) => {
-    const res = await fetch("/api/project", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectPath: id }),
-    });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      throw new Error(body?.error || `Status ${res.status}`);
-    }
-
-    const body = await res.json().catch(() => null);
-    const p = body;
-    if (p) {
-      // ensure project exists in redux and mark selected
-      dispatch(
-        setProject({
-          id: p.project.id,
-          name: p.project.name,
-          rootPath: p.project.rootPath ?? "",
-          folders: (p as any).folders ?? [],
-          resources: (p as any).resources
-            ? (p as any).resources.map((r: any) => ({
-                id: r.id,
-                name: r.name,
-                folderId: r.folderId ?? null,
-                userMetadata: r.userMetadata ?? {},
-                plaintext: r.plaintext,
-              }))
-            : [],
-          metadata: p.project.metadata,
-          statuses: p.project.config?.statuses ?? [],
-          metadataSchema: p.project.config?.metadataSchema,
-        }),
-      );
-      dispatch(
-        setEditorConfig({
-          headings: p.project.config.editorConfig?.headings ?? {},
-          body: p.project.config.editorConfig?.body,
-        }),
-      );
-
-      dispatch(setSelectedProjectId(p.project.id));
-
-      // Add Resources to redux store
-      dispatch(setResources(p.resources));
-      dispatch(setFolders(p.folders));
-      setSelectedProject({
+    const p = await openProject(id);
+    dispatch(
+      setProject({
         id: p.project.id,
         name: p.project.name,
         rootPath: p.project.rootPath ?? "",
         folders: p.folders,
-        resources: p.resources,
+        resources: p.resources.map((r) => ({
+          id: r.id,
+          name: r.name,
+          folderId: r.folderId ?? null,
+          userMetadata: r.userMetadata ?? {},
+        })),
         metadata: p.project.metadata,
-        config: { wordCountGoal: p.project.config?.wordCountGoal },
-      });
-    }
+        statuses: p.project.config?.statuses ?? [],
+        metadataSchema: p.project.config?.metadataSchema,
+      }),
+    );
+    dispatch(
+      setEditorConfig({
+        headings: p.project.config?.editorConfig?.headings ?? {},
+        body: p.project.config?.editorConfig?.body,
+      }),
+    );
+    dispatch(setSelectedProjectId(p.project.id));
+    dispatch(setResources(p.resources));
+    dispatch(setFolders(p.folders));
+    setSelectedProject({
+      id: p.project.id,
+      name: p.project.name,
+      rootPath: p.project.rootPath ?? "",
+      folders: p.folders,
+      resources: p.resources,
+      metadata: p.project.metadata,
+      config: { wordCountGoal: p.project.config?.wordCountGoal },
+    });
   };
 
   /**
@@ -316,14 +296,11 @@ export default function Home(): JSX.Element {
       return;
     }
 
-    fetch(`/api/resource/${resourceId}/sidecar`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectRoot: selectedProject.rootPath,
-        updatedResource: updater(resource),
-      }),
-    }).catch((err) => {
+    updateSidecar(
+      resourceId,
+      selectedProject.rootPath,
+      updater(resource),
+    ).catch((err) => {
       console.error("Error updating resource metadata:", err);
     });
 
@@ -381,7 +358,6 @@ export default function Home(): JSX.Element {
     status: "draft" | "in-review" | "published",
     resourceId: string,
   ) => {
-    console.log("Updating status to", status, "for resource", resourceId);
     updateResource(resourceId, (r) => ({
       ...r,
       userMetadata: { ...r.userMetadata, status },
@@ -504,15 +480,7 @@ export default function Home(): JSX.Element {
         (payload as any).text = { plainText: "", tiptap: undefined };
       }
 
-      const result = await fetch("/api/resource", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resourceData: payload,
-          projectPath: selectedProject.rootPath,
-        }),
-      });
-      const resBody = await result.json();
+      const resBody = await createResource(selectedProject.rootPath, payload);
       const res: AnyResource = resBody.resource;
       dispatch(addResourceInStore(res));
       if (opts?.type === "folder") {
@@ -538,6 +506,7 @@ export default function Home(): JSX.Element {
             ? { ...prev, resources: [...prev.resources, res] as AnyResource[] }
             : prev,
         );
+        dispatch(setResourceId(res.id));
       }
 
       toastService.success(
@@ -553,16 +522,11 @@ export default function Home(): JSX.Element {
       if (!src) return;
       const newName = opts?.title ?? `${src.name} (Copy)`;
 
-      const resp = await fetch(`/api/resource/${resourceId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "copy",
-          newName,
-          projectRoot: selectedProject.rootPath,
-        }),
-      });
-      const { resource: newResource } = await resp.json();
+      const { resource: newResource } = await copyResource(
+        resourceId,
+        newName,
+        selectedProject.rootPath,
+      );
 
       dispatch(addResourceInStore(newResource as AnyResource));
       setProjects((prev) =>
@@ -589,14 +553,7 @@ export default function Home(): JSX.Element {
 
     if (action === "delete") {
       if (!resourceId) return;
-      await fetch(`/api/resource/${resourceId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "delete",
-          projectRoot: selectedProject.rootPath,
-        }),
-      });
+      await deleteResource(resourceId, selectedProject.rootPath);
       setProjects((prev) =>
         prev.map((p) =>
           p.project.id === selectedProject.id
@@ -688,6 +645,7 @@ export default function Home(): JSX.Element {
     dispatch(setResourceId(null));
     dispatch(setResources([]));
     dispatch(setFolders([]));
+    void refreshProjects();
   };
 
   return (

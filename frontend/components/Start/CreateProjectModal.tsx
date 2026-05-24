@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { X, FolderPlus } from "lucide-react";
 import type { Project as CanonicalProject } from "../../src/lib/models/types";
+import { listProjectTypes } from "../../src/lib/api/project-types";
+import { createProject } from "../../src/lib/api/projects";
 import Button from "../common/UI/Button/Button";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import Input from "../common/UI/Input/Input";
@@ -67,23 +69,17 @@ export default function CreateProjectModal({
     setLoadingTypes(true);
     setTypesError(null);
     try {
-      const res = await fetch("/api/project-types");
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(body || `Status ${res.status}`);
-      }
-      const list: any[] = await res.json();
+      const list = await listProjectTypes();
       // Lightweight client-side validation to surface common template issues
       const processed = list.map((t) => {
-        const id = t.id ?? (t.spec && t.spec.id) ?? "";
-        const name = t.name ?? (t.spec && t.spec.name) ?? id ?? "Unnamed";
-        const description = t.description ?? (t.spec && t.spec.description);
-        const spec = t.spec ?? t;
+        const id = t.id ?? "";
+        const name = t.name ?? id ?? "Unnamed";
+        const description = t.description;
         const errors: string[] = [];
         if (!id) errors.push("Template missing required field: id.");
-        if (!spec || !Array.isArray(spec.folders))
+        if (!Array.isArray(t.folders))
           errors.push("Template missing required field: folders.");
-        else if (spec.folders.length === 0)
+        else if (t.folders.length === 0)
           errors.push("Template must include at least one folder.");
         return {
           id,
@@ -131,22 +127,10 @@ export default function CreateProjectModal({
     setCreating(true);
     setError(null);
     try {
-      const res = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: payload.name,
-          projectType: payload.projectType,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error || `Status ${res.status}`);
-      }
-      const body = await res.json().catch(() => null);
-      const createdProject: CanonicalProject = body?.project;
-      const createdFolders = body?.folders || [];
-      const createdResources = body?.resources || [];
+      const body = await createProject(payload.name, payload.projectType);
+      const createdProject: CanonicalProject = body.project;
+      const createdFolders = body.folders;
+      const createdResources = body.resources;
       onCreate(payload, {
         project: createdProject,
         folders: createdFolders,

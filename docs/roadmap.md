@@ -20,9 +20,9 @@ Features actively in development or nearing completion:
 
 - ~~Priority P0: `feat/indexer-wait-drain`~~ — **Done in `fix/p0-blockers`**. `waitForDrain()` exported from indexer-queue, error logging added, `getwrite reindex` CLI command added. Tests added.
 
-- Priority P1: `chore/toolbar-consolidation` — centralize toolbar command descriptors and migrate menu wiring to a config-driven renderer. See Editor Toolbar section below and tech-debt entry.
+- ~~Priority P1: `chore/toolbar-consolidation`~~ — **Done in `feat/editor-command-descriptor`**. Toolbar wiring extracted into `toolbar-command-schema.ts` + `useToolbarCommands`; `MenuBar.tsx` renders from descriptors only. Parity tests added in `editorMenuBar.test.tsx`.
 
-- Priority P1: `chore/lodash-import-cleanup` — repo-wide lodash path-import audit and ESLint enforcement.
+- ~~Priority P1: `chore/lodash-import-cleanup`~~ — **Done in `fix/tech-debt`**. All usages are path imports; ESLint `no-restricted-imports` rule added to enforce going forward.
 
 These Stage 3 items are intended to be small, testable PRs that reduce high-risk maintenance burden and enable safer refactors in Tracks A–E.
 
@@ -40,26 +40,26 @@ Features with a clear intent but no active implementation timeline:
 
 - [x] Implement Start page and `CreateProjectModal` with create/open/manage actions.
 - [x] Add project manage actions: copy, rename, delete, and package (confirmation modals).
-- [ ] Add Storybook stories and integration tests for Start flows.
+- [x] Add Storybook stories and integration tests for Start flows.
 
 ### Resource Tree & Navigation
 
 - [x] Implement `ResourceTree` with selection, expand/collapse, and drag-and-drop reorder.
 - [x] Add right-click context menu: Create/Copy/Duplicate/Delete/Export and wire persistence calls.
-- [ ] Add Storybook entries and tests for selection sync, reorder persistence, and context actions.
+- [x] Add Storybook entries and tests for selection sync, reorder persistence, and context actions.
 
 ### Work Area Views — Edit / Organizer / Data
 
 - [x] Implement `EditView` with TipTap, debounced autosave, and revision promotion behavior.
 - [ ] Implement `OrganizerView` card rendering, body toggle, and filters (Status/Character/Location/Word Count).
 - [x] Implement `DataView` with Overall Stats and foldable Resources lists (click-to-open behavior).
-- [ ] Add tests and Storybook stories; ensure Edit View autosave/revision lifecycle preserved.
+- [x] Add tests and Storybook stories; ensure Edit View autosave/revision lifecycle preserved.
 
 ### Data Models & Sidecar Storage
 
 - [x] Publish and enforce `schemas.ts` (zod) for Project, Folder, Resource, Revision, and Metadata.
 - [x] Implement sidecar read/write helpers and example `resource-<id>.meta.json` files.
-- [ ] Add unit tests for model validation and project-type creation/validation.
+- [x] Add unit tests for model validation and project-type creation/validation.
 
 ### Templates & Template CLI (detailed)
 
@@ -87,9 +87,9 @@ Features with a clear intent but no active implementation timeline:
 
 ### Editor Toolbar (Config-Driven)
 
-- [ ] Define a typed `CommandDescriptor` and migrate `MenuBar` to generate UI from config.
-- [ ] Consolidate color/highlight submenu wiring and shared input adapters.
-- [ ] Add parity tests to prove behavior unchanged after migration.
+- [x] Define a typed `CommandDescriptor` and migrate `MenuBar` to generate UI from config.
+- [x] Consolidate color/highlight submenu wiring and shared input adapters.
+- [x] Add parity tests to prove behavior unchanged after migration.
 
 ### Token-first Styling
 
@@ -115,18 +115,18 @@ Features with a clear intent but no active implementation timeline:
 
 Known improvements to internal systems:
 
-- [ ] **Indexer: promise-based drain signal** — Replace `flushIndexer()` polling with a deterministic `waitForDrain()` API. See [docs/features/indexing.md](features/indexing.md) for details.
-- [ ] **Indexer: durable meta writes** — Add optional `fsync`/`fdatasync` after writing index and backlink files to prevent data loss on sudden shutdown.
-- [ ] **Indexer: graceful shutdown** — Explicit queue shutdown/flush method integrated with application lifecycle.
-- [ ] **Indexer: reindex / repair CLI** — `getwrite reindex <projectRoot>` command to rebuild the inverted index and backlinks from scratch.
+- [x] **Indexer: promise-based drain signal** — `waitForDrain()` exported from `indexer-queue.ts` (alias for `flushIndexer`).
+- [x] **Indexer: durable meta writes** — Opt-in via `GETWRITE_DURABLE_META=1`. `atomicWriteFile` accepts a `{ durable }` option and `fsync`s the temp file before rename; inverted index and backlinks honor the env var.
+- [x] **Indexer: graceful shutdown** — `shutdownIndexer(timeoutMs)` drains in-flight tasks, stops backlinks watchers, and rejects new enqueues. SIGTERM/SIGINT/beforeExit hooks installed lazily on first enqueue.
+- [x] **Indexer: reindex / repair CLI** — `getwrite-cli reindex [projectRoot]` rebuilds the inverted index and backlinks from scratch (`src/cli/commands/reindex.ts`).
 - [ ] **Indexer: search engine migration** — Evaluate SQLite FTS or Tantivy as a backend for larger projects where the JSON index becomes a bottleneck.
 
 ### Next 90 days — Priorities
 
 - ~~P0: `fix/revision-canonical-guards`~~ — **Done in `fix/p0-blockers`**.
 - ~~P0: `feat/indexer-wait-drain`~~ — **Done in `fix/p0-blockers`**.
-- P1: `chore/toolbar-consolidation` — owner: TBD — Goal: migrate one major toolbar group and prove parity via tests.
-- P1: `chore/lodash-import-cleanup` — owner: TBD — Goal: codemod common lodash cases and add lint rule.
+- ~~P1: `chore/toolbar-consolidation`~~ — **Done in `feat/editor-command-descriptor`**.
+- ~~P1: `chore/lodash-import-cleanup`~~ — **Done in `fix/tech-debt`**.
 
 Linkages:
 

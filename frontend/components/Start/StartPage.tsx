@@ -23,6 +23,11 @@ import CreateProjectModal, {
 import ManageProjectMenu from "./ManageProjectMenu";
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import { toastService } from "../../src/lib/toast-service";
+import {
+  compilePdf,
+  compileDocx,
+  compileText,
+} from "../../src/lib/api/compile";
 import { formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 import Button from "../common/UI/Button";
 
@@ -201,6 +206,21 @@ export default function StartPage({
   /** Tick used to keep relative timestamps fresh while the page is open. */
   const [timestampTick, setTimestampTick] = useState<number>(Date.now());
 
+  /** Projects sorted by most recent activity (newest first). */
+  const sortedProjects = useMemo<StartPageProjectEntry[]>(() => {
+    return [...localProjects].sort((left, right) => {
+      const leftTimestamp = Date.parse(
+        getProjectLastEditedTimestamp(left) ?? "",
+      );
+      const rightTimestamp = Date.parse(
+        getProjectLastEditedTimestamp(right) ?? "",
+      );
+      const leftSafe = Number.isNaN(leftTimestamp) ? 0 : leftTimestamp;
+      const rightSafe = Number.isNaN(rightTimestamp) ? 0 : rightTimestamp;
+      return rightSafe - leftSafe;
+    });
+  }, [localProjects]);
+
   /** Total non-folder resources across all visible projects. */
   const totalRenderableResources = useMemo<number>(() => {
     return localProjects.reduce((total, projectEntry) => {
@@ -298,149 +318,92 @@ export default function StartPage({
             return;
           }
 
-          if (options.format === "pdf") {
-            void fetch("/api/compile/pdf", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                projectPath: entry.project.rootPath,
-                resourceIds: selectedIds,
-                resources: compileResources.map((r) => ({
-                  id: r.id,
-                  name: r.name,
-                  type: r.type,
-                })),
-                includeHeaders: options.includeHeaders,
-                projectName: entry.project.name ?? "project",
-              }),
-            }).then(async (response) => {
-              if (!response.ok) {
-                toastService.error("Compile failed", "Could not generate PDF");
-                return;
-              }
-              if (
-                response.headers.get("X-Compile-Warning") === "font-fallback"
-              ) {
-                toastService.info(
-                  "PDF compiled with fallback fonts — IBM Plex fonts were unreachable",
-                );
-              }
-              const arrayBuffer = await response.arrayBuffer();
-              const blob = new Blob([arrayBuffer], { type: "application/pdf" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              const rawName = options.compilationName.trim();
-              const disposition =
-                response.headers.get("Content-Disposition") ?? "";
-              const serverFilename =
-                disposition.match(/filename="([^"]+)"/)?.[1] ?? "project.pdf";
-              if (rawName) {
-                a.download = rawName.endsWith(".pdf")
-                  ? rawName
-                  : `${rawName}.pdf`;
-              } else {
-                a.download = serverFilename;
-              }
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            });
-            setCompileTargetProjectId(null);
-            return;
-          }
-          if (options.format === "docx") {
-            void fetch("/api/compile/docx", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                projectPath: entry.project.rootPath,
-                resourceIds: selectedIds,
-                resources: compileResources.map((r) => ({
-                  id: r.id,
-                  name: r.name,
-                  type: r.type,
-                })),
-                includeHeaders: options.includeHeaders,
-                projectName: entry.project.name ?? "project",
-              }),
-            }).then(async (response) => {
-              if (!response.ok) {
-                toastService.error("Compile failed", "Could not generate DOCX");
-                return;
-              }
-              const arrayBuffer = await response.arrayBuffer();
-              const blob = new Blob([arrayBuffer], {
-                type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-              });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              const rawName = options.compilationName.trim();
-              const disposition =
-                response.headers.get("Content-Disposition") ?? "";
-              const serverFilename =
-                disposition.match(/filename="([^"]+)"/)?.[1] ?? "project.docx";
-              if (rawName) {
-                a.download = rawName.endsWith(".docx")
-                  ? rawName
-                  : `${rawName}.docx`;
-              } else {
-                a.download = serverFilename;
-              }
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            });
-            setCompileTargetProjectId(null);
-            return;
-          }
+          const compileBody = {
+            projectPath: entry.project.rootPath,
+            resourceIds: selectedIds,
+            resources: compileResources.map((r) => ({
+              id: r.id,
+              name: r.name,
+              type: r.type,
+            })),
+            includeHeaders: options.includeHeaders,
+            projectName: entry.project.name ?? "project",
+          };
+          const rawName = options.compilationName.trim();
 
-          void fetch("/api/compile/text", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              projectPath: entry.project.rootPath,
-              resourceIds: selectedIds,
-              resources: compileResources.map((r) => ({
-                id: r.id,
-                name: r.name,
-                type: r.type,
-              })),
-              includeHeaders: options.includeHeaders,
-              projectName: entry.project.name ?? "project",
-            }),
-          }).then(async (response) => {
-            if (!response.ok) {
-              toastService.error(
-                "Compile failed",
-                "Could not generate output file",
-              );
-              return;
-            }
-            const { text, filename } = (await response.json()) as {
-              text: string;
-              filename: string;
-            };
-            const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+          const triggerDownload = (blob: Blob, filename: string) => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            const rawName = options.compilationName.trim();
-            if (rawName) {
-              a.download = rawName.endsWith(".txt")
-                ? rawName
-                : `${rawName}.txt`;
-            } else {
-              a.download = filename;
-            }
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-          });
+          };
+
+          if (options.format === "pdf") {
+            void compilePdf(compileBody)
+              .then((result) => {
+                if (result.warning === "font-fallback") {
+                  toastService.info(
+                    "PDF compiled with fallback fonts — IBM Plex fonts were unreachable",
+                  );
+                }
+                const blob = new Blob([result.arrayBuffer], {
+                  type: "application/pdf",
+                });
+                const filename = rawName
+                  ? rawName.endsWith(".pdf")
+                    ? rawName
+                    : `${rawName}.pdf`
+                  : result.filename;
+                triggerDownload(blob, filename);
+              })
+              .catch(() =>
+                toastService.error("Compile failed", "Could not generate PDF"),
+              );
+            setCompileTargetProjectId(null);
+            return;
+          }
+          if (options.format === "docx") {
+            void compileDocx(compileBody)
+              .then((result) => {
+                const blob = new Blob([result.arrayBuffer], {
+                  type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                });
+                const filename = rawName
+                  ? rawName.endsWith(".docx")
+                    ? rawName
+                    : `${rawName}.docx`
+                  : result.filename;
+                triggerDownload(blob, filename);
+              })
+              .catch(() =>
+                toastService.error("Compile failed", "Could not generate DOCX"),
+              );
+            setCompileTargetProjectId(null);
+            return;
+          }
+
+          void compileText(compileBody)
+            .then((result) => {
+              const blob = new Blob([result.text], {
+                type: "text/plain;charset=utf-8",
+              });
+              const filename = rawName
+                ? rawName.endsWith(".txt")
+                  ? rawName
+                  : `${rawName}.txt`
+                : result.filename;
+              triggerDownload(blob, filename);
+            })
+            .catch(() =>
+              toastService.error(
+                "Compile failed",
+                "Could not generate output file",
+              ),
+            );
           setCompileTargetProjectId(null);
         }}
       />
@@ -579,7 +542,7 @@ export default function StartPage({
             </article>
           ) : null}
 
-          {localProjects.map((projectEntry) => {
+          {sortedProjects.map((projectEntry) => {
             /** Non-folder resources shown in summaries and package flow. */
             const resourceList =
               projectEntry.resources.filter(isRenderableResource);

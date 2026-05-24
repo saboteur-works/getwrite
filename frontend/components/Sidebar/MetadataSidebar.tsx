@@ -70,15 +70,11 @@ type RawResource = { id: string; name: string; folderId?: string | null };
 const EMPTY_RAW_RESOURCES: RawResource[] = [];
 const EMPTY_FOLDERS: Folder[] = [];
 
-const selectRawResourcesList = createSelector(
-  (state: any) => state.resources.resources as RawResource[],
-  (resources): RawResource[] => resources ?? EMPTY_RAW_RESOURCES,
-);
+const selectRawResourcesList = (state: any): RawResource[] =>
+  (state.resources.resources as RawResource[]) ?? EMPTY_RAW_RESOURCES;
 
-const selectFoldersList = createSelector(
-  (state: any) => state.resources.folders as Folder[],
-  (folders): Folder[] => folders ?? EMPTY_FOLDERS,
-);
+const selectFoldersList = (state: any): Folder[] =>
+  (state.resources.folders as Folder[]) ?? EMPTY_FOLDERS;
 
 export interface MetadataSidebarProps {
   onChangeField?: (key: string, value: MetadataValue) => void;
