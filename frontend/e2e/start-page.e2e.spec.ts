@@ -139,3 +139,43 @@ test("start page reflects two-project totals in hero stats", async ({
   await expect(page.getByText(/3 writing assets/i)).toBeVisible();
   await expect(page.getByText(/3 folders organized/i)).toBeVisible();
 });
+
+test("creating a project from start page prepends it and updates stats", async ({
+  page,
+}) => {
+  await page.goto(INTERACTIVE_STORY);
+
+  // Sanity: start with 2 projects in the hero counter.
+  await expect(page.getByText(/2 active projects/i)).toBeVisible();
+
+  // Open create modal via hero button.
+  await page
+    .getByRole("button", { name: /start a new project/i })
+    .first()
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+
+  // Submit via Enter — Create button is disabled until types finish loading,
+  // and Enter routes through the same handleSubmit code path.
+  const nameInput = page.locator("input[aria-required]").first();
+  await nameInput.fill("Brand New Saga");
+  await nameInput.press("Enter");
+
+  // Modal closes after successful create.
+  await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 3000 });
+
+  // The new card appears (sorted by newest, so it lands first).
+  const cardTitles = page.locator("article h3");
+  await expect(cardTitles.nth(0)).toHaveText("Brand New Saga");
+
+  // Hero stat increments.
+  await expect(page.getByText(/3 active projects/i)).toBeVisible();
+
+  // Interactive story's create probe should fire too.
+  await expect(page.locator('[data-testid="last-action"]')).toHaveText(
+    "create",
+  );
+  await expect(page.locator('[data-testid="last-payload"]')).toHaveText(
+    "Brand New Saga",
+  );
+});
