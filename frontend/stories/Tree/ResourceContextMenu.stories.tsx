@@ -1,13 +1,17 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import ResourceContextMenu from "../../components/ResourceTree/ResourceContextMenu";
-import { within, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-// `expect` is provided by the test runner (Vitest) in the test environment
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuTrigger,
+} from "../../components/common/UI/ContextMenu";
 
 const meta: Meta<typeof ResourceContextMenu> = {
-    title: "Tree/ResourceContextMenu",
-    component: ResourceContextMenu,
+  title: "Tree/ResourceContextMenu",
+  component: ResourceContextMenu,
 };
 
 export default meta;
@@ -15,79 +19,157 @@ export default meta;
 type Story = StoryObj<typeof ResourceContextMenu>;
 
 export const Default: Story = {
-    args: {
-        open: false,
-        x: 100,
-        y: 100,
-        resourceId: "res_123",
-        resourceName: "Sample Resource",
-        onClose: () => undefined,
-        onAction: (action: string) => console.log("action", action),
-    },
+  args: {
+    resourceId: "res_123",
+    resourceName: "Sample Resource",
+    onClose: () => undefined,
+    onAction: (action: string) => console.log("action", action),
+  },
+  render: (args) => (
+    <ResourceContextMenu {...args}>
+      <div
+        style={{
+          padding: 16,
+          border: "1px dashed #ccc",
+          cursor: "context-menu",
+        }}
+      >
+        Right-click here to open the context menu
+      </div>
+    </ResourceContextMenu>
+  ),
 };
 
 export const Open: Story = {
-    args: {
-        open: true,
-        x: 120,
-        y: 80,
-        resourceId: "res_123",
-        resourceName: "Sample Resource",
-        onClose: () => console.log("closed"),
-        onAction: (action: string) => console.log("action", action),
-    },
+  render: () => {
+    return (
+      <ContextMenu defaultOpen>
+        <ContextMenuTrigger asChild>
+          <div
+            style={{
+              padding: 16,
+              border: "1px dashed #ccc",
+              cursor: "context-menu",
+            }}
+          >
+            Right-click here (menu pre-opened)
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="resource-context-menu">
+          <ContextMenuLabel className="resource-context-menu-header">
+            Sample Resource
+          </ContextMenuLabel>
+          <ContextMenuItem
+            className="resource-context-menu-item"
+            onSelect={() => console.log("create")}
+          >
+            Create
+          </ContextMenuItem>
+          <ContextMenuItem
+            className="resource-context-menu-item"
+            onSelect={() => console.log("rename")}
+          >
+            Rename
+          </ContextMenuItem>
+          <ContextMenuItem
+            className="resource-context-menu-item"
+            onSelect={() => console.log("delete")}
+          >
+            Delete
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  },
 };
 
 export const Interactive: Story = {
-    render: (args: React.ComponentProps<typeof ResourceContextMenu>) => {
-        const Wrapper = () => {
-            const [open, setOpen] = React.useState(true);
-            const [lastAction, setLastAction] = React.useState<string | null>(
-                null,
-            );
-            return (
-                <div>
-                    <div data-testid="outside" style={{ padding: 40 }}>
-                        Outside area (click here to close)
-                    </div>
-                    <ResourceContextMenu
-                        {...args}
-                        open={open}
-                        onClose={() => setOpen(false)}
-                        onAction={(action: string) => setLastAction(action)}
-                    />
-                    {/* test probe: expose last action to story DOM only */}
-                    <div
-                        data-testid="last-action"
-                        aria-hidden
-                        style={{ display: "none" }}
-                    >
-                        {lastAction}
-                    </div>
-                </div>
-            );
-        };
+  render: () => {
+    const Wrapper = () => {
+      const [lastAction, setLastAction] = React.useState<string | null>(null);
 
-        return <Wrapper />;
-    },
-    play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-        const canvas = within(canvasElement as HTMLElement);
-        const menu = await canvas.getByRole("menu");
-        expect(menu).toBeTruthy();
+      return (
+        <div style={{ padding: 80 }}>
+          <div data-testid="outside" style={{ padding: 40, marginBottom: 16 }}>
+            Outside area (click here to close)
+          </div>
+          <ContextMenu
+            modal={false}
+            onOpenChange={(open) => {
+              if (!open) setLastAction((prev) => prev);
+            }}
+          >
+            <ContextMenuTrigger asChild>
+              <div
+                data-testid="trigger"
+                style={{
+                  padding: 16,
+                  border: "1px dashed #ccc",
+                  cursor: "context-menu",
+                }}
+              >
+                Right-click here to open the context menu
+              </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent
+              role="menu"
+              aria-label="Resource options"
+              className="resource-context-menu"
+            >
+              <ContextMenuLabel className="resource-context-menu-header">
+                Sample Resource
+              </ContextMenuLabel>
+              {(
+                [
+                  "create",
+                  "rename",
+                  "copy",
+                  "duplicate",
+                  "delete",
+                  "export",
+                ] as const
+              ).map((action) => (
+                <ContextMenuItem
+                  key={action}
+                  className={`resource-context-menu-item${action === "delete" ? " resource-context-menu-item-danger" : ""}`}
+                  role="menuitem"
+                  onSelect={() => setLastAction(action)}
+                >
+                  {action.charAt(0).toUpperCase() + action.slice(1)}
+                </ContextMenuItem>
+              ))}
+            </ContextMenuContent>
+          </ContextMenu>
+          <div
+            data-testid="last-action"
+            aria-hidden
+            style={{ display: "none" }}
+          >
+            {lastAction}
+          </div>
+        </div>
+      );
+    };
 
-        const outside = canvas.getByTestId("outside");
-        await userEvent.click(outside);
+    return <Wrapper />;
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByTestId("trigger");
 
-        // assert the specific menu element we captured is removed from the DOM
-        await waitFor(() => {
-            expect(menu).not.toBeInTheDocument();
-        });
-    },
-    args: {
-        x: 140,
-        y: 60,
-        resourceId: "res_123",
-        resourceName: "Sample Resource",
-        onAction: (action: string) => console.log("action", action),
-    },
+    // Right-click the trigger to open the menu at a real cursor position.
+    await userEvent.pointer({ target: trigger, keys: "[MouseRight]" });
+
+    // Menu portals to document.body — search the full document.
+    const bodyScope = within(document.body);
+    const menu = await bodyScope.findByRole("menu");
+    expect(menu).toBeTruthy();
+
+    const outside = canvas.getByTestId("outside");
+    await userEvent.click(outside);
+
+    await waitFor(() => {
+      expect(menu).not.toBeInTheDocument();
+    });
+  },
 };

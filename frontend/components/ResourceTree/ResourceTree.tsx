@@ -45,7 +45,7 @@ import {
 import ResourceContextMenu, {
   ResourceContextAction,
 } from "./ResourceContextMenu";
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { shallowEqual } from "react-redux";
 import {
   ChevronDown,
@@ -163,14 +163,6 @@ export default function ResourceTree({
     rootItemId: ROOT_ITEM_ID,
   });
 
-  const [contextMenu, setContextMenu] = useState<{
-    open: boolean;
-    x: number;
-    y: number;
-    resourceId?: string;
-    resourceTitle?: string;
-  }>({ open: false, x: 0, y: 0 });
-
   /**
    * Handles a primary (left) click on a tree item.
    *
@@ -197,34 +189,6 @@ export default function ResourceTree({
       item.selectUpTo(e.ctrlKey || e.metaKey);
       dispatch(setSelectedResourceId(modificationData.focusedItem));
     }
-  };
-
-  /**
-   * Opens the context menu for a tree item at the cursor position.
-   *
-   * Prevents the browser's native context menu, captures the pointer
-   * coordinates, and stores them together with the target resource's ID and
-   * name in local state so that `ResourceContextMenu` can render at the
-   * correct location.
-   *
-   * @param e    - The originating mouse event (right-click or context-menu key).
-   * @param item - The `@headless-tree` item instance the menu was invoked on.
-   */
-  const handleContextMenu = (
-    e: React.MouseEvent,
-    item: ItemInstance<ResourceItemData>,
-  ) => {
-    e.preventDefault();
-    // open context menu at mouse position for this resource
-    const rectX = e.clientX;
-    const rectY = e.clientY;
-    setContextMenu({
-      open: true,
-      x: rectX,
-      y: rectY,
-      resourceId: item.getId(),
-      resourceTitle: item.getItemName(),
-    });
   };
 
   /**
@@ -333,40 +297,46 @@ export default function ResourceTree({
       className="flex flex-col items-start mb-8"
     >
       {tree.getItems().map((item) => (
-        <div
+        <ResourceContextMenu
           key={item.getId()}
-          style={{
-            paddingLeft: `${item.getItemMeta().level * INDENTATION_WIDTH}px`,
+          resourceId={item.getId()}
+          resourceName={item.getItemName()}
+          onAction={(action, resourceId) => {
+            onResourceAction?.(action, resourceId, item.getItemName());
           }}
-          className={`resource-tree-item ${item.isSelected() ? "resource-tree-item--selected" : ""}`}
-          onContextMenu={(e) => {
-            handleContextMenu(e, item);
-          }}
+          onClose={() => {}}
         >
-          {item.isFolder() && (
-            <button
-              className="resource-tree-icon-button"
-              onClick={item.isExpanded() ? item.collapse : item.expand}
-            >
-              {renderExpandableStateIcon(item)}
-            </button>
-          )}
-          <button
-            {...item.getProps()}
-            key={item.getId()}
-            onClick={(e) => {
-              handleClick(e, item);
+          <div
+            style={{
+              paddingLeft: `${item.getItemMeta().level * INDENTATION_WIDTH}px`,
             }}
-            className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""} ${item.isFolder() ? "text-gw-label text-gw-secondary" : ""}`}
+            className={`resource-tree-item ${item.isSelected() ? "resource-tree-item--selected" : ""}`}
           >
-            <div
-              className={`resource-tree-item-row ${item.isDragTarget() ? "resource-tree-item-row--drag-target" : ""}`}
+            {item.isFolder() && (
+              <button
+                className="resource-tree-icon-button"
+                onClick={item.isExpanded() ? item.collapse : item.expand}
+              >
+                {renderExpandableStateIcon(item)}
+              </button>
+            )}
+            <button
+              {...item.getProps()}
+              key={item.getId()}
+              onClick={(e) => {
+                handleClick(e, item);
+              }}
+              className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""} ${item.isFolder() ? "text-gw-label text-gw-secondary" : ""}`}
             >
-              {renderResourceIcon(item)}
-              <div className={`truncate`}>{item.getItemName()}</div>
-            </div>
-          </button>
-        </div>
+              <div
+                className={`resource-tree-item-row ${item.isDragTarget() ? "resource-tree-item-row--drag-target" : ""}`}
+              >
+                {renderResourceIcon(item)}
+                <div className={`truncate`}>{item.getItemName()}</div>
+              </div>
+            </button>
+          </div>
+        </ResourceContextMenu>
       ))}
       <div style={tree.getDragLineStyle()} className="dragline" />
       <div
@@ -385,17 +355,6 @@ export default function ResourceTree({
         {(draggedItems?.length ?? 0) > 3 &&
           ` and ${(draggedItems?.length ?? 0) - 3} more`}
       </div>
-      <ResourceContextMenu
-        open={contextMenu.open}
-        x={contextMenu.x}
-        y={contextMenu.y}
-        resourceId={contextMenu.resourceId}
-        resourceTitle={contextMenu.resourceTitle}
-        onClose={() => setContextMenu((s) => ({ ...s, open: false }))}
-        onAction={(action, resourceId) => {
-          onResourceAction?.(action, resourceId, contextMenu.resourceTitle);
-        }}
-      />
     </div>
   );
 }
