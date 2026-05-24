@@ -44,9 +44,13 @@ export function buildFolderTree(folders: Folder[]): FolderTreeNode[] {
   return toNodes(data[ROOT_ITEM_ID].children);
 }
 
-function getFolderName(folders: Folder[], id: string | undefined): string {
-  if (!id) return "Project Root";
-  return folders.find((f) => f.id === id)?.name ?? "Project Root";
+function getFolderName(
+  folders: Folder[],
+  id: string | undefined,
+  rootLabel: string,
+): string {
+  if (!id) return rootLabel;
+  return folders.find((f) => f.id === id)?.name ?? rootLabel;
 }
 
 interface TreeNodeProps {
@@ -124,6 +128,8 @@ export interface FolderTreePickerProps {
   onChange: (id: string | undefined) => void;
   className?: string;
   id?: string;
+  /** Label shown for the no-selection root option (default "Project Root"). */
+  rootLabel?: string;
   "aria-label"?: string;
 }
 
@@ -133,13 +139,14 @@ export default function FolderTreePicker({
   onChange,
   className,
   id,
+  rootLabel = "Project Root",
   "aria-label": ariaLabel,
 }: FolderTreePickerProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const tree = buildFolderTree(folders);
-  const label = getFolderName(folders, value);
+  const label = getFolderName(folders, value, rootLabel);
 
   const handleSelect = (id: string | undefined) => {
     onChange(id);
@@ -214,7 +221,7 @@ export default function FolderTreePicker({
           >
             <span className="shrink-0 w-3" />
             <Home size={12} strokeWidth={1.5} className="shrink-0" />
-            <span>Project Root</span>
+            <span>{rootLabel}</span>
           </button>
           {tree.length > 0 && (
             <div className="border-t border-gw-border mt-1 pt-1">

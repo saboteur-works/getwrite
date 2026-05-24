@@ -131,3 +131,35 @@ export const InDialog: Story = {
     );
   },
 };
+
+// Mirrors the SchemaManager ref-folder usage: the picker lives in a modal
+// Dialog and the no-selection option reads "Any folder" instead of the
+// default "Project Root". Reuses the overflowing folder set so scroll-in-dialog
+// still applies to this rootLabel variant.
+export const InDialogCustomRoot: Story = {
+  name: "In Dialog (rootLabel)",
+  decorators: [(Story) => <Story />],
+  render: () => {
+    const [value, setValue] = useState<string | undefined>(undefined);
+    return (
+      <Dialog open>
+        <DialogContent
+          maxWidth="max-w-[480px]"
+          className="p-6"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>Edit schema</DialogTitle>
+          <div style={{ marginTop: 16 }}>
+            <FolderTreePicker
+              folders={MANY_FOLDERS}
+              value={value}
+              onChange={setValue}
+              rootLabel="Any folder"
+              aria-label="ref-folder"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  },
+};

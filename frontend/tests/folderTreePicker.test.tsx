@@ -184,4 +184,34 @@ describe("FolderTreePicker", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expand" }));
     expect(screen.getByText("Child")).toBeInTheDocument();
   });
+
+  it("uses a custom rootLabel for the trigger when no value", () => {
+    render(
+      <FolderTreePicker
+        folders={[]}
+        value={undefined}
+        onChange={vi.fn()}
+        rootLabel="Any folder"
+      />,
+    );
+    expect(screen.getByText("Any folder")).toBeInTheDocument();
+    expect(screen.queryByText("Project Root")).not.toBeInTheDocument();
+  });
+
+  it("uses a custom rootLabel for the no-selection option", () => {
+    const onChange = vi.fn();
+    render(
+      <FolderTreePicker
+        folders={[makeFolder("f1", "Act One")]}
+        value="f1"
+        onChange={onChange}
+        rootLabel="Any folder"
+      />,
+    );
+    // Trigger shows the selected folder name; open the popover.
+    fireEvent.click(screen.getByText("Act One"));
+    const rootOptions = screen.getAllByText("Any folder");
+    fireEvent.click(rootOptions[rootOptions.length - 1]);
+    expect(onChange).toHaveBeenCalledWith(undefined);
+  });
 });
