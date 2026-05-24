@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.42](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.41...getwrite-v0.2.42) (2026-05-24)
+
+
+### Features
+
+* replace flat folder selects with hierarchical tree picker ([96a82e2](https://github.com/saboteur-works/getwrite/commit/96a82e293fb3ce26d5e54100559a1cba80e480e8))
+* **resource-tree:** replace flat folder select with tree picker popover ([a240361](https://github.com/saboteur-works/getwrite/commit/a240361ae695d02eb6003e3a0606cbe328b2df81))
+* **schema-manager:** use FolderTreePicker for ref-folder scope ([e9aff8f](https://github.com/saboteur-works/getwrite/commit/e9aff8fe41c1797c7f4c4e69ecf992d844531a1e))
+* **search:** use FolderTreePicker for the search folder filter ([a911c2d](https://github.com/saboteur-works/getwrite/commit/a911c2d2c6070b7b99abe30cbe28fe711986ffc4))
+
 ## [0.2.41](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.40...getwrite-v0.2.41) (2026-05-24)
 
 
