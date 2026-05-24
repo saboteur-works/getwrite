@@ -16,6 +16,37 @@ type SavedSelection = {
   readOnly: boolean;
 };
 
+async function pasteAtSelection(
+  el: HTMLInputElement | HTMLTextAreaElement,
+  start: number,
+  end: number,
+): Promise<void> {
+  let text: string;
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {
+    return;
+  }
+  if (!text) return;
+
+  const proto =
+    el instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
+  const nativeSetter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+  const next = el.value.slice(0, start) + text + el.value.slice(end);
+  if (nativeSetter) {
+    nativeSetter.call(el, next);
+  } else {
+    el.value = next;
+  }
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  el.dispatchEvent(new Event("change", { bubbles: true }));
+  try {
+    el.setSelectionRange(start + text.length, start + text.length);
+  } catch {}
+}
+
 function captureSelection(target: EventTarget | null): SavedSelection | null {
   if (
     !(target instanceof HTMLInputElement) &&
@@ -34,16 +65,6 @@ function captureSelection(target: EventTarget | null): SavedSelection | null {
   return { el: target, start, end, readOnly: target.readOnly };
 }
 
-/**
- * Wraps any input or textarea in a context menu offering Cut, Copy, and Paste.
- *
- * Selection state is captured on the contextmenu event (before focus is lost
- * to the menu), then restored before each execCommand so the command operates
- * on the intended text.
- *
- * Stops contextmenu propagation so ancestor SidebarContextMenu or
- * ResourceContextMenu instances don't also open.
- */
 export default function EditContextMenu({
   children,
 }: {
@@ -103,8 +124,9 @@ export default function EditContextMenu({
           className="resource-context-menu-item"
           disabled={isReadOnly}
           onSelect={() => {
-            restore();
-            document.execCommand("paste");
+            if (!saved) return;
+            saved.el.focus();
+            void pasteAtSelection(saved.el, saved.start, saved.end);
           }}
         >
           <Clipboard size={14} className="resource-context-menu-item-icon" />

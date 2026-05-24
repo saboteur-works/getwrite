@@ -6,6 +6,7 @@ import EditContextMenu from "../components/common/UI/ContextMenu/EditContextMenu
 // jsdom doesn't define execCommand at all, so vi.spyOn won't work.
 // Define it before each test and track calls via the mock reference.
 let execCommand: ReturnType<typeof vi.fn>;
+let clipboardReadText: ReturnType<typeof vi.fn>;
 
 function renderWithInput(
   inputProps: React.InputHTMLAttributes<HTMLInputElement> = {},
@@ -30,6 +31,12 @@ describe("EditContextMenu", () => {
     execCommand = vi.fn().mockReturnValue(true);
     Object.defineProperty(document, "execCommand", {
       value: execCommand,
+      writable: true,
+      configurable: true,
+    });
+    clipboardReadText = vi.fn().mockResolvedValue("PASTED");
+    Object.defineProperty(navigator, "clipboard", {
+      value: { readText: clipboardReadText },
       writable: true,
       configurable: true,
     });
@@ -83,11 +90,15 @@ describe("EditContextMenu", () => {
     expect(execCommand).toHaveBeenCalledWith("cut");
   });
 
-  it("clicking Paste calls execCommand('paste')", () => {
+  it("clicking Paste reads from clipboard and inserts text at cursor", async () => {
     renderWithInput();
-    openMenu();
-    fireEvent.click(screen.getByText("Paste"));
-    expect(execCommand).toHaveBeenCalledWith("paste");
+    openMenu(0, 0); // cursor at start, no selection
+    await act(async () => {
+      fireEvent.click(screen.getByText("Paste"));
+    });
+    expect(clipboardReadText).toHaveBeenCalled();
+    const input = screen.getByTestId("field") as HTMLInputElement;
+    expect(input.value).toBe("PASTEDhello world");
   });
 
   it("works with a textarea", () => {
