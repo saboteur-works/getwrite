@@ -6,6 +6,7 @@ const HEADING_STYLE_PROPERTIES = [
   "letter-spacing",
   "color",
 ] as const;
+const HEADING_TAG_RE = /^H[1-6]$/;
 
 const TABLE_ELEMENT_ATTRS = ["bgcolor", "width", "height", "valign", "align"];
 
@@ -21,6 +22,15 @@ function stripHeadingStyles(doc: Document): void {
   });
 }
 
+function isDescendantOfHeading(el: HTMLElement): boolean {
+  let parent = el.parentElement;
+  while (parent) {
+    if (HEADING_TAG_RE.test(parent.tagName)) return true;
+    parent = parent.parentElement;
+  }
+  return false;
+}
+
 function normalizeInlineStyles(
   doc: Document,
   bodyFontSize: string | undefined,
@@ -31,7 +41,10 @@ function normalizeInlineStyles(
     htmlEl.style.removeProperty("font-family");
     htmlEl.style.removeProperty("background-color");
 
-    if (bodyFontSize) {
+    // Strip font-size from heading descendants unconditionally — heading-level
+    // font-size comes from CustomHeading.renderHTML and must not be overridden
+    // by an inline TextStyle mark created from a child span.
+    if (bodyFontSize && !isDescendantOfHeading(htmlEl)) {
       if (htmlEl.style.getPropertyValue("font-size")) {
         htmlEl.style.setProperty("font-size", bodyFontSize);
       }

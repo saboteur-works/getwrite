@@ -5,6 +5,10 @@
  * User-applied inline styles have (1,0,0) and always win — never use !important.
  */
 
+.tiptap {
+    color: var(--color-gw-ink);
+}
+
 .tiptap :first-child {
     margin-top: 0;
     margin-bottom: 0;
