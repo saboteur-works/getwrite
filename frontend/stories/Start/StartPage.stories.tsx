@@ -1,4 +1,5 @@
 import React from "react";
+import { useDispatch } from "react-redux";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import StartPage, {
   StartPageProps,
@@ -6,6 +7,13 @@ import StartPage, {
   StartPageProjectEntry,
 } from "../../../frontend/components/Start/StartPage";
 import { AnyResource, Folder, Project } from "../../src/lib/models";
+import { openProject } from "../../src/lib/api/projects";
+import {
+  setProject,
+  setSelectedProjectId,
+} from "../../src/store/projectsSlice";
+import { setResources, setFolders } from "../../src/store/resourcesSlice";
+import { setEditorConfig } from "../../src/store/editorConfigSlice";
 
 const meta: Meta<typeof StartPage> = {
   title: "Start/StartPage",
@@ -216,6 +224,215 @@ function installStartPageFetchMock(): void {
     return origFetch(input, init);
   };
 }
+
+interface OpenFlowMockState {
+  installed: boolean;
+  lastOpenPayload: string | null;
+  shouldFailNextOpen: boolean;
+}
+
+function getOpenFlowMockState(): OpenFlowMockState {
+  if (typeof window === "undefined") {
+    return {
+      installed: false,
+      lastOpenPayload: null,
+      shouldFailNextOpen: false,
+    };
+  }
+  const w = window as unknown as { __openFlowMockState?: OpenFlowMockState };
+  if (!w.__openFlowMockState) {
+    w.__openFlowMockState = {
+      installed: false,
+      lastOpenPayload: null,
+      shouldFailNextOpen: false,
+    };
+  }
+  return w.__openFlowMockState;
+}
+
+function installOpenFlowFetchMock(openedProjectId: string): void {
+  const state = getOpenFlowMockState();
+  if (state.installed) return;
+  state.installed = true;
+
+  const origFetch = window.fetch;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  window.fetch = async (input: RequestInfo, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.url;
+    if (url.endsWith("/api/project") && init?.method === "POST") {
+      try {
+        const body = init.body ? JSON.parse(String(init.body)) : {};
+        state.lastOpenPayload = JSON.stringify(body);
+
+        if (state.shouldFailNextOpen) {
+          state.shouldFailNextOpen = false;
+          return new Response(JSON.stringify({ error: "Project not found" }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const respFolders: Folder[] = [
+          {
+            id: "open-folder-1",
+            slug: "open-folder-1",
+            name: "Chapters",
+            orderIndex: 0,
+            type: "folder",
+            createdAt: new Date().toISOString(),
+            parentId: null,
+          },
+        ];
+        const respResources: AnyResource[] = [
+          {
+            id: "open-res-1",
+            slug: "open-res-1",
+            name: "Opening Scene",
+            type: "text",
+            folderId: "open-folder-1",
+            createdAt: new Date().toISOString(),
+            orderIndex: 0,
+          },
+          {
+            id: "open-res-2",
+            slug: "open-res-2",
+            name: "Inciting Incident",
+            type: "text",
+            folderId: "open-folder-1",
+            createdAt: new Date().toISOString(),
+            orderIndex: 1,
+          },
+        ];
+        const respProject: Project = {
+          id: openedProjectId,
+          name: "Opened Manuscript",
+          rootPath: body.projectPath ?? "/tmp/opened",
+          createdAt: new Date().toISOString(),
+          config: {
+            wordCountGoal: 50000,
+            editorConfig: { headings: {}, body: { lineHeight: "1.8" } },
+          } as any,
+        };
+        return new Response(
+          JSON.stringify({
+            project: respProject,
+            folders: respFolders,
+            resources: respResources,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      } catch (_e) {
+        return new Response(null, { status: 500 });
+      }
+    }
+    return origFetch(input, init);
+  };
+}
+
+const openFlowSourceProjects: StartPageProjectEntry[] = [
+  {
+    project: {
+      id: "src-proj-1",
+      name: "Disk Project",
+      rootPath: "/tmp/projects/disk-proj",
+      createdAt: new Date().toISOString(),
+    },
+    folders: [],
+    resources: [],
+  },
+];
+
+function OpenProjectFlowStory(): JSX.Element {
+  installOpenFlowFetchMock("opened-proj");
+  const dispatch = useDispatch();
+  const [openedName, setOpenedName] = React.useState<string | null>(null);
+  const [openedResources, setOpenedResources] = React.useState<AnyResource[]>(
+    [],
+  );
+  const [openError, setOpenError] = React.useState<string | null>(null);
+  const [openInFlight, setOpenInFlight] = React.useState<boolean>(false);
+
+  const handleOpen = async (projectPath: string) => {
+    setOpenInFlight(true);
+    setOpenError(null);
+    try {
+      const p = await openProject(projectPath);
+      dispatch(
+        setProject({
+          id: p.project.id,
+          name: p.project.name,
+          rootPath: p.project.rootPath ?? "",
+          folders: p.folders,
+          resources: p.resources.map((r) => ({
+            id: r.id,
+            name: r.name,
+            folderId: r.folderId ?? null,
+            userMetadata: r.userMetadata ?? {},
+          })),
+          metadata: p.project.metadata,
+          statuses: p.project.config?.statuses ?? [],
+          metadataSchema: p.project.config?.metadataSchema,
+        }),
+      );
+      dispatch(
+        setEditorConfig({
+          headings: p.project.config?.editorConfig?.headings ?? {},
+          body: p.project.config?.editorConfig?.body,
+        }),
+      );
+      dispatch(setSelectedProjectId(p.project.id));
+      dispatch(setResources(p.resources));
+      dispatch(setFolders(p.folders));
+      setOpenedName(p.project.name);
+      setOpenedResources(p.resources);
+    } catch (err) {
+      setOpenError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setOpenInFlight(false);
+    }
+  };
+
+  if (openedName) {
+    return (
+      <div data-testid="project-opened-marker">
+        <h2 data-testid="opened-project-name">{openedName}</h2>
+        <ul data-testid="opened-resource-list">
+          {openedResources.map((r) => (
+            <li key={r.id} data-testid={`opened-resource-${r.id}`}>
+              {r.name}
+            </li>
+          ))}
+        </ul>
+        <span data-testid="opened-resource-count">
+          {openedResources.length}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <StartPage projects={openFlowSourceProjects} onOpen={handleOpen} />
+      <div data-testid="open-in-flight" aria-hidden style={{ display: "none" }}>
+        {String(openInFlight)}
+      </div>
+      <div data-testid="open-error" aria-hidden style={{ display: "none" }}>
+        {openError ?? ""}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Drives the same handleOpen logic page.tsx uses when a user clicks "Open
+ * Project" on a start-page card. Mocks POST /api/project, dispatches the
+ * resulting project + resources into the store, and swaps the StartPage for
+ * a small marker view so e2e tests can verify the transition.
+ */
+export const OpenProjectFlow: Story = {
+  render: () => <OpenProjectFlowStory />,
+};
 
 export const Interactive: Story = {
   args: { projects: interactiveProjects },
