@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.41](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.40...getwrite-v0.2.41) (2026-05-24)
+
+
+### Bug Fixes
+
+* **editor:** correct heading style modal init and paste normalization ([3798166](https://github.com/saboteur-works/getwrite/commit/37981660535c2580b3c5d18119c404bea3c708ba))
+* **editor:** correct heading style modal init and paste normalization ([548c71f](https://github.com/saboteur-works/getwrite/commit/548c71f026dada7779e8043c245a0189b6adf108))
+
 ## [0.2.40](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.39...getwrite-v0.2.40) (2026-05-24)
 
 
