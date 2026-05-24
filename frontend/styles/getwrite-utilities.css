@@ -988,6 +988,11 @@ html.gw-theme-dark {
     color: var(--color-gw-red);
   }
 
+  .resource-context-menu-item[data-disabled] {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
   .resource-context-menu-separator {
     height: 0.5px;
     background-color: var(--color-gw-border);
