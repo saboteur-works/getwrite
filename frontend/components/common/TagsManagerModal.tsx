@@ -6,6 +6,7 @@ import type { Tag } from "../../src/lib/models/types";
 import { listTags, createTag, deleteTag } from "../../src/lib/api/tags";
 import Button from "./UI/Button/Button";
 import Chip from "./UI/Chip";
+import Input from "./UI/Input/Input";
 import { DialogTitle } from "./UI/Dialog/Dialog";
 
 function toColorInputValue(color: string | undefined): string {
@@ -139,10 +140,9 @@ export default function TagsManagerModal({
           onSubmit={(e) => void handleCreate(e)}
         >
           <p className="text-sm font-semibold text-gw-primary">New Tag</p>
-          <input
+          <Input
             ref={nameInputRef}
-            type="text"
-            className="w-full rounded-md border border-gw-border bg-transparent px-3 py-2 text-sm text-gw-primary placeholder-gw-secondary focus:outline-none focus:ring-1 focus:ring-gw-border"
+            className="w-full"
             placeholder="Tag name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}

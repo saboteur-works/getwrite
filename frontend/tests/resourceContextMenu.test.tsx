@@ -1,90 +1,103 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import ResourceContextMenu from "../components/ResourceTree/ResourceContextMenu";
 
+function renderMenu(
+  props: Partial<React.ComponentProps<typeof ResourceContextMenu>> = {},
+) {
+  return render(
+    <div>
+      <div data-testid="outside">Outside</div>
+      <ResourceContextMenu
+        resourceId="res_test"
+        resourceTitle="Test Resource"
+        {...props}
+      >
+        <div data-testid="trigger">Trigger</div>
+      </ResourceContextMenu>
+    </div>,
+  );
+}
+
+// Radix DismissableLayer registers its pointerdown listener inside a setTimeout,
+// so fake timers must run after opening for outside-click dismissal to work.
+function openMenu() {
+  fireEvent.contextMenu(screen.getByTestId("trigger"));
+  act(() => {
+    vi.runAllTimers();
+  });
+}
+
 describe("ResourceContextMenu", () => {
-    it("renders menu items and calls onAction for delete", () => {
-        const onAction = vi.fn();
-        const onClose = vi.fn();
-        render(
-            <ResourceContextMenu
-                open
-                x={10}
-                y={10}
-                resourceId="res_test"
-                resourceTitle="Test Resource"
-                onAction={onAction}
-                onClose={onClose}
-            />,
-        );
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
-        const deleteBtn = screen.getByText("Delete");
-        expect(deleteBtn).toBeTruthy();
+  it("renders menu items and calls onAction for delete", () => {
+    const onAction = vi.fn();
+    const onClose = vi.fn();
+    renderMenu({ onAction, onClose });
+    openMenu();
 
-        fireEvent.click(deleteBtn);
-        expect(onAction).toHaveBeenCalledWith("delete", "res_test");
-        expect(onClose).toHaveBeenCalled();
-    });
+    const deleteBtn = screen.getByText("Delete");
+    expect(deleteBtn).toBeTruthy();
 
-    it("closes on outside mousedown", () => {
-        const onClose = vi.fn();
-        render(
-            <ResourceContextMenu
-                open
-                x={10}
-                y={10}
-                resourceId="res_test"
-                resourceTitle="Test Resource"
-                onClose={onClose}
-            />,
-        );
+    fireEvent.click(deleteBtn);
+    expect(onAction).toHaveBeenCalledWith("delete", "res_test");
+    expect(onClose).toHaveBeenCalled();
+  });
 
-        const menu = screen.getByRole("menu");
-        expect(menu).toBeTruthy();
+  it("closes on outside pointer down", () => {
+    const onClose = vi.fn();
+    renderMenu({ onClose });
+    openMenu();
 
-        fireEvent.mouseDown(document.body);
-        expect(onClose).toHaveBeenCalled();
-    });
+    const menu = screen.getByRole("menu");
+    expect(menu).toBeTruthy();
 
-    it("does not close when clicking inside the menu", () => {
-        const onClose = vi.fn();
-        render(
-            <ResourceContextMenu
-                open
-                x={10}
-                y={10}
-                resourceId="res_test"
-                resourceTitle="Test Resource"
-                onClose={onClose}
-            />,
-        );
+    fireEvent.pointerDown(screen.getByTestId("outside"));
+    expect(onClose).toHaveBeenCalled();
+  });
 
-        const createBtn = screen.getByText("Create");
-        fireEvent.mouseDown(createBtn);
-        expect(onClose).not.toHaveBeenCalled();
-    });
+  it("does not close when clicking inside the menu", () => {
+    const onClose = vi.fn();
+    renderMenu({ onClose });
+    openMenu();
 
-    it("renders Rename item and calls onAction with 'rename'", () => {
-        const onAction = vi.fn();
-        const onClose = vi.fn();
-        render(
-            <ResourceContextMenu
-                open
-                x={10}
-                y={10}
-                resourceId="res_test"
-                resourceTitle="Test Resource"
-                onAction={onAction}
-                onClose={onClose}
-            />,
-        );
+    const createBtn = screen.getByText("Create");
+    fireEvent.pointerDown(createBtn);
+    expect(onClose).not.toHaveBeenCalled();
+  });
 
-        const renameBtn = screen.getByText("Rename");
-        expect(renameBtn).toBeTruthy();
+  it("renders New Smart Folder item and calls onAction with 'smart-folder'", () => {
+    const onAction = vi.fn();
+    const onClose = vi.fn();
+    renderMenu({ onAction, onClose });
+    openMenu();
 
-        fireEvent.click(renameBtn);
-        expect(onAction).toHaveBeenCalledWith("rename", "res_test");
-        expect(onClose).toHaveBeenCalled();
-    });
+    const smartFolderBtn = screen.getByText("New Smart Folder");
+    expect(smartFolderBtn).toBeTruthy();
+
+    fireEvent.click(smartFolderBtn);
+    expect(onAction).toHaveBeenCalledWith("smart-folder", "res_test");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("renders Rename item and calls onAction with 'rename'", () => {
+    const onAction = vi.fn();
+    const onClose = vi.fn();
+    renderMenu({ onAction, onClose });
+    openMenu();
+
+    const renameBtn = screen.getByText("Rename");
+    expect(renameBtn).toBeTruthy();
+
+    fireEvent.click(renameBtn);
+    expect(onAction).toHaveBeenCalledWith("rename", "res_test");
+    expect(onClose).toHaveBeenCalled();
+  });
 });
