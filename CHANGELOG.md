@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.2.39](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.38...getwrite-v0.2.39) (2026-05-24)
+
+
+### Features
+
+* **indexer:** durable meta writes and graceful shutdown ([f97f453](https://github.com/saboteur-works/getwrite/commit/f97f453e354c5905900b7ccf0044fdae008b612b))
+* make DataView resources clickable and open text resources in editor ([cdd6ea3](https://github.com/saboteur-works/getwrite/commit/cdd6ea3c6a2fb982a446c49eb14906860cd04afa))
+* persist backlinks on save and decorate wiki-style links in the editor ([8dd2bad](https://github.com/saboteur-works/getwrite/commit/8dd2badfc504c27f4d30814d044ecb88eacd027b))
+
+
+### Bug Fixes
+
+* **diff:** refetch canonical and isolate historical pane on revision change ([eaddcf1](https://github.com/saboteur-works/getwrite/commit/eaddcf12670170d23f5ebbbf83f9e6b93c8441fa))
+* **lint:** resolve AppShell lint warnings and canonical Tailwind classes ([1a6f986](https://github.com/saboteur-works/getwrite/commit/1a6f9866cdc4557aa7d475e6dd95dd2738af215b))
+* make index and backlinks writes crash-safe via atomic rename ([ff30830](https://github.com/saboteur-works/getwrite/commit/ff30830bf04e32b24155a8e7605cbf62e2acb792))
+* resolve editor warnings and improve resource creation UX ([bb58781](https://github.com/saboteur-works/getwrite/commit/bb58781f30cb914429bb006990fced4573639819))
+* sort Start Page projects by latest activity and include root-level resources ([419ff62](https://github.com/saboteur-works/getwrite/commit/419ff62874b0e77f6ae07e243b0ce24c817ca67d))
+* stamp updatedAt on autosave and sort Recent Files by last edit ([2e36079](https://github.com/saboteur-works/getwrite/commit/2e360798d8f42b84a9f2e2f7b697c6da2f09a683))
+* **stories:** resolve all TypeScript errors in tsconfig.storybook.json scope ([0728126](https://github.com/saboteur-works/getwrite/commit/0728126a290f7f0e835daf761ae9c2d459869f5e))
+
 ## [0.2.38](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.37...getwrite-v0.2.38) (2026-05-23)
 
 
