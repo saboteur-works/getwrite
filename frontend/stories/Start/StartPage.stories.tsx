@@ -434,6 +434,141 @@ export const OpenProjectFlow: Story = {
   render: () => <OpenProjectFlowStory />,
 };
 
+interface PackageFlowMockState {
+  installed: boolean;
+  lastCompileUrl: string | null;
+  lastCompileBody: string | null;
+}
+
+function getPackageFlowMockState(): PackageFlowMockState {
+  const w = window as unknown as {
+    __packageFlowMockState?: PackageFlowMockState;
+  };
+  if (!w.__packageFlowMockState) {
+    w.__packageFlowMockState = {
+      installed: false,
+      lastCompileUrl: null,
+      lastCompileBody: null,
+    };
+  }
+  return w.__packageFlowMockState;
+}
+
+function installPackageFlowFetchMock(): void {
+  const state = getPackageFlowMockState();
+  if (state.installed) return;
+  state.installed = true;
+  const origFetch = window.fetch;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  window.fetch = async (input: RequestInfo, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.url;
+    if (url.startsWith("/api/compile/") && init?.method === "POST") {
+      state.lastCompileUrl = url;
+      state.lastCompileBody = init.body ? String(init.body) : null;
+      if (url.endsWith("/text")) {
+        return new Response(
+          JSON.stringify({ text: "compiled body", filename: "compiled.txt" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      // pdf/docx — return a small array buffer with a filename header.
+      const headers = new Headers({
+        "Content-Type": url.endsWith("/pdf")
+          ? "application/pdf"
+          : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "Content-Disposition": `attachment; filename="compiled.${
+          url.endsWith("/pdf") ? "pdf" : "docx"
+        }"`,
+      });
+      return new Response(new Uint8Array([1, 2, 3]).buffer, {
+        status: 200,
+        headers,
+      });
+    }
+    return origFetch(input, init);
+  };
+}
+
+const packageFolderId = "pack-folder-1";
+const packageProjectEntry: StartPageProjectEntry = {
+  project: {
+    id: "pack-proj",
+    name: "Packageable Project",
+    rootPath: "/tmp/projects/pack",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  // StartPage.compileResources iterates folders[].resources to build the
+  // resource tree the modal renders, so resources live INSIDE the folder here.
+  folders: [
+    {
+      id: packageFolderId,
+      slug: packageFolderId,
+      name: "Chapters",
+      orderIndex: 0,
+      type: "folder",
+      createdAt: new Date().toISOString(),
+      parentId: null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      resources: [
+        {
+          id: "pack-res-1",
+          slug: "pack-res-1",
+          title: "Chapter One",
+          type: "text",
+          createdAt: new Date().toISOString(),
+          _orderIndex: 0,
+          content: "Once upon a time.",
+        },
+        {
+          id: "pack-res-2",
+          slug: "pack-res-2",
+          title: "Chapter Two",
+          type: "text",
+          createdAt: new Date().toISOString(),
+          _orderIndex: 1,
+          content: "And then.",
+        },
+      ],
+    } as any,
+  ],
+  // Top-level resources/folders counts still feed hero stats.
+  resources: [
+    {
+      id: "pack-res-1",
+      slug: "pack-res-1",
+      name: "Chapter One",
+      type: "text",
+      folderId: packageFolderId,
+      createdAt: new Date().toISOString(),
+      orderIndex: 0,
+    },
+    {
+      id: "pack-res-2",
+      slug: "pack-res-2",
+      name: "Chapter Two",
+      type: "text",
+      folderId: packageFolderId,
+      createdAt: new Date().toISOString(),
+      orderIndex: 1,
+    },
+  ],
+};
+
+function PackageFlowStory(): JSX.Element {
+  installPackageFlowFetchMock();
+  return <StartPage projects={[packageProjectEntry]} />;
+}
+
+/**
+ * Variant of StartPage seeded with one project whose folder contains text
+ * resources in the shape `compileResources` expects. Mocks /api/compile/*
+ * so e2e tests can drive Package → CompilePreviewModal → compile and assert
+ * the request URL and body.
+ */
+export const PackageFlow: Story = { render: () => <PackageFlowStory /> };
+
 export const Interactive: Story = {
   args: { projects: interactiveProjects },
   render: (args: StartPageProps) => {

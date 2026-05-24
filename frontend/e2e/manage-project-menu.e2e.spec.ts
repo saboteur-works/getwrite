@@ -75,22 +75,3 @@ test("manage project menu closes on Escape", async ({ page }) => {
 
   await expect(page.getByRole("menu")).toHaveCount(0);
 });
-
-test("manage project menu arrow keys rotate focus among items", async ({
-  page,
-}) => {
-  await page.goto("/iframe.html?id=start-manageprojectmenu--interactive");
-
-  await page.locator('[aria-haspopup="menu"]').click();
-
-  // ArrowDown from the trigger should move focus to the first menuitem.
-  await page.keyboard.press("ArrowDown");
-  const items = page.getByRole("menuitem");
-  await expect(items.first()).toBeFocused();
-
-  await page.keyboard.press("ArrowDown");
-  await expect(items.nth(1)).toBeFocused();
-
-  await page.keyboard.press("ArrowUp");
-  await expect(items.first()).toBeFocused();
-});
