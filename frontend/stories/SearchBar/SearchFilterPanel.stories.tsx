@@ -150,6 +150,38 @@ export const Disabled: Story = {
   },
 };
 
+function InteractivePanel(
+  args: React.ComponentProps<typeof SearchFilterPanel>,
+): JSX.Element {
+  const [filters, setFilters] = useState<SearchFilters>({});
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: 12,
+      }}
+    >
+      <SearchFilterPanel
+        {...args}
+        activeFilters={filters}
+        onFilterChange={setFilters}
+      />
+      <pre
+        style={{
+          fontSize: 11,
+          color: "#6a6864",
+          fontFamily: "monospace",
+          alignSelf: "flex-start",
+        }}
+      >
+        {JSON.stringify(filters, null, 2)}
+      </pre>
+    </div>
+  );
+}
+
 export const Interactive: Story = {
   args: {
     folders: mockFolders,
@@ -158,35 +190,9 @@ export const Interactive: Story = {
     activeFilters: {},
     onFilterChange: () => {},
   },
-  render: (args: React.ComponentProps<typeof SearchFilterPanel>) => {
-    const [filters, setFilters] = useState<SearchFilters>({});
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-end",
-          gap: 12,
-        }}
-      >
-        <SearchFilterPanel
-          {...args}
-          activeFilters={filters}
-          onFilterChange={setFilters}
-        />
-        <pre
-          style={{
-            fontSize: 11,
-            color: "#6a6864",
-            fontFamily: "monospace",
-            alignSelf: "flex-start",
-          }}
-        >
-          {JSON.stringify(filters, null, 2)}
-        </pre>
-      </div>
-    );
-  },
+  render: (args: React.ComponentProps<typeof SearchFilterPanel>) => (
+    <InteractivePanel {...args} />
+  ),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const trigger = within(canvasElement).getByRole("button", {
       name: "Toggle search filters",
@@ -197,4 +203,20 @@ export const Interactive: Story = {
     });
     await expect(panel).toBeVisible();
   },
+};
+
+// Same live-state echo as Interactive but with no play function, so e2e can
+// drive the panel from its initial closed state (the play function would
+// otherwise pre-open it and fight the test's own toggle click).
+export const InteractiveClosed: Story = {
+  args: {
+    folders: mockFolders,
+    statuses: mockStatuses,
+    tags: mockTags,
+    activeFilters: {},
+    onFilterChange: () => {},
+  },
+  render: (args: React.ComponentProps<typeof SearchFilterPanel>) => (
+    <InteractivePanel {...args} />
+  ),
 };

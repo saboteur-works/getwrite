@@ -6,6 +6,7 @@ import type { Folder, Tag } from "../../src/lib/models/types";
 import type { SearchFilters } from "../../src/store/search-transport-service";
 import Chip from "../common/UI/Chip";
 import { Popover, PopoverContent, PopoverTrigger } from "../common/UI/Popover";
+import FolderTreePicker from "../ResourceTree/FolderTreePicker";
 
 export interface SearchFilterPanelProps {
   folders: Folder[];
@@ -29,7 +30,7 @@ export default function SearchFilterPanel({
     !!activeFilters.status ||
     (activeFilters.tags?.length ?? 0) > 0;
 
-  function setFolder(folderId: string): void {
+  function setFolder(folderId: string | undefined): void {
     onFilterChange({ ...activeFilters, folder: folderId || undefined });
   }
 
@@ -73,19 +74,13 @@ export default function SearchFilterPanel({
         {folders.length > 0 && (
           <div className="searchbar-filter-section">
             <span className="searchbar-filter-label">Folder</span>
-            <select
-              className="searchbar-filter-select"
-              value={activeFilters.folder ?? ""}
-              onChange={(e) => setFolder(e.target.value)}
+            <FolderTreePicker
+              folders={folders}
+              value={activeFilters.folder}
+              onChange={setFolder}
+              rootLabel="All folders"
               aria-label="Filter by folder"
-            >
-              <option value="">All folders</option>
-              {folders.map((folder) => (
-                <option key={folder.id} value={folder.id}>
-                  {folder.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         )}
 

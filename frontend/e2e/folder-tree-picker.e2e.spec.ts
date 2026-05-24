@@ -19,15 +19,30 @@ test("folder list scrolls via wheel inside a modal dialog", async ({
   );
   expect(overflowing).toBe(true);
 
-  // A real wheel event is required: programmatic scrollBy would bypass
-  // react-remove-scroll, which is exactly what blocked scrolling before the
-  // popover was portaled into the dialog subtree.
-  await list.hover();
+  // Deterministic guard for the actual fix: react-remove-scroll (used by the
+  // modal Dialog) only permits wheel scrolling for nodes inside the dialog
+  // subtree. The bug was the popover portaling to document.body; the fix
+  // portals it into the nearest [role="dialog"]. This assertion can't flake.
+  const insideDialog = await list.evaluate(
+    (el) => !!el.closest('[role="dialog"]'),
+  );
+  expect(insideDialog).toBe(true);
+
+  // Then verify the user-observable outcome with a real wheel event (a
+  // programmatic scrollBy would bypass react-remove-scroll entirely). Re-hover
+  // and re-dispatch on each poll so a single event isn't raced against
+  // hover/paint settling under load; it still fails if scrolling is blocked.
   const before = await list.evaluate((el) => el.scrollTop);
-  await page.mouse.wheel(0, 400);
 
   await expect
-    .poll(async () => list.evaluate((el) => el.scrollTop))
+    .poll(
+      async () => {
+        await list.hover();
+        await page.mouse.wheel(0, 200);
+        return list.evaluate((el) => el.scrollTop);
+      },
+      { timeout: 15000 },
+    )
     .toBeGreaterThan(before);
 });
 
