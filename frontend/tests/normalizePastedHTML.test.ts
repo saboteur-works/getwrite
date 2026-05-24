@@ -71,6 +71,35 @@ describe("normalizePastedHTML", () => {
       expect(result).toContain("font-style");
       expect(result).toContain("italic");
     });
+
+    it("strips font-size from inline elements inside headings even when bodyFontSize is configured", () => {
+      const input = `<h1><span style="font-size: 32px">Title</span></h1>`;
+      const result = normalizePastedHTML(input, "15px");
+      expect(result).not.toContain("font-size");
+      expect(result).toContain("Title");
+    });
+
+    it("strips font-size from deeply nested elements inside headings", () => {
+      const input = `<h2><strong><span style="font-size: 24px; font-style: italic">Sub</span></strong></h2>`;
+      const result = normalizePastedHTML(input, "15px");
+      expect(result).not.toContain("font-size");
+      expect(result).toContain("font-style");
+    });
+
+    it("still replaces font-size with bodyFontSize for elements outside headings", () => {
+      const input = `<h1><span style="font-size: 32px">Title</span></h1><p><span style="font-size: 32px">body</span></p>`;
+      const result = normalizePastedHTML(input, "15px");
+      expect(result).toContain("font-size: 15px");
+      expect(result).not.toContain("32px");
+    });
+
+    it("strips font-size from spans in all six heading levels when bodyFontSize is set", () => {
+      const input = [1, 2, 3, 4, 5, 6]
+        .map((n) => `<h${n}><span style="font-size: 24px">H${n}</span></h${n}>`)
+        .join("");
+      const result = normalizePastedHTML(input, "15px");
+      expect(result).not.toContain("font-size");
+    });
   });
 
   // FR3 — background-color stripping

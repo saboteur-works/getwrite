@@ -198,9 +198,7 @@ export default function ShellModalCoordinator({
             ? `Delete ${contextAction.resourceTitle}`
             : "Delete resource"
         }
-        description={
-          "This will remove the resource from the project UI (placeholder). Proceed?"
-        }
+        description={"This will remove the resource. Proceed?"}
         confirmLabel="Delete"
         cancelLabel="Cancel"
         onConfirm={async () => {
