@@ -9,6 +9,7 @@ import Button from "../common/UI/Button/Button";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import Input from "../common/UI/Input/Input";
 import Select from "../common/UI/Select/Select";
+import FolderTreePicker from "./FolderTreePicker";
 
 type ResourceType = CanonicalResourceType | string;
 
@@ -133,24 +134,14 @@ export default function CreateResourceModal({
             <label className="project-modal-label" htmlFor="resource-parent">
               Parent folder
             </label>
-            <Select
+            <FolderTreePicker
               id="resource-parent"
-              value={selectedParent ?? ""}
-              onChange={(e) =>
-                setSelectedParent(
-                  e.target.value === "" ? undefined : e.target.value,
-                )
-              }
-              className="w-full mt-1"
+              folders={parents}
+              value={selectedParent}
+              onChange={setSelectedParent}
+              className="mt-1"
               aria-label="resource-parent"
-            >
-              <option value="">Project Root</option>
-              {parents.map((p: Folder) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
+            />
           </div>
 
           <div className="project-modal-actions">

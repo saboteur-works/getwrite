@@ -1,4 +1,21 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
+
+/**
+ * Opens the create-project dialog by clicking `trigger`, retrying the click if
+ * needed. In Storybook the button can paint before React attaches its onClick,
+ * so an early click is silently dropped and the dialog never opens. The guard
+ * skips re-clicking once the dialog is up (its overlay would intercept it).
+ */
+async function openCreateProjectDialog(
+  page: Page,
+  trigger: Locator,
+): Promise<void> {
+  const dialog = page.getByRole("dialog");
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await trigger.click();
+    await expect(dialog).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10000 });
+}
 
 const DEFAULT_STORY = "/iframe.html?id=start-startpage--default";
 const EMPTY_STORY = "/iframe.html?id=start-startpage--no-projects";
@@ -61,9 +78,8 @@ test("start page hero button opens create project modal", async ({ page }) => {
     .getByRole("button", { name: /start a new project/i })
     .first();
   await expect(heroCreate).toBeVisible();
-  await heroCreate.click();
+  await openCreateProjectDialog(page, heroCreate);
 
-  await expect(page.getByRole("dialog")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /create project/i }),
   ).toBeVisible();
@@ -74,12 +90,11 @@ test("start page empty-state button opens create project modal", async ({
 }) => {
   await page.goto(EMPTY_STORY);
 
-  await page
+  const createFirst = page
     .locator("button")
-    .filter({ hasText: /create the first project/i })
-    .click();
+    .filter({ hasText: /create the first project/i });
+  await openCreateProjectDialog(page, createFirst);
 
-  await expect(page.getByRole("dialog")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /create project/i }),
   ).toBeVisible();

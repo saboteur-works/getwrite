@@ -359,7 +359,7 @@ describe("SearchFilterPanel", () => {
     expect(onFilterChange).toHaveBeenCalledWith({ status: undefined });
   });
 
-  it("renders a folder selector when folders are provided", () => {
+  it("renders a folder picker when folders are provided", () => {
     const onFilterChange = vi.fn();
 
     render(
@@ -376,12 +376,10 @@ describe("SearchFilterPanel", () => {
       screen.getByRole("button", { name: /Toggle search filters/i }),
     );
 
-    const select = screen.getByRole("combobox", {
-      name: /Filter by folder/i,
-    }) as HTMLSelectElement;
-    expect(select).toBeInTheDocument();
-
-    fireEvent.change(select, { target: { value: "folder-1" } });
+    // The picker is a Popover trigger nested inside the filter panel; open it
+    // and pick a folder from the tree.
+    fireEvent.click(screen.getByRole("button", { name: /Filter by folder/i }));
+    fireEvent.click(screen.getByText("Chapter One"));
     expect(onFilterChange).toHaveBeenCalledWith({ folder: "folder-1" });
   });
 
@@ -402,10 +400,10 @@ describe("SearchFilterPanel", () => {
       screen.getByRole("button", { name: /Toggle search filters/i }),
     );
 
-    const select = screen.getByRole("combobox", {
-      name: /Filter by folder/i,
-    }) as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "" } });
+    // With a folder active the trigger shows its name; open the picker and pick
+    // the "All folders" root option to clear the filter.
+    fireEvent.click(screen.getByRole("button", { name: /Filter by folder/i }));
+    fireEvent.click(screen.getByText("All folders"));
     expect(onFilterChange).toHaveBeenCalledWith({ folder: undefined });
   });
 });

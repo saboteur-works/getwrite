@@ -8,15 +8,28 @@ const Popover = PopoverPrimitive.Root;
 const PopoverTrigger = PopoverPrimitive.Trigger;
 const PopoverClose = PopoverPrimitive.Close;
 
+type PopoverContentProps = React.ComponentPropsWithoutRef<
+  typeof PopoverPrimitive.Content
+> & {
+  /**
+   * DOM node to portal into. Pass the nearest dialog content when nesting
+   * inside a modal Dialog so react-remove-scroll permits scrolling. Defaults
+   * to document.body.
+   */
+  container?: React.ComponentPropsWithoutRef<
+    typeof PopoverPrimitive.Portal
+  >["container"];
+};
+
 const PopoverContent = React.forwardRef<
   React.ComponentRef<typeof PopoverPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
+  PopoverContentProps
 >(function PopoverContent(
-  { className, align = "center", sideOffset = 4, ...props },
+  { className, align = "center", sideOffset = 4, container, ...props },
   ref,
 ) {
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={container}>
       <PopoverPrimitive.Content
         ref={ref}
         align={align}

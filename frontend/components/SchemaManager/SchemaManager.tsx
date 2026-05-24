@@ -22,6 +22,7 @@ import {
   renameMetadataFieldKey,
   updateMetadataRefProperties,
 } from "../../src/store/projectsSlice";
+import FolderTreePicker from "../ResourceTree/FolderTreePicker";
 import MigrationPreview from "./MigrationPreview";
 import OptionsRemovalPreview from "./OptionsRemovalPreview";
 import DeprecateOrClearDialog from "./DeprecateOrClearDialog";
@@ -923,11 +924,11 @@ export default function SchemaManager({
                             <label className="text-[11px] text-gw-secondary">
                               Folder scope
                             </label>
-                            <select
-                              value={field.refFolder ?? ""}
-                              onChange={(e) => {
+                            <FolderTreePicker
+                              folders={folders}
+                              value={field.refFolder ?? undefined}
+                              onChange={(val) => {
                                 if (!projectId) return;
-                                const val = e.target.value;
                                 void dispatch(
                                   updateMetadataRefProperties({
                                     projectId,
@@ -942,16 +943,10 @@ export default function SchemaManager({
                                   }),
                                 );
                               }}
-                              className="rounded border border-gw-border bg-transparent px-1.5 py-0.5 font-mono text-[10px] text-gw-secondary focus:outline-none focus:ring-1 focus:ring-gw-border"
+                              rootLabel="Any folder"
+                              className="font-mono text-[10px]"
                               aria-label={`Ref folder for ${field.label}`}
-                            >
-                              <option value="">Any folder</option>
-                              {folders.map((f) => (
-                                <option key={f.id} value={f.id}>
-                                  {f.name}
-                                </option>
-                              ))}
-                            </select>
+                            />
                             {field.refFolder ? (
                               <label className="flex items-center gap-1.5 font-mono text-[10px] text-gw-secondary">
                                 <input
