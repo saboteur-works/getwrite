@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Scissors, Copy, Clipboard } from "lucide-react";
+import { Scissors, Copy, Clipboard, TextSelect } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "./ContextMenu";
 
@@ -15,6 +16,24 @@ type SavedSelection = {
   end: number;
   readOnly: boolean;
 };
+
+async function copyToClipboard(
+  el: HTMLInputElement | HTMLTextAreaElement,
+  start: number,
+  end: number,
+): Promise<void> {
+  const text = el.value.slice(start, end);
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    el.focus();
+    try {
+      el.setSelectionRange(start, end);
+    } catch {}
+    document.execCommand("copy");
+  }
+}
 
 async function pasteAtSelection(
   el: HTMLInputElement | HTMLTextAreaElement,
@@ -113,8 +132,8 @@ export default function EditContextMenu({
           className="resource-context-menu-item"
           disabled={!hasSelection}
           onSelect={() => {
-            restore();
-            document.execCommand("copy");
+            if (!saved) return;
+            void copyToClipboard(saved.el, saved.start, saved.end);
           }}
         >
           <Copy size={14} className="resource-context-menu-item-icon" />
@@ -131,6 +150,19 @@ export default function EditContextMenu({
         >
           <Clipboard size={14} className="resource-context-menu-item-icon" />
           Paste
+        </ContextMenuItem>
+        <ContextMenuSeparator className="resource-context-menu-separator" />
+        <ContextMenuItem
+          className="resource-context-menu-item"
+          disabled={!saved}
+          onSelect={() => {
+            if (!saved) return;
+            saved.el.focus();
+            saved.el.select();
+          }}
+        >
+          <TextSelect size={14} className="resource-context-menu-item-icon" />
+          Select All
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

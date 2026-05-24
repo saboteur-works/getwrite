@@ -7,6 +7,7 @@ import EditContextMenu from "../components/common/UI/ContextMenu/EditContextMenu
 // Define it before each test and track calls via the mock reference.
 let execCommand: ReturnType<typeof vi.fn>;
 let clipboardReadText: ReturnType<typeof vi.fn>;
+let clipboardWriteText: ReturnType<typeof vi.fn>;
 
 function renderWithInput(
   inputProps: React.InputHTMLAttributes<HTMLInputElement> = {},
@@ -35,8 +36,9 @@ describe("EditContextMenu", () => {
       configurable: true,
     });
     clipboardReadText = vi.fn().mockResolvedValue("PASTED");
+    clipboardWriteText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
-      value: { readText: clipboardReadText },
+      value: { readText: clipboardReadText, writeText: clipboardWriteText },
       writable: true,
       configurable: true,
     });
@@ -45,12 +47,13 @@ describe("EditContextMenu", () => {
     vi.useRealTimers();
   });
 
-  it("shows Cut, Copy, and Paste items", () => {
+  it("shows Cut, Copy, Paste, and Select All items", () => {
     renderWithInput();
     openMenu(0, 5);
     expect(screen.getByText("Cut")).toBeTruthy();
     expect(screen.getByText("Copy")).toBeTruthy();
     expect(screen.getByText("Paste")).toBeTruthy();
+    expect(screen.getByText("Select All")).toBeTruthy();
   });
 
   it("Cut and Copy are disabled when nothing is selected", () => {
@@ -59,6 +62,9 @@ describe("EditContextMenu", () => {
     expect(screen.getByText("Cut").closest("[data-disabled]")).toBeTruthy();
     expect(screen.getByText("Copy").closest("[data-disabled]")).toBeTruthy();
     expect(screen.getByText("Paste").closest("[data-disabled]")).toBeFalsy();
+    expect(
+      screen.getByText("Select All").closest("[data-disabled]"),
+    ).toBeFalsy();
   });
 
   it("Cut and Copy are enabled when text is selected", () => {
@@ -76,11 +82,13 @@ describe("EditContextMenu", () => {
     expect(screen.getByText("Paste").closest("[data-disabled]")).toBeTruthy();
   });
 
-  it("clicking Copy calls execCommand('copy')", () => {
+  it("clicking Copy writes selected text to clipboard", async () => {
     renderWithInput();
-    openMenu(0, 5);
-    fireEvent.click(screen.getByText("Copy"));
-    expect(execCommand).toHaveBeenCalledWith("copy");
+    openMenu(0, 5); // "hello" selected
+    await act(async () => {
+      fireEvent.click(screen.getByText("Copy"));
+    });
+    expect(clipboardWriteText).toHaveBeenCalledWith("hello");
   });
 
   it("clicking Cut calls execCommand('cut')", () => {
@@ -99,6 +107,15 @@ describe("EditContextMenu", () => {
     expect(clipboardReadText).toHaveBeenCalled();
     const input = screen.getByTestId("field") as HTMLInputElement;
     expect(input.value).toBe("PASTEDhello world");
+  });
+
+  it("clicking Select All selects the entire input value", () => {
+    renderWithInput();
+    openMenu(0, 0);
+    fireEvent.click(screen.getByText("Select All"));
+    const input = screen.getByTestId("field") as HTMLInputElement;
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe("hello world".length);
   });
 
   it("works with a textarea", () => {
