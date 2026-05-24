@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.40](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.39...getwrite-v0.2.40) (2026-05-24)
+
+
+### Features
+
+* **context-menu:** add Cut/Copy/Paste context menu to Input and Textarea ([9ba174c](https://github.com/saboteur-works/getwrite/commit/9ba174ccccca6440509548f6c6bc8b594f70c939))
+* **context-menu:** add Select All and upgrade Copy to Clipboard API ([4788cba](https://github.com/saboteur-works/getwrite/commit/4788cba45806660526644e103c23218f46548b81))
+* **context-menu:** add sidebar context menu and smart-folder action ([c3679d8](https://github.com/saboteur-works/getwrite/commit/c3679d8d38b3022b8401a7d7d5d1fc73de7a2922))
+* **context-menu:** apply EditContextMenu to QueryBuilder inputs ([28bf124](https://github.com/saboteur-works/getwrite/commit/28bf124739edf862e491c5851518d7bce76115a4))
+* **context-menu:** apply EditContextMenu to SchemaManager inputs ([5942440](https://github.com/saboteur-works/getwrite/commit/5942440878b9167774ab17edfaaadc0b21f3b3ca))
+* **context-menu:** Edit context menu for inputs and textareas ([6fa2b0c](https://github.com/saboteur-works/getwrite/commit/6fa2b0cfa849c2b761c46ccfced9a0c3eadf75aa))
+* **context-menu:** replace custom context menu with shadcn/Radix ContextMenu ([107c07f](https://github.com/saboteur-works/getwrite/commit/107c07fde5fc76efb523f2e4ca05a5a7990bdb68))
+
+
+### Bug Fixes
+
+* **context-menu:** use Clipboard API for paste instead of execCommand ([0ded3f5](https://github.com/saboteur-works/getwrite/commit/0ded3f5854fa9b855527ef0de6feb43f1d51e880))
+
 ## [0.2.39](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.38...getwrite-v0.2.39) (2026-05-24)
 
 
