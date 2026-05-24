@@ -17,6 +17,7 @@ import FieldPicker, {
   type FieldPickerSource,
 } from "./FieldPicker";
 import { SingleRefInput } from "./ValuePicker";
+import EditContextMenu from "../common/UI/ContextMenu/EditContextMenu";
 import "./filter-chip.css";
 
 // ─── Value types ──────────────────────────────────────────────────────────────
@@ -187,19 +188,21 @@ function ValueInput({
       : { amount: 7, unit: "days" as const };
     return (
       <span className="filter-chip__value-relative">
-        <input
-          type="number"
-          className="filter-chip__value-input filter-chip__value-input--number"
-          value={rel.amount}
-          min={1}
-          aria-label="Amount"
-          onChange={(e) =>
-            onChange({
-              amount: Math.max(1, Number(e.target.value)),
-              unit: rel.unit,
-            })
-          }
-        />
+        <EditContextMenu>
+          <input
+            type="number"
+            className="filter-chip__value-input filter-chip__value-input--number"
+            value={rel.amount}
+            min={1}
+            aria-label="Amount"
+            onChange={(e) =>
+              onChange({
+                amount: Math.max(1, Number(e.target.value)),
+                unit: rel.unit,
+              })
+            }
+          />
+        </EditContextMenu>
         <select
           className="filter-chip__value-unit"
           value={rel.unit}
@@ -224,45 +227,53 @@ function ValueInput({
     if (field.type === "number") {
       return (
         <span className="filter-chip__value-range">
-          <input
-            type="number"
-            className="filter-chip__value-input filter-chip__value-input--number"
-            value={range.from as number}
-            aria-label="From"
-            onChange={(e) =>
-              onChange({ from: Number(e.target.value), to: range.to })
-            }
-          />
+          <EditContextMenu>
+            <input
+              type="number"
+              className="filter-chip__value-input filter-chip__value-input--number"
+              value={range.from as number}
+              aria-label="From"
+              onChange={(e) =>
+                onChange({ from: Number(e.target.value), to: range.to })
+              }
+            />
+          </EditContextMenu>
           <span className="filter-chip__value-range-sep">–</span>
-          <input
-            type="number"
-            className="filter-chip__value-input filter-chip__value-input--number"
-            value={range.to as number}
-            aria-label="To"
-            onChange={(e) =>
-              onChange({ from: range.from, to: Number(e.target.value) })
-            }
-          />
+          <EditContextMenu>
+            <input
+              type="number"
+              className="filter-chip__value-input filter-chip__value-input--number"
+              value={range.to as number}
+              aria-label="To"
+              onChange={(e) =>
+                onChange({ from: range.from, to: Number(e.target.value) })
+              }
+            />
+          </EditContextMenu>
         </span>
       );
     }
     return (
       <span className="filter-chip__value-range">
-        <input
-          type="date"
-          className="filter-chip__value-input filter-chip__value-input--date"
-          value={range.from as string}
-          aria-label="From date"
-          onChange={(e) => onChange({ from: e.target.value, to: range.to })}
-        />
+        <EditContextMenu>
+          <input
+            type="date"
+            className="filter-chip__value-input filter-chip__value-input--date"
+            value={range.from as string}
+            aria-label="From date"
+            onChange={(e) => onChange({ from: e.target.value, to: range.to })}
+          />
+        </EditContextMenu>
         <span className="filter-chip__value-range-sep">–</span>
-        <input
-          type="date"
-          className="filter-chip__value-input filter-chip__value-input--date"
-          value={range.to as string}
-          aria-label="To date"
-          onChange={(e) => onChange({ from: range.from, to: e.target.value })}
-        />
+        <EditContextMenu>
+          <input
+            type="date"
+            className="filter-chip__value-input filter-chip__value-input--date"
+            value={range.to as string}
+            aria-label="To date"
+            onChange={(e) => onChange({ from: range.from, to: e.target.value })}
+          />
+        </EditContextMenu>
       </span>
     );
   }
@@ -293,14 +304,16 @@ function ValueInput({
       );
     }
     return (
-      <input
-        type="text"
-        className="filter-chip__value-input"
-        value={typeof value === "string" ? value : ""}
-        placeholder="values..."
-        aria-label="Values"
-        onChange={(e) => onChange(e.target.value)}
-      />
+      <EditContextMenu>
+        <input
+          type="text"
+          className="filter-chip__value-input"
+          value={typeof value === "string" ? value : ""}
+          placeholder="values..."
+          aria-label="Values"
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </EditContextMenu>
     );
   }
 
@@ -308,23 +321,27 @@ function ValueInput({
   switch (field.type) {
     case "number":
       return (
-        <input
-          type="number"
-          className="filter-chip__value-input filter-chip__value-input--number"
-          value={typeof value === "number" ? value : ""}
-          aria-label="Value"
-          onChange={(e) => onChange(Number(e.target.value))}
-        />
+        <EditContextMenu>
+          <input
+            type="number"
+            className="filter-chip__value-input filter-chip__value-input--number"
+            value={typeof value === "number" ? value : ""}
+            aria-label="Value"
+            onChange={(e) => onChange(Number(e.target.value))}
+          />
+        </EditContextMenu>
       );
     case "date":
       return (
-        <input
-          type="date"
-          className="filter-chip__value-input filter-chip__value-input--date"
-          value={typeof value === "string" ? value : ""}
-          aria-label="Date"
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <EditContextMenu>
+          <input
+            type="date"
+            className="filter-chip__value-input filter-chip__value-input--date"
+            value={typeof value === "string" ? value : ""}
+            aria-label="Date"
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </EditContextMenu>
       );
     case "select":
     case "multiselect": {
@@ -361,25 +378,29 @@ function ValueInput({
         );
       }
       return (
-        <input
-          type="text"
-          className="filter-chip__value-input"
-          value={typeof value === "string" ? value : ""}
-          placeholder="resource..."
-          aria-label="Resource"
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <EditContextMenu>
+          <input
+            type="text"
+            className="filter-chip__value-input"
+            value={typeof value === "string" ? value : ""}
+            placeholder="resource..."
+            aria-label="Resource"
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </EditContextMenu>
       );
     }
     default:
       return (
-        <input
-          type="text"
-          className="filter-chip__value-input"
-          value={typeof value === "string" ? value : ""}
-          aria-label="Value"
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <EditContextMenu>
+          <input
+            type="text"
+            className="filter-chip__value-input"
+            value={typeof value === "string" ? value : ""}
+            aria-label="Value"
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </EditContextMenu>
       );
   }
 }

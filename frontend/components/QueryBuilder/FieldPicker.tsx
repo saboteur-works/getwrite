@@ -9,6 +9,7 @@ import type {
 import { DEFAULT_METADATA_SCHEMA } from "../../src/lib/models/default-metadata-schema";
 import { INTRINSIC_FIELDS } from "../../src/lib/models/query-intrinsics";
 import { fuzzyMatch } from "../../src/lib/models/field-dedup";
+import EditContextMenu from "../common/UI/ContextMenu/EditContextMenu";
 import "./field-picker.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -267,18 +268,20 @@ export default function FieldPicker({
           aria-label="Select a field"
         >
           <div className="field-picker__search-wrapper">
-            <input
-              ref={searchRef}
-              type="text"
-              className="field-picker__search"
-              placeholder="Search fields…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Search fields"
-              onKeyDown={(e) => {
-                if (e.key === "Escape") closeMenu();
-              }}
-            />
+            <EditContextMenu>
+              <input
+                ref={searchRef}
+                type="text"
+                className="field-picker__search"
+                placeholder="Search fields…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search fields"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") closeMenu();
+                }}
+              />
+            </EditContextMenu>
           </div>
 
           {SOURCE_ORDER.map((source) => {
