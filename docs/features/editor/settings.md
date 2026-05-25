@@ -1,6 +1,6 @@
-# Editor Settings
+# Editor Settings (developer reference)
 
-This document covers all editor settings that affect the writing surface — what each setting controls, what values it accepts, its default, and whether it is configurable through the UI or project type templates.
+This document covers all editor settings that affect the writing surface — what each setting controls, what values it accepts, its default, and whether it is configurable through the UI or project type templates. For the writer-facing overview of what can be changed in the app, see [docs/user/editor/settings.md](../../user/editor/settings.md).
 
 Settings fall into two categories:
 

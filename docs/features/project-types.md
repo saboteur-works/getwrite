@@ -1,4 +1,6 @@
-# Project Types
+# Project Types (developer reference)
+
+This is the developer reference for the project-type JSON format, validation, and scaffolding. For the writer-facing guide to choosing and managing project types in the app, see [docs/user/project-types.md](../user/project-types.md).
 
 **Purpose:** Define reusable templates that describe a project's folder structure and initial placeholder resources. Project types let users scaffold a new project with a consistent set of folders, placeholder documents, and metadata.
 
@@ -64,12 +66,16 @@
 
 The following project types ship with GetWrite in `getwrite-config/templates/project-types/`:
 
-| File                        | ID        | Name            | Use Case                                                                                                         |
-| --------------------------- | --------- | --------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `blank_project_type.json`   | `blank`   | Blank           | Empty project with a single Workspace folder and one placeholder document. Starting point for custom workflows.  |
-| `novel_project_type.json`   | `novel`   | Novel           | Long-form fiction with Front Matter, Workspace (Chapters), and Back Matter folders and a Title Page placeholder. |
-| `serial_project_type.json`  | `serial`  | Serial / Series | Episodic or serial fiction with folder structure suited to numbered parts or episodes.                           |
-| `article_project_type.json` | `article` | Article         | Non-fiction article or essay with research and draft folders.                                                    |
+| File                          | ID                  | Name              | Folders                                       |
+| ----------------------------- | ------------------- | ----------------- | --------------------------------------------- |
+| `blank_project_type.json`     | `blank`             | Blank             | Workspace                                     |
+| `novel_project_type.json`     | `novel`             | Novel             | Workspace, Story Elements, Outline, Notes     |
+| `serial_project_type.json`    | `serial`            | Serial            | Workspace, Story Elements, Outline, Notes     |
+| `article_project_type.json`   | `article`           | Article           | Workspace, References, Sources, Ideas         |
+| `game_documentation.json`     | `game_writing`      | Game Writing      | Workspace, Research, Notes                    |
+| `poetry_and_lyrics_type.json` | `poetry_and_lyrics` | Poetry and Lyrics | Workspace, Inspiration, Experiments           |
+
+Note that the file name does not always match the `id` (e.g. `game_documentation.json` has id `game_writing`).
 
 For detailed folder structure and default resources, see each JSON file directly. The project-type selection UI reads these at runtime via `GET /api/project-types`.
 

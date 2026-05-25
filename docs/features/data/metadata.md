@@ -1,4 +1,6 @@
-# Metadata
+# Metadata (developer reference)
+
+This is the complete on-disk metadata field reference for every scope (project, resource, folder, revision), including system-managed and schema-defined fields. For the writer-facing guide to editing metadata in the app, see [docs/user/metadata.md](../../user/metadata.md).
 
 > Symbol Legend
 >

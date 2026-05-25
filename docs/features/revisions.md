@@ -1,6 +1,6 @@
-# Revisions
+# Revisions (developer reference)
 
-This document covers the GetWrite revision system: on-disk layout, version numbering, the canonical invariant, pruning, the `preserve` flag, and soft-delete (trash).
+This document covers the GetWrite revision system: on-disk layout, version numbering, the canonical invariant, pruning, the `preserve` flag, and soft-delete (trash). For the writer-facing guide to revisions in the app, see [docs/user/revisions.md](../user/revisions.md).
 
 ---
 
@@ -92,7 +92,7 @@ The `getwrite prune` command runs pruning across all resources in a project:
 getwrite prune [projectRoot] [--max <number>]
 ```
 
-See [docs/usage/cli.md](../usage/cli.md) for full CLI reference.
+See [docs/features/cli.md](./cli.md) for full CLI reference.
 
 ### `pruneExecutor.ts`
 
