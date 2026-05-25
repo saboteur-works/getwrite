@@ -5,16 +5,16 @@ This directory contains JSON templates for common project types used by GetWrite
 Templates included
 
 - `blank_project_type.json` — Blank
-    - Minimal project containing only a `Workspace` folder. Useful for starting from scratch.
+  - Minimal project containing only a `Workspace` folder. Useful for starting from scratch.
 
 - `novel_project_type.json` — Novel
-    - Intended for long-form fiction. Includes `Workspace`, `Drafts`, `Research`, and `Assets`. Seeds a `Manuscript Start` text resource.
+  - Intended for long-form fiction. Includes `Workspace`, `Drafts`, `Research`, and `Assets`. Seeds a `Manuscript Start` text resource.
 
 - `serial_project_type.json` — Serial
-    - For serialized works with `Episodes`, `Characters`, and `Assets`. Seeds an `Episode Template` resource.
+  - For serialized works with `Episodes`, `Characters`, and `Assets`. Seeds an `Episode Template` resource.
 
 - `article_project_type.json` — Article
-    - Short-form articles with `Drafts`, `References`, and `Assets`. Seeds an `Article Outline` resource.
+  - Short-form articles with `Drafts`, `References`, and `Assets`. Seeds an `Article Outline` resource.
 
 Usage
 

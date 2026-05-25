@@ -1,37 +1,32 @@
 {
-    "id": "blank",
-    "name": "Blank",
-    "description": "Minimal project type with only a Workspace folder.",
-    "folders": [
-        {
-            "name": "Workspace",
-            "special": true
-        }
-    ],
-    "editorConfig": {
-        "headings": {
-            "h1": {
-                "fontSize": "40px",
-                "fontFamily": "IBM Plex Serif",
-                "fontWeight": "700",
-                "letterSpacing": "0.01em"
-            },
-            "h2": {
-                "fontSize": "28px",
-                "fontFamily": "IBM Plex Serif",
-                "fontWeight": "700"
-            },
-            "h3": {
-                "fontSize": "20px",
-                "fontFamily": "IBM Plex Serif",
-                "fontWeight": "500"
-            }
-        },
-        "body": {
-            "fontFamily": "IBM Plex Serif",
-            "fontSize": "15px",
-            "lineHeight": "1.8",
-            "paragraphSpacing": "16px"
-        }
+  "id": "blank",
+  "name": "Blank",
+  "description": "Minimal project type with only a Workspace folder.",
+  "folders": [{ "name": "Workspace", "special": true }],
+  "editorConfig": {
+    "headings": {
+      "h1": {
+        "fontSize": "40px",
+        "fontFamily": "IBM Plex Serif",
+        "fontWeight": "700",
+        "letterSpacing": "0.01em"
+      },
+      "h2": {
+        "fontSize": "28px",
+        "fontFamily": "IBM Plex Serif",
+        "fontWeight": "700"
+      },
+      "h3": {
+        "fontSize": "20px",
+        "fontFamily": "IBM Plex Serif",
+        "fontWeight": "500"
+      }
+    },
+    "body": {
+      "fontFamily": "IBM Plex Serif",
+      "fontSize": "15px",
+      "lineHeight": "1.8",
+      "paragraphSpacing": "16px"
     }
+  }
 }
