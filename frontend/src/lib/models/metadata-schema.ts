@@ -16,68 +16,68 @@ import { readSidecar, writeSidecar } from "./sidecar";
 import { canonicalValueKey } from "./field-values";
 import { DEFAULT_METADATA_SCHEMA } from "./default-metadata-schema";
 import type {
-    Project,
-    MetadataSchema,
-    MetadataGroup,
-    MetadataField,
-    MetadataFieldType,
-    MetadataValue,
-    UUID,
+  Project,
+  MetadataSchema,
+  MetadataGroup,
+  MetadataField,
+  MetadataFieldType,
+  MetadataValue,
+  UUID,
 } from "./types";
 
 // ─── Type migration types ─────────────────────────────────────────────────────
 
 export interface TypeMigrationEntry {
-    action: "keep" | "clear" | "normalize";
-    /** The replacement value when action is "normalize". */
-    normalizedTo?: string;
+  action: "keep" | "clear" | "normalize";
+  /** The replacement value when action is "normalize". */
+  normalizedTo?: string;
 }
 
 export interface OptionsMigrationEntry {
-    action: "keep" | "clear" | "normalize" | "add-to-options";
-    /** The replacement value when action is "normalize". */
-    normalizedTo?: string;
+  action: "keep" | "clear" | "normalize" | "add-to-options";
+  /** The replacement value when action is "normalize". */
+  normalizedTo?: string;
 }
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
 async function readProject(projectRoot: string): Promise<Project> {
-    const p = path.join(projectRoot, PROJECT_FILENAME);
-    const raw = await fs.readFile(p, "utf8");
-    return JSON.parse(raw) as Project;
+  const p = path.join(projectRoot, PROJECT_FILENAME);
+  const raw = await fs.readFile(p, "utf8");
+  return JSON.parse(raw) as Project;
 }
 
 async function writeProject(
-    projectRoot: string,
-    project: Project,
+  projectRoot: string,
+  project: Project,
 ): Promise<void> {
-    const p = path.join(projectRoot, PROJECT_FILENAME);
-    if (!project.config) {
-        project.config = { editorConfig: {} };
-    }
-    project.config.metadataRevision = (project.config.metadataRevision ?? 0) + 1;
-    await fs.writeFile(p, JSON.stringify(project, null, 2), "utf8");
+  const p = path.join(projectRoot, PROJECT_FILENAME);
+  if (!project.config) {
+    project.config = { editorConfig: {} };
+  }
+  project.config.metadataRevision = (project.config.metadataRevision ?? 0) + 1;
+  await fs.writeFile(p, JSON.stringify(project, null, 2), "utf8");
 }
 
 function getOrInitSchema(project: Project): MetadataSchema {
-    if (!project.config) {
-        project.config = { editorConfig: {} };
-    }
-    if (!project.config.metadataSchema) {
-        // Deep-clone so mutations in this function don't corrupt the constant.
-        project.config.metadataSchema = structuredClone(DEFAULT_METADATA_SCHEMA);
-    }
-    return project.config.metadataSchema;
+  if (!project.config) {
+    project.config = { editorConfig: {} };
+  }
+  if (!project.config.metadataSchema) {
+    // Deep-clone so mutations in this function don't corrupt the constant.
+    project.config.metadataSchema = structuredClone(DEFAULT_METADATA_SCHEMA);
+  }
+  return project.config.metadataSchema;
 }
 
 function findGroup(schema: MetadataSchema, groupId: string): MetadataGroup {
-    const group = schema.groups.find((g) => g.id === groupId);
-    if (!group) throw new Error(`Group not found: "${groupId}"`);
-    return group;
+  const group = schema.groups.find((g) => g.id === groupId);
+  if (!group) throw new Error(`Group not found: "${groupId}"`);
+  return group;
 }
 
 function allFieldKeys(schema: MetadataSchema): string[] {
-    return schema.groups.flatMap((g) => g.fields.map((f) => f.key));
+  return schema.groups.flatMap((g) => g.fields.map((f) => f.key));
 }
 
 /**
@@ -88,23 +88,23 @@ function allFieldKeys(schema: MetadataSchema): string[] {
  * already-migrated schemas — idempotent.
  */
 function migrateMultipleToMultiRef(schema: MetadataSchema): {
-    schema: MetadataSchema;
-    changed: boolean;
+  schema: MetadataSchema;
+  changed: boolean;
 } {
-    let changed = false;
-    const groups = schema.groups.map((group) => {
-        const fields = group.fields.map((field) => {
-            if (field.type === "resource-ref" && field.multiple === true) {
-                changed = true;
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { multiple: _removed, ...rest } = field;
-                return { ...rest, type: "multi-resource-ref" as const };
-            }
-            return field;
-        });
-        return { ...group, fields };
+  let changed = false;
+  const groups = schema.groups.map((group) => {
+    const fields = group.fields.map((field) => {
+      if (field.type === "resource-ref" && field.multiple === true) {
+        changed = true;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { multiple: _removed, ...rest } = field;
+        return { ...rest, type: "multi-resource-ref" as const };
+      }
+      return field;
     });
-    return { schema: { ...schema, groups }, changed };
+    return { ...group, fields };
+  });
+  return { schema: { ...schema, groups }, changed };
 }
 
 /**
@@ -116,15 +116,15 @@ function migrateMultipleToMultiRef(schema: MetadataSchema): {
  * reads see the canonical form.
  */
 export async function getSchema(projectRoot: string): Promise<MetadataSchema> {
-    const project = await readProject(projectRoot);
-    const raw = project.config?.metadataSchema ?? { groups: [] };
-    const { schema, changed } = migrateMultipleToMultiRef(raw);
-    if (changed) {
-        if (!project.config) project.config = { editorConfig: {} };
-        project.config.metadataSchema = schema;
-        await writeProject(projectRoot, project);
-    }
-    return schema;
+  const project = await readProject(projectRoot);
+  const raw = project.config?.metadataSchema ?? { groups: [] };
+  const { schema, changed } = migrateMultipleToMultiRef(raw);
+  if (changed) {
+    if (!project.config) project.config = { editorConfig: {} };
+    project.config.metadataSchema = schema;
+    await writeProject(projectRoot, project);
+  }
+  return schema;
 }
 
 /**
@@ -136,29 +136,29 @@ export async function getSchema(projectRoot: string): Promise<MetadataSchema> {
  * - the target group does not exist
  */
 export async function addField(
-    projectRoot: string,
-    groupId: string,
-    field: MetadataField,
+  projectRoot: string,
+  groupId: string,
+  field: MetadataField,
 ): Promise<MetadataSchema> {
-    if (!SLUG_RE.test(field.key)) {
-        throw new Error(
-            `Invalid field key: "${field.key}". Must match /^[a-z0-9-]+$/`,
-        );
+  if (!SLUG_RE.test(field.key)) {
+    throw new Error(
+      `Invalid field key: "${field.key}". Must match /^[a-z0-9-]+$/`,
+    );
+  }
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    if (allFieldKeys(schema).includes(field.key)) {
+      throw new Error(`Field key already exists: "${field.key}"`);
     }
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        if (allFieldKeys(schema).includes(field.key)) {
-            throw new Error(`Field key already exists: "${field.key}"`);
-        }
-        const group = findGroup(schema, groupId);
-        group.fields.push(field);
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
-    }
+    const group = findGroup(schema, groupId);
+    group.fields.push(field);
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 /**
@@ -170,26 +170,26 @@ export async function addField(
  * - the field has `locked: true`
  */
 export async function removeField(
-    projectRoot: string,
-    groupId: string,
-    fieldKey: string,
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        const group = findGroup(schema, groupId);
-        const field = group.fields.find((f) => f.key === fieldKey);
-        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
-        if (field.locked) {
-            throw new Error(`Cannot remove locked field: "${fieldKey}"`);
-        }
-        group.fields = group.fields.filter((f) => f.key !== fieldKey);
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    const group = findGroup(schema, groupId);
+    const field = group.fields.find((f) => f.key === fieldKey);
+    if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+    if (field.locked) {
+      throw new Error(`Cannot remove locked field: "${fieldKey}"`);
     }
+    group.fields = group.fields.filter((f) => f.key !== fieldKey);
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 /**
@@ -204,47 +204,51 @@ export async function removeField(
  * - the field has `locked: true`
  */
 export async function deprecateField(
-    projectRoot: string,
-    groupId: string,
-    fieldKey: string,
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        const group = findGroup(schema, groupId);
-        const field = group.fields.find((f) => f.key === fieldKey);
-        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
-        if (field.locked) {
-            throw new Error(`Cannot deprecate locked field: "${fieldKey}"`);
-        }
-        field.deprecated = true;
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    const group = findGroup(schema, groupId);
+    const field = group.fields.find((f) => f.key === fieldKey);
+    if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+    if (field.locked) {
+      throw new Error(`Cannot deprecate locked field: "${fieldKey}"`);
     }
+    field.deprecated = true;
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 async function clearFieldFromSidecars(
-    projectRoot: string,
-    fieldKey: string,
+  projectRoot: string,
+  fieldKey: string,
 ): Promise<void> {
-    const metaDir = path.join(projectRoot, "meta");
-    let entries: string[];
-    try {
-        entries = await fs.readdir(metaDir);
-    } catch {
-        return;
-    }
-    for (const entry of entries) {
-        if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) continue;
-        const resourceId = entry.slice("resource-".length, -".meta.json".length) as UUID;
-        const sidecar = await readSidecar(projectRoot, resourceId);
-        if (!sidecar || !(fieldKey in sidecar)) continue;
-        delete sidecar[fieldKey];
-        await writeSidecar(projectRoot, resourceId, sidecar);
-    }
+  const metaDir = path.join(projectRoot, "meta");
+  let entries: string[];
+  try {
+    entries = await fs.readdir(metaDir);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
+      continue;
+    const resourceId = entry.slice(
+      "resource-".length,
+      -".meta.json".length,
+    ) as UUID;
+    const sidecar = await readSidecar(projectRoot, resourceId);
+    if (!sidecar || !(fieldKey in sidecar)) continue;
+    delete sidecar[fieldKey];
+    await writeSidecar(projectRoot, resourceId, sidecar);
+  }
 }
 
 /**
@@ -261,13 +265,13 @@ async function clearFieldFromSidecars(
  * - the field has `locked: true`
  */
 export async function clearField(
-    projectRoot: string,
-    groupId: string,
-    fieldKey: string,
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
 ): Promise<MetadataSchema> {
-    const schema = await removeField(projectRoot, groupId, fieldKey);
-    await clearFieldFromSidecars(projectRoot, fieldKey);
-    return schema;
+  const schema = await removeField(projectRoot, groupId, fieldKey);
+  await clearFieldFromSidecars(projectRoot, fieldKey);
+  return schema;
 }
 
 /**
@@ -280,30 +284,30 @@ export async function clearField(
  * existing field set.
  */
 export async function reorderFields(
-    projectRoot: string,
-    groupId: string,
-    newKeyOrder: string[],
+  projectRoot: string,
+  groupId: string,
+  newKeyOrder: string[],
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        const group = findGroup(schema, groupId);
-        const fieldMap = new Map(group.fields.map((f) => [f.key, f]));
-        if (
-            newKeyOrder.length !== group.fields.length ||
-            newKeyOrder.some((k) => !fieldMap.has(k))
-        ) {
-            throw new Error(
-                "newKeyOrder must contain exactly the existing field keys",
-            );
-        }
-        group.fields = newKeyOrder.map((k) => fieldMap.get(k)!);
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    const group = findGroup(schema, groupId);
+    const fieldMap = new Map(group.fields.map((f) => [f.key, f]));
+    if (
+      newKeyOrder.length !== group.fields.length ||
+      newKeyOrder.some((k) => !fieldMap.has(k))
+    ) {
+      throw new Error(
+        "newKeyOrder must contain exactly the existing field keys",
+      );
     }
+    group.fields = newKeyOrder.map((k) => fieldMap.get(k)!);
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 /**
@@ -313,24 +317,24 @@ export async function reorderFields(
  * Throws if the group or field does not exist.
  */
 export async function renameField(
-    projectRoot: string,
-    groupId: string,
-    fieldKey: string,
-    newLabel: string,
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
+  newLabel: string,
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        const group = findGroup(schema, groupId);
-        const field = group.fields.find((f) => f.key === fieldKey);
-        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
-        field.label = newLabel;
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
-    }
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    const group = findGroup(schema, groupId);
+    const field = group.fields.find((f) => f.key === fieldKey);
+    if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+    field.label = newLabel;
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 /**
@@ -339,24 +343,24 @@ export async function renameField(
  * Throws if the group or field does not exist.
  */
 export async function updateFieldOptions(
-    projectRoot: string,
-    groupId: string,
-    fieldKey: string,
-    options: string[],
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
+  options: string[],
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        const group = findGroup(schema, groupId);
-        const field = group.fields.find((f) => f.key === fieldKey);
-        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
-        field.options = options;
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
-    }
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    const group = findGroup(schema, groupId);
+    const field = group.fields.find((f) => f.key === fieldKey);
+    if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+    field.options = options;
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 /**
@@ -366,22 +370,22 @@ export async function updateFieldOptions(
  * `config.metadataSchema` if the project has none yet.
  */
 export async function addGroup(
-    projectRoot: string,
-    group: MetadataGroup,
+  projectRoot: string,
+  group: MetadataGroup,
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        if (schema.groups.some((g) => g.id === group.id)) {
-            throw new Error(`Group ID already exists: "${group.id}"`);
-        }
-        schema.groups.push(group);
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    if (schema.groups.some((g) => g.id === group.id)) {
+      throw new Error(`Group ID already exists: "${group.id}"`);
     }
+    schema.groups.push(group);
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 /**
@@ -390,22 +394,22 @@ export async function addGroup(
  * Throws if the group does not exist.
  */
 export async function removeGroup(
-    projectRoot: string,
-    groupId: string,
+  projectRoot: string,
+  groupId: string,
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        if (!schema.groups.some((g) => g.id === groupId)) {
-            throw new Error(`Group not found: "${groupId}"`);
-        }
-        schema.groups = schema.groups.filter((g) => g.id !== groupId);
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    if (!schema.groups.some((g) => g.id === groupId)) {
+      throw new Error(`Group not found: "${groupId}"`);
     }
+    schema.groups = schema.groups.filter((g) => g.id !== groupId);
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 /**
@@ -417,76 +421,81 @@ export async function removeGroup(
  * Throws if any ID is unrecognised or the count differs.
  */
 export async function reorderGroups(
-    projectRoot: string,
-    newGroupIdOrder: string[],
+  projectRoot: string,
+  newGroupIdOrder: string[],
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        const groupMap = new Map(schema.groups.map((g) => [g.id, g]));
-        if (
-            newGroupIdOrder.length !== schema.groups.length ||
-            newGroupIdOrder.some((id) => !groupMap.has(id))
-        ) {
-            throw new Error(
-                "newGroupIdOrder must contain exactly the existing group IDs",
-            );
-        }
-        schema.groups = newGroupIdOrder.map((id) => groupMap.get(id)!);
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    const groupMap = new Map(schema.groups.map((g) => [g.id, g]));
+    if (
+      newGroupIdOrder.length !== schema.groups.length ||
+      newGroupIdOrder.some((id) => !groupMap.has(id))
+    ) {
+      throw new Error(
+        "newGroupIdOrder must contain exactly the existing group IDs",
+      );
     }
+    schema.groups = newGroupIdOrder.map((id) => groupMap.get(id)!);
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 async function migrateFieldKeyInSidecars(
-    projectRoot: string,
-    oldKey: string,
-    newKey: string,
+  projectRoot: string,
+  oldKey: string,
+  newKey: string,
 ): Promise<void> {
-    const metaDir = path.join(projectRoot, "meta");
-    let entries: string[];
-    try {
-        entries = await fs.readdir(metaDir);
-    } catch {
-        return;
-    }
-    for (const entry of entries) {
-        if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) continue;
-        const resourceId = entry.slice("resource-".length, -".meta.json".length) as UUID;
-        const sidecar = await readSidecar(projectRoot, resourceId);
-        if (!sidecar || !(oldKey in sidecar)) continue;
-        sidecar[newKey] = sidecar[oldKey];
-        delete sidecar[oldKey];
-        await writeSidecar(projectRoot, resourceId, sidecar);
-    }
+  const metaDir = path.join(projectRoot, "meta");
+  let entries: string[];
+  try {
+    entries = await fs.readdir(metaDir);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
+      continue;
+    const resourceId = entry.slice(
+      "resource-".length,
+      -".meta.json".length,
+    ) as UUID;
+    const sidecar = await readSidecar(projectRoot, resourceId);
+    if (!sidecar || !(oldKey in sidecar)) continue;
+    sidecar[newKey] = sidecar[oldKey];
+    delete sidecar[oldKey];
+    await writeSidecar(projectRoot, resourceId, sidecar);
+  }
 }
 
 async function renameFieldKeyInSchema(
-    projectRoot: string,
-    groupId: string,
-    fieldKey: string,
-    newKey: string,
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
+  newKey: string,
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        if (allFieldKeys(schema).includes(newKey)) {
-            throw new Error(`Field key already exists: "${newKey}"`);
-        }
-        const group = findGroup(schema, groupId);
-        const field = group.fields.find((f) => f.key === fieldKey);
-        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
-        if (field.locked) throw new Error(`Cannot rename key of locked field: "${fieldKey}"`);
-        field.key = newKey;
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    if (allFieldKeys(schema).includes(newKey)) {
+      throw new Error(`Field key already exists: "${newKey}"`);
     }
+    const group = findGroup(schema, groupId);
+    const field = group.fields.find((f) => f.key === fieldKey);
+    if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+    if (field.locked)
+      throw new Error(`Cannot rename key of locked field: "${fieldKey}"`);
+    field.key = newKey;
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 /**
@@ -497,12 +506,12 @@ async function renameFieldKeyInSchema(
  * - Passing a value sets the property to that value.
  */
 export interface RefPropertyUpdates {
-    /** Scopes autocomplete to a specific folder. `null` clears the scope. */
-    refFolder?: string | null;
-    /** Extends scope to descendant folders when `refFolder` is set. `null` clears. */
-    includeSubfolders?: boolean | null;
-    /** Maximum selections allowed; `null` makes the field unbounded again. */
-    maxSelections?: number | null;
+  /** Scopes autocomplete to a specific folder. `null` clears the scope. */
+  refFolder?: string | null;
+  /** Extends scope to descendant folders when `refFolder` is set. `null` clears. */
+  includeSubfolders?: boolean | null;
+  /** Maximum selections allowed; `null` makes the field unbounded again. */
+  maxSelections?: number | null;
 }
 
 /**
@@ -513,38 +522,40 @@ export interface RefPropertyUpdates {
  * Throws if the group or field does not exist, or if the field is locked.
  */
 export async function updateRefProperties(
-    projectRoot: string,
-    groupId: string,
-    fieldKey: string,
-    updates: RefPropertyUpdates,
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
+  updates: RefPropertyUpdates,
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        const group = findGroup(schema, groupId);
-        const field = group.fields.find((f) => f.key === fieldKey);
-        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
-        if (field.locked) {
-            throw new Error(`Cannot update ref properties of locked field: "${fieldKey}"`);
-        }
-        if (updates.refFolder !== undefined) {
-            if (updates.refFolder === null) delete field.refFolder;
-            else field.refFolder = updates.refFolder;
-        }
-        if (updates.includeSubfolders !== undefined) {
-            if (updates.includeSubfolders === null) delete field.includeSubfolders;
-            else field.includeSubfolders = updates.includeSubfolders;
-        }
-        if (updates.maxSelections !== undefined) {
-            if (updates.maxSelections === null) delete field.maxSelections;
-            else field.maxSelections = updates.maxSelections;
-        }
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    const group = findGroup(schema, groupId);
+    const field = group.fields.find((f) => f.key === fieldKey);
+    if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+    if (field.locked) {
+      throw new Error(
+        `Cannot update ref properties of locked field: "${fieldKey}"`,
+      );
     }
+    if (updates.refFolder !== undefined) {
+      if (updates.refFolder === null) delete field.refFolder;
+      else field.refFolder = updates.refFolder;
+    }
+    if (updates.includeSubfolders !== undefined) {
+      if (updates.includeSubfolders === null) delete field.includeSubfolders;
+      else field.includeSubfolders = updates.includeSubfolders;
+    }
+    if (updates.maxSelections !== undefined) {
+      if (updates.maxSelections === null) delete field.maxSelections;
+      else field.maxSelections = updates.maxSelections;
+    }
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 /**
@@ -555,55 +566,64 @@ export async function updateRefProperties(
  * Throws if the group or field does not exist, or if the field is locked.
  */
 export async function changeFieldType(
-    projectRoot: string,
-    groupId: string,
-    fieldKey: string,
-    newType: MetadataFieldType,
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
+  newType: MetadataFieldType,
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    try {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        const group = findGroup(schema, groupId);
-        const field = group.fields.find((f) => f.key === fieldKey);
-        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
-        if (field.locked) throw new Error(`Cannot change type of locked field: "${fieldKey}"`);
-        field.type = newType;
-        await writeProject(projectRoot, project);
-        return schema;
-    } finally {
-        release();
-    }
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    const schema = getOrInitSchema(project);
+    const group = findGroup(schema, groupId);
+    const field = group.fields.find((f) => f.key === fieldKey);
+    if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+    if (field.locked)
+      throw new Error(`Cannot change type of locked field: "${fieldKey}"`);
+    field.type = newType;
+    await writeProject(projectRoot, project);
+    return schema;
+  } finally {
+    release();
+  }
 }
 
 async function migrateFieldTypeInSidecars(
-    projectRoot: string,
-    fieldKey: string,
-    migrations: Record<string, TypeMigrationEntry>,
+  projectRoot: string,
+  fieldKey: string,
+  migrations: Record<string, TypeMigrationEntry>,
 ): Promise<void> {
-    if (Object.keys(migrations).length === 0) return;
-    const metaDir = path.join(projectRoot, "meta");
-    let entries: string[];
-    try {
-        entries = await fs.readdir(metaDir);
-    } catch {
-        return;
+  if (Object.keys(migrations).length === 0) return;
+  const metaDir = path.join(projectRoot, "meta");
+  let entries: string[];
+  try {
+    entries = await fs.readdir(metaDir);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
+      continue;
+    const resourceId = entry.slice(
+      "resource-".length,
+      -".meta.json".length,
+    ) as UUID;
+    const sidecar = await readSidecar(projectRoot, resourceId);
+    if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null)
+      continue;
+    const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
+    const migration = migrations[key];
+    if (!migration || migration.action === "keep") continue;
+    if (migration.action === "clear") {
+      delete sidecar[fieldKey];
+    } else if (
+      migration.action === "normalize" &&
+      migration.normalizedTo !== undefined
+    ) {
+      sidecar[fieldKey] = migration.normalizedTo;
     }
-    for (const entry of entries) {
-        if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) continue;
-        const resourceId = entry.slice("resource-".length, -".meta.json".length) as UUID;
-        const sidecar = await readSidecar(projectRoot, resourceId);
-        if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null) continue;
-        const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
-        const migration = migrations[key];
-        if (!migration || migration.action === "keep") continue;
-        if (migration.action === "clear") {
-            delete sidecar[fieldKey];
-        } else if (migration.action === "normalize" && migration.normalizedTo !== undefined) {
-            sidecar[fieldKey] = migration.normalizedTo;
-        }
-        await writeSidecar(projectRoot, resourceId, sidecar);
-    }
+    await writeSidecar(projectRoot, resourceId, sidecar);
+  }
 }
 
 /**
@@ -621,34 +641,35 @@ async function migrateFieldTypeInSidecars(
  * Throws if the group or field does not exist, or if the field is locked.
  */
 export async function changeFieldTypeWithMigration(
-    projectRoot: string,
-    groupId: string,
-    fieldKey: string,
-    newType: MetadataFieldType,
-    newOptions: string[],
-    migrations: Record<string, TypeMigrationEntry>,
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
+  newType: MetadataFieldType,
+  newOptions: string[],
+  migrations: Record<string, TypeMigrationEntry>,
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    let schema: MetadataSchema;
-    try {
-        const project = await readProject(projectRoot);
-        schema = getOrInitSchema(project);
-        const group = findGroup(schema, groupId);
-        const field = group.fields.find((f) => f.key === fieldKey);
-        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
-        if (field.locked) throw new Error(`Cannot change type of locked field: "${fieldKey}"`);
-        field.type = newType;
-        if (newType === "select" || newType === "multiselect") {
-            field.options = newOptions;
-        } else {
-            delete field.options;
-        }
-        await writeProject(projectRoot, project);
-    } finally {
-        release();
+  const release = await acquireLock(projectRoot);
+  let schema: MetadataSchema;
+  try {
+    const project = await readProject(projectRoot);
+    schema = getOrInitSchema(project);
+    const group = findGroup(schema, groupId);
+    const field = group.fields.find((f) => f.key === fieldKey);
+    if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+    if (field.locked)
+      throw new Error(`Cannot change type of locked field: "${fieldKey}"`);
+    field.type = newType;
+    if (newType === "select" || newType === "multiselect") {
+      field.options = newOptions;
+    } else {
+      delete field.options;
     }
-    await migrateFieldTypeInSidecars(projectRoot, fieldKey, migrations);
-    return schema;
+    await writeProject(projectRoot, project);
+  } finally {
+    release();
+  }
+  await migrateFieldTypeInSidecars(projectRoot, fieldKey, migrations);
+  return schema;
 }
 
 /**
@@ -666,75 +687,100 @@ export async function changeFieldTypeWithMigration(
  * - the field has `locked: true`
  */
 export async function renameFieldKey(
-    projectRoot: string,
-    groupId: string,
-    fieldKey: string,
-    newKey: string,
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
+  newKey: string,
 ): Promise<MetadataSchema> {
-    if (!SLUG_RE.test(newKey)) {
-        throw new Error(
-            `Invalid field key: "${newKey}". Must match /^[a-z0-9-]+$/`,
-        );
-    }
-    const schema = await renameFieldKeyInSchema(projectRoot, groupId, fieldKey, newKey);
-    await migrateFieldKeyInSidecars(projectRoot, fieldKey, newKey);
-    return schema;
+  if (!SLUG_RE.test(newKey)) {
+    throw new Error(
+      `Invalid field key: "${newKey}". Must match /^[a-z0-9-]+$/`,
+    );
+  }
+  const schema = await renameFieldKeyInSchema(
+    projectRoot,
+    groupId,
+    fieldKey,
+    newKey,
+  );
+  await migrateFieldKeyInSidecars(projectRoot, fieldKey, newKey);
+  return schema;
 }
 
 async function migrateFieldOptionsInSidecars(
-    projectRoot: string,
-    fieldKey: string,
-    migrations: Record<string, OptionsMigrationEntry>,
-    fieldType: MetadataFieldType,
+  projectRoot: string,
+  fieldKey: string,
+  migrations: Record<string, OptionsMigrationEntry>,
+  fieldType: MetadataFieldType,
 ): Promise<void> {
-    if (Object.keys(migrations).length === 0) return;
-    const metaDir = path.join(projectRoot, "meta");
-    let entries: string[];
-    try {
-        entries = await fs.readdir(metaDir);
-    } catch {
-        return;
-    }
-    for (const entry of entries) {
-        if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) continue;
-        const resourceId = entry.slice("resource-".length, -".meta.json".length) as UUID;
-        const sidecar = await readSidecar(projectRoot, resourceId);
-        if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null) continue;
+  if (Object.keys(migrations).length === 0) return;
+  const metaDir = path.join(projectRoot, "meta");
+  let entries: string[];
+  try {
+    entries = await fs.readdir(metaDir);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
+      continue;
+    const resourceId = entry.slice(
+      "resource-".length,
+      -".meta.json".length,
+    ) as UUID;
+    const sidecar = await readSidecar(projectRoot, resourceId);
+    if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null)
+      continue;
 
-        if (fieldType === "multiselect" && Array.isArray(sidecar[fieldKey])) {
-            const arr = sidecar[fieldKey] as string[];
-            let changed = false;
-            const newArr: string[] = [];
-            for (const element of arr) {
-                const migration = migrations[element];
-                if (!migration || migration.action === "keep" || migration.action === "add-to-options") {
-                    newArr.push(element);
-                } else if (migration.action === "normalize" && migration.normalizedTo !== undefined) {
-                    newArr.push(migration.normalizedTo);
-                    changed = true;
-                } else if (migration.action === "clear") {
-                    changed = true;
-                }
-            }
-            if (!changed) continue;
-            if (newArr.length === 0) {
-                delete sidecar[fieldKey];
-            } else {
-                sidecar[fieldKey] = newArr;
-            }
-            await writeSidecar(projectRoot, resourceId, sidecar);
-        } else {
-            const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
-            const migration = migrations[key];
-            if (!migration || migration.action === "keep" || migration.action === "add-to-options") continue;
-            if (migration.action === "clear") {
-                delete sidecar[fieldKey];
-            } else if (migration.action === "normalize" && migration.normalizedTo !== undefined) {
-                sidecar[fieldKey] = migration.normalizedTo;
-            }
-            await writeSidecar(projectRoot, resourceId, sidecar);
+    if (fieldType === "multiselect" && Array.isArray(sidecar[fieldKey])) {
+      const arr = sidecar[fieldKey] as string[];
+      let changed = false;
+      const newArr: string[] = [];
+      for (const element of arr) {
+        const migration = migrations[element];
+        if (
+          !migration ||
+          migration.action === "keep" ||
+          migration.action === "add-to-options"
+        ) {
+          newArr.push(element);
+        } else if (
+          migration.action === "normalize" &&
+          migration.normalizedTo !== undefined
+        ) {
+          newArr.push(migration.normalizedTo);
+          changed = true;
+        } else if (migration.action === "clear") {
+          changed = true;
         }
+      }
+      if (!changed) continue;
+      if (newArr.length === 0) {
+        delete sidecar[fieldKey];
+      } else {
+        sidecar[fieldKey] = newArr;
+      }
+      await writeSidecar(projectRoot, resourceId, sidecar);
+    } else {
+      const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
+      const migration = migrations[key];
+      if (
+        !migration ||
+        migration.action === "keep" ||
+        migration.action === "add-to-options"
+      )
+        continue;
+      if (migration.action === "clear") {
+        delete sidecar[fieldKey];
+      } else if (
+        migration.action === "normalize" &&
+        migration.normalizedTo !== undefined
+      ) {
+        sidecar[fieldKey] = migration.normalizedTo;
+      }
+      await writeSidecar(projectRoot, resourceId, sidecar);
     }
+  }
 }
 
 /**
@@ -751,54 +797,61 @@ async function migrateFieldOptionsInSidecars(
  * Throws if the field does not exist or is not a select/multiselect type.
  */
 export async function updateFieldOptionsWithMigration(
-    projectRoot: string,
-    groupId: string,
-    fieldKey: string,
-    newOptions: string[],
-    migrations: Record<string, OptionsMigrationEntry>,
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
+  newOptions: string[],
+  migrations: Record<string, OptionsMigrationEntry>,
 ): Promise<MetadataSchema> {
-    const release = await acquireLock(projectRoot);
-    let schema: MetadataSchema;
-    let fieldType: MetadataFieldType;
-    try {
-        const project = await readProject(projectRoot);
-        schema = getOrInitSchema(project);
-        const group = findGroup(schema, groupId);
-        const field = group.fields.find((f) => f.key === fieldKey);
-        if (!field) throw new Error(`Field not found: "${fieldKey}"`);
-        if (field.type !== "select" && field.type !== "multiselect") {
-            throw new Error(`Field "${fieldKey}" is not a select or multiselect field.`);
-        }
-        fieldType = field.type;
-        const addToOptionsValues = Object.entries(migrations)
-            .filter(([, m]) => m.action === "add-to-options")
-            .map(([v]) => v);
-        field.options = [...newOptions, ...addToOptionsValues];
-        await writeProject(projectRoot, project);
-    } finally {
-        release();
+  const release = await acquireLock(projectRoot);
+  let schema: MetadataSchema;
+  let fieldType: MetadataFieldType;
+  try {
+    const project = await readProject(projectRoot);
+    schema = getOrInitSchema(project);
+    const group = findGroup(schema, groupId);
+    const field = group.fields.find((f) => f.key === fieldKey);
+    if (!field) throw new Error(`Field not found: "${fieldKey}"`);
+    if (field.type !== "select" && field.type !== "multiselect") {
+      throw new Error(
+        `Field "${fieldKey}" is not a select or multiselect field.`,
+      );
     }
-    await migrateFieldOptionsInSidecars(projectRoot, fieldKey, migrations, fieldType);
-    return schema;
+    fieldType = field.type;
+    const addToOptionsValues = Object.entries(migrations)
+      .filter(([, m]) => m.action === "add-to-options")
+      .map(([v]) => v);
+    field.options = [...newOptions, ...addToOptionsValues];
+    await writeProject(projectRoot, project);
+  } finally {
+    release();
+  }
+  await migrateFieldOptionsInSidecars(
+    projectRoot,
+    fieldKey,
+    migrations,
+    fieldType,
+  );
+  return schema;
 }
 
 const metadataSchema = {
-    getSchema,
-    addField,
-    removeField,
-    deprecateField,
-    clearField,
-    reorderFields,
-    renameField,
-    updateFieldOptions,
-    updateFieldOptionsWithMigration,
-    updateRefProperties,
-    changeFieldType,
-    changeFieldTypeWithMigration,
-    addGroup,
-    removeGroup,
-    reorderGroups,
-    renameFieldKey,
+  getSchema,
+  addField,
+  removeField,
+  deprecateField,
+  clearField,
+  reorderFields,
+  renameField,
+  updateFieldOptions,
+  updateFieldOptionsWithMigration,
+  updateRefProperties,
+  changeFieldType,
+  changeFieldTypeWithMigration,
+  addGroup,
+  removeGroup,
+  reorderGroups,
+  renameFieldKey,
 };
 
 export default metadataSchema;

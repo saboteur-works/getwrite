@@ -10,12 +10,12 @@
  * const slug = slugify("Chapter 1: The Beginning") // "chapter-1-the-beginning"
  */
 export function slugify(name: string = "project"): string {
-    return (
-        name
-            .toLowerCase()
-            .replace(/\s+/g, "-")
-            .replace(/[^a-z0-9-]/g, "")
-            .replace(/-+/g, "-")
-            .replace(/^-|-$/g, "") || "project"
-    );
+  return (
+    name
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "project"
+  );
 }

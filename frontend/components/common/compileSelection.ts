@@ -1,7 +1,7 @@
 import {
-    buildResourceTree,
-    ResourceItemData,
-    ROOT_ITEM_ID,
+  buildResourceTree,
+  ResourceItemData,
+  ROOT_ITEM_ID,
 } from "../ResourceTree/buildResourceTree";
 import type { AnyResource } from "../../src/lib/models/types";
 
@@ -11,16 +11,16 @@ export type CompileTree = Record<string, ResourceItemData>;
 
 /** Converts a flat resources array into the compile tree map. */
 export function buildCompileTree(resources: AnyResource[]): CompileTree {
-    return buildResourceTree(resources);
+  return buildResourceTree(resources);
 }
 
 /** Returns child IDs of a node sorted by orderIndex. */
 function sortedChildren(nodeId: string, tree: CompileTree): string[] {
-    const node = tree[nodeId];
-    if (!node) return [];
-    return [...node.children].sort(
-        (a, b) => (tree[a]?.orderIndex ?? 0) - (tree[b]?.orderIndex ?? 0),
-    );
+  const node = tree[nodeId];
+  if (!node) return [];
+  return [...node.children].sort(
+    (a, b) => (tree[a]?.orderIndex ?? 0) - (tree[b]?.orderIndex ?? 0),
+  );
 }
 
 /**
@@ -28,26 +28,26 @@ function sortedChildren(nodeId: string, tree: CompileTree): string[] {
  * If nodeId is itself a leaf, returns [nodeId].
  */
 export function getDescendantLeafIds(
-    nodeId: string,
-    tree: CompileTree,
+  nodeId: string,
+  tree: CompileTree,
 ): string[] {
-    const node = tree[nodeId];
-    if (!node) return [];
-    if (!node.isFolder) return [nodeId];
+  const node = tree[nodeId];
+  if (!node) return [];
+  if (!node.isFolder) return [nodeId];
 
-    const result: string[] = [];
-    const stack = [...sortedChildren(nodeId, tree)];
-    while (stack.length > 0) {
-        const current = stack.shift()!;
-        const currentNode = tree[current];
-        if (!currentNode) continue;
-        if (currentNode.isFolder) {
-            stack.unshift(...sortedChildren(current, tree));
-        } else {
-            result.push(current);
-        }
+  const result: string[] = [];
+  const stack = [...sortedChildren(nodeId, tree)];
+  while (stack.length > 0) {
+    const current = stack.shift()!;
+    const currentNode = tree[current];
+    if (!currentNode) continue;
+    if (currentNode.isFolder) {
+      stack.unshift(...sortedChildren(current, tree));
+    } else {
+      result.push(current);
     }
-    return result;
+  }
+  return result;
 }
 
 /**
@@ -56,32 +56,32 @@ export function getDescendantLeafIds(
  * - Leaf: flip its presence.
  */
 export function toggleNode(
-    nodeId: string,
-    checkedIds: Set<string>,
-    tree: CompileTree,
+  nodeId: string,
+  checkedIds: Set<string>,
+  tree: CompileTree,
 ): Set<string> {
-    const node = tree[nodeId];
-    if (!node) return checkedIds;
+  const node = tree[nodeId];
+  if (!node) return checkedIds;
 
-    const next = new Set(checkedIds);
+  const next = new Set(checkedIds);
 
-    if (node.isFolder) {
-        const leaves = getDescendantLeafIds(nodeId, tree);
-        const allChecked = leaves.length > 0 && leaves.every((id) => next.has(id));
-        if (allChecked) {
-            leaves.forEach((id) => next.delete(id));
-        } else {
-            leaves.forEach((id) => next.add(id));
-        }
+  if (node.isFolder) {
+    const leaves = getDescendantLeafIds(nodeId, tree);
+    const allChecked = leaves.length > 0 && leaves.every((id) => next.has(id));
+    if (allChecked) {
+      leaves.forEach((id) => next.delete(id));
     } else {
-        if (next.has(nodeId)) {
-            next.delete(nodeId);
-        } else {
-            next.add(nodeId);
-        }
+      leaves.forEach((id) => next.add(id));
     }
+  } else {
+    if (next.has(nodeId)) {
+      next.delete(nodeId);
+    } else {
+      next.add(nodeId);
+    }
+  }
 
-    return next;
+  return next;
 }
 
 /**
@@ -89,41 +89,41 @@ export function toggleNode(
  * Vacuously true for empty folders.
  */
 export function isFolderChecked(
-    folderId: string,
-    checkedIds: Set<string>,
-    tree: CompileTree,
+  folderId: string,
+  checkedIds: Set<string>,
+  tree: CompileTree,
 ): boolean {
-    const leaves = getDescendantLeafIds(folderId, tree);
-    return leaves.every((id) => checkedIds.has(id));
+  const leaves = getDescendantLeafIds(folderId, tree);
+  return leaves.every((id) => checkedIds.has(id));
 }
 
 /**
  * True when SOME but not ALL non-folder descendants are in checkedIds.
  */
 export function isFolderIndeterminate(
-    folderId: string,
-    checkedIds: Set<string>,
-    tree: CompileTree,
+  folderId: string,
+  checkedIds: Set<string>,
+  tree: CompileTree,
 ): boolean {
-    const leaves = getDescendantLeafIds(folderId, tree);
-    const someChecked = leaves.some((id) => checkedIds.has(id));
-    const allChecked = leaves.every((id) => checkedIds.has(id));
-    return someChecked && !allChecked;
+  const leaves = getDescendantLeafIds(folderId, tree);
+  const someChecked = leaves.some((id) => checkedIds.has(id));
+  const allChecked = leaves.every((id) => checkedIds.has(id));
+  return someChecked && !allChecked;
 }
 
 /** Returns a Set containing every leaf ID in the tree (initial "all selected" state). */
 export function initAllChecked(tree: CompileTree): Set<string> {
-    const result = new Set<string>();
-    const stack = [...sortedChildren(ROOT_ITEM_ID, tree)];
-    while (stack.length > 0) {
-        const current = stack.shift()!;
-        const node = tree[current];
-        if (!node) continue;
-        if (node.isFolder) {
-            stack.unshift(...sortedChildren(current, tree));
-        } else {
-            result.add(current);
-        }
+  const result = new Set<string>();
+  const stack = [...sortedChildren(ROOT_ITEM_ID, tree)];
+  while (stack.length > 0) {
+    const current = stack.shift()!;
+    const node = tree[current];
+    if (!node) continue;
+    if (node.isFolder) {
+      stack.unshift(...sortedChildren(current, tree));
+    } else {
+      result.add(current);
     }
-    return result;
+  }
+  return result;
 }

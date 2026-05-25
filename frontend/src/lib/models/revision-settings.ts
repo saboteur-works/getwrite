@@ -19,30 +19,30 @@ import { PROJECT_FILENAME } from "./project-config";
  * @throws {Error} If `name` is empty or exceeds 100 characters.
  */
 export async function updateDefaultRevisionName(
-    projectPath: string,
-    name: string,
+  projectPath: string,
+  name: string,
 ): Promise<string> {
-    const trimmed = name.trim();
-    if (!trimmed) {
-        throw new Error("Revision name cannot be empty");
-    }
-    if (trimmed.length > 100) {
-        throw new Error("Revision name too long (max 100 characters)");
-    }
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error("Revision name cannot be empty");
+  }
+  if (trimmed.length > 100) {
+    throw new Error("Revision name too long (max 100 characters)");
+  }
 
-    const filePath = path.join(projectPath, PROJECT_FILENAME);
-    const raw = await fs.readFile(filePath, "utf8");
-    const project = JSON.parse(raw) as Project;
+  const filePath = path.join(projectPath, PROJECT_FILENAME);
+  const raw = await fs.readFile(filePath, "utf8");
+  const project = JSON.parse(raw) as Project;
 
-    const nextProject: Project = {
-        ...project,
-        config: {
-            ...(project.config ?? { editorConfig: {} }),
-            defaultRevisionName: trimmed,
-        },
-        updatedAt: new Date().toISOString(),
-    };
+  const nextProject: Project = {
+    ...project,
+    config: {
+      ...(project.config ?? { editorConfig: {} }),
+      defaultRevisionName: trimmed,
+    },
+    updatedAt: new Date().toISOString(),
+  };
 
-    await fs.writeFile(filePath, JSON.stringify(nextProject, null, 2), "utf8");
-    return trimmed;
+  await fs.writeFile(filePath, JSON.stringify(nextProject, null, 2), "utf8");
+  return trimmed;
 }

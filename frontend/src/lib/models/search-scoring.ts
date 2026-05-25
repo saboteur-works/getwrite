@@ -9,53 +9,53 @@
  * terms are present in the text.
  */
 export function computeProximityScore(text: string, terms: string[]): number {
-    if (terms.length < 2) return 0;
+  if (terms.length < 2) return 0;
 
-    const lower = text.toLowerCase();
+  const lower = text.toLowerCase();
 
-    // Collect (charPosition, termIndex, termLength) for every occurrence of every term.
-    const events: Array<{ pos: number; termIdx: number; len: number }> = [];
-    for (let ti = 0; ti < terms.length; ti++) {
-        const term = terms[ti]!;
-        let pos = 0;
-        while ((pos = lower.indexOf(term, pos)) !== -1) {
-            events.push({ pos, termIdx: ti, len: term.length });
-            pos += term.length;
-        }
+  // Collect (charPosition, termIndex, termLength) for every occurrence of every term.
+  const events: Array<{ pos: number; termIdx: number; len: number }> = [];
+  for (let ti = 0; ti < terms.length; ti++) {
+    const term = terms[ti]!;
+    let pos = 0;
+    while ((pos = lower.indexOf(term, pos)) !== -1) {
+      events.push({ pos, termIdx: ti, len: term.length });
+      pos += term.length;
+    }
+  }
+
+  // All terms must appear at least once to produce a score.
+  const termsSeen = new Set(events.map((e) => e.termIdx));
+  if (termsSeen.size < terms.length) return 0;
+
+  events.sort((a, b) => a.pos - b.pos);
+
+  // Sliding window: advance the right pointer and shrink from the left,
+  // tracking the minimum span (in chars) that contains all K terms.
+  const termCounts = new Array<number>(terms.length).fill(0);
+  let covered = 0;
+  let left = 0;
+  let minSpan = Infinity;
+
+  for (let right = 0; right < events.length; right++) {
+    const ev = events[right]!;
+    if (termCounts[ev.termIdx]! === 0) covered++;
+    termCounts[ev.termIdx]!++;
+
+    // Shrink window from the left while the leftmost term has a duplicate.
+    while (termCounts[events[left]!.termIdx]! > 1) {
+      termCounts[events[left]!.termIdx]!--;
+      left++;
     }
 
-    // All terms must appear at least once to produce a score.
-    const termsSeen = new Set(events.map((e) => e.termIdx));
-    if (termsSeen.size < terms.length) return 0;
-
-    events.sort((a, b) => a.pos - b.pos);
-
-    // Sliding window: advance the right pointer and shrink from the left,
-    // tracking the minimum span (in chars) that contains all K terms.
-    const termCounts = new Array<number>(terms.length).fill(0);
-    let covered = 0;
-    let left = 0;
-    let minSpan = Infinity;
-
-    for (let right = 0; right < events.length; right++) {
-        const ev = events[right]!;
-        if (termCounts[ev.termIdx]! === 0) covered++;
-        termCounts[ev.termIdx]!++;
-
-        // Shrink window from the left while the leftmost term has a duplicate.
-        while (termCounts[events[left]!.termIdx]! > 1) {
-            termCounts[events[left]!.termIdx]!--;
-            left++;
-        }
-
-        if (covered === terms.length) {
-            const span = ev.pos + ev.len - events[left]!.pos;
-            if (span < minSpan) minSpan = span;
-        }
+    if (covered === terms.length) {
+      const span = ev.pos + ev.len - events[left]!.pos;
+      if (span < minSpan) minSpan = span;
     }
+  }
 
-    if (minSpan === Infinity) return 0;
+  if (minSpan === Infinity) return 0;
 
-    // Smooth inverse decay: adjacent phrase (~8 chars) → ~111; 100-word gap (~600 chars) → ~1.7
-    return 1000 / (minSpan + 1);
+  // Smooth inverse decay: adjacent phrase (~8 chars) → ~111; 100-word gap (~600 chars) → ~1.7
+  return 1000 / (minSpan + 1);
 }

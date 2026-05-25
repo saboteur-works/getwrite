@@ -11,48 +11,44 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import {
-    assignTagToResource,
-    unassignTagFromResource,
+  assignTagToResource,
+  unassignTagFromResource,
 } from "../../../../../src/lib/models/tags";
 
 interface AssignTagRequestBody {
-    projectPath: string;
-    resourceId: string;
-    tagId: string;
-    assign: boolean;
+  projectPath: string;
+  resourceId: string;
+  tagId: string;
+  assign: boolean;
 }
 
 interface ErrorResponse {
-    error: string;
-    details: string;
+  error: string;
+  details: string;
 }
 
 export async function POST(
-    req: NextRequest,
+  req: NextRequest,
 ): Promise<NextResponse<Record<string, never> | ErrorResponse>> {
-    try {
-        const body = (await req.json()) as AssignTagRequestBody;
-        if (body.assign) {
-            await assignTagToResource(
-                body.projectPath,
-                body.resourceId,
-                body.tagId,
-            );
-        } else {
-            await unassignTagFromResource(
-                body.projectPath,
-                body.resourceId,
-                body.tagId,
-            );
-        }
-        return NextResponse.json({});
-    } catch (error) {
-        return NextResponse.json(
-            {
-                error: "Failed to update tag assignment",
-                details: (error as Error).message,
-            },
-            { status: 500 },
-        );
+  try {
+    const body = (await req.json()) as AssignTagRequestBody;
+    if (body.assign) {
+      await assignTagToResource(body.projectPath, body.resourceId, body.tagId);
+    } else {
+      await unassignTagFromResource(
+        body.projectPath,
+        body.resourceId,
+        body.tagId,
+      );
     }
+    return NextResponse.json({});
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "Failed to update tag assignment",
+        details: (error as Error).message,
+      },
+      { status: 500 },
+    );
+  }
 }

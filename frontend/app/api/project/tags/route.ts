@@ -23,94 +23,83 @@ import { PROJECT_FILENAME } from "../../../../src/lib/models/project-config";
 import type { Tag, Project } from "../../../../src/lib/models/types";
 
 interface ListTagsRequest {
-    action: "list";
-    projectPath: string;
+  action: "list";
+  projectPath: string;
 }
 
 interface CreateTagRequest {
-    action: "create";
-    projectPath: string;
-    name: string;
-    color?: string;
+  action: "create";
+  projectPath: string;
+  name: string;
+  color?: string;
 }
 
 interface AssignmentsRequest {
-    action: "assignments";
-    projectPath: string;
-    resourceId: string;
+  action: "assignments";
+  projectPath: string;
+  resourceId: string;
 }
 
 type TagsRequestBody = ListTagsRequest | CreateTagRequest | AssignmentsRequest;
 
 interface ListTagsResponse {
-    tags: Tag[];
+  tags: Tag[];
 }
 
 interface CreateTagResponse {
-    tag: Tag;
+  tag: Tag;
 }
 
 interface AssignmentsResponse {
-    tagIds: string[];
+  tagIds: string[];
 }
 
 interface ErrorResponse {
-    error: string;
-    details: string;
+  error: string;
+  details: string;
 }
 
 export async function POST(
-    req: NextRequest,
+  req: NextRequest,
 ): Promise<
-    NextResponse<
-        | ListTagsResponse
-        | CreateTagResponse
-        | AssignmentsResponse
-        | ErrorResponse
-    >
+  NextResponse<
+    ListTagsResponse | CreateTagResponse | AssignmentsResponse | ErrorResponse
+  >
 > {
-    try {
-        const body = (await req.json()) as TagsRequestBody;
+  try {
+    const body = (await req.json()) as TagsRequestBody;
 
-        if (body.action === "list") {
-            const tags = await listTags(body.projectPath);
-            return NextResponse.json({ tags });
-        }
-
-        if (body.action === "create") {
-            const tag = await createTag(
-                body.projectPath,
-                body.name,
-                body.color,
-            );
-            return NextResponse.json({ tag });
-        }
-
-        if (body.action === "assignments") {
-            const raw = await fs.readFile(
-                path.join(body.projectPath, PROJECT_FILENAME),
-                "utf8",
-            );
-            const project = JSON.parse(raw) as Project;
-            const tagIds =
-                project.config?.tagAssignments?.[body.resourceId] ?? [];
-            return NextResponse.json({ tagIds });
-        }
-
-        return NextResponse.json(
-            {
-                error: "Invalid action",
-                details: "Expected 'list', 'create', or 'assignments'",
-            },
-            { status: 400 },
-        );
-    } catch (error) {
-        return NextResponse.json(
-            {
-                error: "Tags operation failed",
-                details: (error as Error).message,
-            },
-            { status: 500 },
-        );
+    if (body.action === "list") {
+      const tags = await listTags(body.projectPath);
+      return NextResponse.json({ tags });
     }
+
+    if (body.action === "create") {
+      const tag = await createTag(body.projectPath, body.name, body.color);
+      return NextResponse.json({ tag });
+    }
+
+    if (body.action === "assignments") {
+      const raw = await fs.readFile(
+        path.join(body.projectPath, PROJECT_FILENAME),
+        "utf8",
+      );
+      const project = JSON.parse(raw) as Project;
+      const tagIds = project.config?.tagAssignments?.[body.resourceId] ?? [];
+      return NextResponse.json({ tagIds });
+    }
+
+    return NextResponse.json(
+      {
+        error: "Invalid action",
+        details: "Expected 'list', 'create', or 'assignments'",
+      },
+      { status: 400 },
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Tags operation failed", details: (error as Error).message },
+      { status: 500 },
+    );
+  }
 }

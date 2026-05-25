@@ -9,27 +9,27 @@ import queryReducer from "./querySlice";
  * @deprecated This is a temporary store instance for development and testing. In production, use makeStore to create a new store instance for each client.
  */
 export const store = configureStore({
-    reducer: {
-        projects: projectsReducer,
-        resources: resourcesReducer,
-        revisions: revisionsReducer,
-        editorConfig: editorConfigReducer,
-        search: searchReducer,
-        queries: queryReducer,
-    },
+  reducer: {
+    projects: projectsReducer,
+    resources: resourcesReducer,
+    revisions: revisionsReducer,
+    editorConfig: editorConfigReducer,
+    search: searchReducer,
+    queries: queryReducer,
+  },
 });
 
 export const makeStore = () => {
-    return configureStore({
-        reducer: {
-            projects: projectsReducer,
-            resources: resourcesReducer,
-            revisions: revisionsReducer,
-            editorConfig: editorConfigReducer,
-            search: searchReducer,
-            queries: queryReducer,
-        },
-    });
+  return configureStore({
+    reducer: {
+      projects: projectsReducer,
+      resources: resourcesReducer,
+      revisions: revisionsReducer,
+      editorConfig: editorConfigReducer,
+      search: searchReducer,
+      queries: queryReducer,
+    },
+  });
 };
 export type AppStore = ReturnType<typeof makeStore>;
 export type RootState = ReturnType<AppStore["getState"]>;

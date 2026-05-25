@@ -4,8 +4,8 @@ import OrganizerCard from "../../components/WorkArea/Views/OrganizerView/Organiz
 import { createTextResource } from "../../src/lib/models/resource";
 
 const meta: Meta<typeof OrganizerCard> = {
-    title: "WorkArea/OrganizerCard",
-    component: OrganizerCard,
+  title: "WorkArea/OrganizerCard",
+  component: OrganizerCard,
 };
 
 export default meta;
@@ -13,16 +13,6 @@ type Story = StoryObj<typeof OrganizerCard>;
 
 const sample = createTextResource({ name: "Sample Card", plainText: "" });
 
-export const Default: Story = {
-    args: {
-        resource: sample,
-        showBody: true,
-    },
-};
+export const Default: Story = { args: { resource: sample, showBody: true } };
 
-export const Compact: Story = {
-    args: {
-        resource: sample,
-        showBody: false,
-    },
-};
+export const Compact: Story = { args: { resource: sample, showBody: false } };

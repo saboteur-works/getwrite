@@ -9,216 +9,227 @@ import { removeDirRetry } from "./helpers/fs-utils";
 import { listRevisions } from "../../src/lib/models/revision";
 
 describe("models/project-creator", () => {
-    it("propagates metadataSource and special from defaultFolders to persisted folder.json", async () => {
-        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-sf-meta-"));
-        try {
-            const spec = {
-                id: "test-metadata-subfolder",
-                name: "Metadata Subfolder Test",
-                folders: [
-                    { name: "Workspace", special: true },
-                    { name: "Research" },
-                ],
-                defaultFolders: [
-                    {
-                        folder: "Research",
-                        name: "Characters",
-                        special: true,
-                        metadataSource: {
-                            isMetadataSource: true,
-                            metadataInputType: "multiselect",
-                        },
-                    },
-                ],
-            };
-            const { folders } = await createAndAssertProject(
-                spec as Parameters<typeof createAndAssertProject>[0],
-                { projectRoot: tmp, name: "Metadata Subfolder Project" },
-            );
+  it("propagates metadataSource and special from defaultFolders to persisted folder.json", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-sf-meta-"));
+    try {
+      const spec = {
+        id: "test-metadata-subfolder",
+        name: "Metadata Subfolder Test",
+        folders: [{ name: "Workspace", special: true }, { name: "Research" }],
+        defaultFolders: [
+          {
+            folder: "Research",
+            name: "Characters",
+            special: true,
+            metadataSource: {
+              isMetadataSource: true,
+              metadataInputType: "multiselect",
+            },
+          },
+        ],
+      };
+      const { folders } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "Metadata Subfolder Project" },
+      );
 
-            const charFolder = folders.find((f) => f.name === "Characters");
-            expect(charFolder).toBeDefined();
-            expect(charFolder?.special).toBe(true);
-            expect(charFolder?.metadataSource?.isMetadataSource).toBe(true);
-            expect(charFolder?.metadataSource?.metadataInputType).toBe("multiselect");
+      const charFolder = folders.find((f) => f.name === "Characters");
+      expect(charFolder).toBeDefined();
+      expect(charFolder?.special).toBe(true);
+      expect(charFolder?.metadataSource?.isMetadataSource).toBe(true);
+      expect(charFolder?.metadataSource?.metadataInputType).toBe("multiselect");
 
-            // verify the value is also persisted to folder.json on disk
-            const folderJson = JSON.parse(
-                await fs.readFile(
-                    path.join(tmp, "folders", "research", "characters", "folder.json"),
-                    "utf8",
-                ),
-            );
-            expect(folderJson.metadataSource?.isMetadataSource).toBe(true);
-            expect(folderJson.special).toBe(true);
+      // verify the value is also persisted to folder.json on disk
+      const folderJson = JSON.parse(
+        await fs.readFile(
+          path.join(tmp, "folders", "research", "characters", "folder.json"),
+          "utf8",
+        ),
+      );
+      expect(folderJson.metadataSource?.isMetadataSource).toBe(true);
+      expect(folderJson.special).toBe(true);
 
-            await flushIndexer();
-        } finally {
-            await removeDirRetry(tmp);
-        }
-    });
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 
-    it("creates subfolders from defaultFolders declarations", async () => {
-        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-sf-"));
-        try {
-            const spec = {
-                id: "test-subfolder",
-                name: "Subfolder Test",
-                folders: [
-                    { name: "Workspace", special: true },
-                    { name: "Drafts" },
-                ],
-                defaultFolders: [
-                    { folder: "Drafts", name: "Act 1" },
-                    { folder: "Drafts", name: "Act 2" },
-                ],
-            };
-            const { folders } = await createAndAssertProject(
-                spec as Parameters<typeof createAndAssertProject>[0],
-                { projectRoot: tmp, name: "Subfolder Test Project" },
-            );
+  it("creates subfolders from defaultFolders declarations", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-sf-"));
+    try {
+      const spec = {
+        id: "test-subfolder",
+        name: "Subfolder Test",
+        folders: [{ name: "Workspace", special: true }, { name: "Drafts" }],
+        defaultFolders: [
+          { folder: "Drafts", name: "Act 1" },
+          { folder: "Drafts", name: "Act 2" },
+        ],
+      };
+      const { folders } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "Subfolder Test Project" },
+      );
 
-            // 2 top-level + 2 subfolders
-            expect(folders.length).toBe(4);
-            const subs = folders.filter((f) => f.parentId != null);
-            expect(subs.length).toBe(2);
-            expect(subs.map((f) => f.name).sort()).toEqual(["Act 1", "Act 2"]);
+      // 2 top-level + 2 subfolders
+      expect(folders.length).toBe(4);
+      const subs = folders.filter((f) => f.parentId != null);
+      expect(subs.length).toBe(2);
+      expect(subs.map((f) => f.name).sort()).toEqual(["Act 1", "Act 2"]);
 
-            // directories exist on disk
-            const act1Dir = path.join(tmp, "folders", "drafts", "act-1");
-            await expect(fs.access(act1Dir)).resolves.toBeUndefined();
+      // directories exist on disk
+      const act1Dir = path.join(tmp, "folders", "drafts", "act-1");
+      await expect(fs.access(act1Dir)).resolves.toBeUndefined();
 
-            await flushIndexer();
-        } finally {
-            await removeDirRetry(tmp);
-        }
-    });
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 
-    it("creates project structure and resource placeholders from spec", async () => {
-        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-pc-"));
-        try {
-            const specPath = path.join(
-                process.cwd(),
-                "..",
-                "specs",
-                "002-define-data-models",
-                "project-types",
-                "novel_project_type.json",
-            );
+  it("creates project structure and resource placeholders from spec", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-pc-"));
+    try {
+      const specPath = path.join(
+        process.cwd(),
+        "..",
+        "specs",
+        "002-define-data-models",
+        "project-types",
+        "novel_project_type.json",
+      );
 
-            const { projectPath, folders, resources } =
-                await createAndAssertProject(specPath, {
-                    projectRoot: tmp,
-                    name: "My Novel",
-                });
+      const { projectPath, folders, resources } = await createAndAssertProject(
+        specPath,
+        { projectRoot: tmp, name: "My Novel" },
+      );
 
-            // project.json exists
-            const pj = await fs.readFile(
-                path.join(projectPath, "project.json"),
-                "utf8",
-            );
-            expect(pj).toBeTruthy();
+      // project.json exists
+      const pj = await fs.readFile(
+        path.join(projectPath, "project.json"),
+        "utf8",
+      );
+      expect(pj).toBeTruthy();
 
-            // folders directory exists and has workspace
-            const foldersDir = path.join(projectPath, "folders");
-            const entries = await fs.readdir(foldersDir);
-            expect(entries.length).toBeGreaterThanOrEqual(1);
+      // folders directory exists and has workspace
+      const foldersDir = path.join(projectPath, "folders");
+      const entries = await fs.readdir(foldersDir);
+      expect(entries.length).toBeGreaterThanOrEqual(1);
 
-            // resources dir exists and resources have sidecars
-            const meta = await fs.readdir(path.join(projectPath, "meta"));
-            expect(meta.length).toBeGreaterThanOrEqual(resources.length);
+      // resources dir exists and resources have sidecars
+      const meta = await fs.readdir(path.join(projectPath, "meta"));
+      expect(meta.length).toBeGreaterThanOrEqual(resources.length);
 
-            for (const resource of resources) {
-                const revisions = await listRevisions(projectPath, resource.id);
-                expect(revisions.length).toBe(1);
-                expect(revisions[0]?.versionNumber).toBe(1);
-                expect(revisions[0]?.isCanonical).toBe(true);
-            }
+      for (const resource of resources) {
+        const revisions = await listRevisions(projectPath, resource.id);
+        expect(revisions.length).toBe(1);
+        expect(revisions[0]?.versionNumber).toBe(1);
+        expect(revisions[0]?.isCanonical).toBe(true);
+      }
 
-            // ensure background indexing finished before cleanup
-            await flushIndexer();
-        } finally {
-            await removeDirRetry(tmp);
-        }
-    });
+      // ensure background indexing finished before cleanup
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 
-    it("places deeply nested subfolders at the correct on-disk path (no orphan top-level dirs)", async () => {
-        // Regression: when a defaultFolder names another defaultFolder as its
-        // parent (3-level nesting), the path must be resolved using the full
-        // relative path from foldersDir — not just the parent's bare slug.
-        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-3level-"));
-        try {
-            const spec = {
-                id: "test-3level",
-                name: "Three-Level Nesting Test",
-                folders: [{ name: "Workspace", special: true }],
-                defaultFolders: [
-                    { folder: "Workspace", name: "Chapters" },
-                    { folder: "Chapters", name: "Chapter 1" },
-                ],
-            };
-            const { folders } = await createAndAssertProject(
-                spec as Parameters<typeof createAndAssertProject>[0],
-                { projectRoot: tmp, name: "Three-Level Project" },
-            );
+  it("places deeply nested subfolders at the correct on-disk path (no orphan top-level dirs)", async () => {
+    // Regression: when a defaultFolder names another defaultFolder as its
+    // parent (3-level nesting), the path must be resolved using the full
+    // relative path from foldersDir — not just the parent's bare slug.
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-3level-"));
+    try {
+      const spec = {
+        id: "test-3level",
+        name: "Three-Level Nesting Test",
+        folders: [{ name: "Workspace", special: true }],
+        defaultFolders: [
+          { folder: "Workspace", name: "Chapters" },
+          { folder: "Chapters", name: "Chapter 1" },
+        ],
+      };
+      const { folders } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "Three-Level Project" },
+      );
 
-            const foldersDir = path.join(tmp, "folders");
+      const foldersDir = path.join(tmp, "folders");
 
-            // Chapter 1 must live under workspace/chapters/, not a top-level chapters/
-            await expect(
-                fs.access(path.join(foldersDir, "workspace", "chapters", "chapter-1", "folder.json")),
-            ).resolves.toBeUndefined();
+      // Chapter 1 must live under workspace/chapters/, not a top-level chapters/
+      await expect(
+        fs.access(
+          path.join(
+            foldersDir,
+            "workspace",
+            "chapters",
+            "chapter-1",
+            "folder.json",
+          ),
+        ),
+      ).resolves.toBeUndefined();
 
-            // No orphan top-level "chapters" directory should exist
-            await expect(
-                fs.access(path.join(foldersDir, "chapters")),
-            ).rejects.toThrow();
+      // No orphan top-level "chapters" directory should exist
+      await expect(
+        fs.access(path.join(foldersDir, "chapters")),
+      ).rejects.toThrow();
 
-            // Returned Chapter 1 folder has the correct parentId (Chapters folder)
-            const chaptersFolder = folders.find((f) => f.name === "Chapters");
-            const chapter1Folder = folders.find((f) => f.name === "Chapter 1");
-            expect(chaptersFolder).toBeDefined();
-            expect(chapter1Folder).toBeDefined();
-            expect(chapter1Folder?.parentId).toBe(chaptersFolder?.id);
+      // Returned Chapter 1 folder has the correct parentId (Chapters folder)
+      const chaptersFolder = folders.find((f) => f.name === "Chapters");
+      const chapter1Folder = folders.find((f) => f.name === "Chapter 1");
+      expect(chaptersFolder).toBeDefined();
+      expect(chapter1Folder).toBeDefined();
+      expect(chapter1Folder?.parentId).toBe(chaptersFolder?.id);
 
-            await flushIndexer();
-        } finally {
-            await removeDirRetry(tmp);
-        }
-    });
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 
-    it("novel template creates correct nested folder structure without orphan directories", async () => {
-        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-novel-struct-"));
-        try {
-            const specPath = path.join(
-                process.cwd(),
-                "..",
-                "getwrite-config",
-                "templates",
-                "project-types",
-                "novel_project_type.json",
-            );
+  it("novel template creates correct nested folder structure without orphan directories", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-novel-struct-"),
+    );
+    try {
+      const specPath = path.join(
+        process.cwd(),
+        "..",
+        "getwrite-config",
+        "templates",
+        "project-types",
+        "novel_project_type.json",
+      );
 
-            await createAndAssertProject(specPath, {
-                projectRoot: tmp,
-                name: "Novel Regression Test",
-            });
+      await createAndAssertProject(specPath, {
+        projectRoot: tmp,
+        name: "Novel Regression Test",
+      });
 
-            const foldersDir = path.join(tmp, "folders");
+      const foldersDir = path.join(tmp, "folders");
 
-            // chapter-1 must be nested under workspace/chapters/, not a top-level chapters/
-            await expect(
-                fs.access(path.join(foldersDir, "workspace", "chapters", "chapter-1", "folder.json")),
-            ).resolves.toBeUndefined();
+      // chapter-1 must be nested under workspace/chapters/, not a top-level chapters/
+      await expect(
+        fs.access(
+          path.join(
+            foldersDir,
+            "workspace",
+            "chapters",
+            "chapter-1",
+            "folder.json",
+          ),
+        ),
+      ).resolves.toBeUndefined();
 
-            // No orphan top-level "chapters" directory
-            await expect(
-                fs.access(path.join(foldersDir, "chapters")),
-            ).rejects.toThrow();
+      // No orphan top-level "chapters" directory
+      await expect(
+        fs.access(path.join(foldersDir, "chapters")),
+      ).rejects.toThrow();
 
-            await flushIndexer();
-        } finally {
-            await removeDirRetry(tmp);
-        }
-    });
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 });

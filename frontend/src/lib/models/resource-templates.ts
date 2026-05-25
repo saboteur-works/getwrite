@@ -18,31 +18,31 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { generateUUID } from "./uuid";
 import {
-    createTextResource,
-    createImageResource,
-    createAudioResource,
+  createTextResource,
+  createImageResource,
+  createAudioResource,
 } from "./resource-factory";
 import { writeSidecar, readSidecar } from "./sidecar";
 import { withMetaLock } from "./meta-locks";
 import {
-    inspectTemplate,
-    validateTemplate,
-    type TemplateValidationResult,
+  inspectTemplate,
+  validateTemplate,
+  type TemplateValidationResult,
 } from "./template-service";
 import type {
-    UUID,
-    TextResource,
-    ImageResource,
-    AudioResource,
-    AnyResource,
-    ResourceType,
-    MetadataValue,
+  UUID,
+  TextResource,
+  ImageResource,
+  AudioResource,
+  AnyResource,
+  ResourceType,
+  MetadataValue,
 } from "./types";
 
 const TEMPLATES_DIR = (projectRoot: string) =>
-    path.join(projectRoot, "meta", "templates");
+  path.join(projectRoot, "meta", "templates");
 const RESOURCES_DIR = (projectRoot: string) =>
-    path.join(projectRoot, "resources");
+  path.join(projectRoot, "resources");
 
 /**
  * A saved resource template.
@@ -59,35 +59,35 @@ const RESOURCES_DIR = (projectRoot: string) =>
  * @property plainText - optional text blob used for text templates
  */
 export interface ResourceTemplate {
-    id: string;
-    name: string;
-    type: ResourceType;
-    folderId?: UUID | null;
-    userMetadata?: Record<string, MetadataValue>;
-    plainText?: string; // for text templates
+  id: string;
+  name: string;
+  type: ResourceType;
+  folderId?: UUID | null;
+  userMetadata?: Record<string, MetadataValue>;
+  plainText?: string; // for text templates
 }
 
 type TemplateCreatePreview = {
-    plannedWrites: Array<{ path: string; content: string | null }>;
-    resourcePreview: AnyResource;
+  plannedWrites: Array<{ path: string; content: string | null }>;
+  resourcePreview: AnyResource;
 };
 
 type TemplateCreateResult =
-    | TextResource
-    | ImageResource
-    | AudioResource
-    | TemplateCreatePreview;
+  | TextResource
+  | ImageResource
+  | AudioResource
+  | TemplateCreatePreview;
 
 function getCreatedResourceId(result: TemplateCreateResult): string | null {
-    if ("id" in result) {
-        return result.id;
-    }
+  if ("id" in result) {
+    return result.id;
+  }
 
-    if ("resourcePreview" in result && result.resourcePreview.id) {
-        return result.resourcePreview.id;
-    }
+  if ("resourcePreview" in result && result.resourcePreview.id) {
+    return result.resourcePreview.id;
+  }
 
-    return null;
+  return null;
 }
 
 /**
@@ -96,7 +96,7 @@ function getCreatedResourceId(result: TemplateCreateResult): string | null {
  * @param dir - directory path to ensure exists
  */
 async function ensureDir(dir: string): Promise<void> {
-    await fs.mkdir(dir, { recursive: true });
+  await fs.mkdir(dir, { recursive: true });
 }
 
 /** Persist a resource template under project meta/templates. */
@@ -113,34 +113,29 @@ async function ensureDir(dir: string): Promise<void> {
  * await saveResourceTemplate('/tmp/proj', { id: 'tpl1', name: 'Chapter', type: 'text' });
  */
 export async function saveResourceTemplate(
-    projectRoot: string,
-    template: ResourceTemplate,
+  projectRoot: string,
+  template: ResourceTemplate,
 ): Promise<void> {
-    const dir = TEMPLATES_DIR(projectRoot);
-    await ensureDir(dir);
-    const file = path.join(dir, `${template.id}.json`);
-    await withMetaLock(projectRoot, async () => {
-        // read previous content if exists for change tracking
-        let prevRaw: string | null = null;
-        try {
-            prevRaw = await fs.readFile(file, "utf8");
-        } catch (_) {
-            prevRaw = null;
-        }
-        await fs.writeFile(file, JSON.stringify(template, null, 2), "utf8");
-        // record a compact change entry
-        try {
-            const prev = prevRaw ? JSON.parse(prevRaw) : null;
-            await recordTemplateChange(
-                projectRoot,
-                template.id,
-                prev,
-                template,
-            );
-        } catch (_) {
-            // non-fatal: don't block save on change recording errors
-        }
-    });
+  const dir = TEMPLATES_DIR(projectRoot);
+  await ensureDir(dir);
+  const file = path.join(dir, `${template.id}.json`);
+  await withMetaLock(projectRoot, async () => {
+    // read previous content if exists for change tracking
+    let prevRaw: string | null = null;
+    try {
+      prevRaw = await fs.readFile(file, "utf8");
+    } catch (_) {
+      prevRaw = null;
+    }
+    await fs.writeFile(file, JSON.stringify(template, null, 2), "utf8");
+    // record a compact change entry
+    try {
+      const prev = prevRaw ? JSON.parse(prevRaw) : null;
+      await recordTemplateChange(projectRoot, template.id, prev, template);
+    } catch (_) {
+      // non-fatal: don't block save on change recording errors
+    }
+  });
 }
 
 /**
@@ -152,12 +147,12 @@ export async function saveResourceTemplate(
  * @throws {Error} when the template file is missing or invalid JSON
  */
 export async function loadResourceTemplate(
-    projectRoot: string,
-    templateId: string,
+  projectRoot: string,
+  templateId: string,
 ): Promise<ResourceTemplate> {
-    const file = path.join(TEMPLATES_DIR(projectRoot), `${templateId}.json`);
-    const raw = await fs.readFile(file, "utf8");
-    return JSON.parse(raw) as ResourceTemplate;
+  const file = path.join(TEMPLATES_DIR(projectRoot), `${templateId}.json`);
+  const raw = await fs.readFile(file, "utf8");
+  return JSON.parse(raw) as ResourceTemplate;
 }
 
 /**
@@ -168,38 +163,34 @@ export async function loadResourceTemplate(
  * @returns array of lightweight template descriptors
  */
 export async function listResourceTemplates(
-    projectRoot: string,
-    query?: string,
+  projectRoot: string,
+  query?: string,
 ): Promise<Array<{ id: string; name: string; type: ResourceType }>> {
-    const dir = TEMPLATES_DIR(projectRoot);
-    const out: Array<{ id: string; name: string; type: ResourceType }> = [];
-    try {
-        const entries = await fs.readdir(dir);
-        for (const e of entries) {
-            if (!e.endsWith(".json")) continue;
-            const raw = await fs.readFile(path.join(dir, e), "utf8");
-            const parsed = JSON.parse(raw) as ResourceTemplate;
-            const candidate = {
-                id: parsed.id,
-                name: parsed.name,
-                type: parsed.type,
-            };
-            if (!query) out.push(candidate);
-            else {
-                const q = query.toLowerCase();
-                if (
-                    candidate.id.toLowerCase().includes(q) ||
-                    candidate.name.toLowerCase().includes(q) ||
-                    candidate.type.toLowerCase().includes(q)
-                ) {
-                    out.push(candidate);
-                }
-            }
+  const dir = TEMPLATES_DIR(projectRoot);
+  const out: Array<{ id: string; name: string; type: ResourceType }> = [];
+  try {
+    const entries = await fs.readdir(dir);
+    for (const e of entries) {
+      if (!e.endsWith(".json")) continue;
+      const raw = await fs.readFile(path.join(dir, e), "utf8");
+      const parsed = JSON.parse(raw) as ResourceTemplate;
+      const candidate = { id: parsed.id, name: parsed.name, type: parsed.type };
+      if (!query) out.push(candidate);
+      else {
+        const q = query.toLowerCase();
+        if (
+          candidate.id.toLowerCase().includes(q) ||
+          candidate.name.toLowerCase().includes(q) ||
+          candidate.type.toLowerCase().includes(q)
+        ) {
+          out.push(candidate);
         }
-    } catch (_) {
-        // ignore missing dir
+      }
     }
-    return out;
+  } catch (_) {
+    // ignore missing dir
+  }
+  return out;
 }
 
 /**
@@ -214,17 +205,17 @@ export async function listResourceTemplates(
  * @returns inspection result including placeholders and metadata keys
  */
 export async function inspectResourceTemplate(
-    projectRoot: string,
-    templateId: string,
+  projectRoot: string,
+  templateId: string,
 ): Promise<{
-    id: string;
-    name: string;
-    type: ResourceType;
-    placeholders: string[];
-    metadataKeys: string[];
+  id: string;
+  name: string;
+  type: ResourceType;
+  placeholders: string[];
+  metadataKeys: string[];
 }> {
-    const tpl = await loadResourceTemplate(projectRoot, templateId);
-    return inspectTemplate(tpl);
+  const tpl = await loadResourceTemplate(projectRoot, templateId);
+  return inspectTemplate(tpl);
 }
 
 /**
@@ -246,163 +237,136 @@ export async function inspectResourceTemplate(
  * const res = await createResourceFromTemplate('/tmp/p', 'tpl1', { vars: { TITLE: 'Intro' } });
  */
 export async function createResourceFromTemplate(
-    projectRoot: string,
-    templateId: string,
-    opts?: {
-        name?: string;
-        vars?: Record<string, string> | string;
-        dryRun?: boolean;
-    },
+  projectRoot: string,
+  templateId: string,
+  opts?: {
+    name?: string;
+    vars?: Record<string, string> | string;
+    dryRun?: boolean;
+  },
 ): Promise<
-    TextResource | ImageResource | AudioResource | TemplateCreatePreview
+  TextResource | ImageResource | AudioResource | TemplateCreatePreview
 > {
-    const tmpl = await loadResourceTemplate(projectRoot, templateId);
+  const tmpl = await loadResourceTemplate(projectRoot, templateId);
 
-    const vars: Record<string, string> | undefined =
-        typeof opts?.vars === "string"
-            ? (JSON.parse(opts.vars) as Record<string, string>)
-            : opts?.vars;
+  const vars: Record<string, string> | undefined =
+    typeof opts?.vars === "string"
+      ? (JSON.parse(opts.vars) as Record<string, string>)
+      : opts?.vars;
 
-    // helper to apply vars substitution ({{VAR}}) into strings/objects
-    function applyVars(v: unknown): unknown {
-        if (!vars) return v;
-        if (typeof v === "string") {
-            let out = v as string;
-            for (const k of Object.keys(vars)) {
-                out = out.split(`{{${k}}}`).join(String(vars[k]));
-            }
-            return out;
-        }
-        if (Array.isArray(v)) return v.map(applyVars);
-        if (v && typeof v === "object") {
-            const o: Record<string, unknown> = {};
-            for (const key of Object.keys(v as Record<string, unknown>)) {
-                o[key] = applyVars((v as Record<string, unknown>)[key]);
-            }
-            return o;
-        }
-        return v;
+  // helper to apply vars substitution ({{VAR}}) into strings/objects
+  function applyVars(v: unknown): unknown {
+    if (!vars) return v;
+    if (typeof v === "string") {
+      let out = v as string;
+      for (const k of Object.keys(vars)) {
+        out = out.split(`{{${k}}}`).join(String(vars[k]));
+      }
+      return out;
     }
-
-    const name = (opts?.name ?? tmpl.name) as string;
-    const appliedName = (applyVars(name) as string) ?? name;
-
-    await ensureDir(RESOURCES_DIR(projectRoot));
-
-    const plannedWrites: Array<{ path: string; content: string | null }> = [];
-
-    if (tmpl.type === "text") {
-        const res = createTextResource({
-            name: appliedName,
-            folderId: tmpl.folderId ?? null,
-            plainText: (applyVars(tmpl.plainText ?? "") as string) ?? "",
-            userMetadata: tmpl.userMetadata,
-        });
-        const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.txt`;
-        const filePath = path.join(RESOURCES_DIR(projectRoot), filename);
-
-        const content = res.plainText ?? "";
-        const sidecar = JSON.stringify(
-            {
-                id: res.id,
-                name: res.name,
-                type: res.type,
-                createdAt: res.createdAt,
-            },
-            null,
-            2,
-        );
-
-        if (opts?.dryRun) {
-            plannedWrites.push({ path: filePath, content });
-            plannedWrites.push({
-                path: path.join(
-                    projectRoot,
-                    "meta",
-                    `resource-${res.id}.meta.json`,
-                ),
-                content: sidecar,
-            });
-            return { plannedWrites, resourcePreview: res };
-        }
-
-        await fs.writeFile(filePath, content, "utf8");
-        await writeSidecar(projectRoot, res.id, JSON.parse(sidecar));
-        return res;
+    if (Array.isArray(v)) return v.map(applyVars);
+    if (v && typeof v === "object") {
+      const o: Record<string, unknown> = {};
+      for (const key of Object.keys(v as Record<string, unknown>)) {
+        o[key] = applyVars((v as Record<string, unknown>)[key]);
+      }
+      return o;
     }
+    return v;
+  }
 
-    if (tmpl.type === "image") {
-        const res = createImageResource({
-            name: appliedName,
-            folderId: tmpl.folderId ?? null,
-            userMetadata: tmpl.userMetadata,
-        });
-        const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.img`;
-        const filePath = path.join(RESOURCES_DIR(projectRoot), filename);
-        const sidecar = JSON.stringify(
-            {
-                id: res.id,
-                name: res.name,
-                type: res.type,
-                createdAt: res.createdAt,
-            },
-            null,
-            2,
-        );
+  const name = (opts?.name ?? tmpl.name) as string;
+  const appliedName = (applyVars(name) as string) ?? name;
 
-        if (opts?.dryRun) {
-            plannedWrites.push({ path: filePath, content: "" });
-            plannedWrites.push({
-                path: path.join(
-                    projectRoot,
-                    "meta",
-                    `resource-${res.id}.meta.json`,
-                ),
-                content: sidecar,
-            });
-            return { plannedWrites, resourcePreview: res };
-        }
+  await ensureDir(RESOURCES_DIR(projectRoot));
 
-        await fs.writeFile(filePath, "", "utf8");
-        await writeSidecar(projectRoot, res.id, JSON.parse(sidecar));
-        return res;
-    }
+  const plannedWrites: Array<{ path: string; content: string | null }> = [];
 
-    // audio
-    const res = createAudioResource({
-        name: appliedName,
-        folderId: tmpl.folderId ?? null,
-        userMetadata: tmpl.userMetadata,
+  if (tmpl.type === "text") {
+    const res = createTextResource({
+      name: appliedName,
+      folderId: tmpl.folderId ?? null,
+      plainText: (applyVars(tmpl.plainText ?? "") as string) ?? "",
+      userMetadata: tmpl.userMetadata,
     });
-    const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.aud`;
+    const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.txt`;
     const filePath = path.join(RESOURCES_DIR(projectRoot), filename);
+
+    const content = res.plainText ?? "";
     const sidecar = JSON.stringify(
-        {
-            id: res.id,
-            name: res.name,
-            type: res.type,
-            createdAt: res.createdAt,
-        },
-        null,
-        2,
+      { id: res.id, name: res.name, type: res.type, createdAt: res.createdAt },
+      null,
+      2,
     );
 
     if (opts?.dryRun) {
-        plannedWrites.push({ path: filePath, content: "" });
-        plannedWrites.push({
-            path: path.join(
-                projectRoot,
-                "meta",
-                `resource-${res.id}.meta.json`,
-            ),
-            content: sidecar,
-        });
-        return { plannedWrites, resourcePreview: res };
+      plannedWrites.push({ path: filePath, content });
+      plannedWrites.push({
+        path: path.join(projectRoot, "meta", `resource-${res.id}.meta.json`),
+        content: sidecar,
+      });
+      return { plannedWrites, resourcePreview: res };
+    }
+
+    await fs.writeFile(filePath, content, "utf8");
+    await writeSidecar(projectRoot, res.id, JSON.parse(sidecar));
+    return res;
+  }
+
+  if (tmpl.type === "image") {
+    const res = createImageResource({
+      name: appliedName,
+      folderId: tmpl.folderId ?? null,
+      userMetadata: tmpl.userMetadata,
+    });
+    const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.img`;
+    const filePath = path.join(RESOURCES_DIR(projectRoot), filename);
+    const sidecar = JSON.stringify(
+      { id: res.id, name: res.name, type: res.type, createdAt: res.createdAt },
+      null,
+      2,
+    );
+
+    if (opts?.dryRun) {
+      plannedWrites.push({ path: filePath, content: "" });
+      plannedWrites.push({
+        path: path.join(projectRoot, "meta", `resource-${res.id}.meta.json`),
+        content: sidecar,
+      });
+      return { plannedWrites, resourcePreview: res };
     }
 
     await fs.writeFile(filePath, "", "utf8");
     await writeSidecar(projectRoot, res.id, JSON.parse(sidecar));
     return res;
+  }
+
+  // audio
+  const res = createAudioResource({
+    name: appliedName,
+    folderId: tmpl.folderId ?? null,
+    userMetadata: tmpl.userMetadata,
+  });
+  const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.aud`;
+  const filePath = path.join(RESOURCES_DIR(projectRoot), filename);
+  const sidecar = JSON.stringify(
+    { id: res.id, name: res.name, type: res.type, createdAt: res.createdAt },
+    null,
+    2,
+  );
+
+  if (opts?.dryRun) {
+    plannedWrites.push({ path: filePath, content: "" });
+    plannedWrites.push({
+      path: path.join(projectRoot, "meta", `resource-${res.id}.meta.json`),
+      content: sidecar,
+    });
+    return { plannedWrites, resourcePreview: res };
+  }
+
+  await fs.writeFile(filePath, "", "utf8");
+  await writeSidecar(projectRoot, res.id, JSON.parse(sidecar));
+  return res;
 }
 
 /**
@@ -419,80 +383,77 @@ export async function createResourceFromTemplate(
  * filesystem copy operations fail
  */
 export async function duplicateResource(
-    projectRoot: string,
-    resourceId: UUID,
+  projectRoot: string,
+  resourceId: UUID,
 ): Promise<{ newId: UUID }> {
-    // read sidecar to get metadata
-    const meta = await readSidecar(projectRoot, resourceId);
-    if (!meta) {
-        throw new Error(`resource metadata for ${resourceId} not found`);
-    }
+  // read sidecar to get metadata
+  const meta = await readSidecar(projectRoot, resourceId);
+  if (!meta) {
+    throw new Error(`resource metadata for ${resourceId} not found`);
+  }
 
-    // find resource file in resources dir
-    const resourcesDir = RESOURCES_DIR(projectRoot);
-    let foundName: string | null = null;
+  // find resource file in resources dir
+  const resourcesDir = RESOURCES_DIR(projectRoot);
+  let foundName: string | null = null;
+  try {
+    const entries = await fs.readdir(resourcesDir);
+    for (const e of entries) {
+      if (e.includes(resourceId)) {
+        foundName = e;
+        break;
+      }
+    }
+  } catch (err) {
+    // no resources dir
+  }
+
+  const newId = generateUUID();
+
+  // clone sidecar metadata, replacing id
+  const newMeta = { ...meta, id: newId } as Record<string, unknown>;
+  await writeSidecar(
+    projectRoot,
+    newId,
+    newMeta as Record<string, MetadataValue>,
+  );
+
+  if (foundName) {
+    const src = path.join(resourcesDir, foundName);
+    const ext = path.extname(foundName);
+    const base = foundName.replace(resourceId, newId);
+    const dest = path.join(resourcesDir, base);
     try {
-        const entries = await fs.readdir(resourcesDir);
-        for (const e of entries) {
-            if (e.includes(resourceId)) {
-                foundName = e;
-                break;
-            }
+      const st = await fs.stat(src);
+      if (st.isDirectory()) {
+        // Resource stored as a directory (newer layout); copy recursively
+        // `fs.cp` supports recursive copy on Node >=16.7
+        if (typeof (fs as any).cp === "function") {
+          await (fs as any).cp(src, dest, { recursive: true });
+        } else {
+          // Fallback: create dest dir and copy individual entries
+          await fs.mkdir(dest, { recursive: true });
+          const entries = await fs.readdir(src);
+          for (const e of entries) {
+            await fs.copyFile(path.join(src, e), path.join(dest, e));
+          }
         }
+      } else {
+        await fs.copyFile(src, dest);
+      }
     } catch (err) {
-        // no resources dir
+      // propagate error to caller for visibility in tests
+      throw err;
     }
+  }
 
-    const newId = generateUUID();
-
-    // clone sidecar metadata, replacing id
-    const newMeta = { ...meta, id: newId } as Record<string, unknown>;
-    await writeSidecar(
-        projectRoot,
-        newId,
-        newMeta as Record<string, MetadataValue>,
-    );
-
-    if (foundName) {
-        const src = path.join(resourcesDir, foundName);
-        const ext = path.extname(foundName);
-        const base = foundName.replace(resourceId, newId);
-        const dest = path.join(resourcesDir, base);
-        try {
-            const st = await fs.stat(src);
-            if (st.isDirectory()) {
-                // Resource stored as a directory (newer layout); copy recursively
-                // `fs.cp` supports recursive copy on Node >=16.7
-                if (typeof (fs as any).cp === "function") {
-                    await (fs as any).cp(src, dest, { recursive: true });
-                } else {
-                    // Fallback: create dest dir and copy individual entries
-                    await fs.mkdir(dest, { recursive: true });
-                    const entries = await fs.readdir(src);
-                    for (const e of entries) {
-                        await fs.copyFile(
-                            path.join(src, e),
-                            path.join(dest, e),
-                        );
-                    }
-                }
-            } else {
-                await fs.copyFile(src, dest);
-            }
-        } catch (err) {
-            // propagate error to caller for visibility in tests
-            throw err;
-        }
-    }
-
-    return { newId };
+  return { newId };
 }
 
 export default {
-    saveResourceTemplate,
-    loadResourceTemplate,
-    createResourceFromTemplate,
-    duplicateResource,
+  saveResourceTemplate,
+  loadResourceTemplate,
+  createResourceFromTemplate,
+  duplicateResource,
 };
 
 /**
@@ -504,16 +465,16 @@ export default {
  * @param outPath - output path for the generated zip file
  */
 export async function exportResourceTemplate(
-    projectRoot: string,
-    templateId: string,
-    outPath: string,
+  projectRoot: string,
+  templateId: string,
+  outPath: string,
 ): Promise<void> {
-    const tpl = await loadResourceTemplate(projectRoot, templateId);
-    const name = `${tpl.id}.json`;
-    const data = Buffer.from(JSON.stringify(tpl, null, 2), "utf8");
-    const zip = createZipBuffer([{ name, data }]);
-    await ensureDir(path.dirname(outPath));
-    await fs.writeFile(outPath, zip);
+  const tpl = await loadResourceTemplate(projectRoot, templateId);
+  const name = `${tpl.id}.json`;
+  const data = Buffer.from(JSON.stringify(tpl, null, 2), "utf8");
+  const zip = createZipBuffer([{ name, data }]);
+  await ensureDir(path.dirname(outPath));
+  await fs.writeFile(outPath, zip);
 }
 
 /**
@@ -526,27 +487,27 @@ export async function exportResourceTemplate(
  * @returns list of imported template ids
  */
 export async function importResourceTemplates(
-    projectRoot: string,
-    packPath: string,
+  projectRoot: string,
+  packPath: string,
 ): Promise<string[]> {
-    const buf = await fs.readFile(packPath);
-    const entries = parseZipBuffer(buf);
-    if (!entries || entries.length === 0) {
-        throw new Error("Invalid or empty template package");
-    }
-    const dir = TEMPLATES_DIR(projectRoot);
-    await ensureDir(dir);
-    const imported: string[] = [];
-    for (const e of entries) {
-        if (!e.name.endsWith(".json")) continue;
-        const tpl = JSON.parse(e.data.toString("utf8")) as ResourceTemplate;
-        const file = path.join(dir, `${tpl.id}.json`);
-        await withMetaLock(projectRoot, async () => {
-            await fs.writeFile(file, JSON.stringify(tpl, null, 2), "utf8");
-        });
-        imported.push(tpl.id);
-    }
-    return imported;
+  const buf = await fs.readFile(packPath);
+  const entries = parseZipBuffer(buf);
+  if (!entries || entries.length === 0) {
+    throw new Error("Invalid or empty template package");
+  }
+  const dir = TEMPLATES_DIR(projectRoot);
+  await ensureDir(dir);
+  const imported: string[] = [];
+  for (const e of entries) {
+    if (!e.name.endsWith(".json")) continue;
+    const tpl = JSON.parse(e.data.toString("utf8")) as ResourceTemplate;
+    const file = path.join(dir, `${tpl.id}.json`);
+    await withMetaLock(projectRoot, async () => {
+      await fs.writeFile(file, JSON.stringify(tpl, null, 2), "utf8");
+    });
+    imported.push(tpl.id);
+  }
+  return imported;
 }
 
 /**
@@ -557,11 +518,11 @@ export async function importResourceTemplates(
  * @returns validation result or list of schema errors
  */
 export async function validateResourceTemplate(
-    projectRoot: string,
-    templateId: string,
+  projectRoot: string,
+  templateId: string,
 ): Promise<TemplateValidationResult> {
-    const tpl = await loadResourceTemplate(projectRoot, templateId);
-    return validateTemplate(tpl);
+  const tpl = await loadResourceTemplate(projectRoot, templateId);
+  return validateTemplate(tpl);
 }
 
 /**
@@ -576,22 +537,22 @@ export async function validateResourceTemplate(
  * @returns array of resource ids created
  */
 export async function scaffoldResourcesFromTemplate(
-    projectRoot: string,
-    templateId: string,
-    count: number,
+  projectRoot: string,
+  templateId: string,
+  count: number,
 ): Promise<string[]> {
-    if (count <= 0) return [];
-    const tpl = await loadResourceTemplate(projectRoot, templateId);
-    const created: string[] = [];
-    for (let i = 0; i < count; i++) {
-        const name = `${tpl.name} ${i + 1}`;
-        const res = await createResourceFromTemplate(projectRoot, templateId, {
-            name,
-        });
-        const createdId = getCreatedResourceId(res);
-        if (createdId) created.push(createdId);
-    }
-    return created;
+  if (count <= 0) return [];
+  const tpl = await loadResourceTemplate(projectRoot, templateId);
+  const created: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const name = `${tpl.name} ${i + 1}`;
+    const res = await createResourceFromTemplate(projectRoot, templateId, {
+      name,
+    });
+    const createdId = getCreatedResourceId(res);
+    if (createdId) created.push(createdId);
+  }
+  return created;
 }
 
 /**
@@ -606,55 +567,53 @@ export async function scaffoldResourcesFromTemplate(
  * @returns created resource ids
  */
 export async function applyMultipleFromTemplate(
-    projectRoot: string,
-    templateId: string,
-    inputPath: string,
+  projectRoot: string,
+  templateId: string,
+  inputPath: string,
 ): Promise<string[]> {
-    const raw = await fs.readFile(inputPath, "utf8");
-    let entries: Array<Record<string, string>> = [];
-    try {
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) {
-            throw new Error("JSON input must be an array");
-        }
-
-        entries = parsed.map((entry) => {
-            if (!entry || typeof entry !== "object") {
-                throw new Error("JSON entries must be objects");
-            }
-
-            const vars: Record<string, string> = {};
-            for (const [key, value] of Object.entries(
-                entry as Record<string, unknown>,
-            )) {
-                vars[key] = String(value ?? "");
-            }
-            return vars;
-        });
-    } catch (err) {
-        // fallback to CSV
-        const lines = raw.split(/\r?\n/).filter((l) => l.trim());
-        if (lines.length < 2)
-            throw new Error("CSV input requires header and rows");
-        const headers = lines[0].split(",").map((h) => h.trim());
-        for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(",").map((c) => c.trim());
-            const obj: Record<string, string> = {};
-            for (let j = 0; j < headers.length; j++)
-                obj[headers[j]] = cols[j] ?? "";
-            entries.push(obj);
-        }
+  const raw = await fs.readFile(inputPath, "utf8");
+  let entries: Array<Record<string, string>> = [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      throw new Error("JSON input must be an array");
     }
 
-    const created: string[] = [];
-    for (const vars of entries) {
-        const res = await createResourceFromTemplate(projectRoot, templateId, {
-            vars,
-        });
-        const createdId = getCreatedResourceId(res);
-        if (createdId) created.push(createdId);
+    entries = parsed.map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        throw new Error("JSON entries must be objects");
+      }
+
+      const vars: Record<string, string> = {};
+      for (const [key, value] of Object.entries(
+        entry as Record<string, unknown>,
+      )) {
+        vars[key] = String(value ?? "");
+      }
+      return vars;
+    });
+  } catch (err) {
+    // fallback to CSV
+    const lines = raw.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) throw new Error("CSV input requires header and rows");
+    const headers = lines[0].split(",").map((h) => h.trim());
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",").map((c) => c.trim());
+      const obj: Record<string, string> = {};
+      for (let j = 0; j < headers.length; j++) obj[headers[j]] = cols[j] ?? "";
+      entries.push(obj);
     }
-    return created;
+  }
+
+  const created: string[] = [];
+  for (const vars of entries) {
+    const res = await createResourceFromTemplate(projectRoot, templateId, {
+      vars,
+    });
+    const createdId = getCreatedResourceId(res);
+    if (createdId) created.push(createdId);
+  }
+  return created;
 }
 
 /**
@@ -665,26 +624,26 @@ export async function applyMultipleFromTemplate(
  * @returns path to the created version file
  */
 export async function saveTemplateVersion(
-    projectRoot: string,
-    templateId: string,
+  projectRoot: string,
+  templateId: string,
 ): Promise<string> {
-    const dir = TEMPLATES_DIR(projectRoot);
-    const file = path.join(dir, `${templateId}.json`);
-    const raw = await fs.readFile(file, "utf8");
-    // find existing versions
-    const entries = await fs.readdir(dir);
-    const re = new RegExp(`^${templateId}\\.v(\\d+)\\.json$`);
-    let max = 0;
-    for (const e of entries) {
-        const m = e.match(re);
-        if (m) max = Math.max(max, parseInt(m[1], 10));
-    }
-    const next = max + 1;
-    const verFile = path.join(dir, `${templateId}.v${next}.json`);
-    await withMetaLock(projectRoot, async () => {
-        await fs.writeFile(verFile, raw, "utf8");
-    });
-    return verFile;
+  const dir = TEMPLATES_DIR(projectRoot);
+  const file = path.join(dir, `${templateId}.json`);
+  const raw = await fs.readFile(file, "utf8");
+  // find existing versions
+  const entries = await fs.readdir(dir);
+  const re = new RegExp(`^${templateId}\\.v(\\d+)\\.json$`);
+  let max = 0;
+  for (const e of entries) {
+    const m = e.match(re);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  const next = max + 1;
+  const verFile = path.join(dir, `${templateId}.v${next}.json`);
+  await withMetaLock(projectRoot, async () => {
+    await fs.writeFile(verFile, raw, "utf8");
+  });
+  return verFile;
 }
 
 /**
@@ -695,27 +654,23 @@ export async function saveTemplateVersion(
  * @returns array of version descriptors with absolute file paths
  */
 export async function listTemplateVersions(
-    projectRoot: string,
-    templateId: string,
+  projectRoot: string,
+  templateId: string,
 ): Promise<Array<{ file: string; version: number }>> {
-    const dir = TEMPLATES_DIR(projectRoot);
-    try {
-        const entries = await fs.readdir(dir);
-        const out: Array<{ file: string; version: number }> = [];
-        const re = new RegExp(`^${templateId}\\.v(\\d+)\\.json$`);
-        for (const e of entries) {
-            const m = e.match(re);
-            if (m)
-                out.push({
-                    file: path.join(dir, e),
-                    version: parseInt(m[1], 10),
-                });
-        }
-        out.sort((a, b) => a.version - b.version);
-        return out;
-    } catch (err) {
-        return [];
+  const dir = TEMPLATES_DIR(projectRoot);
+  try {
+    const entries = await fs.readdir(dir);
+    const out: Array<{ file: string; version: number }> = [];
+    const re = new RegExp(`^${templateId}\\.v(\\d+)\\.json$`);
+    for (const e of entries) {
+      const m = e.match(re);
+      if (m) out.push({ file: path.join(dir, e), version: parseInt(m[1], 10) });
     }
+    out.sort((a, b) => a.version - b.version);
+    return out;
+  } catch (err) {
+    return [];
+  }
 }
 
 /**
@@ -727,17 +682,17 @@ export async function listTemplateVersions(
  * @param version - numeric version to restore
  */
 export async function rollbackTemplateVersion(
-    projectRoot: string,
-    templateId: string,
-    version: number,
+  projectRoot: string,
+  templateId: string,
+  version: number,
 ): Promise<void> {
-    const dir = TEMPLATES_DIR(projectRoot);
-    const verFile = path.join(dir, `${templateId}.v${version}.json`);
-    const raw = await fs.readFile(verFile, "utf8");
-    const mainFile = path.join(dir, `${templateId}.json`);
-    await withMetaLock(projectRoot, async () => {
-        await fs.writeFile(mainFile, raw, "utf8");
-    });
+  const dir = TEMPLATES_DIR(projectRoot);
+  const verFile = path.join(dir, `${templateId}.v${version}.json`);
+  const raw = await fs.readFile(verFile, "utf8");
+  const mainFile = path.join(dir, `${templateId}.json`);
+  await withMetaLock(projectRoot, async () => {
+    await fs.writeFile(mainFile, raw, "utf8");
+  });
 }
 
 /**
@@ -751,30 +706,27 @@ export async function rollbackTemplateVersion(
  * @param next - next template object
  */
 export async function recordTemplateChange(
-    projectRoot: string,
-    templateId: string,
-    prev: ResourceTemplate | null,
-    next: ResourceTemplate,
+  projectRoot: string,
+  templateId: string,
+  prev: ResourceTemplate | null,
+  next: ResourceTemplate,
 ): Promise<void> {
-    const dir = TEMPLATES_DIR(projectRoot);
-    await ensureDir(dir);
-    const changesFile = path.join(dir, `${templateId}.changes.jsonl`);
-    const ts = new Date().toISOString();
-    const changedKeys: string[] = [];
-    if (!prev) changedKeys.push("created");
-    else {
-        const keys = new Set<string>([
-            ...Object.keys(prev),
-            ...Object.keys(next),
-        ]);
-        for (const k of keys) {
-            const pv = (prev as any)[k];
-            const nv = (next as any)[k];
-            if (JSON.stringify(pv) !== JSON.stringify(nv)) changedKeys.push(k);
-        }
+  const dir = TEMPLATES_DIR(projectRoot);
+  await ensureDir(dir);
+  const changesFile = path.join(dir, `${templateId}.changes.jsonl`);
+  const ts = new Date().toISOString();
+  const changedKeys: string[] = [];
+  if (!prev) changedKeys.push("created");
+  else {
+    const keys = new Set<string>([...Object.keys(prev), ...Object.keys(next)]);
+    for (const k of keys) {
+      const pv = (prev as any)[k];
+      const nv = (next as any)[k];
+      if (JSON.stringify(pv) !== JSON.stringify(nv)) changedKeys.push(k);
     }
-    const entry = { ts, action: prev ? "edit" : "create", keys: changedKeys };
-    await fs.appendFile(changesFile, JSON.stringify(entry) + "\n", "utf8");
+  }
+  const entry = { ts, action: prev ? "edit" : "create", keys: changedKeys };
+  await fs.appendFile(changesFile, JSON.stringify(entry) + "\n", "utf8");
 }
 
 /**
@@ -787,210 +739,207 @@ export async function recordTemplateChange(
  * @returns list of change log entries
  */
 export async function getTemplateChanges(
-    projectRoot: string,
-    templateId: string,
-    since?: Date,
+  projectRoot: string,
+  templateId: string,
+  since?: Date,
 ): Promise<Array<{ ts: string; action: string; keys: string[] }>> {
-    const dir = TEMPLATES_DIR(projectRoot);
-    const changesFile = path.join(dir, `${templateId}.changes.jsonl`);
-    try {
-        const raw = await fs.readFile(changesFile, "utf8");
-        const lines = raw.split(/\r?\n/).filter((l) => l.trim());
-        const out: Array<{ ts: string; action: string; keys: string[] }> = [];
-        for (const l of lines) {
-            try {
-                const p = JSON.parse(l);
-                if (!since || new Date(p.ts) >= since) out.push(p);
-            } catch (_) {
-                // skip invalid line
-            }
-        }
-        return out;
-    } catch (err) {
-        return [];
+  const dir = TEMPLATES_DIR(projectRoot);
+  const changesFile = path.join(dir, `${templateId}.changes.jsonl`);
+  try {
+    const raw = await fs.readFile(changesFile, "utf8");
+    const lines = raw.split(/\r?\n/).filter((l) => l.trim());
+    const out: Array<{ ts: string; action: string; keys: string[] }> = [];
+    for (const l of lines) {
+      try {
+        const p = JSON.parse(l);
+        if (!since || new Date(p.ts) >= since) out.push(p);
+      } catch (_) {
+        // skip invalid line
+      }
     }
+    return out;
+  } catch (err) {
+    return [];
+  }
 }
 
 // --- Minimal ZIP writer/reader for single/multiple file packages ---
 
 function crc32(buf: Buffer): number {
-    const table = CRC32_TABLE;
-    let crc = 0xffffffff;
-    for (let i = 0; i < buf.length; i++)
-        crc = (crc >>> 8) ^ table[(crc ^ buf[i]) & 0xff];
-    return (crc ^ 0xffffffff) >>> 0;
+  const table = CRC32_TABLE;
+  let crc = 0xffffffff;
+  for (let i = 0; i < buf.length; i++)
+    crc = (crc >>> 8) ^ table[(crc ^ buf[i]) & 0xff];
+  return (crc ^ 0xffffffff) >>> 0;
 }
 
 function createZipBuffer(
-    entries: Array<{ name: string; data: Buffer }>,
+  entries: Array<{ name: string; data: Buffer }>,
 ): Buffer {
-    const localParts: Buffer[] = [];
-    const centralParts: Buffer[] = [];
-    let offset = 0;
+  const localParts: Buffer[] = [];
+  const centralParts: Buffer[] = [];
+  let offset = 0;
 
-    for (const e of entries) {
-        const nameBuf = Buffer.from(e.name, "utf8");
-        const crc = crc32(e.data);
-        const compSize = e.data.length;
-        const uncompSize = e.data.length;
+  for (const e of entries) {
+    const nameBuf = Buffer.from(e.name, "utf8");
+    const crc = crc32(e.data);
+    const compSize = e.data.length;
+    const uncompSize = e.data.length;
 
-        const localHeader = Buffer.alloc(30);
-        // local file header signature
-        localHeader.writeUInt32LE(0x04034b50, 0);
-        // version needed
-        localHeader.writeUInt16LE(20, 4);
-        // flags
-        localHeader.writeUInt16LE(0, 6);
-        // compression (0 = none)
-        localHeader.writeUInt16LE(0, 8);
-        // mod time/date
-        localHeader.writeUInt16LE(0, 10);
-        localHeader.writeUInt16LE(0, 12);
-        // crc32
-        localHeader.writeUInt32LE(crc, 14);
-        // comp size
-        localHeader.writeUInt32LE(compSize, 18);
-        // uncomp size
-        localHeader.writeUInt32LE(uncompSize, 22);
-        // filename len
-        localHeader.writeUInt16LE(nameBuf.length, 26);
-        // extra len
-        localHeader.writeUInt16LE(0, 28);
+    const localHeader = Buffer.alloc(30);
+    // local file header signature
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    // version needed
+    localHeader.writeUInt16LE(20, 4);
+    // flags
+    localHeader.writeUInt16LE(0, 6);
+    // compression (0 = none)
+    localHeader.writeUInt16LE(0, 8);
+    // mod time/date
+    localHeader.writeUInt16LE(0, 10);
+    localHeader.writeUInt16LE(0, 12);
+    // crc32
+    localHeader.writeUInt32LE(crc, 14);
+    // comp size
+    localHeader.writeUInt32LE(compSize, 18);
+    // uncomp size
+    localHeader.writeUInt32LE(uncompSize, 22);
+    // filename len
+    localHeader.writeUInt16LE(nameBuf.length, 26);
+    // extra len
+    localHeader.writeUInt16LE(0, 28);
 
-        localParts.push(localHeader, nameBuf, e.data);
+    localParts.push(localHeader, nameBuf, e.data);
 
-        const centralHeader = Buffer.alloc(46);
-        centralHeader.writeUInt32LE(0x02014b50, 0);
-        centralHeader.writeUInt16LE(0, 4); // version made by
-        centralHeader.writeUInt16LE(20, 6); // version needed
-        centralHeader.writeUInt16LE(0, 8); // flags
-        centralHeader.writeUInt16LE(0, 10); // compression
-        centralHeader.writeUInt16LE(0, 12); // mod time
-        centralHeader.writeUInt16LE(0, 14); // mod date
-        centralHeader.writeUInt32LE(crc, 16);
-        centralHeader.writeUInt32LE(compSize, 20);
-        centralHeader.writeUInt32LE(uncompSize, 24);
-        centralHeader.writeUInt16LE(nameBuf.length, 28);
-        centralHeader.writeUInt16LE(0, 30); // extra
-        centralHeader.writeUInt16LE(0, 32); // comment
-        centralHeader.writeUInt16LE(0, 34); // disk start
-        centralHeader.writeUInt16LE(0, 36); // internal attrs
-        centralHeader.writeUInt32LE(0, 38); // external attrs
-        centralHeader.writeUInt32LE(offset, 42); // relative offset
+    const centralHeader = Buffer.alloc(46);
+    centralHeader.writeUInt32LE(0x02014b50, 0);
+    centralHeader.writeUInt16LE(0, 4); // version made by
+    centralHeader.writeUInt16LE(20, 6); // version needed
+    centralHeader.writeUInt16LE(0, 8); // flags
+    centralHeader.writeUInt16LE(0, 10); // compression
+    centralHeader.writeUInt16LE(0, 12); // mod time
+    centralHeader.writeUInt16LE(0, 14); // mod date
+    centralHeader.writeUInt32LE(crc, 16);
+    centralHeader.writeUInt32LE(compSize, 20);
+    centralHeader.writeUInt32LE(uncompSize, 24);
+    centralHeader.writeUInt16LE(nameBuf.length, 28);
+    centralHeader.writeUInt16LE(0, 30); // extra
+    centralHeader.writeUInt16LE(0, 32); // comment
+    centralHeader.writeUInt16LE(0, 34); // disk start
+    centralHeader.writeUInt16LE(0, 36); // internal attrs
+    centralHeader.writeUInt32LE(0, 38); // external attrs
+    centralHeader.writeUInt32LE(offset, 42); // relative offset
 
-        centralParts.push(centralHeader, nameBuf);
+    centralParts.push(centralHeader, nameBuf);
 
-        offset += localHeader.length + nameBuf.length + e.data.length;
-    }
+    offset += localHeader.length + nameBuf.length + e.data.length;
+  }
 
-    const centralDir = Buffer.concat(centralParts);
-    const local = Buffer.concat(localParts);
+  const centralDir = Buffer.concat(centralParts);
+  const local = Buffer.concat(localParts);
 
-    const eocdr = Buffer.alloc(22);
-    eocdr.writeUInt32LE(0x06054b50, 0);
-    eocdr.writeUInt16LE(0, 4); // disk
-    eocdr.writeUInt16LE(0, 6); // start disk
-    eocdr.writeUInt16LE(entries.length, 8); // entries this disk
-    eocdr.writeUInt16LE(entries.length, 10); // total entries
-    eocdr.writeUInt32LE(centralDir.length, 12); // size of central
-    eocdr.writeUInt32LE(local.length, 16); // offset of start of central
-    eocdr.writeUInt16LE(0, 20); // comment len
+  const eocdr = Buffer.alloc(22);
+  eocdr.writeUInt32LE(0x06054b50, 0);
+  eocdr.writeUInt16LE(0, 4); // disk
+  eocdr.writeUInt16LE(0, 6); // start disk
+  eocdr.writeUInt16LE(entries.length, 8); // entries this disk
+  eocdr.writeUInt16LE(entries.length, 10); // total entries
+  eocdr.writeUInt32LE(centralDir.length, 12); // size of central
+  eocdr.writeUInt32LE(local.length, 16); // offset of start of central
+  eocdr.writeUInt16LE(0, 20); // comment len
 
-    return Buffer.concat([local, centralDir, eocdr]);
+  return Buffer.concat([local, centralDir, eocdr]);
 }
 
 function parseZipBuffer(buf: Buffer): Array<{ name: string; data: Buffer }> {
-    const out: Array<{ name: string; data: Buffer }> = [];
-    let offset = 0;
-    while (offset + 30 <= buf.length) {
-        const sig = buf.readUInt32LE(offset);
-        if (sig !== 0x04034b50) break;
-        const nameLen = buf.readUInt16LE(offset + 26);
-        const extraLen = buf.readUInt16LE(offset + 28);
-        const crc = buf.readUInt32LE(offset + 14);
-        const compSize = buf.readUInt32LE(offset + 18);
-        const uncompSize = buf.readUInt32LE(offset + 22);
-        const nameStart = offset + 30;
-        const name = buf.slice(nameStart, nameStart + nameLen).toString("utf8");
-        const dataStart = nameStart + nameLen + extraLen;
-        const data = buf.slice(dataStart, dataStart + compSize);
-        out.push({ name, data });
-        offset = dataStart + compSize;
-    }
-    return out;
+  const out: Array<{ name: string; data: Buffer }> = [];
+  let offset = 0;
+  while (offset + 30 <= buf.length) {
+    const sig = buf.readUInt32LE(offset);
+    if (sig !== 0x04034b50) break;
+    const nameLen = buf.readUInt16LE(offset + 26);
+    const extraLen = buf.readUInt16LE(offset + 28);
+    const crc = buf.readUInt32LE(offset + 14);
+    const compSize = buf.readUInt32LE(offset + 18);
+    const uncompSize = buf.readUInt32LE(offset + 22);
+    const nameStart = offset + 30;
+    const name = buf.slice(nameStart, nameStart + nameLen).toString("utf8");
+    const dataStart = nameStart + nameLen + extraLen;
+    const data = buf.slice(dataStart, dataStart + compSize);
+    out.push({ name, data });
+    offset = dataStart + compSize;
+  }
+  return out;
 }
 
 // CRC table (generated once)
 const CRC32_TABLE = (() => {
-    const t = new Uint32Array(256);
-    for (let i = 0; i < 256; i++) {
-        let r = i;
-        for (let j = 0; j < 8; j++)
-            r = r & 1 ? 0xedb88320 ^ (r >>> 1) : r >>> 1;
-        t[i] = r >>> 0;
-    }
-    return Array.from(t);
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let r = i;
+    for (let j = 0; j < 8; j++) r = r & 1 ? 0xedb88320 ^ (r >>> 1) : r >>> 1;
+    t[i] = r >>> 0;
+  }
+  return Array.from(t);
 })();
 /**
  * Create and persist a resource template based on an existing resource in the project.
  * Captures sidecar metadata and (for text resources) the file contents as `plainText`.
  */
 export async function saveResourceTemplateFromResource(
-    projectRoot: string,
-    resourceId: UUID,
-    templateId: string,
-    opts?: { name?: string },
+  projectRoot: string,
+  resourceId: UUID,
+  templateId: string,
+  opts?: { name?: string },
 ): Promise<void> {
-    const meta = await readSidecar(projectRoot, resourceId);
-    if (!meta) {
-        throw new Error(
-            `sidecar metadata for resource ${resourceId} not found`,
-        );
-    }
+  const meta = await readSidecar(projectRoot, resourceId);
+  if (!meta) {
+    throw new Error(`sidecar metadata for resource ${resourceId} not found`);
+  }
 
-    // determine type (prefer sidecar.type)
-    const type = (meta.type as ResourceType) ?? "text";
+  // determine type (prefer sidecar.type)
+  const type = (meta.type as ResourceType) ?? "text";
 
-    // locate the resource file if present
-    let plainText: string | undefined = undefined;
-    try {
-        const entries = await fs.readdir(RESOURCES_DIR(projectRoot));
-        for (const e of entries) {
-            if (e.includes(resourceId)) {
-                const p = path.join(RESOURCES_DIR(projectRoot), e);
-                if (type === "text") {
-                    try {
-                        plainText = await fs.readFile(p, "utf8");
-                    } catch (_) {
-                        plainText = undefined;
-                    }
-                }
-                break;
-            }
+  // locate the resource file if present
+  let plainText: string | undefined = undefined;
+  try {
+    const entries = await fs.readdir(RESOURCES_DIR(projectRoot));
+    for (const e of entries) {
+      if (e.includes(resourceId)) {
+        const p = path.join(RESOURCES_DIR(projectRoot), e);
+        if (type === "text") {
+          try {
+            plainText = await fs.readFile(p, "utf8");
+          } catch (_) {
+            plainText = undefined;
+          }
         }
-    } catch (_) {
-        // ignore missing resources dir
+        break;
+      }
     }
+  } catch (_) {
+    // ignore missing resources dir
+  }
 
-    // Compose template; copy metadata but avoid embedding volatile fields like id/createdAt
-    const {
-        id: _id,
-        createdAt: _created,
-        ...restMeta
-    } = meta as Record<string, unknown>;
+  // Compose template; copy metadata but avoid embedding volatile fields like id/createdAt
+  const {
+    id: _id,
+    createdAt: _created,
+    ...restMeta
+  } = meta as Record<string, unknown>;
 
-    const tpl: ResourceTemplate = {
-        id: templateId,
-        name: opts?.name ?? (meta.name as string) ?? templateId,
-        type,
-        folderId: (meta.folderId as UUID) ?? null,
-        userMetadata: Object.keys(restMeta).length
-            ? (restMeta as Record<string, MetadataValue>)
-            : undefined,
-        plainText: plainText,
-    };
+  const tpl: ResourceTemplate = {
+    id: templateId,
+    name: opts?.name ?? (meta.name as string) ?? templateId,
+    type,
+    folderId: (meta.folderId as UUID) ?? null,
+    userMetadata: Object.keys(restMeta).length
+      ? (restMeta as Record<string, MetadataValue>)
+      : undefined,
+    plainText: plainText,
+  };
 
-    await saveResourceTemplate(projectRoot, tpl);
+  await saveResourceTemplate(projectRoot, tpl);
 }
 
 /**
@@ -999,65 +948,65 @@ export async function saveResourceTemplateFromResource(
  * Returns the list of variable names introduced (extracted from the placeholder).
  */
 export async function parametrizeResourceTemplate(
-    projectRoot: string,
-    templateId: string,
-    placeholder: string,
+  projectRoot: string,
+  templateId: string,
+  placeholder: string,
 ): Promise<string[]> {
-    const tpl = await loadResourceTemplate(projectRoot, templateId);
-    if (!tpl) throw new Error(`template ${templateId} not found`);
+  const tpl = await loadResourceTemplate(projectRoot, templateId);
+  if (!tpl) throw new Error(`template ${templateId} not found`);
 
-    const m = String(placeholder).match(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/);
-    if (!m) throw new Error("Invalid placeholder format. Use {{NAME}}");
-    const varName = m[1];
+  const m = String(placeholder).match(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/);
+  if (!m) throw new Error("Invalid placeholder format. Use {{NAME}}");
+  const varName = m[1];
 
-    // Replace occurrences of the template name in strings recursively
-    function replaceStrings(v: unknown): unknown {
-        if (typeof v === "string") {
-            return v.split(tpl.name).join(placeholder);
-        }
-        if (Array.isArray(v)) return v.map(replaceStrings);
-        if (v && typeof v === "object") {
-            const out: Record<string, unknown> = {};
-            for (const k of Object.keys(v as Record<string, unknown>)) {
-                out[k] = replaceStrings((v as Record<string, unknown>)[k]);
-            }
-            return out;
-        }
-        return v;
+  // Replace occurrences of the template name in strings recursively
+  function replaceStrings(v: unknown): unknown {
+    if (typeof v === "string") {
+      return v.split(tpl.name).join(placeholder);
     }
+    if (Array.isArray(v)) return v.map(replaceStrings);
+    if (v && typeof v === "object") {
+      const out: Record<string, unknown> = {};
+      for (const k of Object.keys(v as Record<string, unknown>)) {
+        out[k] = replaceStrings((v as Record<string, unknown>)[k]);
+      }
+      return out;
+    }
+    return v;
+  }
 
-    const newTpl: ResourceTemplate = {
-        ...tpl,
-        name: replaceStrings(tpl.name) as string,
-        plainText: tpl.plainText
-            ? (replaceStrings(tpl.plainText) as string)
-            : tpl.plainText,
-        userMetadata: tpl.userMetadata
-            ? (replaceStrings(tpl.userMetadata) as Record<string, MetadataValue>)
-            : tpl.userMetadata,
-    };
+  const newTpl: ResourceTemplate = {
+    ...tpl,
+    name: replaceStrings(tpl.name) as string,
+    plainText: tpl.plainText
+      ? (replaceStrings(tpl.plainText) as string)
+      : tpl.plainText,
+    userMetadata: tpl.userMetadata
+      ? (replaceStrings(tpl.userMetadata) as Record<string, MetadataValue>)
+      : tpl.userMetadata,
+  };
 
-    await saveResourceTemplate(projectRoot, newTpl);
-    return [varName];
+  await saveResourceTemplate(projectRoot, newTpl);
+  return [varName];
 }
 
 /** Render a template with provided vars to stdout or an output file. */
 export async function previewResourceTemplate(
-    projectRoot: string,
-    templateId: string,
-    opts?: { vars?: Record<string, string> | string; outPath?: string },
+  projectRoot: string,
+  templateId: string,
+  opts?: { vars?: Record<string, string> | string; outPath?: string },
 ): Promise<string> {
-    // reuse createResourceFromTemplate in dry-run mode to get a resource preview
-    const res = await createResourceFromTemplate(projectRoot, templateId, {
-        vars: opts?.vars as any,
-        dryRun: true,
-    });
-    const preview = (res as any).resourcePreview;
-    const plain = preview && preview.plainText ? preview.plainText : "";
-    if (opts?.outPath) {
-        await ensureDir(path.dirname(opts.outPath));
-        await fs.writeFile(opts.outPath, plain, "utf8");
-        return opts.outPath;
-    }
-    return plain;
+  // reuse createResourceFromTemplate in dry-run mode to get a resource preview
+  const res = await createResourceFromTemplate(projectRoot, templateId, {
+    vars: opts?.vars as any,
+    dryRun: true,
+  });
+  const preview = (res as any).resourcePreview;
+  const plain = preview && preview.plainText ? preview.plainText : "";
+  if (opts?.outPath) {
+    await ensureDir(path.dirname(opts.outPath));
+    await fs.writeFile(opts.outPath, plain, "utf8");
+    return opts.outPath;
+  }
+  return plain;
 }

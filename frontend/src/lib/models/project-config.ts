@@ -41,20 +41,20 @@ export const PROJECT_FILENAME = "project.json";
  * console.log(project.name, project.config?.maxRevisions);
  */
 export async function loadProject(
-    projectRoot: string,
+  projectRoot: string,
 ): Promise<Infer<typeof ProjectSchema>> {
-    const p = path.join(projectRoot, PROJECT_FILENAME);
-    const raw = await fs.readFile(p, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
+  const p = path.join(projectRoot, PROJECT_FILENAME);
+  const raw = await fs.readFile(p, "utf8");
+  const parsed = JSON.parse(raw) as unknown;
 
-    // Validate the overall project shape first.
-    const project = ProjectSchema.parse(parsed);
+  // Validate the overall project shape first.
+  const project = ProjectSchema.parse(parsed);
 
-    // Ensure config has sensible defaults applied.
-    const normalizedConfig = normalizeProjectConfig(
-        project.config as ProjectConfig | undefined,
-    );
-    return { ...project, config: normalizedConfig };
+  // Ensure config has sensible defaults applied.
+  const normalizedConfig = normalizeProjectConfig(
+    project.config as ProjectConfig | undefined,
+  );
+  return { ...project, config: normalizedConfig };
 }
 
 /**
@@ -77,16 +77,16 @@ export async function loadProject(
  * }
  */
 export async function loadProjectConfig(
-    projectRoot: string,
+  projectRoot: string,
 ): Promise<ProjectConfig> {
-    const p = path.join(projectRoot, PROJECT_FILENAME);
-    const raw = await fs.readFile(p, "utf8");
-    const parsed = JSON.parse(raw) as { config?: unknown } | undefined;
+  const p = path.join(projectRoot, PROJECT_FILENAME);
+  const raw = await fs.readFile(p, "utf8");
+  const parsed = JSON.parse(raw) as { config?: unknown } | undefined;
 
-    const cfg = parsed?.config ?? {};
-    // Validate config shape (will throw on invalid types)
-    ProjectConfigSchema.parse(cfg);
-    return normalizeProjectConfig(cfg as ProjectConfig);
+  const cfg = parsed?.config ?? {};
+  // Validate config shape (will throw on invalid types)
+  ProjectConfigSchema.parse(cfg);
+  return normalizeProjectConfig(cfg as ProjectConfig);
 }
 
 /**

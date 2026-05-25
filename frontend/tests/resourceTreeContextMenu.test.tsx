@@ -12,67 +12,63 @@ import { createTextResource } from "../src/lib/models/resource";
 import { createProject } from "../src/lib/models/project";
 
 describe("ResourceTree context menu", () => {
-    it("forwards context menu actions to onResourceAction", async () => {
-        const now = new Date().toISOString();
-        const project = createProject({ name: "proj_1" });
+  it("forwards context menu actions to onResourceAction", async () => {
+    const now = new Date().toISOString();
+    const project = createProject({ name: "proj_1" });
 
-        const rootId = generateUUID();
-        const root: AnyResource = {
-            id: rootId,
-            slug: "root",
-            name: "Root",
-            type: "folder",
-            folderId: null,
-            createdAt: now,
-            updatedAt: now,
-            userMetadata: {},
-        } as any;
+    const rootId = generateUUID();
+    const root: AnyResource = {
+      id: rootId,
+      slug: "root",
+      name: "Root",
+      type: "folder",
+      folderId: null,
+      createdAt: now,
+      updatedAt: now,
+      userMetadata: {},
+    } as any;
 
-        const scene = createTextResource({
-            name: "Scene A",
-            folderId: rootId,
-            plainText: "Hello",
-        });
-
-        const resources: AnyResource[] = [root, scene];
-
-        const onResourceAction = vi.fn();
-        const testStore = makeStore();
-        testStore.dispatch(
-            setProject({
-                id: project.id,
-                name: project.name,
-                resources,
-            } as any),
-        );
-        testStore.dispatch(setSelectedProjectId(project.id));
-        testStore.dispatch(setFolders([root as any]));
-        testStore.dispatch(setResources([scene as any]));
-
-        render(
-            <Provider store={testStore}>
-                <ResourceTree onResourceAction={onResourceAction} />
-            </Provider>,
-        );
-
-        // Expand the root so child nodes are rendered, then right-click the resource title to open the context menu
-        const rootNode = screen.getByText("Root");
-        const rootBtn = rootNode.closest("button");
-        expect(rootBtn).toBeTruthy();
-        fireEvent.click(rootBtn as HTMLElement);
-
-        // Right-click the resource title to open the context menu
-        fireEvent.contextMenu(screen.getByText("Scene A"));
-
-        // Menu should appear
-        const menu = await screen.findByRole("menu");
-        expect(menu).toBeInTheDocument();
-
-        // Click the Copy action
-        const copyBtn = screen.getByText("Copy");
-        fireEvent.click(copyBtn);
-
-        expect(onResourceAction).toHaveBeenCalledTimes(1);
-        expect(onResourceAction).toHaveBeenCalledWith("copy", scene.id, "Scene A");
+    const scene = createTextResource({
+      name: "Scene A",
+      folderId: rootId,
+      plainText: "Hello",
     });
+
+    const resources: AnyResource[] = [root, scene];
+
+    const onResourceAction = vi.fn();
+    const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: project.id, name: project.name, resources } as any),
+    );
+    testStore.dispatch(setSelectedProjectId(project.id));
+    testStore.dispatch(setFolders([root as any]));
+    testStore.dispatch(setResources([scene as any]));
+
+    render(
+      <Provider store={testStore}>
+        <ResourceTree onResourceAction={onResourceAction} />
+      </Provider>,
+    );
+
+    // Expand the root so child nodes are rendered, then right-click the resource title to open the context menu
+    const rootNode = screen.getByText("Root");
+    const rootBtn = rootNode.closest("button");
+    expect(rootBtn).toBeTruthy();
+    fireEvent.click(rootBtn as HTMLElement);
+
+    // Right-click the resource title to open the context menu
+    fireEvent.contextMenu(screen.getByText("Scene A"));
+
+    // Menu should appear
+    const menu = await screen.findByRole("menu");
+    expect(menu).toBeInTheDocument();
+
+    // Click the Copy action
+    const copyBtn = screen.getByText("Copy");
+    fireEvent.click(copyBtn);
+
+    expect(onResourceAction).toHaveBeenCalledTimes(1);
+    expect(onResourceAction).toHaveBeenCalledWith("copy", scene.id, "Scene A");
+  });
 });

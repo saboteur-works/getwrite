@@ -4,11 +4,11 @@ import type { MetadataSchema, MetadataField, MetadataGroup } from "./types";
 
 /** A field together with its containing group metadata. */
 export interface FieldMatch {
-    field: MetadataField;
-    /** ID of the group that contains this field. */
-    groupId: string;
-    /** Display label of the containing group. */
-    groupLabel: string;
+  field: MetadataField;
+  /** ID of the group that contains this field. */
+  groupId: string;
+  /** Display label of the containing group. */
+  groupLabel: string;
 }
 
 // ─── deriveLabel ─────────────────────────────────────────────────────────────
@@ -21,9 +21,7 @@ export interface FieldMatch {
  * "POV"         → "POV" (all-caps preserved)
  */
 export function deriveLabel(name: string): string {
-    return name
-        .trim()
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+  return name.trim().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // ─── slugifyName ──────────────────────────────────────────────────────────────
@@ -39,22 +37,22 @@ export function deriveLabel(name: string): string {
  * Returns an empty string if the input produces no valid characters.
  */
 export function slugifyName(name: string): string {
-    return name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 function allMatches(schema: MetadataSchema): FieldMatch[] {
-    return schema.groups.flatMap((group: MetadataGroup) =>
-        group.fields.map((field: MetadataField) => ({
-            field,
-            groupId: group.id,
-            groupLabel: group.label,
-        })),
-    );
+  return schema.groups.flatMap((group: MetadataGroup) =>
+    group.fields.map((field: MetadataField) => ({
+      field,
+      groupId: group.id,
+      groupLabel: group.label,
+    })),
+  );
 }
 
 // ─── findExisting ─────────────────────────────────────────────────────────────
@@ -70,38 +68,38 @@ function allMatches(schema: MetadataSchema): FieldMatch[] {
  * Searches across all groups, including locked builtin fields.
  */
 export function findExisting(
-    name: string,
-    schema: MetadataSchema,
+  name: string,
+  schema: MetadataSchema,
 ): FieldMatch | null {
-    const slug = slugifyName(name);
-    if (!slug) return null;
-    return allMatches(schema).find((m) => m.field.key === slug) ?? null;
+  const slug = slugifyName(name);
+  if (!slug) return null;
+  return allMatches(schema).find((m) => m.field.key === slug) ?? null;
 }
 
 // ─── fuzzyMatch ───────────────────────────────────────────────────────────────
 
 function levenshtein(a: string, b: string): number {
-    const m = a.length;
-    const n = b.length;
-    const prev = Array.from({ length: n + 1 }, (_, j) => j);
-    const curr = new Array<number>(n + 1);
-    for (let i = 1; i <= m; i++) {
-        curr[0] = i;
-        for (let j = 1; j <= n; j++) {
-            curr[j] =
-                a[i - 1] === b[j - 1]
-                    ? prev[j - 1]
-                    : 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
-        }
-        prev.splice(0, n + 1, ...curr);
+  const m = a.length;
+  const n = b.length;
+  const prev = Array.from({ length: n + 1 }, (_, j) => j);
+  const curr = new Array<number>(n + 1);
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      curr[j] =
+        a[i - 1] === b[j - 1]
+          ? prev[j - 1]
+          : 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
     }
-    return prev[n];
+    prev.splice(0, n + 1, ...curr);
+  }
+  return prev[n];
 }
 
 function fuzzyThreshold(slugLen: number): number {
-    if (slugLen <= 3) return 0;
-    if (slugLen <= 5) return 1;
-    return 2;
+  if (slugLen <= 3) return 0;
+  if (slugLen <= 5) return 1;
+  return 2;
 }
 
 /**
@@ -120,26 +118,26 @@ function fuzzyThreshold(slugLen: number): number {
  * - 6+ chars: edit distance ≤ 2
  */
 export function fuzzyMatch(
-    name: string,
-    schema: MetadataSchema,
+  name: string,
+  schema: MetadataSchema,
 ): FieldMatch | null {
-    const slug = slugifyName(name);
-    if (!slug) return null;
-    if (findExisting(name, schema)) return null;
+  const slug = slugifyName(name);
+  if (!slug) return null;
+  if (findExisting(name, schema)) return null;
 
-    const threshold = fuzzyThreshold(slug.length);
-    if (threshold === 0) return null;
+  const threshold = fuzzyThreshold(slug.length);
+  if (threshold === 0) return null;
 
-    let best: FieldMatch | null = null;
-    let bestDist = threshold + 1;
+  let best: FieldMatch | null = null;
+  let bestDist = threshold + 1;
 
-    for (const match of allMatches(schema)) {
-        const dist = levenshtein(slug, match.field.key);
-        if (dist > 0 && dist <= threshold && dist < bestDist) {
-            bestDist = dist;
-            best = match;
-        }
+  for (const match of allMatches(schema)) {
+    const dist = levenshtein(slug, match.field.key);
+    if (dist > 0 && dist <= threshold && dist < bestDist) {
+      bestDist = dist;
+      best = match;
     }
+  }
 
-    return best;
+  return best;
 }

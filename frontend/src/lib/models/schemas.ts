@@ -11,8 +11,38 @@
  */
 import { z } from "zod";
 import { QueryASTSchema } from "./query-ast";
-export type { QueryAST, LeafNode, CombinatorNode, SpliceNode, ComparisonNode, ComparisonOp, InNode, ExistsNode, TextNode, TextOp, LinksToNode, LinkedFromNode, AndNode, OrNode, NotNode, RefNode, ParamNode } from "./query-ast";
-export { QueryASTSchema, ComparisonNodeSchema, InNodeSchema, ExistsNodeSchema, TextNodeSchema, LinksToNodeSchema, LinkedFromNodeSchema, RefNodeSchema, ParamNodeSchema, ComparisonOpSchema, TextOpSchema } from "./query-ast";
+export type {
+  QueryAST,
+  LeafNode,
+  CombinatorNode,
+  SpliceNode,
+  ComparisonNode,
+  ComparisonOp,
+  InNode,
+  ExistsNode,
+  TextNode,
+  TextOp,
+  LinksToNode,
+  LinkedFromNode,
+  AndNode,
+  OrNode,
+  NotNode,
+  RefNode,
+  ParamNode,
+} from "./query-ast";
+export {
+  QueryASTSchema,
+  ComparisonNodeSchema,
+  InNodeSchema,
+  ExistsNodeSchema,
+  TextNodeSchema,
+  LinksToNodeSchema,
+  LinkedFromNodeSchema,
+  RefNodeSchema,
+  ParamNodeSchema,
+  ComparisonOpSchema,
+  TextOpSchema,
+} from "./query-ast";
 
 /**
  * Canonical UUID v4 string validator used across model schemas.
@@ -28,9 +58,11 @@ export const UUID = z.string().uuid();
  * This is intentionally permissive and validates parseability rather than a
  * strict RFC format.
  */
-const IsoDateString = z.string().refine((s) => !isNaN(Date.parse(s)), {
+const IsoDateString = z
+  .string()
+  .refine((s) => !isNaN(Date.parse(s)), {
     message: "Expected ISO 8601 date string",
-});
+  });
 
 /**
  * Resource reference value shape used for `resource-ref` metadata fields.
@@ -38,8 +70,8 @@ const IsoDateString = z.string().refine((s) => !isNaN(Date.parse(s)), {
  * display name so the UI can render without a secondary lookup.
  */
 export const ResourceRefValueSchema = z.object({
-    id: z.string().nullable(),
-    name: z.string(),
+  id: z.string().nullable(),
+  name: z.string(),
 });
 
 /**
@@ -49,61 +81,61 @@ export const ResourceRefValueSchema = z.object({
  * and nested objects.
  */
 export const MetadataValue: z.ZodTypeAny = z.lazy(() =>
-    z.union([
-        z.string(),
-        z.number(),
-        z.boolean(),
-        z.null(),
-        z.array(z.string()),
-        z.array(z.number()),
-        z.array(z.boolean()),
-        z.array(ResourceRefValueSchema),
-        ResourceRefValueSchema,
-        z.record(z.string(), MetadataValue),
-    ]),
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(z.string()),
+    z.array(z.number()),
+    z.array(z.boolean()),
+    z.array(ResourceRefValueSchema),
+    ResourceRefValueSchema,
+    z.record(z.string(), MetadataValue),
+  ]),
 );
 
 const EditorHeadingSchema = z.object({
-    fontSize: z.string().optional(),
-    fontFamily: z.string().optional(),
-    fontWeight: z.string().optional(),
-    letterSpacing: z.string().optional(),
-    color: z.string().optional(),
+  fontSize: z.string().optional(),
+  fontFamily: z.string().optional(),
+  fontWeight: z.string().optional(),
+  letterSpacing: z.string().optional(),
+  color: z.string().optional(),
 });
 
 const EditorBodySchema = z.object({
-    fontFamily: z.string().optional(),
-    fontSize: z.string().optional(),
-    lineHeight: z.string().optional(),
-    paragraphSpacing: z.string().optional(),
+  fontFamily: z.string().optional(),
+  fontSize: z.string().optional(),
+  lineHeight: z.string().optional(),
+  paragraphSpacing: z.string().optional(),
 });
 
 export const EditorConfigSchema = z.object({
-    headings: z
-        .object({
-            h1: EditorHeadingSchema.optional(),
-            h2: EditorHeadingSchema.optional(),
-            h3: EditorHeadingSchema.optional(),
-            h4: EditorHeadingSchema.optional(),
-            h5: EditorHeadingSchema.optional(),
-            h6: EditorHeadingSchema.optional(),
-        })
-        .optional(),
-    body: EditorBodySchema.optional(),
+  headings: z
+    .object({
+      h1: EditorHeadingSchema.optional(),
+      h2: EditorHeadingSchema.optional(),
+      h3: EditorHeadingSchema.optional(),
+      h4: EditorHeadingSchema.optional(),
+      h5: EditorHeadingSchema.optional(),
+      h6: EditorHeadingSchema.optional(),
+    })
+    .optional(),
+  body: EditorBodySchema.optional(),
 });
 
 /**
  * Allowed field types for user-defined metadata fields.
  */
 export const MetadataFieldTypeSchema = z.enum([
-    "text",
-    "number",
-    "date",
-    "boolean",
-    "select",
-    "multiselect",
-    "resource-ref",
-    "multi-resource-ref",
+  "text",
+  "number",
+  "date",
+  "boolean",
+  "select",
+  "multiselect",
+  "resource-ref",
+  "multi-resource-ref",
 ]);
 
 /**
@@ -121,19 +153,19 @@ export const MetadataFieldTypeSchema = z.enum([
  * - `locked` fields cannot be removed or have their key changed.
  */
 export const MetadataFieldSchema = z.object({
-    key: z.string().min(1),
-    label: z.string(),
-    type: MetadataFieldTypeSchema,
-    locked: z.boolean().optional(),
-    deprecated: z.boolean().optional(),
-    options: z.array(z.string()).optional(),
-    multiple: z.boolean().optional(),
-    /** Scopes autocomplete candidates to resources in this folder (by folder id). */
-    refFolder: z.string().optional(),
-    /** When true and refFolder is set, candidates include descendant folders too. */
-    includeSubfolders: z.boolean().optional(),
-    /** Maximum number of selections allowed; unset means unbounded. */
-    maxSelections: z.number().int().positive().optional(),
+  key: z.string().min(1),
+  label: z.string(),
+  type: MetadataFieldTypeSchema,
+  locked: z.boolean().optional(),
+  deprecated: z.boolean().optional(),
+  options: z.array(z.string()).optional(),
+  multiple: z.boolean().optional(),
+  /** Scopes autocomplete candidates to resources in this folder (by folder id). */
+  refFolder: z.string().optional(),
+  /** When true and refFolder is set, candidates include descendant folders too. */
+  includeSubfolders: z.boolean().optional(),
+  /** Maximum number of selections allowed; unset means unbounded. */
+  maxSelections: z.number().int().positive().optional(),
 });
 
 /**
@@ -142,79 +174,75 @@ export const MetadataFieldSchema = z.object({
  * folder.
  */
 export const MetadataGroupSchema = z.object({
-    id: z.string(),
-    label: z.string(),
-    folderId: z.string().optional(),
-    fields: z.array(MetadataFieldSchema),
+  id: z.string(),
+  label: z.string(),
+  folderId: z.string().optional(),
+  fields: z.array(MetadataFieldSchema),
 });
 
 /**
  * Top-level metadata schema for a project, consisting of ordered groups.
  */
 export const MetadataSchemaSchema = z.object({
-    groups: z.array(MetadataGroupSchema),
+  groups: z.array(MetadataGroupSchema),
 });
 
 /**
  * Project-level configuration schema persisted in `project.json`.
  */
 export const ProjectConfigSchema = z.object({
-    maxRevisions: z.number().int().nonnegative().optional(),
-    wordCountGoal: z.number().int().nonnegative().optional(),
-    statuses: z.array(z.string()).optional(),
-    autoPrune: z.boolean().optional(),
-    tags: z
-        .array(
-            z.object({
-                id: UUID,
-                name: z.string(),
-                color: z.string().optional(),
-            }),
-        )
-        .optional(),
-    tagAssignments: z.record(z.string(), z.array(UUID)).optional(),
-    editorConfig: EditorConfigSchema.optional(),
-    defaultRevisionName: z.string().optional(),
-    metadataSchema: MetadataSchemaSchema.optional(),
-    metadataRevision: z.number().int().nonnegative().optional(),
+  maxRevisions: z.number().int().nonnegative().optional(),
+  wordCountGoal: z.number().int().nonnegative().optional(),
+  statuses: z.array(z.string()).optional(),
+  autoPrune: z.boolean().optional(),
+  tags: z
+    .array(
+      z.object({ id: UUID, name: z.string(), color: z.string().optional() }),
+    )
+    .optional(),
+  tagAssignments: z.record(z.string(), z.array(UUID)).optional(),
+  editorConfig: EditorConfigSchema.optional(),
+  defaultRevisionName: z.string().optional(),
+  metadataSchema: MetadataSchemaSchema.optional(),
+  metadataRevision: z.number().int().nonnegative().optional(),
 });
 
 /**
  * Full project document schema for `project.json`.
  */
 export const ProjectSchema = z.object({
-    id: UUID,
-    slug: z.string().optional(),
-    name: z.string(),
-    createdAt: IsoDateString,
-    updatedAt: IsoDateString.optional(),
-    projectType: z.string().optional(),
-    rootPath: z.string().optional(),
-    config: ProjectConfigSchema.optional(),
-    metadata: z.record(z.string(), MetadataValue).optional(),
+  id: UUID,
+  slug: z.string().optional(),
+  name: z.string(),
+  createdAt: IsoDateString,
+  updatedAt: IsoDateString.optional(),
+  projectType: z.string().optional(),
+  rootPath: z.string().optional(),
+  config: ProjectConfigSchema.optional(),
+  metadata: z.record(z.string(), MetadataValue).optional(),
 });
 
 /**
  * Folder schema used for logical project hierarchy.
  */
 export const FolderSchema = z.object({
-    id: UUID,
-    slug: z.string(),
-    name: z.string(),
-    type: z.literal("folder"),
-    parentId: UUID.nullable().optional(),
-    orderIndex: z.number().default(0),
-    createdAt: IsoDateString,
-    updatedAt: IsoDateString.optional(),
-    special: z.boolean().optional(),
-    metadataSource: z
-        .object({
-            isMetadataSource: z.boolean(),
-            metadataInputType: z
-                .enum(["text", "multiselect", "autocomplete"])
-                .optional(),
-        })
+  id: UUID,
+  slug: z.string(),
+  name: z.string(),
+  type: z.literal("folder"),
+  parentId: UUID.nullable().optional(),
+  orderIndex: z.number().default(0),
+  createdAt: IsoDateString,
+  updatedAt: IsoDateString.optional(),
+  special: z.boolean().optional(),
+  metadataSource: z
+    .object({
+      isMetadataSource: z.boolean(),
+      metadataInputType: z
+        .enum(["text", "multiselect", "autocomplete"])
         .optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -226,103 +254,103 @@ export const ResourceTypeSchema = z.enum(["text", "image", "audio"]);
  * Recursive TipTap node schema representing a subset of editor AST nodes.
  */
 export const TipTapNodeSchema: z.ZodTypeAny = z.lazy(() =>
-    z.object({
-        type: z.string(),
-        attrs: z.record(z.string(), MetadataValue).optional(),
-        content: z.array(TipTapNodeSchema).optional(),
-    }),
+  z.object({
+    type: z.string(),
+    attrs: z.record(z.string(), MetadataValue).optional(),
+    content: z.array(TipTapNodeSchema).optional(),
+  }),
 );
 
 /**
  * TipTap document root schema (`type: "doc"`).
  */
 export const TipTapDocumentSchema: z.ZodTypeAny = z.object({
-    type: z.literal("doc"),
-    content: z.array(TipTapNodeSchema),
+  type: z.literal("doc"),
+  content: z.array(TipTapNodeSchema),
 });
 
 /**
  * Shared base schema for resource records regardless of subtype.
  */
 export const ResourceBaseSchema = z.object({
-    id: UUID,
-    slug: z.string(),
-    name: z.string(),
-    type: ResourceTypeSchema,
-    folderId: UUID.nullable().optional(),
-    sizeBytes: z.number().int().nonnegative().optional(),
-    notes: z.string().optional(),
-    orderIndex: z.number().default(0),
-    statuses: z.array(z.string()).optional(),
-    userMetadata: z.record(z.string(), MetadataValue).optional(),
-    createdAt: IsoDateString,
-    updatedAt: IsoDateString.optional(),
+  id: UUID,
+  slug: z.string(),
+  name: z.string(),
+  type: ResourceTypeSchema,
+  folderId: UUID.nullable().optional(),
+  sizeBytes: z.number().int().nonnegative().optional(),
+  notes: z.string().optional(),
+  orderIndex: z.number().default(0),
+  statuses: z.array(z.string()).optional(),
+  userMetadata: z.record(z.string(), MetadataValue).optional(),
+  createdAt: IsoDateString,
+  updatedAt: IsoDateString.optional(),
 });
 
 /**
  * Text resource schema extending base fields with editor/text metrics.
  */
 export const TextResourceSchema = ResourceBaseSchema.extend({
-    type: z.literal("text"),
-    plainText: z.string().optional(),
-    tiptap: TipTapDocumentSchema.optional(),
-    wordCount: z.number().int().nonnegative().optional(),
-    charCount: z.number().int().nonnegative().optional(),
-    paragraphCount: z.number().int().nonnegative().optional(),
+  type: z.literal("text"),
+  plainText: z.string().optional(),
+  tiptap: TipTapDocumentSchema.optional(),
+  wordCount: z.number().int().nonnegative().optional(),
+  charCount: z.number().int().nonnegative().optional(),
+  paragraphCount: z.number().int().nonnegative().optional(),
 });
 
 /**
  * Image resource schema extending base fields with dimensions and EXIF data.
  */
 export const ImageResourceSchema = ResourceBaseSchema.extend({
-    type: z.literal("image"),
-    width: z.number().int().nonnegative().optional(),
-    height: z.number().int().nonnegative().optional(),
-    exif: z.record(z.string(), MetadataValue).optional(),
+  type: z.literal("image"),
+  width: z.number().int().nonnegative().optional(),
+  height: z.number().int().nonnegative().optional(),
+  exif: z.record(z.string(), MetadataValue).optional(),
 });
 
 /**
  * Audio resource schema extending base fields with duration/format metadata.
  */
 export const AudioResourceSchema = ResourceBaseSchema.extend({
-    type: z.literal("audio"),
-    durationSeconds: z.number().nonnegative().optional(),
-    format: z.string().optional(),
+  type: z.literal("audio"),
+  durationSeconds: z.number().nonnegative().optional(),
+  format: z.string().optional(),
 });
 
 /**
  * Union schema for any supported resource subtype.
  */
 export const AnyResourceSchema = z.union([
-    TextResourceSchema,
-    ImageResourceSchema,
-    AudioResourceSchema,
+  TextResourceSchema,
+  ImageResourceSchema,
+  AudioResourceSchema,
 ]);
 
 /**
  * Revision metadata schema persisted under each revision folder.
  */
 export const RevisionSchema = z.object({
-    id: UUID,
-    resourceId: UUID,
-    versionNumber: z.number().int().nonnegative(),
-    createdAt: IsoDateString,
-    savedAt: IsoDateString.optional(),
-    author: z.string().optional(),
-    filePath: z.string(),
-    isCanonical: z.boolean(),
+  id: UUID,
+  resourceId: UUID,
+  versionNumber: z.number().int().nonnegative(),
+  createdAt: IsoDateString,
+  savedAt: IsoDateString.optional(),
+  author: z.string().optional(),
+  filePath: z.string(),
+  isCanonical: z.boolean(),
 });
 
 /**
  * Resource template schema used for generated/default resources.
  */
 export const ResourceTemplateSchema = z.object({
-    id: z.string(),
-    name: z.string(),
-    type: ResourceTypeSchema,
-    folderId: UUID.nullable().optional(),
-    userMetadata: z.record(z.string(), MetadataValue).optional(),
-    plainText: z.string().optional(),
+  id: z.string(),
+  name: z.string(),
+  type: ResourceTypeSchema,
+  folderId: UUID.nullable().optional(),
+  userMetadata: z.record(z.string(), MetadataValue).optional(),
+  plainText: z.string().optional(),
 });
 
 /**
@@ -331,54 +359,54 @@ export const ResourceTemplateSchema = z.object({
  * Prefer named imports for tree-shaking in runtime bundles.
  */
 export const Schemas = {
-    UUID,
-    MetadataValue,
-    ResourceRefValueSchema,
-    MetadataFieldTypeSchema,
-    MetadataFieldSchema,
-    MetadataGroupSchema,
-    MetadataSchemaSchema,
-    ProjectConfigSchema,
-    ProjectSchema,
-    FolderSchema,
-    ResourceBaseSchema,
-    TextResourceSchema,
-    ImageResourceSchema,
-    AudioResourceSchema,
-    AnyResourceSchema,
-    RevisionSchema,
-    ResourceTemplateSchema,
-    TipTapDocumentSchema,
-    TipTapNodeSchema,
-    QueryASTSchema,
+  UUID,
+  MetadataValue,
+  ResourceRefValueSchema,
+  MetadataFieldTypeSchema,
+  MetadataFieldSchema,
+  MetadataGroupSchema,
+  MetadataSchemaSchema,
+  ProjectConfigSchema,
+  ProjectSchema,
+  FolderSchema,
+  ResourceBaseSchema,
+  TextResourceSchema,
+  ImageResourceSchema,
+  AudioResourceSchema,
+  AnyResourceSchema,
+  RevisionSchema,
+  ResourceTemplateSchema,
+  TipTapDocumentSchema,
+  TipTapNodeSchema,
+  QueryASTSchema,
 };
 
 /**
  * Project-type default resource schema used inside project-type specs.
  */
 export const ProjectTypeResourceSchema = z.object({
-    folder: z.string().optional(),
-    name: z.string(),
-    type: ResourceTypeSchema,
-    template: z.string().optional(),
-    userMetadata: z.record(z.string(), MetadataValue).optional(),
+  folder: z.string().optional(),
+  name: z.string(),
+  type: ResourceTypeSchema,
+  template: z.string().optional(),
+  userMetadata: z.record(z.string(), MetadataValue).optional(),
 });
 
 /**
  * Project-type folder schema defining folder seed structure.
  */
 export const ProjectTypeFolderSchema = z.object({
-    name: z.string(),
-    special: z.boolean().optional(),
-    metadataSource: z
-        .object({
-            isMetadataSource: z.boolean(),
-            metadataInputType: z
-                .enum(["text", "multiselect", "autocomplete"])
-                .optional(),
-        })
+  name: z.string(),
+  special: z.boolean().optional(),
+  metadataSource: z
+    .object({
+      isMetadataSource: z.boolean(),
+      metadataInputType: z
+        .enum(["text", "multiselect", "autocomplete"])
         .optional(),
-    defaultResources: z.array(ProjectTypeResourceSchema).optional(),
+    })
+    .optional(),
+  defaultResources: z.array(ProjectTypeResourceSchema).optional(),
 });
 
 /**
@@ -386,21 +414,21 @@ export const ProjectTypeFolderSchema = z.object({
  * Each entry declares one subfolder under a named parent folder.
  */
 export const ProjectTypeDefaultFolderSchema = z.object({
-    folder: z.string(),
-    name: z.string(),
-    special: z.boolean().optional(),
-    metadataSource: z
-        .object({
-            isMetadataSource: z.boolean(),
-            metadataInputType: z
-                .enum(["text", "multiselect", "autocomplete"])
-                .optional(),
-        })
+  folder: z.string(),
+  name: z.string(),
+  special: z.boolean().optional(),
+  metadataSource: z
+    .object({
+      isMetadataSource: z.boolean(),
+      metadataInputType: z
+        .enum(["text", "multiselect", "autocomplete"])
         .optional(),
+    })
+    .optional(),
 });
 
 export type ProjectTypeDefaultFolder = z.infer<
-    typeof ProjectTypeDefaultFolderSchema
+  typeof ProjectTypeDefaultFolderSchema
 >;
 
 /**
@@ -412,22 +440,22 @@ export type ProjectTypeDefaultFolder = z.infer<
  * - A folder named `Workspace` must be present.
  */
 export const ProjectTypeSchema = z
-    .object({
-        id: z.string().regex(/^[a-z0-9-_]+$/),
-        name: z.string(),
-        description: z.string().optional(),
-        folders: z.array(ProjectTypeFolderSchema).min(1),
-        defaultResources: z.array(ProjectTypeResourceSchema).optional(),
-        defaultFolders: z.array(ProjectTypeDefaultFolderSchema).optional(),
-        editorConfig: EditorConfigSchema.optional(),
-        statuses: z.array(z.string()).optional(),
-        wordCountGoal: z.number().int().nonnegative().optional(),
-    })
-    .strict()
-    .refine((val) => val.folders.some((f) => f.name === "Workspace"), {
-        message: "project-type must include a folder with name 'Workspace'",
-        path: ["folders"],
-    });
+  .object({
+    id: z.string().regex(/^[a-z0-9-_]+$/),
+    name: z.string(),
+    description: z.string().optional(),
+    folders: z.array(ProjectTypeFolderSchema).min(1),
+    defaultResources: z.array(ProjectTypeResourceSchema).optional(),
+    defaultFolders: z.array(ProjectTypeDefaultFolderSchema).optional(),
+    editorConfig: EditorConfigSchema.optional(),
+    statuses: z.array(z.string()).optional(),
+    wordCountGoal: z.number().int().nonnegative().optional(),
+  })
+  .strict()
+  .refine((val) => val.folders.some((f) => f.name === "Workspace"), {
+    message: "project-type must include a folder with name 'Workspace'",
+    path: ["folders"],
+  });
 
 /**
  * Inferred TypeScript shape of a valid project-type spec.
@@ -448,9 +476,9 @@ export type ProjectTypeSpec = z.infer<typeof ProjectTypeSchema>;
  * }
  */
 export function validateProjectType(spec: unknown) {
-    const result = ProjectTypeSchema.safeParse(spec);
-    if (result.success) return { success: true, value: result.data };
-    return { success: false, errors: result.error.format() };
+  const result = ProjectTypeSchema.safeParse(spec);
+  if (result.success) return { success: true, value: result.data };
+  return { success: false, errors: result.error.format() };
 }
 
 /**
@@ -465,18 +493,18 @@ export function validateProjectType(spec: unknown) {
  * const result = await validateProjectTypeFile("/tmp/novel.project-type.json");
  */
 export async function validateProjectTypeFile(filePath: string) {
-    const { default: fs } = await import("node:fs/promises");
-    const raw = await fs.readFile(filePath, "utf8");
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(raw);
-    } catch (err) {
-        return {
-            success: false,
-            errors: [`Invalid JSON: ${(err as Error).message}`],
-        };
-    }
-    return validateProjectType(parsed);
+  const { default: fs } = await import("node:fs/promises");
+  const raw = await fs.readFile(filePath, "utf8");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    return {
+      success: false,
+      errors: [`Invalid JSON: ${(err as Error).message}`],
+    };
+  }
+  return validateProjectType(parsed);
 }
 
 /**

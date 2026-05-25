@@ -39,7 +39,7 @@ import { toastService } from "../lib/toast-service";
  * @returns Toast service methods for showing notifications
  */
 export function useToast() {
-    return toastService;
+  return toastService;
 }
 
 export default useToast;

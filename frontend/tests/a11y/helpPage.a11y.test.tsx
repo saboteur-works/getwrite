@@ -5,41 +5,39 @@ import { describe, expect, it, vi } from "vitest";
 import HelpPage from "../../components/help/HelpPage";
 
 describe("a11y: HelpPage keyboard navigation (T041)", () => {
-    it("renders the modal variant with dialog semantics and Escape dismissal", async () => {
-        const user = userEvent.setup();
-        const onClose = vi.fn();
+  it("renders the modal variant with dialog semantics and Escape dismissal", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
 
-        render(<HelpPage renderInModal onClose={onClose} />);
+    render(<HelpPage renderInModal onClose={onClose} />);
 
-        const dialog = screen.getByRole("dialog", {
-            name: /Help & Documentation/i,
-        });
-        expect(dialog).toHaveAttribute("aria-modal", "true");
+    const dialog = screen.getByRole("dialog", {
+      name: /Help & Documentation/i,
+    });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
 
-        await waitFor(() => {
-            expect(
-                screen.getByRole("button", { name: /Close help/i }),
-            ).toHaveFocus();
-        });
-
-        await user.keyboard("{Escape}");
-        expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Close help/i })).toHaveFocus();
     });
 
-    it("exposes tablist and tabpanel relationships for help sections", () => {
-        render(<HelpPage renderInModal onClose={vi.fn()} />);
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 
-        expect(
-            screen.getByRole("tablist", { name: /Help sections/i }),
-        ).toBeInTheDocument();
+  it("exposes tablist and tabpanel relationships for help sections", () => {
+    render(<HelpPage renderInModal onClose={vi.fn()} />);
 
-        const activeTab = screen.getByRole("tab", { name: /Getting Started/i });
-        const tabPanel = screen.getByRole("tabpanel");
+    expect(
+      screen.getByRole("tablist", { name: /Help sections/i }),
+    ).toBeInTheDocument();
 
-        expect(activeTab).toHaveAttribute("aria-selected", "true");
-        expect(tabPanel).toHaveAttribute(
-            "aria-labelledby",
-            activeTab.getAttribute("id"),
-        );
-    });
+    const activeTab = screen.getByRole("tab", { name: /Getting Started/i });
+    const tabPanel = screen.getByRole("tabpanel");
+
+    expect(activeTab).toHaveAttribute("aria-selected", "true");
+    expect(tabPanel).toHaveAttribute(
+      "aria-labelledby",
+      activeTab.getAttribute("id"),
+    );
+  });
 });

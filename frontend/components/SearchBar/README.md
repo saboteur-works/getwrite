@@ -45,11 +45,11 @@ Resource display text is resolved in this order:
 The search algorithm uses two strategies:
 
 1. Exact substring match
-    - Higher score than subsequence matches.
-    - Earlier match positions rank higher.
+   - Higher score than subsequence matches.
+   - Earlier match positions rank higher.
 2. Ordered subsequence match
-    - Query characters must appear in order.
-    - Larger gaps between matched characters reduce the score.
+   - Query characters must appear in order.
+   - Larger gaps between matched characters reduce the score.
 
 Results are sorted by:
 
@@ -79,8 +79,8 @@ Results are sorted by:
 ## Rendering Rules
 
 - Suggestions render only when:
-    - panel is open, and
-    - there is at least one result.
+  - panel is open, and
+  - there is at least one result.
 - Maximum displayed results: 8.
 - Matched characters are rendered in `font-semibold`.
 
@@ -102,14 +102,14 @@ Potential improvements (not yet implemented):
 import SearchBar from "./SearchBar";
 
 export function Example(): JSX.Element {
-    return (
-        <SearchBar
-            placeholder="Search docs..."
-            onSelect={(id) => {
-                console.log("Selected resource:", id);
-            }}
-        />
-    );
+  return (
+    <SearchBar
+      placeholder="Search docs..."
+      onSelect={(id) => {
+        console.log("Selected resource:", id);
+      }}
+    />
+  );
 }
 ```
 

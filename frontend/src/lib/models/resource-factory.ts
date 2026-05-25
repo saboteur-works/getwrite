@@ -11,246 +11,240 @@
 import { generateUUID } from "./uuid";
 import { countWords } from "../word-count";
 import type {
-    UUID,
-    TextResource,
-    ImageResource,
-    AudioResource,
-    MetadataValue,
-    TipTapDocument,
-    AnyResource,
-    ResourceType,
-    Folder,
+  UUID,
+  TextResource,
+  ImageResource,
+  AudioResource,
+  MetadataValue,
+  TipTapDocument,
+  AnyResource,
+  ResourceType,
+  Folder,
 } from "./types";
 import {
-    TextResourceSchema,
-    ImageResourceSchema,
-    AudioResourceSchema,
-    AnyResourceSchema,
-    FolderSchema,
+  TextResourceSchema,
+  ImageResourceSchema,
+  AudioResourceSchema,
+  AnyResourceSchema,
+  FolderSchema,
 } from "./schemas";
 
 /**
  * Converts display names to URL/file-system friendly slugs.
  */
 function slugify(s: string): string {
-    return s
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9\-]/g, "");
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9\-]/g, "");
 }
 
 /**
  * Creates a validated `TextResource` with derived text metrics.
  */
 export function createTextResource(params: {
-    name: string;
-    folderId?: UUID | null;
-    plainText?: string;
-    tiptap?: TipTapDocument;
-    slug?: string;
-    userMetadata?: Record<string, MetadataValue>;
-    orderIndex?: number;
+  name: string;
+  folderId?: UUID | null;
+  plainText?: string;
+  tiptap?: TipTapDocument;
+  slug?: string;
+  userMetadata?: Record<string, MetadataValue>;
+  orderIndex?: number;
 }): TextResource {
-    const now = new Date().toISOString();
-    const id = generateUUID();
-    const plain = params.plainText ?? "";
+  const now = new Date().toISOString();
+  const id = generateUUID();
+  const plain = params.plainText ?? "";
 
-    const wordCount = countWords(plain);
-    const charCount = plain.length;
-    const paragraphCount =
-        plain.split(/\n\s*\n/).filter(Boolean).length || (plain.trim() ? 1 : 0);
-    const res: TextResource = {
-        id,
-        name: params.name,
-        slug: params.slug ?? slugify(params.name),
-        type: "text",
-        folderId: params.folderId,
-        createdAt: now,
-        plainText: plain,
-        tiptap: params.tiptap,
-        wordCount,
-        charCount,
-        paragraphCount,
-        userMetadata: params.userMetadata,
-        orderIndex: params.orderIndex ?? 0,
-    };
+  const wordCount = countWords(plain);
+  const charCount = plain.length;
+  const paragraphCount =
+    plain.split(/\n\s*\n/).filter(Boolean).length || (plain.trim() ? 1 : 0);
+  const res: TextResource = {
+    id,
+    name: params.name,
+    slug: params.slug ?? slugify(params.name),
+    type: "text",
+    folderId: params.folderId,
+    createdAt: now,
+    plainText: plain,
+    tiptap: params.tiptap,
+    wordCount,
+    charCount,
+    paragraphCount,
+    userMetadata: params.userMetadata,
+    orderIndex: params.orderIndex ?? 0,
+  };
 
-    TextResourceSchema.parse(res);
-    return res;
+  TextResourceSchema.parse(res);
+  return res;
 }
 
 /**
  * Creates a validated `ImageResource`.
  */
 export function createImageResource(params: {
-    name: string;
-    folderId?: UUID | null;
-    width?: number;
-    height?: number;
-    exif?: Record<string, MetadataValue>;
-    slug?: string;
-    orderIndex?: number;
-    userMetadata?: Record<string, MetadataValue>;
+  name: string;
+  folderId?: UUID | null;
+  width?: number;
+  height?: number;
+  exif?: Record<string, MetadataValue>;
+  slug?: string;
+  orderIndex?: number;
+  userMetadata?: Record<string, MetadataValue>;
 }): ImageResource {
-    const now = new Date().toISOString();
-    const id = generateUUID();
-    const res: ImageResource = {
-        id,
-        name: params.name,
-        slug: params.slug ?? slugify(params.name),
-        type: "image",
-        folderId: params.folderId,
-        createdAt: now,
-        width: params.width,
-        height: params.height,
-        exif: params.exif,
-        orderIndex: params.orderIndex ?? 0,
-        userMetadata: params.userMetadata,
-    };
+  const now = new Date().toISOString();
+  const id = generateUUID();
+  const res: ImageResource = {
+    id,
+    name: params.name,
+    slug: params.slug ?? slugify(params.name),
+    type: "image",
+    folderId: params.folderId,
+    createdAt: now,
+    width: params.width,
+    height: params.height,
+    exif: params.exif,
+    orderIndex: params.orderIndex ?? 0,
+    userMetadata: params.userMetadata,
+  };
 
-    ImageResourceSchema.parse(res);
-    return res;
+  ImageResourceSchema.parse(res);
+  return res;
 }
 
 /**
  * Creates a validated `AudioResource`.
  */
 export function createAudioResource(params: {
-    name: string;
-    folderId?: UUID | null;
-    durationSeconds?: number;
-    format?: string;
-    slug?: string;
-    orderIndex?: number;
-    userMetadata?: Record<string, MetadataValue>;
+  name: string;
+  folderId?: UUID | null;
+  durationSeconds?: number;
+  format?: string;
+  slug?: string;
+  orderIndex?: number;
+  userMetadata?: Record<string, MetadataValue>;
 }): AudioResource {
-    const now = new Date().toISOString();
-    const id = generateUUID();
-    const res: AudioResource = {
-        id,
-        name: params.name,
-        slug: params.slug ?? slugify(params.name),
-        type: "audio",
-        folderId: params.folderId,
-        createdAt: now,
-        durationSeconds: params.durationSeconds,
-        format: params.format,
-        orderIndex: params.orderIndex ?? 0,
-        userMetadata: params.userMetadata,
-    };
+  const now = new Date().toISOString();
+  const id = generateUUID();
+  const res: AudioResource = {
+    id,
+    name: params.name,
+    slug: params.slug ?? slugify(params.name),
+    type: "audio",
+    folderId: params.folderId,
+    createdAt: now,
+    durationSeconds: params.durationSeconds,
+    format: params.format,
+    orderIndex: params.orderIndex ?? 0,
+    userMetadata: params.userMetadata,
+  };
 
-    AudioResourceSchema.parse(res);
-    return res;
+  AudioResourceSchema.parse(res);
+  return res;
 }
 
 /**
  * Validates unknown input as `AnyResource` and returns typed data.
  */
 export function validateResource(input: unknown): AnyResource {
-    return AnyResourceSchema.parse(input) as AnyResource;
+  return AnyResourceSchema.parse(input) as AnyResource;
 }
 
 /**
  * Creates a validated `Folder` resource.
  */
 export function createFolderResource(params: {
-    name: string;
-    parentFolderId?: UUID | null;
-    slug?: string;
-    userMetadata?: Record<string, MetadataValue>;
-    orderIndex?: number;
-    special?: boolean;
-    metadataSource?: {
-        isMetadataSource: boolean;
-        metadataInputType?: "multiselect" | "text";
-    };
+  name: string;
+  parentFolderId?: UUID | null;
+  slug?: string;
+  userMetadata?: Record<string, MetadataValue>;
+  orderIndex?: number;
+  special?: boolean;
+  metadataSource?: {
+    isMetadataSource: boolean;
+    metadataInputType?: "multiselect" | "text";
+  };
 }): Folder {
-    const now = new Date().toISOString();
-    const id = generateUUID();
-    const res: Folder = {
-        id,
-        name: params.name,
-        slug: params.slug ?? slugify(params.name),
-        type: "folder",
-        parentId: params.parentFolderId,
-        createdAt: now,
-        userMetadata: params.userMetadata,
-        orderIndex: params.orderIndex ?? 0,
-        special: params.special ?? false,
-        metadataSource: params.metadataSource ?? { isMetadataSource: false },
-    };
+  const now = new Date().toISOString();
+  const id = generateUUID();
+  const res: Folder = {
+    id,
+    name: params.name,
+    slug: params.slug ?? slugify(params.name),
+    type: "folder",
+    parentId: params.parentFolderId,
+    createdAt: now,
+    userMetadata: params.userMetadata,
+    orderIndex: params.orderIndex ?? 0,
+    special: params.special ?? false,
+    metadataSource: params.metadataSource ?? { isMetadataSource: false },
+  };
 
-    FolderSchema.parse(res);
-    return res;
+  FolderSchema.parse(res);
+  return res;
 }
 
 /**
  * Input options for `createResourceOfType(...)`.
  */
 export interface CreateResourceOpts {
-    name: string;
-    slug?: string;
-    type: ResourceType;
-    folderId?: UUID | null;
-    orderIndex?: number;
-    userMetadata?: Record<string, MetadataValue>;
-    text?: {
-        plainText?: string;
-        tiptap?: TipTapDocument;
-    };
-    image?: {
-        width?: number;
-        height?: number;
-        exif?: Record<string, MetadataValue>;
-    };
-    audio?: {
-        durationSeconds?: number;
-        format?: string;
-    };
+  name: string;
+  slug?: string;
+  type: ResourceType;
+  folderId?: UUID | null;
+  orderIndex?: number;
+  userMetadata?: Record<string, MetadataValue>;
+  text?: { plainText?: string; tiptap?: TipTapDocument };
+  image?: {
+    width?: number;
+    height?: number;
+    exif?: Record<string, MetadataValue>;
+  };
+  audio?: { durationSeconds?: number; format?: string };
 }
 
 /**
  * Dispatches to the correct resource factory based on `resourceType`.
  */
 export const createResourceOfType = (
-    resourceType: ResourceType,
-    opts: CreateResourceOpts,
+  resourceType: ResourceType,
+  opts: CreateResourceOpts,
 ) => {
-    const baseParams = {
-        name: opts.name,
-        slug: opts.slug ?? slugify(opts.name),
-        folderId: opts.folderId,
-        userMetadata: opts.userMetadata,
-        orderIndex: opts.orderIndex,
-    };
+  const baseParams = {
+    name: opts.name,
+    slug: opts.slug ?? slugify(opts.name),
+    folderId: opts.folderId,
+    userMetadata: opts.userMetadata,
+    orderIndex: opts.orderIndex,
+  };
 
-    switch (resourceType) {
-        case "folder":
-            return createFolderResource({
-                ...baseParams,
-                parentFolderId: opts.folderId,
-            });
-        case "text":
-            return createTextResource({
-                ...baseParams,
-                plainText: opts.text?.plainText,
-                tiptap: opts.text?.tiptap,
-            });
-        case "image":
-            return createImageResource({
-                ...baseParams,
-                width: opts.image?.width,
-                height: opts.image?.height,
-                exif: opts.image?.exif,
-            });
-        case "audio":
-            return createAudioResource({
-                ...baseParams,
-                durationSeconds: opts.audio?.durationSeconds,
-                format: opts.audio?.format,
-            });
-        default:
-            throw new Error(`Unsupported resource type: ${resourceType}`);
-    }
+  switch (resourceType) {
+    case "folder":
+      return createFolderResource({
+        ...baseParams,
+        parentFolderId: opts.folderId,
+      });
+    case "text":
+      return createTextResource({
+        ...baseParams,
+        plainText: opts.text?.plainText,
+        tiptap: opts.text?.tiptap,
+      });
+    case "image":
+      return createImageResource({
+        ...baseParams,
+        width: opts.image?.width,
+        height: opts.image?.height,
+        exif: opts.image?.exif,
+      });
+    case "audio":
+      return createAudioResource({
+        ...baseParams,
+        durationSeconds: opts.audio?.durationSeconds,
+        format: opts.audio?.format,
+      });
+    default:
+      throw new Error(`Unsupported resource type: ${resourceType}`);
+  }
 };
