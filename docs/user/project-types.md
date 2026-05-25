@@ -16,7 +16,7 @@ GetWrite ships with these built-in types:
 | **Novel** | Long-form fiction. Includes Workspace, Story Elements, Outline, and Notes folders. |
 | **Serial** | Serialized fiction for episodes or installments. |
 | **Article** | Short-form articles and essays, with Workspace, References, Sources, and Ideas folders. |
-| **Game Writing** | Game writing for video games or tabletop RPGs, with room for lore, characters, quests, and dialogue. |
+| **Game Writing** | Game writing for video games or tabletop RPGs — Workspace, Research, and Notes folders for lore, characters, and quests. |
 | **Poetry and Lyrics** | Poetry and song lyrics, with Workspace, Inspiration, and Experiments folders. |
 
 ## Managing project types
