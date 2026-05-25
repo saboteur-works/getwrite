@@ -1,10 +1,10 @@
 export interface CompileSection {
-    name: string;
-    content: string;
+  name: string;
+  content: string;
 }
 
 export interface CompileTextOptions {
-    includeHeaders: boolean;
+  includeHeaders: boolean;
 }
 
 /**
@@ -19,18 +19,18 @@ export interface CompileTextOptions {
  * Sections are separated by two blank lines.
  */
 export function compileToText(
-    sections: CompileSection[],
-    options: CompileTextOptions,
+  sections: CompileSection[],
+  options: CompileTextOptions,
 ): string {
-    if (sections.length === 0) return "";
+  if (sections.length === 0) return "";
 
-    const parts = sections.map(({ name, content }) => {
-        if (options.includeHeaders) {
-            const rule = "=".repeat(name.length);
-            return `${name}\n${rule}\n\n${content}`;
-        }
-        return content;
-    });
+  const parts = sections.map(({ name, content }) => {
+    if (options.includeHeaders) {
+      const rule = "=".repeat(name.length);
+      return `${name}\n${rule}\n\n${content}`;
+    }
+    return content;
+  });
 
-    return parts.join("\n\n\n");
+  return parts.join("\n\n\n");
 }

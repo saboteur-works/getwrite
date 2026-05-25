@@ -9,15 +9,15 @@
  * file.
  */
 import type {
-    ProjectTypeSpec,
-    ProjectTypeSpecFolder,
-    ProjectTypeSpecResource,
+  ProjectTypeSpec,
+  ProjectTypeSpecFolder,
+  ProjectTypeSpecResource,
 } from "../../../src/lib/models/project-creator";
 import type {
-    Folder,
-    Revision,
-    TextResource,
-    UUID,
+  Folder,
+  Revision,
+  TextResource,
+  UUID,
 } from "../../../src/lib/models/types";
 
 /** Base timestamp used for deterministic fixture generation. */
@@ -30,28 +30,28 @@ let fixtureSequence = 0;
  * Overrides supported by {@link createRefactorFixtureBundle}.
  */
 export interface RefactorFixtureBundleOverrides {
-    /** Partial folder override applied to the generated folder fixture. */
-    folder?: Partial<Folder>;
-    /** Partial resource override applied to the generated text resource. */
-    resource?: Partial<TextResource>;
-    /** Partial revision override applied to the generated revision. */
-    revision?: Partial<Revision>;
-    /** Partial project-type override applied to the generated project-type spec. */
-    projectType?: Partial<ProjectTypeSpec>;
+  /** Partial folder override applied to the generated folder fixture. */
+  folder?: Partial<Folder>;
+  /** Partial resource override applied to the generated text resource. */
+  resource?: Partial<TextResource>;
+  /** Partial revision override applied to the generated revision. */
+  revision?: Partial<Revision>;
+  /** Partial project-type override applied to the generated project-type spec. */
+  projectType?: Partial<ProjectTypeSpec>;
 }
 
 /**
  * Shared return shape used by higher-level refactor guardrail tests.
  */
 export interface RefactorFixtureBundle {
-    /** Folder fixture that can seed tree and workspace-related tests. */
-    folder: Folder;
-    /** Text resource fixture aligned with the folder fixture. */
-    resource: TextResource;
-    /** Canonical revision fixture aligned with the text resource. */
-    revision: Revision;
-    /** Project-type fixture preserving the default Workspace seed structure. */
-    projectType: ProjectTypeSpec;
+  /** Folder fixture that can seed tree and workspace-related tests. */
+  folder: Folder;
+  /** Text resource fixture aligned with the folder fixture. */
+  resource: TextResource;
+  /** Canonical revision fixture aligned with the text resource. */
+  revision: Revision;
+  /** Project-type fixture preserving the default Workspace seed structure. */
+  projectType: ProjectTypeSpec;
 }
 
 /**
@@ -68,7 +68,7 @@ export interface RefactorFixtureBundle {
  * ```
  */
 export function resetRefactorFixtureBuilders(): void {
-    fixtureSequence = 0;
+  fixtureSequence = 0;
 }
 
 /**
@@ -84,24 +84,24 @@ export function resetRefactorFixtureBuilders(): void {
  * ```
  */
 export function createFolderFixture(overrides: Partial<Folder> = {}): Folder {
-    const seed = nextFixtureSeed();
+  const seed = nextFixtureSeed();
 
-    return {
-        id: overrides.id ?? seed.id,
-        slug: overrides.slug ?? `folder-${seed.index}`,
-        name: overrides.name ?? `Folder ${seed.index}`,
-        type: "folder",
-        parentId: overrides.parentId ?? null,
-        folderId: overrides.folderId ?? null,
-        orderIndex: overrides.orderIndex ?? seed.index - 1,
-        notes: overrides.notes,
-        statuses: overrides.statuses,
-        sizeBytes: overrides.sizeBytes,
-        userMetadata: overrides.userMetadata,
-        special: overrides.special ?? false,
-        createdAt: overrides.createdAt ?? seed.timestamp,
-        updatedAt: overrides.updatedAt ?? seed.timestamp,
-    };
+  return {
+    id: overrides.id ?? seed.id,
+    slug: overrides.slug ?? `folder-${seed.index}`,
+    name: overrides.name ?? `Folder ${seed.index}`,
+    type: "folder",
+    parentId: overrides.parentId ?? null,
+    folderId: overrides.folderId ?? null,
+    orderIndex: overrides.orderIndex ?? seed.index - 1,
+    notes: overrides.notes,
+    statuses: overrides.statuses,
+    sizeBytes: overrides.sizeBytes,
+    userMetadata: overrides.userMetadata,
+    special: overrides.special ?? false,
+    createdAt: overrides.createdAt ?? seed.timestamp,
+    updatedAt: overrides.updatedAt ?? seed.timestamp,
+  };
 }
 
 /**
@@ -116,31 +116,30 @@ export function createFolderFixture(overrides: Partial<Folder> = {}): Folder {
  * ```
  */
 export function createTextResourceFixture(
-    overrides: Partial<TextResource> = {},
+  overrides: Partial<TextResource> = {},
 ): TextResource {
-    const seed = nextFixtureSeed();
+  const seed = nextFixtureSeed();
 
-    return {
-        id: overrides.id ?? seed.id,
-        slug: overrides.slug ?? `resource-${seed.index}`,
-        name: overrides.name ?? `Resource ${seed.index}`,
-        type: "text",
-        folderId: overrides.folderId ?? null,
-        sizeBytes: overrides.sizeBytes ?? 0,
-        notes: overrides.notes,
-        orderIndex: overrides.orderIndex ?? seed.index - 1,
-        statuses: overrides.statuses,
-        userMetadata: overrides.userMetadata,
-        createdAt: overrides.createdAt ?? seed.timestamp,
-        updatedAt: overrides.updatedAt ?? seed.timestamp,
-        plainText:
-            overrides.plainText ??
-            `Fixture resource ${seed.index} body content.`,
-        tiptap: overrides.tiptap,
-        wordCount: overrides.wordCount ?? 5,
-        charCount: overrides.charCount ?? 32,
-        paragraphCount: overrides.paragraphCount ?? 1,
-    };
+  return {
+    id: overrides.id ?? seed.id,
+    slug: overrides.slug ?? `resource-${seed.index}`,
+    name: overrides.name ?? `Resource ${seed.index}`,
+    type: "text",
+    folderId: overrides.folderId ?? null,
+    sizeBytes: overrides.sizeBytes ?? 0,
+    notes: overrides.notes,
+    orderIndex: overrides.orderIndex ?? seed.index - 1,
+    statuses: overrides.statuses,
+    userMetadata: overrides.userMetadata,
+    createdAt: overrides.createdAt ?? seed.timestamp,
+    updatedAt: overrides.updatedAt ?? seed.timestamp,
+    plainText:
+      overrides.plainText ?? `Fixture resource ${seed.index} body content.`,
+    tiptap: overrides.tiptap,
+    wordCount: overrides.wordCount ?? 5,
+    charCount: overrides.charCount ?? 32,
+    paragraphCount: overrides.paragraphCount ?? 1,
+  };
 }
 
 /**
@@ -156,25 +155,25 @@ export function createTextResourceFixture(
  * ```
  */
 export function createRevisionFixture(
-    overrides: Partial<Revision> = {},
+  overrides: Partial<Revision> = {},
 ): Revision {
-    const seed = nextFixtureSeed();
-    const resourceId =
-        overrides.resourceId ?? createFixtureUuid(seed.index + 1000);
+  const seed = nextFixtureSeed();
+  const resourceId =
+    overrides.resourceId ?? createFixtureUuid(seed.index + 1000);
 
-    return {
-        id: overrides.id ?? seed.id,
-        resourceId,
-        versionNumber: overrides.versionNumber ?? 1,
-        createdAt: overrides.createdAt ?? seed.timestamp,
-        savedAt: overrides.savedAt ?? seed.timestamp,
-        author: overrides.author ?? "refactor-guardrails",
-        filePath:
-            overrides.filePath ??
-            `/tmp/getwrite-fixtures/${resourceId}/revision-${seed.index}.json`,
-        isCanonical: overrides.isCanonical ?? true,
-        metadata: overrides.metadata,
-    };
+  return {
+    id: overrides.id ?? seed.id,
+    resourceId,
+    versionNumber: overrides.versionNumber ?? 1,
+    createdAt: overrides.createdAt ?? seed.timestamp,
+    savedAt: overrides.savedAt ?? seed.timestamp,
+    author: overrides.author ?? "refactor-guardrails",
+    filePath:
+      overrides.filePath ??
+      `/tmp/getwrite-fixtures/${resourceId}/revision-${seed.index}.json`,
+    isCanonical: overrides.isCanonical ?? true,
+    metadata: overrides.metadata,
+  };
 }
 
 /**
@@ -190,22 +189,22 @@ export function createRevisionFixture(
  * ```
  */
 export function createProjectTypeSpecFixture(
-    overrides: Partial<ProjectTypeSpec> = {},
+  overrides: Partial<ProjectTypeSpec> = {},
 ): ProjectTypeSpec {
-    const seed = nextFixtureSeed();
-    const folders = overrides.folders ?? createDefaultProjectTypeFolders();
-    const defaultResources =
-        overrides.defaultResources ?? createDefaultProjectTypeResources();
+  const seed = nextFixtureSeed();
+  const folders = overrides.folders ?? createDefaultProjectTypeFolders();
+  const defaultResources =
+    overrides.defaultResources ?? createDefaultProjectTypeResources();
 
-    return {
-        id: overrides.id ?? `project-type-${seed.index}`,
-        name: overrides.name ?? `Project Type ${seed.index}`,
-        description:
-            overrides.description ??
-            "Deterministic project-type fixture for refactor guardrail tests.",
-        folders,
-        defaultResources,
-    };
+  return {
+    id: overrides.id ?? `project-type-${seed.index}`,
+    name: overrides.name ?? `Project Type ${seed.index}`,
+    description:
+      overrides.description ??
+      "Deterministic project-type fixture for refactor guardrail tests.",
+    folders,
+    defaultResources,
+  };
 }
 
 /**
@@ -224,37 +223,32 @@ export function createProjectTypeSpecFixture(
  * ```
  */
 export function createRefactorFixtureBundle(
-    overrides: RefactorFixtureBundleOverrides = {},
+  overrides: RefactorFixtureBundleOverrides = {},
 ): RefactorFixtureBundle {
-    const folder = createFolderFixture({
-        name: "Workspace",
-        special: true,
-        ...overrides.folder,
-    });
-    const resource = createTextResourceFixture({
-        folderId: folder.id,
-        ...overrides.resource,
-    });
-    const revision = createRevisionFixture({
-        resourceId: resource.id,
-        ...overrides.revision,
-    });
-    const projectType = createProjectTypeSpecFixture({
-        folders:
-            overrides.projectType?.folders ??
-            createDefaultProjectTypeFolders(folder.name),
-        defaultResources:
-            overrides.projectType?.defaultResources ??
-            createDefaultProjectTypeResources(folder.name, resource.name),
-        ...overrides.projectType,
-    });
+  const folder = createFolderFixture({
+    name: "Workspace",
+    special: true,
+    ...overrides.folder,
+  });
+  const resource = createTextResourceFixture({
+    folderId: folder.id,
+    ...overrides.resource,
+  });
+  const revision = createRevisionFixture({
+    resourceId: resource.id,
+    ...overrides.revision,
+  });
+  const projectType = createProjectTypeSpecFixture({
+    folders:
+      overrides.projectType?.folders ??
+      createDefaultProjectTypeFolders(folder.name),
+    defaultResources:
+      overrides.projectType?.defaultResources ??
+      createDefaultProjectTypeResources(folder.name, resource.name),
+    ...overrides.projectType,
+  });
 
-    return {
-        folder,
-        resource,
-        revision,
-        projectType,
-    };
+  return { folder, resource, revision, projectType };
 }
 
 /**
@@ -264,13 +258,13 @@ export function createRefactorFixtureBundle(
  * @returns Folder specs preserving the required Workspace-first structure.
  */
 function createDefaultProjectTypeFolders(
-    workspaceName = "Workspace",
+  workspaceName = "Workspace",
 ): ProjectTypeSpecFolder[] {
-    return [
-        { name: workspaceName, special: true },
-        { name: "Characters" },
-        { name: "Locations" },
-    ];
+  return [
+    { name: workspaceName, special: true },
+    { name: "Characters" },
+    { name: "Locations" },
+  ];
 }
 
 /**
@@ -281,17 +275,17 @@ function createDefaultProjectTypeFolders(
  * @returns Resource specs that align with the default folder structure.
  */
 function createDefaultProjectTypeResources(
-    workspaceName = "Workspace",
-    resourceName = "Chapter 1",
+  workspaceName = "Workspace",
+  resourceName = "Chapter 1",
 ): ProjectTypeSpecResource[] {
-    return [
-        {
-            folder: workspaceName,
-            name: resourceName,
-            type: "text",
-            template: "This is fixture content for refactor guardrail tests.",
-        },
-    ];
+  return [
+    {
+      folder: workspaceName,
+      name: resourceName,
+      type: "text",
+      template: "This is fixture content for refactor guardrail tests.",
+    },
+  ];
 }
 
 /**
@@ -300,15 +294,15 @@ function createDefaultProjectTypeResources(
  * @returns Seed values reused by the fixture builders.
  */
 function nextFixtureSeed(): { id: UUID; index: number; timestamp: string } {
-    fixtureSequence += 1;
+  fixtureSequence += 1;
 
-    return {
-        id: createFixtureUuid(fixtureSequence),
-        index: fixtureSequence,
-        timestamp: new Date(
-            FIXTURE_BASE_TIME_MS + fixtureSequence * 60_000,
-        ).toISOString(),
-    };
+  return {
+    id: createFixtureUuid(fixtureSequence),
+    index: fixtureSequence,
+    timestamp: new Date(
+      FIXTURE_BASE_TIME_MS + fixtureSequence * 60_000,
+    ).toISOString(),
+  };
 }
 
 /**
@@ -318,6 +312,6 @@ function nextFixtureSeed(): { id: UUID; index: number; timestamp: string } {
  * @returns A stable UUID-shaped string.
  */
 function createFixtureUuid(index: number): UUID {
-    const suffix = index.toString(16).padStart(12, "0").slice(-12);
-    return `00000000-0000-4000-8000-${suffix}`;
+  const suffix = index.toString(16).padStart(12, "0").slice(-12);
+  return `00000000-0000-4000-8000-${suffix}`;
 }

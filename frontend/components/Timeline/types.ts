@@ -1,76 +1,76 @@
 /** A single event or scene placed on the story timeline. */
 export interface TimelineItem {
-    /** Stable unique identifier (matches the resource id). */
-    id: string;
-    /** Display label shown on the item chip. */
-    label: string;
-    /** ISO 8601 start date-time: "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm". */
-    startDate: string;
-    /** ISO 8601 end date-time; derived from startDate + duration when present. */
-    endDate?: string;
-    /** Optional group id linking this item to a TimelineGroup row. */
-    groupId?: string;
-    /** Fired when the user clicks the item chip. */
-    onClick?: (id: string) => void;
-    /** Human-readable tooltip shown on chip hover (date, time, duration). */
-    tooltip?: string;
-    /** Background color for the chip, derived from POV character or other grouping. */
-    color?: string;
-    /** Duration in hours. 0 = point event (pin variant). Undefined = unknown duration. */
-    durationH?: number;
-    /** Primary workflow status string: "Final" | "Outline" | "Draft" | undefined. */
-    status?: string;
-    /** Structured metadata for tooltip display. */
-    metadata?: {
-        pov?:    string;
-        status?: string[];
-        folder?: string;
-        notes?:  string;
-    };
+  /** Stable unique identifier (matches the resource id). */
+  id: string;
+  /** Display label shown on the item chip. */
+  label: string;
+  /** ISO 8601 start date-time: "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm". */
+  startDate: string;
+  /** ISO 8601 end date-time; derived from startDate + duration when present. */
+  endDate?: string;
+  /** Optional group id linking this item to a TimelineGroup row. */
+  groupId?: string;
+  /** Fired when the user clicks the item chip. */
+  onClick?: (id: string) => void;
+  /** Human-readable tooltip shown on chip hover (date, time, duration). */
+  tooltip?: string;
+  /** Background color for the chip, derived from POV character or other grouping. */
+  color?: string;
+  /** Duration in hours. 0 = point event (pin variant). Undefined = unknown duration. */
+  durationH?: number;
+  /** Primary workflow status string: "Final" | "Outline" | "Draft" | undefined. */
+  status?: string;
+  /** Structured metadata for tooltip display. */
+  metadata?: {
+    pov?: string;
+    status?: string[];
+    folder?: string;
+    notes?: string;
+  };
 }
 
 /** A row-level group shown in the group label column. */
 export interface TimelineGroup {
-    /** Stable unique identifier. */
-    id: string;
-    /** Human-readable row label (e.g. folder name). */
-    label: string;
+  /** Stable unique identifier. */
+  id: string;
+  /** Human-readable row label (e.g. folder name). */
+  label: string;
 }
 
 /** Optional configuration for axis rendering and date formatting. */
 export interface TimelineConfig {
-    /**
-     * Explicit axis start boundary (ISO 8601).
-     * Defaults to the earliest item startDate minus 5% padding.
-     */
-    axisStart?: string;
-    /**
-     * Explicit axis end boundary (ISO 8601).
-     * Defaults to the latest item endDate (or startDate) plus 5% padding.
-     */
-    axisEnd?: string;
-    /** Number of tick marks on the time axis. Defaults to 8. */
-    tickCount?: number;
-    /** Locale string passed to Intl.DateTimeFormat for tick labels. Defaults to browser locale. */
-    locale?: string;
-    /**
-     * Intl.DateTimeFormatOptions for tick labels.
-     * Defaults to { month: "short", day: "numeric" }.
-     */
-    dateFormat?: Intl.DateTimeFormatOptions;
-    /**
-     * Initial zoom level (1 = 100%, maximum 10).
-     * Defaults to 1. The user can still zoom in/out via the controls after mount.
-     */
-    initialZoom?: number;
+  /**
+   * Explicit axis start boundary (ISO 8601).
+   * Defaults to the earliest item startDate minus 5% padding.
+   */
+  axisStart?: string;
+  /**
+   * Explicit axis end boundary (ISO 8601).
+   * Defaults to the latest item endDate (or startDate) plus 5% padding.
+   */
+  axisEnd?: string;
+  /** Number of tick marks on the time axis. Defaults to 8. */
+  tickCount?: number;
+  /** Locale string passed to Intl.DateTimeFormat for tick labels. Defaults to browser locale. */
+  locale?: string;
+  /**
+   * Intl.DateTimeFormatOptions for tick labels.
+   * Defaults to { month: "short", day: "numeric" }.
+   */
+  dateFormat?: Intl.DateTimeFormatOptions;
+  /**
+   * Initial zoom level (1 = 100%, maximum 10).
+   * Defaults to 1. The user can still zoom in/out via the controls after mount.
+   */
+  initialZoom?: number;
 }
 
 /** Props for the pure <Timeline> component. */
 export interface TimelineProps {
-    items: TimelineItem[];
-    groups?: TimelineGroup[];
-    config?: TimelineConfig;
-    className?: string;
-    /** Ordered list of POV character names for the filter pill group. */
-    povNames?: string[];
+  items: TimelineItem[];
+  groups?: TimelineGroup[];
+  config?: TimelineConfig;
+  className?: string;
+  /** Ordered list of POV character names for the filter pill group. */
+  povNames?: string[];
 }

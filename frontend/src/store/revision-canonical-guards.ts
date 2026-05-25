@@ -11,13 +11,13 @@ import type { RevisionEntry } from "./revision-normalization";
  * All other revisions have `isCanonical` set to `false`.
  */
 export function applyCanonicalRevision(
-    revisions: RevisionEntry[],
-    canonicalId: string,
+  revisions: RevisionEntry[],
+  canonicalId: string,
 ): RevisionEntry[] {
-    return revisions.map((revision) => ({
-        ...revision,
-        isCanonical: revision.id === canonicalId,
-    }));
+  return revisions.map((revision) => ({
+    ...revision,
+    isCanonical: revision.id === canonicalId,
+  }));
 }
 
 /**
@@ -28,8 +28,8 @@ export function applyCanonicalRevision(
  * wrong resource.
  */
 export function isStaleCanonicalUpdate(
-    currentResourceId: string | null,
-    updateResourceId: string,
+  currentResourceId: string | null,
+  updateResourceId: string,
 ): boolean {
-    return currentResourceId !== null && currentResourceId !== updateResourceId;
+  return currentResourceId !== null && currentResourceId !== updateResourceId;
 }

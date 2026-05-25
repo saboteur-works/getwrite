@@ -23,19 +23,19 @@ import type { Project } from "../../../src/lib/models";
 
 /** Request payload accepted by {@link POST}. */
 interface LoadProjectRequestBody {
-    /** Absolute path to the project root directory on disk. */
-    projectPath: string;
+  /** Absolute path to the project root directory on disk. */
+  projectPath: string;
 }
 
 interface LoadProjectSuccessResponse {
-    project: Project;
-    folders: unknown[];
-    resources: LoadedResource[];
+  project: Project;
+  folders: unknown[];
+  resources: LoadedResource[];
 }
 
 interface LoadProjectErrorResponse {
-    error: string;
-    details: string;
+  error: string;
+  details: string;
 }
 
 /**
@@ -46,22 +46,19 @@ interface LoadProjectErrorResponse {
  *   HTTP 500 on failure.
  */
 export async function POST(
-    req: NextRequest,
+  req: NextRequest,
 ): Promise<
-    NextResponse<LoadProjectSuccessResponse | LoadProjectErrorResponse>
+  NextResponse<LoadProjectSuccessResponse | LoadProjectErrorResponse>
 > {
-    try {
-        const body = await req.json();
-        const { projectPath } = body as LoadProjectRequestBody;
-        const result = await loadProjectFromDisk(projectPath);
-        return NextResponse.json(result);
-    } catch (error) {
-        return NextResponse.json(
-            {
-                error: "Failed to load project",
-                details: (error as Error).message,
-            },
-            { status: 500 },
-        );
-    }
+  try {
+    const body = await req.json();
+    const { projectPath } = body as LoadProjectRequestBody;
+    const result = await loadProjectFromDisk(projectPath);
+    return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to load project", details: (error as Error).message },
+      { status: 500 },
+    );
+  }
 }

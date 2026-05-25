@@ -41,19 +41,19 @@ Together, they provide a nested, browseable organizer layout with optional previ
 
 ### OrganizerViewProps
 
-| Prop | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `resources` | `AnyResource[]` | Yes (type-level) | — | Present in API for compatibility; current rendering source is Redux state selectors. |
-| `showBody` | `boolean` | No | `true` | Initial state for showing resource body previews. |
-| `onToggleBody` | `(show: boolean) => void` | No | `undefined` | Callback invoked when the body-visibility toggle is pressed. |
-| `className` | `string` | No | `""` | Extra classes applied to outer container. |
+| Prop           | Type                      | Required         | Default     | Description                                                                          |
+| -------------- | ------------------------- | ---------------- | ----------- | ------------------------------------------------------------------------------------ |
+| `resources`    | `AnyResource[]`           | Yes (type-level) | —           | Present in API for compatibility; current rendering source is Redux state selectors. |
+| `showBody`     | `boolean`                 | No               | `true`      | Initial state for showing resource body previews.                                    |
+| `onToggleBody` | `(show: boolean) => void` | No               | `undefined` | Callback invoked when the body-visibility toggle is pressed.                         |
+| `className`    | `string`                  | No               | `""`        | Extra classes applied to outer container.                                            |
 
 ### OrganizerCardProps
 
-| Prop | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `resource` | `AnyResource` | Yes | — | Resource to render. |
-| `showBody` | `boolean` | No | `true` | Whether body preview text should render. |
+| Prop       | Type          | Required | Default | Description                              |
+| ---------- | ------------- | -------- | ------- | ---------------------------------------- |
+| `resource` | `AnyResource` | Yes      | —       | Resource to render.                      |
+| `showBody` | `boolean`     | No       | `true`  | Whether body preview text should render. |
 
 ## Rendering & Data Flow
 

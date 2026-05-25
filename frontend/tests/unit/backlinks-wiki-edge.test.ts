@@ -11,141 +11,127 @@ import { computeBacklinks } from "../../src/lib/models/backlinks";
 import { generateUUID } from "../../src/lib/models/uuid";
 
 describe("backlinks wiki-link edge cases", () => {
-    beforeEach(() => {
-        const mem = createMemoryAdapter();
-        setStorageAdapter(mem);
+  beforeEach(() => {
+    const mem = createMemoryAdapter();
+    setStorageAdapter(mem);
+  });
+
+  afterEach(async () => {
+    await waitForDrain(2000);
+  });
+
+  it("handles pipe-syntax and uses left side for resolution", async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-"));
+    const a = generateUUID();
+    const b = generateUUID();
+
+    await writeSidecar(projectRoot, b, {
+      name: "Chapter One",
+      slug: "chapter-one",
     });
+    await persistResourceContent(projectRoot, b, {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "target" }] },
+      ],
+    } as any);
 
-    afterEach(async () => {
-        await waitForDrain(2000);
+    await persistResourceContent(projectRoot, a, {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: `see [[Chapter One|ch1 alias]]` }],
+        },
+      ],
+    } as any);
+
+    const idx = await computeBacklinks(projectRoot);
+    expect(idx[a]).toEqual([b]);
+  });
+
+  it("resolves aliases array from sidecar", async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-"));
+    const a = generateUUID();
+    const b = generateUUID();
+
+    await writeSidecar(projectRoot, b, {
+      name: "My Target",
+      slug: "my-target",
+      aliases: ["MT", "target-alias"],
     });
+    await persistResourceContent(projectRoot, b, {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "target" }] },
+      ],
+    } as any);
 
-    it("handles pipe-syntax and uses left side for resolution", async () => {
-        const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-"));
-        const a = generateUUID();
-        const b = generateUUID();
+    await persistResourceContent(projectRoot, a, {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: `linking to [[MT]] and [[target-alias]]` },
+          ],
+        },
+      ],
+    } as any);
 
-        await writeSidecar(projectRoot, b, {
-            name: "Chapter One",
-            slug: "chapter-one",
-        });
-        await persistResourceContent(projectRoot, b, {
-            type: "doc",
-            content: [
-                {
-                    type: "paragraph",
-                    content: [{ type: "text", text: "target" }],
-                },
-            ],
-        } as any);
+    const idx = await computeBacklinks(projectRoot);
+    // duplicates should be deduped by computeBacklinks set
+    expect(idx[a].sort()).toEqual([b]);
+  });
 
-        await persistResourceContent(projectRoot, a, {
-            type: "doc",
-            content: [
-                {
-                    type: "paragraph",
-                    content: [
-                        { type: "text", text: `see [[Chapter One|ch1 alias]]` },
-                    ],
-                },
-            ],
-        } as any);
+  it("slug fallback matches slugified title when sidecar slug absent", async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-"));
+    const a = generateUUID();
+    const b = generateUUID();
 
-        const idx = await computeBacklinks(projectRoot);
-        expect(idx[a]).toEqual([b]);
-    });
+    // sidecar has name but no slug; resolver slugifies name
+    await writeSidecar(projectRoot, b, { name: "A Fancy Title" });
+    await persistResourceContent(projectRoot, b, {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "target" }] },
+      ],
+    } as any);
 
-    it("resolves aliases array from sidecar", async () => {
-        const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-"));
-        const a = generateUUID();
-        const b = generateUUID();
+    await persistResourceContent(projectRoot, a, {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: `see [[A Fancy Title]] and [[a-fancy-title]]`,
+            },
+          ],
+        },
+      ],
+    } as any);
 
-        await writeSidecar(projectRoot, b, {
-            name: "My Target",
-            slug: "my-target",
-            aliases: ["MT", "target-alias"],
-        });
-        await persistResourceContent(projectRoot, b, {
-            type: "doc",
-            content: [
-                {
-                    type: "paragraph",
-                    content: [{ type: "text", text: "target" }],
-                },
-            ],
-        } as any);
+    const idx = await computeBacklinks(projectRoot);
+    expect(idx[a]).toEqual([b]);
+  });
 
-        await persistResourceContent(projectRoot, a, {
-            type: "doc",
-            content: [
-                {
-                    type: "paragraph",
-                    content: [
-                        {
-                            type: "text",
-                            text: `linking to [[MT]] and [[target-alias]]`,
-                        },
-                    ],
-                },
-            ],
-        } as any);
+  it("ignores unresolved wiki-links", async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-"));
+    const a = generateUUID();
 
-        const idx = await computeBacklinks(projectRoot);
-        // duplicates should be deduped by computeBacklinks set
-        expect(idx[a].sort()).toEqual([b]);
-    });
+    await persistResourceContent(projectRoot, a, {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: `see [[Does Not Exist]]` }],
+        },
+      ],
+    } as any);
 
-    it("slug fallback matches slugified title when sidecar slug absent", async () => {
-        const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-"));
-        const a = generateUUID();
-        const b = generateUUID();
-
-        // sidecar has name but no slug; resolver slugifies name
-        await writeSidecar(projectRoot, b, { name: "A Fancy Title" });
-        await persistResourceContent(projectRoot, b, {
-            type: "doc",
-            content: [
-                {
-                    type: "paragraph",
-                    content: [{ type: "text", text: "target" }],
-                },
-            ],
-        } as any);
-
-        await persistResourceContent(projectRoot, a, {
-            type: "doc",
-            content: [
-                {
-                    type: "paragraph",
-                    content: [
-                        {
-                            type: "text",
-                            text: `see [[A Fancy Title]] and [[a-fancy-title]]`,
-                        },
-                    ],
-                },
-            ],
-        } as any);
-
-        const idx = await computeBacklinks(projectRoot);
-        expect(idx[a]).toEqual([b]);
-    });
-
-    it("ignores unresolved wiki-links", async () => {
-        const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-"));
-        const a = generateUUID();
-
-        await persistResourceContent(projectRoot, a, {
-            type: "doc",
-            content: [
-                {
-                    type: "paragraph",
-                    content: [{ type: "text", text: `see [[Does Not Exist]]` }],
-                },
-            ],
-        } as any);
-
-        const idx = await computeBacklinks(projectRoot);
-        expect(idx[a]).toEqual([]);
-    });
+    const idx = await computeBacklinks(projectRoot);
+    expect(idx[a]).toEqual([]);
+  });
 });

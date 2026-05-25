@@ -30,99 +30,95 @@
  */
 
 @theme {
-    /* ── CHROME SURFACE COLORS (dark mode) ── */
-    /* "Chrome" = everything outside the editor: sidebar, title bar, metadata panel */
-    --color-gw-bg: #0a0a0a; /* bg-gw-bg      | Application background */
-    --color-gw-chrome: #111110; /* bg-gw-chrome  | Panels, sidebars, title bar */
-    --color-gw-chrome2: #161614; /* bg-gw-chrome2 | Nested chrome: cards, inputs */
-    --color-gw-chrome3: #1a1a18; /* bg-gw-chrome3 | Deepest chrome level */
+  /* ── CHROME SURFACE COLORS (dark mode) ── */
+  /* "Chrome" = everything outside the editor: sidebar, title bar, metadata panel */
+  --color-gw-bg: #0a0a0a; /* bg-gw-bg      | Application background */
+  --color-gw-chrome: #111110; /* bg-gw-chrome  | Panels, sidebars, title bar */
+  --color-gw-chrome2: #161614; /* bg-gw-chrome2 | Nested chrome: cards, inputs */
+  --color-gw-chrome3: #1a1a18; /* bg-gw-chrome3 | Deepest chrome level */
 
-    /* ── EDITOR SURFACE COLORS ── */
-    /* "Editor" = the writing environment. Always warmer than chrome. */
-    --color-gw-editor: #1c1c1a; /* bg-gw-editor  | Writing surface in dark mode */
-    --color-gw-paper: #f0ede6; /* bg-gw-paper   | Writing surface in light mode */
-    --color-gw-ink: #1a1916; /* text-gw-ink   | Body text on light editor surface */
+  /* ── EDITOR SURFACE COLORS ── */
+  /* "Editor" = the writing environment. Always warmer than chrome. */
+  --color-gw-editor: #1c1c1a; /* bg-gw-editor  | Writing surface in dark mode */
+  --color-gw-paper: #f0ede6; /* bg-gw-paper   | Writing surface in light mode */
+  --color-gw-ink: #1a1916; /* text-gw-ink   | Body text on light editor surface */
 
-    /* ── LIGHT MODE CHROME COLORS ── */
-    /* Chrome in light mode is cooler than the editor surface */
-    --color-gw-chrome-light: #f5f4f0; /* bg-gw-chrome-light    | Light mode panels */
-    --color-gw-chrome2-light: #eceae3; /* bg-gw-chrome2-light   | Light mode cards, inputs */
-    --color-gw-chrome3-light: #e4e1da; /* bg-gw-chrome3-light   | Deepest light chrome */
-    --color-gw-border-light: #d0cec8; /* border-gw-border-light */
-    --color-gw-rule-light: #d8d5ce; /* border-gw-rule-light  */
-    --color-gw-secondary-light: #7a7870; /* text-gw-secondary-light */
+  /* ── LIGHT MODE CHROME COLORS ── */
+  /* Chrome in light mode is cooler than the editor surface */
+  --color-gw-chrome-light: #f5f4f0; /* bg-gw-chrome-light    | Light mode panels */
+  --color-gw-chrome2-light: #eceae3; /* bg-gw-chrome2-light   | Light mode cards, inputs */
+  --color-gw-chrome3-light: #e4e1da; /* bg-gw-chrome3-light   | Deepest light chrome */
+  --color-gw-border-light: #d0cec8; /* border-gw-border-light */
+  --color-gw-rule-light: #d8d5ce; /* border-gw-rule-light  */
+  --color-gw-secondary-light: #7a7870; /* text-gw-secondary-light */
 
-    /* ── TEXT COLORS ── */
-    --color-gw-primary: #f5f4f0; /* text-gw-primary   | Primary UI text */
-    --color-gw-secondary: #6a6864; /* text-gw-secondary | Muted labels, panel headers */
-    --color-gw-dim: #3a3a38; /* text-gw-dim       | Near-invisible — folder items */
-    --color-gw-red: #d44040; /* text-gw-red       | Signal Red — position marker */
+  /* ── TEXT COLORS ── */
+  --color-gw-primary: #f5f4f0; /* text-gw-primary   | Primary UI text */
+  --color-gw-secondary: #6a6864; /* text-gw-secondary | Muted labels, panel headers */
+  --color-gw-dim: #3a3a38; /* text-gw-dim       | Near-invisible — folder items */
+  --color-gw-red: #d44040; /* text-gw-red       | Signal Red — position marker */
 
-    /* ── BORDER COLORS ── */
-    --color-gw-border: #2e2e2c; /* border-gw-border     | Default 0.5px borders */
-    --color-gw-border-md: #3a3a38; /* border-gw-border-md  | Hover / emphasis */
-    --color-gw-rule: #1a1a18; /* border-gw-rule       | Divider lines */
-    --color-gw-red-border: #d44040; /* border-gw-red-border | Active file, canonical badge */
+  /* ── BORDER COLORS ── */
+  --color-gw-border: #2e2e2c; /* border-gw-border     | Default 0.5px borders */
+  --color-gw-border-md: #3a3a38; /* border-gw-border-md  | Hover / emphasis */
+  --color-gw-rule: #1a1a18; /* border-gw-rule       | Divider lines */
+  --color-gw-red-border: #d44040; /* border-gw-red-border | Active file, canonical badge */
 
-    /* ── FUNCTIONAL COLORS (not brand colors — exceptions for status only) ── */
-    --color-gw-saved: #4a9e4a; /* text-gw-saved   | Save status dot — green */
-    --color-gw-saving: #d4a440; /* text-gw-saving  | Saving status dot — amber */
-    /* These are functional status colors only. They do not appear elsewhere. */
+  /* ── FUNCTIONAL COLORS (not brand colors — exceptions for status only) ── */
+  --color-gw-saved: #4a9e4a; /* text-gw-saved   | Save status dot — green */
+  --color-gw-saving: #d4a440; /* text-gw-saving  | Saving status dot — amber */
+  /* These are functional status colors only. They do not appear elsewhere. */
 
-    /* ── TOAST NOTIFICATION TOKENS ── */
-    /* Fixed dark values — toasts render outside the .appshell-shell cascade. */
-    --color-gw-toast-bg: #1a1a18; /* Default toast background */
-    --color-gw-toast-fg: #f5f4f0; /* Default toast text */
-    --color-gw-toast-success-bg: #0d2a18; /* Deep forest green */
-    --color-gw-toast-success-fg: #b3e8c2; /* Light mint text */
-    --color-gw-toast-error-bg: #291d09; /* Deep amber — no red (FR 6) */
-    --color-gw-toast-error-fg: #f0d8a8; /* Warm light amber text */
+  /* ── TOAST NOTIFICATION TOKENS ── */
+  /* Fixed dark values — toasts render outside the .appshell-shell cascade. */
+  --color-gw-toast-bg: #1a1a18; /* Default toast background */
+  --color-gw-toast-fg: #f5f4f0; /* Default toast text */
+  --color-gw-toast-success-bg: #0d2a18; /* Deep forest green */
+  --color-gw-toast-success-fg: #b3e8c2; /* Light mint text */
+  --color-gw-toast-error-bg: #291d09; /* Deep amber — no red (FR 6) */
+  --color-gw-toast-error-fg: #f0d8a8; /* Warm light amber text */
 
-    /* ── PRODUCT TYPE SCALE ── */
-    --text-gw-hero: clamp(
-        60px,
-        9vw,
-        88px
-    ); /* text-gw-hero    | Hero wordmark */
-    --text-gw-display: 48px; /* text-gw-display */
-    --text-gw-h1: 28px; /* text-gw-h1      | Project/page titles */
-    --text-gw-h2: 18px; /* text-gw-h2      | Section headings */
-    --text-gw-h3: 14px; /* text-gw-h3      | Card titles, panel headings */
-    --text-gw-body: 14px; /* text-gw-body    | UI body */
-    --text-gw-small: 13px; /* text-gw-small   | Secondary body */
-    --text-gw-editor: 15px; /* text-gw-editor  | Editor body (IBM Plex Serif) */
-    --text-gw-label: 11px; /* text-gw-label   | Panel section headers */
-    --text-gw-micro: 10px; /* text-gw-micro   | Timestamps, metadata values */
-    --text-gw-nano: 9px; /* text-gw-nano    | Tab labels, kb shortcuts */
+  /* ── PRODUCT TYPE SCALE ── */
+  --text-gw-hero: clamp(60px, 9vw, 88px); /* text-gw-hero    | Hero wordmark */
+  --text-gw-display: 48px; /* text-gw-display */
+  --text-gw-h1: 28px; /* text-gw-h1      | Project/page titles */
+  --text-gw-h2: 18px; /* text-gw-h2      | Section headings */
+  --text-gw-h3: 14px; /* text-gw-h3      | Card titles, panel headings */
+  --text-gw-body: 14px; /* text-gw-body    | UI body */
+  --text-gw-small: 13px; /* text-gw-small   | Secondary body */
+  --text-gw-editor: 15px; /* text-gw-editor  | Editor body (IBM Plex Serif) */
+  --text-gw-label: 11px; /* text-gw-label   | Panel section headers */
+  --text-gw-micro: 10px; /* text-gw-micro   | Timestamps, metadata values */
+  --text-gw-nano: 9px; /* text-gw-nano    | Tab labels, kb shortcuts */
 
-    /* ── LAYOUT ── */
-    --width-gw-resource-panel: 200px; /* w-gw-resource  | Resource tree panel width */
-    --width-gw-metadata-panel: 220px; /* w-gw-metadata  | Metadata panel width */
-    --height-gw-titlebar: 44px; /* h-gw-titlebar  | Application title bar */
-    --height-gw-tree-item: 32px; /* h-gw-tree-item | Resource tree row height */
-    --height-gw-tab: 38px; /* h-gw-tab       | Editor tab bar height */
+  /* ── LAYOUT ── */
+  --width-gw-resource-panel: 200px; /* w-gw-resource  | Resource tree panel width */
+  --width-gw-metadata-panel: 220px; /* w-gw-metadata  | Metadata panel width */
+  --height-gw-titlebar: 44px; /* h-gw-titlebar  | Application title bar */
+  --height-gw-tree-item: 32px; /* h-gw-tree-item | Resource tree row height */
+  --height-gw-tab: 38px; /* h-gw-tab       | Editor tab bar height */
 
-    /* ── EDITOR SPACING ── */
-    --padding-gw-editor-x: 40px; /* px-gw-editor | Editor horizontal padding */
-    --padding-gw-editor-y: 32px; /* py-gw-editor | Editor top padding */
+  /* ── EDITOR SPACING ── */
+  --padding-gw-editor-x: 40px; /* px-gw-editor | Editor horizontal padding */
+  --padding-gw-editor-y: 32px; /* py-gw-editor | Editor top padding */
 
-    /* ── COMPONENT TOKENS ── */
+  /* ── COMPONENT TOKENS ── */
 
-    /* Active file indicator */
-    --width-gw-active-indicator: 2px; /* The red left border on active resource tree item */
+  /* Active file indicator */
+  --width-gw-active-indicator: 2px; /* The red left border on active resource tree item */
 
-    /* Tab active underline */
-    --height-gw-tab-underline: 1.5px; /* Height of red underline on active tab */
+  /* Tab active underline */
+  --height-gw-tab-underline: 1.5px; /* Height of red underline on active tab */
 
-    /* Focus ring */
-    --color-gw-focus-ring: rgba(212, 64, 64, 0.2); /* ring-* utilities */
+  /* Focus ring */
+  --color-gw-focus-ring: rgba(212, 64, 64, 0.2); /* ring-* utilities */
 
-    /* Revision badge */
-    /* Canonical: border-gw-red-border text-gw-red opacity-80 (never filled) */
+  /* Revision badge */
+  /* Canonical: border-gw-red-border text-gw-red opacity-80 (never filled) */
 
-    /* Metadata tags */
-    /* Default: border-gw-border text-gw-secondary */
-    /* Active:  border-gw-red-border text-gw-red opacity-80 */
+  /* Metadata tags */
+  /* Default: border-gw-border text-gw-secondary */
+  /* Active:  border-gw-red-border text-gw-red opacity-80 */
 }
 
 /*

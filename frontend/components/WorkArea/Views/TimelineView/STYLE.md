@@ -16,7 +16,7 @@ This document is self-contained. It reproduces all tokens and conventions needed
 
 ## 1. What the Timeline View is
 
-The Timeline View places scenes along a horizontal date axis according to their in-story date — the date and time the scene takes place in the world of the story, not the date it was written. It answers the question: *in what order do things actually happen?*
+The Timeline View places scenes along a horizontal date axis according to their in-story date — the date and time the scene takes place in the world of the story, not the date it was written. It answers the question: _in what order do things actually happen?_
 
 It is a structural tool for writers managing complex, multi-POV, or non-linear narratives. It is not a Gantt chart, not a calendar, not a data dashboard. The visual language should communicate this: precision without business-software energy, density without clutter.
 
@@ -100,25 +100,25 @@ All type is set in the IBM Plex family. Do not substitute other typefaces. IBM P
 
 ### Roles used in this view
 
-| Role | Typeface | Weight | Size | Tracking |
-|---|---|---|---|---|
-| Scene name (bar chip) | IBM Plex Mono | 400 | 9px | `0.06em` |
-| Scene name (pill chip) | IBM Plex Mono | 400 | 8px | `0.04em` |
-| Axis tick labels | IBM Plex Mono | 400 | 9px | `0.08em` |
-| Row act label | IBM Plex Mono | 400 | 9px | `0.14em` |
-| Row scene count | IBM Plex Mono | 400 | 8px | `0.08em` |
-| Toolbar scene count | IBM Plex Mono | 400 | 9px | `0.18em` |
-| Filter pills | IBM Plex Mono | 400 | 9px | `0.12em` |
-| Zoom percentage | IBM Plex Mono | 400 | 9px | `0.10em` |
-| Gap labels | IBM Plex Mono | 400 | 8px | `0.08em` |
-| Legend POV names | IBM Plex Mono | 400 | 9px | `0.08em` |
-| Legend section header | IBM Plex Mono | 400 | 9px | `0.18em` |
-| Tooltip scene name | IBM Plex Sans | 700 | 12px | default |
-| Tooltip keys | IBM Plex Mono | 400 | 9px | `0.10em` |
-| Tooltip values | IBM Plex Mono | 400 | 9px | `0.06em` |
-| Tooltip status badge | IBM Plex Mono | 400 | 8px | `0.12em` |
-| Empty state primary | IBM Plex Mono | 400 | 10px | `0.14em` |
-| Empty state secondary | IBM Plex Mono | 400 | 9px | `0.08em` |
+| Role                   | Typeface      | Weight | Size | Tracking |
+| ---------------------- | ------------- | ------ | ---- | -------- |
+| Scene name (bar chip)  | IBM Plex Mono | 400    | 9px  | `0.06em` |
+| Scene name (pill chip) | IBM Plex Mono | 400    | 8px  | `0.04em` |
+| Axis tick labels       | IBM Plex Mono | 400    | 9px  | `0.08em` |
+| Row act label          | IBM Plex Mono | 400    | 9px  | `0.14em` |
+| Row scene count        | IBM Plex Mono | 400    | 8px  | `0.08em` |
+| Toolbar scene count    | IBM Plex Mono | 400    | 9px  | `0.18em` |
+| Filter pills           | IBM Plex Mono | 400    | 9px  | `0.12em` |
+| Zoom percentage        | IBM Plex Mono | 400    | 9px  | `0.10em` |
+| Gap labels             | IBM Plex Mono | 400    | 8px  | `0.08em` |
+| Legend POV names       | IBM Plex Mono | 400    | 9px  | `0.08em` |
+| Legend section header  | IBM Plex Mono | 400    | 9px  | `0.18em` |
+| Tooltip scene name     | IBM Plex Sans | 700    | 12px | default  |
+| Tooltip keys           | IBM Plex Mono | 400    | 9px  | `0.10em` |
+| Tooltip values         | IBM Plex Mono | 400    | 9px  | `0.06em` |
+| Tooltip status badge   | IBM Plex Mono | 400    | 8px  | `0.12em` |
+| Empty state primary    | IBM Plex Mono | 400    | 10px | `0.14em` |
+| Empty state secondary  | IBM Plex Mono | 400    | 9px  | `0.08em` |
 
 The Timeline View is almost entirely monospaced. Mono type signals precision — dates, names, counts — and keeps the view feeling like a technical instrument rather than a document browser. IBM Plex Sans appears only in the tooltip scene name, where weight and sans-serif rendering make the scene name immediately scannable above the data rows.
 
@@ -328,14 +328,14 @@ Maximum tick count: `20` at zoom ≥ 4×, `10` at zoom < 4×. When the computed 
 
 The label format adapts to the combination of total story span and current zoom level:
 
-| Story span | Zoom | Tick interval | Format | Example |
-|---|---|---|---|---|
-| > 7 days | any | 24h | Month + day | `MAR 5` |
-| 2–7 days | < 4× | 12h | Month + day | `MAR 5` |
-| 2–7 days | ≥ 4× | 3h | Month + day + time | `MAR 5  14:30` |
-| ≤ 2 days | < 2× | 3h | Month + day | `MAR 5` |
-| ≤ 2 days | ≥ 2× | 1–3h | Month + day + time | `MAR 5  08:00` |
-| ≤ 12 hours | any | 1h | Month + day + time | `MAR 5  08:00` |
+| Story span | Zoom | Tick interval | Format             | Example        |
+| ---------- | ---- | ------------- | ------------------ | -------------- |
+| > 7 days   | any  | 24h           | Month + day        | `MAR 5`        |
+| 2–7 days   | < 4× | 12h           | Month + day        | `MAR 5`        |
+| 2–7 days   | ≥ 4× | 3h            | Month + day + time | `MAR 5  14:30` |
+| ≤ 2 days   | < 2× | 3h            | Month + day        | `MAR 5`        |
+| ≤ 2 days   | ≥ 2× | 1–3h          | Month + day + time | `MAR 5  08:00` |
+| ≤ 12 hours | any  | 1h            | Month + day + time | `MAR 5  08:00` |
 
 When time is shown: `HH:MM` in 24-hour format, separated from the date by two spaces — not a comma, not a dash. This keeps labels compact and consistent.
 

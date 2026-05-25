@@ -32,16 +32,16 @@ The Resource Tree consumes data in the following format:
 
 ```typescript
 interface ResourceItemData {
-    /** The name of the resource */
-    name: string;
-    /** The IDs of the resource's children */
-    children: string[];
-    /** Whether the resource is a folder */
-    isFolder: boolean;
-    /** The ID of the resource's parent folder */
-    parentId: string | null;
-    /** Whether the resource can be moved into a new folder */
-    special?: boolean;
+  /** The name of the resource */
+  name: string;
+  /** The IDs of the resource's children */
+  children: string[];
+  /** Whether the resource is a folder */
+  isFolder: boolean;
+  /** The ID of the resource's parent folder */
+  parentId: string | null;
+  /** Whether the resource can be moved into a new folder */
+  special?: boolean;
 }
 ```
 
@@ -69,31 +69,19 @@ This function transforms a flat combined list of Files and Resources into the fo
 
 ```json
 {
-    "root": {
-        "name": "Root",
-        "children": ["folder-1", "res-3"],
-        "isFolder": true
-    },
-    "folder-1": {
-        "name": "Folder 1",
-        "children": ["res-1", "res-2"],
-        "isFolder": true
-    },
-    "res-1": {
-        "name": "Resource 1",
-        "children": [],
-        "isFolder": false
-    },
-    "res-2": {
-        "name": "Resource 2",
-        "children": [],
-        "isFolder": false
-    },
-    "res-3": {
-        "name": "Resource 3",
-        "children": [],
-        "isFolder": false
-    }
+  "root": {
+    "name": "Root",
+    "children": ["folder-1", "res-3"],
+    "isFolder": true
+  },
+  "folder-1": {
+    "name": "Folder 1",
+    "children": ["res-1", "res-2"],
+    "isFolder": true
+  },
+  "res-1": { "name": "Resource 1", "children": [], "isFolder": false },
+  "res-2": { "name": "Resource 2", "children": [], "isFolder": false },
+  "res-3": { "name": "Resource 3", "children": [], "isFolder": false }
 }
 ```
 
@@ -126,26 +114,26 @@ With the exception of the `root` node, all keys in this structure are the Resour
 ### Non-Folder Resources
 
 - [x] Non-Folder Resources can be dragged and dropped into new position within the same level/folder
-    - [ ] Dropped Non-Folder resources render at the proper position after drop
-    - [x] Dropped Non-Folder Resources `orderIndex` reflects their new position when dropped within the same level
-    - [x] Siblings of dropped Non-Folder Resources have their `orderIndex` corrected as needed (ie, when the dropped item is placed before the last child)
+  - [ ] Dropped Non-Folder resources render at the proper position after drop
+  - [x] Dropped Non-Folder Resources `orderIndex` reflects their new position when dropped within the same level
+  - [x] Siblings of dropped Non-Folder Resources have their `orderIndex` corrected as needed (ie, when the dropped item is placed before the last child)
 
 - [x] Non-Folder Resources can be dragged and dropped into a new position in a different level/folder
-    - [x] Non-Folder resources `folderId` reflect their new parent's `id`
-    - [x] Non-Folder Resources `orderIndex` reflects their new position when dropped within a new folder
-    - [x] Siblings of dropped Non-Folder Resources have their `orderIndex` corrected as needed (ie, when the dropped item is placed before the last child)
+  - [x] Non-Folder resources `folderId` reflect their new parent's `id`
+  - [x] Non-Folder Resources `orderIndex` reflects their new position when dropped within a new folder
+  - [x] Siblings of dropped Non-Folder Resources have their `orderIndex` corrected as needed (ie, when the dropped item is placed before the last child)
 - [x] Changes are persisted on local filesystem
 
 ### Folders
 
 - [x] Folders can be dragged and dropped into new position within the same level/folder
-    - [ ] Folders render at the proper position after drop
-    - [x] Folder's `orderIndex` reflects their new position when dropped within the same level
-    - [x] Siblings of Folders have their `orderIndex` corrected as needed (ie, when the dropped item is placed before the last child)
+  - [ ] Folders render at the proper position after drop
+  - [x] Folder's `orderIndex` reflects their new position when dropped within the same level
+  - [x] Siblings of Folders have their `orderIndex` corrected as needed (ie, when the dropped item is placed before the last child)
 - [x] Folders can be dragged and dropped into a new position in a different level/folder
-    - [x] Folder's `folderId` reflect their new parent's `id`
-    - [x] Folder's `orderIndex` reflects their new position when dropped within a new folder
-    - [x] Siblings of Folders have their `orderIndex` corrected as needed (ie, when the dropped item is placed before the last child)
+  - [x] Folder's `folderId` reflect their new parent's `id`
+  - [x] Folder's `orderIndex` reflects their new position when dropped within a new folder
+  - [x] Siblings of Folders have their `orderIndex` corrected as needed (ie, when the dropped item is placed before the last child)
 - [x] Folder children retain their proper `folderId` and `orderIndex` when Folders are dragged and dropped
 - [x] Changes are persisted on local filesystem
 

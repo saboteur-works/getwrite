@@ -7,25 +7,25 @@ import type { ResourceOption } from "./controls/ResourceRefInput";
  * When includeSubfolders is true, all descendant folders are included via BFS.
  */
 export function resolveFolderScope(
-    folders: Folder[],
-    refFolder: string,
-    includeSubfolders: boolean,
+  folders: Folder[],
+  refFolder: string,
+  includeSubfolders: boolean,
 ): Set<string> {
-    const scope = new Set<string>([refFolder]);
-    if (!includeSubfolders) return scope;
+  const scope = new Set<string>([refFolder]);
+  if (!includeSubfolders) return scope;
 
-    const queue = [refFolder];
-    while (queue.length > 0) {
-        const current = queue.shift()!;
-        for (const folder of folders) {
-            const effectiveParentId = folder.parentId ?? folder.folderId ?? null;
-            if (effectiveParentId === current && !scope.has(folder.id)) {
-                scope.add(folder.id);
-                queue.push(folder.id);
-            }
-        }
+  const queue = [refFolder];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const folder of folders) {
+      const effectiveParentId = folder.parentId ?? folder.folderId ?? null;
+      if (effectiveParentId === current && !scope.has(folder.id)) {
+        scope.add(folder.id);
+        queue.push(folder.id);
+      }
     }
-    return scope;
+  }
+  return scope;
 }
 
 /**
@@ -34,18 +34,26 @@ export function resolveFolderScope(
  * resources are returned.
  */
 export function filterResourceOptionsByScope(
-    resources: ReadonlyArray<{ id: string; name: string; folderId?: string | null }>,
-    folders: Folder[],
-    refFolder: string | undefined,
-    includeSubfolders: boolean | undefined,
+  resources: ReadonlyArray<{
+    id: string;
+    name: string;
+    folderId?: string | null;
+  }>,
+  folders: Folder[],
+  refFolder: string | undefined,
+  includeSubfolders: boolean | undefined,
 ): ResourceOption[] {
-    if (!refFolder) {
-        return resources
-            .filter((r) => r.name)
-            .map((r) => ({ id: r.id, name: r.name }));
-    }
-    const scope = resolveFolderScope(folders, refFolder, includeSubfolders ?? false);
+  if (!refFolder) {
     return resources
-        .filter((r) => r.name && scope.has(r.folderId ?? ""))
-        .map((r) => ({ id: r.id, name: r.name }));
+      .filter((r) => r.name)
+      .map((r) => ({ id: r.id, name: r.name }));
+  }
+  const scope = resolveFolderScope(
+    folders,
+    refFolder,
+    includeSubfolders ?? false,
+  );
+  return resources
+    .filter((r) => r.name && scope.has(r.folderId ?? ""))
+    .map((r) => ({ id: r.id, name: r.name }));
 }

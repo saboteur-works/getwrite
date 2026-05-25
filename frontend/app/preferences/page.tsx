@@ -12,5 +12,5 @@ import UserPreferencesPage from "../../components/preferences/UserPreferencesPag
  * @returns User preferences page element.
  */
 export default function PreferencesRoutePage(): JSX.Element {
-    return <UserPreferencesPage />;
+  return <UserPreferencesPage />;
 }

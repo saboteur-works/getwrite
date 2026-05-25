@@ -5,9 +5,9 @@ import type { ResourceRef } from "../../src/lib/models/types";
 import "./value-picker.css";
 
 export interface RefHoverPreviewProps {
-    /** The resource ref to describe in the preview. */
-    resource: ResourceRef;
-    children: React.ReactNode;
+  /** The resource ref to describe in the preview. */
+  resource: ResourceRef;
+  children: React.ReactNode;
 }
 
 /**
@@ -15,30 +15,30 @@ export interface RefHoverPreviewProps {
  * resource's name and id. When id is null, the ref is marked as deleted.
  */
 export default function RefHoverPreview({
-    resource,
-    children,
+  resource,
+  children,
 }: RefHoverPreviewProps): JSX.Element {
-    const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(false);
 
-    return (
-        <span
-            className="ref-hover-preview"
-            onMouseEnter={() => setVisible(true)}
-            onMouseLeave={() => setVisible(false)}
-        >
-            {children}
-            {visible && (
-                <div className="ref-hover-preview__popover" role="tooltip">
-                    <span className="ref-hover-preview__name">{resource.name}</span>
-                    {resource.id === null ? (
-                        <span className="ref-hover-preview__deleted">Deleted</span>
-                    ) : (
-                        <span className="ref-hover-preview__id">
-                            {resource.id.slice(0, 8)}…
-                        </span>
-                    )}
-                </div>
-            )}
-        </span>
-    );
+  return (
+    <span
+      className="ref-hover-preview"
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+    >
+      {children}
+      {visible && (
+        <div className="ref-hover-preview__popover" role="tooltip">
+          <span className="ref-hover-preview__name">{resource.name}</span>
+          {resource.id === null ? (
+            <span className="ref-hover-preview__deleted">Deleted</span>
+          ) : (
+            <span className="ref-hover-preview__id">
+              {resource.id.slice(0, 8)}…
+            </span>
+          )}
+        </div>
+      )}
+    </span>
+  );
 }

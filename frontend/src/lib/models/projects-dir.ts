@@ -8,8 +8,8 @@ import path from "node:path";
  * standard pnpm-dev and standalone-server cases.
  */
 export function resolveProjectsDir(): string {
-    return (
-        process.env.GETWRITE_PROJECTS_DIR ??
-        path.join(process.cwd(), "..", "projects")
-    );
+  return (
+    process.env.GETWRITE_PROJECTS_DIR ??
+    path.join(process.cwd(), "..", "projects")
+  );
 }

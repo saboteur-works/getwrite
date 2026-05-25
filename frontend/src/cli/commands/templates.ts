@@ -44,9 +44,9 @@ import { Command } from "commander";
 import path from "node:path";
 import fs from "node:fs/promises";
 import {
-    saveResourceTemplate,
-    createResourceFromTemplate,
-    duplicateResource,
+  saveResourceTemplate,
+  createResourceFromTemplate,
+  duplicateResource,
 } from "../../lib/models/resource-templates";
 
 /**
@@ -70,135 +70,127 @@ import {
  * ```
  */
 export function registerTemplates(program: Command) {
-    const tpl = program
-        .command("templates")
-        .description("Manage resource templates");
+  const tpl = program
+    .command("templates")
+    .description("Manage resource templates");
 
-    /**
-     * `templates save <projectRoot> <templateId> <name>`
-     *
-     * Writes a new empty text template to
-     * `<projectRoot>/meta/templates/<templateId>.json`.
-     *
-     * The template is created with `type: "text"` and empty `plainText`.
-     * Use this as a starting point before editing the template file directly.
-     */
-    tpl.command("save <projectRoot> <templateId> <name>")
-        .description("Save an empty template with id and name")
-        .action(
-            async (
-                projectRoot: string,
-                templateId: string,
-                name: string,
-            ): Promise<void> => {
-                try {
-                    const template = {
-                        id: templateId,
-                        name,
-                        type: "text",
-                        plainText: "",
-                    } as const;
-                    await saveResourceTemplate(projectRoot, template as any);
-                    console.log(`Saved template ${templateId}`);
-                } catch (err) {
-                    console.error("Error:", (err as Error).message);
-                    process.exit(2);
-                }
-            },
-        );
+  /**
+   * `templates save <projectRoot> <templateId> <name>`
+   *
+   * Writes a new empty text template to
+   * `<projectRoot>/meta/templates/<templateId>.json`.
+   *
+   * The template is created with `type: "text"` and empty `plainText`.
+   * Use this as a starting point before editing the template file directly.
+   */
+  tpl
+    .command("save <projectRoot> <templateId> <name>")
+    .description("Save an empty template with id and name")
+    .action(
+      async (
+        projectRoot: string,
+        templateId: string,
+        name: string,
+      ): Promise<void> => {
+        try {
+          const template = {
+            id: templateId,
+            name,
+            type: "text",
+            plainText: "",
+          } as const;
+          await saveResourceTemplate(projectRoot, template as any);
+          console.log(`Saved template ${templateId}`);
+        } catch (err) {
+          console.error("Error:", (err as Error).message);
+          process.exit(2);
+        }
+      },
+    );
 
-    /**
-     * `templates create <projectRoot> <templateId> [name]`
-     *
-     * Instantiates a new resource from the template identified by
-     * `templateId`, optionally overriding its default name.  Prints the ID
-     * of the newly created resource on success.
-     */
-    tpl.command("create <projectRoot> <templateId> [name]")
-        .description("Create a resource from a template")
-        .action(
-            async (
-                projectRoot: string,
-                templateId: string,
-                name?: string,
-            ): Promise<void> => {
-                try {
-                    const created = await createResourceFromTemplate(
-                        projectRoot,
-                        templateId,
-                        { name },
-                    );
-                    // createResourceFromTemplate returns an AnyResource when not
-                    // in dry-run mode; the dry-run branch returns a plannedWrites
-                    // object instead.  Guard to ensure we have a real resource.
-                    if ("id" in created) {
-                        console.log(`Created resource ${created.id}`);
-                    } else {
-                        console.log("Created resource (dry-run preview only)");
-                    }
-                } catch (err) {
-                    console.error("Error:", (err as Error).message);
-                    process.exit(2);
-                }
-            },
-        );
+  /**
+   * `templates create <projectRoot> <templateId> [name]`
+   *
+   * Instantiates a new resource from the template identified by
+   * `templateId`, optionally overriding its default name.  Prints the ID
+   * of the newly created resource on success.
+   */
+  tpl
+    .command("create <projectRoot> <templateId> [name]")
+    .description("Create a resource from a template")
+    .action(
+      async (
+        projectRoot: string,
+        templateId: string,
+        name?: string,
+      ): Promise<void> => {
+        try {
+          const created = await createResourceFromTemplate(
+            projectRoot,
+            templateId,
+            { name },
+          );
+          // createResourceFromTemplate returns an AnyResource when not
+          // in dry-run mode; the dry-run branch returns a plannedWrites
+          // object instead.  Guard to ensure we have a real resource.
+          if ("id" in created) {
+            console.log(`Created resource ${created.id}`);
+          } else {
+            console.log("Created resource (dry-run preview only)");
+          }
+        } catch (err) {
+          console.error("Error:", (err as Error).message);
+          process.exit(2);
+        }
+      },
+    );
 
-    /**
-     * `templates duplicate <projectRoot> <resourceId>`
-     *
-     * Creates a copy of the resource identified by `resourceId` within the
-     * same project.  Prints the new resource's ID on success.
-     */
-    tpl.command("duplicate <projectRoot> <resourceId>")
-        .description("Duplicate an existing resource")
-        .action(
-            async (projectRoot: string, resourceId: string): Promise<void> => {
-                try {
-                    const res = await duplicateResource(
-                        projectRoot,
-                        resourceId,
-                    );
-                    console.log(`Duplicated resource -> ${res.newId}`);
-                } catch (err) {
-                    console.error("Error:", (err as Error).message);
-                    process.exit(2);
-                }
-            },
-        );
+  /**
+   * `templates duplicate <projectRoot> <resourceId>`
+   *
+   * Creates a copy of the resource identified by `resourceId` within the
+   * same project.  Prints the new resource's ID on success.
+   */
+  tpl
+    .command("duplicate <projectRoot> <resourceId>")
+    .description("Duplicate an existing resource")
+    .action(async (projectRoot: string, resourceId: string): Promise<void> => {
+      try {
+        const res = await duplicateResource(projectRoot, resourceId);
+        console.log(`Duplicated resource -> ${res.newId}`);
+      } catch (err) {
+        console.error("Error:", (err as Error).message);
+        process.exit(2);
+      }
+    });
 
-    /**
-     * `templates list <projectRoot>`
-     *
-     * Reads all `.json` files from `<projectRoot>/meta/templates/` and
-     * prints a tab-separated summary line (`id\tname\ttype`) for each.
-     *
-     * Exits with code `2` if the directory is missing or unreadable.
-     */
-    tpl.command("list <projectRoot>")
-        .description("List templates in a project")
-        .action(async (projectRoot: string): Promise<void> => {
-            const dir = path.join(projectRoot, "meta", "templates");
-            try {
-                const entries = await fs.readdir(dir);
-                for (const e of entries) {
-                    if (e.endsWith(".json")) {
-                        const raw = await fs.readFile(
-                            path.join(dir, e),
-                            "utf8",
-                        );
-                        const parsed = JSON.parse(raw);
-                        console.log(
-                            parsed.id + "\t" + parsed.name + "\t" + parsed.type,
-                        );
-                    }
-                }
-            } catch (err) {
-                console.error(
-                    "No templates found or cannot read templates directory.",
-                );
-                process.exit(2);
-            }
-        });
+  /**
+   * `templates list <projectRoot>`
+   *
+   * Reads all `.json` files from `<projectRoot>/meta/templates/` and
+   * prints a tab-separated summary line (`id\tname\ttype`) for each.
+   *
+   * Exits with code `2` if the directory is missing or unreadable.
+   */
+  tpl
+    .command("list <projectRoot>")
+    .description("List templates in a project")
+    .action(async (projectRoot: string): Promise<void> => {
+      const dir = path.join(projectRoot, "meta", "templates");
+      try {
+        const entries = await fs.readdir(dir);
+        for (const e of entries) {
+          if (e.endsWith(".json")) {
+            const raw = await fs.readFile(path.join(dir, e), "utf8");
+            const parsed = JSON.parse(raw);
+            console.log(parsed.id + "\t" + parsed.name + "\t" + parsed.type);
+          }
+        }
+      } catch (err) {
+        console.error("No templates found or cannot read templates directory.");
+        process.exit(2);
+      }
+    });
 }
 
 export default registerTemplates;

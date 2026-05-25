@@ -16,9 +16,9 @@ const DEFAULT_INITIAL_REVISION_NAME = "Initial Draft";
  * when the configured value is blank.
  */
 export function resolveInitialRevisionName(config: ProjectConfig): string {
-    const name = config.defaultRevisionName;
-    if (name && name.trim().length > 0) {
-        return name.trim();
-    }
-    return DEFAULT_INITIAL_REVISION_NAME;
+  const name = config.defaultRevisionName;
+  if (name && name.trim().length > 0) {
+    return name.trim();
+  }
+  return DEFAULT_INITIAL_REVISION_NAME;
 }

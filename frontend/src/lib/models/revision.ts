@@ -18,21 +18,21 @@ import { mkdir, writeFile, readFile, readdir, stat, rm, rename } from "./io";
 
 /** Optional attributes for revision creation. */
 export interface WriteRevisionOptions {
-    /** Optional actor identifier recorded in the revision metadata. */
-    author?: string;
-    /** When true, marks the written revision as canonical. */
-    isCanonical?: boolean;
-    /** Optional arbitrary metadata to persist alongside the revision (e.g. user-provided name). */
-    metadata?: Record<string, unknown>;
+  /** Optional actor identifier recorded in the revision metadata. */
+  author?: string;
+  /** When true, marks the written revision as canonical. */
+  isCanonical?: boolean;
+  /** Optional arbitrary metadata to persist alongside the revision (e.g. user-provided name). */
+  metadata?: Record<string, unknown>;
 }
 
 /** Optional behavior controls for prune operations. */
 export interface PruneRevisionsOptions {
-    /**
-     * When false, aborts pruning if the deletion target cannot be met due to
-     * canonical or preserved revisions.
-     */
-    autoPrune?: boolean;
+  /**
+   * When false, aborts pruning if the deletion target cannot be met due to
+   * canonical or preserved revisions.
+   */
+  autoPrune?: boolean;
 }
 
 /**
@@ -54,27 +54,27 @@ export interface PruneRevisionsOptions {
  * const candidates = selectPruneCandidates(revisions, 25);
  */
 export function selectPruneCandidates(
-    revisions: Revision[],
-    maxRevisions: number,
+  revisions: Revision[],
+  maxRevisions: number,
 ): Revision[] {
-    if (maxRevisions < 0)
-        throw new RangeError("maxRevisions must be non-negative");
+  if (maxRevisions < 0)
+    throw new RangeError("maxRevisions must be non-negative");
 
-    const total = revisions.length;
-    if (total <= maxRevisions) return [];
+  const total = revisions.length;
+  if (total <= maxRevisions) return [];
 
-    // Exclude canonical and preserved revisions from pruning candidates.
-    const nonCanonical = revisions.filter(
-        (r) => !r.isCanonical && !(r as any).metadata?.preserve,
-    );
-    if (nonCanonical.length === 0) return [];
+  // Exclude canonical and preserved revisions from pruning candidates.
+  const nonCanonical = revisions.filter(
+    (r) => !r.isCanonical && !(r as any).metadata?.preserve,
+  );
+  if (nonCanonical.length === 0) return [];
 
-    const sorted = [...nonCanonical].sort(
-        (a, b) => a.versionNumber - b.versionNumber,
-    );
+  const sorted = [...nonCanonical].sort(
+    (a, b) => a.versionNumber - b.versionNumber,
+  );
 
-    const toRemoveCount = Math.max(0, total - maxRevisions);
-    return sorted.slice(0, toRemoveCount);
+  const toRemoveCount = Math.max(0, total - maxRevisions);
+  return sorted.slice(0, toRemoveCount);
 }
 
 /**
@@ -88,10 +88,10 @@ export function selectPruneCandidates(
  * const base = revisionsBaseDir("/projects/demo", "resource-uuid");
  */
 export function revisionsBaseDir(
-    projectRoot: string,
-    resourceId: UUID,
+  projectRoot: string,
+  resourceId: UUID,
 ): string {
-    return path.join(projectRoot, "revisions", resourceId);
+  return path.join(projectRoot, "revisions", resourceId);
 }
 
 /**
@@ -106,14 +106,14 @@ export function revisionsBaseDir(
  * const dir = revisionDir("/projects/demo", "resource-uuid", 3);
  */
 export function revisionDir(
-    projectRoot: string,
-    resourceId: UUID,
-    versionNumber: number,
+  projectRoot: string,
+  resourceId: UUID,
+  versionNumber: number,
 ): string {
-    return path.join(
-        revisionsBaseDir(projectRoot, resourceId),
-        `v-${versionNumber}`,
-    );
+  return path.join(
+    revisionsBaseDir(projectRoot, resourceId),
+    `v-${versionNumber}`,
+  );
 }
 
 /**
@@ -141,64 +141,63 @@ export function revisionDir(
  * );
  */
 export async function writeRevision(
-    projectRoot: string,
-    resourceId: UUID,
-    versionNumber: number,
-    content: string | Buffer,
-    options?: WriteRevisionOptions,
+  projectRoot: string,
+  resourceId: UUID,
+  versionNumber: number,
+  content: string | Buffer,
+  options?: WriteRevisionOptions,
 ): Promise<Revision> {
-    const finalDir = revisionDir(projectRoot, resourceId, versionNumber);
-    const base = revisionsBaseDir(projectRoot, resourceId);
+  const finalDir = revisionDir(projectRoot, resourceId, versionNumber);
+  const base = revisionsBaseDir(projectRoot, resourceId);
 
-    // Ensure final dir does not already exist to avoid clobbering.
+  // Ensure final dir does not already exist to avoid clobbering.
+  try {
+    const st = await stat(finalDir).catch(() => null);
+    if (st) throw new Error(`revision directory already exists: ${finalDir}`);
+  } catch (err) {
+    throw err;
+  }
+
+  // Create a temp directory next to the revisions base and write files there,
+  // then atomically rename the temp dir to the final v-<version> directory.
+  const tmpDir = path.join(base, `.tmp-${generateUUID()}`);
+  try {
+    await mkdir(tmpDir, { recursive: true });
+
+    const filename = "content.bin";
+    const finalFilePath = path.join(finalDir, filename);
+    const tmpFilePath = path.join(tmpDir, filename);
+    await writeFile(tmpFilePath, content);
+
+    const now = new Date().toISOString();
+    const rev: Revision = {
+      id: generateUUID(),
+      resourceId,
+      versionNumber,
+      createdAt: now,
+      savedAt: now,
+      author: options?.author,
+      filePath: finalFilePath,
+      isCanonical: !!options?.isCanonical,
+      metadata: options?.metadata,
+    };
+
+    const metaPath = path.join(tmpDir, "metadata.json");
+    await writeFile(metaPath, JSON.stringify(rev, null, 2), "utf8");
+
+    // Atomic move into place. If finalDir exists, this will throw.
+    await rename(tmpDir, finalDir);
+
+    return rev;
+  } catch (err) {
+    // Best-effort cleanup of tmpDir on error.
     try {
-        const st = await stat(finalDir).catch(() => null);
-        if (st)
-            throw new Error(`revision directory already exists: ${finalDir}`);
-    } catch (err) {
-        throw err;
+      await rm(tmpDir, { recursive: true, force: true });
+    } catch (_) {
+      // ignore cleanup errors
     }
-
-    // Create a temp directory next to the revisions base and write files there,
-    // then atomically rename the temp dir to the final v-<version> directory.
-    const tmpDir = path.join(base, `.tmp-${generateUUID()}`);
-    try {
-        await mkdir(tmpDir, { recursive: true });
-
-        const filename = "content.bin";
-        const finalFilePath = path.join(finalDir, filename);
-        const tmpFilePath = path.join(tmpDir, filename);
-        await writeFile(tmpFilePath, content);
-
-        const now = new Date().toISOString();
-        const rev: Revision = {
-            id: generateUUID(),
-            resourceId,
-            versionNumber,
-            createdAt: now,
-            savedAt: now,
-            author: options?.author,
-            filePath: finalFilePath,
-            isCanonical: !!options?.isCanonical,
-            metadata: options?.metadata,
-        };
-
-        const metaPath = path.join(tmpDir, "metadata.json");
-        await writeFile(metaPath, JSON.stringify(rev, null, 2), "utf8");
-
-        // Atomic move into place. If finalDir exists, this will throw.
-        await rename(tmpDir, finalDir);
-
-        return rev;
-    } catch (err) {
-        // Best-effort cleanup of tmpDir on error.
-        try {
-            await rm(tmpDir, { recursive: true, force: true });
-        } catch (_) {
-            // ignore cleanup errors
-        }
-        throw err;
-    }
+    throw err;
+  }
 }
 
 /**
@@ -220,41 +219,41 @@ export async function writeRevision(
  * const revisions = await listRevisions("/projects/demo", "resource-uuid");
  */
 export async function listRevisions(
-    projectRoot: string,
-    resourceId: UUID,
+  projectRoot: string,
+  resourceId: UUID,
 ): Promise<Revision[]> {
-    const base = revisionsBaseDir(projectRoot, resourceId);
-    try {
-        const entries = await readdir(base, { withFileTypes: true });
-        const revDirs = entries
-            .filter(
-                (entry): entry is Dirent =>
-                    typeof entry !== "string" && entry.isDirectory(),
-            )
-            .filter((entry) => entry.name.startsWith("v-"))
-            .map((dirEntry) => dirEntry.name);
-        const results: Revision[] = [];
-        for (const d of revDirs) {
-            const metaPath = path.join(base, d, "metadata.json");
-            try {
-                const raw = await readFile(metaPath, "utf8");
-                const parsed = JSON.parse(raw) as Revision;
-                results.push(parsed);
-            } catch (err: unknown) {
-                continue;
-            }
-        }
-        return results.sort((a, b) => a.versionNumber - b.versionNumber);
-    } catch (err: unknown) {
-        if (
-            err &&
-            typeof err === "object" &&
-            "code" in err &&
-            (err as unknown as { code?: string }).code === "ENOENT"
-        )
-            return [];
-        throw err;
+  const base = revisionsBaseDir(projectRoot, resourceId);
+  try {
+    const entries = await readdir(base, { withFileTypes: true });
+    const revDirs = entries
+      .filter(
+        (entry): entry is Dirent =>
+          typeof entry !== "string" && entry.isDirectory(),
+      )
+      .filter((entry) => entry.name.startsWith("v-"))
+      .map((dirEntry) => dirEntry.name);
+    const results: Revision[] = [];
+    for (const d of revDirs) {
+      const metaPath = path.join(base, d, "metadata.json");
+      try {
+        const raw = await readFile(metaPath, "utf8");
+        const parsed = JSON.parse(raw) as Revision;
+        results.push(parsed);
+      } catch (err: unknown) {
+        continue;
+      }
     }
+    return results.sort((a, b) => a.versionNumber - b.versionNumber);
+  } catch (err: unknown) {
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as unknown as { code?: string }).code === "ENOENT"
+    )
+      return [];
+    throw err;
+  }
 }
 
 /**
@@ -279,27 +278,27 @@ export async function listRevisions(
  * });
  */
 export async function pruneRevisions(
-    projectRoot: string,
-    resourceId: UUID,
-    maxRevisions: number,
-    options?: PruneRevisionsOptions,
+  projectRoot: string,
+  resourceId: UUID,
+  maxRevisions: number,
+  options?: PruneRevisionsOptions,
 ): Promise<Revision[]> {
-    const revisions = await listRevisions(projectRoot, resourceId);
-    const candidates = selectPruneCandidates(revisions, maxRevisions);
-    const deleted: Revision[] = [];
+  const revisions = await listRevisions(projectRoot, resourceId);
+  const candidates = selectPruneCandidates(revisions, maxRevisions);
+  const deleted: Revision[] = [];
 
-    const requiredToRemove = Math.max(0, revisions.length - maxRevisions);
-    if (candidates.length < requiredToRemove && options?.autoPrune === false) {
-        // In headless/non-autoPrune mode, abort and perform no deletions.
-        return [];
-    }
+  const requiredToRemove = Math.max(0, revisions.length - maxRevisions);
+  if (candidates.length < requiredToRemove && options?.autoPrune === false) {
+    // In headless/non-autoPrune mode, abort and perform no deletions.
+    return [];
+  }
 
-    for (const c of candidates) {
-        const dir = revisionDir(projectRoot, resourceId, c.versionNumber);
-        await rm(dir, { recursive: true, force: true });
-        deleted.push(c);
-    }
-    return deleted;
+  for (const c of candidates) {
+    const dir = revisionDir(projectRoot, resourceId, c.versionNumber);
+    await rm(dir, { recursive: true, force: true });
+    deleted.push(c);
+  }
+  return deleted;
 }
 
 /**
@@ -319,29 +318,29 @@ export async function pruneRevisions(
  * const canonical = await setCanonicalRevision("/projects/demo", "resource-uuid", 8);
  */
 export async function setCanonicalRevision(
-    projectRoot: string,
-    resourceId: UUID,
-    versionNumber: number,
+  projectRoot: string,
+  resourceId: UUID,
+  versionNumber: number,
 ): Promise<Revision | null> {
-    const revs = await listRevisions(projectRoot, resourceId);
-    const target = revs.find((r) => r.versionNumber === versionNumber);
-    if (!target) return null;
+  const revs = await listRevisions(projectRoot, resourceId);
+  const target = revs.find((r) => r.versionNumber === versionNumber);
+  if (!target) return null;
 
-    const base = revisionsBaseDir(projectRoot, resourceId);
+  const base = revisionsBaseDir(projectRoot, resourceId);
 
-    // Update every metadata.json to reflect canonical flag (set true for target, false otherwise)
-    for (const r of revs) {
-        const dir = path.join(base, `v-${r.versionNumber}`);
-        const metaPath = path.join(dir, "metadata.json");
-        const updated: Revision = {
-            ...r,
-            isCanonical: r.versionNumber === versionNumber,
-            savedAt: new Date().toISOString(),
-        };
-        await writeFile(metaPath, JSON.stringify(updated, null, 2), "utf8");
-    }
+  // Update every metadata.json to reflect canonical flag (set true for target, false otherwise)
+  for (const r of revs) {
+    const dir = path.join(base, `v-${r.versionNumber}`);
+    const metaPath = path.join(dir, "metadata.json");
+    const updated: Revision = {
+      ...r,
+      isCanonical: r.versionNumber === versionNumber,
+      savedAt: new Date().toISOString(),
+    };
+    await writeFile(metaPath, JSON.stringify(updated, null, 2), "utf8");
+  }
 
-    return { ...target, isCanonical: true };
+  return { ...target, isCanonical: true };
 }
 
 /**
@@ -356,23 +355,23 @@ export async function setCanonicalRevision(
  * const canonical = await getCanonicalRevision("/projects/demo", "resource-uuid");
  */
 export async function getCanonicalRevision(
-    projectRoot: string,
-    resourceId: UUID,
+  projectRoot: string,
+  resourceId: UUID,
 ): Promise<Revision | null> {
-    const revs = await listRevisions(projectRoot, resourceId);
-    return revs.find((r) => r.isCanonical) ?? null;
+  const revs = await listRevisions(projectRoot, resourceId);
+  return revs.find((r) => r.isCanonical) ?? null;
 }
 
 /**
  * Bundled revision API surface for consumers that prefer object-style imports.
  */
 export default {
-    selectPruneCandidates,
-    revisionsBaseDir,
-    revisionDir,
-    writeRevision,
-    listRevisions,
-    pruneRevisions,
-    setCanonicalRevision,
-    getCanonicalRevision,
+  selectPruneCandidates,
+  revisionsBaseDir,
+  revisionDir,
+  writeRevision,
+  listRevisions,
+  pruneRevisions,
+  setCanonicalRevision,
+  getCanonicalRevision,
 };

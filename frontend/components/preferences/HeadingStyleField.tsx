@@ -3,9 +3,9 @@
 import React from "react";
 
 export interface HeadingStyleFieldProps {
-    id?: string;
-    label: string;
-    children: React.ReactNode;
+  id?: string;
+  label: string;
+  children: React.ReactNode;
 }
 
 /**
@@ -14,16 +14,16 @@ export interface HeadingStyleFieldProps {
  * uppercase label span, then slots in the provided control as children.
  */
 export default function HeadingStyleField({
-    id,
-    label,
-    children,
+  id,
+  label,
+  children,
 }: HeadingStyleFieldProps): JSX.Element {
-    return (
-        <label htmlFor={id} className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
-                {label}
-            </span>
-            {children}
-        </label>
-    );
+  return (
+    <label htmlFor={id} className="flex flex-col gap-2">
+      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
 }

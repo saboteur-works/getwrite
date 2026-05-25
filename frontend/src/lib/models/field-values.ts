@@ -8,10 +8,10 @@ import { NULL_VALUE_KEY, MISSING_VALUE_KEY } from "./field-value-keys";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface FieldValueCount {
-    /** Number of resources that have this value. */
-    count: number;
-    /** One representative value for display and type introspection. */
-    sample: MetadataValue;
+  /** Number of resources that have this value. */
+  count: number;
+  /** One representative value for display and type introspection. */
+  sample: MetadataValue;
 }
 
 // ─── Canonical key ────────────────────────────────────────────────────────────
@@ -27,11 +27,11 @@ export interface FieldValueCount {
  * - ResourceRef / arrays / objects → JSON.stringify
  */
 export function canonicalValueKey(value: MetadataValue): string {
-    if (value === null) return NULL_VALUE_KEY;
-    if (typeof value === "string") return value;
-    if (typeof value === "number") return String(value);
-    if (typeof value === "boolean") return value ? "true" : "false";
-    return JSON.stringify(value);
+  if (value === null) return NULL_VALUE_KEY;
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  return JSON.stringify(value);
 }
 
 // ─── Pure enumeration ─────────────────────────────────────────────────────────
@@ -46,34 +46,34 @@ export function canonicalValueKey(value: MetadataValue): string {
  * - All other values are bucketed by `canonicalValueKey`.
  */
 export function enumerateFieldValues(
-    sidecars: ReadonlyArray<Record<string, MetadataValue> | null>,
-    fieldKey: string,
+  sidecars: ReadonlyArray<Record<string, MetadataValue> | null>,
+  fieldKey: string,
 ): Map<string, FieldValueCount> {
-    const result = new Map<string, FieldValueCount>();
+  const result = new Map<string, FieldValueCount>();
 
-    function increment(key: string, sample: MetadataValue): void {
-        const existing = result.get(key);
-        if (existing) {
-            existing.count += 1;
-        } else {
-            result.set(key, { count: 1, sample });
-        }
+  function increment(key: string, sample: MetadataValue): void {
+    const existing = result.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      result.set(key, { count: 1, sample });
     }
+  }
 
-    for (const sidecar of sidecars) {
-        if (sidecar === null || !(fieldKey in sidecar)) {
-            increment(MISSING_VALUE_KEY, null);
-            continue;
-        }
-        const value = sidecar[fieldKey];
-        if (value === null) {
-            increment(NULL_VALUE_KEY, null);
-        } else {
-            increment(canonicalValueKey(value), value);
-        }
+  for (const sidecar of sidecars) {
+    if (sidecar === null || !(fieldKey in sidecar)) {
+      increment(MISSING_VALUE_KEY, null);
+      continue;
     }
+    const value = sidecar[fieldKey];
+    if (value === null) {
+      increment(NULL_VALUE_KEY, null);
+    } else {
+      increment(canonicalValueKey(value), value);
+    }
+  }
 
-    return result;
+  return result;
 }
 
 // ─── Async filesystem scan ────────────────────────────────────────────────────
@@ -85,20 +85,20 @@ export function enumerateFieldValues(
  * Unreadable or missing sidecars are counted under `MISSING_VALUE_KEY`.
  */
 export async function scanAllFieldValues(
-    projectRoot: string,
-    fieldKey: string,
+  projectRoot: string,
+  fieldKey: string,
 ): Promise<Map<string, FieldValueCount>> {
-    const metaDir = path.join(projectRoot, "meta");
-    let entries: string[];
-    try {
-        entries = await fs.readdir(metaDir);
-    } catch {
-        return new Map();
-    }
-    const resourceIds = entries
-        .filter((e) => e.startsWith("resource-") && e.endsWith(".meta.json"))
-        .map((e) => e.slice("resource-".length, -".meta.json".length));
-    return scanFieldValues(projectRoot, resourceIds, fieldKey);
+  const metaDir = path.join(projectRoot, "meta");
+  let entries: string[];
+  try {
+    entries = await fs.readdir(metaDir);
+  } catch {
+    return new Map();
+  }
+  const resourceIds = entries
+    .filter((e) => e.startsWith("resource-") && e.endsWith(".meta.json"))
+    .map((e) => e.slice("resource-".length, -".meta.json".length));
+  return scanFieldValues(projectRoot, resourceIds, fieldKey);
 }
 
 /**
@@ -109,18 +109,18 @@ export async function scanAllFieldValues(
  * than throwing, so partial results are always returned.
  */
 export async function scanFieldValues(
-    projectRoot: string,
-    resourceIds: readonly string[],
-    fieldKey: string,
+  projectRoot: string,
+  resourceIds: readonly string[],
+  fieldKey: string,
 ): Promise<Map<string, FieldValueCount>> {
-    const sidecars = await Promise.all(
-        resourceIds.map(async (id) => {
-            try {
-                return await readSidecar(projectRoot, id);
-            } catch {
-                return null;
-            }
-        }),
-    );
-    return enumerateFieldValues(sidecars, fieldKey);
+  const sidecars = await Promise.all(
+    resourceIds.map(async (id) => {
+      try {
+        return await readSidecar(projectRoot, id);
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return enumerateFieldValues(sidecars, fieldKey);
 }

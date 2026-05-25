@@ -4,23 +4,23 @@ import React, { useEffect, useRef } from "react";
 import { cn } from "../utils";
 
 export interface ListboxOption {
-    value: string;
-    label: string;
-    /** Optional secondary label shown to the right of the main label. */
-    meta?: string;
-    /** Optional content rendered below the label (accepts React nodes for rich text like <mark>). */
-    description?: React.ReactNode;
+  value: string;
+  label: string;
+  /** Optional secondary label shown to the right of the main label. */
+  meta?: string;
+  /** Optional content rendered below the label (accepts React nodes for rich text like <mark>). */
+  description?: React.ReactNode;
 }
 
 export interface ListboxProps {
-    options: ListboxOption[];
-    highlightedIndex: number;
-    onSelect: (value: string) => void;
-    onHighlightChange?: (index: number) => void;
-    /** When true the list is positioned absolutely relative to its nearest positioned parent. */
-    anchored?: boolean;
-    className?: string;
-    "aria-label"?: string;
+  options: ListboxOption[];
+  highlightedIndex: number;
+  onSelect: (value: string) => void;
+  onHighlightChange?: (index: number) => void;
+  /** When true the list is positioned absolutely relative to its nearest positioned parent. */
+  anchored?: boolean;
+  className?: string;
+  "aria-label"?: string;
 }
 
 /**
@@ -31,64 +31,66 @@ export interface ListboxProps {
  * renders the result list when `options.length > 0`.
  */
 export default function Listbox({
-    options,
-    highlightedIndex,
-    onSelect,
-    onHighlightChange,
-    anchored = true,
-    className,
-    "aria-label": ariaLabel = "Search results",
+  options,
+  highlightedIndex,
+  onSelect,
+  onHighlightChange,
+  anchored = true,
+  className,
+  "aria-label": ariaLabel = "Search results",
 }: ListboxProps): JSX.Element | null {
-    const listRef = useRef<HTMLUListElement>(null);
-    const highlightedRef = useRef<HTMLLIElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const highlightedRef = useRef<HTMLLIElement>(null);
 
-    useEffect(() => {
-        highlightedRef.current?.scrollIntoView?.({ block: "nearest" });
-    }, [highlightedIndex]);
+  useEffect(() => {
+    highlightedRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [highlightedIndex]);
 
-    if (options.length === 0) return null;
+  if (options.length === 0) return null;
 
-    return (
-        <ul
-            ref={listRef}
-            role="listbox"
-            aria-label={ariaLabel}
-            className={cn("listbox", anchored && "listbox--anchored", className)}
-        >
-            {options.map((opt, i) => {
-                const isHighlighted = i === highlightedIndex;
-                return (
-                    <li
-                        key={opt.value}
-                        ref={isHighlighted ? highlightedRef : null}
-                        role="option"
-                        aria-selected={isHighlighted}
-                    >
-                        <button
-                            type="button"
-                            tabIndex={-1}
-                            className={cn(
-                                "listbox-option",
-                                opt.description && "listbox-option--stacked",
-                                isHighlighted && "listbox-option--highlighted",
-                            )}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => onSelect(opt.value)}
-                            onMouseEnter={() => onHighlightChange?.(i)}
-                        >
-                            <div className="listbox-option-top">
-                                <span className="listbox-option-label">{opt.label}</span>
-                                {opt.meta ? (
-                                    <span className="listbox-option-meta">{opt.meta}</span>
-                                ) : null}
-                            </div>
-                            {opt.description ? (
-                                <div className="listbox-option-description">{opt.description}</div>
-                            ) : null}
-                        </button>
-                    </li>
-                );
-            })}
-        </ul>
-    );
+  return (
+    <ul
+      ref={listRef}
+      role="listbox"
+      aria-label={ariaLabel}
+      className={cn("listbox", anchored && "listbox--anchored", className)}
+    >
+      {options.map((opt, i) => {
+        const isHighlighted = i === highlightedIndex;
+        return (
+          <li
+            key={opt.value}
+            ref={isHighlighted ? highlightedRef : null}
+            role="option"
+            aria-selected={isHighlighted}
+          >
+            <button
+              type="button"
+              tabIndex={-1}
+              className={cn(
+                "listbox-option",
+                opt.description && "listbox-option--stacked",
+                isHighlighted && "listbox-option--highlighted",
+              )}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onSelect(opt.value)}
+              onMouseEnter={() => onHighlightChange?.(i)}
+            >
+              <div className="listbox-option-top">
+                <span className="listbox-option-label">{opt.label}</span>
+                {opt.meta ? (
+                  <span className="listbox-option-meta">{opt.meta}</span>
+                ) : null}
+              </div>
+              {opt.description ? (
+                <div className="listbox-option-description">
+                  {opt.description}
+                </div>
+              ) : null}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }

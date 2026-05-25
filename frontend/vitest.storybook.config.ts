@@ -4,41 +4,39 @@ import { fileURLToPath } from "node:url";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
 const dirname =
-    typeof __dirname !== "undefined"
-        ? __dirname
-        : path.dirname(fileURLToPath(import.meta.url));
+  typeof __dirname !== "undefined"
+    ? __dirname
+    : path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-    resolve: {
-        alias: {
-            // same alias as vitest config to resolve `@/...` imports in generated files
-            "@": path.resolve(dirname, "@"),
-        },
+  resolve: {
+    alias: {
+      // same alias as vitest config to resolve `@/...` imports in generated files
+      "@": path.resolve(dirname, "@"),
     },
-    test: {
-        environment: "jsdom",
-        globals: true,
-        // explicitly exclude the e2e folder and Playwright artifacts
-        exclude: ["**/e2e/**", "playwright-report/**"],
-        projects: [
-            {
-                extends: true,
-                plugins: [
-                    storybookTest({
-                        configDir: path.join(dirname, ".storybook"),
-                    }),
-                ],
-                test: {
-                    name: "storybook",
-                    browser: {
-                        enabled: true,
-                        headless: true,
-                        provider: playwright({}),
-                        instances: [{ browser: "chromium" }],
-                    },
-                    setupFiles: [".storybook/vitest.setup.ts"],
-                },
-            },
+  },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    // explicitly exclude the e2e folder and Playwright artifacts
+    exclude: ["**/e2e/**", "playwright-report/**"],
+    projects: [
+      {
+        extends: true,
+        plugins: [
+          storybookTest({ configDir: path.join(dirname, ".storybook") }),
         ],
-    },
+        test: {
+          name: "storybook",
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright({}),
+            instances: [{ browser: "chromium" }],
+          },
+          setupFiles: [".storybook/vitest.setup.ts"],
+        },
+      },
+    ],
+  },
 });

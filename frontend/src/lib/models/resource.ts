@@ -9,34 +9,34 @@
  * - Re-exporting template inspection/validation helpers from `template-service`.
  */
 import {
-    createAudioResource,
-    createImageResource,
-    createTextResource,
-    validateResource,
+  createAudioResource,
+  createImageResource,
+  createTextResource,
+  validateResource,
 } from "./resource-factory";
 export {
-    createAudioResource,
-    createFolderResource,
-    createImageResource,
-    createResourceOfType,
-    createTextResource,
-    validateResource,
+  createAudioResource,
+  createFolderResource,
+  createImageResource,
+  createResourceOfType,
+  createTextResource,
+  validateResource,
 } from "./resource-factory";
 export type { CreateResourceOpts } from "./resource-factory";
 export { getLocalResources, writeResourceToFile } from "./resource-persistence";
 export {
-    inspectTemplate,
-    validateTemplate,
-    type TemplateInspection,
-    type TemplateValidationResult,
+  inspectTemplate,
+  validateTemplate,
+  type TemplateInspection,
+  type TemplateValidationResult,
 } from "./template-service";
 
 /**
  * Convenience default export of core resource factory/validation helpers.
  */
 export default {
-    createTextResource,
-    createImageResource,
-    createAudioResource,
-    validateResource,
+  createTextResource,
+  createImageResource,
+  createAudioResource,
+  validateResource,
 };

@@ -8,8 +8,8 @@
  * discarded to prevent stale data from overwriting current state.
  */
 export function isStaleQueryResponse(
-    currentProjectId: string | null,
-    responseProjectId: string,
+  currentProjectId: string | null,
+  responseProjectId: string,
 ): boolean {
-    return currentProjectId !== null && currentProjectId !== responseProjectId;
+  return currentProjectId !== null && currentProjectId !== responseProjectId;
 }
