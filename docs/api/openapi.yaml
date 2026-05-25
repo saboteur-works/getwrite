@@ -8,8 +8,11 @@ info:
 
     Base URL: `http://localhost:3000` (development)
 
-    All request bodies use `Content-Type: application/json`.
-    All error responses follow `{ "error": string }` or `{ "error": string, "details": string }`.
+    All request bodies use `Content-Type: application/json` unless otherwise noted.
+    Most error responses follow `{ "error": string }` or
+    `{ "error": string, "details": string }`. Several routes take the project's
+    absolute filesystem path (`projectPath` / `projectRoot`) in the body rather
+    than a project ID.
 
 servers:
   - url: http://localhost:3000
@@ -28,12 +31,15 @@ components:
       example: "2026-02-21T07:17:41.691Z"
 
     MetadataValue:
-      description: Recursive metadata value type — string, number, boolean, null, or nested object.
+      description: Recursive metadata value type — string, number, boolean, null, array, or nested object.
       oneOf:
         - type: string
         - type: number
         - type: boolean
         - type: "null"
+        - type: array
+          items:
+            $ref: "#/components/schemas/MetadataValue"
         - type: object
           additionalProperties:
             $ref: "#/components/schemas/MetadataValue"
@@ -60,6 +66,18 @@ components:
         special:
           type: boolean
 
+    Tag:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        name:
+          type: string
+        color:
+          type: string
+          description: Optional hex color for the tag chip
+
     Project:
       type: object
       required: [id, name, rootPath, createdAt]
@@ -82,6 +100,12 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/MetadataValue"
+        config:
+          type: object
+          description: |
+            Project configuration: maxRevisions, autoPrune, statuses, defaultRevisionName,
+            tags, tagAssignments, metadataSchema, editorConfig.
+          additionalProperties: true
 
     ResourceSidecar:
       type: object
@@ -102,6 +126,8 @@ components:
           type: [string, "null"]
         slug:
           type: [string, "null"]
+        orderIndex:
+          type: number
         tags:
           type: array
           items:
@@ -116,7 +142,10 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/MetadataValue"
-          description: User-managed metadata (notes, status, characters, locations, items, pov, orderIndex, timeframe)
+          description: |
+            User-managed metadata keyed by metadata-schema field key
+            (built-ins: synopsis, notes, status, pov, storyDate, storyDuration,
+            storyEndDate; plus any custom fields).
 
     LoadedResource:
       allOf:
@@ -168,6 +197,177 @@ components:
           items:
             $ref: "#/components/schemas/LoadedResource"
 
+    ProjectTypeSpec:
+      type: object
+      required: [id, name, folders]
+      description: A project-type template spec from getwrite-config/templates/project-types/.
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        folders:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              name:
+                type: string
+              special:
+                type: boolean
+        defaultResources:
+          type: array
+          items:
+            type: object
+            required: [name, type]
+            properties:
+              folder:
+                type: string
+              name:
+                type: string
+              type:
+                type: string
+              template:
+                type: string
+
+    MetadataField:
+      type: object
+      required: [key, label, type]
+      properties:
+        key:
+          type: string
+          description: Slug matching /^[a-z0-9-]+$/ (enforced for newly added/renamed fields)
+        label:
+          type: string
+        type:
+          type: string
+          enum: [text, number, date, boolean, select, multiselect, resource-ref, multi-resource-ref]
+        locked:
+          type: boolean
+        deprecated:
+          type: boolean
+        options:
+          type: array
+          items:
+            type: string
+        refFolder:
+          type: string
+        includeSubfolders:
+          type: boolean
+        maxSelections:
+          type: number
+
+    MetadataGroup:
+      type: object
+      required: [id, label, fields]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        folderId:
+          type: string
+          description: When set, the group renders only for resources in this folder
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataField"
+
+    MetadataSchema:
+      type: object
+      required: [groups]
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataGroup"
+
+    QueryAST:
+      type: object
+      description: |
+        Recursive query predicate tree. Leaf nodes carry an op (eq, ne, lt, lte,
+        gt, gte, in, exists, contains, matches, linksTo, linkedFrom) with a field
+        and value; combinators are and/or (with children), not (with child); splice
+        nodes are ref (saved query by id) and param. Validated by QueryASTSchema.
+      additionalProperties: true
+
+    SavedQuery:
+      type: object
+      required: [id, name, definition]
+      description: A saved query persisted at meta/queries/<id>.query.json.
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        name:
+          type: string
+        definition:
+          $ref: "#/components/schemas/QueryAST"
+
+    SearchResult:
+      type: object
+      required: [resourceId, title, snippet, status, folderId, tags]
+      properties:
+        resourceId:
+          type: string
+        title:
+          type: string
+        snippet:
+          type: string
+        status:
+          type: [string, "null"]
+        folderId:
+          type: [string, "null"]
+        tags:
+          type: array
+          items:
+            type: string
+
+    ResourceMeta:
+      type: object
+      required: [id, name, type]
+      description: Minimal resource descriptor passed to compile/export endpoints.
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+
+    CompileRequest:
+      type: object
+      required: [projectPath, resourceIds, resources, includeHeaders, projectName]
+      properties:
+        projectPath:
+          type: string
+        resourceIds:
+          type: array
+          description: Resource IDs to include, in output order (only text resources are compiled).
+          items:
+            type: string
+        resources:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceMeta"
+        includeHeaders:
+          type: boolean
+          description: When true, each section is prefixed with the resource name as a header.
+        projectName:
+          type: string
+          description: Used to derive the output filename.
+
+    FileTextResponse:
+      type: object
+      required: [text, filename]
+      properties:
+        text:
+          type: string
+        filename:
+          type: string
+
     Error:
       type: object
       required: [error]
@@ -185,9 +385,9 @@ paths:
     get:
       summary: List all projects
       description: |
-        Reads the `/projects` directory and returns all projects with their
-        `project.json`, folder descriptors, and resource sidecar metadata.
-        Filesystem path: `<cwd>/../projects/`.
+        Reads the resolved projects directory (`GETWRITE_PROJECTS_DIR` or the default
+        `<cwd>/../projects/`) and returns every project with its `project.json`,
+        folder tree, and resource sidecar metadata.
       responses:
         "200":
           description: Array of project records, each with project, folders, and resources
@@ -288,7 +488,7 @@ paths:
     post:
       summary: Delete a project
       description: |
-        Permanently deletes the project root directory (recursive rm). This is
+        Permanently deletes the project root directory (recursive `fs.rm`). This is
         irreversible — there is no trash/recovery for project-level deletion.
       requestBody:
         required: true
@@ -346,7 +546,7 @@ paths:
       summary: Update project user preferences
       description: |
         Merges partial `preferences` into `project.metadata` in `project.json`.
-        Used to persist UI preferences (e.g. sidebar state, editor settings) alongside
+        Used to persist UI preferences (e.g. color mode, search result limit) alongside
         the project without touching resource data.
       requestBody:
         required: true
@@ -387,27 +587,597 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
-  # ── Project Resources ─────────────────────────────────────────────────────
+  /api/project/editor-config:
+    post:
+      summary: Update project editor configuration
+      description: |
+        Sanitizes and writes `config.editorConfig` (heading map and/or body settings)
+        to `project.json`. Returns the full updated `editorConfig`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath]
+              properties:
+                projectPath:
+                  type: string
+                headings:
+                  type: object
+                  description: EditorHeadingMap — per-level heading style overrides
+                  additionalProperties: true
+                body:
+                  type: object
+                  description: EditorBodyConfig — body font/size/lineHeight/paragraphSpacing
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Updated editor config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  editorConfig:
+                    type: object
+                    additionalProperties: true
+        "400":
+          description: Missing projectPath
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to update editor config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
-  /api/project-resources:
+  /api/project/revision-settings:
+    post:
+      summary: Update default revision name
+      description: Sets `config.defaultRevisionName` in `project.json`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, defaultRevisionName]
+              properties:
+                projectPath:
+                  type: string
+                defaultRevisionName:
+                  type: string
+      responses:
+        "200":
+          description: Updated default revision name
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  defaultRevisionName:
+                    type: string
+        "400":
+          description: Invalid JSON, missing projectPath/defaultRevisionName, or update failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/project/metadata-schema:
+    post:
+      summary: Mutate the project metadata schema
+      description: |
+        Action-discriminated endpoint. Every success returns the full updated schema
+        so Redux can replace state without a re-fetch. Supported `action` values:
+        `add-field`, `remove-field`, `deprecate-field`, `clear-field`,
+        `reorder-fields`, `rename-field`, `update-field-options`,
+        `update-field-options-with-migration`, `update-ref-properties`,
+        `change-field-type`, `change-field-type-with-migration`, `rename-key`,
+        `add-group`, `remove-group`, `reorder-groups`.
+
+        Additional fields depend on the action (e.g. `groupId`, `fieldKey`, `field`,
+        `newLabel`, `options`, `newType`, `migrations`, `group`, `newKeyOrder`,
+        `newGroupIdOrder`, `newKey`). Slug validation `/^[a-z0-9-]+$/` is applied to
+        `add-field` and `rename-key`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, projectPath]
+              properties:
+                action:
+                  type: string
+                  enum:
+                    [
+                      add-field,
+                      remove-field,
+                      deprecate-field,
+                      clear-field,
+                      reorder-fields,
+                      rename-field,
+                      update-field-options,
+                      update-field-options-with-migration,
+                      update-ref-properties,
+                      change-field-type,
+                      change-field-type-with-migration,
+                      rename-key,
+                      add-group,
+                      remove-group,
+                      reorder-groups,
+                    ]
+                projectPath:
+                  type: string
+              additionalProperties: true
+      responses:
+        "200":
+          description: Full updated metadata schema
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schema]
+                properties:
+                  schema:
+                    $ref: "#/components/schemas/MetadataSchema"
+        "400":
+          description: Invalid JSON, invalid action, invalid field key, or a client-side operation error (locked/not found/already exists)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Schema operation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     get:
-      summary: Get resources for a project
-      description: Returns sidecar metadata for all resources in a project.
+      summary: Enumerate distinct values for a single field
+      description: |
+        Returns a frequency map of distinct values for `fieldKey` across all resource
+        sidecars in the project. Used by the query builder's value picker.
       parameters:
         - name: projectPath
           in: query
           required: true
           schema:
             type: string
+        - name: fieldKey
+          in: query
+          required: true
+          schema:
+            type: string
       responses:
         "200":
-          description: Resource sidecar array
+          description: Distinct field values with counts and sentinel keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  values:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        canonicalKey:
+                          type: string
+                        count:
+                          type: number
+                        sample: {}
+                  nullKey:
+                    type: string
+                  missingKey:
+                    type: string
+        "400":
+          description: Missing projectPath or fieldKey
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to enumerate field values
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── Tags ──────────────────────────────────────────────────────────────────
+
+  /api/project/tags:
+    post:
+      summary: List, create, or query tag assignments
+      description: |
+        Action-discriminated:
+        - `list` `{ action, projectPath }` → `{ tags }`
+        - `create` `{ action, projectPath, name, color? }` → `{ tag }`
+        - `assignments` `{ action, projectPath, resourceId }` → `{ tagIds }`
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, projectPath]
+              properties:
+                action:
+                  type: string
+                  enum: [list, create, assignments]
+                projectPath:
+                  type: string
+                name:
+                  type: string
+                color:
+                  type: string
+                resourceId:
+                  type: string
+      responses:
+        "200":
+          description: Tags, the created tag, or tag IDs assigned to a resource
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      tags:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Tag"
+                  - type: object
+                    properties:
+                      tag:
+                        $ref: "#/components/schemas/Tag"
+                  - type: object
+                    properties:
+                      tagIds:
+                        type: array
+                        items:
+                          type: string
+        "400":
+          description: Invalid action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Tags operation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/project/tags/assign:
+    post:
+      summary: Assign or unassign a tag from a resource
+      description: When `assign` is true the tag is added to the resource; when false it is removed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, resourceId, tagId, assign]
+              properties:
+                projectPath:
+                  type: string
+                resourceId:
+                  type: string
+                tagId:
+                  type: string
+                assign:
+                  type: boolean
+      responses:
+        "200":
+          description: Assignment updated (empty object)
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Failed to update tag assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/project/tags/delete:
+    post:
+      summary: Delete a tag and all its assignments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, tagId]
+              properties:
+                projectPath:
+                  type: string
+                tagId:
+                  type: string
+      responses:
+        "200":
+          description: Whether a tag was deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+        "500":
+          description: Failed to delete tag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── Queries ───────────────────────────────────────────────────────────────
+
+  /api/project/query/evaluate:
+    post:
+      summary: Evaluate an inline query AST
+      description: |
+        Evaluates a `QueryAST` against all resources in a project and returns the
+        UUIDs of matching resources. `ref` nodes are expanded against saved queries.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, definition]
+              properties:
+                projectPath:
+                  type: string
+                definition:
+                  $ref: "#/components/schemas/QueryAST"
+      responses:
+        "200":
+          description: UUIDs of resources satisfying the predicate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ids:
+                    type: array
+                    items:
+                      type: string
+        "400":
+          description: Invalid JSON, missing fields, invalid AST, unimplemented feature, or a saved-query ref cycle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Query evaluation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/project/query/saved:
+    post:
+      summary: CRUD for saved queries
+      description: |
+        Action-discriminated:
+        - `list` `{ action, projectPath }` → `{ queries }`
+        - `read` `{ action, projectPath, id }` → `{ query | null }`
+        - `write` `{ action, projectPath, query }` → `{ query }`
+        - `delete` `{ action, projectPath, id }` → `{ deleted }`
+
+        Saved queries persist at `meta/queries/<id>.query.json`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, projectPath]
+              properties:
+                action:
+                  type: string
+                  enum: [list, read, write, delete]
+                projectPath:
+                  type: string
+                id:
+                  type: string
+                query:
+                  $ref: "#/components/schemas/SavedQuery"
+      responses:
+        "200":
+          description: Result depends on the action
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      queries:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SavedQuery"
+                  - type: object
+                    properties:
+                      query:
+                        oneOf:
+                          - $ref: "#/components/schemas/SavedQuery"
+                          - type: "null"
+                  - type: object
+                    properties:
+                      deleted:
+                        type: boolean
+        "400":
+          description: Invalid JSON, invalid action, or invalid saved query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Saved query operation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── Project by ID (reindex / search) ──────────────────────────────────────
+
+  /api/project/{project-id}/reindex:
+    post:
+      summary: Reindex resources missing from the inverted index
+      description: |
+        Locates the project by ID, then enqueues indexing for resources not yet in
+        the inverted index. Returns the number of resources queued.
+      parameters:
+        - name: project-id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Number of resources queued for indexing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queued:
+                    type: number
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/project/{project-id}/search:
+    get:
+      summary: Full-text search within a project
+      description: |
+        Searches the project's inverted index, re-ranks multi-term queries by
+        proximity, applies folder/status/tag filters, and returns ranked results
+        with snippets. The result limit comes from the project's
+        `searchResultLimit` preference (default 50).
+      parameters:
+        - name: project-id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query string
+        - name: folder
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by folder ID
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by status value
+        - name: tags
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated tag IDs; a resource matches if it has any of them
+      responses:
+        "200":
+          description: Ranked search results
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ResourceSidecar"
+                  $ref: "#/components/schemas/SearchResult"
+        "400":
+          description: Missing required query param q
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Search failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── Project Resources ─────────────────────────────────────────────────────
+
+  /api/project-resources:
+    post:
+      summary: Load a single resource's content and revisions
+      description: |
+        Returns the TipTap + plaintext content for one text resource, together with
+        its revision list. (Note: this is a POST, not a GET.)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, resourceId]
+              properties:
+                projectPath:
+                  type: string
+                resourceId:
+                  type: string
+      responses:
+        "200":
+          description: Resource content and revisions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  resourceContent:
+                    type: object
+                    properties:
+                      tipTapContent:
+                        type: [object, "null"]
+                      plaintextContent:
+                        type: [string, "null"]
+                  revisions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Revision"
+        "404":
+          description: Resource content not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  error:
+                    type: string
 
   # ── Project Types ─────────────────────────────────────────────────────────
 
@@ -415,26 +1185,24 @@ paths:
     get:
       summary: List available project types
       description: |
-        Returns the list of project-type template specs available in
-        `getwrite-config/templates/project-types/`.
+        Reads every valid `.json` template in
+        `getwrite-config/templates/project-types/` (or `GETWRITE_TEMPLATES_DIR`)
+        and returns the parsed, validated specs. Invalid files are skipped.
       responses:
         "200":
-          description: Array of project type entries
+          description: Array of project type specs
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    name:
-                      type: string
-                    description:
-                      type: string
-                    filePath:
-                      type: string
+                  $ref: "#/components/schemas/ProjectTypeSpec"
+        "500":
+          description: Cannot read project types
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   # ── Reorder ───────────────────────────────────────────────────────────────
 
@@ -442,8 +1210,9 @@ paths:
     post:
       summary: Persist resource/folder reorder
       description: |
-        Writes updated `orderIndex` and `folderId` values for folders and resources
-        back to disk. Called by the Organizer view after drag-and-drop reordering.
+        Writes updated `orderIndex` and `parentId`/`folderId` values for folders and
+        resources back to disk. Called after drag-and-drop reordering. The project may
+        be located by `projectId` or by an explicit `projectRoot` in the body.
       parameters:
         - name: projectId
           in: path
@@ -457,6 +1226,9 @@ paths:
             schema:
               type: object
               properties:
+                projectRoot:
+                  type: string
+                  description: Optional explicit project root; otherwise resolved from projectId
                 folderOrder:
                   type: array
                   items:
@@ -482,6 +1254,31 @@ paths:
       responses:
         "200":
           description: Reorder persisted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      summary: Reorder endpoint health check
+      description: Returns 200 with an empty body.
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK (empty body)
 
   # ── Resource (create) ─────────────────────────────────────────────────────
 
@@ -490,8 +1287,9 @@ paths:
       summary: Create a resource
       description: |
         Creates a new resource via `createResourceOfType` and writes it to disk
-        via `writeResourceToFile`. Writes `resources/<uuid>/content.txt`,
-        `resources/<uuid>/content.tiptap.json`, and `meta/resource-<uuid>.meta.json`.
+        (`resources/<uuid>/content.txt`, `content.tiptap.json`, and
+        `meta/resource-<uuid>.meta.json`). Text resources also get an initial
+        canonical revision (v-1).
       requestBody:
         required: true
         content:
@@ -516,7 +1314,8 @@ paths:
                   success:
                     type: boolean
                   resource:
-                    $ref: "#/components/schemas/ResourceSidecar"
+                    type: object
+                    description: The created resource record (full resource, including type-specific fields)
         "500":
           description: Failed to create resource
           content:
@@ -530,9 +1329,11 @@ paths:
     post:
       summary: Perform resource action (delete or copy)
       description: |
-        Dispatches a named action on a resource. Currently supports:
-        - `delete`: removes `resources/<id>/` and `meta/resource-<id>.meta.json`
-        - `copy`: (stub) reads sidecar but does not yet write a copy
+        Dispatches a named action on a resource:
+        - `delete`: nullifies inbound resource-refs, then soft-deletes the resource
+          (moves it to `.trash/`).
+        - `copy`: deep-copies `resources/<id>/` and its sidecar to a new UUID,
+          using `newName` (default "Copy").
       parameters:
         - name: resource-id
           in: path
@@ -552,16 +1353,26 @@ paths:
                 action:
                   type: string
                   enum: [delete, copy]
+                newName:
+                  type: string
+                  description: Name for the copied resource (copy action only)
       responses:
         "200":
-          description: Action completed
+          description: Action completed (delete → { message }; copy → { success, resource })
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
+                oneOf:
+                  - type: object
+                    properties:
+                      message:
+                        type: string
+                  - type: object
+                    properties:
+                      success:
+                        type: boolean
+                      resource:
+                        $ref: "#/components/schemas/ResourceSidecar"
 
   # ── Resource Content ──────────────────────────────────────────────────────
 
@@ -607,9 +1418,9 @@ paths:
     post:
       summary: Update resource sidecar metadata
       description: |
-        Overwrites the resource sidecar at `meta/resource-<id>.meta.json` with
-        `updatedResource`. Used to persist userMetadata changes (notes, status,
-        characters, locations, items, pov, etc.) from the Metadata sidebar.
+        Merges `updatedResource` into the resource sidecar at
+        `meta/resource-<id>.meta.json` (preserving `orderIndex`/`folderId` from the
+        existing sidecar). Used to persist userMetadata changes from the Metadata sidebar.
       parameters:
         - name: resource-id
           in: path
@@ -638,6 +1449,101 @@ paths:
                 properties:
                   message:
                     type: string
+
+  # ── Resource Delete ───────────────────────────────────────────────────────
+
+  /api/resource/{resource-id}/delete:
+    post:
+      summary: Soft-delete a resource
+      description: |
+        Nullifies inbound resource-ref field values pointing at this resource, then
+        soft-deletes it (moves content + sidecar to `.trash/`).
+      parameters:
+        - name: resource-id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectRoot]
+              properties:
+                projectRoot:
+                  type: string
+      responses:
+        "200":
+          description: Resource deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  # ── Resource Rename ───────────────────────────────────────────────────────
+
+  /api/resource/{resource-id}/rename:
+    post:
+      summary: Rename a resource or folder
+      description: |
+        For folders (`resourceType: "folder"`), renames via the folder descriptor.
+        Otherwise updates the `name` field in the resource sidecar.
+      parameters:
+        - name: resource-id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectRoot, newName]
+              properties:
+                projectRoot:
+                  type: string
+                newName:
+                  type: string
+                resourceType:
+                  type: string
+                  description: Pass "folder" to rename a folder
+      responses:
+        "200":
+          description: Updated resource/folder record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resource:
+                    type: object
+                    additionalProperties:
+                      $ref: "#/components/schemas/MetadataValue"
+        "400":
+          description: Invalid JSON or missing projectRoot/newName
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to rename
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   # ── Revisions ─────────────────────────────────────────────────────────────
 
@@ -737,7 +1643,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Revision"
         "400":
-          description: Missing projectPath
+          description: Invalid JSON or missing projectPath
           content:
             application/json:
               schema:
@@ -756,7 +1662,7 @@ paths:
         - When `content` is absent: marks the revision identified by `revisionId` as canonical
           (unmarks all others for the same resource).
         - When `content` is provided: updates `content.bin` in-place for the already-canonical
-          revision (only allowed if the revision is already canonical).
+          revision (only allowed if the revision is already canonical) and bumps the sidecar `updatedAt`.
       parameters:
         - name: resource-id
           in: path
@@ -786,7 +1692,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Revision"
         "400":
-          description: Missing required fields or attempting to update non-canonical content
+          description: Invalid JSON, missing fields, or attempting to update non-canonical content in place
           content:
             application/json:
               schema:
@@ -808,7 +1714,8 @@ paths:
       summary: Delete a revision
       description: |
         Removes the revision directory `revisions/<resourceId>/v-<version>/` for the
-        revision identified by `revisionId`. Returns the deleted revision's metadata.
+        revision identified by `revisionId`. The canonical revision cannot be deleted.
+        Returns the deleted revision's metadata.
       parameters:
         - name: resource-id
           in: path
@@ -835,7 +1742,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Revision"
         "400":
-          description: Missing required fields
+          description: Invalid JSON, missing fields, or attempting to delete the canonical revision
           content:
             application/json:
               schema:
@@ -852,3 +1759,117 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  # ── Compile ───────────────────────────────────────────────────────────────
+
+  /api/compile/text:
+    post:
+      summary: Compile selected resources to plain text
+      description: |
+        Concatenates the plain text of the selected text resources (in the given order)
+        into a single string, optionally with per-section headers. Returns JSON.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompileRequest"
+      responses:
+        "200":
+          description: Compiled text and suggested filename
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileTextResponse"
+
+  /api/compile/pdf:
+    post:
+      summary: Compile selected resources to PDF
+      description: |
+        Renders the selected text resources to a PDF (via @react-pdf/renderer). Falls
+        back to a no-custom-font document on font load failure, in which case an
+        `X-Compile-Warning: font-fallback` header is set. Returns a binary PDF as an attachment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompileRequest"
+      responses:
+        "200":
+          description: PDF document (attachment)
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: attachment; filename="<project>.pdf"
+            X-Compile-Warning:
+              schema:
+                type: string
+              description: Present and set to "font-fallback" when custom fonts failed to load
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /api/compile/docx:
+    post:
+      summary: Compile selected resources to a Word document
+      description: Builds a `.docx` from the selected text resources and returns it as a binary attachment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompileRequest"
+      responses:
+        "200":
+          description: DOCX document (attachment)
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: attachment; filename="<project>.docx"
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+
+  # ── Export ────────────────────────────────────────────────────────────────
+
+  /api/export/text:
+    post:
+      summary: Export resources to plain text
+      description: |
+        Like `/api/compile/text`, but the filename derives from `exportName`, and section
+        headers are included automatically only when more than one text resource is exported.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectPath, resourceIds, resources, exportName]
+              properties:
+                projectPath:
+                  type: string
+                resourceIds:
+                  type: array
+                  items:
+                    type: string
+                resources:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ResourceMeta"
+                exportName:
+                  type: string
+                  description: Display name of the resource/folder being exported (used for the filename)
+      responses:
+        "200":
+          description: Exported text and suggested filename
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileTextResponse"
