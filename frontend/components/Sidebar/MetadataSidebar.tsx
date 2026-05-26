@@ -472,24 +472,40 @@ export default function MetadataSidebar({
     }
   };
 
+  // Text, image, and audio resources all support custom (schema-driven)
+  // metadata. Folders and the empty selection show a placeholder instead.
+  const editableResource =
+    selectedResource &&
+    (selectedResource.type === "text" ||
+      selectedResource.type === "image" ||
+      selectedResource.type === "audio")
+      ? selectedResource
+      : null;
+
   return (
     <aside
       ref={sidebarRef}
       className={`metadata-sidebar-root flex flex-col h-full overflow-hidden ${className}`}
       aria-label="metadata-sidebar"
     >
-      {selectedResource?.type === "text" ? (
+      {editableResource ? (
         <React.Fragment>
           <div className="shrink-0 mb-4">
             <h3 className="text-gw-secondary-light pl-4 text-gw-label tracking-label uppercase">
-              {selectedResource.name}
+              {editableResource.name}
             </h3>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto px-4">
+            {editableResource.type === "image" && (
+              <ImageMetadataSection resource={editableResource} />
+            )}
+            {editableResource.type === "audio" && (
+              <AudioMetadataSection resource={editableResource} />
+            )}
             {schema.groups.map((group) => {
               if (
                 group.folderId &&
-                selectedResource.folderId !== group.folderId
+                editableResource.folderId !== group.folderId
               ) {
                 return null;
               }
@@ -520,7 +536,7 @@ export default function MetadataSidebar({
               <AddFieldForm
                 schema={schema}
                 selectedProjectId={selectedProjectId}
-                currentFolderId={selectedResource.folderId}
+                currentFolderId={editableResource.folderId}
                 onCancel={() => setShowAddForm(false)}
                 onFieldFocused={handleFieldFocused}
                 onCreated={handleFieldCreated}
@@ -538,28 +554,6 @@ export default function MetadataSidebar({
                 </button>
               </div>
             )}
-          </div>
-        </React.Fragment>
-      ) : selectedResource?.type === "image" ? (
-        <React.Fragment>
-          <div className="shrink-0 mb-4">
-            <h3 className="text-gw-secondary-light pl-4 text-gw-label tracking-label uppercase">
-              {selectedResource.name}
-            </h3>
-          </div>
-          <div className="flex-1 min-h-0 overflow-y-auto px-4">
-            <ImageMetadataSection resource={selectedResource} />
-          </div>
-        </React.Fragment>
-      ) : selectedResource?.type === "audio" ? (
-        <React.Fragment>
-          <div className="shrink-0 mb-4">
-            <h3 className="text-gw-secondary-light pl-4 text-gw-label tracking-label uppercase">
-              {selectedResource.name}
-            </h3>
-          </div>
-          <div className="flex-1 min-h-0 overflow-y-auto px-4">
-            <AudioMetadataSection resource={selectedResource} />
           </div>
         </React.Fragment>
       ) : (
