@@ -22,7 +22,7 @@ Derived from `media-view-spec.md`. Granularity: story points (1/2/3/5/8).
 **Estimate:** 5
 **Notes:** Wraps a hidden `<audio>` element for decoding/playback but renders custom controls (brand tokens; red reserved for position/canonical only). Covers FRs 7, 9, 10, 11, 12 (audio). Use brand styling per STYLING.md. **shadcn:** use `@shadcn/slider` (Radix Slider, dep `radix-ui`) as the scrubber base — it provides draggable seek, keyboard arrow-seeking, and `role="slider"` ARIA out of the box, removing most of the a11y re-implementation risk. Place it at `common/UI/Slider/Slider.tsx` (PascalCase, matching the existing primitive convention) rather than a raw `shadcn add`, and restyle with brand tokens (keep the filled range neutral unless red is intended as a position indicator). Reuse the existing `common/UI/Button` for play/pause.
 
-### Task 3: MediaView container
+### Task 3: MediaView container ✅
 
 **What:** A container that takes the selected media resource, resolves the active project root, builds the file-serving URL, and renders `ImageViewer` or `AudioPlayer` based on resource type.
 **Files:** `frontend/components/WorkArea/Media/MediaView.tsx` (new); `frontend/stories/WorkArea/MediaView.stories.tsx` (new)
