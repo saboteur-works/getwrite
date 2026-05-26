@@ -46,6 +46,44 @@ export const Open: Story = {
   },
 };
 
+export const ImageType: Story = {
+  args: {
+    isOpen: true,
+    initialTitle: "",
+    initialType: "image",
+    parents: parentFolders,
+    onClose: () => console.log("close create resource"),
+    onCreate: (payload: CreateResourcePayload) =>
+      console.log("create resource", payload),
+    onUpload: async (
+      file: File,
+      opts: { title: string; folderId?: string },
+    ) => {
+      console.log("upload image", file.name, opts);
+      await new Promise((r) => setTimeout(r, 800));
+    },
+  },
+};
+
+export const AudioType: Story = {
+  args: {
+    isOpen: true,
+    initialTitle: "",
+    initialType: "audio",
+    parents: parentFolders,
+    onClose: () => console.log("close create resource"),
+    onCreate: (payload: CreateResourcePayload) =>
+      console.log("create resource", payload),
+    onUpload: async (
+      file: File,
+      opts: { title: string; folderId?: string },
+    ) => {
+      console.log("upload audio", file.name, opts);
+      await new Promise((r) => setTimeout(r, 800));
+    },
+  },
+};
+
 export const Interactive: Story = {
   render: (args: React.ComponentProps<typeof CreateResourceModal>) => {
     const [open, setOpen] = React.useState(true);
