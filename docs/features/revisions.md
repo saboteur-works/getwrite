@@ -1,6 +1,6 @@
-# Revisions
+# Revisions (developer reference)
 
-This document covers the GetWrite revision system: on-disk layout, version numbering, the canonical invariant, pruning, the `preserve` flag, and soft-delete (trash).
+This document covers the GetWrite revision system: on-disk layout, version numbering, the canonical invariant, pruning, the `preserve` flag, and soft-delete (trash). For the writer-facing guide to revisions in the app, see [docs/user/revisions.md](../user/revisions.md).
 
 ---
 
@@ -92,7 +92,7 @@ The `getwrite prune` command runs pruning across all resources in a project:
 getwrite prune [projectRoot] [--max <number>]
 ```
 
-See [docs/usage/cli.md](../usage/cli.md) for full CLI reference.
+See [docs/features/cli.md](./cli.md) for full CLI reference.
 
 ### `pruneExecutor.ts`
 
@@ -122,19 +122,22 @@ GetWrite implements **soft-delete** for resources via `trash.ts`. When a resourc
 
 ### `.trash/` layout
 
+`.trash/` is split into `resources/` and `meta/` subtrees. Each moved resource file is prefixed with the resource ID, and the sidecar keeps its canonical name:
+
 ```
-<projectRoot>/.trash/<resourceId>/
-├── content.txt
-├── content.tiptap.json
+<projectRoot>/.trash/
+├── resources/
+│   ├── <resourceId>-content.txt
+│   └── <resourceId>-content.tiptap.json
 └── meta/
-    └── resource-<id>.meta.json
+    └── resource-<resourceId>.meta.json
 ```
 
 The revision directories under `<projectRoot>/revisions/<resourceId>/` are **not** moved to `.trash/` — only the resource content and sidecar are relocated.
 
 ### Recovery
 
-There is currently no UI for recovering soft-deleted resources. Deleted files can be recovered manually by moving them out of `.trash/` back into `resources/` and recreating the sidecar at `meta/`. Automated recovery UI (a trash bin) is on the roadmap.
+`trash.ts` exports `restoreResource(projectRoot, resourceId)`, which moves the content files and sidecar back out of `.trash/`, and `purgeResource(projectRoot, resourceId)`, which permanently deletes them. There is currently no UI wired to these functions — recovery happens programmatically (or by manually moving files). A trash-bin UI is on the roadmap.
 
 ---
 

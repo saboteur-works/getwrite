@@ -111,6 +111,7 @@ await flushIndexer(); // optional timeout: await flushIndexer(3000);
 
 Maintenance
 
+- To rebuild a project's inverted index and backlinks from scratch (after bulk filesystem changes that bypassed the save path, or to recover from a corrupted/stale index), run the `reindex` CLI command: `getwrite-cli reindex [projectRoot]`. See [docs/features/cli.md](./cli.md).
 - The index format is intentionally simple (JSON). For larger projects or better performance, consider moving to a binary/LMDB-backed store or using a search engine (e.g., SQLite FTS, Tantivy, or Elastic).
 - Keep the tokenization and ranking logic in `inverted-index.ts` consistent with search UI expectations.
 
@@ -145,12 +146,6 @@ Contact
     What: add an explicit shutdown/flush method for the indexer queue that stops accepting new tasks, finishes in-flight tasks, and signals completion. Integrate this with application lifecycle hooks (e.g. before-exit).
 
     Why: avoids data races and incomplete writes when the app is stopped or during test teardown; it's more explicit and safer than relying on ad-hoc waits.
-
-- Reindex/repair CLI
-
-    What: add a CLI command such as `reindex <projectRoot>` that rebuilds the entire inverted index from resource files and revisions.
-
-    Why: provides a recovery and maintenance path for corrupted or stale indexes and enables offline reindexing for large projects.
 
 - Optional backend/search engine migration
 

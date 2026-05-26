@@ -1,6 +1,6 @@
-# Editor: Headings
+# Editor: Headings (developer reference)
 
-The text editor supports user-defined heading styles, configurable per project.
+The text editor supports user-defined heading styles, configurable per project. For the writer-facing guide to customizing headings in the app, see [docs/user/editor/headings.md](../../user/editor/headings.md).
 
 ## Heading Levels
 
@@ -52,19 +52,7 @@ Headings are selected in the Editor via MenuBar buttons.
 
 ## Heading Style Customization
 
-Heading styles are configured through the **Heading Settings** modal, accessible from the gear menu in the app shell. Changes are project-scoped and take effect immediately in the editor.
-
-The modal provides per-level controls for each heading attribute:
-
-- **Font Size** — integer number input (stored as `px`)
-- **Font Family** — text input (any font family available to the application)
-- **Font Weight** — select: Normal (`400`) or Bold (`700`)
-- **Letter Spacing** — decimal number input (stored as `em`)
-- **Color** — color picker, triggered by clicking the pipette icon
-
-H1–H3 are always present. H4–H6 can be added individually and removed when no longer needed.
-
-Changes are staged locally in the modal and only committed when the user clicks **Save**. Cancelling discards all pending edits.
+Heading styles are configured through the **Heading Settings** modal (gear menu); changes are project-scoped and take effect immediately. The modal stages edits locally and commits on **Save**. For the full UI walkthrough, see the [user guide](../../user/editor/headings.md). Implementation notes follow.
 
 ### API
 

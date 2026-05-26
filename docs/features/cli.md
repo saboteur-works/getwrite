@@ -9,8 +9,10 @@ The GetWrite CLI (`getwrite-cli`) is a Node.js command-line tool for project man
 From the `frontend/` directory:
 
 ```sh
-pnpm build
+pnpm build:cli
 ```
+
+(`pnpm build` runs `next build` and does **not** produce the CLI.)
 
 The bundled CLI is written to:
 
@@ -178,15 +180,55 @@ node dist-cli/bin/getwrite-cli.cjs prune /path/to/my-project --max 10
 
 ---
 
-### `screenshots`
+### `reindex`
 
-Captures screenshots for project-type template previews.
+Rebuilds the inverted index and backlinks for a project from scratch by re-scanning all resources. Use after bulk filesystem changes that bypassed the normal save path, or to recover from a corrupted/stale index.
 
 ```sh
-getwrite-cli screenshots
+getwrite-cli reindex [projectRoot]
 ```
 
-This command is used internally for generating preview images for the project-type selection UI. It is not intended for general use.
+**Arguments:**
+- `projectRoot` (optional) — project to reindex. Defaults to `process.cwd()`.
+
+**What it does:**
+1. Reads all resource UUIDs from `<projectRoot>/resources/`.
+2. For each resource, loads its content and re-indexes it into `meta/index/inverted.json`.
+3. Recomputes backlinks across all resources and persists `meta/backlinks.json`.
+
+**Exit codes:** `0` = success, `2` = unexpected error
+
+**Example:**
+```sh
+node dist-cli/bin/getwrite-cli.cjs reindex ./my-novel
+# [reindex] Done — indexed 12 resource(s) in ./my-novel
+```
+
+---
+
+### `screenshots capture`
+
+Captures full-page screenshots of Storybook stories via a headless Chromium browser (Playwright). Useful for visual regression baselining, design reviews, and CI artifacts.
+
+```sh
+getwrite-cli screenshots capture [options]
+```
+
+**Options:**
+- `-b, --storybook <url>` (default `http://localhost:6006`) — base URL of a running Storybook instance.
+- `-o, --out <dir>` (default `./screenshots`) — directory to write PNG files into.
+- `-l, --limit <n>` (default `6`) — maximum number of stories to capture.
+
+It fetches Storybook's `/index.json` manifest to discover story IDs, navigates to each story's iframe URL, and saves a full-page PNG. Output files are named from the story ID with `:` and `/` replaced by `_` (e.g. `components-button--primary.png`).
+
+**Exit codes:** `1` = no stories found in `index.json`, `2` = unexpected capture error
+
+**Example:**
+```sh
+# Capture up to 20 stories from a remote Storybook, saving to /tmp/shots
+node dist-cli/bin/getwrite-cli.cjs screenshots capture \
+  --storybook https://storybook.example.com --out /tmp/shots --limit 20
+```
 
 ---
 

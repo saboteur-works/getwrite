@@ -1,146 +1,71 @@
 # GetWrite Roadmap
 
-This document is a living stub collecting known future work items and product direction. It is updated as features are planned or completed.
+Forward-looking product direction, organized by horizon (**Now → Next → Later → Exploring**) and grouped by capability theme within each horizon. Each entry notes its current build state and links to relevant docs.
+
+Horizons reflect priority and readiness, not committed dates. This document covers **features** only — engineering/tech-debt work lives in [tech-debt.md](tech-debt.md), and a full classified inventory of the feature surface is in [feature-catalog.md](features/feature-catalog.md).
 
 ---
 
-## v1.x — Current Focus
+## Now — In Progress
 
-Features actively in development or nearing completion:
+### Authoring & Editor
 
-- [x] **Compile / Export** — Manuscript compilation to PDF, DOCX, and plain text; export preview modal (`CompilePreviewModal`, `ExportPreviewModal`)
-- [ ] **Full-text search** — Cross-resource search with filtering by folder, status, and tags (currently backed by the inverted index; UI search bar exists)
-- [x] **Timeline view completion** — Timeline visualization of resources by `timeframe` userMetadata
-- [x] **Diff view polish** — Side-by-side revision diff view; currently renders but needs UX refinement
-- [ ] **Tags UI** — Full tag management flow (create, rename, delete, assign); underlying `tags.ts` model is complete
-
-### Stage 3 — Immediate Remediation & Tech-debt Work
-
-- ~~Priority P0: `fix/revision-canonical-guards`~~ — **Done in `fix/p0-blockers`**. POST and DELETE route handlers now enforce the single-canonical invariant. Tests added.
-
-- ~~Priority P0: `feat/indexer-wait-drain`~~ — **Done in `fix/p0-blockers`**. `waitForDrain()` exported from indexer-queue, error logging added, `getwrite reindex` CLI command added. Tests added.
-
-- ~~Priority P1: `chore/toolbar-consolidation`~~ — **Done in `feat/editor-command-descriptor`**. Toolbar wiring extracted into `toolbar-command-schema.ts` + `useToolbarCommands`; `MenuBar.tsx` renders from descriptors only. Parity tests added in `editorMenuBar.test.tsx`.
-
-- ~~Priority P1: `chore/lodash-import-cleanup`~~ — **Done in `fix/tech-debt`**. All usages are path imports; ESLint `no-restricted-imports` rule added to enforce going forward.
-
-These Stage 3 items are intended to be small, testable PRs that reduce high-risk maintenance burden and enable safer refactors in Tracks A–E.
+- **Organizer view filters** — Filtering of Organizer cards by character, location, and word count. _Status: base card view and status/folder filtering shipped; remaining filters pending._ → [user/features.md](user/features.md)
 
 ---
 
-## Planned (Unscheduled)
+## Next — Committed
 
-Features with a clear intent but no active implementation timeline:
+- **Image and Audio Resources** - Enable users to add Image and Audio resources.
 
-- [ ] **Multi-user support** — Multiple concurrent users on the same project (future version; currently single-user only)
-- [ ] **Trash recovery UI** — Visual trash bin for recovering soft-deleted resources; `softDeleteResource` already moves files to `.trash/`, but there is no recovery UI
-- [ ] **Mobile / tablet responsive layout** — Progressive sidebar reduction and mobile-first writing surface; partial implementation exists
+### Versioning & History
 
-### Start & Project Management
-
-- [x] Implement Start page and `CreateProjectModal` with create/open/manage actions.
-- [x] Add project manage actions: copy, rename, delete, and package (confirmation modals).
-- [x] Add Storybook stories and integration tests for Start flows.
-
-### Resource Tree & Navigation
-
-- [x] Implement `ResourceTree` with selection, expand/collapse, and drag-and-drop reorder.
-- [x] Add right-click context menu: Create/Copy/Duplicate/Delete/Export and wire persistence calls.
-- [x] Add Storybook entries and tests for selection sync, reorder persistence, and context actions.
-
-### Work Area Views — Edit / Organizer / Data
-
-- [x] Implement `EditView` with TipTap, debounced autosave, and revision promotion behavior.
-- [ ] Implement `OrganizerView` card rendering, body toggle, and filters (Status/Character/Location/Word Count).
-- [x] Implement `DataView` with Overall Stats and foldable Resources lists (click-to-open behavior).
-- [x] Add tests and Storybook stories; ensure Edit View autosave/revision lifecycle preserved.
-
-### Data Models & Sidecar Storage
-
-- [x] Publish and enforce `schemas.ts` (zod) for Project, Folder, Resource, Revision, and Metadata.
-- [x] Implement sidecar read/write helpers and example `resource-<id>.meta.json` files.
-- [x] Add unit tests for model validation and project-type creation/validation.
-
-### Templates & Template CLI (detailed)
-
-- [ ] Implement template CLI commands: `save-from-resource`, `parametrize`, `create --vars` (with `--dry-run`), `list`, `inspect`, `export`, `import`, and `validate`.
-- [ ] Add example templates and unit tests for round-trip and validation.
-- [ ] Document CLI usage in `specs/002-define-data-models/quickstart.md`.
-
-### UI Skeleton, Storybook & Testing
-
-- [ ] Complete Storybook coverage for AppShell, Start, Tree, WorkArea views, Sidebar.
-- [ ] Add Vitest component/unit tests for core flows and Storybook-driven visual checks.
-- [ ] Add accessibility checks (keyboard navigation, ARIA, WCAG targets) to the QA checklist.
-
-### Drift Analysis & Refactor Execution Blueprint
-
-- [ ] Publish `specs/004-frontend-drift-coherence/drift-inventory.md`, `style-contract.md`, `execution-blueprint.md`, and `verification-gates.md` to roadmap as planning outputs.
-- [ ] Add roadmap tasks to execute Tracks A–E per the execution blueprint and link verification gates for each hotspot.
-- [ ] Prioritize `resource-templates` and `revisionsSlice` as anchor tasks (Track A) in roadmap schedule.
-
-### Refactor App Trouble Spots
-
-- [ ] Stabilize model utilities (`resource-templates`, `schemas.ts`) and eliminate `as any` casts.
-- [ ] Refactor `revisionsSlice` and `projectsSlice` with canonical guards and selector parity tests.
-- [ ] Decompose `EditView`, `ResourceTree`, `AppShell`, and `ProjectTypesManagerPage` per execution blueprint and add verification gates.
-
-### Editor Toolbar (Config-Driven)
-
-- [x] Define a typed `CommandDescriptor` and migrate `MenuBar` to generate UI from config.
-- [x] Consolidate color/highlight submenu wiring and shared input adapters.
-- [x] Add parity tests to prove behavior unchanged after migration.
-
-### Token-first Styling
-
-- [ ] Audit components for raw styling values and replace with design tokens where possible.
-- [ ] Add token-first enforcement guidance to the style contract and PR checklist.
-- [ ] Run visual QA and designer sign-off on token-migrated components.
-
-### Lodash Usage Policy
-
-- [ ] Audit repository for non-conformant lodash imports and replace with path imports or native methods.
-- [ ] Add linter rule or PR checklist enforcing lodash allowlist and path-imports.
-- [ ] Document the policy and remediation steps in CONTRIBUTING or style guide.
-
-### Knowledge Tome & URL Research
-
-- [ ] Document the knowledge-tome workflow and add templates in `/experiments-nopush`.
-- [ ] Add a short roadmap item to make URL-research ingestion part of the research workflow (create-tome-on-research).
-- [ ] Ensure future planning references top-level tome pages (link to `tome-002` where applicable).
+- **Trash recovery UI** — A visual trash bin to browse, restore, and permanently purge soft-deleted resources. _Status: model complete (`restoreResource`/`purgeResource` in `trash.ts`), UI not started._ → [revisions.md](features/revisions.md)
 
 ---
 
-## Technical Debt / Infrastructure
+## Later — Planned
 
-Known improvements to internal systems:
+### Templates & Scaffolding
 
-- [x] **Indexer: promise-based drain signal** — `waitForDrain()` exported from `indexer-queue.ts` (alias for `flushIndexer`).
-- [x] **Indexer: durable meta writes** — Opt-in via `GETWRITE_DURABLE_META=1`. `atomicWriteFile` accepts a `{ durable }` option and `fsync`s the temp file before rename; inverted index and backlinks honor the env var.
-- [x] **Indexer: graceful shutdown** — `shutdownIndexer(timeoutMs)` drains in-flight tasks, stops backlinks watchers, and rejects new enqueues. SIGTERM/SIGINT/beforeExit hooks installed lazily on first enqueue.
-- [x] **Indexer: reindex / repair CLI** — `getwrite-cli reindex [projectRoot]` rebuilds the inverted index and backlinks from scratch (`src/cli/commands/reindex.ts`).
-- [ ] **Indexer: search engine migration** — Evaluate SQLite FTS or Tantivy as a backend for larger projects where the JSON index becomes a bottleneck.
+- **Template CLI expansion** — Additional template commands: `save-from-resource`, `parametrize`, `create --vars` (with `--dry-run`), `inspect`, `export`, `import`, and `validate`. _Status: partial — `save`, `create`, `duplicate`, and `list` shipped._ → [cli.md](features/cli.md)
 
-### Next 90 days — Priorities
+### Search & Discovery
 
-- ~~P0: `fix/revision-canonical-guards`~~ — **Done in `fix/p0-blockers`**.
-- ~~P0: `feat/indexer-wait-drain`~~ — **Done in `fix/p0-blockers`**.
-- ~~P1: `chore/toolbar-consolidation`~~ — **Done in `feat/editor-command-descriptor`**.
-- ~~P1: `chore/lodash-import-cleanup`~~ — **Done in `fix/tech-debt`**.
-
-Linkages:
-
-- Feature audit: [docs/feature-audit-v1.md](docs/feature-audit-v1.md)
-- Tech debt: [docs/tech-debt.md](docs/tech-debt.md)
+- **Scalable search backend** — Evaluate a durable backend (SQLite FTS, Tantivy) to replace the JSON inverted index for large projects where it becomes a bottleneck. _Status: under evaluation._ → [indexing.md](features/indexing.md)
 
 ---
 
-## Completed
+## Exploring — Ideas
 
-- [x] Revision system (write, prune, canonical selection, preserve flag)
-- [x] Backlinks system (wiki-link parsing, `BacklinkIndex`, watcher)
-- [x] Project types (blank, novel, serial, article templates)
-- [x] Soft-delete (`.trash/` layout via `trash.ts`)
-- [x] CLI (project create, templates, prune)
-- [x] Redux state management (projects, resources, revisions slices)
-- [x] Metadata sidebar (notes, status, characters, locations, items, POV, orderIndex)
+### Platform
+
+- **Mobile / tablet responsive layout** — Progressive sidebar reduction and a mobile-first writing surface. _Status: partial implementation exists._
+
+### Collaboration
+
+- **Multi-user editing** — Multiple concurrent users on the same project. _Status: concept; currently single-user only._
+
+---
+
+## Recently Shipped
+
+A curated snapshot of recent highlights — not an exhaustive changelog.
+
+- **Full-text search** — Cross-resource search with folder/status/tag filtering, backed by the inverted index. → [indexing.md](features/indexing.md)
+- **Tags** — Project-scoped tag management plus per-resource assignment from the Metadata sidebar. → [tags.md](features/tags.md)
+- **Metadata queries & smart folders** — Saved queries rendered as folder-like rows in the resource tree. → [user/metadata-queries.md](user/metadata-queries.md)
+- **Compile & export** — Manuscript compilation to PDF, DOCX, and plain text with preview. → [user/compiling.md](user/compiling.md)
+- **Timeline view** — Resources positioned chronologically by `timeframe` metadata.
+- **Diff view** — Side-by-side revision comparison.
+- **Config-driven editor toolbar** — Toolbar generated from typed command descriptors.
+- **Revision system & soft-delete** — Versioned snapshots, pruning, canonical invariant, preserve flag, and `.trash/` soft-delete. → [revisions.md](features/revisions.md)
+- **Backlinks** — Wiki-link parsing and a maintained reverse-reference index. → [indexing.md](features/indexing.md)
+- **Indexer hardening** — Promise-based drain (`waitForDrain`), graceful shutdown, opt-in durable writes, and a `reindex` CLI command. → [indexing.md](features/indexing.md), [cli.md](features/cli.md)
+
+---
+
+## Related Docs
+
+- **Tech debt & infrastructure** — [tech-debt.md](tech-debt.md)
+- **Feature catalog (classified inventory)** — [feature-catalog.md](features/feature-catalog.md)
