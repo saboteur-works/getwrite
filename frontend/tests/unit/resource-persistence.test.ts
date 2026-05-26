@@ -5,14 +5,15 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  createAudioResource,
   createFolderResource,
+  createImageResource,
   createTextResource,
   getLocalResources,
   writeResourceToFile,
 } from "../../src/lib/models/resource";
 import { readSidecar } from "../../src/lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
-import { meta } from "zod/v4/core";
 
 const folderId = "11111111-1111-4111-8111-111111111111";
 
@@ -158,6 +159,147 @@ describe("models/resource persistence regressions (T007)", () => {
           metadataInputType: "multiselect",
         },
       });
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
+  it("writes image binary to original.<ext> and records media metadata on the sidecar", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-image-persist-"),
+    );
+
+    try {
+      const resource = createImageResource({
+        name: "Cover Art",
+        folderId,
+        file: "original.png",
+        width: 640,
+        height: 480,
+        exif: { Make: "Canon" },
+      });
+      const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+
+      const written = await writeResourceToFile(projectRoot, resource, {
+        binary: bytes,
+      });
+      expect(written).toBe(resource);
+
+      const binaryPath = path.join(
+        projectRoot,
+        "resources",
+        resource.id,
+        "original.png",
+      );
+      const stored = await fs.readFile(binaryPath);
+      expect(new Uint8Array(stored)).toEqual(bytes);
+
+      // No text content files are written for media resources.
+      await expect(
+        fs.readFile(
+          path.join(projectRoot, "resources", resource.id, "content.txt"),
+        ),
+      ).rejects.toThrow();
+
+      const sidecar = await readSidecar(projectRoot, resource.id);
+      expect(sidecar).toMatchObject({
+        id: resource.id,
+        type: "image",
+        file: "original.png",
+        width: 640,
+        height: 480,
+        exif: { Make: "Canon" },
+      });
+
+      const localResources = getLocalResources(projectRoot);
+      expect(localResources).toHaveLength(1);
+      expect(localResources[0]).toMatchObject({
+        id: resource.id,
+        type: "image",
+        file: "original.png",
+      });
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
+  it("writes audio binary and records duration/format on the sidecar", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-audio-persist-"),
+    );
+
+    try {
+      const resource = createAudioResource({
+        name: "Voice Note",
+        file: "original.mp3",
+        durationSeconds: 12.5,
+        format: "mp3",
+      });
+      const bytes = new Uint8Array([73, 68, 51, 4]);
+
+      await writeResourceToFile(projectRoot, resource, { binary: bytes });
+
+      const binaryPath = path.join(
+        projectRoot,
+        "resources",
+        resource.id,
+        "original.mp3",
+      );
+      const stored = await fs.readFile(binaryPath);
+      expect(new Uint8Array(stored)).toEqual(bytes);
+
+      const sidecar = await readSidecar(projectRoot, resource.id);
+      expect(sidecar).toMatchObject({
+        id: resource.id,
+        type: "audio",
+        file: "original.mp3",
+        durationSeconds: 12.5,
+        format: "mp3",
+      });
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
+  it("leaves the stored binary untouched on a metadata-only re-save", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-media-resave-"),
+    );
+
+    try {
+      const resource = createImageResource({
+        name: "Sketch",
+        file: "original.webp",
+        width: 100,
+        height: 100,
+      });
+      const bytes = new Uint8Array([1, 2, 3, 4]);
+      await writeResourceToFile(projectRoot, resource, { binary: bytes });
+
+      // Re-save without binary (e.g. a metadata update) must not erase the file.
+      await writeResourceToFile(projectRoot, resource);
+
+      const stored = await fs.readFile(
+        path.join(projectRoot, "resources", resource.id, "original.webp"),
+      );
+      expect(new Uint8Array(stored)).toEqual(bytes);
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
+  it("throws when binary is supplied for a media resource without a file name", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-media-nofile-"),
+    );
+
+    try {
+      const resource = createImageResource({ name: "No File" });
+      await expect(
+        writeResourceToFile(projectRoot, resource, {
+          binary: new Uint8Array([0]),
+        }),
+      ).rejects.toThrow(/missing 'file' name/);
     } finally {
       await removeDirRetry(projectRoot);
     }

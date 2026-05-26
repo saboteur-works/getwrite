@@ -255,6 +255,8 @@ export interface TextResource extends ResourceBase {
 /** Image resource model with common image metadata. */
 export interface ImageResource extends ResourceBase {
   type: "image";
+  /** Stored binary filename relative to the resource directory (e.g. 'original.png'). */
+  file?: string;
   /** Optional image width in pixels. */
   width?: number;
   /** Optional image height in pixels. */
@@ -266,6 +268,8 @@ export interface ImageResource extends ResourceBase {
 /** Audio resource model with common audio metadata. */
 export interface AudioResource extends ResourceBase {
   type: "audio";
+  /** Stored binary filename relative to the resource directory (e.g. 'original.mp3'). */
+  file?: string;
   /** Duration in seconds if available. */
   durationSeconds?: number;
   /** File format (e.g., 'mp3', 'wav'). */

@@ -304,6 +304,7 @@ export const TextResourceSchema = ResourceBaseSchema.extend({
  */
 export const ImageResourceSchema = ResourceBaseSchema.extend({
   type: z.literal("image"),
+  file: z.string().optional(),
   width: z.number().int().nonnegative().optional(),
   height: z.number().int().nonnegative().optional(),
   exif: z.record(z.string(), MetadataValue).optional(),
@@ -314,6 +315,7 @@ export const ImageResourceSchema = ResourceBaseSchema.extend({
  */
 export const AudioResourceSchema = ResourceBaseSchema.extend({
   type: z.literal("audio"),
+  file: z.string().optional(),
   durationSeconds: z.number().nonnegative().optional(),
   format: z.string().optional(),
 });

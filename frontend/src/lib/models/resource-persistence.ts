@@ -13,7 +13,14 @@ import path from "node:path";
 import { validateResource } from "./resource-factory";
 import { countWords } from "../word-count";
 import { writeSidecar } from "./sidecar";
-import type { AnyResource, Folder, MetadataValue, TextResource } from "./types";
+import type {
+  AnyResource,
+  AudioResource,
+  Folder,
+  ImageResource,
+  MetadataValue,
+  TextResource,
+} from "./types";
 
 /**
  * Type guard for folder resources.
@@ -30,11 +37,32 @@ function isTextResource(resource: AnyResource): resource is TextResource {
 }
 
 /**
+ * Type guard for media (image/audio) resources backed by a binary file.
+ */
+function isMediaResource(
+  resource: AnyResource,
+): resource is ImageResource | AudioResource {
+  return resource.type === "image" || resource.type === "audio";
+}
+
+/** Optional inputs for persisting a resource. */
+export interface WriteResourceOptions {
+  /** Raw bytes for image/audio resources, written to `<resource>/<file>`. */
+  binary?: Uint8Array;
+}
+
+/**
  * Persists a resource to local filesystem storage.
+ *
+ * For image/audio resources, pass `options.binary` to write the uploaded bytes
+ * to `resources/<id>/<resource.file>`. The binary is only written when both the
+ * bytes and `resource.file` are present, so metadata-only re-saves leave the
+ * stored file untouched.
  */
 export async function writeResourceToFile(
   projectPath: string,
   resource: AnyResource,
+  options?: WriteResourceOptions,
 ): Promise<AnyResource> {
   const base = path.join(
     projectPath,
@@ -71,6 +99,21 @@ export async function writeResourceToFile(
     fs.writeFileSync(plainPath, resource.plainText ?? "", "utf8");
   }
 
+  if (isMediaResource(resource)) {
+    if (!fs.existsSync(base)) {
+      fs.mkdirSync(base, { recursive: true });
+    }
+
+    if (options?.binary !== undefined) {
+      if (!resource.file) {
+        throw new Error(
+          `Cannot persist binary for media resource ${resource.id}: missing 'file' name`,
+        );
+      }
+      fs.writeFileSync(path.join(base, resource.file), options.binary);
+    }
+  }
+
   const sidecarData: Record<string, MetadataValue> = {
     id: resource.id,
     name: resource.name,
@@ -84,6 +127,20 @@ export async function writeResourceToFile(
 
   if (isTextResource(resource) && resource.wordCount !== undefined) {
     sidecarData.wordCount = resource.wordCount;
+  }
+
+  if (isMediaResource(resource)) {
+    if (resource.file !== undefined) sidecarData.file = resource.file;
+    if (resource.type === "image") {
+      if (resource.width !== undefined) sidecarData.width = resource.width;
+      if (resource.height !== undefined) sidecarData.height = resource.height;
+      if (resource.exif !== undefined) sidecarData.exif = resource.exif;
+    } else {
+      if (resource.durationSeconds !== undefined) {
+        sidecarData.durationSeconds = resource.durationSeconds;
+      }
+      if (resource.format !== undefined) sidecarData.format = resource.format;
+    }
   }
 
   await writeSidecar(projectPath, resource.id, sidecarData);

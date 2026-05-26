@@ -86,6 +86,7 @@ export function createTextResource(params: {
 export function createImageResource(params: {
   name: string;
   folderId?: UUID | null;
+  file?: string;
   width?: number;
   height?: number;
   exif?: Record<string, MetadataValue>;
@@ -102,6 +103,7 @@ export function createImageResource(params: {
     type: "image",
     folderId: params.folderId,
     createdAt: now,
+    file: params.file,
     width: params.width,
     height: params.height,
     exif: params.exif,
@@ -119,6 +121,7 @@ export function createImageResource(params: {
 export function createAudioResource(params: {
   name: string;
   folderId?: UUID | null;
+  file?: string;
   durationSeconds?: number;
   format?: string;
   slug?: string;
@@ -134,6 +137,7 @@ export function createAudioResource(params: {
     type: "audio",
     folderId: params.folderId,
     createdAt: now,
+    file: params.file,
     durationSeconds: params.durationSeconds,
     format: params.format,
     orderIndex: params.orderIndex ?? 0,
@@ -197,11 +201,12 @@ export interface CreateResourceOpts {
   userMetadata?: Record<string, MetadataValue>;
   text?: { plainText?: string; tiptap?: TipTapDocument };
   image?: {
+    file?: string;
     width?: number;
     height?: number;
     exif?: Record<string, MetadataValue>;
   };
-  audio?: { durationSeconds?: number; format?: string };
+  audio?: { file?: string; durationSeconds?: number; format?: string };
 }
 
 /**
@@ -234,6 +239,7 @@ export const createResourceOfType = (
     case "image":
       return createImageResource({
         ...baseParams,
+        file: opts.image?.file,
         width: opts.image?.width,
         height: opts.image?.height,
         exif: opts.image?.exif,
@@ -241,6 +247,7 @@ export const createResourceOfType = (
     case "audio":
       return createAudioResource({
         ...baseParams,
+        file: opts.audio?.file,
         durationSeconds: opts.audio?.durationSeconds,
         format: opts.audio?.format,
       });

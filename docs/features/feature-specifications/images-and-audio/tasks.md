@@ -4,7 +4,7 @@ Derived from `images-and-audio-spec.md`. Granularity: story points (1/2/3/5/8).
 
 ---
 
-### Task 1: Media format + size validation module
+### Task 1: Media format + size validation module ✅
 
 **What:** A shared module defining accepted image/audio extensions and MIME types, the 100MB cap, and a validator that classifies a file as `image`/`audio` or rejects it with a reason.
 **Files:** `frontend/src/lib/models/media-validation.ts` (new); `frontend/tests/media-validation.test.ts` (new)
@@ -12,7 +12,7 @@ Derived from `images-and-audio-spec.md`. Granularity: story points (1/2/3/5/8).
 **Depends on:** none
 **Estimate:** 2
 
-### Task 2: Persist media binaries in the resource directory
+### Task 2: Persist media binaries in the resource directory ✅
 
 **What:** Extend the persistence writer so image/audio resources write the uploaded bytes to `resources/<uuid>/original.<ext>` (no `content.txt`/`content.tiptap.json`), and record the stored filename on the sidecar.
 **Files:** `frontend/src/lib/models/resource-persistence.ts`; `frontend/src/lib/models/resource-factory.ts` (if a filename/ext field is needed); `frontend/tests/resource-persistence*.test.ts`
