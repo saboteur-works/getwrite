@@ -48,6 +48,7 @@ import {
   copyResource,
   deleteResource,
   updateSidecar,
+  uploadMediaResource,
 } from "../src/lib/api/resources";
 import {
   setResources,
@@ -646,6 +647,37 @@ export default function Home(): JSX.Element {
     }
   };
 
+  const handleMediaCreate = async (
+    file: File,
+    opts: { title: string; folderId?: string },
+  ): Promise<void> => {
+    if (!selectedProject) return;
+    const { resource } = await uploadMediaResource(
+      selectedProject.rootPath,
+      file,
+      opts,
+    );
+    dispatch(addResourceInStore(resource));
+    dispatch(
+      addResource({
+        projectId: selectedProject.id,
+        resource: {
+          id: resource.id,
+          userMetadata: resource.userMetadata,
+          name: resource.name,
+          folderId: resource.folderId ?? null,
+        } as any,
+      }),
+    );
+    setSelectedProject((prev) =>
+      prev
+        ? { ...prev, resources: [...prev.resources, resource] as AnyResource[] }
+        : prev,
+    );
+    dispatch(setResourceId(resource.id));
+    toastService.success("Resource created", resource.name);
+  };
+
   const handleCloseProject = (): void => {
     setSelectedProject(null);
     dispatch(setSelectedProjectId(null));
@@ -664,6 +696,7 @@ export default function Home(): JSX.Element {
       onResourceSelect={handleResourceSelect}
       onResourceAction={handleResourceAction}
       onCloseProject={handleCloseProject}
+      onMediaCreateConfirmed={handleMediaCreate}
       selectedResourceId={selectedResource?.id ?? null}
       onChangeSynopsis={handleChangeSynopsis}
       onChangeNotes={handleChangeNotes}

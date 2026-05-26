@@ -8,8 +8,13 @@ import projectReducer from "../../src/store/projectsSlice";
 import resourcesReducer from "../../src/store/resourcesSlice";
 import revisionsReducer from "../../src/store/revisionsSlice";
 import editorConfigReducer from "../../src/store/editorConfigSlice";
-import { createTextResource } from "../../src/lib/models";
+import {
+  createTextResource,
+  createImageResource,
+  createAudioResource,
+} from "../../src/lib/models";
 import type { StoredProject } from "../../src/store/projectsSlice";
+import type { AnyResource } from "../../src/lib/models/types";
 
 const meta: Meta<typeof MetadataSidebar> = {
   title: "Sidebar/MetadataSidebar",
@@ -127,9 +132,7 @@ export const Interactive: Story = {
   },
 };
 
-function makeStoreWithResource(
-  resource: ReturnType<typeof createTextResource>,
-) {
+function makeStoreWithResource(resource: AnyResource) {
   const store = configureStore({
     reducer: {
       projects: projectReducer,
@@ -291,4 +294,37 @@ export const InteractiveCollapse: Story = {
     );
   },
   args: {},
+};
+
+export const WithImageResource: Story = {
+  render: () => {
+    const resource = createImageResource({
+      name: "Cover Photo",
+      file: "original.jpg",
+      width: 1920,
+      height: 1080,
+      exif: { Make: "Canon", Model: "EOS R5", DateTime: "2024:06:01 12:34:56" },
+    });
+    return (
+      <Provider store={makeStoreWithResource(resource)}>
+        <MetadataSidebar />
+      </Provider>
+    );
+  },
+};
+
+export const WithAudioResource: Story = {
+  render: () => {
+    const resource = createAudioResource({
+      name: "Intro Music",
+      file: "original.mp3",
+      durationSeconds: 203,
+      format: "mp3",
+    });
+    return (
+      <Provider store={makeStoreWithResource(resource)}>
+        <MetadataSidebar />
+      </Provider>
+    );
+  },
 };

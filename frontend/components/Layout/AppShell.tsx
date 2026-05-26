@@ -236,6 +236,11 @@ export interface AppShellProps {
   ) => Promise<void>;
   /** Closes the active project and returns to the start page. */
   onCloseProject?: () => void;
+  /** Called when the user creates an image or audio resource via the modal. */
+  onMediaCreateConfirmed?: (
+    file: File,
+    opts: { title: string; folderId?: string },
+  ) => Promise<void>;
 }
 
 /**
@@ -266,6 +271,7 @@ export default function AppShell({
   onChangeStoryEndDate,
   onResourceAction,
   onCloseProject,
+  onMediaCreateConfirmed,
   project,
 }: AppShellProps): JSX.Element {
   const [view, setView] = useState<ViewName>("edit");
@@ -1092,6 +1098,7 @@ export default function AppShell({
                   onCreateConfirmed={async (payload, parentId) => {
                     await handleCreateConfirmed(payload, parentId);
                   }}
+                  onMediaCreateConfirmed={onMediaCreateConfirmed}
                   onExportConfirmed={async (resourceIds, resourceId) => {
                     await handleExportConfirmed(resourceIds, resourceId);
                   }}

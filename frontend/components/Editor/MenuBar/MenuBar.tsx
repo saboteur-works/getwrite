@@ -20,6 +20,7 @@ import EditorMenuIconGroup from "./EditorMenuIconGroup";
 import EditorMenuInput from "./EditorMenuInput";
 import type { MenuBarState } from "./menuBarState";
 import { useToolbarCommands } from "./useToolbarCommand";
+import ImagePickerSubmenu from "./ImagePickerSubmenu";
 
 /** Standard icon size (px) used by all menu controls for visual consistency. */
 const ICON_SIZE = 16;
@@ -128,6 +129,9 @@ export const MenuBar = ({ editor, stateOverride }: MenuBarProps) => {
           })}
         </EditorMenuIconGroup>
       ))}
+      <EditorMenuIconGroup groupName="Images" groupId="image-controls">
+        <ImagePickerSubmenu editor={editor} />
+      </EditorMenuIconGroup>
       <Tooltip id="my-tooltip" place="top" />
     </div>
   );

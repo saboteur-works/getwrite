@@ -33,6 +33,30 @@ export async function createResource(
   return (await response.json()) as { resource: AnyResource };
 }
 
+export async function uploadMediaResource(
+  projectPath: string,
+  file: File,
+  opts?: { title?: string; folderId?: string },
+): Promise<{ resource: AnyResource }> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("projectPath", projectPath);
+  if (opts?.title) form.append("title", opts.title);
+  if (opts?.folderId) form.append("folderId", opts.folderId);
+
+  const response = await fetch("/api/resource/upload", {
+    method: "POST",
+    body: form,
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: string;
+    };
+    throw new Error(payload.error ?? `Upload failed (${response.status})`);
+  }
+  return (await response.json()) as { resource: AnyResource };
+}
+
 export async function copyResource(
   resourceId: string,
   newName: string,

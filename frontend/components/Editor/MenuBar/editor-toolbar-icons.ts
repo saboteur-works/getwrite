@@ -25,6 +25,7 @@ import {
   Heading5,
   Heading6,
   Highlighter,
+  Image,
   Italic,
   List,
   ListOrdered,
@@ -49,6 +50,7 @@ import {
 
 /** Icons used by EditorMenuIcon (icon-kind toolbar items). */
 export const iconRegistry = {
+  image: Image,
   alignLeft: AlignLeft,
   alignCenter: AlignCenter,
   alignRight: AlignRight,

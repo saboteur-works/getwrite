@@ -122,6 +122,10 @@ export interface ShellModalCoordinatorProps {
     payload: { title: string; type: ResourceType | string; folderId?: string },
     parentId?: string,
   ) => Promise<void>;
+  onMediaCreateConfirmed?: (
+    file: File,
+    opts: { title: string; folderId?: string },
+  ) => Promise<void>;
   onExportConfirmed: (
     resourceIds: string[],
     resourceId?: string,
@@ -184,6 +188,7 @@ export default function ShellModalCoordinator({
   onCloseProjectConfirm,
   onSaveHeadingSettings,
   onCreateConfirmed,
+  onMediaCreateConfirmed,
   onExportConfirmed,
   onSelectResource,
   onBuildCompilePreview,
@@ -258,6 +263,7 @@ export default function ShellModalCoordinator({
         parentId={createModal.parentId}
         onClose={() => setCreateModal({ open: false })}
         onCreate={(payload, parentId) => onCreateConfirmed(payload, parentId)}
+        onUpload={onMediaCreateConfirmed}
         parents={folders ?? []}
       />
 

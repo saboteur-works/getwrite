@@ -3,7 +3,11 @@ import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import MetadataSidebar from "../components/Sidebar/MetadataSidebar";
-import { createTextResource } from "../src/lib/models/resource";
+import {
+  createTextResource,
+  createImageResource,
+  createAudioResource,
+} from "../src/lib/models/resource";
 import { makeStore } from "../src/store/store";
 import {
   setResources,
@@ -720,5 +724,108 @@ describe("MetadataSidebar — multi-resource-ref field", () => {
     ).toBeInTheDocument();
     // Chips render as buttons with visible label text; none should be present
     expect(screen.queryByRole("button", { name: /uuid-bad/i })).toBeNull();
+  });
+});
+
+describe("MetadataSidebar — media resource display", () => {
+  it("shows image dimensions for an image resource with width and height", () => {
+    const res = createImageResource({
+      name: "Cover Photo",
+      width: 1920,
+      height: 1080,
+    });
+    const testStore = makeStore();
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+    expect(screen.getByText(/1920/)).toBeInTheDocument();
+    expect(screen.getByText(/1080/)).toBeInTheDocument();
+  });
+
+  it("shows EXIF fields when an image resource has exif data", () => {
+    const res = createImageResource({
+      name: "Sunset",
+      width: 800,
+      height: 600,
+      exif: { Make: "Canon", Model: "EOS R5" },
+    });
+    const testStore = makeStore();
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+    expect(screen.getByText("Canon")).toBeInTheDocument();
+    expect(screen.getByText("EOS R5")).toBeInTheDocument();
+  });
+
+  it("shows duration and format for an audio resource", () => {
+    const res = createAudioResource({
+      name: "Intro Music",
+      durationSeconds: 83,
+      format: "mp3",
+    });
+    const testStore = makeStore();
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+    expect(screen.getByText("MP3")).toBeInTheDocument();
+    expect(screen.getByText("1m 23s")).toBeInTheDocument();
+  });
+
+  it("shows only format when audio has no duration", () => {
+    const res = createAudioResource({ name: "Track", format: "wav" });
+    const testStore = makeStore();
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+    expect(screen.getByText("WAV")).toBeInTheDocument();
+  });
+
+  it("does not show the text-only metadata editor for image resources", () => {
+    const res = createImageResource({ name: "Banner" });
+    const testStore = makeStore();
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+    expect(screen.queryByLabelText("synopsis")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("add-metadata-field"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("formats hours correctly for long audio tracks", () => {
+    const res = createAudioResource({
+      name: "Audiobook",
+      durationSeconds: 3723,
+      format: "m4a",
+    });
+    const testStore = makeStore();
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+    expect(screen.getByText("1h 2m 3s")).toBeInTheDocument();
   });
 });
