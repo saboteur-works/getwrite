@@ -49,6 +49,7 @@ import GetWriteParagraphLeading from "./Editor/Extensions/GetWriteParagraphLeadi
 import CustomHeading from "./Editor/Extensions/CustomHeading";
 import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
 import WikiLinkDecoration from "./Editor/Extensions/WikiLinkDecoration";
+import GetWriteImage from "./Editor/Extensions/GetWriteImage";
 import { useSelector } from "react-redux";
 import { selectResolvedEditorConfig } from "../src/store/editorConfigSlice";
 /**
@@ -109,6 +110,7 @@ export const extensions = [
   FontFamily,
   GetWriteParagraphLeading,
   WikiLinkDecoration,
+  GetWriteImage,
 ];
 
 /**
