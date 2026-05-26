@@ -26,6 +26,7 @@ import { shallowEqual } from "react-redux";
 import {
   removeResource,
   selectActiveProjectMetadataSchema,
+  selectActiveProjectStatuses,
 } from "../../src/store/projectsSlice";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import ResourceTree from "../ResourceTree/ResourceTree";
@@ -322,9 +323,13 @@ export default function AppShell({
   const liveEditorConfig = useAppSelector(selectEditorConfig);
   const resolvedEditorConfig = useAppSelector(selectResolvedEditorConfig);
   const qb = useQueryBuilderState();
+  const projectStatuses = useAppSelector(
+    selectActiveProjectStatuses,
+    shallowEqual,
+  );
   const availableFields = React.useMemo(
-    () => buildFieldPickerFields(metadataSchema),
-    [metadataSchema],
+    () => buildFieldPickerFields(metadataSchema, projectStatuses),
+    [metadataSchema, projectStatuses],
   );
   const resolveResourceOptions = React.useCallback(
     (refFolder: string | undefined, includeSubfolders?: boolean) => {
