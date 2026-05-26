@@ -19,6 +19,15 @@ export const Default: Story = {
   },
 };
 
+export const MediaResource: Story = {
+  args: {
+    view: "edit",
+    editLabel: "Media",
+    disabledViews: ["diff", "organizer"],
+    onChange: (v: ViewSwitcherProps) => console.log("view changed", v),
+  },
+};
+
 export const Interactive: Story = {
   render: () => {
     const [view, setView] = React.useState<

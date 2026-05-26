@@ -34,6 +34,8 @@ export interface IntrinsicField {
   label: string;
   /** Field type — determines operator vocabulary and value picker. */
   type: MetadataFieldType;
+  /** Allowed values for `select` / `multiselect` intrinsics (fixed enums). */
+  options?: string[];
   /** Where the field's value is sourced from at evaluation time. */
   source: IntrinsicFieldSource;
   /**
@@ -57,6 +59,7 @@ export const INTRINSIC_FIELDS: readonly IntrinsicField[] = [
     key: "type",
     label: "Type",
     type: "select",
+    options: ["text", "image", "audio", "folder"],
     source: "resource",
     read: (resource) => resource.type,
   },

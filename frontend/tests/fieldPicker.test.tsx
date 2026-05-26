@@ -129,3 +129,28 @@ describe("FieldPicker — saved queries section", () => {
     expect(badges).toHaveLength(2);
   });
 });
+
+describe("buildFieldPickerFields — intrinsic options", () => {
+  it("surfaces the Type intrinsic's select options", () => {
+    const typeField = FIELDS.find((f) => f.key === "type");
+    expect(typeField?.source).toBe("system");
+    expect(typeField?.type).toBe("select");
+    expect(typeField?.options).toEqual(["text", "image", "audio", "folder"]);
+  });
+
+  it("injects project statuses into the Statuses intrinsic options", () => {
+    const withStatuses = buildFieldPickerFields(undefined, [
+      "Draft",
+      "In Review",
+      "Published",
+    ]);
+    const statusesField = withStatuses.find((f) => f.key === "statuses");
+    expect(statusesField?.type).toBe("multiselect");
+    expect(statusesField?.options).toEqual(["Draft", "In Review", "Published"]);
+  });
+
+  it("leaves the Statuses intrinsic without options when none are configured", () => {
+    const statusesField = FIELDS.find((f) => f.key === "statuses");
+    expect(statusesField?.options).toBeUndefined();
+  });
+});

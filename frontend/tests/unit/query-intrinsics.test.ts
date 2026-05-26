@@ -344,3 +344,12 @@ describe("linksTo field", () => {
     expect(field.read(baseResource, emptyCtx)).toEqual([]);
   });
 });
+
+describe("type field options", () => {
+  const field = INTRINSIC_FIELDS.find((f) => f.key === "type")!;
+
+  it("declares the resource-type values as select options", () => {
+    expect(field.type).toBe("select");
+    expect(field.options).toEqual(["text", "image", "audio", "folder"]);
+  });
+});

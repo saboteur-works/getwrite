@@ -26,6 +26,7 @@ import { shallowEqual } from "react-redux";
 import {
   removeResource,
   selectActiveProjectMetadataSchema,
+  selectActiveProjectStatuses,
 } from "../../src/store/projectsSlice";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import ResourceTree from "../ResourceTree/ResourceTree";
@@ -46,6 +47,7 @@ import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu"
 import SidebarContextMenu from "../ResourceTree/SidebarContextMenu";
 import ViewSwitcher from "../WorkArea/ViewSwitcher";
 import EditView from "../WorkArea/EditView";
+import MediaView from "../WorkArea/Media/MediaView";
 import DiffViewController from "../WorkArea/DiffViewController";
 import OrganizerView from "../WorkArea/Views/OrganizerView/OrganizerView";
 import DataView from "../WorkArea/DataView";
@@ -321,9 +323,13 @@ export default function AppShell({
   const liveEditorConfig = useAppSelector(selectEditorConfig);
   const resolvedEditorConfig = useAppSelector(selectResolvedEditorConfig);
   const qb = useQueryBuilderState();
+  const projectStatuses = useAppSelector(
+    selectActiveProjectStatuses,
+    shallowEqual,
+  );
   const availableFields = React.useMemo(
-    () => buildFieldPickerFields(metadataSchema),
-    [metadataSchema],
+    () => buildFieldPickerFields(metadataSchema, projectStatuses),
+    [metadataSchema, projectStatuses],
   );
   const resolveResourceOptions = React.useCallback(
     (refFolder: string | undefined, includeSubfolders?: boolean) => {
@@ -363,6 +369,19 @@ export default function AppShell({
     } else if (selectedResource?.type === "folder") {
       setView((current) =>
         current === "edit" || current === "diff" ? "organizer" : current,
+      );
+      setActiveSmartFolderId(null);
+      setQueryBuilderOpen(false);
+    } else if (
+      selectedResource?.type === "image" ||
+      selectedResource?.type === "audio"
+    ) {
+      // Surface media in the (reused) edit view when the current view can't
+      // display it. Leave "edit" and the project-wide "data" view untouched.
+      setView((current) =>
+        current === "organizer" || current === "diff" || current === "timeline"
+          ? "edit"
+          : current,
       );
       setActiveSmartFolderId(null);
       setQueryBuilderOpen(false);
@@ -1222,15 +1241,25 @@ export default function AppShell({
                       <ViewSwitcher
                         view={view}
                         onChange={setView}
+                        editLabel={
+                          selectedResource?.type === "image" ||
+                          selectedResource?.type === "audio"
+                            ? "Media"
+                            : "Edit"
+                        }
                         disabledViews={(() => {
                           const disabled: ViewName[] = [];
-                          if (!selectedResource) {
-                            disabled.push("edit", "diff");
+                          const type = selectedResource?.type;
+                          const isMedia = type === "image" || type === "audio";
+                          // Edit/Media tab serves text and media resources.
+                          if (type !== "text" && !isMedia) {
+                            disabled.push("edit");
                           }
-                          if (selectedResource?.type !== "text") {
-                            disabled.push("edit", "diff");
+                          // Diff is text-only.
+                          if (type !== "text") {
+                            disabled.push("diff");
                           }
-                          if (selectedResource?.type !== "folder") {
+                          if (type !== "folder") {
                             disabled.push("organizer");
                           }
                           return Array.from(new Set(disabled));
@@ -1247,7 +1276,9 @@ export default function AppShell({
                     className={`flex-1 min-h-0 text-gw-primary flex flex-col ${
                       view === "edit" &&
                       Boolean(selectedResource) &&
-                      selectedResource?.type === "text"
+                      (selectedResource?.type === "text" ||
+                        selectedResource?.type === "image" ||
+                        selectedResource?.type === "audio")
                         ? ""
                         : "overflow-y-auto"
                     }`}
@@ -1356,6 +1387,14 @@ export default function AppShell({
 
                           switch (view) {
                             case "edit":
+                              if (
+                                selectedResource.type === "image" ||
+                                selectedResource.type === "audio"
+                              ) {
+                                return (
+                                  <MediaView resource={selectedResource} />
+                                );
+                              }
                               if (selectedResource.type !== "text") {
                                 return (
                                   <div>

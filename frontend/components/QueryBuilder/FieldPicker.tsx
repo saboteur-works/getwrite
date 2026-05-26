@@ -85,6 +85,7 @@ export interface FieldPickerProps {
  */
 export function buildFieldPickerFields(
   schema?: MetadataSchema,
+  projectStatuses?: string[],
 ): FieldPickerField[] {
   const fields: FieldPickerField[] = [];
   const effectiveSchema = schema ?? DEFAULT_METADATA_SCHEMA;
@@ -110,10 +111,17 @@ export function buildFieldPickerFields(
   }
 
   for (const f of INTRINSIC_FIELDS) {
+    // Statuses are project-defined, so their options are injected at build time
+    // rather than declared on the intrinsic. Only override when statuses exist.
+    const options =
+      f.key === "statuses" && projectStatuses && projectStatuses.length > 0
+        ? projectStatuses
+        : f.options;
     fields.push({
       key: f.key,
       label: f.label,
       type: f.type,
+      options,
       source: "system",
       isFolderField: f.key === "folderId",
     });
@@ -419,7 +427,7 @@ export default function FieldPicker({
                 closeMenu();
               }}
             >
-              + Create a new field "{search.trim()}"
+              + Create a new field &quot;{search.trim()}&quot;
             </button>
           )}
         </div>
