@@ -21,7 +21,7 @@ Derived from `images-and-audio-spec.md`. Granularity: story points (1/2/3/5/8).
 **Estimate:** 2
 **Notes:** Reuse `writeResourceToFile`'s existing locking. The current writer only branches on folder/text — add an image/audio branch rather than letting them fall through to sidecar-only.
 
-### Task 3: Extract type-specific metadata on ingest
+### Task 3: Extract type-specific metadata on ingest ✅
 
 **What:** A helper that derives `width`/`height`/`exif` from images and `durationSeconds`/`format` from audio at upload time.
 **Files:** `frontend/src/lib/models/media-metadata.ts` (new); `frontend/tests/media-metadata.test.ts` (new); `frontend/package.json` (dependency)
