@@ -70,12 +70,17 @@ export async function loadProjectFromDisk(
       );
       const sidecarId =
         sidecar && typeof sidecar.id === "string" ? sidecar.id : "";
-      const resourcePlaintext = fsSync.readFileSync(
-        path.join(resourcesDir, sidecarId, "content.txt"),
-        { encoding: "utf-8" },
-      );
       const type =
         sidecar && typeof sidecar.type === "string" ? sidecar.type : "";
+      // Only text resources persist a content.txt. Image/audio resources store
+      // a binary original.<ext> with no content.txt, so reading it would throw.
+      const resourcePlaintext =
+        type === "text"
+          ? fsSync.readFileSync(
+              path.join(resourcesDir, sidecarId, "content.txt"),
+              { encoding: "utf-8" },
+            )
+          : "";
       const wordCount =
         type === "text"
           ? resourcePlaintext.trim() === ""

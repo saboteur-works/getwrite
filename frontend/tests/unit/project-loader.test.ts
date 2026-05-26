@@ -126,6 +126,60 @@ describe("loadProjectFromDisk", () => {
     }
   });
 
+  it("loads image/audio resources that have no content.txt without throwing", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "gw-loader-media-"));
+    try {
+      const project = {
+        id: "test-media",
+        name: "Media Project",
+        slug: "media-project",
+        createdAt: new Date().toISOString(),
+      };
+      await fs.writeFile(
+        path.join(tmp, "project.json"),
+        JSON.stringify(project),
+        "utf-8",
+      );
+      await fs.mkdir(path.join(tmp, "meta"));
+
+      const imageId = "11111111-1111-4111-8111-111111111111";
+      // Image sidecar — media resources store original.<ext>, never content.txt
+      await fs.writeFile(
+        path.join(tmp, "meta", `resource-${imageId}.meta.json`),
+        JSON.stringify({
+          id: imageId,
+          name: "Cover",
+          type: "image",
+          createdAt: new Date().toISOString(),
+          orderIndex: 0,
+          folderId: null,
+          slug: "cover",
+          file: "original.png",
+          width: 800,
+          height: 600,
+          userMetadata: {},
+        }),
+        "utf-8",
+      );
+      // Binary present, but deliberately no content.txt
+      await fs.mkdir(path.join(tmp, "resources", imageId), { recursive: true });
+      await fs.writeFile(
+        path.join(tmp, "resources", imageId, "original.png"),
+        Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+      );
+
+      const loaded = await loadProjectFromDisk(tmp);
+
+      expect(loaded.resources).toHaveLength(1);
+      const image = loaded.resources[0];
+      expect(image.type).toBe("image");
+      expect(image.name).toBe("Cover");
+      expect(image.plaintext).toBe("");
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
   it("create → reopen loop: data loaded from disk matches data returned at creation", async () => {
     // This is the regression test for the Electron bug: projects were created
     // successfully but failed to reopen because loadProjectFromDisk (POST /api/project)
