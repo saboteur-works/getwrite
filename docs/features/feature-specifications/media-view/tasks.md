@@ -13,7 +13,7 @@ Derived from `media-view-spec.md`. Granularity: story points (1/2/3/5/8).
 **Estimate:** 5
 **Notes:** Keep it pure — props are `src`, `alt`, nothing Redux. Covers FRs 4, 5, 11, 12 (image). Zoom/pan interaction (pointer drag + bounds clamping) is the main uncertainty. **shadcn:** no good base — `@shadcn/aspect-ratio` forces a fixed ratio (wrong; FR 4 wants the natural ratio via `object-contain`), and zoom/pan is bespoke. Reuse the existing `common/UI/Button` primitive for the zoom in/out/reset controls.
 
-### Task 2: AudioPlayer component (custom, scrubbable)
+### Task 2: AudioPlayer component (custom, scrubbable) ✅
 
 **What:** A pure GetWrite-styled audio player with play/pause, a draggable seek bar, and current-time / total-duration display, driven by a `src` URL.
 **Files:** `frontend/components/WorkArea/Media/AudioPlayer.tsx` (new); `frontend/stories/WorkArea/AudioPlayer.stories.tsx` (new)
