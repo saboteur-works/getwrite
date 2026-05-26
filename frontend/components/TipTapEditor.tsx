@@ -50,8 +50,10 @@ import CustomHeading from "./Editor/Extensions/CustomHeading";
 import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
 import WikiLinkDecoration from "./Editor/Extensions/WikiLinkDecoration";
 import GetWriteImage from "./Editor/Extensions/GetWriteImage";
+import MediaDropExtension from "./Editor/Extensions/MediaDropExtension";
 import { useSelector } from "react-redux";
 import { selectResolvedEditorConfig } from "../src/store/editorConfigSlice";
+import { selectActiveProjectRootPath } from "../src/store/projectsSlice";
 /**
  * Props accepted by {@link TipTapEditor}.
  */
@@ -140,6 +142,10 @@ export default function TipTapEditor({
   readonly = false,
 }: TipTapEditorProps) {
   const editorProjectConfig = useSelector(selectResolvedEditorConfig);
+  const activeProjectRootPath = useSelector(selectActiveProjectRootPath);
+  const projectPathRef = useRef<string | null>(null);
+  projectPathRef.current = activeProjectRootPath;
+
   /** True when executing in browser context (guards SSR/hydration paths). */
   const isClient = typeof window !== "undefined";
 
@@ -176,6 +182,9 @@ export default function TipTapEditor({
         }),
         NormalizePastedText.configure({
           bodyFontSize: editorProjectConfig.body?.fontSize,
+        }),
+        MediaDropExtension.configure({
+          getProjectPath: () => projectPathRef.current,
         }),
         Math.configure({
           blockOptions: {

@@ -75,7 +75,7 @@ Derived from `images-and-audio-spec.md`. Granularity: story points (1/2/3/5/8).
 **Estimate:** 3
 **Notes:** Filter `selectResources` by `type === "image"`; thumbnails can use the serving route.
 
-### Task 9: Drag-and-drop external images into the editor
+### Task 9: Drag-and-drop external images into the editor ✅
 
 **What:** Handle images dropped from another window: upload each as a new image resource (Task 4) then insert the node (Task 7) at the drop position.
 **Files:** `frontend/components/TipTapEditor.tsx` (editor drop handling / a ProseMirror plugin); tests
