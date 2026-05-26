@@ -2,7 +2,7 @@
 
 Forward-looking product direction, organized by horizon (**Now → Next → Later → Exploring**) and grouped by capability theme within each horizon. Each entry notes its current build state and links to relevant docs.
 
-Horizons reflect priority and readiness, not committed dates. This document covers **features** only — engineering/tech-debt work lives in [tech-debt.md](tech-debt.md), and a snapshot of shipped capability is in [feature-audit-v1.md](feature-audit-v1.md).
+Horizons reflect priority and readiness, not committed dates. This document covers **features** only — engineering/tech-debt work lives in [tech-debt.md](tech-debt.md), and a full classified inventory of the feature surface is in [feature-catalog.md](features/feature-catalog.md).
 
 ---
 
@@ -68,4 +68,4 @@ A curated snapshot of recent highlights — not an exhaustive changelog.
 ## Related Docs
 
 - **Tech debt & infrastructure** — [tech-debt.md](tech-debt.md)
-- **Feature audit (capability snapshot)** — [feature-audit-v1.md](feature-audit-v1.md)
+- **Feature catalog (classified inventory)** — [feature-catalog.md](features/feature-catalog.md)
