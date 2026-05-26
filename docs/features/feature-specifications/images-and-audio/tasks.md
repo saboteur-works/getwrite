@@ -39,7 +39,7 @@ Derived from `images-and-audio-spec.md`. Granularity: story points (1/2/3/5/8).
 **Estimate:** 3
 **Notes:** The existing `/api/resource` POST takes a JSON body; binary upload needs `request.formData()`. Decide whether to branch the existing route by content-type or add a sibling `upload` route. Image/audio resources do not get an initial revision (revisions are text-only today).
 
-### Task 5: Media file-serving route
+### Task 5: Media file-serving route ✅
 
 **What:** `GET /api/resource/[id]/file` that streams `original.<ext>` with the correct `Content-Type`.
 **Files:** `frontend/app/api/resource/[resource-id]/file/route.ts` (new); route test
