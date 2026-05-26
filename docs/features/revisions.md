@@ -122,19 +122,22 @@ GetWrite implements **soft-delete** for resources via `trash.ts`. When a resourc
 
 ### `.trash/` layout
 
+`.trash/` is split into `resources/` and `meta/` subtrees. Each moved resource file is prefixed with the resource ID, and the sidecar keeps its canonical name:
+
 ```
-<projectRoot>/.trash/<resourceId>/
-├── content.txt
-├── content.tiptap.json
+<projectRoot>/.trash/
+├── resources/
+│   ├── <resourceId>-content.txt
+│   └── <resourceId>-content.tiptap.json
 └── meta/
-    └── resource-<id>.meta.json
+    └── resource-<resourceId>.meta.json
 ```
 
 The revision directories under `<projectRoot>/revisions/<resourceId>/` are **not** moved to `.trash/` — only the resource content and sidecar are relocated.
 
 ### Recovery
 
-There is currently no UI for recovering soft-deleted resources. Deleted files can be recovered manually by moving them out of `.trash/` back into `resources/` and recreating the sidecar at `meta/`. Automated recovery UI (a trash bin) is on the roadmap.
+`trash.ts` exports `restoreResource(projectRoot, resourceId)`, which moves the content files and sidecar back out of `.trash/`, and `purgeResource(projectRoot, resourceId)`, which permanently deletes them. There is currently no UI wired to these functions — recovery happens programmatically (or by manually moving files). A trash-bin UI is on the roadmap.
 
 ---
 
