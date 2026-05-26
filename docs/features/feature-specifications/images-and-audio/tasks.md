@@ -84,7 +84,7 @@ Derived from `images-and-audio-spec.md`. Granularity: story points (1/2/3/5/8).
 **Estimate:** 5
 **Notes:** Use TipTap/ProseMirror `handleDrop`/`handlePaste`. Map drop coordinates to a document position for insertion.
 
-### Task 10: Display type-specific metadata in the metadata UI
+### Task 10: Display type-specific metadata in the metadata UI ✅
 
 **What:** Surface image dimensions/EXIF and audio duration/format in the metadata sidebar for media resources.
 **Files:** `frontend/components/Sidebar/MetadataSidebar.tsx`; story

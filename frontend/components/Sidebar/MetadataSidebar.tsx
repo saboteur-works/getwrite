@@ -33,12 +33,108 @@ import {
 } from "../../src/store/projectsSlice";
 import type {
   Folder,
+  ImageResource,
+  AudioResource,
   MetadataField,
   MetadataValue,
   ResourceRef,
 } from "../../src/lib/models/types";
 
 const EMPTY_REF_OPTIONS: ResourceOption[] = [];
+
+function formatAudioDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function ReadOnlyField({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}): JSX.Element {
+  return (
+    <LabeledField label={label} className={className}>
+      <p className="mt-1 text-sm font-mono text-gw-primary">{value}</p>
+    </LabeledField>
+  );
+}
+
+function ImageMetadataSection({
+  resource,
+}: {
+  resource: ImageResource;
+}): JSX.Element {
+  const hasDimensions =
+    resource.width !== undefined || resource.height !== undefined;
+  const exifEntries = resource.exif ? Object.entries(resource.exif) : [];
+  const hasContent = hasDimensions || exifEntries.length > 0;
+
+  return (
+    <CollapsibleSection title="Image" variant="sidebar">
+      {hasDimensions && (
+        <ReadOnlyField
+          label="Dimensions"
+          value={`${resource.width ?? "?"} × ${resource.height ?? "?"} px`}
+          className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+        />
+      )}
+      {exifEntries.map(([key, value]) => (
+        <ReadOnlyField
+          key={key}
+          label={key}
+          value={
+            Array.isArray(value) || typeof value === "object"
+              ? JSON.stringify(value)
+              : String(value)
+          }
+          className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+        />
+      ))}
+      {!hasContent && (
+        <p className="mt-1 text-sm text-gw-secondary">No metadata available.</p>
+      )}
+    </CollapsibleSection>
+  );
+}
+
+function AudioMetadataSection({
+  resource,
+}: {
+  resource: AudioResource;
+}): JSX.Element {
+  const hasContent =
+    resource.format !== undefined || resource.durationSeconds !== undefined;
+
+  return (
+    <CollapsibleSection title="Audio" variant="sidebar">
+      {resource.format !== undefined && (
+        <ReadOnlyField
+          label="Format"
+          value={resource.format.toUpperCase()}
+          className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+        />
+      )}
+      {resource.durationSeconds !== undefined && (
+        <ReadOnlyField
+          label="Duration"
+          value={formatAudioDuration(resource.durationSeconds)}
+          className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+        />
+      )}
+      {!hasContent && (
+        <p className="mt-1 text-sm text-gw-secondary">No metadata available.</p>
+      )}
+    </CollapsibleSection>
+  );
+}
 
 /**
  * Validates raw sidecar JSON as a ResourceRef array at the system boundary.
@@ -408,10 +504,32 @@ export default function MetadataSidebar({
             )}
           </div>
         </React.Fragment>
+      ) : selectedResource?.type === "image" ? (
+        <React.Fragment>
+          <div className="shrink-0 mb-4">
+            <h3 className="text-gw-secondary-light pl-4 text-gw-label tracking-label uppercase">
+              {selectedResource.name}
+            </h3>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto px-4">
+            <ImageMetadataSection resource={selectedResource} />
+          </div>
+        </React.Fragment>
+      ) : selectedResource?.type === "audio" ? (
+        <React.Fragment>
+          <div className="shrink-0 mb-4">
+            <h3 className="text-gw-secondary-light pl-4 text-gw-label tracking-label uppercase">
+              {selectedResource.name}
+            </h3>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto px-4">
+            <AudioMetadataSection resource={selectedResource} />
+          </div>
+        </React.Fragment>
       ) : (
         <div className="px-4">
           <h4 className="text-gw-secondary text-gw-label tracking-label mt-4">
-            Select a text resource to view and edit its metadata.
+            Select a resource to view its metadata.
           </h4>
         </div>
       )}
