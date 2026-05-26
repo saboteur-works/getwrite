@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.2.43](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.42...getwrite-v0.2.43) (2026-05-26)
+
+
+### Features
+
+* image and audio resources ([09aa714](https://github.com/saboteur-works/getwrite/commit/09aa7145e792285a9b780f4c763bbd2aca92c216))
+* **media:** add drag-and-drop external images into editor ([598aee5](https://github.com/saboteur-works/getwrite/commit/598aee5a4afc255fa505cbe4e1c1bba258b822e3))
+* **media:** add file-serving route for image/audio resources ([f5cb5f8](https://github.com/saboteur-works/getwrite/commit/f5cb5f85cca605cdd0ac008de864594f8480e985))
+* **media:** add GetWriteImage TipTap extension with resource-id attr ([af15c3d](https://github.com/saboteur-works/getwrite/commit/af15c3de331b5220bae1e0513eead6a12652da9b))
+* **media:** add image picker to editor menu bar ([934239f](https://github.com/saboteur-works/getwrite/commit/934239ff88eaa42409f19e8a99ebecc2c361373a))
+* **media:** add image/audio upload validation module ([577cd14](https://github.com/saboteur-works/getwrite/commit/577cd14835aabb364c5b60d5d780d6f844cf3360))
+* **media:** add multipart upload route for image/audio resources ([c292ca9](https://github.com/saboteur-works/getwrite/commit/c292ca98f58831c4513b825729a2566f1b0d0a8d))
+* **media:** display image/audio metadata in the sidebar ([1739781](https://github.com/saboteur-works/getwrite/commit/17397814e6d2172c739acdc218935c8fbb8de036))
+* **media:** expose image/audio creation in the resource modal ([01c38dc](https://github.com/saboteur-works/getwrite/commit/01c38dcecbeeeef736ee317c88d139af018efab4))
+* **media:** extract image/audio metadata on ingest ([361004d](https://github.com/saboteur-works/getwrite/commit/361004da16cbc54455ab09ebde3bb6bc015740a0))
+* **media:** persist image/audio binaries in the resource directory ([28196f4](https://github.com/saboteur-works/getwrite/commit/28196f452397f46574e02157ccc6cf55ed6e8cfd))
+
+
+### Bug Fixes
+
+* **media:** don't read content.txt for image/audio resources on load ([a1119cd](https://github.com/saboteur-works/getwrite/commit/a1119cd1837f6ce162ad7f5e4a46c19a065c2408))
+
 ## [0.2.42](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.41...getwrite-v0.2.42) (2026-05-24)
 
 
