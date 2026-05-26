@@ -40,7 +40,7 @@ Derived from `media-view-spec.md`. Granularity: story points (1/2/3/5/8).
 **Estimate:** 2
 **Notes:** The default `view` is already `"edit"`, so selecting a media resource will route here without any tab interaction. Covers the rendering half of FR 1.
 
-### Task 5: Relabel and enable the Edit tab as "Media" for media resources
+### Task 5: Relabel and enable the Edit tab as "Media" for media resources ✅
 
 **What:** Make the view-switcher's "Edit" tab read "Media" while an image/audio resource is selected, keep that tab enabled for media, and keep non-applicable tabs (Diff) disabled.
 **Files:** `frontend/components/WorkArea/ViewSwitcher.tsx`; `frontend/components/Layout/AppShell.tsx` (the `disabledViews` callback)

@@ -8,6 +8,11 @@ export interface ViewSwitcherProps {
   onChange: (view: ViewName) => void;
   className?: string;
   disabledViews?: ViewName[] | (() => ViewName[]);
+  /**
+   * Overrides the label of the "edit" tab. Used to surface media resources as
+   * a "Media" tab while reusing the edit view. Defaults to "Edit".
+   */
+  editLabel?: string;
 }
 
 interface ViewOption {
@@ -32,6 +37,7 @@ export default function ViewSwitcher({
   onChange,
   className = "",
   disabledViews = [],
+  editLabel = "Edit",
 }: ViewSwitcherProps): JSX.Element {
   const resolvedDisabledViews =
     typeof disabledViews === "function" ? disabledViews() : disabledViews;
@@ -50,7 +56,7 @@ export default function ViewSwitcher({
             className="workarea-tab-button border-b-hairline"
           >
             <opt.icon size={14} aria-hidden="true" />
-            {opt.label}
+            {opt.key === "edit" ? editLabel : opt.label}
           </TabsTrigger>
         ))}
       </TabsList>

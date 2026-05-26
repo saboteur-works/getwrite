@@ -367,6 +367,19 @@ export default function AppShell({
       );
       setActiveSmartFolderId(null);
       setQueryBuilderOpen(false);
+    } else if (
+      selectedResource?.type === "image" ||
+      selectedResource?.type === "audio"
+    ) {
+      // Surface media in the (reused) edit view when the current view can't
+      // display it. Leave "edit" and the project-wide "data" view untouched.
+      setView((current) =>
+        current === "organizer" || current === "diff" || current === "timeline"
+          ? "edit"
+          : current,
+      );
+      setActiveSmartFolderId(null);
+      setQueryBuilderOpen(false);
     }
   }, [selectedResource?.id, selectedResource?.type]);
 
@@ -1223,15 +1236,25 @@ export default function AppShell({
                       <ViewSwitcher
                         view={view}
                         onChange={setView}
+                        editLabel={
+                          selectedResource?.type === "image" ||
+                          selectedResource?.type === "audio"
+                            ? "Media"
+                            : "Edit"
+                        }
                         disabledViews={(() => {
                           const disabled: ViewName[] = [];
-                          if (!selectedResource) {
-                            disabled.push("edit", "diff");
+                          const type = selectedResource?.type;
+                          const isMedia = type === "image" || type === "audio";
+                          // Edit/Media tab serves text and media resources.
+                          if (type !== "text" && !isMedia) {
+                            disabled.push("edit");
                           }
-                          if (selectedResource?.type !== "text") {
-                            disabled.push("edit", "diff");
+                          // Diff is text-only.
+                          if (type !== "text") {
+                            disabled.push("diff");
                           }
-                          if (selectedResource?.type !== "folder") {
+                          if (type !== "folder") {
                             disabled.push("organizer");
                           }
                           return Array.from(new Set(disabled));
