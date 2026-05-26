@@ -26,3 +26,7 @@ tsconfig.tsbuildinfo
 # Local development and testing
 experiments-nopush/
 dist-electron/
+
+# Showcase fixture (seeded locally via `pnpm showcase:seed`)
+/scripts/showcase/fixture/
+showcase-out/
