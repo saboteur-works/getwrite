@@ -30,7 +30,7 @@ Derived from `images-and-audio-spec.md`. Granularity: story points (1/2/3/5/8).
 **Estimate:** 3
 **Notes:** Requires a dependency (e.g. `image-size`/`sharp` + `music-metadata`). Follow `docs/standards/package-selection.md`; prefer lightweight, pure-JS libs to keep the Electron bundle small. SVG has no intrinsic raster dimensions — handle gracefully. **Risk:** dependency choice and native-binary compatibility with the Electron build.
 
-### Task 4: Media upload API route
+### Task 4: Media upload API route ✅
 
 **What:** A multipart-capable endpoint that accepts a media file + title + target folder, validates it (Task 1), extracts metadata (Task 3), builds the resource, and persists it (Task 2).
 **Files:** `frontend/app/api/resource/route.ts` (extend to accept multipart) or `frontend/app/api/resource/upload/route.ts` (new); `frontend/src/lib/api/resources.ts` (client fn); `frontend/tests/` route test
