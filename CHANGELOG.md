@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.44](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.43...getwrite-v0.2.44) (2026-05-26)
+
+
+### Features
+
+* Media View for image and audio resources ([956ee5f](https://github.com/saboteur-works/getwrite/commit/956ee5f641be58c5989463395334bed432191fba))
+* **media-view:** add AudioPlayer with brand-styled Slider primitive ([8380c7c](https://github.com/saboteur-works/getwrite/commit/8380c7ca2f31961849caaf60c12c7783add78666))
+* **media-view:** add ImageViewer component (fit + zoom/pan) ([13ec213](https://github.com/saboteur-works/getwrite/commit/13ec213ae6f519642e4531e08b5f11985fc6e69b))
+* **media-view:** add MediaView container ([e9af601](https://github.com/saboteur-works/getwrite/commit/e9af601b68fea3f7181d6b09682710fca8fcfe96))
+* **media-view:** render MediaView in the edit view for media resources ([86cb44c](https://github.com/saboteur-works/getwrite/commit/86cb44c22a1cee0c47e175d4b465cdc428469e8c))
+* **media-view:** surface media via a "Media"-labelled edit tab ([b76fd8b](https://github.com/saboteur-works/getwrite/commit/b76fd8bb87953db3919de60ff84d584c8ce764ca))
+
+
+### Bug Fixes
+
+* **query-builder:** populate select options for Type and Statuses fields ([54b23f0](https://github.com/saboteur-works/getwrite/commit/54b23f08064622ef3eae72dff81ca4c801ea71cb))
+
 ## [0.2.43](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.42...getwrite-v0.2.43) (2026-05-26)
 
 
