@@ -46,6 +46,7 @@ import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu"
 import SidebarContextMenu from "../ResourceTree/SidebarContextMenu";
 import ViewSwitcher from "../WorkArea/ViewSwitcher";
 import EditView from "../WorkArea/EditView";
+import MediaView from "../WorkArea/Media/MediaView";
 import DiffViewController from "../WorkArea/DiffViewController";
 import OrganizerView from "../WorkArea/Views/OrganizerView/OrganizerView";
 import DataView from "../WorkArea/DataView";
@@ -1247,7 +1248,9 @@ export default function AppShell({
                     className={`flex-1 min-h-0 text-gw-primary flex flex-col ${
                       view === "edit" &&
                       Boolean(selectedResource) &&
-                      selectedResource?.type === "text"
+                      (selectedResource?.type === "text" ||
+                        selectedResource?.type === "image" ||
+                        selectedResource?.type === "audio")
                         ? ""
                         : "overflow-y-auto"
                     }`}
@@ -1356,6 +1359,14 @@ export default function AppShell({
 
                           switch (view) {
                             case "edit":
+                              if (
+                                selectedResource.type === "image" ||
+                                selectedResource.type === "audio"
+                              ) {
+                                return (
+                                  <MediaView resource={selectedResource} />
+                                );
+                              }
                               if (selectedResource.type !== "text") {
                                 return (
                                   <div>

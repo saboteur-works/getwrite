@@ -31,7 +31,7 @@ Derived from `media-view-spec.md`. Granularity: story points (1/2/3/5/8).
 **Estimate:** 2
 **Notes:** **Gotcha:** the serving route requires a `projectPath` query parameter — resolve it via `selectActiveProjectRootPath` (as `TipTapEditor` does) and `encodeURIComponent` it. Covers FRs 6, 8, and the routing half of FR 1. **shadcn:** no base needed — pure container/layout plus fallback/error markup.
 
-### Task 4: Render MediaView in the work area for media resources
+### Task 4: Render MediaView in the work area for media resources ✅
 
 **What:** Replace the "Selected resource is not a text resource" placeholder so the `edit` view renders `MediaView` when the selected resource is an image or audio resource.
 **Files:** `frontend/components/Layout/AppShell.tsx` (the `switch (view)` `case "edit"` block)
