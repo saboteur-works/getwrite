@@ -12,7 +12,9 @@
     "electron:package": "pnpm electron:build && pnpm --filter getwrite-electron package",
     "storybook": "pnpm --filter getwrite-frontend storybook",
     "knip": "knip",
-    "prepare": "husky"
+    "prepare": "husky",
+    "showcase": "node --experimental-strip-types scripts/showcase/run.mts",
+    "showcase:seed": "node --experimental-strip-types scripts/showcase/seed-fixture.mts"
   },
   "keywords": [],
   "author": "",
@@ -34,6 +36,7 @@
     "husky": "^9.1.7",
     "knip": "^6.14.1",
     "lint-staged": "^17.0.5",
+    "playwright": "^1.60.0",
     "prettier": "3.8.3",
     "typescript": "^6.0.3"
   },
