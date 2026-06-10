@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.45](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.44...getwrite-v0.2.45) (2026-06-10)
+
+
+### Bug Fixes
+
+* prevent folder slug collisions from overwriting folder descriptors ([56d04a7](https://github.com/saboteur-works/getwrite/commit/56d04a7acc859628a722f9cc545a1226e1cf9f50))
+* prevent folder slug collisions from overwriting folder descriptors ([8fcc395](https://github.com/saboteur-works/getwrite/commit/8fcc3954a7176b203a8a43d2b1b5df6348d5c89c))
+
 ## [0.2.44](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.43...getwrite-v0.2.44) (2026-05-26)
 
 
