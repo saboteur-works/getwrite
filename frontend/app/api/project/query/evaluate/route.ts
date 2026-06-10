@@ -33,6 +33,7 @@ import {
 } from "../../../../../src/lib/models/backlinks";
 import { readQuery } from "../../../../../src/lib/models/saved-queries";
 import { readSidecar } from "../../../../../src/lib/models/sidecar";
+import { countWords } from "../../../../../src/lib/word-count";
 import { PROJECT_FILENAME } from "../../../../../src/lib/models/project-config";
 import type {
   ResourceBase,
@@ -137,7 +138,27 @@ async function loadEvaluationInput(
         ? { ...rawSidecar, ...(userMeta as Record<string, MetadataValue>) }
         : rawSidecar;
     sidecars[id] = sidecar;
-    resources.push(sidecarToResourceBase(id, rawSidecar));
+
+    const resource = sidecarToResourceBase(id, rawSidecar);
+    // content.txt is the source of truth for word/char counts. The sidecar's
+    // cached wordCount can be missing or stale — a content-only save via
+    // POST /resource/<id>/content rewrites content.txt without touching the
+    // sidecar — so derive the counts here rather than trusting the sidecar.
+    // Otherwise wordCount / charCount predicates silently match nothing.
+    if (resource.type === "text") {
+      try {
+        const plain = await fs.readFile(
+          path.join(projectRoot, "resources", id, "content.txt"),
+          "utf8",
+        );
+        (resource as TextResource).wordCount = countWords(plain);
+        (resource as TextResource).charCount = plain.length;
+      } catch {
+        // No readable content.txt (e.g. a brand-new stub) — fall back to the
+        // sidecar-derived value from sidecarToResourceBase.
+      }
+    }
+    resources.push(resource);
   }
 
   const resolveRef = async (id: string): Promise<QueryAST | null> => {

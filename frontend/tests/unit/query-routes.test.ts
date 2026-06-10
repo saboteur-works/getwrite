@@ -122,6 +122,45 @@ describe("executeEvaluate — happy path", () => {
     expect(ids).toEqual([]);
   });
 
+  it("derives wordCount / charCount from content.txt, not a stale sidecar", async () => {
+    // Mirrors a content-only save: content.txt holds the real text while the
+    // sidecar's cached wordCount is stale (0). Regression test for wordCount /
+    // charCount predicates silently matching nothing.
+    const root = await makeTmpProject();
+    const id = generateUUID();
+    await fs.mkdir(path.join(root, "resources", id), { recursive: true });
+    await writeSidecar(root, id, {
+      id,
+      name: "Long Scene",
+      type: "text",
+      slug: "long-scene",
+      orderIndex: 0,
+      createdAt: new Date().toISOString(),
+      folderId: null,
+      wordCount: 0, // stale — must be ignored in favour of content.txt
+    } as Record<string, import("../../src/lib/models/types").MetadataValue>);
+    const text = "one two three four five six seven eight nine ten"; // 10 words
+    await fs.writeFile(
+      path.join(root, "resources", id, "content.txt"),
+      text,
+      "utf8",
+    );
+
+    expect(
+      await executeEvaluate(root, { op: "gte", field: "wordCount", value: 5 }),
+    ).toContain(id);
+    expect(
+      await executeEvaluate(root, { op: "gte", field: "wordCount", value: 50 }),
+    ).not.toContain(id);
+    expect(
+      await executeEvaluate(root, {
+        op: "gte",
+        field: "charCount",
+        value: text.length,
+      }),
+    ).toContain(id);
+  });
+
   it("evaluates an exists predicate against a sidecar field", async () => {
     const root = await makeTmpProject();
     const idWith = await addResource(root, { name: "Has pov", pov: "mara" });
