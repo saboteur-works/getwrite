@@ -30,6 +30,53 @@ function isFolderResource(resource: AnyResource): resource is Folder {
 }
 
 /**
+ * Reads the `id` from a `folder.json` at `dir`, or `null` if the descriptor is
+ * absent or unreadable. Used to detect slug collisions before overwriting.
+ */
+function readFolderDescriptorId(dir: string): string | null {
+  try {
+    const raw = fs.readFileSync(path.join(dir, "folder.json"), "utf8");
+    const parsed = JSON.parse(raw) as { id?: unknown };
+    return typeof parsed.id === "string" ? parsed.id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolves the on-disk directory for a folder, guarding against slug
+ * collisions. Folders are stored at `folders/<slug>/`, but two distinct folders
+ * can slugify to the same value (e.g. an "Episode 1" recreated after a previous
+ * "Episode 1" was renamed in place). Writing both to the same directory would
+ * silently overwrite the first descriptor and orphan its children.
+ *
+ * Resolution is deterministic so re-saving the same folder always lands on its
+ * own directory:
+ * - If `folders/<slug>/` is free or already holds *this* folder, use it.
+ * - Otherwise fall back to `folders/<slug>-<id-prefix>/`, and finally to
+ *   `folders/<slug>-<full-id>/` in the astronomically unlikely event the
+ *   prefixed directory is itself taken by a different folder.
+ */
+function resolveFolderDir(projectPath: string, folder: Folder): string {
+  const foldersRoot = path.join(projectPath, "folders");
+  const slug = folder.slug ?? folder.id;
+
+  const preferred = path.join(foldersRoot, slug);
+  const preferredOwner = readFolderDescriptorId(preferred);
+  if (preferredOwner === null || preferredOwner === folder.id) {
+    return preferred;
+  }
+
+  const prefixed = path.join(foldersRoot, `${slug}-${folder.id.slice(0, 8)}`);
+  const prefixedOwner = readFolderDescriptorId(prefixed);
+  if (prefixedOwner === null || prefixedOwner === folder.id) {
+    return prefixed;
+  }
+
+  return path.join(foldersRoot, `${slug}-${folder.id}`);
+}
+
+/**
  * Type guard for text resources.
  */
 function isTextResource(resource: AnyResource): resource is TextResource {
@@ -71,15 +118,14 @@ export async function writeResourceToFile(
   );
 
   if (isFolderResource(resource)) {
-    const dir = path.join(projectPath, "folders", resource.slug ?? resource.id);
+    const dir = resolveFolderDir(projectPath, resource);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    await fs.writeFile(
+    fs.writeFileSync(
       path.join(dir, "folder.json"),
       JSON.stringify(resource, null, 2),
       "utf8",
-      () => {},
     );
     return resource;
   }
