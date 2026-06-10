@@ -32,15 +32,22 @@ jobs:
                   cache: "pnpm"
 
             - name: Install dependencies
-              working-directory: frontend
               run: pnpm install --frozen-lockfile
 
+            - name: Typecheck CLI
+              run: pnpm --filter getwrite-cli typecheck
+
+            - name: CLI unit tests
+              run: pnpm --filter getwrite-cli test
+
             - name: Build CLI artifacts
-              working-directory: frontend
-              run: pnpm run build:cli
+              run: pnpm --filter getwrite-cli build
 
             - name: Smoke test - getwrite-cli help
-              run: node dist-cli/bin/getwrite-cli.cjs --help | head -n 20
+              run: node cli/dist/bin/getwrite-cli.cjs --help | head -n 20
 
             - name: Smoke test - getwrite-cli prune help
-              run: node dist-cli/bin/getwrite-cli.cjs prune --help | head -n 20
+              run: node cli/dist/bin/getwrite-cli.cjs prune --help | head -n 20
+
+            - name: Smoke test - getwrite-cli doctor help
+              run: node cli/dist/bin/getwrite-cli.cjs doctor --help | head -n 20

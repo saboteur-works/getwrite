@@ -2,11 +2,8 @@ import { test, expect } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { main } from "../../src/cli/templates";
-import {
-  saveResourceTemplate,
-  loadResourceTemplate,
-} from "../../src/lib/models/resource-templates";
+import { main } from "../src/templates";
+import { saveResourceTemplate, loadResourceTemplate } from "@gw/core";
 
 test("version creates snapshot and history lists it", async () => {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-cli-"));

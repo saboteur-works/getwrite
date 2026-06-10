@@ -22,7 +22,7 @@
  * ### Underlying model
  *
  * All filesystem I/O is delegated to the functions exported by
- * `../../lib/models/resource-templates`, keeping this file focused purely on
+ * `@gw/core`, keeping this file focused purely on
  * CLI plumbing.
  *
  * ### Examples
@@ -47,7 +47,7 @@ import {
   saveResourceTemplate,
   createResourceFromTemplate,
   duplicateResource,
-} from "../../lib/models/resource-templates";
+} from "@gw/core";
 
 /**
  * Registers the `templates` sub-command group on the provided Commander

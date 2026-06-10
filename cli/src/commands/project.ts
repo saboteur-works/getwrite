@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { createProjectFromType } from "../../lib/models/project-creator";
+import { createProjectFromType } from "@gw/core";
 
 export default function registerProject(program: Command): void {
   const cmd = program

@@ -10,7 +10,6 @@ import {
   inspectResourceTemplate,
 } from "../../src/lib/models/resource-templates";
 import { saveResourceTemplateFromResource } from "../../src/lib/models/resource-templates";
-import { main as templatesMain } from "../../src/cli/templates";
 import { createAndAssertProject } from "./helpers/project-creator";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
 import { readSidecar } from "../../src/lib/models/sidecar";
@@ -181,57 +180,7 @@ describe("models/resource-templates (T027)", () => {
     }
   });
 
-  it("captures a resource as a template via CLI", async () => {
-    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-rt-"));
-    try {
-      const specPath = path.join(
-        process.cwd(),
-        "..",
-        "specs",
-        "002-define-data-models",
-        "project-types",
-        "novel_project_type.json",
-      );
-
-      const { projectPath, resources } = await createAndAssertProject(
-        specPath,
-        { projectRoot: tmp, name: "CLI Capture Test" },
-      );
-      if (resources.length === 0) return;
-
-      const original = resources[0];
-      const tplId = "from-cli";
-
-      const argv = [
-        "node",
-        "templates",
-        "save-from-resource",
-        projectPath,
-        original.id,
-        tplId,
-        "--name",
-        "From CLI",
-      ];
-
-      const code = await templatesMain(argv);
-      expect(code).toBe(0);
-
-      const tplPath = path.join(
-        projectPath,
-        "meta",
-        "templates",
-        `${tplId}.json`,
-      );
-      const raw = await fs.readFile(tplPath, "utf8");
-      const parsed = JSON.parse(raw);
-      expect(parsed.id).toBe(tplId);
-      expect(parsed.name).toBe("From CLI");
-    } finally {
-      await removeDirRetry(tmp);
-    }
-  });
-
-  it("parametrizes a template via helper and CLI", async () => {
+  it("parametrizes a template via helper", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-rt-"));
     try {
       const specPath = path.join(
@@ -274,28 +223,6 @@ describe("models/resource-templates (T027)", () => {
       const parsed = JSON.parse(raw);
       expect(parsed.name).toBe("{{TITLE}}");
       expect(parsed.plainText.startsWith("{{TITLE}}"));
-
-      // CLI
-      const tplCliId = "tpl-param-cli";
-      const tpl2 = { ...template, id: tplCliId };
-      await saveResourceTemplate(projectPath, tpl2 as any);
-      const argv = [
-        "node",
-        "templates",
-        "parametrize",
-        projectPath,
-        tplCliId,
-        "--placeholder",
-        "{{TITLE}}",
-      ];
-      const code = await templatesMain(argv);
-      expect(code).toBe(0);
-      const raw2 = await fs.readFile(
-        path.join(projectPath, "meta", "templates", `${tplCliId}.json`),
-        "utf8",
-      );
-      const parsed2 = JSON.parse(raw2);
-      expect(parsed2.name).toBe("{{TITLE}}");
     } finally {
       await removeDirRetry(tmp);
     }
@@ -336,20 +263,6 @@ describe("models/resource-templates (T027)", () => {
       })) as any;
       const { plannedWrites } = dryRes;
       expect(Array.isArray(plannedWrites)).toBeTruthy();
-
-      // CLI dry-run
-      const argvDry = [
-        "node",
-        "templates",
-        "create",
-        projectPath,
-        tplId,
-        "--vars",
-        JSON.stringify({ TITLE: "CLI" }),
-        "--dry-run",
-      ];
-      const codeDry = await templatesMain(argvDry);
-      expect(codeDry).toBe(0);
 
       // real create
       const result = (await (

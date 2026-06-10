@@ -28,7 +28,6 @@ const eslintConfig = [
       ".next/**",
       "node_modules/**",
       "dist/**",
-      "dist-cli/**",
       "storybook-static/**",
       "playwright-report/**",
       "stories/**",
