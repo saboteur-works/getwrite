@@ -25,11 +25,11 @@ import {
   listResourceIds,
   computeBacklinks,
   persistBacklinks,
-} from "../../lib/models/backlinks";
-import { indexResource } from "../../lib/models/inverted-index";
-import { readSidecar } from "../../lib/models/sidecar";
-import { loadResourceContent } from "../../lib/tiptap-utils";
-import type { TextResource } from "../../lib/models/types";
+  indexResource,
+  readSidecar,
+  loadResourceContent,
+  type TextResource,
+} from "@gw/core";
 
 export function registerReindex(program: Command) {
   program

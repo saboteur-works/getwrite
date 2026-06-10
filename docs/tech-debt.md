@@ -37,6 +37,11 @@ Table of contents
     - ~~Suggested remediation: Implement canonical guard helpers, add unit tests for promotion/deletion/prune behavior, and harden model factories with zod validation.~~
     - Resolution: Canonical guard added to POST handler (`setCanonicalRevision` after `writeRevision`) and DELETE handler (HTTP 400 on canonical target). Slice-level guards cover stale-requestedResourceId, `setSelectedResourceId` reset, delete-current-revision auto-advance, stale save/fetch/delete cross-resource, and `clearRevisions` reset. See `revision-route-canonical.test.ts`, `revision-invariants.test.ts`, and `revision-canonical-guards.test.ts`.
 
+- Model layer not yet a standalone package — Severity: Medium
+    - Description: The framework-free model/logic layer still lives in `frontend/src/lib/`. The standalone `cli/` package consumes it through the `@gw/core` barrel (`frontend/src/lib/core.ts`) via a path alias rather than a real package boundary, so the boundary is enforced by discipline, not the compiler.
+    - Example files: `frontend/src/lib/core.ts`, `frontend/src/lib/models/`, `cli/tsconfig.json`
+    - Suggested remediation: Promote `@gw/core` to a standalone `core/` package when the plugin system lands, rewriting frontend imports and adding an `exports` map + lint rules to forbid deep imports. Full rationale and migration steps in [ADR-016](architecture/ADRs/adr-016-cli-extraction-and-deferred-core-package.md).
+
 ### Tests
 
 - Missing Storybook & unit coverage for WorkArea views — ~~Severity: Medium~~ **Stale — coverage exists**

@@ -1,12 +1,12 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 
 // Mock the project creator before importing the CLI so the CLI uses the mock.
-vi.mock("../../src/lib/models/project-creator", () => {
+vi.mock("@gw/core", () => {
   return { createProjectFromType: vi.fn() };
 });
 
-import * as creator from "../../src/lib/models/project-creator";
-import { main } from "../../src/cli/getwrite-cli";
+import * as creator from "@gw/core";
+import { main } from "../src/getwrite-cli";
 
 describe("getwrite-cli project:create", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;

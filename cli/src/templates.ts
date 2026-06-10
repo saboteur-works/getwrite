@@ -8,23 +8,23 @@ import {
   scaffoldResourcesFromTemplate,
   applyMultipleFromTemplate,
   previewResourceTemplate,
-} from "../lib/models/resource-templates";
+} from "@gw/core";
 
 type Argv = string[];
 
 function usage(): string {
   return `Usage:
-    pnpm ts-node src/cli/templates.ts save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]
-    pnpm ts-node src/cli/templates.ts save <projectRoot> <templateId> <name>
-    pnpm ts-node src/cli/templates.ts create <projectRoot> <templateId> [name] [--vars '{}'] [--dry-run]
-    pnpm ts-node src/cli/templates.ts duplicate <projectRoot> <resourceId>
-    pnpm ts-node src/cli/templates.ts list <projectRoot> [--query <text>]
-    pnpm ts-node src/cli/templates.ts inspect <projectRoot> <templateId>
-    pnpm ts-node src/cli/templates.ts parametrize <projectRoot> <templateId> --placeholder "{{NAME}}"
-    pnpm ts-node src/cli/templates.ts export <projectRoot> <templateId> <out.zip>
-    pnpm ts-node src/cli/templates.ts import <projectRoot> <pack.zip>
-    pnpm ts-node src/cli/templates.ts validate <projectRoot> <templateId>
-    pnpm ts-node src/cli/templates.ts preview <projectRoot> <templateId> [--vars '{}'] [--out <file>]
+    getwrite-cli templates save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]
+    getwrite-cli templates save <projectRoot> <templateId> <name>
+    getwrite-cli templates create <projectRoot> <templateId> [name] [--vars '{}'] [--dry-run]
+    getwrite-cli templates duplicate <projectRoot> <resourceId>
+    getwrite-cli templates list <projectRoot> [--query <text>]
+    getwrite-cli templates inspect <projectRoot> <templateId>
+    getwrite-cli templates parametrize <projectRoot> <templateId> --placeholder "{{NAME}}"
+    getwrite-cli templates export <projectRoot> <templateId> <out.zip>
+    getwrite-cli templates import <projectRoot> <pack.zip>
+    getwrite-cli templates validate <projectRoot> <templateId>
+    getwrite-cli templates preview <projectRoot> <templateId> [--vars '{}'] [--out <file>]
 `;
 }
 
@@ -52,8 +52,7 @@ async function main(argv: Argv): Promise<number> {
         console.error(usage());
         return 1;
       }
-      const { saveResourceTemplateFromResource } =
-        await import("../lib/models/resource-templates");
+      const { saveResourceTemplateFromResource } = await import("@gw/core");
       await saveResourceTemplateFromResource(
         projectRoot,
         resourceId,
@@ -79,8 +78,7 @@ async function main(argv: Argv): Promise<number> {
         console.error(usage());
         return 1;
       }
-      const { parametrizeResourceTemplate } =
-        await import("../lib/models/resource-templates");
+      const { parametrizeResourceTemplate } = await import("@gw/core");
       const vars = await parametrizeResourceTemplate(
         projectRoot,
         templateId,
@@ -160,8 +158,7 @@ async function main(argv: Argv): Promise<number> {
         return 2;
       }
 
-      const { exportResourceTemplate } =
-        await import("../lib/models/resource-templates");
+      const { exportResourceTemplate } = await import("@gw/core");
       await exportResourceTemplate(projectRoot, templateId, outPath);
       console.log(`Exported template ${templateId} -> ${outPath}`);
       return 0;
@@ -174,8 +171,7 @@ async function main(argv: Argv): Promise<number> {
         console.error(usage());
         return 1;
       }
-      const { importResourceTemplates } =
-        await import("../lib/models/resource-templates");
+      const { importResourceTemplates } = await import("@gw/core");
       const imported = await importResourceTemplates(projectRoot, packPath);
       console.log(`Imported templates: ${imported.join(", ")}`);
       return 0;
@@ -219,8 +215,7 @@ async function main(argv: Argv): Promise<number> {
         console.error(usage());
         return 1;
       }
-      const { saveTemplateVersion } =
-        await import("../lib/models/resource-templates");
+      const { saveTemplateVersion } = await import("@gw/core");
       const p = await saveTemplateVersion(projectRoot, templateId);
       console.log(`Saved version -> ${p}`);
       return 0;
@@ -233,8 +228,7 @@ async function main(argv: Argv): Promise<number> {
         console.error(usage());
         return 1;
       }
-      const { listTemplateVersions } =
-        await import("../lib/models/resource-templates");
+      const { listTemplateVersions } = await import("@gw/core");
       const list = await listTemplateVersions(projectRoot, templateId);
       for (const v of list) console.log(`${v.version}\t${v.file}`);
       return 0;
@@ -248,8 +242,7 @@ async function main(argv: Argv): Promise<number> {
         return 1;
       }
       const ver = parseInt(vStr, 10);
-      const { rollbackTemplateVersion } =
-        await import("../lib/models/resource-templates");
+      const { rollbackTemplateVersion } = await import("@gw/core");
       await rollbackTemplateVersion(projectRoot, templateId, ver);
       console.log(`Rolled back ${templateId} -> v${ver}`);
       return 0;
@@ -268,8 +261,7 @@ async function main(argv: Argv): Promise<number> {
         console.error(usage());
         return 1;
       }
-      const { getTemplateChanges } =
-        await import("../lib/models/resource-templates");
+      const { getTemplateChanges } = await import("@gw/core");
       const list = await getTemplateChanges(projectRoot, templateId, since);
       for (const e of list)
         console.log(`${e.ts}\t${e.action}\t${e.keys.join(",")}`);
@@ -323,8 +315,7 @@ async function main(argv: Argv): Promise<number> {
         console.error(usage());
         return 1;
       }
-      const { listResourceTemplates } =
-        await import("../lib/models/resource-templates");
+      const { listResourceTemplates } = await import("@gw/core");
       const list = await listResourceTemplates(projectRoot, query);
       for (const t of list) console.log(`${t.id}\t${t.name}\t${t.type}`);
       return 0;
@@ -336,8 +327,7 @@ async function main(argv: Argv): Promise<number> {
         console.error(usage());
         return 1;
       }
-      const { inspectResourceTemplate } =
-        await import("../lib/models/resource-templates");
+      const { inspectResourceTemplate } = await import("@gw/core");
       try {
         const info = await inspectResourceTemplate(projectRoot, templateId);
         console.log(`id: ${info.id}`);
@@ -360,8 +350,7 @@ async function main(argv: Argv): Promise<number> {
         console.error(usage());
         return 1;
       }
-      const { validateResourceTemplate } =
-        await import("../lib/models/resource-templates");
+      const { validateResourceTemplate } = await import("@gw/core");
       try {
         const r = await validateResourceTemplate(projectRoot, templateId);
         if (r.valid) {

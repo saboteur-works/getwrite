@@ -2,7 +2,7 @@ import { test, expect } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { main } from "../../src/cli/templates";
+import { main } from "../src/templates";
 
 test("CLI export fails when output directory is not writable", async () => {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-cli-"));

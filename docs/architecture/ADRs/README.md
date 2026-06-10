@@ -21,3 +21,7 @@ This directory contains Architectural Decision Records (ADRs) for GetWrite.
 13. [Memoized and Composed Selectors for Performance](./adr-013-memoized-composed-selectors-for-performance.md)
 14. [Centralized Project Actions Controller](./adr-014-centralized-project-actions-controller.md)
 15. [Project-Scoped Metadata Schema with Resource-Reference Fields](./adr-015-metadata-schema-system.md)
+
+## 2026-06
+
+16. [CLI Extracted to a Standalone Package; Core Extraction Deferred](./adr-016-cli-extraction-and-deferred-core-package.md)

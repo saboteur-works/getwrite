@@ -1,0 +1,25 @@
+{
+  "name": "getwrite-cli",
+  "version": "0.2.44",
+  "private": true,
+  "description": "Standalone command-line tools for GetWrite projects (prune, reindex, templates, project scaffolding, doctor, screenshots).",
+  "bin": {
+    "getwrite-cli": "dist/bin/getwrite-cli.cjs"
+  },
+  "scripts": {
+    "build": "esbuild src/getwrite-cli.ts --bundle --platform=node --target=node16 --outfile=dist/bin/getwrite-cli.cjs --banner:js=\"#!/usr/bin/env node\" --format=cjs --tsconfig=tsconfig.json --external:playwright --external:playwright-core --external:chromium-bidi",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "playwright": "^1.60.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.8.0",
+    "esbuild": "0.28.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.6"
+  }
+}

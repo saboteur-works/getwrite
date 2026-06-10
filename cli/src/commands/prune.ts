@@ -7,7 +7,7 @@
  *
  * The `prune` command removes stale revision snapshots that accumulate under a
  * project root directory, keeping only the most recent N copies of each
- * resource.  The actual pruning logic lives in {@link runCli} (pruneExecutor)
+ * resource.  The actual pruning logic lives in {@link runPruneCli} (pruneExecutor)
  * so that it can be exercised independently of the CLI entry point.
  *
  * Usage:
@@ -33,7 +33,7 @@
  * the process.
  */
 import { Command } from "commander";
-import { runCli } from "../../lib/models/pruneExecutor";
+import { runPruneCli } from "@gw/core";
 
 /**
  * Registers the `prune` sub-command on the provided Commander `program`.
@@ -49,7 +49,7 @@ import { runCli } from "../../lib/models/pruneExecutor";
  * - `--max` / `-m` (optional flag) — maximum number of revisions to retain per
  *   resource.  Defaults to `50`.
  *
- * Internally delegates all pruning work to {@link runCli}, passing it a
+ * Internally delegates all pruning work to {@link runPruneCli}, passing it a
  * synthetic `argv`-style array so the executor can be shared with tests.
  *
  * @param program - The root Commander `Command` instance to attach the
@@ -79,7 +79,7 @@ export function registerPrune(program: Command) {
         const root = projectRoot ?? process.cwd();
         const max = Number(options.max ?? 50);
         try {
-          const code = await runCli([
+          const code = await runPruneCli([
             process.execPath,
             "getwrite-cli",
             root,

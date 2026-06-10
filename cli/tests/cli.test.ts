@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Command } from "commander";
-import registerPrune from "../../src/cli/commands/prune";
-import registerTemplates from "../../src/cli/commands/templates";
-import registerScreenshots from "../../src/cli/commands/screenshots";
+import registerPrune from "../src/commands/prune";
+import registerTemplates from "../src/commands/templates";
+import registerScreenshots from "../src/commands/screenshots";
 import os from "node:os";
 import path from "node:path";
 

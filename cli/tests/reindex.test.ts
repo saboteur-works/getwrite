@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
-import registerReindex from "../../src/cli/commands/reindex";
+import registerReindex from "../src/commands/reindex";
 
 describe("reindex command — registration", () => {
   it("registers reindex on the CLI program", () => {

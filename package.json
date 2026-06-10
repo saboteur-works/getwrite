@@ -11,6 +11,9 @@
     "electron:build": "pnpm --filter getwrite-frontend build && pnpm --filter getwrite-electron build",
     "electron:package": "pnpm electron:build && pnpm --filter getwrite-electron package",
     "storybook": "pnpm --filter getwrite-frontend storybook",
+    "cli": "pnpm --filter getwrite-cli exec getwrite-cli",
+    "cli:build": "pnpm --filter getwrite-cli build",
+    "cli:test": "pnpm --filter getwrite-cli test",
     "knip": "knip",
     "prepare": "husky"
   },

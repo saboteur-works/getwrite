@@ -1,23 +1,25 @@
 # GetWrite CLI
 
-The GetWrite CLI (`getwrite-cli`) is a Node.js command-line tool for project management, template operations, revision pruning, and screenshot capture. It is bundled separately from the Next.js frontend using esbuild.
+The GetWrite CLI (`getwrite-cli`) is a Node.js command-line tool for project management, template operations, revision pruning, integrity checks, and screenshot capture.
+
+It lives in its own pnpm workspace package, **`cli/`**, separate from the Next.js frontend. It consumes the framework-free model layer through the single `@gw/core` barrel (`frontend/src/lib/core.ts`), which esbuild bundles at build time. See [ADR-016](../architecture/ADRs/adr-016-cli-extraction-and-deferred-core-package.md) for the rationale and the deferred follow-up (promoting `@gw/core` to a standalone package).
 
 ---
 
 ## Building the CLI
 
-From the `frontend/` directory:
+From the repo root:
 
 ```sh
-pnpm build:cli
+pnpm cli:build          # or: pnpm --filter getwrite-cli build
 ```
 
-(`pnpm build` runs `next build` and does **not** produce the CLI.)
+(`pnpm build` / `next build` does **not** produce the CLI.)
 
 The bundled CLI is written to:
 
 ```
-frontend/dist-cli/bin/getwrite-cli.cjs
+cli/dist/bin/getwrite-cli.cjs
 ```
 
 ---
@@ -25,10 +27,14 @@ frontend/dist-cli/bin/getwrite-cli.cjs
 ## Invocation
 
 ```sh
-node ./dist-cli/bin/getwrite-cli.cjs <command> [args]
+node ./cli/dist/bin/getwrite-cli.cjs <command> [args]
 ```
 
-During development you can also run via ts-node or vitest (the CLI is tested with `GETWRITE_CLI_TESTING=1` to suppress `process.exit`).
+During development you can also run the CLI's tests against the command modules directly (the CLI is tested with `GETWRITE_CLI_TESTING=1` to suppress `process.exit`):
+
+```sh
+pnpm cli:test           # or: pnpm --filter getwrite-cli test
+```
 
 ---
 
@@ -61,7 +67,7 @@ getwrite-cli project create [projectRoot] --spec <specPath> [--name <name>]
 
 **Example:**
 ```sh
-node dist-cli/bin/getwrite-cli.cjs project create ./my-novel \
+node cli/dist/bin/getwrite-cli.cjs project create ./my-novel \
   --spec getwrite-config/templates/project-types/novel_project_type.json \
   --name "My Novel"
 ```
@@ -84,7 +90,7 @@ Writes an empty text template to `<projectRoot>/meta/templates/<templateId>.json
 
 **Example:**
 ```sh
-node dist-cli/bin/getwrite-cli.cjs templates save ./my-novel scene "Scene"
+node cli/dist/bin/getwrite-cli.cjs templates save ./my-novel scene "Scene"
 ```
 
 ---
@@ -101,7 +107,7 @@ Loads `<projectRoot>/meta/templates/<templateId>.json` and instantiates a new re
 
 **Example:**
 ```sh
-node dist-cli/bin/getwrite-cli.cjs templates create ./my-novel scene "Opening Scene"
+node cli/dist/bin/getwrite-cli.cjs templates create ./my-novel scene "Opening Scene"
 # Created resource b19abcd4-81b2-44ef-b4b4-ba1310dbdf87
 ```
 
@@ -123,7 +129,7 @@ Duplicated resource -> <newId>
 
 **Example:**
 ```sh
-node dist-cli/bin/getwrite-cli.cjs templates duplicate ./my-novel b19abcd4-81b2-44ef-b4b4-ba1310dbdf87
+node cli/dist/bin/getwrite-cli.cjs templates duplicate ./my-novel b19abcd4-81b2-44ef-b4b4-ba1310dbdf87
 ```
 
 ---
@@ -140,7 +146,7 @@ Reads all `.json` files from `<projectRoot>/meta/templates/` and prints one tab-
 
 **Example:**
 ```sh
-node dist-cli/bin/getwrite-cli.cjs templates list ./my-novel
+node cli/dist/bin/getwrite-cli.cjs templates list ./my-novel
 # scene    Scene    text
 # chapter  Chapter  text
 ```
@@ -172,10 +178,10 @@ getwrite-cli prune [projectRoot] [--max <number>]
 **Examples:**
 ```sh
 # Prune current directory project, keeping 50 revisions (default)
-node dist-cli/bin/getwrite-cli.cjs prune
+node cli/dist/bin/getwrite-cli.cjs prune
 
 # Prune a specific project, keeping only the 10 most recent revisions
-node dist-cli/bin/getwrite-cli.cjs prune /path/to/my-project --max 10
+node cli/dist/bin/getwrite-cli.cjs prune /path/to/my-project --max 10
 ```
 
 ---
@@ -200,9 +206,39 @@ getwrite-cli reindex [projectRoot]
 
 **Example:**
 ```sh
-node dist-cli/bin/getwrite-cli.cjs reindex ./my-novel
+node cli/dist/bin/getwrite-cli.cjs reindex ./my-novel
 # [reindex] Done — indexed 12 resource(s) in ./my-novel
 ```
+
+---
+
+### `doctor`
+
+Read-only integrity check for a project on disk. It flags **broken folder associations** — resources (and folders) whose parent folder id no longer resolves to any existing folder descriptor. These are the orphans the resource tree silently re-parents to the root, the failure mode behind a "lost" folder whose children resurface at the top level.
+
+```sh
+getwrite-cli doctor [projectRoot]
+```
+
+**Arguments:**
+- `projectRoot` (optional) — project to check. Defaults to `process.cwd()`.
+
+**What it does:**
+1. Collects every folder id from `<projectRoot>/folders/**/folder.json`.
+2. Flags each resource sidecar whose `folderId` is set but matches no folder.
+3. Flags each folder whose parent (`parentId`/`folderId`) matches no folder.
+
+**Exit codes:** `0` = no problems, `1` = one or more problems found, `2` = unexpected error. (The non-zero exit on findings makes it usable as a CI/pre-commit gate.)
+
+**Example:**
+```sh
+node cli/dist/bin/getwrite-cli.cjs doctor ./my-novel
+# [doctor] Found 6 problem(s) in ./my-novel:
+#   - orphaned resource: "Episode 1 - Scene 1" (3d2604fb-…) -> missing folder 09326c57-…
+#   ...
+```
+
+To repair, recreate the missing folder reusing its id (so the existing `folderId` references resolve) or move the orphaned items into an existing folder.
 
 ---
 
@@ -226,7 +262,7 @@ It fetches Storybook's `/index.json` manifest to discover story IDs, navigates t
 **Example:**
 ```sh
 # Capture up to 20 stories from a remote Storybook, saving to /tmp/shots
-node dist-cli/bin/getwrite-cli.cjs screenshots capture \
+node cli/dist/bin/getwrite-cli.cjs screenshots capture \
   --storybook https://storybook.example.com --out /tmp/shots --limit 20
 ```
 
@@ -242,5 +278,8 @@ node dist-cli/bin/getwrite-cli.cjs screenshots capture \
 
 ## Source
 
-CLI entry point: `frontend/src/cli/getwrite-cli.ts`  
-Command implementations: `frontend/src/cli/commands/`
+Package: `cli/` (workspace package `getwrite-cli`)
+CLI entry point: `cli/src/getwrite-cli.ts`
+Command implementations: `cli/src/commands/`
+Tests: `cli/tests/`
+Model layer access: the single `@gw/core` barrel (`frontend/src/lib/core.ts`), aliased in `cli/tsconfig.json` and `cli/vitest.config.ts`.
