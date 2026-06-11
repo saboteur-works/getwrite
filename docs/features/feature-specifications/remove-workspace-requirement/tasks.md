@@ -44,7 +44,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Notes:** FR7.
 **Done:** [x] — completed 2026-06-11. Removed the `workspaceGuardErrors` state, the `workspaceGuardrailStatus` memo, the syncing effect, and the banner section; dropped the now-unused `useMemo` and `validateDraft` imports and the module-doc guardrail line. No tests/stories exist for this page; lint + typecheck clean, no remaining `workspaceGuard*` references. Note: the banner was the page's only validation surface, so coupled generic schema-error display was removed with it — there is no Save action here, so nothing relied on it for commit-gating (logged under follow-up).
 
-### Task 5: Remove the `Special` toggle from the Project Type editor form
+### Task 5: Remove the `Special` toggle from the Project Type editor form ✅
 
 **What:** Remove the `Special` checkbox controls (and their `patchFolder`/`patchDefaultFolder` wiring) from folder and default-folder rows.
 **Files:** `frontend/components/project-types/ProjectTypeEditorForm.tsx` (Special toggles at ~L245–251 and ~L347–353; update the Workspace-mention helper text at ~L225)
@@ -52,6 +52,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Depends on:** none
 **Estimate:** 2
 **Notes:** FR7. Leave existing `special` values on loaded drafts untouched (accepted-but-ignored); just remove the authoring control.
+**Done:** [x] — completed 2026-06-11. Removed both `Special` checkboxes; reworded the folders helper text away from the Workspace requirement. Layout preserved without touching shared CSS: the folder row keeps the shared `--folder-row` grid (its Remove button now pinned to `gridColumn: 3`, matching the status row, which also relies on that 3-col template), and the default-folder row switched locally from `--three-column` to `--two-column`. No `special` references remain in the file; no stories/tests render this form; lint + typecheck clean. Metadata-source controls and the deprecated `special` field on loaded drafts are untouched.
 
 ### Task 6: Strip `special: true` from built-in project-type templates
 
