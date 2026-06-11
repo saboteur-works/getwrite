@@ -3,7 +3,7 @@
   "name": "Article",
   "description": "Short-form article project type with drafts and references.",
   "folders": [
-    { "name": "Workspace", "special": true },
+    { "name": "Workspace" },
     {
       "name": "References",
       "metadataSource": {

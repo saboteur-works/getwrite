@@ -54,7 +54,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Notes:** FR7. Leave existing `special` values on loaded drafts untouched (accepted-but-ignored); just remove the authoring control.
 **Done:** [x] — completed 2026-06-11. Removed both `Special` checkboxes; reworded the folders helper text away from the Workspace requirement. Layout preserved without touching shared CSS: the folder row keeps the shared `--folder-row` grid (its Remove button now pinned to `gridColumn: 3`, matching the status row, which also relies on that 3-col template), and the default-folder row switched locally from `--three-column` to `--two-column`. No `special` references remain in the file; no stories/tests render this form; lint + typecheck clean. Metadata-source controls and the deprecated `special` field on loaded drafts are untouched.
 
-### Task 6: Strip `special: true` from built-in project-type templates
+### Task 6: Strip `special: true` from built-in project-type templates ✅
 
 **What:** Remove every `special: true` flag from the shipped templates while keeping all current folder names (including `Workspace` where present).
 **Files:** `getwrite-config/templates/project-types/{blank_project_type,novel_project_type,serial_project_type,article_project_type,poetry_and_lyrics_type,game_documentation}.json`
@@ -62,6 +62,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Depends on:** 1, 2
 **Estimate:** 1
 **Notes:** FR6. Per the template-integrity standard, make minimal patch-style edits — remove only the `special` keys.
+**Done:** [x] — completed 2026-06-11. Removed all 13 `special: true` occurrences across the 6 templates (minimal patch edits; only the `special` keys removed, folder names and the `Workspace` folders kept). The only remaining `"special"` in the directory is the deprecated property definition in `project-type.schema.json` (intentionally retained, Task 2). Added `tests/unit/builtin-templates.test.ts` — reads each shipped template and asserts it validates against the schema and contains no `"special"` flag (13 cases pass). Lint clean.
 
 ### Task 7: Update and add tests for Workspace-free validation and legacy load
 

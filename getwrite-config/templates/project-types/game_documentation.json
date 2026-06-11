@@ -3,7 +3,7 @@
   "name": "Game Writing",
   "description": "Project type optimized for game writing (video game or tabletop RPG). Includes folders for lore, characters, quests, and dialogue.",
   "folders": [
-    { "name": "Workspace", "special": true },
+    { "name": "Workspace" },
     {
       "name": "Research",
       "metadataSource": {

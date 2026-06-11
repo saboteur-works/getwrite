@@ -3,7 +3,7 @@
   "name": "Novel",
   "description": "Project type optimized for long-form fiction. Includes drafts, research, and assets.",
   "folders": [
-    { "name": "Workspace", "special": true },
+    { "name": "Workspace" },
     { "name": "Story Elements" },
     { "name": "Outline" },
     { "name": "Notes" }
@@ -24,7 +24,6 @@
     {
       "name": "Characters",
       "folder": "Story Elements",
-      "special": true,
       "metadataSource": {
         "isMetadataSource": true,
         "metadataInputType": "multiselect"
@@ -33,7 +32,6 @@
     {
       "name": "Items",
       "folder": "Story Elements",
-      "special": true,
       "metadataSource": {
         "isMetadataSource": true,
         "metadataInputType": "multiselect"
@@ -42,7 +40,6 @@
     {
       "name": "Locations",
       "folder": "Story Elements",
-      "special": true,
       "metadataSource": {
         "isMetadataSource": true,
         "metadataInputType": "multiselect"

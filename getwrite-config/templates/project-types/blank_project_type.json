@@ -2,7 +2,7 @@
   "id": "blank",
   "name": "Blank",
   "description": "Minimal project type with only a Workspace folder.",
-  "folders": [{ "name": "Workspace", "special": true }],
+  "folders": [{ "name": "Workspace" }],
   "editorConfig": {
     "headings": {
       "h1": {

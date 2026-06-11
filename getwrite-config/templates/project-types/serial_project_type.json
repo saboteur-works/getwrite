@@ -3,7 +3,7 @@
   "name": "Serial",
   "description": "Serialized fiction project type for episodes or installments.",
   "folders": [
-    { "name": "Workspace", "special": true },
+    { "name": "Workspace" },
     { "name": "Story Elements" },
     { "name": "Outline" },
     { "name": "Notes" }
@@ -21,7 +21,6 @@
     {
       "name": "Characters",
       "folder": "Story Elements",
-      "special": true,
       "metadataSource": {
         "isMetadataSource": true,
         "metadataInputType": "multiselect"
@@ -30,7 +29,6 @@
     {
       "name": "Items",
       "folder": "Story Elements",
-      "special": true,
       "metadataSource": {
         "isMetadataSource": true,
         "metadataInputType": "multiselect"
@@ -39,7 +37,6 @@
     {
       "name": "Locations",
       "folder": "Story Elements",
-      "special": true,
       "metadataSource": {
         "isMetadataSource": true,
         "metadataInputType": "multiselect"
