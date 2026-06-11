@@ -14,7 +14,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Notes:** FR1, FR3, FR4. Only the `.refine` is removed — the `special` field stays accepted-but-ignored.
 **Done:** [x] — completed 2026-06-11. Removed `.refine`; updated tests in `project-type-validation.test.ts`, `project-type.test.ts`, and the loader's invalid-spec fixture in `project-types.test.ts` (swapped the now-valid "missing Workspace" case for an invalid-`id` case). 27 tests pass; lint clean. Note: the exported validator is `validateProjectType`, not `validateProjectTypeSpec`.
 
-### Task 2: Drop the Workspace `contains`/`const` constraint from the JSON schema
+### Task 2: Drop the Workspace `contains`/`const` constraint from the JSON schema ✅
 
 **What:** Remove the `folders.contains` constraint requiring a folder named `Workspace` from the published JSON schema, keeping the `special` property definition.
 **Files:** `getwrite-config/templates/project-types/project-type.schema.json` (the `contains` block at ~L65–72; keep the `special` property at ~L32)
@@ -22,6 +22,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Depends on:** none
 **Estimate:** 1
 **Notes:** FR2, FR4. Update the now-stale description text mentioning the Workspace requirement.
+**Done:** [x] — completed 2026-06-11. Removed the `folders.contains` block; `special` property kept but its description now marks it deprecated/ignored. JSON re-parses; `folders` now exposes only `type`/`description`/`items`. No runtime code consumes this file (it is an IDE/authoring aid; Zod is the runtime validator), so no live ajv check was run — ajv is not a project dependency.
 
 ### Task 3: Remove the Workspace guardrail from the project-type draft service
 

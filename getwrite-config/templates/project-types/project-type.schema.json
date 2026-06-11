@@ -23,7 +23,7 @@
       "items": {
         "type": "object",
         "required": ["name"],
-        "description": "Definition of a single folder (name, special flag, and any default resources).",
+        "description": "Definition of a single folder (name and any default resources).",
         "properties": {
           "name": {
             "type": "string",
@@ -31,7 +31,7 @@
           },
           "special": {
             "type": "boolean",
-            "description": "Marks that the folder has special application-level semantics (e.g. the Workspace)."
+            "description": "Deprecated and ignored. Folder names no longer carry application-level semantics; retained only so older project-type files continue to validate."
           },
           "defaultResources": {
             "type": "array",
@@ -59,17 +59,6 @@
                 }
               }
             }
-          }
-        }
-      },
-      "contains": {
-        "type": "object",
-        "description": "Enforces that at least one folder object in the array matches the given schema (used here to require a Workspace folder).",
-        "required": ["name"],
-        "properties": {
-          "name": {
-            "const": "Workspace",
-            "description": "Exact folder name required to satisfy this constraint."
           }
         }
       }
