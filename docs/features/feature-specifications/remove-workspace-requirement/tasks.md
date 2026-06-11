@@ -4,14 +4,15 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 
 ---
 
-### Task 1: Drop the Workspace `.refine` from the Zod project-type schema
+### Task 1: Drop the Workspace `.refine` from the Zod project-type schema ✅
 
 **What:** Remove the validation rule in `ProjectTypeSchema` that requires a folder named `Workspace`, while leaving the optional `special` field in place.
 **Files:** `frontend/src/lib/models/schemas.ts` (the `.refine` at ~L457 and its doc comment at ~L442; keep `special: z.boolean().optional()` at L237/402/421)
-**Done when:** `validateProjectTypeSpec` accepts a spec whose folders contain no `Workspace` entry, and still accepts a spec that includes `special: true` on a folder.
+**Done when:** `validateProjectType` accepts a spec whose folders contain no `Workspace` entry, and still accepts a spec that includes `special: true` on a folder.
 **Depends on:** none
 **Estimate:** 1
 **Notes:** FR1, FR3, FR4. Only the `.refine` is removed — the `special` field stays accepted-but-ignored.
+**Done:** [x] — completed 2026-06-11. Removed `.refine`; updated tests in `project-type-validation.test.ts`, `project-type.test.ts`, and the loader's invalid-spec fixture in `project-types.test.ts` (swapped the now-valid "missing Workspace" case for an invalid-`id` case). 27 tests pass; lint clean. Note: the exported validator is `validateProjectType`, not `validateProjectTypeSpec`.
 
 ### Task 2: Drop the Workspace `contains`/`const` constraint from the JSON schema
 

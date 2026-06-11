@@ -439,7 +439,11 @@ export type ProjectTypeDefaultFolder = z.infer<
  * Constraints:
  * - `id` must be lowercase slug-like text (`[a-z0-9-_]+`).
  * - At least one folder is required.
- * - A folder named `Workspace` must be present.
+ *
+ * Authors may use any folder layout; no folder name carries application
+ * semantics. The deprecated `special` folder flag is still accepted (and
+ * ignored) for backward compatibility with project types created before the
+ * Workspace requirement was removed.
  */
 export const ProjectTypeSchema = z
   .object({
@@ -453,11 +457,7 @@ export const ProjectTypeSchema = z
     statuses: z.array(z.string()).optional(),
     wordCountGoal: z.number().int().nonnegative().optional(),
   })
-  .strict()
-  .refine((val) => val.folders.some((f) => f.name === "Workspace"), {
-    message: "project-type must include a folder with name 'Workspace'",
-    path: ["folders"],
-  });
+  .strict();
 
 /**
  * Inferred TypeScript shape of a valid project-type spec.
