@@ -24,7 +24,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Notes:** FR2, FR4. Update the now-stale description text mentioning the Workspace requirement.
 **Done:** [x] — completed 2026-06-11. Removed the `folders.contains` block; `special` property kept but its description now marks it deprecated/ignored. JSON re-parses; `folders` now exposes only `type`/`description`/`items`. No runtime code consumes this file (it is an IDE/authoring aid; Zod is the runtime validator), so no live ajv check was run — ajv is not a project dependency.
 
-### Task 3: Remove the Workspace guardrail from the project-type draft service
+### Task 3: Remove the Workspace guardrail from the project-type draft service ✅
 
 **What:** Delete the `hasWorkspace` validation gate in `validateDraft` and stop seeding `special: true` / a mandatory `Workspace` folder in the default draft.
 **Files:** `frontend/components/project-types/ProjectTypeDraftService.ts` (guardrail at ~L108–130; default-draft seed at ~L60)
@@ -32,6 +32,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Depends on:** none
 **Estimate:** 2
 **Notes:** FR5, FR7. The default draft may keep a starter folder, but without the `special` flag and without being required.
+**Done:** [x] — completed 2026-06-11. Removed the `hasWorkspace` gate (now schema-only); dropped `special` from `createEmptyProjectType`, `handleAddFolder`, and `handleAddDefaultFolder`; refreshed module/function doc comments. Added `tests/unit/project-type-draft-service.test.ts` (6 cases, TDD red→green). Kept the `folder: "Workspace"` placeholder in add-handlers (a harmless default string, not the guardrail) to keep scope tight. 33 project-type tests pass; lint + typecheck clean.
 
 ### Task 4: Remove the Workspace guardrail warning UI from the Project Types manager
 
