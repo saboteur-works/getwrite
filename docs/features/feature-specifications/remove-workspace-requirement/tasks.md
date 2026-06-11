@@ -34,7 +34,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Notes:** FR5, FR7. The default draft may keep a starter folder, but without the `special` flag and without being required.
 **Done:** [x] — completed 2026-06-11. Removed the `hasWorkspace` gate (now schema-only); dropped `special` from `createEmptyProjectType`, `handleAddFolder`, and `handleAddDefaultFolder`; refreshed module/function doc comments. Added `tests/unit/project-type-draft-service.test.ts` (6 cases, TDD red→green). Kept the `folder: "Workspace"` placeholder in add-handlers (a harmless default string, not the guardrail) to keep scope tight. 33 project-type tests pass; lint + typecheck clean.
 
-### Task 4: Remove the Workspace guardrail warning UI from the Project Types manager
+### Task 4: Remove the Workspace guardrail warning UI from the Project Types manager ✅
 
 **What:** Remove the workspace-guardrail warning banner and associated state from the manager page so no `Workspace`-required message can render.
 **Files:** `frontend/components/project-types/ProjectTypesManagerPage.tsx` (`workspaceGuardErrors` state/effect/render at ~L59, L114–134, L167–173)
@@ -42,6 +42,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Depends on:** 3
 **Estimate:** 2
 **Notes:** FR7.
+**Done:** [x] — completed 2026-06-11. Removed the `workspaceGuardErrors` state, the `workspaceGuardrailStatus` memo, the syncing effect, and the banner section; dropped the now-unused `useMemo` and `validateDraft` imports and the module-doc guardrail line. No tests/stories exist for this page; lint + typecheck clean, no remaining `workspaceGuard*` references. Note: the banner was the page's only validation surface, so coupled generic schema-error display was removed with it — there is no Save action here, so nothing relied on it for commit-gating (logged under follow-up).
 
 ### Task 5: Remove the `Special` toggle from the Project Type editor form
 
