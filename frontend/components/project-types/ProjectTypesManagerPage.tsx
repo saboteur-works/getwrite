@@ -104,8 +104,16 @@ export default function ProjectTypesManagerPage({
     router.push("/");
   };
 
+  // Bound the manager to a definite height so the list and editor panes scroll
+  // internally instead of growing the page. In a modal `main` has no flex
+  // parent to stretch into, so it needs an explicit viewport-relative height;
+  // on the full page it fills the 100vh app shell via `flex-1`.
+  const heightClass = renderInModal ? "h-[85vh]" : "min-h-0 flex-1";
+
   const content = (
-    <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
+    <main
+      className={`mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-10 ${heightClass}`}
+    >
       <header className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           {renderInModal ? (
@@ -135,7 +143,7 @@ export default function ProjectTypesManagerPage({
         </div>
       </header>
 
-      <section className="grid min-h-0 max-h-[78vh] flex-1 gap-6 lg:grid-cols-[280px_1fr]">
+      <section className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-6 lg:grid-cols-[280px_1fr]">
         <ProjectTypeListPane
           items={items}
           selectedKey={selectedKey}
