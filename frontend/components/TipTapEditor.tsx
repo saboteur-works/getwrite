@@ -13,13 +13,14 @@
  */
 import "katex/dist/katex.min.css";
 
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
   useEditor,
   EditorContent,
   EditorContext,
   Content,
 } from "@tiptap/react";
+import type { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
@@ -54,6 +55,7 @@ import MediaDropExtension from "./Editor/Extensions/MediaDropExtension";
 import { useSelector } from "react-redux";
 import { selectResolvedEditorConfig } from "../src/store/editorConfigSlice";
 import { selectActiveProjectRootPath } from "../src/store/projectsSlice";
+import { deriveSelectionNodeLabels } from "../src/lib/node-display-selection";
 /**
  * Props accepted by {@link TipTapEditor}.
  */
@@ -75,6 +77,13 @@ export interface TipTapEditorProps {
   id?: string;
   /** When true, disables editing interactions. */
   readonly?: boolean;
+  /**
+   * Called with the node-type label(s) at the current selection whenever they
+   * change (e.g. `["Heading 2"]`, or `["Heading 2", "Body"]` for a selection
+   * spanning multiple node types). Fires on creation, selection moves, and
+   * content updates, but only when the resulting label list actually changes.
+   */
+  onNodeTypesChange?: (labels: string[]) => void;
 }
 
 /**
@@ -140,11 +149,34 @@ export default function TipTapEditor({
   onChange,
   id,
   readonly = false,
+  onNodeTypesChange,
 }: TipTapEditorProps) {
   const editorProjectConfig = useSelector(selectResolvedEditorConfig);
   const activeProjectRootPath = useSelector(selectActiveProjectRootPath);
   const projectPathRef = useRef<string | null>(null);
   projectPathRef.current = activeProjectRootPath;
+
+  // Keep the latest callback in a ref so the editor's (init-time) handlers can
+  // call it without being re-created when the prop identity changes.
+  const onNodeTypesChangeRef = useRef(onNodeTypesChange);
+  onNodeTypesChangeRef.current = onNodeTypesChange;
+  // Last emitted label list, joined, so repeat emits for the same node context
+  // are suppressed (avoids churn on every keystroke / selection nudge).
+  const lastNodeLabelsKeyRef = useRef<string | null>(null);
+
+  /**
+   * Compute the node-type labels at the editor's current selection and notify
+   * the consumer only when they differ from the previous emission.
+   */
+  const emitNodeTypes = useCallback((editorInstance: Editor) => {
+    const notify = onNodeTypesChangeRef.current;
+    if (!notify) return;
+    const labels = deriveSelectionNodeLabels(editorInstance.state);
+    const key = labels.join("\u0000");
+    if (key === lastNodeLabelsKeyRef.current) return;
+    lastNodeLabelsKeyRef.current = key;
+    notify(labels);
+  }, []);
 
   /** True when executing in browser context (guards SSR/hydration paths). */
   const isClient = typeof window !== "undefined";
@@ -238,6 +270,15 @@ export default function TipTapEditor({
         const doc = editor.getJSON() as TipTapDocument;
         lastEmittedDocRef.current = doc;
         if (onChange) onChange(html, doc);
+        // Content edits can change a node's type (e.g. a heading downgraded to
+        // body), even without the selection moving.
+        emitNodeTypes(editor);
+      },
+      /**
+       * Reports the node type(s) at the new selection as the cursor moves.
+       */
+      onSelectionUpdate: ({ editor }) => {
+        emitNodeTypes(editor);
       },
       /**
        * Migrates legacy math string representations to node-based format.
@@ -250,6 +291,8 @@ export default function TipTapEditor({
           .setParagraphLeading("1.5")
           .setTextSelection(0) // collapse cursor to start, or wherever you want
           .run();
+        // Populate the initial node-type indicator for the starting cursor.
+        emitNodeTypes(editor);
       },
       // avoid SSR hydration mismatches by explicitly opting out of
       // immediate render on the server
@@ -286,8 +329,13 @@ export default function TipTapEditor({
       // while preserving the previous behaviour (no-emitted update).
       // TODO: refine to the precise options type when migrating tiptap types.
       editor.commands.setContent(value || "", false as any);
+      // The content swap resets the selection; refresh the node-type indicator
+      // so it reflects the newly loaded document (resource/revision switch)
+      // rather than a stale value carried over from the previous one.
+      lastNodeLabelsKeyRef.current = null;
+      emitNodeTypes(editor);
     }
-  }, [value, editor]);
+  }, [value, editor, emitNodeTypes]);
 
   if (!isClient) return <div>Loading editor...</div>;
 
