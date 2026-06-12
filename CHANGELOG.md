@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.47](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.46...getwrite-v0.2.47) (2026-06-12)
+
+
+### Features
+
+* **editor:** add node-type indicator to editor footer ([78fb7e4](https://github.com/saboteur-works/getwrite/commit/78fb7e4d9b045d9c25deb51a3e4a8f176b420e2f))
+* **editor:** node-type indicator in editor footer ([f4e7344](https://github.com/saboteur-works/getwrite/commit/f4e7344affc638cfb0ed1b16103b621a05c6bfeb))
+
+
+### Performance Improvements
+
+* **editor:** skip ProseMirror resolve for non-wrapped textblocks ([90cbea3](https://github.com/saboteur-works/getwrite/commit/90cbea380f2b85900f299c3844eaf67c4671b3ad))
+
 ## [0.2.46](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.45...getwrite-v0.2.46) (2026-06-12)
 
 
