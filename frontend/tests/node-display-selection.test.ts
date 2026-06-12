@@ -84,6 +84,13 @@ describe("deriveSelectionNodeLabels — caret in a single block", () => {
       "Code Block",
     ]);
   });
+
+  it("labels a heading nested in a blockquote by its own type, not the quote", () => {
+    // A non-paragraph textblock's own type wins over an enclosing container,
+    // exercising the resolve-free fast path for a recognized parent.
+    const doc = [{ type: "blockquote", content: [heading2("Quoted title")] }];
+    expect(deriveSelectionNodeLabels(stateAtStart(doc))).toEqual(["Heading 2"]);
+  });
 });
 
 describe("deriveSelectionNodeLabels — spanning selections", () => {
