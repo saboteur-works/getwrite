@@ -8,10 +8,9 @@
  * Responsibilities:
  * - Compose list + editor + draft state service.
  * - Resolve dark/light mode from selected project metadata.
- * - Enforce Workspace guardrails before any commit boundary.
  */
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import useAppSelector from "../../src/store/hooks";
 import {
@@ -23,10 +22,7 @@ import type { MetadataValue } from "../../src/lib/models/types";
 import type { ProjectTypeTemplateFile } from "../../src/types/project-types";
 import ProjectTypeEditorForm from "./ProjectTypeEditorForm";
 import ProjectTypeListPane from "./ProjectTypeListPane";
-import {
-  useProjectTypeDraftService,
-  validateDraft,
-} from "./ProjectTypeDraftService";
+import { useProjectTypeDraftService } from "./ProjectTypeDraftService";
 import { DialogTitle } from "../common/UI/Dialog/Dialog";
 
 /**
@@ -56,9 +52,6 @@ export default function ProjectTypesManagerPage({
 }: ProjectTypesManagerPageProps): JSX.Element {
   const router = useRouter();
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-  const [workspaceGuardErrors, setWorkspaceGuardErrors] = useState<string[]>(
-    [],
-  );
 
   const selectedProjectId = useAppSelector((state) =>
     selectSelectedProjectId(state),
@@ -111,30 +104,16 @@ export default function ProjectTypesManagerPage({
     router.push("/");
   };
 
-  const workspaceGuardrailStatus = useMemo(() => {
-    if (!selectedItem) {
-      return { valid: true as const, errors: [] as string[] };
-    }
-
-    const validation = validateDraft(selectedItem.definition);
-    if (validation.valid) {
-      return { valid: true as const, errors: [] as string[] };
-    }
-
-    return { valid: false as const, errors: validation.errors };
-  }, [selectedItem]);
-
-  React.useEffect(() => {
-    if (workspaceGuardrailStatus.valid) {
-      setWorkspaceGuardErrors([]);
-      return;
-    }
-
-    setWorkspaceGuardErrors(workspaceGuardrailStatus.errors);
-  }, [workspaceGuardrailStatus]);
+  // Bound the manager to a definite height so the list and editor panes scroll
+  // internally instead of growing the page. In a modal `main` has no flex
+  // parent to stretch into, so it needs an explicit viewport-relative height;
+  // on the full page it fills the 100vh app shell via `flex-1`.
+  const heightClass = renderInModal ? "h-[85vh]" : "min-h-0 flex-1";
 
   const content = (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-10">
+    <main
+      className={`mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-10 ${heightClass}`}
+    >
       <header className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           {renderInModal ? (
@@ -164,20 +143,7 @@ export default function ProjectTypesManagerPage({
         </div>
       </header>
 
-      {workspaceGuardErrors.length > 0 ? (
-        <section className="rounded-md border border-gw-border bg-gw-chrome2 p-3 text-sm">
-          <p className="font-semibold text-gw-primary">
-            Workspace guardrail warning
-          </p>
-          <ul className="mt-2 list-disc pl-5 text-gw-secondary">
-            {workspaceGuardErrors.map((error) => (
-              <li key={error}>{error}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <section className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-6 lg:grid-cols-[280px_1fr]">
         <ProjectTypeListPane
           items={items}
           selectedKey={selectedKey}
@@ -185,7 +151,7 @@ export default function ProjectTypesManagerPage({
           onCreateProjectType={handleCreateProjectType}
         />
 
-        <div className="rounded-lg border border-gw-border bg-gw-chrome p-5">
+        <div className="min-h-0 overflow-y-auto rounded-lg border border-gw-border bg-gw-chrome p-5">
           {selectedItem ? (
             <ProjectTypeEditorForm
               definition={selectedItem.definition}

@@ -8,12 +8,14 @@
  * Responsibilities:
  * - Holds the pending draft list for ProjectTypesManagerPage.
  * - Tracks which items have unsaved local edits.
- * - Exposes a workspace-guardrail validation gate used before any commit.
+ * - Exposes a schema validation gate used before any commit.
  * - Pure service: no Redux dependency, no side effects beyond local state.
  *
  * Commit contract:
  * - Call `validateDraft(item)` before writing to disk.
- * - A draft whose definition is missing a Workspace folder must be rejected.
+ * - A draft whose definition fails the project-type schema must be rejected.
+ *   Folder names carry no special semantics, so no particular folder is
+ *   required.
  */
 
 import { useState, useMemo } from "react";
@@ -41,7 +43,7 @@ export interface ProjectTypeListItem {
 }
 
 /**
- * Result returned by the workspace-guardrail validation gate.
+ * Result returned by the schema validation gate.
  */
 export type DraftValidationResult =
   | { valid: true }
@@ -50,14 +52,15 @@ export type DraftValidationResult =
 /**
  * Creates an empty draft project type definition.
  *
- * @returns New project type draft with a required Workspace folder.
+ * @returns New project type draft seeded with a single starter folder the
+ *   author can rename or remove. The folder carries no special semantics.
  */
 export function createEmptyProjectType(): ProjectTypeDefinition {
   return {
     id: "",
     name: "",
     description: "",
-    folders: [{ name: "Workspace", special: true }],
+    folders: [{ name: "Workspace" }],
     defaultFolders: [],
     defaultResources: [],
     statuses: [],
@@ -105,11 +108,11 @@ export function normalizeDefinition(
 }
 
 /**
- * Validates a draft definition against the workspace guardrail and schema.
+ * Validates a draft definition against the project-type schema.
  *
- * The Workspace folder must be present at every commit boundary — not only at
- * final save.  This function is the single gate for all workspace-invariant
- * enforcement.
+ * This function is the single gate applied before a draft is written to disk.
+ * No particular folder is required — folder names carry no application
+ * semantics.
  *
  * @param definition - Draft definition to validate.
  * @returns Validation result with a structured error list on failure.
@@ -117,19 +120,6 @@ export function normalizeDefinition(
 export function validateDraft(
   definition: ProjectTypeDefinition,
 ): DraftValidationResult {
-  const hasWorkspace = definition.folders.some(
-    (folder) => folder.name === "Workspace",
-  );
-
-  if (!hasWorkspace) {
-    return {
-      valid: false,
-      errors: [
-        "A folder named 'Workspace' is required. Add a Workspace folder before saving.",
-      ],
-    };
-  }
-
   const schemaResult = validateProjectType(definition);
   if (!schemaResult.success) {
     const messages = Object.values(schemaResult.errors ?? {})
@@ -245,10 +235,7 @@ export function useProjectTypeDraftService(
   const handleAddFolder = (): void => {
     updateSelectedDefinition((current) => ({
       ...current,
-      folders: [
-        ...current.folders,
-        { name: "", special: false } satisfies ProjectTypeFolder,
-      ],
+      folders: [...current.folders, { name: "" } satisfies ProjectTypeFolder],
     }));
   };
 
@@ -322,11 +309,7 @@ export function useProjectTypeDraftService(
       ...current,
       defaultFolders: [
         ...(current.defaultFolders ?? []),
-        {
-          folder: "Workspace",
-          name: "",
-          special: false,
-        } satisfies ProjectTypeDefaultFolder,
+        { folder: "Workspace", name: "" } satisfies ProjectTypeDefaultFolder,
       ],
     }));
   };

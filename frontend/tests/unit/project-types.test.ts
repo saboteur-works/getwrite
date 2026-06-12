@@ -42,9 +42,9 @@ describe("projectTypes loader (T005)", () => {
       "{ not: valid json",
     );
 
-    // invalid schema (missing Workspace folder)
+    // invalid schema (id violates the lowercase slug pattern)
     const invalidSpec = {
-      id: "no-workspace",
+      id: "Bad ID!",
       name: "Bad",
       folders: [{ name: "Chapters" }],
     };

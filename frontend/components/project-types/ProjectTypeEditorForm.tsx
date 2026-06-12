@@ -221,8 +221,8 @@ export default function ProjectTypeEditorForm({
           </Button>
         </div>
         <p className="project-type-editor-helper-text">
-          Top-level folder categories for this project type. Must include a
-          folder named &ldquo;Workspace&rdquo;.
+          Top-level folder categories for this project type. Use any structure
+          that fits your project.
         </p>
 
         <div className="project-type-editor-stack">
@@ -238,20 +238,10 @@ export default function ProjectTypeEditorForm({
                   placeholder="Workspace"
                   onChange={(value) => patchFolder(index, { name: value })}
                 />
-                <div className="project-type-editor-row-end">
-                  <label className="project-type-editor-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(folder.special)}
-                      onChange={(e) =>
-                        patchFolder(index, { special: e.target.checked })
-                      }
-                      className="project-type-editor-checkbox"
-                    />
-                    Special
-                  </label>
-                </div>
-                <div className="project-type-editor-row-end project-type-editor-row-end--right">
+                <div
+                  className="project-type-editor-row-end project-type-editor-row-end--right"
+                  style={{ gridColumn: "3" }}
+                >
                   <Button
                     variant="secondary"
                     size="xs"
@@ -323,7 +313,7 @@ export default function ProjectTypeEditorForm({
               key={`${df.name || "df"}-${index}`}
               className="project-type-editor-card project-type-editor-stack"
             >
-              <div className="project-type-editor-form-grid project-type-editor-form-grid--three-column">
+              <div className="project-type-editor-form-grid project-type-editor-form-grid--two-column">
                 <LabeledInput
                   label="Name"
                   value={df.name}
@@ -340,19 +330,6 @@ export default function ProjectTypeEditorForm({
                     patchDefaultFolder(index, { folder: value })
                   }
                 />
-                <div className="project-type-editor-row-end">
-                  <label className="project-type-editor-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(df.special)}
-                      onChange={(e) =>
-                        patchDefaultFolder(index, { special: e.target.checked })
-                      }
-                      className="project-type-editor-checkbox"
-                    />
-                    Special
-                  </label>
-                </div>
               </div>
 
               <div className="project-type-editor-form-grid project-type-editor-form-grid--two-column">

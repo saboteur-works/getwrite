@@ -16,16 +16,16 @@ describe("project-type schema (T016/T017)", () => {
       expect(res.value.id).toBe("novel");
   });
 
-  it("rejects a spec missing the required Workspace folder", () => {
+  it("accepts a spec with no Workspace folder", () => {
     const spec = {
       id: "article",
       name: "Article",
       folders: [{ name: "Chapters" }],
     };
     const res = validateProjectType(spec);
-    expect(res.success).toBe(false);
-    // refinement error placed on `folders`
-    expect(JSON.stringify(res.errors)).toContain("Workspace");
+    expect(res.success).toBe(true);
+    if (res.success && "value" in res && res.value)
+      expect(res.value.folders[0]?.name).toBe("Chapters");
   });
 
   it("rejects a spec with invalid id pattern", () => {

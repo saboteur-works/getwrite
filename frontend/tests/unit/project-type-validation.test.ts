@@ -36,15 +36,28 @@ describe("project-type validation (T016)", () => {
     expect(JSON.stringify(res.errors)).toMatch(/Too small|>=1/);
   });
 
-  it("rejects a template without a Workspace folder", () => {
+  it("accepts a template without a Workspace folder", () => {
     const spec = {
       id: "no-workspace",
       name: "No Workspace",
       folders: [{ name: "Drafts" }],
     };
     const res = validateProjectType(spec);
-    expect(res.success).toBe(false);
-    expect(JSON.stringify(res.errors)).toContain("Workspace");
+    expect(res.success).toBe(true);
+    if (res.success && "value" in res && res.value)
+      expect(res.value.folders[0]?.name).toBe("Drafts");
+  });
+
+  it("accepts a Workspace-less template that still uses the deprecated `special` flag", () => {
+    const spec = {
+      id: "special-no-workspace",
+      name: "Special No Workspace",
+      folders: [{ name: "Drafts", special: true }],
+    };
+    const res = validateProjectType(spec);
+    expect(res.success).toBe(true);
+    if (res.success && "value" in res && res.value)
+      expect(res.value.folders[0]?.special).toBe(true);
   });
 
   it("rejects invalid id pattern", () => {
@@ -72,25 +85,27 @@ describe("project-type validation (T016)", () => {
 });
 
 /**
- * T027: US3 — Workspace-invariant guardrail coverage for draft decomposition.
+ * Workspace requirement removal (see
+ * docs/features/feature-specifications/remove-workspace-requirement).
  *
- * These assertions verify that the Workspace guardrail holds through the
- * ProjectTypesManagerPage seam extraction.  The guardrail must fire at every
- * update boundary, not only at final save.
+ * The former Workspace-invariant guardrail (originally T027) has been removed:
+ * a folder named `Workspace` is no longer required and folder names carry no
+ * special application semantics.  These assertions verify that authors may now
+ * use any folder layout, while the deprecated `special` flag is still accepted
+ * (but ignored) for backward compatibility.
  */
-describe("project-type Workspace-invariant guardrails (T027)", () => {
-  it("requires Workspace folder name to be exactly 'Workspace' (case-sensitive)", () => {
+describe("project-type folder freedom (Workspace requirement removed)", () => {
+  it("accepts a folder named 'workspace' (folder name is no longer significant)", () => {
     const spec = {
       id: "case-check",
       name: "Case Check",
       folders: [{ name: "workspace" }],
     };
     const res = validateProjectType(spec);
-    expect(res.success).toBe(false);
-    expect(JSON.stringify(res.errors)).toContain("Workspace");
+    expect(res.success).toBe(true);
   });
 
-  it("accepts a second special Workspace folder alongside non-special folders", () => {
+  it("accepts a special Workspace folder alongside non-special folders", () => {
     const spec = {
       id: "multi-folder",
       name: "Multi Folder",
@@ -100,15 +115,14 @@ describe("project-type Workspace-invariant guardrails (T027)", () => {
     expect(res.success).toBe(true);
   });
 
-  it("rejects a definition with only non-Workspace folders after rename", () => {
+  it("accepts a definition with only non-Workspace folders", () => {
     const spec = {
       id: "renamed-workspace",
       name: "Renamed",
       folders: [{ name: "Archive" }, { name: "Notes" }],
     };
     const res = validateProjectType(spec);
-    expect(res.success).toBe(false);
-    expect(JSON.stringify(res.errors)).toContain("Workspace");
+    expect(res.success).toBe(true);
   });
 
   it("preserves validation result when Workspace folder is the only folder", () => {
