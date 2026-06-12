@@ -3,6 +3,7 @@
 import React from "react";
 import { X } from "lucide-react";
 import { Tooltip } from "react-tooltip";
+import { TOOLTIP_STYLE } from "../tooltipStyle";
 
 export interface ChipProps {
   label: string;
@@ -17,18 +18,6 @@ export interface ChipProps {
   tooltip?: string;
   tooltipId?: string;
 }
-
-const TOOLTIP_STYLE: React.CSSProperties = {
-  background: "var(--color-gw-chrome2, #161614)",
-  border: "0.5px solid var(--color-gw-secondary, #6A6864)",
-  color: "var(--color-gw-primary, #F5F4F0)",
-  fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)",
-  fontSize: "9px",
-  letterSpacing: "0.10em",
-  textTransform: "uppercase",
-  borderRadius: "1px",
-  padding: "4px 8px",
-};
 
 export default function Chip({
   label,

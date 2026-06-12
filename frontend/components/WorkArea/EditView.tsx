@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import TipTapEditor from "../TipTapEditor";
+import NodeTypeIndicator from "./NodeTypeIndicator";
 import { TipTapDocument } from "../../src/lib/models";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
@@ -50,6 +51,10 @@ export default function EditView({
     React.useState<boolean>(false);
   const [hasEditsAfterRevisionSwitch, setHasEditsAfterRevisionSwitch] =
     React.useState<boolean>(false);
+  // Node-type label(s) at the editor's current selection, fed by TipTapEditor.
+  // Defaults to [] so the indicator renders its neutral placeholder until the
+  // editor reports a real cursor position.
+  const [nodeTypes, setNodeTypes] = React.useState<string[]>([]);
 
   const canonicalRevisionId = React.useMemo(
     () => visibleRevisions.find((r) => r.isCanonical)?.id ?? null,
@@ -325,6 +330,7 @@ export default function EditView({
             id="editview-editor"
             value={tipTapDoc ?? content} // prefer loaded doc, fallback to initial/plain content
             onChange={handleChange}
+            onNodeTypesChange={setNodeTypes}
             readonly={false}
           />
         </div>
@@ -334,8 +340,12 @@ export default function EditView({
         id="editview-footer"
         className="shrink-0 border-t border-gw-border px-4 py-2 bg-gw-chrome text-sm flex items-center justify-between"
       >
-        <div className="text-gw-secondary text-gw-small">
-          Words: <strong>{wordCount}</strong>
+        <div className="flex items-center gap-3 text-gw-secondary text-gw-small">
+          <span>
+            Words: <strong>{wordCount}</strong>
+          </span>
+          <span aria-hidden="true">|</span>
+          <NodeTypeIndicator types={nodeTypes} />
         </div>
         {isViewingNonCanonical && hasEditsAfterRevisionSwitch && (
           <p className="text-gw-small text-red-600 font-medium">
