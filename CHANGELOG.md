@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.46](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.45...getwrite-v0.2.46) (2026-06-12)
+
+
+### Features
+
+* drop Workspace requirement from project-type JSON schema (Task 2) ([e8d46ba](https://github.com/saboteur-works/getwrite/commit/e8d46ba40967c3f7baf8efbe6949c95cb59a1197))
+* remove Special toggle from project-type editor form (Task 5) ([87543e3](https://github.com/saboteur-works/getwrite/commit/87543e3627ba64daf16d768fbb62bc8429354c28))
+* remove Workspace folder requirement from project-type schema (Task 1) ([5527968](https://github.com/saboteur-works/getwrite/commit/5527968bee0e32af5da8f1263d176102adb1a5f3))
+* remove Workspace guardrail from project-type draft service (Task 3) ([eca3fa9](https://github.com/saboteur-works/getwrite/commit/eca3fa9592bf60f48a47edb80fd6511d77d413df))
+* remove Workspace guardrail warning UI from project types manager (Task 4) ([78fa03b](https://github.com/saboteur-works/getwrite/commit/78fa03bfbf7970f2acc365821ade26e785c61e0a))
+* strip deprecated 'special' flag from built-in templates (Task 6) ([a015c51](https://github.com/saboteur-works/getwrite/commit/a015c51948ea5cf85186480f67ae2a15c46080a2))
+
+
+### Bug Fixes
+
+* make project-types list and editor panes vertically scrollable ([0f0208e](https://github.com/saboteur-works/getwrite/commit/0f0208eec322a696545e5bb4985695c837b79fc1))
+* make project-types panes scroll in modal context too ([87de174](https://github.com/saboteur-works/getwrite/commit/87de174045ba360c79887c3d873f80e7b4873605))
+
 ## [0.2.45](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.44...getwrite-v0.2.45) (2026-06-10)
 
 
