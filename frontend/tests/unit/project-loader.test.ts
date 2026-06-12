@@ -234,4 +234,57 @@ describe("loadProjectFromDisk", () => {
       await removeDirRetry(tmp);
     }
   });
+
+  it("loads a legacy project whose spec used a Workspace and `special` folders (FR8)", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "gw-loader-legacy-"));
+    try {
+      // Mirrors a project created before the Workspace requirement removal:
+      // a folder named Workspace and `special`-flagged folders are persisted
+      // to disk exactly as an older GetWrite version would have written them.
+      const spec = {
+        id: "legacy-workspace",
+        name: "Legacy Workspace",
+        folders: [{ name: "Workspace", special: true }, { name: "Notes" }],
+        defaultFolders: [
+          {
+            folder: "Notes",
+            name: "Characters",
+            special: true,
+            metadataSource: {
+              isMetadataSource: true,
+              metadataInputType: "multiselect" as const,
+            },
+          },
+        ],
+        defaultResources: [
+          {
+            name: "Getting Started",
+            type: "text" as const,
+            folder: "Workspace",
+            template: "Hello",
+          },
+        ],
+      };
+
+      const { folders: createdFolders } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "Legacy Workspace Project" },
+      );
+
+      await flushIndexer();
+
+      // Loading must succeed and surface every folder, including the
+      // Workspace and the `special`-flagged Characters folder.
+      const loaded = await loadProjectFromDisk(tmp);
+      expect(loaded.folders).toHaveLength(createdFolders.length);
+
+      const folderNames = (loaded.folders as Array<{ name: string }>).map(
+        (f) => f.name,
+      );
+      expect(folderNames).toContain("Workspace");
+      expect(folderNames).toContain("Characters");
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 });

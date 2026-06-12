@@ -64,7 +64,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Notes:** FR6. Per the template-integrity standard, make minimal patch-style edits — remove only the `special` keys.
 **Done:** [x] — completed 2026-06-11. Removed all 13 `special: true` occurrences across the 6 templates (minimal patch edits; only the `special` keys removed, folder names and the `Workspace` folders kept). The only remaining `"special"` in the directory is the deprecated property definition in `project-type.schema.json` (intentionally retained, Task 2). Added `tests/unit/builtin-templates.test.ts` — reads each shipped template and asserts it validates against the schema and contains no `"special"` flag (13 cases pass). Lint clean.
 
-### Task 7: Update and add tests for Workspace-free validation and legacy load
+### Task 7: Update and add tests for Workspace-free validation and legacy load ✅
 
 **What:** Update tests that asserted the Workspace requirement, and add coverage for (a) a Workspace-less spec validating and scaffolding, and (b) loading a legacy project containing a `Workspace`/`special` folder without error.
 **Files:** `frontend/tests/unit/project-type-validation.test.ts`, `frontend/tests/unit/project-type.test.ts`, `frontend/tests/unit/project-types.test.ts`, `frontend/tests/unit/project-loader.test.ts`, project-types component tests (`ProjectTypeDraftService`/manager/editor), plus fixtures as needed
@@ -72,6 +72,7 @@ Derived from [`spec.md`](./spec.md). Granularity: story points (1/2/3/5/8).
 **Depends on:** 1, 2, 3, 4, 5, 6
 **Estimate:** 3
 **Notes:** FR3, FR8. Remove or rewrite any assertion expecting a "Workspace required" error. The resource-tree order test references a `Workspace`-named fixture folder, not the `special` flag, so it should keep passing once templates retain names.
+**Done:** [x] — completed 2026-06-11. The Workspace-required assertions were already converted in Tasks 1/3; here added the scaffolding (FR3) and legacy-load (FR8) coverage. Added `project-creator.test.ts` → "scaffolds a project from a spec that has no Workspace folder (FR3)" and `project-loader.test.ts` → "loads a legacy project whose spec used a Workspace and `special` folders (FR8)"; tidied a pre-existing unused-`folders` lint warning in the creator test. Full suite green: **170 files, 1802 passed / 1 skipped**; `tsc --noEmit` clean (after restoring the declared-but-uninstalled `commander` dep via a frozen-lockfile install — no lockfile change). One pre-existing flaky test (`media-file-route.test.ts`, temp-dir teardown race) intermittently fails under parallel load but passes 5/5 in isolation; unrelated to this feature (logged in follow-up-work.md).
 
 ---
 

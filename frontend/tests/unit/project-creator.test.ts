@@ -100,7 +100,7 @@ describe("models/project-creator", () => {
         "novel_project_type.json",
       );
 
-      const { projectPath, folders, resources } = await createAndAssertProject(
+      const { projectPath, resources } = await createAndAssertProject(
         specPath,
         { projectRoot: tmp, name: "My Novel" },
       );
@@ -181,6 +181,57 @@ describe("models/project-creator", () => {
       expect(chaptersFolder).toBeDefined();
       expect(chapter1Folder).toBeDefined();
       expect(chapter1Folder?.parentId).toBe(chaptersFolder?.id);
+
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
+  it("scaffolds a project from a spec that has no Workspace folder (FR3)", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-no-workspace-"),
+    );
+    try {
+      const spec = {
+        id: "test-no-workspace",
+        name: "No Workspace Scaffold",
+        folders: [{ name: "Drafts" }, { name: "Notes" }],
+        defaultFolders: [{ folder: "Drafts", name: "Act 1" }],
+        defaultResources: [
+          {
+            folder: "Drafts",
+            name: "Intro",
+            type: "text" as const,
+            template: "Hello",
+          },
+        ],
+      };
+
+      const { projectPath, folders, resources } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "No Workspace Project" },
+      );
+
+      // No folder named Workspace exists, yet scaffolding succeeded.
+      expect(folders.some((f) => f.name === "Workspace")).toBe(false);
+      expect(folders.map((f) => f.name).sort()).toEqual([
+        "Act 1",
+        "Drafts",
+        "Notes",
+      ]);
+
+      // project.json was written.
+      const pj = await fs.readFile(
+        path.join(projectPath, "project.json"),
+        "utf8",
+      );
+      expect(pj).toBeTruthy();
+
+      // The seeded resource was created with a canonical revision.
+      expect(resources).toHaveLength(1);
+      const revisions = await listRevisions(projectPath, resources[0]!.id);
+      expect(revisions[0]?.isCanonical).toBe(true);
 
       await flushIndexer();
     } finally {
