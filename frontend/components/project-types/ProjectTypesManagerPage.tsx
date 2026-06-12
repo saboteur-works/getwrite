@@ -105,7 +105,7 @@ export default function ProjectTypesManagerPage({
   };
 
   const content = (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-10">
+    <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
       <header className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           {renderInModal ? (
@@ -135,7 +135,7 @@ export default function ProjectTypesManagerPage({
         </div>
       </header>
 
-      <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <section className="grid min-h-0 max-h-[78vh] flex-1 gap-6 lg:grid-cols-[280px_1fr]">
         <ProjectTypeListPane
           items={items}
           selectedKey={selectedKey}
@@ -143,7 +143,7 @@ export default function ProjectTypesManagerPage({
           onCreateProjectType={handleCreateProjectType}
         />
 
-        <div className="rounded-lg border border-gw-border bg-gw-chrome p-5">
+        <div className="min-h-0 overflow-y-auto rounded-lg border border-gw-border bg-gw-chrome p-5">
           {selectedItem ? (
             <ProjectTypeEditorForm
               definition={selectedItem.definition}
