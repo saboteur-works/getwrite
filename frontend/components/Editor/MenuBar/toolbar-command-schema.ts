@@ -233,8 +233,7 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
         inputType: "select",
         tooltipContent: "Font Family",
         options: FONT_OPTIONS.map((option) => option.label),
-        getValue: ({ editor }) =>
-          editor.getAttributes("textStyle").fontFamily ?? "Domine",
+        getValue: ({ state }) => state.fontFamily ?? "Domine",
         onChange: ({ editor }, value) => {
           // editor.chain().focus().setFontFamily(value).run();
           const selected = FONT_OPTIONS.find((f) => f.label === value);
