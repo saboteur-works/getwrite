@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.48](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.47...getwrite-v0.2.48) (2026-06-13)
+
+
+### Bug Fixes
+
+* **editor:** menu bar Font Family dropdown follows cursor ([107d2eb](https://github.com/saboteur-works/getwrite/commit/107d2eb8dce3af6517978a73e30a2ea77725e992))
+* **editor:** track fontFamily in menu bar state so dropdown follows cursor [task_fff9363f] ([827c1be](https://github.com/saboteur-works/getwrite/commit/827c1be4dd7360f5af8955df3e36bdad67bf2fcb))
+
 ## [0.2.47](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.46...getwrite-v0.2.47) (2026-06-12)
 
 
