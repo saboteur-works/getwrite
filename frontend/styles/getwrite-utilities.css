@@ -1604,6 +1604,16 @@ html.gw-theme-dark {
     overflow: hidden;
   }
 
+  /*
+   * In modal mode the dialog has no fixed height, so bound the layout here.
+   * This lets the content pane (.help-content) own the scroll while the
+   * header and side nav stay pinned. Capped below the dialog's own 92vh max.
+   */
+  .help-layout--modal {
+    height: auto;
+    max-height: 82vh;
+  }
+
   .help-page-shell {
     min-height: 100vh;
     display: flex;
