@@ -607,6 +607,7 @@ describe("useToolbarCommands parity", () => {
     textColor: "#111827",
     backgroundColor: "#fff8b3",
     fontSize: "14px",
+    fontFamily: "Domine",
     isDomine: true,
     getWriteParagraphLeading: "1.5",
     isInsideTable: false,
