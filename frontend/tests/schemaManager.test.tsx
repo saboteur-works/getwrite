@@ -124,6 +124,23 @@ describe("SchemaManager — rendering", () => {
     expect(screen.getByText(/no groups yet/i)).toBeInTheDocument();
   });
 
+  it("renders the built-in feature toggles co-located with the fields", () => {
+    setup();
+    expect(screen.getByText("Built-in features")).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /timeline/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /point of view/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /synopsis/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /notes/i }),
+    ).toBeInTheDocument();
+  });
+
   it("shows the Add Group button", () => {
     setup();
     expect(screen.getByLabelText("Add schema group")).toBeInTheDocument();

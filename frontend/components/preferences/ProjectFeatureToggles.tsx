@@ -3,12 +3,13 @@
 /**
  * @module ProjectFeatureToggles
  *
- * Project-settings section that turns the previously-locked built-in metadata
- * features (Timeline, Point of View, Synopsis, Notes) on or off. Each toggle
- * reflects the active project's `config.features` state and persists changes via
- * the {@link updateProjectFeatures} thunk. Toggling is available at any time
- * after project creation (FR10); turning a feature off only hides its controls —
- * stored values are preserved.
+ * Section shown at the top of the Metadata Fields menu that turns the
+ * previously-locked built-in metadata features (Timeline, Point of View,
+ * Synopsis, Notes) on or off, co-located with the field definitions they
+ * govern. Each toggle reflects the active project's `config.features` state and
+ * persists changes via the {@link updateProjectFeatures} thunk. Toggling is
+ * available at any time after project creation (FR10); turning a feature off
+ * only hides its field — stored values are preserved.
  */
 
 import { useAppDispatch } from "../../src/store/hooks";
@@ -99,11 +100,12 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
   return (
     <section className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
       <h2 className="text-sm font-semibold text-gw-primary">
-        Project Features
+        Built-in features
       </h2>
       <p className="mt-1 text-sm text-gw-secondary">
-        Turn optional metadata features on or off for this project. Disabling a
-        feature hides its controls but keeps any values you have already saved.
+        Turn the optional built-in fields on or off for this project. Disabling
+        one hides its field below and in the sidebar, but keeps any values
+        you&rsquo;ve already saved.
       </p>
 
       <div className="mt-4 flex flex-col gap-4">

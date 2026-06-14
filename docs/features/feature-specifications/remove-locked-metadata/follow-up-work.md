@@ -5,6 +5,35 @@ notes why it was deferred and what a future implementer needs.
 
 ---
 
+## 2026-06-14 — DECISION: feature toggles relocated to the Metadata Fields menu (spec deviation)
+
+**Context:** FR10 said the Timeline/POV/Synopsis/Notes toggles live in "project
+settings"; Task 5 implemented them as a "Project Features" section in the User
+Preferences page. In practice this split one concept across two menus — the
+**Metadata Fields** menu (SchemaManager) shows the now-unlocked built-in fields,
+while the on/off toggles lived in a *separate* Preferences page. Result:
+opening the metadata menu and seeing notes/synopsis unlocked with no toggle in
+sight was confusing (reported in real use).
+
+**Decision:** Relocate the `ProjectFeatureToggles` section to the **top of the
+Metadata Fields menu** ("Built-in features"), co-located with the field
+definitions it governs, and remove it from User Preferences. This is a
+deliberate, agreed deviation from FR10's "project settings" wording (the menu is
+still opened from the project settings/gear menu, so the intent — editable
+post-creation, stored in `ProjectConfig` — is preserved). All plumbing
+(`config.features`, gating selectors, the `updateProjectFeatures` thunk,
+migration) is unchanged; only the toggle UI moved. `OrganizerCardBodySettings`
+stays in Preferences (it is a display preference, not a field).
+
+**Possible next step (not done):** the toggle-vs-remove duality still exists — a
+built-in field can be toggled off (hidden, values kept) *or* removed from the
+schema (deleted). The fully-elegant model collapses these into one action
+(field presence), deriving Timeline/POV from whether their fields exist; that is
+a larger rework (default schema, project-type seeding, migration, view-gating)
+deferred for now.
+
+---
+
 ## 2026-06-13 — `normalizeProjectConfig` drops `config.features` / `config.organizerCardBody`
 
 **✅ Resolved (2026-06-14):** `normalizeProjectConfig` now carries through

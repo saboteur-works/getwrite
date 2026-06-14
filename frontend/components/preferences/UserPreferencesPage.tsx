@@ -29,7 +29,6 @@ import type { MetadataValue } from "../../src/lib/models/types";
 import { saveProjectPreferences } from "../../src/lib/api/preferences";
 import Button from "../common/UI/Button/Button";
 import { DialogTitle } from "../common/UI/Dialog/Dialog";
-import ProjectFeatureToggles from "./ProjectFeatureToggles";
 import OrganizerCardBodySettings from "./OrganizerCardBodySettings";
 
 /**
@@ -259,8 +258,6 @@ export default function UserPreferencesPage({
           </label>
         </div>
       </section>
-
-      <ProjectFeatureToggles />
 
       <OrganizerCardBodySettings />
     </main>
