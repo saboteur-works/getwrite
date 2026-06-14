@@ -64,7 +64,7 @@ Derived from `spec.md`. Granularity: story points (1/2/3/5/8).
 
 ---
 
-### Task 6: Project settings UI — Organizer card-body source
+### Task 6: Project settings UI — Organizer card-body source ✅
 
 **What:** Add controls to choose the Organizer card-body source (none / text excerpt / a specific metadata field) and the excerpt length cap.
 **Files:** `frontend/components/preferences/UserPreferencesPage.tsx` (+ new section component and `.stories.tsx`)
@@ -72,6 +72,7 @@ Derived from `spec.md`. Granularity: story points (1/2/3/5/8).
 **Depends on:** 4
 **Estimate:** 5
 **Notes:** Field list should read live schema so newly added fields appear; default `source` when unset should match the migration/back-compat choice (e.g. `notes` field when notes enabled, else `none`).
+**Status:** ✅ Complete (2026-06-13) — New connected section component `frontend/components/preferences/OrganizerCardBodySettings.tsx`: a "Card body source" `<select>` (shared `common/UI/Select`) listing **None**, **Text excerpt**, then one `<optgroup>` per schema group with an `<option>` per field, read live from `selectActiveProjectMetadataSchema` (so newly added fields appear). Field options are encoded `field:<key>` to avoid colliding with the `none`/`text-excerpt` source values. Selecting **Text excerpt** reveals an "Excerpt length (characters)" number input (min 1, default `DEFAULT_EXCERPT_LENGTH = 200`, matching `previews.ts` slicing); the input uses a local draft so partial/invalid edits (empty, `0`, fractional) stay visible without persisting, resyncing via `useEffect` on the persisted length. When `config.organizerCardBody` is unset, the selector previews the back-compat default the Task 10 consumer will use — the **Notes** field when Notes is enabled (`selectNotesEnabled`), else **None** — without auto-persisting. Each change persists the full block wholesale via the Task 4 `updateProjectOrganizerCardBody` thunk; the route replaces the block, the slice mirrors it (a `null` body → `undefined`). Returns `null` when no project is selected. A11y: section `<h2>`, both controls have `<label htmlFor>` associations. Mounted into `UserPreferencesPage.tsx` after the Project Features section. New `stories/Preferences/OrganizerCardBodySettings.stories.tsx` covers DefaultNotes / None / TextExcerpt / FieldSource. Verified: new `tests/organizerCardBodySettings.test.tsx` (11 cases: options list, unset→Notes default, unset→None default, reflect persisted field, excerpt input hidden unless text-excerpt, field/text-excerpt/none dispatch payloads + store mirror, excerpt-length persist on valid int, no-persist on empty/`0`, renders nothing with no project) green; `pnpm typecheck` clean; component/page/test eslint-clean (story clean under `--no-ignore`).
 
 ---
 

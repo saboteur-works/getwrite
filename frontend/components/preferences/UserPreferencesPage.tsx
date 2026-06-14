@@ -30,6 +30,7 @@ import { saveProjectPreferences } from "../../src/lib/api/preferences";
 import Button from "../common/UI/Button/Button";
 import { DialogTitle } from "../common/UI/Dialog/Dialog";
 import ProjectFeatureToggles from "./ProjectFeatureToggles";
+import OrganizerCardBodySettings from "./OrganizerCardBodySettings";
 
 /**
  * Props accepted by {@link UserPreferencesPage}.
@@ -260,6 +261,8 @@ export default function UserPreferencesPage({
       </section>
 
       <ProjectFeatureToggles />
+
+      <OrganizerCardBodySettings />
     </main>
   );
 
