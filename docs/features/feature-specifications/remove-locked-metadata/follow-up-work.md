@@ -34,3 +34,30 @@ block (all toggles off by default, per FR1/FR2). So there is no live bug today.
 `normalizeProjectConfig`. Low risk (only adds keys when present); re-run
 `tests/unit/project-config.test.ts` and any `normalizeProjectConfig` snapshot
 tests afterward.
+
+---
+
+## 2026-06-13 — Stale e2e matcher `/story timeline/i` after the Task 2 group rename
+
+**Discovered during:** Task 7 (Sidebar conditional rendering).
+
+**What:** `frontend/e2e/metadata-sidebar.e2e.spec.ts` (the
+`collapse: clicking story timeline header…` test, ~L144) still targets
+`page.getByRole("button", { name: /story timeline/i })`. Task 2 renamed the
+`builtin-story-timeline` group **label** from "Story Timeline" to "Timeline", so
+this regex no longer matches the rendered header and the click would miss.
+
+**Why it was deferred (not blocking):** Playwright e2e is not part of
+`pnpm test:ci` (it requires `pnpm storybook` on :6006 + `pnpm test:e2e`), so it
+did not surface in any task's verification. The defect predates Task 7 — it is a
+leftover from the Task 2 rename, not caused by the gating change. Task 7 only
+touched the same file's *fixtures indirectly* by enabling `features` in the
+`MetadataSidebar` stories so the controls keep rendering for the e2e.
+
+**Risk if left:** That one e2e test fails (or times out on the click) the next
+time the Playwright suite is run.
+
+**Suggested fix:** Change the matcher at ~L144 to `/timeline/i` (matching the
+sibling assertions at ~L180). While there, run the full `pnpm test:e2e` against
+Storybook to confirm the rest of the sidebar e2e is green under the new
+feature-gated stories.

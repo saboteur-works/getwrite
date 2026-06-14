@@ -1,6 +1,12 @@
 import React from "react";
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 import MetadataSidebar from "../components/Sidebar/MetadataSidebar";
 import {
@@ -16,7 +22,11 @@ import {
 } from "../src/store/resourcesSlice";
 import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
-import type { MetadataSchema, MetadataValue } from "../src/lib/models/types";
+import type {
+  MetadataSchema,
+  MetadataValue,
+  ProjectFeatureFlags,
+} from "../src/lib/models/types";
 
 function setupMultiRefSidebar({
   fieldKey = "refs-field",
@@ -80,6 +90,10 @@ describe("MetadataSidebar", () => {
     const onChangeField = vi.fn();
 
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { timeline: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -115,6 +129,10 @@ describe("MetadataSidebar", () => {
     });
 
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { timeline: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -140,6 +158,10 @@ describe("MetadataSidebar", () => {
     const onChangeField = vi.fn();
 
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { timeline: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -170,6 +192,10 @@ describe("MetadataSidebar", () => {
     });
 
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { timeline: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -193,6 +219,10 @@ describe("MetadataSidebar", () => {
     });
 
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { synopsis: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -215,6 +245,10 @@ describe("MetadataSidebar", () => {
     const onChangeField = vi.fn();
 
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { synopsis: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -231,6 +265,14 @@ describe("MetadataSidebar", () => {
   it("renders schema group sections as collapsible headings", () => {
     const res = createTextResource({ name: "Scene", plainText: "" });
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({
+        id: "p",
+        rootPath: "/test",
+        features: { timeline: true, synopsis: true, notes: true, pov: true },
+      }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -255,6 +297,14 @@ describe("MetadataSidebar", () => {
       userMetadata: { synopsis: "A duel at dawn." },
     });
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({
+        id: "p",
+        rootPath: "/test",
+        features: { synopsis: true, notes: true },
+      }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -272,6 +322,10 @@ describe("MetadataSidebar", () => {
   it("expands the Document section again when its header is clicked twice", () => {
     const res = createTextResource({ name: "Scene", plainText: "" });
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { notes: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -294,6 +348,10 @@ describe("MetadataSidebar", () => {
       userMetadata: { storyDate: "2024-06-01", storyDuration: 90 },
     });
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { timeline: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -328,6 +386,7 @@ describe("MetadataSidebar", () => {
         id: projectId,
         rootPath: "/test",
         statuses: ["draft", "review", "published"],
+        features: { notes: true },
       }),
     );
     testStore.dispatch(setSelectedProjectId(projectId));
@@ -827,5 +886,120 @@ describe("MetadataSidebar — media resource display", () => {
       </Provider>,
     );
     expect(screen.getByText("1h 2m 3s")).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Feature gating (Task 7)
+// ---------------------------------------------------------------------------
+
+describe("MetadataSidebar — feature gating (Task 7)", () => {
+  function renderSidebar(options: {
+    features?: ProjectFeatureFlags;
+    userMetadata?: Record<string, MetadataValue>;
+  }) {
+    const testStore = makeStore();
+    const projectId = "gating-project";
+    testStore.dispatch(
+      setProject({
+        id: projectId,
+        rootPath: "/test",
+        ...(options.features ? { features: options.features } : {}),
+      }),
+    );
+    testStore.dispatch(setSelectedProjectId(projectId));
+    const res = createTextResource({
+      name: "Scene",
+      plainText: "",
+      userMetadata: options.userMetadata ?? {},
+    });
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    const utils = render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+    return { testStore, res, projectId, ...utils };
+  }
+
+  it("hides synopsis, notes, and pov controls when their features are disabled", () => {
+    renderSidebar({
+      features: {},
+      userMetadata: { synopsis: "kept", notes: "kept", pov: "kept" },
+    });
+    expect(screen.queryByLabelText("synopsis")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("notes")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("pov-input")).not.toBeInTheDocument();
+    // status is not feature-gated and remains in the Document group.
+    expect(screen.getByLabelText("status")).toBeInTheDocument();
+  });
+
+  it("renders synopsis, notes, and pov controls when their features are enabled", () => {
+    renderSidebar({
+      features: { synopsis: true, notes: true, pov: true },
+      userMetadata: { synopsis: "A duel at dawn." },
+    });
+    expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
+    expect(screen.getByLabelText("notes")).toBeInTheDocument();
+    expect(screen.getByLabelText("pov-input")).toBeInTheDocument();
+  });
+
+  it("hides the entire Timeline group when timeline is disabled", () => {
+    renderSidebar({
+      features: {},
+      userMetadata: { storyDate: "2024-06-01", storyDuration: 90 },
+    });
+    expect(screen.queryByLabelText("story-date-input")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("story-duration-quantity"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /timeline/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the Timeline group when timeline is enabled", () => {
+    renderSidebar({
+      features: { timeline: true },
+      userMetadata: { storyDate: "2024-06-01", storyDuration: 90 },
+    });
+    expect(
+      screen.getByRole("button", { name: /timeline/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("story-date-input")).toBeInTheDocument();
+  });
+
+  it("gates each feature independently", () => {
+    renderSidebar({
+      features: { synopsis: true, notes: false },
+      userMetadata: { synopsis: "shown", notes: "hidden" },
+    });
+    expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
+    expect(screen.queryByLabelText("notes")).not.toBeInTheDocument();
+  });
+
+  it("preserves a stored value across a disable -> enable cycle", () => {
+    const { testStore, projectId } = renderSidebar({
+      features: {},
+      userMetadata: { synopsis: "Stored synopsis." },
+    });
+    // Disabled: control absent, but the value lives untouched in the sidecar.
+    expect(screen.queryByLabelText("synopsis")).not.toBeInTheDocument();
+
+    // Re-enable the feature without mutating the resource.
+    act(() => {
+      testStore.dispatch(
+        setProject({
+          id: projectId,
+          rootPath: "/test",
+          features: { synopsis: true },
+        }),
+      );
+    });
+
+    const synopsis = screen.getByLabelText("synopsis") as HTMLTextAreaElement;
+    expect(synopsis).toBeInTheDocument();
+    expect(synopsis.value).toBe("Stored synopsis.");
   });
 });

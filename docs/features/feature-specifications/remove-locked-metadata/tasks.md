@@ -76,13 +76,14 @@ Derived from `spec.md`. Granularity: story points (1/2/3/5/8).
 
 ---
 
-### Task 7: Sidebar conditional rendering
+### Task 7: Sidebar conditional rendering ✅
 
 **What:** Render the Synopsis, Notes, POV, and story-timeline field controls only when their feature toggle is enabled.
 **Files:** `frontend/components/Sidebar/MetadataSidebar.tsx` (synopsis case ~L283), `frontend/components/Layout/AppShell.tsx` (synopsis case ~L1587), `frontend/components/Sidebar/controls/{SynopsisInput,NotesInput,POVAutocomplete}.tsx` as needed
 **Done when:** With a feature disabled, the corresponding sidebar control is absent; with it enabled, the control renders and edits values as before; values stored while enabled survive a disable→enable cycle; component tests cover both states.
 **Depends on:** 2, 4
 **Estimate:** 3
+**Status:** ✅ Complete (2026-06-13) — Gating implemented entirely in `MetadataSidebar.tsx`: reads the Task 4 primitive selectors (`selectSynopsisEnabled`/`selectNotesEnabled`/`selectPovEnabled`/`selectTimelineEnabled`) and a new pure `isFieldVisible(field)` helper maps `synopsis`→synopsis, `notes`→notes, `pov`→pov, and `storyDate`/`storyDuration`/`storyEndDate`→timeline (all other keys, including the always-on locked `status` and any custom field, stay visible). The group renderer now filters each group's fields through `isFieldVisible` and **skips a group entirely when no fields remain visible**, so a disabled-timeline project drops the whole "Timeline" collapsible rather than showing an empty section (the "Document" group always survives via `status`). No schema entry or sidecar value is touched — a disable→enable cycle restores the control with its prior value. The control components (`SynopsisInput`/`NotesInput`/`POVAutocomplete`) needed **no** changes, and the `AppShell.tsx` `onChangeField` write-path switch (~L1587) was deliberately left untouched: gated controls never render, so they never emit, so those switch arms are simply never reached when a feature is off. Default-off gating meant the `MetadataSidebar.stories.tsx` store-builders (`Interactive` + `makeStoreWithResource`) now seed `features: { timeline, pov, synopsis, notes: true }` so the existing stories/e2e keep rendering their controls, and ~11 existing `metadataSidebar.test.tsx` cases were updated to enable the feature(s) they exercise. Six new gating tests cover both states (hide/show synopsis+notes+pov, hide/show the Timeline group, per-feature independence, and value preservation across a disable→enable cycle via a re-dispatched `setProject` wrapped in `act`). Verified: `tests/metadataSidebar.test.tsx` 34/34 green; full `pnpm test:ci` 169 files / 1891 passed / 1 skipped; `pnpm typecheck` clean; changed files eslint-clean (only pre-existing `any` warnings remain).
 
 ---
 
