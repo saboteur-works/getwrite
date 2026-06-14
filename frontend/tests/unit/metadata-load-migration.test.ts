@@ -422,3 +422,60 @@ describe("loadProjectFromDisk runs the load-time migration", () => {
     expect(resource.plaintext).toBe("Body text.");
   });
 });
+
+// ─── FR8: load-path migration is value-preserving + idempotent ────────────────
+
+describe("loadProjectFromDisk — FR8 migration safety + idempotency", () => {
+  it("preserves stored values and stays idempotent across two full loads", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: oldLockedSchema(),
+    });
+    const id = generateUUID();
+    await writeSidecarFile(dir, id, {
+      id,
+      name: "Scene One",
+      type: "text",
+      slug: "scene-one",
+      orderIndex: 0,
+      folderId: null,
+      userMetadata: {
+        storyDate: "2024-04-05",
+        pov: { id: "r9", name: "Hero" },
+        synopsis: "A duel.",
+        custom: "keep me",
+      },
+    });
+    await fs.mkdir(path.join(dir, "resources", id), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, "resources", id, "content.txt"),
+      "Body text.",
+      "utf8",
+    );
+
+    await loadProjectFromDisk(dir);
+    const afterFirst = await readProjectRaw(dir);
+
+    await loadProjectFromDisk(dir);
+    const afterSecond = await readProjectRaw(dir);
+
+    // A second load through the public entry point makes no further changes.
+    expect(afterSecond).toEqual(afterFirst);
+
+    const config = (afterSecond as { config: ProjectConfig }).config;
+    // Migrated exactly once; opt-ins seeded from the data that exists.
+    expect(config.metadataRevision).toBe(1);
+    expect(config.features?.timeline).toBe(true);
+    expect(config.features?.pov).toBe(true);
+    expect(config.features?.synopsis).toBe(true);
+    expect(config.features?.notes).toBeUndefined();
+
+    // Every stored value survives the round trip untouched.
+    const sidecar = await readSidecarRaw(dir, id);
+    const meta = sidecar.userMetadata as Record<string, MetadataValue>;
+    expect(meta.storyDate).toBe("2024-04-05");
+    expect(meta.synopsis).toBe("A duel.");
+    expect(meta.custom).toBe("keep me");
+    expect((meta.pov as { name: string }).name).toBe("Hero");
+  });
+});

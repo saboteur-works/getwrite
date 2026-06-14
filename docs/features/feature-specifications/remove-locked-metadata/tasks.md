@@ -122,13 +122,14 @@ Derived from `spec.md`. Granularity: story points (1/2/3/5/8).
 
 ---
 
-### Task 11: Regression coverage — value preservation, querying, migration
+### Task 11: Regression coverage — value preservation, querying, migration ✅
 
 **What:** Add cross-cutting tests proving disabled/removed fields keep their values, queries still evaluate them, and migration is safe and idempotent.
 **Files:** `frontend/tests/...` (extend existing metadata-schema / query / migration suites)
 **Done when:** Tests assert (FR6) disabling or removing a field leaves sidecar values intact; (FR7) `query-evaluator` returns results for a field key that is hidden or removed but still has stored values; (FR8) the Task 3 migration preserves values and is idempotent; `pnpm test:ci` green.
 **Depends on:** 3, 7, 10
 **Estimate:** 3
+**Status:** ✅ Complete (2026-06-14) — Extended the three existing suites (per the task's "Files" guidance) rather than adding a new file. **FR6** (`tests/unit/metadata-schema.test.ts`): new "removeField — value preservation" case writes a realistic sidecar (values nested under `userMetadata`), removes the field from the schema, and asserts the schema entry is gone while the sidecar file is **byte-for-byte unchanged** — proving the non-destructive remove never touches stored data. (FR6's other half — *disabling* a feature preserves values — is already covered by Task 7's disable→enable cycle test and the migration suite.) **FR7** (`tests/unit/query-evaluator.test.ts`): new describe proving the evaluator is schema-agnostic — `EvaluationInput` carries only `resources`/`sidecars`/`context`, never a schema — so a `removedField` key absent from any schema but present in sidecars still matches via `eq` and resolves correctly under `ne`. **FR8** (`tests/unit/metadata-load-migration.test.ts`): new cross-cutting case drives the **public** `loadProjectFromDisk` twice (vs. the existing pure-`migrateProjectOnLoad` idempotency cases), asserting the two `project.json` snapshots are equal (idempotent at the load entry point), `metadataRevision === 1`, opt-ins seeded from data (timeline/pov/synopsis on, notes absent), and all sidecar values (incl. the `pov` resource-ref) survive the round trip. **Discovery logged:** `clearFieldFromSidecars` deletes top-level sidecar keys while user values nest under `userMetadata`, so the explicit destructive `clearField` path is effectively a no-op for user fields — it *over*-preserves (doesn't violate FR6) but is a latent correctness bug; deferred as out-of-scope for regression coverage (see `follow-up-work.md` 2026-06-14). Verified: the three suites 164/164 green; full `pnpm test:ci` 170/171 files (1919 passed, 1 skipped) — the only failures are the pre-existing `media-file-route` `ENOTEMPTY` teardown flake (passes in isolation) + the `revision-manager` worker-teardown flake; `pnpm typecheck` clean; changed files eslint-clean apart from the query-evaluator suite's pre-existing `any` test fixtures.
 
 ---
 

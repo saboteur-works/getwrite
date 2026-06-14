@@ -141,3 +141,42 @@ resource payload or add a small batch preview-fetch transport that
 `resource.plainText`. Keep the per-resource read on the **batch load**, never
 per card render. Then add an integration test that exercises `text-excerpt` end
 to end from disk.
+
+---
+
+## 2026-06-14 — `clearFieldFromSidecars` targets top-level keys, but user values nest under `userMetadata`
+
+**Discovered during:** Task 11 (regression coverage — FR6 value preservation).
+
+**What:** `clearField()` (`metadata-schema.ts`) is the *explicitly destructive*
+"remove field and delete its stored values" path. It calls
+`clearFieldFromSidecars(projectRoot, fieldKey)`, which for each sidecar does
+`if (!(fieldKey in sidecar)) continue;` then `delete sidecar[fieldKey]` — i.e.
+it operates on the **top level** of the sidecar object. But canonical sidecars
+nest user values under `userMetadata` (see `sidecarData` in
+`resource-persistence.ts`: `{ id, name, type, …, userMetadata: {…} }`), and the
+load/migration code reads `sidecar.userMetadata[key]`. So for any user metadata
+field key, `fieldKey in sidecar` is `false` and the delete is skipped — the
+"clear" never actually removes the value. (It would only ever delete a
+top-level structural key like `id`/`wordCount`, which it should never be asked
+to.)
+
+**Why it was deferred (not blocking, and out of scope for Task 11):** Task 11 is
+regression coverage, not a fix; the spec lists "Reinterpreting user data beyond
+preserving existing values" and behavior changes to unlocked fields as
+non-goals. Critically, this bug makes the system *more* preservation-safe, not
+less, so it does **not** violate FR6 ("MUST NOT silently delete stored data") —
+it over-preserves. FR6 is covered: `removeField` (the non-destructive remove)
+leaves sidecars byte-for-byte untouched (new test in `metadata-schema.test.ts`).
+
+**Risk if left:** A user invoking the schema editor's destructive "clear/delete
+values" action believes stored values are gone, but they remain on disk (and
+stay queryable via FR7). A later re-add of the same field key would surface the
+old values unexpectedly. Also a privacy/expectation gap if a user clears a field
+specifically to erase its contents.
+
+**Suggested fix:** In `clearFieldFromSidecars`, delete from the nested map:
+read `sidecar.userMetadata`, `delete userMetadata[fieldKey]` when present, write
+back (preserving the rest of the sidecar). Add a focused test asserting
+`clearField` removes `userMetadata[key]` while `removeField` does not. Verify no
+caller depends on the current (effectively no-op) behavior first.
