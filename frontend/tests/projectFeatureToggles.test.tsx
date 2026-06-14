@@ -1,0 +1,132 @@
+/**
+ * Component tests for the project feature-toggle section (Task 5).
+ *
+ * Covers: the four toggles reflect `config.features` (absent flag = off),
+ * toggling a feature dispatches `updateProjectFeatures` with the full merged
+ * map and updates the store, and the section renders nothing when no project is
+ * selected.
+ */
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { Provider } from "react-redux";
+import ProjectFeatureToggles from "../components/preferences/ProjectFeatureToggles";
+import { makeStore } from "../src/store/store";
+import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
+import type { ProjectFeatureFlags } from "../src/lib/models/types";
+
+function setup(features?: ProjectFeatureFlags) {
+  const store = makeStore();
+  const projectId = "test-project-id";
+  store.dispatch(
+    setProject({
+      id: projectId,
+      rootPath: "/test",
+      ...(features ? { features } : {}),
+    }),
+  );
+  store.dispatch(setSelectedProjectId(projectId));
+  const utils = render(
+    <Provider store={store}>
+      <ProjectFeatureToggles />
+    </Provider>,
+  );
+  return { store, projectId, ...utils };
+}
+
+function mockFeatureRoute(features: ProjectFeatureFlags) {
+  return vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(
+      new Response(JSON.stringify({ features, organizerCardBody: null }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+}
+
+describe("ProjectFeatureToggles", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("renders a checkbox for each of the four features", () => {
+    setup();
+    expect(
+      screen.getByRole("checkbox", { name: /timeline/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /point of view/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /synopsis/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /notes/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("treats an absent features block as all-off", () => {
+    setup();
+    for (const name of [/timeline/i, /point of view/i, /synopsis/i, /notes/i]) {
+      expect(screen.getByRole("checkbox", { name })).not.toBeChecked();
+    }
+  });
+
+  it("reflects the current enabled features", () => {
+    setup({ timeline: true, notes: true });
+    expect(screen.getByRole("checkbox", { name: /timeline/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /notes/i })).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: /point of view/i }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: /synopsis/i }),
+    ).not.toBeChecked();
+  });
+
+  it("dispatches the full merged feature map and updates the store when enabling a feature", async () => {
+    const { store } = setup({ timeline: true });
+    const fetchSpy = mockFeatureRoute({ timeline: true, synopsis: true });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /synopsis/i }));
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/project/features");
+    expect(JSON.parse(init.body as string)).toEqual({
+      projectPath: "/test",
+      features: { timeline: true, pov: false, synopsis: true, notes: false },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: /synopsis/i })).toBeChecked(),
+    );
+    expect(
+      store.getState().projects.projects["test-project-id"].features,
+    ).toEqual({ timeline: true, synopsis: true });
+  });
+
+  it("sends false for a feature being disabled", async () => {
+    setup({ timeline: true, pov: true });
+    const fetchSpy = mockFeatureRoute({ pov: true });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /timeline/i }));
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      projectPath: "/test",
+      features: { timeline: false, pov: true, synopsis: false, notes: false },
+    });
+  });
+
+  it("renders nothing when no project is selected", () => {
+    const store = makeStore();
+    const { container } = render(
+      <Provider store={store}>
+        <ProjectFeatureToggles />
+      </Provider>,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+});
