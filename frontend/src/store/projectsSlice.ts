@@ -96,6 +96,48 @@ export interface StoredProject {
 }
 
 /**
+ * Maps a loaded project (from the create/open flows) into the `StoredProject`
+ * shape held in this slice. Centralizing the mapping keeps those call sites
+ * from drifting — notably from silently dropping `features` /
+ * `organizerCardBody`, which previously made feature toggles fail to persist
+ * across a project reopen (the open flow rebuilt the project without them).
+ *
+ * @param project - Loaded project record (carries `config`).
+ * @param folders - Folder descriptors for the project.
+ * @param resources - Resource records reduced to {@link StoredProject}'s
+ *   minimal `ResourceMeta` shape.
+ * @returns The `StoredProject` to dispatch via `setProject`.
+ */
+export function buildStoredProject(
+  project: Project,
+  folders: Folder[],
+  resources: ReadonlyArray<{
+    id: string;
+    name?: string;
+    folderId?: string | null;
+    userMetadata?: Record<string, unknown>;
+  }>,
+): StoredProject {
+  return {
+    id: project.id,
+    name: project.name,
+    rootPath: project.rootPath ?? "",
+    folders,
+    resources: resources.map((r) => ({
+      id: r.id,
+      name: r.name ?? "",
+      folderId: r.folderId ?? null,
+      userMetadata: r.userMetadata ?? {},
+    })),
+    metadata: project.metadata,
+    statuses: project.config?.statuses ?? [],
+    metadataSchema: project.config?.metadataSchema,
+    features: project.config?.features,
+    organizerCardBody: project.config?.organizerCardBody,
+  };
+}
+
+/**
  * Root state shape managed by this slice.
  */
 export interface ProjectsState {

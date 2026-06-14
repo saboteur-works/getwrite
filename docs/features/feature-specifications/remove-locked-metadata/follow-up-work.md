@@ -5,6 +5,27 @@ notes why it was deferred and what a future implementer needs.
 
 ---
 
+## 2026-06-14 — FIXED: feature toggles did not persist across a project reopen
+
+**Symptom:** Toggling a feature on (Metadata Fields menu) updated the sidebar
+in-session, but reopening the project showed it off again.
+
+**Cause:** The write path was fine (`updateFeatureConfig` persists
+`config.features` to `project.json`). The bug was in the **load/open flow**:
+`app/page.tsx`'s `handleOpen`/`handleCreate` built the `StoredProject` payload
+for `setProject` by hand and **omitted `features`/`organizerCardBody`**. So even
+though `GET /api/projects` (`setProjects`) hydrated them, opening a project
+re-dispatched `setProject` with `features: undefined`, clobbering the persisted
+state.
+
+**Fix:** Extracted a single `buildStoredProject(project, folders, resources)`
+mapper in `projectsSlice.ts` (carries `features`/`organizerCardBody`/`statuses`/
+`metadataSchema` and reduces resources to `ResourceMeta`), and used it at both
+`page.tsx` call sites so the mapping can't drift again. Covered by
+`buildStoredProject` unit tests in `projects-slice-features.test.ts`.
+
+---
+
 ## 2026-06-14 — DECISION: split the Timeline *fields* toggle from the Timeline *view* toggle + disabled-tab tooltip
 
 **Context:** The single `features.timeline` flag did double duty — it gated both

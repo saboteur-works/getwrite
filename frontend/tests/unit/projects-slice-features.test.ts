@@ -19,7 +19,9 @@ import projectsReducer, {
   selectPovEnabled,
   selectSynopsisEnabled,
   selectNotesEnabled,
+  buildStoredProject,
 } from "../../src/store/projectsSlice";
+import type { Project } from "../../src/lib/models/types";
 
 function makeStore() {
   return configureStore({ reducer: { projects: projectsReducer } });
@@ -213,5 +215,73 @@ describe("projectsSlice — updateProjectOrganizerCardBody thunk", () => {
     expect(selectActiveProjectOrganizerCardBody(store.getState())).toEqual(
       body,
     );
+  });
+});
+
+describe("buildStoredProject", () => {
+  function makeProject(config?: Project["config"]): Project {
+    return {
+      id: "proj-1",
+      name: "Proj",
+      createdAt: "2024-01-01T00:00:00.000Z",
+      rootPath: "/tmp/proj-1",
+      ...(config ? { config } : {}),
+    };
+  }
+
+  it("carries features and organizerCardBody from project config (fixes reopen persistence)", () => {
+    const stored = buildStoredProject(
+      makeProject({
+        editorConfig: {},
+        features: { timeline: true, timelineView: true, notes: true },
+        organizerCardBody: { source: "text-excerpt", excerptLength: 100 },
+      }),
+      [],
+      [],
+    );
+    expect(stored.features).toEqual({
+      timeline: true,
+      timelineView: true,
+      notes: true,
+    });
+    expect(stored.organizerCardBody).toEqual({
+      source: "text-excerpt",
+      excerptLength: 100,
+    });
+  });
+
+  it("carries statuses and metadataSchema", () => {
+    const stored = buildStoredProject(
+      makeProject({
+        editorConfig: {},
+        statuses: ["draft", "done"],
+        metadataSchema: { groups: [] },
+      }),
+      [],
+      [],
+    );
+    expect(stored.statuses).toEqual(["draft", "done"]);
+    expect(stored.metadataSchema).toEqual({ groups: [] });
+  });
+
+  it("leaves features/organizerCardBody undefined for a project with no config", () => {
+    const stored = buildStoredProject(makeProject(), [], []);
+    expect(stored.features).toBeUndefined();
+    expect(stored.organizerCardBody).toBeUndefined();
+  });
+
+  it("maps resources to the minimal ResourceMeta shape with defaults", () => {
+    const stored = buildStoredProject(
+      makeProject({ editorConfig: {} }),
+      [],
+      [
+        { id: "r1", name: "Scene", folderId: "f1", userMetadata: { pov: "A" } },
+        { id: "r2" },
+      ],
+    );
+    expect(stored.resources).toEqual([
+      { id: "r1", name: "Scene", folderId: "f1", userMetadata: { pov: "A" } },
+      { id: "r2", name: "", folderId: null, userMetadata: {} },
+    ]);
   });
 });
