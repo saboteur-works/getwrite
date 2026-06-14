@@ -90,3 +90,79 @@ describe("ProjectConfigSchema — metadataRevision", () => {
     ).toThrow();
   });
 });
+
+describe("ProjectConfigSchema — feature flags", () => {
+  it("accepts a fully-specified feature flag map", () => {
+    const result = ProjectConfigSchema.parse({
+      features: { timeline: true, pov: false, synopsis: true, notes: false },
+    });
+    expect(result.features).toEqual({
+      timeline: true,
+      pov: false,
+      synopsis: true,
+      notes: false,
+    });
+  });
+
+  it("accepts a partial feature flag map", () => {
+    const result = ProjectConfigSchema.parse({ features: { timeline: true } });
+    expect(result.features).toEqual({ timeline: true });
+  });
+
+  it("accepts config without a feature flag map", () => {
+    expect(() => ProjectConfigSchema.parse({})).not.toThrow();
+  });
+
+  it("rejects a non-boolean feature flag", () => {
+    expect(() =>
+      ProjectConfigSchema.parse({ features: { timeline: "yes" } }),
+    ).toThrow();
+  });
+});
+
+describe("ProjectConfigSchema — organizer card body", () => {
+  it("accepts a text-excerpt source with a length cap", () => {
+    const result = ProjectConfigSchema.parse({
+      organizerCardBody: { source: "text-excerpt", excerptLength: 200 },
+    });
+    expect(result.organizerCardBody).toEqual({
+      source: "text-excerpt",
+      excerptLength: 200,
+    });
+  });
+
+  it("accepts a field source with a field key", () => {
+    const result = ProjectConfigSchema.parse({
+      organizerCardBody: { source: "field", fieldKey: "synopsis" },
+    });
+    expect(result.organizerCardBody?.source).toBe("field");
+    expect(result.organizerCardBody?.fieldKey).toBe("synopsis");
+  });
+
+  it("accepts a none source", () => {
+    const result = ProjectConfigSchema.parse({
+      organizerCardBody: { source: "none" },
+    });
+    expect(result.organizerCardBody?.source).toBe("none");
+  });
+
+  it("rejects an unknown source", () => {
+    expect(() =>
+      ProjectConfigSchema.parse({ organizerCardBody: { source: "bogus" } }),
+    ).toThrow();
+  });
+
+  it("rejects a missing source", () => {
+    expect(() =>
+      ProjectConfigSchema.parse({ organizerCardBody: { excerptLength: 100 } }),
+    ).toThrow();
+  });
+
+  it("rejects a non-positive excerptLength", () => {
+    expect(() =>
+      ProjectConfigSchema.parse({
+        organizerCardBody: { source: "text-excerpt", excerptLength: 0 },
+      }),
+    ).toThrow();
+  });
+});
