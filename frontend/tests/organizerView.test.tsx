@@ -10,8 +10,14 @@ import {
   setResources,
   setSelectedResourceId,
 } from "../src/store/resourcesSlice";
+import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
+import type {
+  OrganizerCardBodyConfig,
+  ProjectFeatureFlags,
+} from "../src/lib/models/types";
 
 const FOLDER_ID = "11111111-1111-4111-8111-111111111111";
+const PROJECT_ID = "22222222-2222-4222-8222-222222222222";
 
 const makeFolder = (
   id: string,
@@ -26,6 +32,46 @@ const makeFolder = (
   folderId: parentId,
   orderIndex: 0,
 });
+
+/**
+ * Build a store with the active project carrying a given card-body config and
+ * feature flags, plus one folder selected that contains a single dated text
+ * resource (text content + synopsis + notes) for body-source assertions.
+ */
+function makeStoreWithBodyConfig(
+  organizerCardBody: OrganizerCardBodyConfig | undefined,
+  features: ProjectFeatureFlags,
+) {
+  const store = makeStore();
+  store.dispatch(
+    setProject({
+      id: PROJECT_ID,
+      name: "Proj",
+      rootPath: "",
+      folders: [],
+      resources: [],
+      organizerCardBody,
+      features,
+    } as any),
+  );
+  store.dispatch(setSelectedProjectId(PROJECT_ID));
+  store.dispatch(setFolders([makeFolder(FOLDER_ID, "Folder A")] as any));
+  store.dispatch(
+    setResources([
+      createTextResource({
+        name: "Dated Scene",
+        plainText: "The quick brown fox jumps over the lazy dog.",
+        folderId: FOLDER_ID,
+        userMetadata: {
+          synopsis: "A pithy synopsis.",
+          notes: "A private authoring note.",
+        },
+      }),
+    ] as any),
+  );
+  store.dispatch(setSelectedResourceId(FOLDER_ID));
+  return store;
+}
 
 describe("OrganizerView", () => {
   it("shows direct children of the selected folder without requiring a click to expand", () => {
@@ -86,6 +132,66 @@ describe("OrganizerView", () => {
     );
 
     expect(screen.getByText(/This folder is empty/i)).toBeTruthy();
+  });
+
+  it("renders the configured metadata field as the card body (source: field)", () => {
+    const store = makeStoreWithBodyConfig(
+      { source: "field", fieldKey: "synopsis" },
+      {},
+    );
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={true} />
+      </Provider>,
+    );
+
+    expect(screen.getByText("A pithy synopsis.")).toBeTruthy();
+    // The legacy notes field must not leak through anymore.
+    expect(screen.queryByText(/private authoring note/i)).toBeNull();
+  });
+
+  it("renders a text excerpt as the card body (source: text-excerpt)", () => {
+    const store = makeStoreWithBodyConfig(
+      { source: "text-excerpt", excerptLength: 12 },
+      {},
+    );
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={true} />
+      </Provider>,
+    );
+
+    // "The quick brown fox..." capped at 12 chars + ellipsis.
+    expect(screen.getByText("The quick br…")).toBeTruthy();
+  });
+
+  it("renders no card body when source is none", () => {
+    const store = makeStoreWithBodyConfig({ source: "none" }, {});
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={true} />
+      </Provider>,
+    );
+
+    expect(screen.getByText("Dated Scene")).toBeTruthy();
+    expect(screen.queryByText("A pithy synopsis.")).toBeNull();
+    expect(screen.queryByText(/private authoring note/i)).toBeNull();
+    expect(screen.queryByText(/The quick brown/i)).toBeNull();
+  });
+
+  it("falls back to the Notes field when unconfigured and Notes is enabled", () => {
+    const store = makeStoreWithBodyConfig(undefined, { notes: true });
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={true} />
+      </Provider>,
+    );
+
+    expect(screen.getByText("A private authoring note.")).toBeTruthy();
   });
 
   it("calls onToggleBody when toggle button is clicked", () => {

@@ -95,3 +95,49 @@ the Notes **metadata field**, switch `TimelineView` to read
 `TooltipRow` to `TimelineTooltip.tsx` rendered only when `item.metadata?.notes`
 is present. If resource-level `notes` is genuinely intended, document that and
 decouple it from the Notes feature toggle. Either way, add a tooltip test.
+
+---
+
+## 2026-06-14 — Organizer `text-excerpt` card body has no live data pipeline
+
+**Discovered during:** Task 10 (Organizer card-body consumption).
+
+**What:** The Task 10 consumption layer is complete and tested: `OrganizerCard`
+now takes a resolved `body` prop, `OrganizerView` computes it via
+`resolveOrganizerCardBody(child, config, { notesEnabled })`, and the
+`text-excerpt` branch reads `resource.plainText` (the same field `previews.ts`
+slices) and truncates it to `excerptLength`. **However, store resources do not
+carry `plainText`.** The load path `getLocalResources()`
+(`resource-persistence.ts`, behind `GET /api/projects`) reads only the sidecar
+metadata and computes `wordCount` — it never attaches text content. And
+`previews.ts` (`generatePreview` / `loadPreview` / `previewPath`) has **zero
+callers**: no API route, no save-path generation, no store hydration. So in the
+live app, `text-excerpt` mode currently renders **nothing** (an empty body),
+even though the resolver, the card, and all three modes are unit/component
+tested with text present.
+
+**Why it was deferred (not blocking):** Task 10's "Done when" is satisfied by
+the consumption layer — body reflects the config (field / excerpt / none), no
+card reads `notes` directly, `showBody` still works, and component tests cover
+all three modes. The Task 10 note explicitly anticipated this gap ("text-excerpt
+mode needs resource text content, which the card does not currently receive;
+plumb a preview/excerpt (reuse `previews.ts`)"). Wiring the actual pipeline
+spans three layers — generate previews on the resource save path, a new
+read API + transport (or an excerpt field added to the project-list payload),
+and store hydration — and the project-list endpoint is a hot path, so an
+unconditional per-resource `content.txt` read there is exactly what the note
+warns against. That is its own task, larger than card consumption.
+
+**Risk if left:** A user who selects "Text excerpt" in project settings (Task 6
+UI) sees blank card bodies — the setting looks broken. `field` and `none` modes
+(and the Notes back-compat default) work fully.
+
+**Suggested fix:** Wire `previews.ts`: (1) call `generatePreview` on the text
+save path so `meta/previews/<id>.json` carries an `excerpt`; (2) surface that
+excerpt to the store — either fold a short `excerpt` into the `GET /api/projects`
+resource payload or add a small batch preview-fetch transport that
+`OrganizerView` calls for visible text resources; (3) source the
+`text-excerpt` branch from that excerpt instead of (or in addition to)
+`resource.plainText`. Keep the per-resource read on the **batch load**, never
+per card render. Then add an integration test that exercises `text-excerpt` end
+to end from disk.

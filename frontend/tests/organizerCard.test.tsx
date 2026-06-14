@@ -12,13 +12,16 @@ describe("OrganizerCard", () => {
     const res = createTextResource({
       name: "Test Resource",
       plainText,
-      userMetadata: {
-        status: "draft",
-        notes: "Placeholder content for Test Resource",
-      },
+      userMetadata: { status: "draft" },
     });
 
-    render(<OrganizerCard resource={res} showBody={true} />);
+    render(
+      <OrganizerCard
+        resource={res}
+        showBody={true}
+        body="Placeholder content for Test Resource"
+      />,
+    );
 
     expect(screen.getByText("Test Resource")).toBeTruthy();
     expect(screen.getByText(/text/i)).toBeTruthy();
@@ -31,16 +34,27 @@ describe("OrganizerCard", () => {
   });
 
   it("hides the body when showBody is false", () => {
-    const res = createTextResource({
-      name: "Hidden Body",
-      userMetadata: { notes: "Placeholder content for Hidden Body" },
-    } as any);
-    render(<OrganizerCard resource={res} showBody={false} />);
+    const res = createTextResource({ name: "Hidden Body" });
+    render(
+      <OrganizerCard
+        resource={res}
+        showBody={false}
+        body="Placeholder content for Hidden Body"
+      />,
+    );
 
     expect(screen.getByText("Hidden Body")).toBeTruthy();
     // body text should not be present
     expect(
       screen.queryByText(/Placeholder content for Hidden Body/i),
     ).toBeNull();
+  });
+
+  it("renders no body section when body is undefined", () => {
+    const res = createTextResource({ name: "No Body" });
+    render(<OrganizerCard resource={res} showBody={true} />);
+
+    expect(screen.getByText("No Body")).toBeTruthy();
+    expect(screen.queryByText(/No notes available/i)).toBeNull();
   });
 });

@@ -7,10 +7,15 @@ import {
   selectResources,
   setSelectedResourceId,
 } from "../../../../src/store/resourcesSlice";
-import { selectActiveProjectStatuses } from "../../../../src/store/projectsSlice";
+import {
+  selectActiveProjectStatuses,
+  selectActiveProjectOrganizerCardBody,
+  selectNotesEnabled,
+} from "../../../../src/store/projectsSlice";
 import { Eye, EyeClosed } from "lucide-react";
 import { shallowEqual } from "react-redux";
 import Button from "../../../common/UI/Button";
+import { resolveOrganizerCardBody } from "./cardBody";
 
 export interface OrganizerViewProps {
   /** Whether to show the body/content of each resource */
@@ -45,6 +50,10 @@ export default function OrganizerView({
   );
   const defaultStatus =
     useAppSelector((s) => selectActiveProjectStatuses(s))[0] ?? "";
+  // Card body source is project-configured (field / text-excerpt / none); the
+  // Notes flag only drives the back-compat default when no config is set.
+  const cardBodyConfig = useAppSelector(selectActiveProjectOrganizerCardBody);
+  const notesEnabled = useAppSelector(selectNotesEnabled);
 
   const [showBodyState, setShowBodyState] = React.useState(showBody);
 
@@ -110,6 +119,9 @@ export default function OrganizerView({
               key={child.id}
               resource={child}
               showBody={showBodyState}
+              body={resolveOrganizerCardBody(child, cardBodyConfig, {
+                notesEnabled,
+              })}
               defaultStatus={defaultStatus}
               onOpen={() => handleOpen(child.id)}
             />
