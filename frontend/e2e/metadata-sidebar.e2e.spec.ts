@@ -141,7 +141,7 @@ test("collapse: clicking story timeline header hides all three timeline inputs",
     page.getByLabel("end-date-override-toggle", { exact: true }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: /story timeline/i }).click();
+  await page.getByRole("button", { name: /timeline/i }).click();
 
   await expect(
     page.getByLabel("story-date-input", { exact: true }),

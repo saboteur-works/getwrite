@@ -7,6 +7,12 @@ notes why it was deferred and what a future implementer needs.
 
 ## 2026-06-13 — `normalizeProjectConfig` drops `config.features` / `config.organizerCardBody`
 
+**✅ Resolved (2026-06-14):** `normalizeProjectConfig` now carries through
+`features: config?.features` and `organizerCardBody: config?.organizerCardBody`.
+Covered by a new `normalizeProjectConfig` describe in `tests/unit/project.test.ts`
+(carries the keys through; leaves them `undefined` when no config is given).
+`pnpm typecheck` clean; full suite green.
+
 **Discovered during:** Task 4 (Config transport + slice wiring).
 
 **What:** `frontend/src/lib/models/project.ts` → `normalizeProjectConfig()`
@@ -38,6 +44,13 @@ tests afterward.
 ---
 
 ## 2026-06-13 — Stale e2e matcher `/story timeline/i` after the Task 2 group rename
+
+**✅ Resolved (2026-06-14):** The matcher at
+`frontend/e2e/metadata-sidebar.e2e.spec.ts` ~L144 is now `/timeline/i`, matching
+the rendered "Timeline" header and the sibling assertion at ~L180. Not verified
+by an e2e run (Playwright needs Storybook on :6006 and is outside `pnpm test:ci`),
+but it is a direct correction to the renamed label; run `pnpm test:e2e` next time
+Storybook is up to confirm the sidebar e2e is green end to end.
 
 **Discovered during:** Task 7 (Sidebar conditional rendering).
 
@@ -144,39 +157,61 @@ to end from disk.
 
 ---
 
-## 2026-06-14 — `clearFieldFromSidecars` targets top-level keys, but user values nest under `userMetadata`
+## 2026-06-14 — System-wide flat-vs-nested sidecar representation inconsistency in the schema-value-migration subsystem
 
-**Discovered during:** Task 11 (regression coverage — FR6 value preservation).
+**Discovered during:** Task 11 (regression coverage — FR6), and confirmed while
+attempting the localized fix during the follow-up pass.
 
-**What:** `clearField()` (`metadata-schema.ts`) is the *explicitly destructive*
-"remove field and delete its stored values" path. It calls
-`clearFieldFromSidecars(projectRoot, fieldKey)`, which for each sidecar does
-`if (!(fieldKey in sidecar)) continue;` then `delete sidecar[fieldKey]` — i.e.
-it operates on the **top level** of the sidecar object. But canonical sidecars
-nest user values under `userMetadata` (see `sidecarData` in
-`resource-persistence.ts`: `{ id, name, type, …, userMetadata: {…} }`), and the
-load/migration code reads `sidecar.userMetadata[key]`. So for any user metadata
-field key, `fieldKey in sidecar` is `false` and the delete is skipped — the
-"clear" never actually removes the value. (It would only ever delete a
-top-level structural key like `id`/`wordCount`, which it should never be asked
-to.)
+**What:** There are two competing on-disk sidecar representations for user
+metadata values:
 
-**Why it was deferred (not blocking, and out of scope for Task 11):** Task 11 is
-regression coverage, not a fix; the spec lists "Reinterpreting user data beyond
-preserving existing values" and behavior changes to unlocked fields as
-non-goals. Critically, this bug makes the system *more* preservation-safe, not
-less, so it does **not** violate FR6 ("MUST NOT silently delete stored data") —
-it over-preserves. FR6 is covered: `removeField` (the non-destructive remove)
-leaves sidecars byte-for-byte untouched (new test in `metadata-schema.test.ts`).
+- **Nested (canonical writer):** `saveResource` in `resource-persistence.ts`
+  writes `{ id, name, type, …, userMetadata: { <fieldKey>: <value> } }`. The
+  load path (`getLocalResources`, `loadProjectFromDisk`) and the Task 3
+  migration both read `sidecar.userMetadata[key]`.
+- **Flat (schema-value-migration + field-values):** every value-migrating helper
+  in `metadata-schema.ts` operates on the **top level** of the sidecar —
+  `fieldKey in sidecar` / `sidecar[fieldKey]`. This includes
+  `clearFieldFromSidecars` (clear-field), `migrateFieldKeyInSidecars`
+  (rename-key), `changeFieldTypeWithMigration`, and
+  `updateFieldOptionsWithMigration`. `field-values.ts` `enumerateFieldValues`
+  likewise reads top-level keys (though it takes sidecars as a parameter, so the
+  query route can hand it a flattened view).
 
-**Risk if left:** A user invoking the schema editor's destructive "clear/delete
-values" action believes stored values are gone, but they remain on disk (and
-stay queryable via FR7). A later re-add of the same field key would surface the
-old values unexpectedly. Also a privacy/expectation gap if a user clears a field
-specifically to erase its contents.
+If real on-disk sidecars are nested (as the canonical writer produces), then the
+**entire flat subsystem operates on the wrong level** — clear-field never
+clears, rename-key never migrates stored values, change-type never converts
+them, etc. — and this is masked because the whole `metadata-schema-migration`
+test suite writes **flat** fixtures (`writeSidecar(dir, id, { tone: "…" })`)
+rather than the nested shape `saveResource` actually persists.
 
-**Suggested fix:** In `clearFieldFromSidecars`, delete from the nested map:
-read `sidecar.userMetadata`, `delete userMetadata[fieldKey]` when present, write
-back (preserving the rest of the sidecar). Add a focused test asserting
-`clearField` removes `userMetadata[key]` while `removeField` does not. Verify no
-caller depends on the current (effectively no-op) behavior first.
+**Status of the attempted fix (reverted):** A localized patch to
+`clearFieldFromSidecars` (delete from `sidecar.userMetadata` instead of the top
+level) was implemented and then **reverted**, because (a) it broke the existing
+flat-fixture tests in `metadata-schema-migration.test.ts`, and (b) it would
+leave `clearField` inconsistent with its sibling migrators, which all still
+operate flat. Fixing one function in isolation is wrong; this needs to be
+reconciled across the whole subsystem at once.
+
+**Why it was deferred (not blocking for this feature):** The spec lists
+"Reinterpreting user data beyond preserving existing values" as a non-goal, and
+the bug is *preservation-safe* (it over-preserves — values are never silently
+deleted), so it does **not** violate FR6. FR6 is covered: `removeField` (the
+non-destructive remove) leaves sidecars byte-for-byte untouched (test in
+`metadata-schema.test.ts`).
+
+**Risk if left:** Destructive/transform schema-editor actions (clear values,
+rename key, change type, edit options) may silently no-op against
+canonically-written (nested) sidecars — values the user expects cleared remain
+on disk; renamed/retyped fields keep their old stored values under the old key.
+A privacy/expectation gap for "clear values" specifically.
+
+**Suggested fix (its own task, not a quick patch):** First establish the ground
+truth — confirm what the live metadata-edit path actually writes to disk (nested
+vs flat) by inspecting an on-disk sidecar from a real project, since the sidebar
+edit path may differ from `saveResource`. Then reconcile **all** value-migrating
+helpers (`clearFieldFromSidecars`, `migrateFieldKeyInSidecars`,
+`changeFieldTypeWithMigration`, `updateFieldOptionsWithMigration`) and
+`field-values` to a single representation, and rewrite the
+`metadata-schema-migration` fixtures to the canonical shape. Treat as a focused
+data-layer correctness task with full migration-suite re-verification.
