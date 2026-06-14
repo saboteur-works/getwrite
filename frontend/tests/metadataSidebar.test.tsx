@@ -243,7 +243,7 @@ describe("MetadataSidebar", () => {
       screen.getByRole("button", { name: /document/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /story timeline/i }),
+      screen.getByRole("button", { name: /timeline/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /tags/i })).toBeInTheDocument();
   });
@@ -287,7 +287,7 @@ describe("MetadataSidebar", () => {
     expect(screen.getByLabelText("notes")).toBeInTheDocument();
   });
 
-  it("collapses story timeline and hides all three inputs", () => {
+  it("collapses the Timeline section and hides all three inputs", () => {
     const res = createTextResource({
       name: "Scene",
       plainText: "",
@@ -303,7 +303,7 @@ describe("MetadataSidebar", () => {
     );
 
     expect(screen.getByLabelText("story-date-input")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /story timeline/i }));
+    fireEvent.click(screen.getByRole("button", { name: /timeline/i }));
     expect(screen.queryByLabelText("story-date-input")).not.toBeInTheDocument();
     expect(
       screen.queryByLabelText("story-duration-quantity"),

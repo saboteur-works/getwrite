@@ -154,7 +154,7 @@ test("collapse: clicking story timeline header hides all three timeline inputs",
   ).not.toBeAttached();
 });
 
-test("collapse: Document and Story Timeline sections collapse independently", async ({
+test("collapse: Document and Timeline sections collapse independently", async ({
   page,
 }) => {
   await page.goto(
@@ -165,21 +165,19 @@ test("collapse: Document and Story Timeline sections collapse independently", as
   await page.getByRole("button", { name: /document/i }).click();
   await expect(page.getByLabel("synopsis")).not.toBeAttached();
 
-  // Story Timeline should still be visible
+  // Timeline should still be visible
   await expect(
     page.getByLabel("story-date-input", { exact: true }),
   ).toBeVisible();
 });
 
-test("all-expanded story shows Document and Story Timeline section headers", async ({
+test("all-expanded story shows Document and Timeline section headers", async ({
   page,
 }) => {
   await page.goto("/iframe.html?id=sidebar-metadatasidebar--all-expanded");
 
   await expect(page.getByRole("button", { name: /document/i })).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /story timeline/i }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /timeline/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /tags/i })).toBeVisible();
   await expect(page.getByLabel("synopsis")).toBeVisible();
 });

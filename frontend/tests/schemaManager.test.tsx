@@ -147,11 +147,17 @@ describe("SchemaManager — rendering", () => {
 // ---------------------------------------------------------------------------
 
 describe("SchemaManager — locked fields", () => {
-  it("locked fields have no delete button", () => {
+  it("locked fields have no remove button", () => {
     setup(DEFAULT_METADATA_SCHEMA);
-    // synopsis is a locked built-in field — no delete button should exist for it
-    expect(screen.queryByLabelText("Delete Synopsis")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Delete Notes")).not.toBeInTheDocument();
+    // status is the only remaining locked built-in field — no remove button for it
+    expect(screen.queryByLabelText("Remove Status")).not.toBeInTheDocument();
+  });
+
+  it("unlocked built-in fields have a remove button", () => {
+    setup(DEFAULT_METADATA_SCHEMA);
+    // synopsis and notes are no longer locked, so they can be removed
+    expect(screen.getByLabelText("Remove Synopsis")).toBeInTheDocument();
+    expect(screen.getByLabelText("Remove Notes")).toBeInTheDocument();
   });
 
   it("locked fields show a built-in badge", () => {
@@ -651,12 +657,17 @@ describe("SchemaManager — field key rename", () => {
 
   it("locked fields do not show a 'rename key' button", () => {
     setup(DEFAULT_METADATA_SCHEMA);
+    // status remains the only locked built-in field
     expect(
-      screen.queryByLabelText("Rename key of Synopsis"),
+      screen.queryByLabelText("Rename key of Status"),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText("Rename key of Notes"),
-    ).not.toBeInTheDocument();
+  });
+
+  it("unlocked built-in fields show a 'rename key' button", () => {
+    setup(DEFAULT_METADATA_SCHEMA);
+    // synopsis and notes are no longer locked
+    expect(screen.getByLabelText("Rename key of Synopsis")).toBeInTheDocument();
+    expect(screen.getByLabelText("Rename key of Notes")).toBeInTheDocument();
   });
 
   it("clicking rename key enters key edit mode", () => {
