@@ -41,12 +41,15 @@ tab is disabled there was no explanation of why or how to enable it.
    `features.timelineView` flag gates **the Timeline view/tab**, toggled from a
    new "Timeline view" section in **User Preferences**. Fields-on/view-off is the
    primary use case (date metadata without the chronology view). The view
-   *depends on* the fields, so the `TimelineViewToggle` **also enables
-   `timeline` when you enable the view** (no-op if already on) — preventing a
-   "view on, no data fields" state — and shows a tooltip hint to that effect
-   while the fields are off. AppShell's tab/view gating moved from
-   `selectTimelineEnabled` → `selectTimelineViewEnabled`; the sidebar fields
-   stay on `selectTimelineEnabled`.
+   *depends on* the fields, so the two toggles are kept consistent in both
+   directions: enabling the view (`TimelineViewToggle`) **also enables
+   `timeline`** (no-op if already on), and disabling the fields
+   (`ProjectFeatureToggles`) **also disables `timelineView`** — so there is never
+   a "view on, no data fields" state. Each toggle shows a tooltip hint when its
+   action would flip the other (view-toggle while fields off; field-toggle while
+   view on). AppShell's tab/view gating moved from `selectTimelineEnabled` →
+   `selectTimelineViewEnabled`; the sidebar fields stay on
+   `selectTimelineEnabled`.
 
    *Migration:* `timelineView` is seeded from story-data presence (same as the
    fields) for fresh projects, **and backfilled to `true` for existing projects

@@ -136,6 +136,51 @@ describe("ProjectFeatureToggles", () => {
     });
   });
 
+  it("also turns the Timeline view off when disabling the timeline fields", async () => {
+    setup({ timeline: true, timelineView: true });
+    const fetchSpy = mockFeatureRoute({ timeline: false, timelineView: false });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /timeline/i }));
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string).features).toEqual({
+      timeline: false,
+      timelineView: false,
+    });
+  });
+
+  it("does not touch timelineView when disabling the fields with the view already off", async () => {
+    setup({ timeline: true });
+    const fetchSpy = mockFeatureRoute({ timeline: false });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /timeline/i }));
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string).features).toEqual({
+      timeline: false,
+    });
+  });
+
+  it("warns via tooltip only when disabling the fields would also disable the view", () => {
+    const { unmount } = setup({ timeline: true, timelineView: true });
+    const warned = screen
+      .getByRole("checkbox", { name: /timeline/i })
+      .closest("[data-tooltip-content]");
+    expect(warned).not.toBeNull();
+    expect(warned?.getAttribute("data-tooltip-content")).toMatch(/view/i);
+    unmount();
+
+    // View off → disabling the fields harms nothing → no warning.
+    setup({ timeline: true });
+    expect(
+      screen
+        .getByRole("checkbox", { name: /timeline/i })
+        .closest("[data-tooltip-content]"),
+    ).toBeNull();
+  });
+
   it("renders nothing when no project is selected", () => {
     const store = makeStore();
     const { container } = render(

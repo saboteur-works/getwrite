@@ -12,6 +12,7 @@
  * only hides its field — stored values are preserved.
  */
 
+import { Tooltip } from "react-tooltip";
 import { useAppDispatch } from "../../src/store/hooks";
 import useAppSelector from "../../src/store/hooks";
 import {
@@ -20,6 +21,10 @@ import {
   updateProjectFeatures,
 } from "../../src/store/projectsSlice";
 import type { ProjectFeatureFlags } from "../../src/lib/models/types";
+import { TOOLTIP_STYLE } from "../common/UI/tooltipStyle";
+
+/** react-tooltip anchor id for the "view depends on these fields" hint. */
+const FEATURE_TOOLTIP_ID = "feature-toggle-tip";
 
 /** Display definition for a single feature toggle. */
 interface FeatureToggleDef {
@@ -73,6 +78,13 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
     return null;
   }
 
+  // Turning the timeline date fields off would strand the Timeline view (which
+  // reads them), so it cascades the view off too. Warn while that would happen.
+  const timelineWarning =
+    features.timeline === true && features.timelineView === true
+      ? "The Timeline view reads these fields — turning them off also turns the view off."
+      : undefined;
+
   /**
    * Persists a single feature change by sending the full, merged feature map
    * (the route replaces the `features` block wholesale).
@@ -84,10 +96,16 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
     key: keyof ProjectFeatureFlags,
     next: boolean,
   ): void => {
+    const updated: ProjectFeatureFlags = { ...features, [key]: next };
+    // The Timeline view depends on the date fields; disabling the fields takes
+    // the view with them (no-op when the view is already off).
+    if (key === "timeline" && !next && features.timelineView === true) {
+      updated.timelineView = false;
+    }
     void dispatch(
       updateProjectFeatures({
         projectId: selectedProjectId,
-        features: { ...features, [key]: next },
+        features: updated,
       }),
     );
   };
@@ -104,25 +122,40 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
       </p>
 
       <div className="mt-4 flex flex-col gap-4">
-        {FEATURE_TOGGLES.map(({ key, label, description }) => (
-          <div key={key}>
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={features[key] === true}
-                onChange={(event) => handleToggle(key, event.target.checked)}
-                className="h-4 w-4 rounded border-gw-border"
-              />
-              <span className="text-sm font-medium text-gw-primary">
-                {label}
-              </span>
-            </label>
-            <p className="ml-6 mt-0.5 text-xs text-gw-secondary">
-              {description}
-            </p>
-          </div>
-        ))}
+        {FEATURE_TOGGLES.map(({ key, label, description }) => {
+          const tooltip = key === "timeline" ? timelineWarning : undefined;
+          return (
+            <div key={key}>
+              <label
+                className="inline-flex items-center gap-2"
+                {...(tooltip
+                  ? {
+                      "data-tooltip-id": FEATURE_TOOLTIP_ID,
+                      "data-tooltip-content": tooltip,
+                    }
+                  : {})}
+              >
+                <input
+                  type="checkbox"
+                  checked={features[key] === true}
+                  onChange={(event) => handleToggle(key, event.target.checked)}
+                  className="h-4 w-4 rounded border-gw-border"
+                />
+                <span className="text-sm font-medium text-gw-primary">
+                  {label}
+                </span>
+              </label>
+              <p className="ml-6 mt-0.5 text-xs text-gw-secondary">
+                {description}
+              </p>
+            </div>
+          );
+        })}
       </div>
+
+      {timelineWarning && (
+        <Tooltip id={FEATURE_TOOLTIP_ID} place="top" style={TOOLTIP_STYLE} />
+      )}
     </section>
   );
 }
