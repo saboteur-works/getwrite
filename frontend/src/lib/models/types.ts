@@ -48,8 +48,14 @@ export type EditorBodyConfig = {
  * features. An absent flag is treated as disabled.
  */
 export interface ProjectFeatureFlags {
-  /** Activates the story-timeline fields (`storyDate`/`storyDuration`/`storyEndDate`) and the Timeline View. */
+  /** Activates the story-timeline metadata fields (`storyDate`/`storyDuration`/`storyEndDate`) in the sidebar. */
   timeline?: boolean;
+  /**
+   * Activates the Timeline view/tab. Independent of {@link ProjectFeatureFlags.timeline}
+   * (the date fields the view reads): a project can keep the fields without the
+   * view, or vice versa.
+   */
+  timelineView?: boolean;
   /** Activates the Point of View (`pov`) metadata field. */
   pov?: boolean;
   /** Activates the Synopsis (`synopsis`) metadata field. */

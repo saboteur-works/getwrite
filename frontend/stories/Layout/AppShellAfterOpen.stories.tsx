@@ -193,8 +193,14 @@ function AppShellAfterOpenStory(): JSX.Element {
           userMetadata: r.userMetadata ?? {},
         })),
         // Enable all opt-in features so this demo shell renders the full UI
-        // (Timeline tab, sidebar controls) under the default-off feature gating.
-        features: { timeline: true, pov: true, synopsis: true, notes: true },
+        // (Timeline tab + view, sidebar controls) under the default-off gating.
+        features: {
+          timeline: true,
+          timelineView: true,
+          pov: true,
+          synopsis: true,
+          notes: true,
+        },
       }),
     );
     dispatch(setSelectedProjectId(seededProject.id));

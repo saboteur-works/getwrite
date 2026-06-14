@@ -95,7 +95,7 @@ describe("ProjectFeatureToggles", () => {
     expect(url).toBe("/api/project/features");
     expect(JSON.parse(init.body as string)).toEqual({
       projectPath: "/test",
-      features: { timeline: true, pov: false, synopsis: true, notes: false },
+      features: { timeline: true, synopsis: true },
     });
 
     await waitFor(() =>
@@ -116,7 +116,23 @@ describe("ProjectFeatureToggles", () => {
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({
       projectPath: "/test",
-      features: { timeline: false, pov: true, synopsis: false, notes: false },
+      features: { timeline: false, pov: true },
+    });
+  });
+
+  it("preserves the separate timelineView flag when toggling a metadata feature", async () => {
+    // The metadata toggles must not clobber the view flag, since the route
+    // replaces the features block wholesale.
+    setup({ timelineView: true });
+    const fetchSpy = mockFeatureRoute({ timelineView: true, notes: true });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /notes/i }));
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string).features).toEqual({
+      timelineView: true,
+      notes: true,
     });
   });
 

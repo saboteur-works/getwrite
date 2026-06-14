@@ -16,10 +16,7 @@ import { useAppDispatch } from "../../src/store/hooks";
 import useAppSelector from "../../src/store/hooks";
 import {
   selectSelectedProjectId,
-  selectTimelineEnabled,
-  selectPovEnabled,
-  selectSynopsisEnabled,
-  selectNotesEnabled,
+  selectActiveProjectFeatures,
   updateProjectFeatures,
 } from "../../src/store/projectsSlice";
 import type { ProjectFeatureFlags } from "../../src/lib/models/types";
@@ -39,7 +36,7 @@ const FEATURE_TOGGLES: readonly FeatureToggleDef[] = [
     key: "timeline",
     label: "Timeline",
     description:
-      "Story date, duration, and end-date fields plus the Timeline view.",
+      "Story date, duration, and end-date fields in the sidebar. (The Timeline view itself is toggled in User Preferences.)",
   },
   {
     key: "pov",
@@ -67,12 +64,10 @@ const FEATURE_TOGGLES: readonly FeatureToggleDef[] = [
 export default function ProjectFeatureToggles(): JSX.Element | null {
   const dispatch = useAppDispatch();
   const selectedProjectId = useAppSelector(selectSelectedProjectId);
-  const enabled: ProjectFeatureFlags = {
-    timeline: useAppSelector(selectTimelineEnabled),
-    pov: useAppSelector(selectPovEnabled),
-    synopsis: useAppSelector(selectSynopsisEnabled),
-    notes: useAppSelector(selectNotesEnabled),
-  };
+  // Merge changes onto the full current map so unrelated flags (e.g. the
+  // separate `timelineView`) are preserved — the route replaces the `features`
+  // block wholesale.
+  const features = useAppSelector(selectActiveProjectFeatures);
 
   if (!selectedProjectId) {
     return null;
@@ -92,7 +87,7 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
     void dispatch(
       updateProjectFeatures({
         projectId: selectedProjectId,
-        features: { ...enabled, [key]: next },
+        features: { ...features, [key]: next },
       }),
     );
   };
@@ -114,7 +109,7 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
             <label className="inline-flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={enabled[key] ?? false}
+                checked={features[key] === true}
                 onChange={(event) => handleToggle(key, event.target.checked)}
                 className="h-4 w-4 rounded border-gw-border"
               />

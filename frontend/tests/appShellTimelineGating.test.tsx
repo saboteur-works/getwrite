@@ -83,8 +83,8 @@ describe("AppShell — Timeline view gating (Task 8)", () => {
     vi.clearAllMocks();
   });
 
-  it("enables the Timeline tab and mounts TimelineView when the feature is on", () => {
-    renderShell({ timeline: true });
+  it("enables the Timeline tab and mounts TimelineView when the view is on", () => {
+    renderShell({ timelineView: true });
 
     const timelineTab = screen.getByRole("tab", { name: /Timeline/i });
     expect(timelineTab).not.toBeDisabled();
@@ -94,8 +94,8 @@ describe("AppShell — Timeline view gating (Task 8)", () => {
     expect(screen.getByText(/no dated scenes/i)).toBeInTheDocument();
   });
 
-  it("disables the Timeline tab and never mounts TimelineView when the feature is off", () => {
-    renderShell({ timeline: false });
+  it("disables the Timeline tab and never mounts TimelineView when the view is off", () => {
+    renderShell({ timelineView: false });
 
     const timelineTab = screen.getByRole("tab", { name: /Timeline/i });
     expect(timelineTab).toBeDisabled();
@@ -105,8 +105,18 @@ describe("AppShell — Timeline view gating (Task 8)", () => {
     expect(screen.queryByText(/no dated scenes/i)).not.toBeInTheDocument();
   });
 
-  it("treats an absent timeline flag as disabled", () => {
+  it("treats an absent timelineView flag as disabled", () => {
     renderShell({});
+
+    const timelineTab = screen.getByRole("tab", { name: /Timeline/i });
+    expect(timelineTab).toBeDisabled();
+    expect(screen.queryByText(/no dated scenes/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps the Timeline tab disabled when only the date fields are enabled (timeline without timelineView)", () => {
+    // The field toggle and the view toggle are independent: having the metadata
+    // fields on must NOT enable the view.
+    renderShell({ timeline: true });
 
     const timelineTab = screen.getByRole("tab", { name: /Timeline/i });
     expect(timelineTab).toBeDisabled();

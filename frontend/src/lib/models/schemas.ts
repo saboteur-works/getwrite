@@ -192,8 +192,10 @@ export const MetadataSchemaSchema = z.object({
  * features. An absent flag is treated as disabled.
  */
 export const ProjectFeatureFlagsSchema = z.object({
-  /** Activates the story-timeline fields and the Timeline View. */
+  /** Activates the story-timeline metadata fields in the sidebar. */
   timeline: z.boolean().optional(),
+  /** Activates the Timeline view/tab (independent of the date fields). */
+  timelineView: z.boolean().optional(),
   /** Activates the Point of View metadata field. */
   pov: z.boolean().optional(),
   /** Activates the Synopsis metadata field. */

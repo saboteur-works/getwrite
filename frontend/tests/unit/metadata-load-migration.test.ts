@@ -377,6 +377,67 @@ describe("migrateProjectOnLoad — idempotency", () => {
   });
 });
 
+// ─── timeline fields/view split (seed + backfill) ─────────────────────────────
+
+describe("migrateProjectOnLoad — timeline view split", () => {
+  it("seeds timelineView from story data alongside the timeline fields", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: oldLockedSchema(),
+    });
+    await writeSidecarFile(dir, generateUUID(), {
+      userMetadata: { storyDate: "2024-04-05" },
+    });
+    await migrateProjectOnLoad(dir);
+    const features = (await readConfig(dir)).features!;
+    expect(features.timeline).toBe(true);
+    expect(features.timelineView).toBe(true);
+  });
+
+  it("backfills timelineView=true for an existing timeline-on project (pre-split)", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: migratedSchema(),
+      features: { timeline: true },
+    });
+    await migrateProjectOnLoad(dir);
+    expect((await readConfig(dir)).features?.timelineView).toBe(true);
+  });
+
+  it("does not backfill timelineView when the timeline fields are off", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: migratedSchema(),
+      features: { synopsis: true },
+    });
+    await migrateProjectOnLoad(dir);
+    expect((await readConfig(dir)).features?.timelineView).toBeUndefined();
+  });
+
+  it("never overrides an explicitly-disabled timelineView", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: migratedSchema(),
+      features: { timeline: true, timelineView: false },
+    });
+    await migrateProjectOnLoad(dir);
+    expect((await readConfig(dir)).features?.timelineView).toBe(false);
+  });
+
+  it("is idempotent: a second load makes no further changes after the backfill", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: migratedSchema(),
+      features: { timeline: true },
+    });
+    await migrateProjectOnLoad(dir);
+    const snap1 = await readProjectRaw(dir);
+    await migrateProjectOnLoad(dir);
+    const snap2 = await readProjectRaw(dir);
+    expect(snap2).toEqual(snap1);
+  });
+});
+
 // ─── loadProjectFromDisk integration ──────────────────────────────────────────
 
 describe("loadProjectFromDisk runs the load-time migration", () => {

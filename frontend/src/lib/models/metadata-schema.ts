@@ -134,6 +134,9 @@ const STORY_TIMELINE_GROUP_LABEL = "Timeline";
 const FEATURE_FIELD_KEYS: Record<keyof ProjectFeatureFlags, readonly string[]> =
   {
     timeline: ["storyDate", "storyDuration", "storyEndDate"],
+    // The view is seeded from the same story data as the fields, preserving the
+    // pre-split behavior where stored timeline data lit up both.
+    timelineView: ["storyDate", "storyDuration", "storyEndDate"],
     pov: ["pov"],
     synopsis: ["synopsis"],
     notes: ["notes"],
@@ -306,6 +309,19 @@ export async function migrateProjectOnLoad(
 
     if (project.config.features === undefined && seeded !== undefined) {
       project.config.features = seeded;
+      changed = true;
+    }
+
+    // Backfill the view flag for projects migrated before the timeline fields
+    // and the Timeline view were split into separate toggles. The old `timeline`
+    // flag gated both, so a project that had it on keeps its view. Runs once — a
+    // already-defined `timelineView` is never overwritten.
+    if (
+      project.config.features !== undefined &&
+      project.config.features.timelineView === undefined &&
+      project.config.features.timeline === true
+    ) {
+      project.config.features.timelineView = true;
       changed = true;
     }
 

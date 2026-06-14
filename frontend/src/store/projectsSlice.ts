@@ -950,9 +950,13 @@ export const selectIsFeatureEnabled = (
   return selectActiveProjectFeatures(state)[feature] === true;
 };
 
-/** Whether the story-timeline feature is enabled for the active project. */
+/** Whether the story-timeline metadata fields are enabled for the active project. */
 export const selectTimelineEnabled = (state: any): boolean =>
   selectIsFeatureEnabled(state, "timeline");
+
+/** Whether the Timeline view/tab is enabled for the active project (independent of the date fields). */
+export const selectTimelineViewEnabled = (state: any): boolean =>
+  selectIsFeatureEnabled(state, "timelineView");
 
 /** Whether the POV feature is enabled for the active project. */
 export const selectPovEnabled = (state: any): boolean =>
