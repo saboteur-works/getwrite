@@ -27,6 +27,7 @@ import {
   removeResource,
   selectActiveProjectMetadataSchema,
   selectActiveProjectStatuses,
+  selectTimelineEnabled,
 } from "../../src/store/projectsSlice";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import ResourceTree from "../ResourceTree/ResourceTree";
@@ -319,6 +320,7 @@ export default function AppShell({
   const activeQueryIds = useAppSelector(selectActiveQueryIds);
   const isQueryEvaluating = useAppSelector(selectIsEvaluating);
   const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
+  const timelineEnabled = useAppSelector(selectTimelineEnabled);
   const savedQueriesList = useAppSelector(selectSavedQueriesList);
   const liveEditorConfig = useAppSelector(selectEditorConfig);
   const resolvedEditorConfig = useAppSelector(selectResolvedEditorConfig);
@@ -387,6 +389,16 @@ export default function AppShell({
       setQueryBuilderOpen(false);
     }
   }, [selectedResource?.id, selectedResource?.type]);
+
+  // When the Timeline feature is turned off, never strand the user on the (now
+  // hidden) Timeline view — fall back to a sensible default for the selection.
+  useEffect(() => {
+    if (timelineEnabled) return;
+    setView((current) => {
+      if (current !== "timeline") return current;
+      return selectedResource?.type === "folder" ? "organizer" : "edit";
+    });
+  }, [timelineEnabled, selectedResource?.type]);
 
   const isSavingRevision = useAppSelector(selectIsSavingRevision);
   const deletingRevisionId = useAppSelector(selectDeletingRevisionId);
@@ -1262,6 +1274,10 @@ export default function AppShell({
                           if (type !== "folder") {
                             disabled.push("organizer");
                           }
+                          // Timeline is gated behind the project feature toggle.
+                          if (!timelineEnabled) {
+                            disabled.push("timeline");
+                          }
                           return Array.from(new Set(disabled));
                         })()}
                       />
@@ -1420,7 +1436,10 @@ export default function AppShell({
                             case "organizer":
                               return <OrganizerView />;
                             case "timeline":
-                              return <TimelineView />;
+                              // Defensive guard: the tab is disabled when the
+                              // feature is off, but never mount TimelineView even
+                              // if the view state somehow lands here.
+                              return timelineEnabled ? <TimelineView /> : null;
                             default:
                               return (
                                 <div>

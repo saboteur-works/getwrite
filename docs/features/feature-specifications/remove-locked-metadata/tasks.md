@@ -87,13 +87,14 @@ Derived from `spec.md`. Granularity: story points (1/2/3/5/8).
 
 ---
 
-### Task 8: Timeline View gating
+### Task 8: Timeline View gating ✅
 
 **What:** Gate the Timeline tab and view on `config.features.timeline`.
 **Files:** `frontend/components/WorkArea/ViewSwitcher.tsx` (`disabledViews`), `frontend/components/Layout/AppShell.tsx` (timeline case ~L382/L1422)
 **Done when:** When `features.timeline` is off, the Timeline tab is hidden or disabled and `TimelineView` is never mounted (no render, no throw); when on, the tab is available and the view renders; tests cover both states.
 **Depends on:** 4
 **Estimate:** 3
+**Status:** ✅ Complete (2026-06-13) — Gating wired entirely in `AppShell.tsx` (`ViewSwitcher.tsx` needed **no** change — it already disables any tab listed in `disabledViews`). AppShell reads the Task 4 primitive selector `selectTimelineEnabled` and (a) **disables the Timeline tab** by pushing `"timeline"` into the computed `disabledViews` when the feature is off (the `TabsTrigger` renders `disabled` + `aria-disabled` and its `onClick` is a no-op when disabled), and (b) **never mounts `TimelineView`** — the work-area `switch` `case "timeline"` now returns `timelineEnabled ? <TimelineView /> : null` (defensive guard; "no render, no throw"). A new `useEffect` keyed on `[timelineEnabled, selectedResource?.type]` redirects the view away from a now-hidden Timeline (→ `organizer` for a folder selection, else `edit`) so toggling the feature off mid-view never strands the user on a blank/disabled tab. Timeline data and sidecar values are untouched, so re-enabling restores the tab and view. New `tests/appShellTimelineGating.test.tsx` renders the **full AppShell** (in-memory store seeded via `setProject`/`setResources`/`setSelectedResourceId`; `TipTapEditor` mocked and `fetch` stubbed) and covers all three states: enabled → tab not disabled + clicking it mounts `TimelineView` (empty-state "no dated scenes" marker); disabled → tab `toBeDisabled()` + click is a no-op + `TimelineView` never mounts; absent flag → treated as disabled. The `AppShellAfterOpen` story now seeds `features: { timeline, pov, synopsis, notes: true }` so the demo shell keeps the Timeline tab interactive under default-off gating (the bare `ViewSwitcher` story and the `view-switcher`/`timeline-view` e2e target the standalone components, unaffected). Verified: new test 3/3 green; full `pnpm test:ci` **170 files / 1894 passed / 1 skipped**; `pnpm typecheck` clean; changed files eslint-clean (story clean under `--no-ignore`).
 
 ---
 
