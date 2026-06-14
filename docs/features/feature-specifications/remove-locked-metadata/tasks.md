@@ -1,0 +1,138 @@
+# Implementation Tasks: Remove Locked Metadata
+
+Derived from `spec.md`. Granularity: story points (1/2/3/5/8).
+
+**Gating model (shared assumption across tasks):** The built-in fields stay defined in `DEFAULT_METADATA_SCHEMA` but lose `locked: true`. A `ProjectConfig.features` map (`timeline`, `pov`, `synopsis`, `notes`) governs whether each field is *active* — active fields render their sidebar controls and are consumed by the Timeline/Organizer; inactive fields are hidden but their schema entry and stored sidecar values are preserved (never deleted). Absent flag = disabled. This satisfies value-preservation (FR6) and query-continuity (FR7) for the hide path without destructive schema surgery.
+
+---
+
+### Task 1: ProjectConfig toggles + Organizer card-body config (types + Zod) ✅
+
+**What:** Add the feature-toggle map and Organizer card-body configuration to the project config type and its validator.
+**Files:** `frontend/src/lib/models/types.ts` (`ProjectConfig`), `frontend/src/lib/models/schemas.ts`
+**Done when:** `ProjectConfig` declares `features?: { timeline?: boolean; pov?: boolean; synopsis?: boolean; notes?: boolean }` and `organizerCardBody?: { source: "none" | "text-excerpt" | "field"; fieldKey?: string; excerptLength?: number }`; the Zod project/config schema parses these fields and rejects malformed values; `pnpm typecheck` passes.
+**Depends on:** none
+**Estimate:** 2
+**Status:** ✅ Complete (2026-06-13) — `ProjectFeatureFlags`/`OrganizerCardBodyConfig` added to `types.ts`; `ProjectFeatureFlagsSchema`/`OrganizerCardBodySourceSchema`/`OrganizerCardBodyConfigSchema` added to `schemas.ts` and wired into `ProjectConfigSchema`. Verified: 17/17 in `tests/unit/project-config.test.ts`, `pnpm typecheck` clean, eslint clean.
+
+---
+
+### Task 2: Unlock built-in fields and rename the group (default schema) ✅
+
+**What:** Remove `locked: true` from `synopsis`, `notes`, `pov`, `storyDate`, `storyDuration`, `storyEndDate`, and rename the `builtin-story-timeline` group label to "Timeline".
+**Files:** `frontend/src/lib/models/default-metadata-schema.ts`
+**Done when:** Those six fields no longer carry `locked: true`; the `status` field remains `locked` (out of scope); the story-timeline group's `label` is `"Timeline"` (group `id` unchanged); existing default-schema tests updated and green.
+**Depends on:** none
+**Estimate:** 2
+**Notes:** `status` stays locked — generalizing Document/Status is explicitly deferred (spec Out of scope).
+**Status:** ✅ Complete (2026-06-13) — Six built-ins unlocked, `status` left locked, group label now `"Timeline"` (id `builtin-story-timeline` unchanged). Tests updated to match: `tests/unit/default-metadata-schema.test.ts` (asserts only `status` locked), `tests/schemaManager.test.tsx` (synopsis/notes now have remove + rename-key controls; `status` does not), `tests/metadataSidebar.test.tsx` + `e2e/metadata-sidebar.e2e.spec.ts` (header matcher `/timeline/i`). Verified: full `pnpm test:ci` green (164 files, 1833 tests), `pnpm typecheck` clean, changed files eslint-clean.
+
+---
+
+### Task 3: Migration on load — strip locked, rename group, seed toggles ✅
+
+**What:** Extend the schema-read migration so existing persisted projects auto-unlock these built-ins, rename the group, preserve all values, and default the `timeline`/`pov`/`synopsis`/`notes` toggles to on for projects that already contain the corresponding data.
+**Files:** `frontend/src/lib/models/metadata-schema.ts` (`getSchema` migration path, alongside `migrateMultipleToMultiRef`); possibly `frontend/src/lib/models/project-loader.ts`
+**Done when:** Loading a pre-existing project (a) clears `locked` from the six fields, (b) renames the group label to "Timeline", (c) leaves every sidecar value intact, (d) sets `config.features.timeline`/`.pov`/`.synopsis`/`.notes` to `true` when the project has any stored value for the relevant field(s), and (e) is idempotent (a second load makes no further changes); covered by integration tests.
+**Depends on:** 1, 2
+**Estimate:** 5
+**Notes:** Highest-risk task. Detecting "already contains data" requires scanning sidecars or the field-values index — reuse the existing `meta/` scan pattern in `metadata-schema.ts`. Persist migrated config under the project lock; guard against re-bumping `metadataRevision` on no-op loads.
+**Status:** ✅ Complete (2026-06-13) — Added `migrateProjectOnLoad(projectRoot)` to `metadata-schema.ts`: idempotent schema migration via new pure helpers `migrateLockedBuiltins` (strips `locked` from the six built-ins, keeps `status` locked, renames `builtin-story-timeline` → label `"Timeline"`, id unchanged) + `applySchemaMigrations` (composes it with the existing `migrateMultipleToMultiRef`), plus one-time `config.features` seeding from a `meta/` sidecar scan (`detectFeatureDataFromSidecars`). Wired into `loadProjectFromDisk` (project-loader.ts), which now returns the migrated project. `getSchema` rewritten to run `applySchemaMigrations` and persist **under the project lock**. Key decisions: feature data is detected from **`userMetadata` only** (the canonical store; the query route flattens it at read time) — deliberately ignoring top-level keys to avoid a false `notes` match against the unrelated resource-level `notes` field; empty strings/arrays/null count as no data. Seeding runs only when `config.features` is absent, so user toggle edits are never clobbered and repeat loads are no-ops. The migration writes (bumping `metadataRevision` exactly once) only when something changed; never materializes a default schema for projects relying on `DEFAULT_METADATA_SCHEMA`. Verified: new `tests/unit/metadata-load-migration.test.ts` (16 cases) green; `pnpm test:ci` 164/165 files green (1848 passed, 1 skipped) — the lone failure is the pre-existing flaky `media-file-route` temp-dir teardown race (`ENOTEMPTY meta/index`), which passes in isolation; `pnpm typecheck` clean; changed files eslint-clean.
+
+---
+
+### Task 4: Config transport + slice wiring for toggles ✅
+
+**What:** Persist and read `config.features` and `config.organizerCardBody` through an API route and `projectsSlice`, with selectors that treat an absent flag as disabled.
+**Files:** new/extended config route under `frontend/app/api/project/...` (follow `editor-config`/`revision-settings` pattern), a transport service in `frontend/src/store/`, `frontend/src/store/projectsSlice.ts`, store selectors/hooks
+**Done when:** A thunk updates `config.features`/`config.organizerCardBody` on disk and in the store; selectors expose per-feature booleans (absent = `false`) and the Organizer body config; a newly created project reports all four features as disabled; `pnpm typecheck` and slice tests pass.
+**Depends on:** 1
+**Estimate:** 3
+**Notes:** Store toggles in `ProjectConfig` (typed + Zod-validated, co-located with `statuses`/`metadataSchema`) — not the `project.metadata` user-preferences blob. Model the route on `editor-config`, but it MUST acquire the project lock (`acquireLock`): unlike the existing `editor-config` and `preferences` routes, which are lock-free read-modify-writes of `project.json` and would race schema/migration writes. Do NOT reuse the `preferences` route. Toggle writes MUST NOT bump `metadataRevision` — they change no field keys or sidecar values, so bumping it would needlessly invalidate the query cache; reserve the bump for the one-time migration (Task 3).
+**Status:** ✅ Complete (2026-06-13) — Added lock-protected model helper `updateFeatureConfig(projectRoot, { features?, organizerCardBody? })` in new `frontend/src/lib/models/project-features.ts`: Zod-validates each provided block (`ProjectFeatureFlagsSchema`/`OrganizerCardBodyConfigSchema`), acquires `acquireLock`, read-modify-writes `project.json` (merges at config level, replaces each block wholesale), updates `updatedAt`, and deliberately does **not** bump `metadataRevision`. New thin POST route `frontend/app/api/project/features/route.ts` (400 on missing `projectPath`/empty body/Zod failure, 500 otherwise) delegates to it. New transport `frontend/src/store/feature-config-transport-service.ts` (`postFeatureConfig`). `projectsSlice.ts`: `StoredProject` gains `features`/`organizerCardBody`; `setProjects` hydrates both from `project.config`; two thunks (`updateProjectFeatures`, `updateProjectOrganizerCardBody`) post via the transport and mirror the persisted config back in shared `extraReducers.fulfilled` (a `null` card body normalizes to `undefined`); selectors `selectActiveProjectFeatures` (default `{}`), `selectIsFeatureEnabled` + `selectTimeline/Pov/Synopsis/NotesEnabled` (absent = `false`), and `selectActiveProjectOrganizerCardBody` (absent = `null`). Both store-feeding load paths (`GET /api/projects` raw read; `POST /api/project` → `migrateProjectOnLoad`) pass `config` through verbatim, so a newly created project (no `features` block) reports all four toggles disabled. Verified: new `tests/unit/project-features.test.ts` (11 cases) + `tests/unit/projects-slice-features.test.ts` (8 cases) green; full `pnpm test:ci` 167 files / 1868 passed / 1 skipped; `pnpm typecheck` clean; changed files eslint-clean (only the file's pre-existing `state: any` store-selector warnings remain, matching the established convention). Follow-up logged: `normalizeProjectConfig` does not carry through the two new config keys (harmless today — not on any store-feeding path — see `follow-up-work.md`).
+
+---
+
+### Task 5: Project settings UI — feature toggles ✅
+
+**What:** Add Timeline, POV, Synopsis, and Notes on/off controls to project settings.
+**Files:** `frontend/components/preferences/UserPreferencesPage.tsx` (+ a new toggles section component and its `.stories.tsx`)
+**Done when:** Each toggle reflects current `config.features` state, dispatches the Task 4 thunk on change, and persists across reload; toggles are editable at any time after creation (FR10); Storybook story covers on/off states; a11y check passes.
+**Depends on:** 4
+**Estimate:** 3
+**Status:** ✅ Complete (2026-06-13) — New connected section component `frontend/components/preferences/ProjectFeatureToggles.tsx` renders one labeled checkbox per feature (Timeline, Point of View, Synopsis, Notes). It reads state via the Task 4 primitive selectors (`selectTimeline/Pov/Synopsis/NotesEnabled` — stable booleans, so absent flags read as off) plus `selectSelectedProjectId`, and on change dispatches `updateProjectFeatures` with the **full merged feature map** (the route replaces the `features` block wholesale). Returns `null` when no project is selected, so the section is omitted rather than rendered empty. Mounted into `UserPreferencesPage.tsx` as a new "Project Features" section after Theme; each toggle carries a short description and turning a feature off only hides controls (values preserved per FR6). Toggles are always editable post-creation (FR10). New `stories/Preferences/ProjectFeatureToggles.stories.tsx` covers AllOff (newly-created default), AllOn, and a Mixed state via `configureStore` + `Provider`. Verified: new `tests/projectFeatureToggles.test.tsx` (6 cases: renders four checkboxes, absent = all-off, reflects enabled flags, enabling posts the merged map + updates store, disabling sends `false`, renders nothing with no project) green; `pnpm test:ci` 168 files / 1874 passed / 1 skipped (the lone run-level error is an unrelated `revision-manager.test.ts` worker-teardown flake that passes in isolation); `pnpm typecheck` clean; changed files eslint-clean (component/page/test 0 warnings; the story is eslint-ignored by config and clean under `--no-ignore`).
+
+---
+
+### Task 6: Project settings UI — Organizer card-body source
+
+**What:** Add controls to choose the Organizer card-body source (none / text excerpt / a specific metadata field) and the excerpt length cap.
+**Files:** `frontend/components/preferences/UserPreferencesPage.tsx` (+ new section component and `.stories.tsx`)
+**Done when:** The source selector lists "None", "Text excerpt", and each schema field (sourced from store `metadataSchema`); selecting "Text excerpt" reveals a length-cap input; selections persist via the Task 4 thunk; Storybook story + a11y check pass.
+**Depends on:** 4
+**Estimate:** 5
+**Notes:** Field list should read live schema so newly added fields appear; default `source` when unset should match the migration/back-compat choice (e.g. `notes` field when notes enabled, else `none`).
+
+---
+
+### Task 7: Sidebar conditional rendering
+
+**What:** Render the Synopsis, Notes, POV, and story-timeline field controls only when their feature toggle is enabled.
+**Files:** `frontend/components/Sidebar/MetadataSidebar.tsx` (synopsis case ~L283), `frontend/components/Layout/AppShell.tsx` (synopsis case ~L1587), `frontend/components/Sidebar/controls/{SynopsisInput,NotesInput,POVAutocomplete}.tsx` as needed
+**Done when:** With a feature disabled, the corresponding sidebar control is absent; with it enabled, the control renders and edits values as before; values stored while enabled survive a disable→enable cycle; component tests cover both states.
+**Depends on:** 2, 4
+**Estimate:** 3
+
+---
+
+### Task 8: Timeline View gating
+
+**What:** Gate the Timeline tab and view on `config.features.timeline`.
+**Files:** `frontend/components/WorkArea/ViewSwitcher.tsx` (`disabledViews`), `frontend/components/Layout/AppShell.tsx` (timeline case ~L382/L1422)
+**Done when:** When `features.timeline` is off, the Timeline tab is hidden or disabled and `TimelineView` is never mounted (no render, no throw); when on, the tab is available and the view renders; tests cover both states.
+**Depends on:** 4
+**Estimate:** 3
+
+---
+
+### Task 9: Timeline POV/Notes-optional hardening
+
+**What:** Ensure the Timeline View renders correctly when POV and/or Notes are disabled or absent.
+**Files:** `frontend/components/WorkArea/Views/TimelineView/TimelineView.tsx`, `frontend/components/Timeline/Timeline.tsx`
+**Done when:** With POV disabled/absent, the timeline renders items without POV coloring and hides (or neutralizes) the POV pills/legend; with Notes disabled/absent, the tooltip omits the notes line without error; existing timeline tests pass and a no-POV case is added.
+**Depends on:** 8
+**Estimate:** 2
+**Notes:** Timeline already partly degrades (`items.some(i => !i.metadata?.pov)`); this task verifies and completes it for the fully-disabled case.
+
+---
+
+### Task 10: Organizer card-body consumption
+
+**What:** Replace the hardcoded `userMetadata.notes` card body with the configured source (field value, text-content excerpt with length cap, or none).
+**Files:** `frontend/components/WorkArea/Views/OrganizerView/OrganizerCard.tsx` (body source ~L59), `frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx`; possibly `frontend/src/lib/models/previews.ts` for excerpt sourcing
+**Done when:** Card body reflects `config.organizerCardBody`: shows the chosen field's value, a text-content excerpt truncated to the configured cap, or nothing; no card reads `notes` directly; the existing `showBody` visibility toggle still functions; component tests cover all three source modes.
+**Depends on:** 4
+**Estimate:** 5
+**Notes:** RISK — text-excerpt mode needs resource text content, which the card does not currently receive; plumb a preview/excerpt (reuse `previews.ts`) rather than loading full `content.txt` per card.
+
+---
+
+### Task 11: Regression coverage — value preservation, querying, migration
+
+**What:** Add cross-cutting tests proving disabled/removed fields keep their values, queries still evaluate them, and migration is safe and idempotent.
+**Files:** `frontend/tests/...` (extend existing metadata-schema / query / migration suites)
+**Done when:** Tests assert (FR6) disabling or removing a field leaves sidecar values intact; (FR7) `query-evaluator` returns results for a field key that is hidden or removed but still has stored values; (FR8) the Task 3 migration preserves values and is idempotent; `pnpm test:ci` green.
+**Depends on:** 3, 7, 10
+**Estimate:** 3
+
+---
+
+## Summary
+
+- **Total tasks:** 11
+- **Total estimated effort:** 36 story points
+- **Critical path:** Tasks 1 → 4 → 10 → 11 (13 points). Migration chain 1/2 → 3 → 11 (10 points) runs alongside; UI tasks 5, 6, 7, 8, 9 branch off Task 4 in parallel.
+- **Risks:**
+  - **Task 3 (migration, 5):** scanning for existing data to seed toggles, idempotency, and not corrupting persisted schemas or bumping `metadataRevision` on no-ops.
+  - **Task 4 (transport, 3):** the new config route must be lock-protected — the existing `editor-config` and `preferences` routes are lock-free read-modify-writes of `project.json`, so an unlocked toggle write would race schema/migration writes and clobber data.
+  - **Task 10 (Organizer consumption, 5):** text-excerpt mode requires resource text content the card doesn't currently have; needs preview plumbing without per-card full-content loads.
