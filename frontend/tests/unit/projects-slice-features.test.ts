@@ -1,0 +1,217 @@
+/**
+ * Unit tests for the feature-toggle / Organizer card-body slice wiring (Task 4).
+ *
+ * Covers: setProjects hydration of `features`/`organizerCardBody` from project
+ * config, the absent-flag-as-disabled selectors (a newly created project reports
+ * all four features off), and the `updateProjectFeatures` /
+ * `updateProjectOrganizerCardBody` thunks (transport call + store update).
+ */
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { configureStore } from "@reduxjs/toolkit";
+import projectsReducer, {
+  setProjects,
+  setSelectedProjectId,
+  updateProjectFeatures,
+  updateProjectOrganizerCardBody,
+  selectActiveProjectFeatures,
+  selectActiveProjectOrganizerCardBody,
+  selectTimelineEnabled,
+  selectPovEnabled,
+  selectSynopsisEnabled,
+  selectNotesEnabled,
+} from "../../src/store/projectsSlice";
+
+function makeStore() {
+  return configureStore({ reducer: { projects: projectsReducer } });
+}
+
+function seedProject(
+  store: ReturnType<typeof makeStore>,
+  config?: Record<string, unknown>,
+) {
+  store.dispatch(
+    setProjects([
+      {
+        project: {
+          id: "project-1",
+          name: "Project One",
+          rootPath: "/tmp/project-1",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          ...(config ? { config: config as never } : {}),
+        },
+        folders: [],
+        resources: [],
+      },
+    ]),
+  );
+  store.dispatch(setSelectedProjectId("project-1"));
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("projectsSlice — feature config hydration (Task 4)", () => {
+  it("hydrates features and organizerCardBody from project config via setProjects", () => {
+    const store = makeStore();
+    seedProject(store, {
+      editorConfig: {},
+      features: { timeline: true, pov: true },
+      organizerCardBody: { source: "text-excerpt", excerptLength: 100 },
+    });
+
+    const state = store.getState();
+    expect(state.projects.projects["project-1"].features).toEqual({
+      timeline: true,
+      pov: true,
+    });
+    expect(state.projects.projects["project-1"].organizerCardBody).toEqual({
+      source: "text-excerpt",
+      excerptLength: 100,
+    });
+  });
+
+  it("leaves features/organizerCardBody undefined when the project has none", () => {
+    const store = makeStore();
+    seedProject(store);
+    const state = store.getState();
+    expect(state.projects.projects["project-1"].features).toBeUndefined();
+    expect(
+      state.projects.projects["project-1"].organizerCardBody,
+    ).toBeUndefined();
+  });
+});
+
+describe("projectsSlice — feature selectors (absent = disabled)", () => {
+  it("reports all four features disabled for a project with no features", () => {
+    const store = makeStore();
+    seedProject(store);
+    const state = store.getState();
+    expect(selectTimelineEnabled(state)).toBe(false);
+    expect(selectPovEnabled(state)).toBe(false);
+    expect(selectSynopsisEnabled(state)).toBe(false);
+    expect(selectNotesEnabled(state)).toBe(false);
+    expect(selectActiveProjectFeatures(state)).toEqual({});
+    expect(selectActiveProjectOrganizerCardBody(state)).toBeNull();
+  });
+
+  it("reflects enabled features and the card-body config", () => {
+    const store = makeStore();
+    seedProject(store, {
+      editorConfig: {},
+      features: { timeline: true, synopsis: true },
+      organizerCardBody: { source: "field", fieldKey: "synopsis" },
+    });
+    const state = store.getState();
+    expect(selectTimelineEnabled(state)).toBe(true);
+    expect(selectSynopsisEnabled(state)).toBe(true);
+    expect(selectPovEnabled(state)).toBe(false);
+    expect(selectNotesEnabled(state)).toBe(false);
+    expect(selectActiveProjectOrganizerCardBody(state)).toEqual({
+      source: "field",
+      fieldKey: "synopsis",
+    });
+  });
+
+  it("returns disabled/empty when no project is selected", () => {
+    const store = makeStore();
+    const state = store.getState();
+    expect(selectTimelineEnabled(state)).toBe(false);
+    expect(selectActiveProjectFeatures(state)).toEqual({});
+    expect(selectActiveProjectOrganizerCardBody(state)).toBeNull();
+  });
+});
+
+describe("projectsSlice — updateProjectFeatures thunk", () => {
+  it("posts the features to the route and updates the store on success", async () => {
+    const store = makeStore();
+    seedProject(store);
+
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            features: { timeline: true },
+            organizerCardBody: null,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    await store.dispatch(
+      updateProjectFeatures({
+        projectId: "project-1",
+        features: { timeline: true },
+      }),
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/project/features", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectPath: "/tmp/project-1",
+        features: { timeline: true },
+      }),
+    });
+
+    const state = store.getState();
+    expect(selectTimelineEnabled(state)).toBe(true);
+  });
+
+  it("rejects when the route returns an error", async () => {
+    const store = makeStore();
+    seedProject(store);
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "boom" }), { status: 500 }),
+    );
+
+    const result = await store.dispatch(
+      updateProjectFeatures({
+        projectId: "project-1",
+        features: { timeline: true },
+      }),
+    );
+
+    expect(result.type).toBe("projects/updateProjectFeatures/rejected");
+    expect(selectTimelineEnabled(store.getState())).toBe(false);
+  });
+});
+
+describe("projectsSlice — updateProjectOrganizerCardBody thunk", () => {
+  it("posts the card-body config and updates the store on success", async () => {
+    const store = makeStore();
+    seedProject(store);
+
+    const body = { source: "text-excerpt" as const, excerptLength: 80 };
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ features: {}, organizerCardBody: body }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    await store.dispatch(
+      updateProjectOrganizerCardBody({
+        projectId: "project-1",
+        organizerCardBody: body,
+      }),
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/project/features", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectPath: "/tmp/project-1",
+        organizerCardBody: body,
+      }),
+    });
+
+    expect(selectActiveProjectOrganizerCardBody(store.getState())).toEqual(
+      body,
+    );
+  });
+});

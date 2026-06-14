@@ -20,11 +20,17 @@ import type {
   MetadataGroup,
   MetadataSchema,
   MetadataValue,
+  ProjectFeatureFlags,
+  OrganizerCardBodyConfig,
 } from "../lib/models/types";
 import type {
   TypeMigrationEntry,
   OptionsMigrationEntry,
 } from "../lib/models/metadata-schema";
+import {
+  postFeatureConfig,
+  type FeatureConfigResult,
+} from "./feature-config-transport-service";
 import {
   resolveMetadataSchemaRequestContext,
   postAddField,
@@ -83,6 +89,10 @@ export interface StoredProject {
   statuses?: string[];
   /** Active metadata field schema. Defaults to DEFAULT_METADATA_SCHEMA when not persisted on disk. */
   metadataSchema?: MetadataSchema;
+  /** Per-feature opt-in flags. Absent (or an absent flag) means the feature is disabled. */
+  features?: ProjectFeatureFlags;
+  /** Organizer card-body source configuration; absent means none configured. */
+  organizerCardBody?: OrganizerCardBodyConfig;
 }
 
 /**
@@ -526,6 +536,73 @@ export const updateMetadataRefProperties = createAsyncThunk<
   },
 );
 
+// ---------------------------------------------------------------------------
+// Async thunks — feature configuration (toggles + Organizer card body)
+// ---------------------------------------------------------------------------
+// Persist `config.features` / `config.organizerCardBody` via the lock-protected
+// `/api/project/features` route (does NOT bump metadataRevision), then mirror
+// the returned, persisted config into the store in extraReducers.fulfilled.
+
+interface FeatureConfigActionResult {
+  projectId: string;
+  result: FeatureConfigResult;
+}
+
+function getFeatureConfigErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+  return "Feature configuration update failed.";
+}
+
+export const updateProjectFeatures = createAsyncThunk<
+  FeatureConfigActionResult,
+  { projectId: string; features: ProjectFeatureFlags },
+  { state: any; rejectValue: string }
+>(
+  "projects/updateProjectFeatures",
+  async ({ projectId, features }, thunkApi) => {
+    const context = resolveMetadataSchemaRequestContext(
+      thunkApi.getState(),
+      projectId,
+    );
+    if ("error" in context) {
+      return thunkApi.rejectWithValue(context.error);
+    }
+    try {
+      const result = await postFeatureConfig(context.projectPath, { features });
+      return { projectId, result };
+    } catch (error) {
+      return thunkApi.rejectWithValue(getFeatureConfigErrorMessage(error));
+    }
+  },
+);
+
+export const updateProjectOrganizerCardBody = createAsyncThunk<
+  FeatureConfigActionResult,
+  { projectId: string; organizerCardBody: OrganizerCardBodyConfig },
+  { state: any; rejectValue: string }
+>(
+  "projects/updateProjectOrganizerCardBody",
+  async ({ projectId, organizerCardBody }, thunkApi) => {
+    const context = resolveMetadataSchemaRequestContext(
+      thunkApi.getState(),
+      projectId,
+    );
+    if ("error" in context) {
+      return thunkApi.rejectWithValue(context.error);
+    }
+    try {
+      const result = await postFeatureConfig(context.projectPath, {
+        organizerCardBody,
+      });
+      return { projectId, result };
+    } catch (error) {
+      return thunkApi.rejectWithValue(getFeatureConfigErrorMessage(error));
+    }
+  },
+);
+
 /**
  * Initial state for the `projects` slice.
  */
@@ -576,6 +653,8 @@ const projectsSlice = createSlice({
           statuses: p.project.config?.statuses ?? [],
           metadataSchema:
             p.project.config?.metadataSchema ?? DEFAULT_METADATA_SCHEMA,
+          features: p.project.config?.features,
+          organizerCardBody: p.project.config?.organizerCardBody,
         };
       });
       return state;
@@ -718,6 +797,28 @@ const projectsSlice = createSlice({
         return state;
       });
     }
+
+    // Feature-config thunks share fulfilled handling: mirror the persisted
+    // config (both blocks) back into the stored project. A `null`
+    // organizerCardBody from the route normalizes to `undefined` (= none).
+    const featureConfigThunks = [
+      updateProjectFeatures,
+      updateProjectOrganizerCardBody,
+    ] as const;
+
+    for (const thunk of featureConfigThunks) {
+      builder.addCase(thunk.fulfilled, (state, action) => {
+        const { projectId, result } = action.payload;
+        const project = state.projects[projectId];
+        if (!project) return state;
+        state.projects[projectId] = {
+          ...project,
+          features: result.features,
+          organizerCardBody: result.organizerCardBody ?? undefined,
+        };
+        return state;
+      });
+    }
   },
 });
 
@@ -819,6 +920,63 @@ export const selectActiveProjectMetadataSchema = (
 export const selectActiveProjectRootPath = (state: any): string | null => {
   const id = state?.projects?.selectedProjectId;
   return state?.projects?.projects?.[id]?.rootPath ?? null;
+};
+
+/**
+ * Selects the raw feature-toggle map for the active project. Returns an empty
+ * object when no project is selected or the project has no `features` block, so
+ * an absent flag reads as disabled.
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ */
+export const selectActiveProjectFeatures = (
+  state: any,
+): ProjectFeatureFlags => {
+  const id = state?.projects?.selectedProjectId;
+  return state?.projects?.projects?.[id]?.features ?? {};
+};
+
+/**
+ * Returns whether a single feature is enabled for the active project. An absent
+ * project, `features` block, or flag all read as `false`.
+ *
+ * @param state - Redux root state.
+ * @param feature - Feature flag key to test.
+ */
+export const selectIsFeatureEnabled = (
+  state: any,
+  feature: keyof ProjectFeatureFlags,
+): boolean => {
+  return selectActiveProjectFeatures(state)[feature] === true;
+};
+
+/** Whether the story-timeline feature is enabled for the active project. */
+export const selectTimelineEnabled = (state: any): boolean =>
+  selectIsFeatureEnabled(state, "timeline");
+
+/** Whether the POV feature is enabled for the active project. */
+export const selectPovEnabled = (state: any): boolean =>
+  selectIsFeatureEnabled(state, "pov");
+
+/** Whether the Synopsis feature is enabled for the active project. */
+export const selectSynopsisEnabled = (state: any): boolean =>
+  selectIsFeatureEnabled(state, "synopsis");
+
+/** Whether the Notes feature is enabled for the active project. */
+export const selectNotesEnabled = (state: any): boolean =>
+  selectIsFeatureEnabled(state, "notes");
+
+/**
+ * Selects the Organizer card-body configuration for the active project, or
+ * `null` when none is configured.
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ */
+export const selectActiveProjectOrganizerCardBody = (
+  state: any,
+): OrganizerCardBodyConfig | null => {
+  const id = state?.projects?.selectedProjectId;
+  return state?.projects?.projects?.[id]?.organizerCardBody ?? null;
 };
 
 /**
