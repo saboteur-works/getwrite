@@ -92,6 +92,62 @@ describe("TimelineViewToggle", () => {
     });
   });
 
+  it("also enables the timeline date fields when enabling the view with them off", async () => {
+    setup({ notes: true }); // timeline (date fields) off
+    const fetchSpy = mockFeatureRoute({
+      notes: true,
+      timelineView: true,
+      timeline: true,
+    });
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /enable timeline view/i }),
+    );
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string).features).toEqual({
+      notes: true,
+      timelineView: true,
+      timeline: true,
+    });
+  });
+
+  it("leaves the date fields untouched when disabling the view", async () => {
+    setup({ timeline: true, timelineView: true });
+    const fetchSpy = mockFeatureRoute({ timeline: true, timelineView: false });
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /enable timeline view/i }),
+    );
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string).features).toEqual({
+      timeline: true,
+      timelineView: false,
+    });
+  });
+
+  it("shows a tooltip hint only when the date fields are off", () => {
+    const { unmount } = setup({ notes: true }); // timeline off
+    const toggleOff = screen
+      .getByRole("checkbox", { name: /enable timeline view/i })
+      .closest("[data-tooltip-content]");
+    expect(toggleOff).not.toBeNull();
+    expect(toggleOff?.getAttribute("data-tooltip-content")).toMatch(
+      /date fields/i,
+    );
+    unmount();
+
+    setup({ timeline: true }); // date fields already on → no hint
+    expect(
+      screen
+        .getByRole("checkbox", { name: /enable timeline view/i })
+        .closest("[data-tooltip-content]"),
+    ).toBeNull();
+  });
+
   it("renders nothing when no project is selected", () => {
     const store = makeStore();
     const { container } = render(

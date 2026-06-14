@@ -39,9 +39,12 @@ tab is disabled there was no explanation of why or how to enable it.
 1. **Split the flag.** `features.timeline` now gates **only the metadata fields**
    (in the Metadata Fields menu, where the field toggles live). A new
    `features.timelineView` flag gates **the Timeline view/tab**, toggled from a
-   new "Timeline view" section in **User Preferences**. The flags are
-   independent: fields-on/view-off is the primary use case; view-on/fields-off
-   just shows the view's empty state. AppShell's tab/view gating moved from
+   new "Timeline view" section in **User Preferences**. Fields-on/view-off is the
+   primary use case (date metadata without the chronology view). The view
+   *depends on* the fields, so the `TimelineViewToggle` **also enables
+   `timeline` when you enable the view** (no-op if already on) — preventing a
+   "view on, no data fields" state — and shows a tooltip hint to that effect
+   while the fields are off. AppShell's tab/view gating moved from
    `selectTimelineEnabled` → `selectTimelineViewEnabled`; the sidebar fields
    stay on `selectTimelineEnabled`.
 

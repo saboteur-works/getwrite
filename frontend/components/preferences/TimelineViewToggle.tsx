@@ -4,12 +4,14 @@
  * @module TimelineViewToggle
  *
  * User-preferences section that turns the chronological Timeline view/tab on or
- * off for the active project (`config.features.timelineView`), independently of
- * the Timeline date fields (toggled in the Metadata Fields menu). Persists via
- * the {@link updateProjectFeatures} thunk, merging onto the full feature map so
- * the field toggles are preserved. Editable at any time after project creation.
+ * off for the active project (`config.features.timelineView`). The view depends
+ * on the Timeline date fields (`config.features.timeline`), so enabling the view
+ * also enables those fields when they are off — keeping the project out of the
+ * "view on, no data fields" state. Persists via the {@link updateProjectFeatures}
+ * thunk, merging onto the full feature map so other flags are preserved.
  */
 
+import { Tooltip } from "react-tooltip";
 import { useAppDispatch } from "../../src/store/hooks";
 import useAppSelector from "../../src/store/hooks";
 import {
@@ -17,6 +19,10 @@ import {
   selectActiveProjectFeatures,
   updateProjectFeatures,
 } from "../../src/store/projectsSlice";
+import { TOOLTIP_STYLE } from "../common/UI/tooltipStyle";
+
+/** react-tooltip anchor id for the "also enables the date fields" hint. */
+const TIMELINE_VIEW_TOOLTIP_ID = "timeline-view-toggle-tip";
 
 /**
  * Renders the Timeline view toggle. Returns `null` when no project is selected
@@ -35,11 +41,24 @@ export default function TimelineViewToggle(): JSX.Element | null {
     return null;
   }
 
+  const metadataEnabled = features.timeline === true;
+  // Only warn when the date fields are off — that's the case where enabling the
+  // view will also flip them on. When they're already on, no hint is needed.
+  const tooltip = metadataEnabled
+    ? undefined
+    : "Also turns on the Timeline date fields, which the view reads.";
+
   const handleToggle = (next: boolean): void => {
+    const updated = { ...features, timelineView: next };
+    // The view is useless without its date fields, so enabling it enables them
+    // too (no-op when already on). Disabling the view leaves the fields alone.
+    if (next && !metadataEnabled) {
+      updated.timeline = true;
+    }
     void dispatch(
       updateProjectFeatures({
         projectId: selectedProjectId,
-        features: { ...features, timelineView: next },
+        features: updated,
       }),
     );
   };
@@ -49,12 +68,19 @@ export default function TimelineViewToggle(): JSX.Element | null {
       <h2 className="text-sm font-semibold text-gw-primary">Timeline view</h2>
       <p className="mt-1 text-sm text-gw-secondary">
         Show the chronological Timeline view for this project. It reads the
-        Timeline date fields &mdash; enable those in the Metadata Fields menu to
-        give the view something to plot.
+        Timeline date fields, so turning the view on also enables those fields.
       </p>
 
       <div className="mt-4">
-        <label className="inline-flex items-center gap-2">
+        <label
+          className="inline-flex items-center gap-2"
+          {...(tooltip
+            ? {
+                "data-tooltip-id": TIMELINE_VIEW_TOOLTIP_ID,
+                "data-tooltip-content": tooltip,
+              }
+            : {})}
+        >
           <input
             type="checkbox"
             checked={features.timelineView === true}
@@ -66,6 +92,14 @@ export default function TimelineViewToggle(): JSX.Element | null {
           </span>
         </label>
       </div>
+
+      {tooltip && (
+        <Tooltip
+          id={TIMELINE_VIEW_TOOLTIP_ID}
+          place="top"
+          style={TOOLTIP_STYLE}
+        />
+      )}
     </section>
   );
 }
