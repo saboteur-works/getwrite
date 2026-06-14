@@ -212,14 +212,17 @@ describe("TimelineView — POV / Notes feature gating (Task 9)", () => {
     expect(screen.queryByText("POV")).not.toBeInTheDocument();
   });
 
-  it("renders without error when Notes is disabled and a resource has notes", () => {
+  it("renders without error when Notes is disabled and a resource has a notes value", () => {
     enableFeatures({ notes: false });
     const res = createTextResource({
       name: "Scene A",
       plainText: "",
-      userMetadata: { storyDate: "2024-01-01" },
+      // Notes is the userMetadata field, not the legacy resource-level `notes`.
+      userMetadata: {
+        storyDate: "2024-01-01",
+        notes: "A private authoring note.",
+      },
     });
-    (res as { notes?: string }).notes = "A private authoring note.";
     fakeState.resources.resources = [res];
 
     expect(() => render(<TimelineView />)).not.toThrow();

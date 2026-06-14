@@ -77,18 +77,24 @@ feature-gated stories.
 
 ---
 
-## 2026-06-14 — Timeline tooltip never renders `metadata.notes`, and its source is the resource-level `notes`, not the gated `userMetadata.notes`
+## 2026-06-14 — Timeline tooltip never renders `metadata.notes` (the computed value is dead data)
+
+**✅ Partially resolved (2026-06-14):** The **source mismatch** is fixed —
+`TimelineView.tsx` now reads `r.userMetadata?.notes` (the gated Notes metadata
+field the sidebar reads/writes) instead of the legacy resource-level `r.notes`,
+still gated on `selectNotesEnabled`. Per an explicit "align source only"
+decision, the remaining half — that `TimelineTooltip.tsx` renders **no** notes
+row, so the computed `metadata.notes` is still unused/dead — was **left
+deferred** (rendering a notes row is a Timeline visual change, a spec non-goal).
 
 **Discovered during:** Task 9 (Timeline POV/Notes-optional hardening).
 
-**What:** `TimelineView.tsx` computes `metadata.notes` for each item (now gated
-on `selectNotesEnabled` by Task 9), but `TimelineTooltip.tsx` renders **no**
-notes row — so `metadata.notes` is currently dead data (the field's JSDoc even
-says "Structured metadata for tooltip display"). Separately, the notes value is
-read from the **resource-level** `r.notes` field ("User-editable notes" on the
-resource), *not* the `userMetadata.notes` metadata field that the Notes feature
-toggle (`config.features.notes`) actually governs. Those are two different
-fields.
+**What:** `TimelineView.tsx` computes `metadata.notes` for each item (gated on
+`selectNotesEnabled`), but `TimelineTooltip.tsx` renders **no** notes row — so
+`metadata.notes` is currently dead data (the field's JSDoc even says "Structured
+metadata for tooltip display"). *(Resolved sub-issue: the value was previously
+read from resource-level `r.notes` rather than the gated `userMetadata.notes`;
+those are different fields and the source is now corrected.)*
 
 **Why it was deferred (not blocking):** Task 9's "done when" only requires the
 tooltip to omit the notes line without error, which holds trivially because no
@@ -97,17 +103,15 @@ which the spec lists under Out of scope ("Redesigning the … Timeline … visua
 Gating the existing (unused) `metadata.notes` on the Notes toggle was the
 in-scope, low-risk completion.
 
-**Risk if left:** If a future change surfaces notes in the tooltip, it will (a)
-need a new `TooltipRow` and (b) silently show the wrong source — resource-level
-`r.notes` rather than the gated `userMetadata.notes` — making the Notes toggle
-look ineffective for the metadata field users actually edit in the sidebar.
+**Risk if left:** Notes that writers enter in the sidebar never surface on the
+Timeline, even with the Notes feature on — a minor missing affordance, not a
+correctness/data issue. `TimelineView` already computes the correct
+(`userMetadata.notes`, gated) value; it is simply not displayed.
 
-**Suggested fix:** Decide the intended source. If the timeline should reflect
-the Notes **metadata field**, switch `TimelineView` to read
-`r.userMetadata?.notes` (still gated on `selectNotesEnabled`) and add a `NOTES`
-`TooltipRow` to `TimelineTooltip.tsx` rendered only when `item.metadata?.notes`
-is present. If resource-level `notes` is genuinely intended, document that and
-decouple it from the Notes feature toggle. Either way, add a tooltip test.
+**Suggested fix (remaining):** Add a `NOTES` `TooltipRow` to
+`TimelineTooltip.tsx`, rendered only when `item.metadata?.notes` is present, plus
+a tooltip test. The data plumbing is already in place — this is purely the
+Timeline-visual half that was deliberately deferred as a spec non-goal.
 
 ---
 

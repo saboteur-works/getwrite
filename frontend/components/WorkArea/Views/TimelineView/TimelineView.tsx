@@ -103,10 +103,14 @@ export default function TimelineView({
           : undefined;
         const statusArr = r.userMetadata?.status as string[] | undefined;
         const status = r.userMetadata?.status as string | undefined;
-        const rawNotes =
-          notesEnabled && typeof r.notes === "string" ? r.notes : undefined;
-        const notes = rawNotes
-          ? rawNotes.slice(0, 120) + (rawNotes.length > 120 ? "…" : "")
+        // Notes is the `userMetadata.notes` metadata field (what the sidebar
+        // reads/writes and the Notes toggle gates) — not the legacy
+        // resource-level `r.notes`.
+        const rawNotes = r.userMetadata?.notes;
+        const notesText =
+          notesEnabled && typeof rawNotes === "string" ? rawNotes : undefined;
+        const notes = notesText
+          ? notesText.slice(0, 120) + (notesText.length > 120 ? "…" : "")
           : undefined;
         const folder = folders.find((f) => f.id === r.folderId)?.name;
 
