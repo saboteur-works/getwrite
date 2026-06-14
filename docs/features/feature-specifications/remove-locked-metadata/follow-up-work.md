@@ -172,13 +172,13 @@ feature-gated stories.
 
 ## 2026-06-14 — Timeline tooltip never renders `metadata.notes` (the computed value is dead data)
 
-**✅ Partially resolved (2026-06-14):** The **source mismatch** is fixed —
-`TimelineView.tsx` now reads `r.userMetadata?.notes` (the gated Notes metadata
-field the sidebar reads/writes) instead of the legacy resource-level `r.notes`,
-still gated on `selectNotesEnabled`. Per an explicit "align source only"
-decision, the remaining half — that `TimelineTooltip.tsx` renders **no** notes
-row, so the computed `metadata.notes` is still unused/dead — was **left
-deferred** (rendering a notes row is a Timeline visual change, a spec non-goal).
+**✅ Resolved (2026-06-14):** Two parts, both now done. (1) The **source
+mismatch** was fixed earlier — `TimelineView.tsx` reads `r.userMetadata?.notes`
+(the gated Notes metadata field the sidebar reads/writes) instead of the legacy
+resource-level `r.notes`, gated on `selectNotesEnabled`. (2) `TimelineTooltip.tsx`
+now renders a `NOTES` `TooltipRow` when `item.metadata?.notes` is present, so the
+computed value is finally displayed. Covered by `tests/timelineTooltip.test.tsx`
+(row shown with value when notes present; omitted when absent).
 
 **Discovered during:** Task 9 (Timeline POV/Notes-optional hardening).
 
