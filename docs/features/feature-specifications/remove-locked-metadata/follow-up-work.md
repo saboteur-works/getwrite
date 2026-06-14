@@ -256,6 +256,19 @@ to end from disk.
 
 ## 2026-06-14 — System-wide flat-vs-nested sidecar representation inconsistency in the schema-value-migration subsystem
 
+**✅ Resolved (2026-06-14):** All four disk-reading value-migration helpers in
+`metadata-schema.ts` (`clearFieldFromSidecars`, `migrateFieldKeyInSidecars`,
+and the change-type / update-options sidecar migrations) now operate through a
+shared `userMetadataOf(sidecar)` accessor on the **canonical nested**
+`userMetadata` map (matching `saveResource` / `getLocalResources` / the Task 3
+migration). `field-values.ts` was deliberately left as-is: the query
+`evaluate` route flattens `userMetadata` to a top-level map before calling the
+evaluator, so it operates on the flattened view by contract. The
+`metadata-schema-migration.test.ts` fixtures were rewritten from the unrealistic
+flat shape to the nested shape (via `writeMeta`/`readMeta` helpers), and a
+`clearField`-on-nested test was added to `metadata-schema.test.ts` (it fails
+against the old top-level code, proving the bug). Full suite green.
+
 **Discovered during:** Task 11 (regression coverage — FR6), and confirmed while
 attempting the localized fix during the follow-up pass.
 

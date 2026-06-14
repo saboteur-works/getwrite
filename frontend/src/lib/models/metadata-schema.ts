@@ -219,15 +219,29 @@ function userMetadataHasValue(
   sidecar: Record<string, MetadataValue>,
   key: string,
 ): boolean {
+  const userMeta = userMetadataOf(sidecar);
+  return userMeta !== null && hasStoredValue(userMeta[key]);
+}
+
+/**
+ * Returns a sidecar's `userMetadata` map for in-place mutation, or `null` when
+ * the sidecar has no object-valued `userMetadata` (nothing to migrate). Field
+ * values are stored nested here — never at the sidecar's top level (which holds
+ * structural fields like `id`/`type`/`wordCount` and the unrelated resource
+ * `notes`). All value-migration helpers operate through this accessor.
+ */
+function userMetadataOf(
+  sidecar: Record<string, MetadataValue>,
+): Record<string, MetadataValue> | null {
   const userMeta = sidecar.userMetadata;
   if (
     userMeta === null ||
     typeof userMeta !== "object" ||
     Array.isArray(userMeta)
   ) {
-    return false;
+    return null;
   }
-  return hasStoredValue((userMeta as Record<string, MetadataValue>)[key]);
+  return userMeta as Record<string, MetadataValue>;
 }
 
 /**
@@ -484,8 +498,10 @@ async function clearFieldFromSidecars(
       -".meta.json".length,
     ) as UUID;
     const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar || !(fieldKey in sidecar)) continue;
-    delete sidecar[fieldKey];
+    if (!sidecar) continue;
+    const meta = userMetadataOf(sidecar);
+    if (!meta || !(fieldKey in meta)) continue;
+    delete meta[fieldKey];
     await writeSidecar(projectRoot, resourceId, sidecar);
   }
 }
@@ -704,9 +720,11 @@ async function migrateFieldKeyInSidecars(
       -".meta.json".length,
     ) as UUID;
     const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar || !(oldKey in sidecar)) continue;
-    sidecar[newKey] = sidecar[oldKey];
-    delete sidecar[oldKey];
+    if (!sidecar) continue;
+    const meta = userMetadataOf(sidecar);
+    if (!meta || !(oldKey in meta)) continue;
+    meta[newKey] = meta[oldKey];
+    delete meta[oldKey];
     await writeSidecar(projectRoot, resourceId, sidecar);
   }
 }
@@ -848,18 +866,19 @@ async function migrateFieldTypeInSidecars(
       -".meta.json".length,
     ) as UUID;
     const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null)
-      continue;
-    const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
+    if (!sidecar) continue;
+    const meta = userMetadataOf(sidecar);
+    if (!meta || !(fieldKey in meta) || meta[fieldKey] === null) continue;
+    const key = canonicalValueKey(meta[fieldKey] as MetadataValue);
     const migration = migrations[key];
     if (!migration || migration.action === "keep") continue;
     if (migration.action === "clear") {
-      delete sidecar[fieldKey];
+      delete meta[fieldKey];
     } else if (
       migration.action === "normalize" &&
       migration.normalizedTo !== undefined
     ) {
-      sidecar[fieldKey] = migration.normalizedTo;
+      meta[fieldKey] = migration.normalizedTo;
     }
     await writeSidecar(projectRoot, resourceId, sidecar);
   }
@@ -968,11 +987,12 @@ async function migrateFieldOptionsInSidecars(
       -".meta.json".length,
     ) as UUID;
     const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null)
-      continue;
+    if (!sidecar) continue;
+    const meta = userMetadataOf(sidecar);
+    if (!meta || !(fieldKey in meta) || meta[fieldKey] === null) continue;
 
-    if (fieldType === "multiselect" && Array.isArray(sidecar[fieldKey])) {
-      const arr = sidecar[fieldKey] as string[];
+    if (fieldType === "multiselect" && Array.isArray(meta[fieldKey])) {
+      const arr = meta[fieldKey] as string[];
       let changed = false;
       const newArr: string[] = [];
       for (const element of arr) {
@@ -995,13 +1015,13 @@ async function migrateFieldOptionsInSidecars(
       }
       if (!changed) continue;
       if (newArr.length === 0) {
-        delete sidecar[fieldKey];
+        delete meta[fieldKey];
       } else {
-        sidecar[fieldKey] = newArr;
+        meta[fieldKey] = newArr;
       }
       await writeSidecar(projectRoot, resourceId, sidecar);
     } else {
-      const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
+      const key = canonicalValueKey(meta[fieldKey] as MetadataValue);
       const migration = migrations[key];
       if (
         !migration ||
@@ -1010,12 +1030,12 @@ async function migrateFieldOptionsInSidecars(
       )
         continue;
       if (migration.action === "clear") {
-        delete sidecar[fieldKey];
+        delete meta[fieldKey];
       } else if (
         migration.action === "normalize" &&
         migration.normalizedTo !== undefined
       ) {
-        sidecar[fieldKey] = migration.normalizedTo;
+        meta[fieldKey] = migration.normalizedTo;
       }
       await writeSidecar(projectRoot, resourceId, sidecar);
     }

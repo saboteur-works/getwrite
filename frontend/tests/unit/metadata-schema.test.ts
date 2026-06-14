@@ -14,6 +14,7 @@ import {
   getSchema,
   addField,
   removeField,
+  clearField,
   deprecateField,
   reorderFields,
   renameField,
@@ -228,6 +229,51 @@ describe("removeField — value preservation (FR6)", () => {
     // …but the sidecar file is untouched, byte for byte — no silent data loss.
     const after = await fs.readFile(sidecarPath, "utf8");
     expect(after).toBe(before);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// clearField — deletes the nested userMetadata value (destructive path)
+// ---------------------------------------------------------------------------
+
+describe("clearField", () => {
+  it("deletes the field's value from userMetadata while preserving siblings", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    const resourceId = generateUUID();
+    const metaDir = path.join(dir, "meta");
+    await fs.mkdir(metaDir, { recursive: true });
+    const sidecarPath = path.join(metaDir, `resource-${resourceId}.meta.json`);
+    // Canonical sidecar: user values nest under `userMetadata`.
+    await fs.writeFile(
+      sidecarPath,
+      JSON.stringify(
+        {
+          id: resourceId,
+          name: "Scene",
+          type: "text",
+          orderIndex: 0,
+          folderId: null,
+          slug: "scene",
+          userMetadata: { "my-field": "delete me", keep: "stay" },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    await clearField(dir, GROUP_ID, "my-field");
+
+    // Schema entry removed…
+    const schema = await getSchema(dir);
+    expect(schema.groups[0].fields.map((f) => f.key)).not.toContain("my-field");
+
+    // …and the stored value is actually gone, with siblings untouched.
+    const sidecar = JSON.parse(await fs.readFile(sidecarPath, "utf8")) as {
+      userMetadata: Record<string, unknown>;
+    };
+    expect(sidecar.userMetadata["my-field"]).toBeUndefined();
+    expect(sidecar.userMetadata.keep).toBe("stay");
   });
 });
 

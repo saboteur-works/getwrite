@@ -10,7 +10,11 @@ import {
   updateFieldOptionsWithMigration,
   clearField,
 } from "../../src/lib/models/metadata-schema";
-import type { MetadataField, MetadataSchema } from "../../src/lib/models/types";
+import type {
+  MetadataField,
+  MetadataSchema,
+  MetadataValue,
+} from "../../src/lib/models/types";
 import { generateUUID } from "../../src/lib/models/uuid";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -37,6 +41,27 @@ async function readSidecarRaw(
   const file = path.join(dir, "meta", `resource-${resourceId}.meta.json`);
   const raw = await fs.readFile(file, "utf8");
   return JSON.parse(raw) as Record<string, unknown>;
+}
+
+/**
+ * Write a sidecar whose user-metadata field values are `meta` — the canonical
+ * nested shape the value-migration helpers operate on.
+ */
+async function writeMeta(
+  dir: string,
+  resourceId: string,
+  meta: Record<string, MetadataValue>,
+): Promise<void> {
+  await writeSidecar(dir, resourceId, { userMetadata: meta });
+}
+
+/** Read back a sidecar's user-metadata map. */
+async function readMeta(
+  dir: string,
+  resourceId: string,
+): Promise<Record<string, unknown>> {
+  const raw = await readSidecarRaw(dir, resourceId);
+  return (raw.userMetadata ?? {}) as Record<string, unknown>;
 }
 
 const GROUP_ID = "custom-plot";
@@ -152,7 +177,7 @@ describe("changeFieldTypeWithMigration", () => {
   it("leaves sidecars untouched when action is 'keep'", async () => {
     const dir = await makeTmpProject(simpleSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { tone: "ominous" });
+    await writeMeta(dir, id, { tone: "ominous" });
 
     await changeFieldTypeWithMigration(
       dir,
@@ -163,20 +188,20 @@ describe("changeFieldTypeWithMigration", () => {
       { ominous: { action: "keep" } },
     );
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["tone"]).toBe("ominous");
   });
 
   it("deletes the field key from sidecars when action is 'clear'", async () => {
     const dir = await makeTmpProject(simpleSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { tone: "TBD", other: "keep-me" });
+    await writeMeta(dir, id, { tone: "TBD", other: "keep-me" });
 
     await changeFieldTypeWithMigration(dir, GROUP_ID, "tone", "select", [], {
       TBD: { action: "clear" },
     });
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["tone"]).toBeUndefined();
     expect(sidecar["other"]).toBe("keep-me");
   });
@@ -184,7 +209,7 @@ describe("changeFieldTypeWithMigration", () => {
   it("normalizes the value when action is 'normalize'", async () => {
     const dir = await makeTmpProject(simpleSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { tone: "Hopeful" });
+    await writeMeta(dir, id, { tone: "Hopeful" });
 
     await changeFieldTypeWithMigration(
       dir,
@@ -195,7 +220,7 @@ describe("changeFieldTypeWithMigration", () => {
       { Hopeful: { action: "normalize", normalizedTo: "hopeful" } },
     );
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["tone"]).toBe("hopeful");
   });
 
@@ -204,9 +229,9 @@ describe("changeFieldTypeWithMigration", () => {
     const id1 = generateUUID();
     const id2 = generateUUID();
     const id3 = generateUUID();
-    await writeSidecar(dir, id1, { tone: "ominous" });
-    await writeSidecar(dir, id2, { tone: "TBD" });
-    await writeSidecar(dir, id3, { tone: "Hopeful" });
+    await writeMeta(dir, id1, { tone: "ominous" });
+    await writeMeta(dir, id2, { tone: "TBD" });
+    await writeMeta(dir, id3, { tone: "Hopeful" });
 
     await changeFieldTypeWithMigration(
       dir,
@@ -221,19 +246,19 @@ describe("changeFieldTypeWithMigration", () => {
       },
     );
 
-    expect((await readSidecarRaw(dir, id1))["tone"]).toBe("ominous");
-    expect((await readSidecarRaw(dir, id2))["tone"]).toBeUndefined();
-    expect((await readSidecarRaw(dir, id3))["tone"]).toBe("hopeful");
+    expect((await readMeta(dir, id1))["tone"]).toBe("ominous");
+    expect((await readMeta(dir, id2))["tone"]).toBeUndefined();
+    expect((await readMeta(dir, id3))["tone"]).toBe("hopeful");
   });
 
   it("skips sidecars where the field key is absent", async () => {
     const dir = await makeTmpProject(simpleSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { other: "value" });
+    await writeMeta(dir, id, { other: "value" });
 
     await changeFieldTypeWithMigration(dir, GROUP_ID, "tone", "number", [], {});
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect("tone" in sidecar).toBe(false);
     expect(sidecar["other"]).toBe("value");
   });
@@ -241,18 +266,18 @@ describe("changeFieldTypeWithMigration", () => {
   it("skips sidecars where the field value is null", async () => {
     const dir = await makeTmpProject(simpleSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { tone: null });
+    await writeMeta(dir, id, { tone: null });
 
     await changeFieldTypeWithMigration(dir, GROUP_ID, "tone", "select", [], {});
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["tone"]).toBeNull();
   });
 
   it("does not apply migration when the sidecar value has no matching entry", async () => {
     const dir = await makeTmpProject(simpleSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { tone: "unknown-value" });
+    await writeMeta(dir, id, { tone: "unknown-value" });
 
     await changeFieldTypeWithMigration(
       dir,
@@ -263,7 +288,7 @@ describe("changeFieldTypeWithMigration", () => {
       { ominous: { action: "clear" } }, // no entry for "unknown-value"
     );
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["tone"]).toBe("unknown-value");
   });
 
@@ -348,7 +373,7 @@ describe("updateFieldOptionsWithMigration", () => {
   it("clears a select value that matches an orphaned option", async () => {
     const dir = await makeTmpProject(selectSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { genre: "horror" });
+    await writeMeta(dir, id, { genre: "horror" });
 
     await updateFieldOptionsWithMigration(
       dir,
@@ -358,59 +383,59 @@ describe("updateFieldOptionsWithMigration", () => {
       { horror: { action: "clear" } },
     );
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["genre"]).toBeUndefined();
   });
 
   it("normalizes a select value to a valid option", async () => {
     const dir = await makeTmpProject(selectSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { genre: "sci-fi" });
+    await writeMeta(dir, id, { genre: "sci-fi" });
 
     await updateFieldOptionsWithMigration(dir, GROUP_ID, "genre", ["fantasy"], {
       "sci-fi": { action: "normalize", normalizedTo: "fantasy" },
     });
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["genre"]).toBe("fantasy");
   });
 
   it("leaves a select value unchanged when action is add-to-options", async () => {
     const dir = await makeTmpProject(selectSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { genre: "horror" });
+    await writeMeta(dir, id, { genre: "horror" });
 
     await updateFieldOptionsWithMigration(dir, GROUP_ID, "genre", ["fantasy"], {
       horror: { action: "add-to-options" },
     });
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["genre"]).toBe("horror");
   });
 
   it("does not touch select sidecars with a value still in the new options", async () => {
     const dir = await makeTmpProject(selectSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { genre: "fantasy" });
+    await writeMeta(dir, id, { genre: "fantasy" });
 
     await updateFieldOptionsWithMigration(dir, GROUP_ID, "genre", ["fantasy"], {
       horror: { action: "clear" },
     });
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["genre"]).toBe("fantasy");
   });
 
   it("skips select sidecars where the field is null", async () => {
     const dir = await makeTmpProject(selectSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { genre: null });
+    await writeMeta(dir, id, { genre: null });
 
     await updateFieldOptionsWithMigration(dir, GROUP_ID, "genre", ["fantasy"], {
       horror: { action: "clear" },
     });
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["genre"]).toBeNull();
   });
 
@@ -419,20 +444,20 @@ describe("updateFieldOptionsWithMigration", () => {
   it("removes a matching element from a multiselect array when action is clear", async () => {
     const dir = await makeTmpProject(multiSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { tags: ["dark", "action"] });
+    await writeMeta(dir, id, { tags: ["dark", "action"] });
 
     await updateFieldOptionsWithMigration(dir, GROUP_ID, "tags", ["dark"], {
       action: { action: "clear" },
     });
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["tags"]).toEqual(["dark"]);
   });
 
   it("normalizes a matching element in a multiselect array", async () => {
     const dir = await makeTmpProject(multiSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { tags: ["dark", "hopeful"] });
+    await writeMeta(dir, id, { tags: ["dark", "hopeful"] });
 
     await updateFieldOptionsWithMigration(
       dir,
@@ -442,33 +467,33 @@ describe("updateFieldOptionsWithMigration", () => {
       { hopeful: { action: "normalize", normalizedTo: "positive" } },
     );
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["tags"]).toEqual(["dark", "positive"]);
   });
 
   it("leaves a multiselect array element unchanged when action is add-to-options", async () => {
     const dir = await makeTmpProject(multiSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { tags: ["dark", "action"] });
+    await writeMeta(dir, id, { tags: ["dark", "action"] });
 
     await updateFieldOptionsWithMigration(dir, GROUP_ID, "tags", ["dark"], {
       action: { action: "add-to-options" },
     });
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["tags"]).toEqual(["dark", "action"]);
   });
 
   it("deletes the field key when all multiselect elements are cleared", async () => {
     const dir = await makeTmpProject(multiSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { tags: ["action"] });
+    await writeMeta(dir, id, { tags: ["action"] });
 
     await updateFieldOptionsWithMigration(dir, GROUP_ID, "tags", ["dark"], {
       action: { action: "clear" },
     });
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["tags"]).toBeUndefined();
   });
 
@@ -499,13 +524,13 @@ describe("clearField", () => {
     const dir = await makeTmpProject(simpleSchema());
     const id1 = generateUUID();
     const id2 = generateUUID();
-    await writeSidecar(dir, id1, { tone: "ominous", other: "keep" });
-    await writeSidecar(dir, id2, { tone: "hopeful" });
+    await writeMeta(dir, id1, { tone: "ominous", other: "keep" });
+    await writeMeta(dir, id2, { tone: "hopeful" });
 
     await clearField(dir, GROUP_ID, "tone");
 
-    const s1 = await readSidecarRaw(dir, id1);
-    const s2 = await readSidecarRaw(dir, id2);
+    const s1 = await readMeta(dir, id1);
+    const s2 = await readMeta(dir, id2);
     expect(s1["tone"]).toBeUndefined();
     expect(s1["other"]).toBe("keep");
     expect(s2["tone"]).toBeUndefined();
@@ -514,11 +539,11 @@ describe("clearField", () => {
   it("leaves sidecars without the field key untouched", async () => {
     const dir = await makeTmpProject(simpleSchema());
     const id = generateUUID();
-    await writeSidecar(dir, id, { unrelated: "value" });
+    await writeMeta(dir, id, { unrelated: "value" });
 
     await clearField(dir, GROUP_ID, "tone");
 
-    const sidecar = await readSidecarRaw(dir, id);
+    const sidecar = await readMeta(dir, id);
     expect(sidecar["unrelated"]).toBe("value");
   });
 
