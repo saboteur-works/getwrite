@@ -98,7 +98,7 @@ Derived from `spec.md`. Granularity: story points (1/2/3/5/8).
 
 ---
 
-### Task 9: Timeline POV/Notes-optional hardening
+### Task 9: Timeline POV/Notes-optional hardening ✅
 
 **What:** Ensure the Timeline View renders correctly when POV and/or Notes are disabled or absent.
 **Files:** `frontend/components/WorkArea/Views/TimelineView/TimelineView.tsx`, `frontend/components/Timeline/Timeline.tsx`
@@ -106,6 +106,7 @@ Derived from `spec.md`. Granularity: story points (1/2/3/5/8).
 **Depends on:** 8
 **Estimate:** 2
 **Notes:** Timeline already partly degrades (`items.some(i => !i.metadata?.pov)`); this task verifies and completes it for the fully-disabled case.
+**Status:** ✅ Complete (2026-06-14) — `TimelineView.tsx` now reads the Task 4 primitive selectors `selectPovEnabled`/`selectNotesEnabled` and treats each feature as an independent opt-in (spec FR4): when POV is off, `povColorMap` short-circuits to `{}`, each item's `pov` is forced to `undefined` (so `color` stays unset and `povNames` is empty), removing all coloring/pills/legend even when resources still carry POV values; when Notes is off, `metadata.notes` is not populated. Stored values are untouched (preserved on disk), so re-enabling restores the affordances. `Timeline.tsx` `showLegend` was tightened to `povNamesResolved.length > 0 && (… > 1 || hasUnassigned)` so the POV legend (previously shown via the `hasUnassigned` clause even with **zero** POVs) is neutralized when POV is disabled or simply absent — the Timeline degrades to a plain chronology. The POV filter pills already guarded on `povNamesResolved.length > 0`, so they needed no change. The `TimelineTooltip` renders **no** notes row today (the computed `metadata.notes` is currently unused), so "omits the notes line without error" holds; logged a follow-up about that dead field + the resource-level `r.notes` vs gated `userMetadata.notes` source mismatch (out of scope here — Timeline visuals are a non-goal). Four new cases appended to `tests/timelineView.test.tsx`: POV enabled+present → ALL/Alice/Bob pills + POV legend; POV disabled despite POV data → scene renders, no pills/legend; POV enabled but absent (FR4) → plain chronology; Notes disabled with a resource note → renders without throwing. Verified: `tests/timelineView.test.tsx` 10/10 green; full `pnpm test:ci` 169/170 files green (1896 passed, 1 skipped) — the lone failing file is the pre-existing `media-file-route` temp-dir teardown flake (`ENOTEMPTY .../meta`), which passes 5/5 in isolation; `pnpm typecheck` clean; changed files eslint-clean apart from three pre-existing warnings (`Timeline.tsx` unused `dateToPercent` import; two `any`s already in `timelineView.test.tsx`).
 
 ---
 

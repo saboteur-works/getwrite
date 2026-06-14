@@ -61,3 +61,37 @@ time the Playwright suite is run.
 sibling assertions at ~L180). While there, run the full `pnpm test:e2e` against
 Storybook to confirm the rest of the sidebar e2e is green under the new
 feature-gated stories.
+
+---
+
+## 2026-06-14 — Timeline tooltip never renders `metadata.notes`, and its source is the resource-level `notes`, not the gated `userMetadata.notes`
+
+**Discovered during:** Task 9 (Timeline POV/Notes-optional hardening).
+
+**What:** `TimelineView.tsx` computes `metadata.notes` for each item (now gated
+on `selectNotesEnabled` by Task 9), but `TimelineTooltip.tsx` renders **no**
+notes row — so `metadata.notes` is currently dead data (the field's JSDoc even
+says "Structured metadata for tooltip display"). Separately, the notes value is
+read from the **resource-level** `r.notes` field ("User-editable notes" on the
+resource), *not* the `userMetadata.notes` metadata field that the Notes feature
+toggle (`config.features.notes`) actually governs. Those are two different
+fields.
+
+**Why it was deferred (not blocking):** Task 9's "done when" only requires the
+tooltip to omit the notes line without error, which holds trivially because no
+notes line exists. Adding a notes row would be a Timeline **visual** change,
+which the spec lists under Out of scope ("Redesigning the … Timeline … visuals").
+Gating the existing (unused) `metadata.notes` on the Notes toggle was the
+in-scope, low-risk completion.
+
+**Risk if left:** If a future change surfaces notes in the tooltip, it will (a)
+need a new `TooltipRow` and (b) silently show the wrong source — resource-level
+`r.notes` rather than the gated `userMetadata.notes` — making the Notes toggle
+look ineffective for the metadata field users actually edit in the sidebar.
+
+**Suggested fix:** Decide the intended source. If the timeline should reflect
+the Notes **metadata field**, switch `TimelineView` to read
+`r.userMetadata?.notes` (still gated on `selectNotesEnabled`) and add a `NOTES`
+`TooltipRow` to `TimelineTooltip.tsx` rendered only when `item.metadata?.notes`
+is present. If resource-level `notes` is genuinely intended, document that and
+decouple it from the Notes feature toggle. Either way, add a tooltip test.
