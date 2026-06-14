@@ -1281,6 +1281,10 @@ export default function AppShell({
                           }
                           return Array.from(new Set(disabled));
                         })()}
+                        disabledReasons={{
+                          timeline:
+                            "The Timeline view is off. Turn it on in User Preferences → Timeline view.",
+                        }}
                       />
                       <div style={{ width: 320 }}>
                         <SearchBar onSelect={(id) => onResourceSelect?.(id)} />

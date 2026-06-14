@@ -5,6 +5,43 @@ notes why it was deferred and what a future implementer needs.
 
 ---
 
+## 2026-06-14 — DECISION: split the Timeline *fields* toggle from the Timeline *view* toggle + disabled-tab tooltip
+
+**Context:** The single `features.timeline` flag did double duty — it gated both
+the story-timeline metadata fields (`storyDate`/`storyDuration`/`storyEndDate`)
+*and* the Timeline view/tab. A user who wanted the date metadata but not the
+chronology view had no clean way to express that. Separately, when the Timeline
+tab is disabled there was no explanation of why or how to enable it.
+
+**Decision (two parts):**
+
+1. **Split the flag.** `features.timeline` now gates **only the metadata fields**
+   (in the Metadata Fields menu, where the field toggles live). A new
+   `features.timelineView` flag gates **the Timeline view/tab**, toggled from a
+   new "Timeline view" section in **User Preferences**. The flags are
+   independent: fields-on/view-off is the primary use case; view-on/fields-off
+   just shows the view's empty state. AppShell's tab/view gating moved from
+   `selectTimelineEnabled` → `selectTimelineViewEnabled`; the sidebar fields
+   stay on `selectTimelineEnabled`.
+
+   *Migration:* `timelineView` is seeded from story-data presence (same as the
+   fields) for fresh projects, **and backfilled to `true` for existing projects
+   that already had `timeline: true`** (so current users keep their view) —
+   idempotent, never overrides an explicit value. Both toggle UIs now merge onto
+   the full feature map (`selectActiveProjectFeatures`) rather than re-enumerate
+   keys, so neither clobbers the other (the route replaces the block wholesale).
+
+2. **Disabled-tab tooltip.** `ViewSwitcher` gained a `disabledReasons` prop; a
+   disabled tab is wrapped in a hover target (a disabled `<button>` swallows
+   pointer events) carrying a `react-tooltip` explaining why it's off and where
+   to enable it. AppShell supplies the Timeline reason ("The Timeline view is
+   off. Turn it on in User Preferences → Timeline view.").
+
+This extends FR2/FR3 (the timeline opt-in is now two independent opt-ins). All
+gating/migration plumbing otherwise unchanged.
+
+---
+
 ## 2026-06-14 — DECISION: feature toggles relocated to the Metadata Fields menu (spec deviation)
 
 **Context:** FR10 said the Timeline/POV/Synopsis/Notes toggles live in "project

@@ -1,13 +1,25 @@
 import React from "react";
 import { Pencil, LayoutList, BarChart3, GitCompare, Clock } from "lucide-react";
+import { Tooltip } from "react-tooltip";
 import { Tabs, TabsList, TabsTrigger } from "../common/UI/Tabs/Tabs";
+import { TOOLTIP_STYLE } from "../common/UI/tooltipStyle";
 import { ViewName } from "../../src/lib/models/types";
+
+/** Shared react-tooltip anchor id for disabled-view explanations. */
+const VIEW_TOOLTIP_ID = "workarea-view-switcher-tip";
 
 export interface ViewSwitcherProps {
   view: ViewName;
   onChange: (view: ViewName) => void;
   className?: string;
   disabledViews?: ViewName[] | (() => ViewName[]);
+  /**
+   * Optional hover-tooltip text per view, surfaced only while that view is
+   * disabled — explains why the tab is off and how to enable it. A disabled
+   * `<button>` swallows pointer events, so the trigger is wrapped in a hover
+   * target that carries the tooltip.
+   */
+  disabledReasons?: Partial<Record<ViewName, string>>;
   /**
    * Overrides the label of the "edit" tab. Used to surface media resources as
    * a "Media" tab while reusing the edit view. Defaults to "Edit".
@@ -37,29 +49,56 @@ export default function ViewSwitcher({
   onChange,
   className = "",
   disabledViews = [],
+  disabledReasons = {},
   editLabel = "Edit",
 }: ViewSwitcherProps): JSX.Element {
   const resolvedDisabledViews =
     typeof disabledViews === "function" ? disabledViews() : disabledViews;
+  const hasReason = resolvedDisabledViews.some((v) => disabledReasons[v]);
 
   return (
-    <Tabs value={view} onValueChange={(v) => onChange(v as ViewName)}>
-      <TabsList
-        aria-label="Work area views"
-        className={`workarea-view-tabs ${className}`}
-      >
-        {VIEW_OPTIONS.map((opt) => (
-          <TabsTrigger
-            key={opt.key}
-            value={opt.key}
-            disabled={resolvedDisabledViews.includes(opt.key)}
-            className="workarea-tab-button border-b-hairline"
-          >
-            <opt.icon size={14} aria-hidden="true" />
-            {opt.key === "edit" ? editLabel : opt.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <>
+      <Tabs value={view} onValueChange={(v) => onChange(v as ViewName)}>
+        <TabsList
+          aria-label="Work area views"
+          className={`workarea-view-tabs ${className}`}
+        >
+          {VIEW_OPTIONS.map((opt) => {
+            const isDisabled = resolvedDisabledViews.includes(opt.key);
+            const reason = isDisabled ? disabledReasons[opt.key] : undefined;
+            const trigger = (
+              <TabsTrigger
+                value={opt.key}
+                disabled={isDisabled}
+                className="workarea-tab-button border-b-hairline"
+              >
+                <opt.icon size={14} aria-hidden="true" />
+                {opt.key === "edit" ? editLabel : opt.label}
+              </TabsTrigger>
+            );
+            // A disabled <button> swallows pointer events, so wrap it in a
+            // hover target that carries the "why it's off" tooltip. The wrapper
+            // must stay layout-neutral: `self-stretch` fills the row's cross
+            // axis so the inner tab keeps the same height/position as the
+            // unwrapped (enabled) tabs.
+            return reason ? (
+              <span
+                key={opt.key}
+                className="inline-flex self-stretch"
+                data-tooltip-id={VIEW_TOOLTIP_ID}
+                data-tooltip-content={reason}
+              >
+                {trigger}
+              </span>
+            ) : (
+              <React.Fragment key={opt.key}>{trigger}</React.Fragment>
+            );
+          })}
+        </TabsList>
+      </Tabs>
+      {hasReason && (
+        <Tooltip id={VIEW_TOOLTIP_ID} place="top" style={TOOLTIP_STYLE} />
+      )}
+    </>
   );
 }
