@@ -14,6 +14,19 @@ import { makeStore } from "../src/store/store";
 import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import type { ProjectFeatureFlags } from "../src/lib/models/types";
 
+vi.mock("../src/lib/toast-service", () => {
+  const toastService = {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    loading: vi.fn(),
+    dismiss: vi.fn(),
+    dismissAll: vi.fn(),
+  };
+  return { toastService, default: toastService };
+});
+import { toastService } from "../src/lib/toast-service";
+
 function setup(features?: ProjectFeatureFlags) {
   const store = makeStore();
   const projectId = "test-project-id";
@@ -47,6 +60,7 @@ function mockFeatureRoute(features: ProjectFeatureFlags) {
 describe("TimelineViewToggle", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders the Timeline view checkbox", () => {
@@ -146,6 +160,52 @@ describe("TimelineViewToggle", () => {
         .getByRole("checkbox", { name: /enable timeline view/i })
         .closest("[data-tooltip-content]"),
     ).toBeNull();
+  });
+
+  it("shows a success toast confirming the view toggle", async () => {
+    setup({ timeline: true }); // fields already on → no cascade
+    mockFeatureRoute({ timeline: true, timelineView: true });
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /enable timeline view/i }),
+    );
+
+    await waitFor(() =>
+      expect(toastService.success).toHaveBeenCalledWith(
+        "Timeline view enabled",
+        undefined,
+      ),
+    );
+  });
+
+  it("notes the cascaded fields in the toast when enabling the view with them off", async () => {
+    setup({ notes: true }); // fields off
+    mockFeatureRoute({ notes: true, timelineView: true, timeline: true });
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /enable timeline view/i }),
+    );
+
+    await waitFor(() =>
+      expect(toastService.success).toHaveBeenCalledWith(
+        "Timeline view enabled",
+        "Timeline fields turned on too.",
+      ),
+    );
+  });
+
+  it("shows an error toast when the update fails", async () => {
+    setup({ timeline: true });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "boom" }), { status: 500 }),
+    );
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /enable timeline view/i }),
+    );
+
+    await waitFor(() => expect(toastService.error).toHaveBeenCalled());
+    expect(toastService.success).not.toHaveBeenCalled();
   });
 
   it("renders nothing when no project is selected", () => {

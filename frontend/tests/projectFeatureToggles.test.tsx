@@ -14,6 +14,19 @@ import { makeStore } from "../src/store/store";
 import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import type { ProjectFeatureFlags } from "../src/lib/models/types";
 
+vi.mock("../src/lib/toast-service", () => {
+  const toastService = {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    loading: vi.fn(),
+    dismiss: vi.fn(),
+    dismissAll: vi.fn(),
+  };
+  return { toastService, default: toastService };
+});
+import { toastService } from "../src/lib/toast-service";
+
 function setup(features?: ProjectFeatureFlags) {
   const store = makeStore();
   const projectId = "test-project-id";
@@ -47,6 +60,7 @@ function mockFeatureRoute(features: ProjectFeatureFlags) {
 describe("ProjectFeatureToggles", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders a checkbox for each of the four features", () => {
@@ -179,6 +193,46 @@ describe("ProjectFeatureToggles", () => {
         .getByRole("checkbox", { name: /timeline/i })
         .closest("[data-tooltip-content]"),
     ).toBeNull();
+  });
+
+  it("shows a success toast confirming the toggle", async () => {
+    setup();
+    mockFeatureRoute({ synopsis: true });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /synopsis/i }));
+
+    await waitFor(() =>
+      expect(toastService.success).toHaveBeenCalledWith(
+        "Synopsis enabled",
+        undefined,
+      ),
+    );
+  });
+
+  it("notes the cascaded view in the toast when disabling the timeline fields", async () => {
+    setup({ timeline: true, timelineView: true });
+    mockFeatureRoute({ timeline: false, timelineView: false });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /timeline/i }));
+
+    await waitFor(() =>
+      expect(toastService.success).toHaveBeenCalledWith(
+        "Timeline disabled",
+        "Timeline view turned off too.",
+      ),
+    );
+  });
+
+  it("shows an error toast when the update fails", async () => {
+    setup();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "boom" }), { status: 500 }),
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /notes/i }));
+
+    await waitFor(() => expect(toastService.error).toHaveBeenCalled());
+    expect(toastService.success).not.toHaveBeenCalled();
   });
 
   it("renders nothing when no project is selected", () => {

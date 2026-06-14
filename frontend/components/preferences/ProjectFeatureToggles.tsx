@@ -22,6 +22,7 @@ import {
 } from "../../src/store/projectsSlice";
 import type { ProjectFeatureFlags } from "../../src/lib/models/types";
 import { TOOLTIP_STYLE } from "../common/UI/tooltipStyle";
+import { toastService } from "../../src/lib/toast-service";
 
 /** react-tooltip anchor id for the "view depends on these fields" hint. */
 const FEATURE_TOOLTIP_ID = "feature-toggle-tip";
@@ -87,27 +88,43 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
 
   /**
    * Persists a single feature change by sending the full, merged feature map
-   * (the route replaces the `features` block wholesale).
+   * (the route replaces the `features` block wholesale), then confirms with a
+   * toast (or reports failure).
    *
    * @param key - Feature flag being changed.
+   * @param label - Human-readable feature name, used in the toast.
    * @param next - Desired enabled state.
    */
-  const handleToggle = (
+  const handleToggle = async (
     key: keyof ProjectFeatureFlags,
+    label: string,
     next: boolean,
-  ): void => {
+  ): Promise<void> => {
     const updated: ProjectFeatureFlags = { ...features, [key]: next };
     // The Timeline view depends on the date fields; disabling the fields takes
     // the view with them (no-op when the view is already off).
-    if (key === "timeline" && !next && features.timelineView === true) {
+    const cascadesViewOff =
+      key === "timeline" && !next && features.timelineView === true;
+    if (cascadesViewOff) {
       updated.timelineView = false;
     }
-    void dispatch(
-      updateProjectFeatures({
-        projectId: selectedProjectId,
-        features: updated,
-      }),
-    );
+    try {
+      await dispatch(
+        updateProjectFeatures({
+          projectId: selectedProjectId,
+          features: updated,
+        }),
+      ).unwrap();
+      toastService.success(
+        `${label} ${next ? "enabled" : "disabled"}`,
+        cascadesViewOff ? "Timeline view turned off too." : undefined,
+      );
+    } catch (error) {
+      toastService.error(
+        `Couldn't update ${label}`,
+        error instanceof Error ? error.message : undefined,
+      );
+    }
   };
 
   return (
@@ -138,7 +155,9 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
                 <input
                   type="checkbox"
                   checked={features[key] === true}
-                  onChange={(event) => handleToggle(key, event.target.checked)}
+                  onChange={(event) =>
+                    void handleToggle(key, label, event.target.checked)
+                  }
                   className="h-4 w-4 rounded border-gw-border"
                 />
                 <span className="text-sm font-medium text-gw-primary">

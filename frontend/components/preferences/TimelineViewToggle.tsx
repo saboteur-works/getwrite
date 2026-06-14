@@ -20,6 +20,7 @@ import {
   updateProjectFeatures,
 } from "../../src/store/projectsSlice";
 import { TOOLTIP_STYLE } from "../common/UI/tooltipStyle";
+import { toastService } from "../../src/lib/toast-service";
 
 /** react-tooltip anchor id for the "also enables the date fields" hint. */
 const TIMELINE_VIEW_TOOLTIP_ID = "timeline-view-toggle-tip";
@@ -48,19 +49,31 @@ export default function TimelineViewToggle(): JSX.Element | null {
     ? undefined
     : "Also turns on the Timeline date fields, which the view reads.";
 
-  const handleToggle = (next: boolean): void => {
+  const handleToggle = async (next: boolean): Promise<void> => {
     const updated = { ...features, timelineView: next };
     // The view is useless without its date fields, so enabling it enables them
     // too (no-op when already on). Disabling the view leaves the fields alone.
-    if (next && !metadataEnabled) {
+    const cascadesFieldsOn = next && !metadataEnabled;
+    if (cascadesFieldsOn) {
       updated.timeline = true;
     }
-    void dispatch(
-      updateProjectFeatures({
-        projectId: selectedProjectId,
-        features: updated,
-      }),
-    );
+    try {
+      await dispatch(
+        updateProjectFeatures({
+          projectId: selectedProjectId,
+          features: updated,
+        }),
+      ).unwrap();
+      toastService.success(
+        `Timeline view ${next ? "enabled" : "disabled"}`,
+        cascadesFieldsOn ? "Timeline fields turned on too." : undefined,
+      );
+    } catch (error) {
+      toastService.error(
+        "Couldn't update Timeline view",
+        error instanceof Error ? error.message : undefined,
+      );
+    }
   };
 
   return (
@@ -84,7 +97,7 @@ export default function TimelineViewToggle(): JSX.Element | null {
           <input
             type="checkbox"
             checked={features.timelineView === true}
-            onChange={(event) => handleToggle(event.target.checked)}
+            onChange={(event) => void handleToggle(event.target.checked)}
             className="h-4 w-4 rounded border-gw-border"
           />
           <span className="text-sm font-medium text-gw-primary">
