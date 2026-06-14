@@ -59,6 +59,39 @@ describe("resolveOrganizerCardBody — source: field", () => {
     ).toBe("draft, review");
   });
 
+  it("renders a resource-ref field as its display name", () => {
+    const res = createTextResource({
+      name: "R",
+      userMetadata: { pov: { id: "r9", name: "Alice" } },
+    });
+    expect(
+      resolveOrganizerCardBody(
+        res,
+        { source: "field", fieldKey: "pov" },
+        { notesEnabled: false },
+      ),
+    ).toBe("Alice");
+  });
+
+  it("joins a multi-resource-ref field's names with commas", () => {
+    const res = createTextResource({
+      name: "R",
+      userMetadata: {
+        pov: [
+          { id: "r9", name: "Alice" },
+          { id: "r10", name: "Bob" },
+        ],
+      },
+    });
+    expect(
+      resolveOrganizerCardBody(
+        res,
+        { source: "field", fieldKey: "pov" },
+        { notesEnabled: false },
+      ),
+    ).toBe("Alice, Bob");
+  });
+
   it("returns undefined for an empty or missing field", () => {
     const res = createTextResource({
       name: "R",

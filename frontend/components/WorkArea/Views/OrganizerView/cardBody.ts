@@ -55,6 +55,12 @@ function formatFieldValue(value: unknown): string | undefined {
       .filter((entry): entry is string => entry !== undefined);
     return parts.length ? parts.join(", ") : undefined;
   }
+  // Resource references (e.g. the POV field) render as their display name;
+  // arrays of refs are handled by the branch above.
+  if (typeof value === "object" && "name" in value) {
+    const name = (value as { name?: unknown }).name;
+    if (typeof name === "string" && name.trim() !== "") return name.trim();
+  }
   return undefined;
 }
 
