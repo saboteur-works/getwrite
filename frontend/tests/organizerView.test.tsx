@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import OrganizerView from "../components/WorkArea/Views/OrganizerView/OrganizerView";
 import { createTextResource } from "../src/lib/models/resource";
@@ -15,6 +15,11 @@ import type {
   OrganizerCardBodyConfig,
   ProjectFeatureFlags,
 } from "../src/lib/models/types";
+
+vi.mock("../src/lib/api/resource-excerpts", () => ({
+  fetchResourceExcerpts: vi.fn(),
+}));
+import { fetchResourceExcerpts } from "../src/lib/api/resource-excerpts";
 
 const FOLDER_ID = "11111111-1111-4111-8111-111111111111";
 const PROJECT_ID = "22222222-2222-4222-8222-222222222222";
@@ -165,6 +170,49 @@ describe("OrganizerView", () => {
 
     // "The quick brown fox..." capped at 12 chars + ellipsis.
     expect(screen.getByText("The quick br…")).toBeTruthy();
+  });
+
+  it("fetches and renders excerpts for visible text cards when a project path is set", async () => {
+    const mockFetch = vi.mocked(fetchResourceExcerpts);
+    const resource = createTextResource({
+      name: "Dated Scene",
+      plainText: "stale fallback content",
+      folderId: FOLDER_ID,
+    });
+    mockFetch.mockResolvedValue({ [resource.id]: "Fetched from disk." });
+
+    const store = makeStore();
+    store.dispatch(
+      setProject({
+        id: PROJECT_ID,
+        name: "Proj",
+        rootPath: "/projects/p1",
+        folders: [],
+        resources: [],
+        organizerCardBody: { source: "text-excerpt", excerptLength: 100 },
+      } as any),
+    );
+    store.dispatch(setSelectedProjectId(PROJECT_ID));
+    store.dispatch(setFolders([makeFolder(FOLDER_ID, "Folder A")] as any));
+    store.dispatch(setResources([resource] as any));
+    store.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={true} />
+      </Provider>,
+    );
+
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/projects/p1",
+        [resource.id],
+        100,
+      ),
+    );
+    expect(await screen.findByText("Fetched from disk.")).toBeInTheDocument();
+    // The fetched excerpt is preferred over the resource's stale plainText.
+    expect(screen.queryByText(/stale fallback/i)).toBeNull();
   });
 
   it("renders no card body when source is none", () => {

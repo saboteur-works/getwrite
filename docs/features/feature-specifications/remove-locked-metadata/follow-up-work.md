@@ -210,6 +210,20 @@ Timeline-visual half that was deliberately deferred as a spec non-goal.
 
 ## 2026-06-14 — Organizer `text-excerpt` card body has no live data pipeline
 
+**✅ Resolved (2026-06-14):** Added a scoped excerpt pipeline. New model helper
+`readResourceExcerpts(projectPath, ids, maxChars)` reads each resource's
+`content.txt` (capped to `maxChars + 1` so the resolver can still add an
+ellipsis); new route `POST /api/project-resources/excerpts` and transport
+`fetchResourceExcerpts` expose it. `OrganizerView` fetches excerpts **only for
+the visible folder's text children, and only when the card-body source is
+`text-excerpt`** (bounded + on-demand, off the project load path), and passes
+them to the resolver via a new `textExcerpt` option (preferred over the store
+resource's absent `plainText`). Covered by model, resolver, and OrganizerView
+(fetch-path) tests. Note: `previews.ts` remains unused — a future caching
+optimization, not required now.
+
+
+
 **Discovered during:** Task 10 (Organizer card-body consumption).
 
 **What:** The Task 10 consumption layer is complete and tested: `OrganizerCard`

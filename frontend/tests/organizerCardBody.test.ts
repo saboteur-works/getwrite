@@ -129,6 +129,28 @@ describe("resolveOrganizerCardBody — source: text-excerpt", () => {
       ),
     ).toBeUndefined();
   });
+
+  it("prefers the provided textExcerpt over the resource's plainText", () => {
+    const res = createTextResource({ name: "R", plainText: "stale content" });
+    expect(
+      resolveOrganizerCardBody(
+        res,
+        { source: "text-excerpt", excerptLength: 50 },
+        { notesEnabled: false, textExcerpt: "fetched content" },
+      ),
+    ).toBe("fetched content");
+  });
+
+  it("returns undefined when neither textExcerpt nor plainText is present", () => {
+    const res = createTextResource({ name: "R" });
+    expect(
+      resolveOrganizerCardBody(
+        res,
+        { source: "text-excerpt", excerptLength: 50 },
+        { notesEnabled: false },
+      ),
+    ).toBeUndefined();
+  });
 });
 
 describe("resolveOrganizerCardBody — back-compat default (config null)", () => {

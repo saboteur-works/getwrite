@@ -13,6 +13,7 @@ import {
   writeResourceToFile,
 } from "../../src/lib/models/resource";
 import { readSidecar } from "../../src/lib/models/sidecar";
+import { readResourceExcerpts } from "../../src/lib/models/resource-persistence";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 const folderId = "11111111-1111-4111-8111-111111111111";
@@ -300,6 +301,51 @@ describe("models/resource persistence regressions (T007)", () => {
           binary: new Uint8Array([0]),
         }),
       ).rejects.toThrow(/missing 'file' name/);
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+});
+
+describe("readResourceExcerpts", () => {
+  async function writeContent(
+    root: string,
+    id: string,
+    content: string,
+  ): Promise<void> {
+    const dir = path.join(root, "resources", id);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, "content.txt"), content, "utf8");
+  }
+
+  it("returns capped excerpts for resources with content and skips the rest", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-excerpts-"),
+    );
+    try {
+      await writeContent(projectRoot, "r1", "The quick brown fox");
+      await writeContent(projectRoot, "r2", "   "); // whitespace only → skipped
+      // r3 has no content.txt at all → skipped
+
+      const excerpts = readResourceExcerpts(projectRoot, ["r1", "r2", "r3"], 5);
+
+      // Capped to maxChars + 1 so the caller can still add an ellipsis.
+      expect(excerpts.r1).toBe("The qu");
+      expect(excerpts.r2).toBeUndefined();
+      expect(excerpts.r3).toBeUndefined();
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
+  it("returns the full content when shorter than the cap", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-excerpts-"),
+    );
+    try {
+      await writeContent(projectRoot, "r1", "short");
+      const excerpts = readResourceExcerpts(projectRoot, ["r1"], 200);
+      expect(excerpts.r1).toBe("short");
     } finally {
       await removeDirRetry(projectRoot);
     }

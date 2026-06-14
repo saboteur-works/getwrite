@@ -65,6 +65,12 @@ export interface ResolveCardBodyOptions {
    * back-compat default applied when no `organizerCardBody` config is set.
    */
   notesEnabled: boolean;
+  /**
+   * Resource text for `text-excerpt` mode, fetched on demand by the caller
+   * (store resources don't carry their content). Preferred over
+   * `resource.plainText`; falls back to it when omitted.
+   */
+  textExcerpt?: string;
 }
 
 /**
@@ -104,7 +110,7 @@ export function resolveOrganizerCardBody(
       return formatFieldValue(resource.userMetadata?.[effective.fieldKey]);
     }
     case "text-excerpt": {
-      const text = (resource as TextResource).plainText;
+      const text = options.textExcerpt ?? (resource as TextResource).plainText;
       if (typeof text !== "string" || text.trim() === "") return undefined;
       const cap =
         effective.excerptLength && effective.excerptLength > 0
