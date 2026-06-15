@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.50](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.49...getwrite-v0.2.50) (2026-06-15)
+
+
+### Features
+
+* desktop update notice + version footer in settings menu ([#132](https://github.com/saboteur-works/getwrite/issues/132)) ([150b7f1](https://github.com/saboteur-works/getwrite/commit/150b7f164a1643034343933d96ab6f81f194fc65))
+
 ## [0.2.49](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.48...getwrite-v0.2.49) (2026-06-15)
 
 
