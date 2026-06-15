@@ -51,6 +51,23 @@ describe("updateFeatureConfig (Task 4)", () => {
     }
   });
 
+  it("forces timeline on when timelineView is enabled (invariant: view needs fields)", async () => {
+    const dir = await makeTmpProject();
+    try {
+      // A writer requests the view without the date fields...
+      await updateFeatureConfig(dir, { features: { timelineView: true } });
+      const saved = await readProject(dir);
+      // ...the seam normalizes so the stranded "view on, no fields" state
+      // can never be persisted.
+      expect(saved.config?.features).toEqual({
+        timelineView: true,
+        timeline: true,
+      });
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
   it("persists config.organizerCardBody to project.json", async () => {
     const dir = await makeTmpProject();
     try {

@@ -64,6 +64,13 @@ export async function updateFeatureConfig(
     update.features !== undefined
       ? ProjectFeatureFlagsSchema.parse(update.features)
       : undefined;
+  // Invariant: the Timeline view reads the timeline date fields, so the view
+  // cannot be on without them. Enforce it here, at the single write seam, so
+  // every caller (not just the UI toggles) is prevented from persisting the
+  // stranded "view on, no data fields" state.
+  if (nextFeatures?.timelineView === true) {
+    nextFeatures.timeline = true;
+  }
   const nextCardBody =
     update.organizerCardBody !== undefined
       ? OrganizerCardBodyConfigSchema.parse(update.organizerCardBody)
