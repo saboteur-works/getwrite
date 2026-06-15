@@ -15,10 +15,6 @@ extraResources:
     to: frontend/.next/standalone/frontend/.next/static
     filter:
       - "**/*"
-  - from: ../frontend/public
-    to: frontend/.next/standalone/frontend/public
-    filter:
-      - "**/*"
   - from: ../getwrite-config
     to: getwrite-config
     filter:
