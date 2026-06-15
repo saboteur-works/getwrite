@@ -11,7 +11,6 @@
  * thunk, merging onto the full feature map so other flags are preserved.
  */
 
-import { Tooltip } from "react-tooltip";
 import { useAppDispatch } from "../../src/store/hooks";
 import useAppSelector from "../../src/store/hooks";
 import {
@@ -19,7 +18,7 @@ import {
   selectActiveProjectFeatures,
   updateProjectFeatures,
 } from "../../src/store/projectsSlice";
-import { TOOLTIP_STYLE } from "../common/UI/tooltipStyle";
+import { hoverTipProps, HoverTipSurface } from "../common/UI/HoverTip";
 import { toastService } from "../../src/lib/toast-service";
 
 /** react-tooltip anchor id for the "also enables the date fields" hint. */
@@ -87,12 +86,7 @@ export default function TimelineViewToggle(): JSX.Element | null {
       <div className="mt-4">
         <label
           className="inline-flex items-center gap-2"
-          {...(tooltip
-            ? {
-                "data-tooltip-id": TIMELINE_VIEW_TOOLTIP_ID,
-                "data-tooltip-content": tooltip,
-              }
-            : {})}
+          {...hoverTipProps(TIMELINE_VIEW_TOOLTIP_ID, tooltip)}
         >
           <input
             type="checkbox"
@@ -106,13 +100,7 @@ export default function TimelineViewToggle(): JSX.Element | null {
         </label>
       </div>
 
-      {tooltip && (
-        <Tooltip
-          id={TIMELINE_VIEW_TOOLTIP_ID}
-          place="top"
-          style={TOOLTIP_STYLE}
-        />
-      )}
+      {tooltip && <HoverTipSurface id={TIMELINE_VIEW_TOOLTIP_ID} />}
     </section>
   );
 }

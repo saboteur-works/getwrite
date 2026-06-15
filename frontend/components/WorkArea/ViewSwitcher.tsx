@@ -1,8 +1,7 @@
 import React from "react";
 import { Pencil, LayoutList, BarChart3, GitCompare, Clock } from "lucide-react";
-import { Tooltip } from "react-tooltip";
 import { Tabs, TabsList, TabsTrigger } from "../common/UI/Tabs/Tabs";
-import { TOOLTIP_STYLE } from "../common/UI/tooltipStyle";
+import { hoverTipProps, HoverTipSurface } from "../common/UI/HoverTip";
 import { ViewName } from "../../src/lib/models/types";
 
 /** Shared react-tooltip anchor id for disabled-view explanations. */
@@ -85,8 +84,7 @@ export default function ViewSwitcher({
               <span
                 key={opt.key}
                 className="inline-flex self-stretch"
-                data-tooltip-id={VIEW_TOOLTIP_ID}
-                data-tooltip-content={reason}
+                {...hoverTipProps(VIEW_TOOLTIP_ID, reason)}
               >
                 {trigger}
               </span>
@@ -96,9 +94,7 @@ export default function ViewSwitcher({
           })}
         </TabsList>
       </Tabs>
-      {hasReason && (
-        <Tooltip id={VIEW_TOOLTIP_ID} place="top" style={TOOLTIP_STYLE} />
-      )}
+      {hasReason && <HoverTipSurface id={VIEW_TOOLTIP_ID} />}
     </>
   );
 }

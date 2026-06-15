@@ -12,7 +12,6 @@
  * only hides its field — stored values are preserved.
  */
 
-import { Tooltip } from "react-tooltip";
 import { useAppDispatch } from "../../src/store/hooks";
 import useAppSelector from "../../src/store/hooks";
 import {
@@ -21,7 +20,7 @@ import {
   updateProjectFeatures,
 } from "../../src/store/projectsSlice";
 import type { ProjectFeatureFlags } from "../../src/lib/models/types";
-import { TOOLTIP_STYLE } from "../common/UI/tooltipStyle";
+import { hoverTipProps, HoverTipSurface } from "../common/UI/HoverTip";
 import { toastService } from "../../src/lib/toast-service";
 
 /** react-tooltip anchor id for the "view depends on these fields" hint. */
@@ -145,12 +144,7 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
             <div key={key}>
               <label
                 className="inline-flex items-center gap-2"
-                {...(tooltip
-                  ? {
-                      "data-tooltip-id": FEATURE_TOOLTIP_ID,
-                      "data-tooltip-content": tooltip,
-                    }
-                  : {})}
+                {...hoverTipProps(FEATURE_TOOLTIP_ID, tooltip)}
               >
                 <input
                   type="checkbox"
@@ -172,9 +166,7 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
         })}
       </div>
 
-      {timelineWarning && (
-        <Tooltip id={FEATURE_TOOLTIP_ID} place="top" style={TOOLTIP_STYLE} />
-      )}
+      {timelineWarning && <HoverTipSurface id={FEATURE_TOOLTIP_ID} />}
     </section>
   );
 }
