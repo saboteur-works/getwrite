@@ -97,6 +97,15 @@ describe("projectsSlice — feature selectors (absent = disabled)", () => {
     expect(selectActiveProjectOrganizerCardBody(state)).toBeNull();
   });
 
+  it("returns a stable empty-features reference (no re-render churn)", () => {
+    const store = makeStore();
+    seedProject(store); // no features block
+    const state = store.getState();
+    expect(selectActiveProjectFeatures(state)).toBe(
+      selectActiveProjectFeatures(state),
+    );
+  });
+
   it("reflects enabled features and the card-body config", () => {
     const store = makeStore();
     seedProject(store, {

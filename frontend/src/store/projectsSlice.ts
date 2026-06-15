@@ -965,9 +965,16 @@ export const selectActiveProjectRootPath = (state: any): string | null => {
 };
 
 /**
- * Selects the raw feature-toggle map for the active project. Returns an empty
- * object when no project is selected or the project has no `features` block, so
- * an absent flag reads as disabled.
+ * Stable empty feature map returned when a project has no `features` block, so
+ * `useSelector(selectActiveProjectFeatures)` keeps a constant reference and
+ * doesn't re-render consumers on every unrelated dispatch.
+ */
+const EMPTY_FEATURES: ProjectFeatureFlags = Object.freeze({});
+
+/**
+ * Selects the raw feature-toggle map for the active project. Returns a shared
+ * empty object when no project is selected or the project has no `features`
+ * block, so an absent flag reads as disabled.
  *
  * @param state - Redux root state (typed as `any` to avoid circular imports).
  */
@@ -975,7 +982,7 @@ export const selectActiveProjectFeatures = (
   state: any,
 ): ProjectFeatureFlags => {
   const id = state?.projects?.selectedProjectId;
-  return state?.projects?.projects?.[id]?.features ?? {};
+  return state?.projects?.projects?.[id]?.features ?? EMPTY_FEATURES;
 };
 
 /**
