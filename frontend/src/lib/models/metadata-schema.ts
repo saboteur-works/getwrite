@@ -245,6 +245,42 @@ function userMetadataOf(
 }
 
 /**
+ * Iterates every resource sidecar under `meta/`, invoking `mutate` with each
+ * sidecar's `userMetadata` map; when `mutate` returns `true` the sidecar is
+ * written back. Sidecars that are missing, unreadable, or have no object
+ * `userMetadata` are skipped. Centralizes the readdir + filename-parse + read +
+ * guard + conditional-write scaffold shared by the value-migration helpers.
+ */
+async function forEachUserMetadata(
+  projectRoot: string,
+  mutate: (meta: Record<string, MetadataValue>) => boolean,
+): Promise<void> {
+  const metaDir = path.join(projectRoot, "meta");
+  let entries: string[];
+  try {
+    entries = await fs.readdir(metaDir);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) {
+      continue;
+    }
+    const resourceId = entry.slice(
+      "resource-".length,
+      -".meta.json".length,
+    ) as UUID;
+    const sidecar = await readSidecar(projectRoot, resourceId);
+    if (!sidecar) continue;
+    const meta = userMetadataOf(sidecar);
+    if (!meta) continue;
+    if (mutate(meta)) {
+      await writeSidecar(projectRoot, resourceId, sidecar);
+    }
+  }
+}
+
+/**
  * Scans every sidecar in `meta/` and returns which feature toggles should be
  * seeded on — a toggle is on when any sidecar holds a value for one of the
  * feature's field keys. Missing `meta/` yields an empty result.
@@ -483,27 +519,11 @@ async function clearFieldFromSidecars(
   projectRoot: string,
   fieldKey: string,
 ): Promise<void> {
-  const metaDir = path.join(projectRoot, "meta");
-  let entries: string[];
-  try {
-    entries = await fs.readdir(metaDir);
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
-      continue;
-    const resourceId = entry.slice(
-      "resource-".length,
-      -".meta.json".length,
-    ) as UUID;
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar) continue;
-    const meta = userMetadataOf(sidecar);
-    if (!meta || !(fieldKey in meta)) continue;
+  await forEachUserMetadata(projectRoot, (meta) => {
+    if (!(fieldKey in meta)) return false;
     delete meta[fieldKey];
-    await writeSidecar(projectRoot, resourceId, sidecar);
-  }
+    return true;
+  });
 }
 
 /**
@@ -705,28 +725,12 @@ async function migrateFieldKeyInSidecars(
   oldKey: string,
   newKey: string,
 ): Promise<void> {
-  const metaDir = path.join(projectRoot, "meta");
-  let entries: string[];
-  try {
-    entries = await fs.readdir(metaDir);
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
-      continue;
-    const resourceId = entry.slice(
-      "resource-".length,
-      -".meta.json".length,
-    ) as UUID;
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar) continue;
-    const meta = userMetadataOf(sidecar);
-    if (!meta || !(oldKey in meta)) continue;
+  await forEachUserMetadata(projectRoot, (meta) => {
+    if (!(oldKey in meta)) return false;
     meta[newKey] = meta[oldKey];
     delete meta[oldKey];
-    await writeSidecar(projectRoot, resourceId, sidecar);
-  }
+    return true;
+  });
 }
 
 async function renameFieldKeyInSchema(
@@ -851,37 +855,24 @@ async function migrateFieldTypeInSidecars(
   migrations: Record<string, TypeMigrationEntry>,
 ): Promise<void> {
   if (Object.keys(migrations).length === 0) return;
-  const metaDir = path.join(projectRoot, "meta");
-  let entries: string[];
-  try {
-    entries = await fs.readdir(metaDir);
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
-      continue;
-    const resourceId = entry.slice(
-      "resource-".length,
-      -".meta.json".length,
-    ) as UUID;
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar) continue;
-    const meta = userMetadataOf(sidecar);
-    if (!meta || !(fieldKey in meta) || meta[fieldKey] === null) continue;
+  await forEachUserMetadata(projectRoot, (meta) => {
+    if (!(fieldKey in meta) || meta[fieldKey] === null) return false;
     const key = canonicalValueKey(meta[fieldKey] as MetadataValue);
     const migration = migrations[key];
-    if (!migration || migration.action === "keep") continue;
+    if (!migration || migration.action === "keep") return false;
     if (migration.action === "clear") {
       delete meta[fieldKey];
-    } else if (
+      return true;
+    }
+    if (
       migration.action === "normalize" &&
       migration.normalizedTo !== undefined
     ) {
       meta[fieldKey] = migration.normalizedTo;
+      return true;
     }
-    await writeSidecar(projectRoot, resourceId, sidecar);
-  }
+    return false;
+  });
 }
 
 /**
@@ -972,24 +963,8 @@ async function migrateFieldOptionsInSidecars(
   fieldType: MetadataFieldType,
 ): Promise<void> {
   if (Object.keys(migrations).length === 0) return;
-  const metaDir = path.join(projectRoot, "meta");
-  let entries: string[];
-  try {
-    entries = await fs.readdir(metaDir);
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
-      continue;
-    const resourceId = entry.slice(
-      "resource-".length,
-      -".meta.json".length,
-    ) as UUID;
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar) continue;
-    const meta = userMetadataOf(sidecar);
-    if (!meta || !(fieldKey in meta) || meta[fieldKey] === null) continue;
+  await forEachUserMetadata(projectRoot, (meta) => {
+    if (!(fieldKey in meta) || meta[fieldKey] === null) return false;
 
     if (fieldType === "multiselect" && Array.isArray(meta[fieldKey])) {
       const arr = meta[fieldKey] as string[];
@@ -1013,33 +988,37 @@ async function migrateFieldOptionsInSidecars(
           changed = true;
         }
       }
-      if (!changed) continue;
+      if (!changed) return false;
       if (newArr.length === 0) {
         delete meta[fieldKey];
       } else {
         meta[fieldKey] = newArr;
       }
-      await writeSidecar(projectRoot, resourceId, sidecar);
-    } else {
-      const key = canonicalValueKey(meta[fieldKey] as MetadataValue);
-      const migration = migrations[key];
-      if (
-        !migration ||
-        migration.action === "keep" ||
-        migration.action === "add-to-options"
-      )
-        continue;
-      if (migration.action === "clear") {
-        delete meta[fieldKey];
-      } else if (
-        migration.action === "normalize" &&
-        migration.normalizedTo !== undefined
-      ) {
-        meta[fieldKey] = migration.normalizedTo;
-      }
-      await writeSidecar(projectRoot, resourceId, sidecar);
+      return true;
     }
-  }
+
+    const key = canonicalValueKey(meta[fieldKey] as MetadataValue);
+    const migration = migrations[key];
+    if (
+      !migration ||
+      migration.action === "keep" ||
+      migration.action === "add-to-options"
+    ) {
+      return false;
+    }
+    if (migration.action === "clear") {
+      delete meta[fieldKey];
+      return true;
+    }
+    if (
+      migration.action === "normalize" &&
+      migration.normalizedTo !== undefined
+    ) {
+      meta[fieldKey] = migration.normalizedTo;
+      return true;
+    }
+    return false;
+  });
 }
 
 /**
