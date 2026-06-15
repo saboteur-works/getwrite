@@ -2,28 +2,24 @@
 
 ## 2026-06-15 — deferred items from initial implementation
 
-The Update Notice feature (Tasks 1–8) is implemented and all tests pass. The
-following were intentionally deferred:
+The Update Notice feature (Tasks 1–8) is implemented and all tests pass.
 
-1. **Open banner links in the OS browser from Electron.**
-   `UpdateNoticeBanner` renders "View release notes" and "Download" as plain
-   `<a target="_blank" rel="noopener noreferrer">` anchors. In the packaged
-   Electron app these should open in the user's default browser, not in a new
-   `BrowserWindow`. Configure `webContents.setWindowOpenHandler` in
-   `electron/src/main.ts` to route external `https:` URLs through
-   `shell.openExternal` and deny in-app navigation. Deferred because it is an
-   Electron-shell concern independent of the notice logic and untestable from
-   the Vitest/jsdom suite.
+1. **Open banner links in the OS browser from Electron.** ✅ Done 2026-06-15.
+   `createWindow()` in `electron/src/main.ts` now registers
+   `webContents.setWindowOpenHandler`, routing `https?:` URLs through
+   `shell.openExternal` and denying in-app navigation, so the banner's "View
+   release notes" / "Download" links open in the user's default browser.
 
-2. **Verify Task 1 env injection in a *packaged* build.**
-   `GETWRITE_DESKTOP`, `GETWRITE_REPO`, and `GETWRITE_APP_VERSION` are injected
-   in `startServer`. This was confirmed by reading the code and electron `tsc`,
-   but `app.isPackaged` changes the spawn path, so it should be exercised via
-   `pnpm electron:package` to confirm the spawned standalone server actually
-   receives the vars and `/api/version-check` returns a real result. Deferred
-   because it requires a full packaged build.
+2. **Verify Task 1 env injection in a *packaged* build.** ✅ Done 2026-06-15.
+   `pnpm electron:package` produced `dist-electron/GetWrite-0.2.49-arm64.dmg`.
+   Launching the packaged app (log confirms `isPackaged: true`, standalone
+   spawn path under `GetWrite.app/Contents/Resources`) and querying
+   `/api/version-check` returned
+   `{ updateAvailable: false, currentVersion: "0.2.49", latestVersion: "0.2.49" }`
+   — confirming `GETWRITE_DESKTOP`/`GETWRITE_APP_VERSION` reach the standalone
+   server and the `getwrite-v` tag normalization is in the bundle.
 
-3. **Manual end-to-end check against a real newer release.**
+3. **Manual end-to-end check against a real newer release.** Still open.
    The version comparison and GitHub fetch are covered by unit tests with mocked
    payloads. A live check (current version < latest GitHub Release) would
    confirm the banner appears with the correct release-notes and installer-asset

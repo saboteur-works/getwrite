@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut } from "electron";
+import { app, BrowserWindow, globalShortcut, shell } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import http from "http";
@@ -139,6 +139,15 @@ function createWindow(): BrowserWindow {
   });
 
   win.once("ready-to-show", () => win.show());
+
+  // Open external links (e.g. update-notice "View release notes" / "Download")
+  // in the user's default browser rather than a chrome-less in-app window.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//.test(url)) {
+      void shell.openExternal(url);
+    }
+    return { action: "deny" };
+  });
 
   // Cmd+Shift+I toggles DevTools
   globalShortcut.register("CommandOrControl+Shift+I", () => {
