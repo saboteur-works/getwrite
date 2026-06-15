@@ -74,6 +74,12 @@ function startServer(
     HOSTNAME: "127.0.0.1",
     GETWRITE_PROJECTS_DIR: dirs.projectsDir,
     GETWRITE_TEMPLATES_DIR: dirs.templatesDir,
+    // Marks this server as the Electron desktop build so the frontend can gate
+    // the update notice to desktop only. The repo slug and running version feed
+    // the version check against the latest GitHub Release.
+    GETWRITE_DESKTOP: "1",
+    GETWRITE_REPO: "saboteur-works/getwrite",
+    GETWRITE_APP_VERSION: app.getVersion(),
   };
 
   log(`standaloneDir: ${dirs.standaloneDir}`);

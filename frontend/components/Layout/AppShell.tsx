@@ -87,6 +87,8 @@ import {
   Plus,
 } from "lucide-react";
 import Button from "../common/UI/Button/Button";
+import UpdateNotice from "./UpdateNotice";
+import { APP_VERSION } from "../../src/lib/app-version";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
   selectResource,
@@ -982,6 +984,8 @@ export default function AppShell({
     <div
       className={`appshell-shell ${isDarkMode ? "appshell-theme-dark" : ""}`}
     >
+      <UpdateNotice />
+
       <ShellSettingsMenu
         projectName={project?.name}
         isDarkMode={isDarkMode}
@@ -993,6 +997,7 @@ export default function AppShell({
         onCloseProjectMenu={() => setIsProjectMenuOpen(false)}
         onToggleProjectMenuOpen={() => setIsProjectMenuOpen((prev) => !prev)}
         onAction={handleSettingsMenuAction}
+        appVersion={APP_VERSION}
       />
 
       <ShellLayoutController>

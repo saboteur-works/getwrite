@@ -1876,6 +1876,16 @@ html.gw-theme-dark {
     margin: 4px;
   }
 
+  .appshell-topbar-dropdown-footer {
+    padding: 4px 10px 2px;
+    color: var(--color-gw-secondary);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    user-select: none;
+  }
+
   .appshell-body {
     flex: 1;
     min-height: 0;
