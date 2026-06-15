@@ -47,6 +47,39 @@ describe("HelpPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("documents the metadata system in its own tab", async () => {
+    const user = userEvent.setup();
+
+    render(<HelpPage />);
+
+    await user.click(screen.getByRole("tab", { name: /Metadata/i }));
+
+    const metadataPanel = screen.getByRole("tabpanel", { name: /Metadata/i });
+
+    expect(
+      within(metadataPanel).getByText(
+        (_content: string, element: Element | null) =>
+          (element?.tagName === "P" &&
+            element?.textContent?.includes(
+              "structured information about a document",
+            )) ??
+          false,
+      ),
+    ).toBeInTheDocument();
+
+    // Covers the build-up that a brand-new user needs: where to edit it,
+    // the built-in fields, and what the metadata ultimately unlocks.
+    expect(
+      within(metadataPanel).getByText("The Metadata Panel"),
+    ).toBeInTheDocument();
+    expect(
+      within(metadataPanel).getByText("Built-in fields"),
+    ).toBeInTheDocument();
+    expect(
+      within(metadataPanel).getByText("What metadata unlocks"),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the modal close button behavior intact", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();

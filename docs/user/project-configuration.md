@@ -13,6 +13,8 @@ Common fields
 - `maxRevisions` (optional, default 50): How many historical revisions to keep per resource. Set higher if you want longer history, but note disk usage will increase.
 - `autoPrune` (optional, default true): When true, the app will automatically delete oldest non-preserved revisions once `maxRevisions` is exceeded.
 - `config.statuses` (optional): Array of status strings available as options for all resources in the project. Customize this to match your workflow stages.
+- `config.features` (optional): Per-project toggles for the optional built-in metadata fields and the Timeline view — `timeline`, `pov`, `synopsis`, `notes`, and `timelineView` (each a boolean; an absent flag means off). These are normally set through the app — the **Built-in features** section of the Metadata Fields manager and **User Preferences → Timeline view** — which keep the linked flags consistent (the Timeline view requires `timeline`, so `timelineView: true` forces `timeline: true`). Edit by hand only with that invariant in mind.
+- `config.organizerCardBody` (optional): What the Organizer view renders beneath each card's title. `{ "source": "none" }`, `{ "source": "text-excerpt", "excerptLength": 200 }`, or `{ "source": "field", "fieldKey": "<metadata key>" }`. Set this from **User Preferences → Organizer Card Body**.
 
 Example with custom statuses:
 

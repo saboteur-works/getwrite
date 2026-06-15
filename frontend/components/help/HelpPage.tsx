@@ -130,7 +130,7 @@ export default function HelpPage({
   const content = (
     <div
       ref={dialogRef}
-      className="help-layout"
+      className={`help-layout ${renderInModal ? "help-layout--modal" : ""}`}
       role={renderInModal ? "dialog" : undefined}
       aria-modal={renderInModal ? "true" : undefined}
       aria-labelledby={renderInModal ? HELP_DIALOG_TITLE_ID : undefined}

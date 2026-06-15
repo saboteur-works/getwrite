@@ -87,6 +87,8 @@ The following fields are defined in the schema and may be present in the sidecar
 
 The following keys are set by the MetadataSidebar UI and have defined meaning within the app. They are safe to edit directly.
 
+Apart from `status`, the built-in fields are optional and gated by the per-project `config.features` toggles (`synopsis`, `notes`, `pov`, and the timeline date fields via `timeline`). A toggle that is absent or `false` hides the field in the sidebar but never touches stored values, so the keys below may be present on disk even when their field is currently disabled. See [Project Configuration](../../user/project-configuration.md).
+
 ✏️ **notes** \[String]: Free-text notes for the resource.
 
 ✏️ **status** \["draft" | "in-review" | "published"]: Publication status of the resource. The available values are defined by `config.statuses` in `project.json`.

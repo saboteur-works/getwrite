@@ -2,6 +2,7 @@ export type HelpTab =
   | "overview"
   | "projects"
   | "resources"
+  | "metadata"
   | "editor"
   | "organizer"
   | "types"
@@ -218,6 +219,311 @@ export const HELP_TABS: HelpTabDefinition[] = [
     ],
   },
   {
+    id: "metadata",
+    label: "Metadata",
+    blocks: [
+      {
+        type: "paragraph",
+        content: [
+          "Every resource can carry ",
+          strong("metadata"),
+          " — structured information ",
+          em("about"),
+          " a document that lives alongside it but never appears in the text itself. Think of it as the index card clipped to a manuscript: who the point-of-view character is, what stage the draft is at, when a scene takes place. GetWrite saves this in a small companion file next to each resource, so it travels with your project but stays out of your prose.",
+        ],
+      },
+      {
+        type: "paragraph",
+        content: [
+          "You do not have to use metadata at all — a project works fine with none. But filling it in is what powers ",
+          strong("smart folders"),
+          ", the ",
+          strong("Timeline"),
+          ", and the ",
+          strong("Organizer"),
+          " filters described below.",
+        ],
+      },
+      { type: "heading", content: ["The Metadata Panel"] },
+      {
+        type: "paragraph",
+        content: [
+          "Metadata is edited in the ",
+          strong("Metadata Panel"),
+          " — the collapsible pane on the right side of the Create Interface. Select any resource and its fields appear, organised into collapsible groups. Values are ",
+          strong("saved automatically"),
+          " as you type or change them, exactly like the editor — there is no save button.",
+        ],
+      },
+      {
+        type: "tip-card",
+        items: [
+          [
+            "If the panel is hidden, use the panel toggle on the right edge of the window to reveal it.",
+          ],
+          [
+            "Each group is a collapsible section — click its header to fold fields you are not using out of the way.",
+          ],
+        ],
+      },
+      { type: "heading", content: ["Built-in fields"] },
+      {
+        type: "paragraph",
+        content: [
+          "Aside from ",
+          strong("Status"),
+          ", the built-in fields are optional — you switch each one on per project. ",
+          strong("Synopsis"),
+          ", ",
+          strong("Notes"),
+          ", ",
+          strong("Point of View"),
+          ", and the ",
+          strong("Timeline"),
+          " date fields each have a toggle (see ",
+          em("Turning built-in fields on and off"),
+          " below), so a new project starts with them off and shows them once you enable them. They live in two groups, ",
+          strong("Document"),
+          " and ",
+          strong("Timeline"),
+          ".",
+        ],
+      },
+      {
+        type: "tip-card",
+        title: "Document",
+        items: [
+          [strong("Synopsis"), " - a short summary of the document."],
+          [
+            strong("Notes"),
+            " - freeform notes for yourself; they stay separate from the document and are not included when you export it.",
+          ],
+          [
+            strong("Status"),
+            " - where the draft stands (for example Draft or Revised). The available choices come from the project type.",
+          ],
+          [
+            strong("Point of View"),
+            " - the character whose perspective the document follows. Link an existing resource, or simply type a name.",
+          ],
+        ],
+      },
+      {
+        type: "tip-card",
+        title: "Timeline",
+        items: [
+          [
+            strong("Story Date"),
+            " - this can be the start of a scene in a fiction project, the date of a real-world event in a non-fiction project, the start time of a recording for a podcast, or anything else you want it to be.",
+          ],
+          [
+            strong("Duration (minutes)"),
+            " - a length time associated with the resource.",
+          ],
+          [
+            strong("Story End Date"),
+            " - calculated automatically from the Story Date plus the Duration, or set by hand to override it.",
+          ],
+        ],
+      },
+      { type: "heading", content: ["Turning built-in fields on and off"] },
+      {
+        type: "paragraph",
+        content: [
+          "The optional built-in fields are controlled from the ",
+          strong("Built-in features"),
+          " section at the top of the Metadata Fields manager (settings menu → ",
+          strong("Metadata"),
+          "). Tick ",
+          strong("Timeline"),
+          ", ",
+          strong("Point of View"),
+          ", ",
+          strong("Synopsis"),
+          ", or ",
+          strong("Notes"),
+          " to add that field to the panel; untick it to hide it. Hiding a field ",
+          em("keeps"),
+          " every value you have already saved, so turning it back on restores them untouched.",
+        ],
+      },
+      {
+        type: "paragraph",
+        content: [
+          "The chronological ",
+          strong("Timeline View"),
+          " has its own switch in ",
+          strong("User Preferences"),
+          " under ",
+          strong("Timeline view"),
+          ". Because that view reads the Timeline date fields, the two are linked: enabling the view also enables the date fields, and disabling the date fields also turns the view off.",
+        ],
+      },
+      { type: "heading", content: ["Field types"] },
+      {
+        type: "paragraph",
+        content: [
+          "When you create your own field you choose a ",
+          strong("type"),
+          ", which controls how its value is entered and stored:",
+        ],
+      },
+      {
+        type: "tip-card",
+        items: [
+          [strong("Text"), " - a line of free text."],
+          [strong("Number"), " - a numeric value."],
+          [strong("Date"), " - a calendar date and time."],
+          [strong("Boolean"), " - a simple on / off toggle."],
+          [strong("Select"), " - pick one value from a list you define."],
+          [strong("Multi"), " - pick several values from a list you define."],
+          [strong("Ref"), " - a link to another resource in your project."],
+          [
+            strong("Multi Ref"),
+            " - links to several resources, optionally limited to a chosen folder and a maximum number.",
+          ],
+        ],
+      },
+      { type: "heading", content: ["Adding your own fields"] },
+      {
+        type: "paragraph",
+        content: [
+          "Beyond the built-ins you can define whatever fields your project needs — Theme, Setting, a word-count goal, a tension rating, anything you want to track. Click ",
+          strong("+ Add field"),
+          " at the bottom of the Metadata Panel, type a name, then pick a label, a type, and the group it belongs to.",
+        ],
+      },
+      {
+        type: "paragraph",
+        content: [
+          "As you type, GetWrite suggests fields that already exist and asks ",
+          em("“Did you mean…?”"),
+          " so you do not accidentally create two fields that mean the same thing. If a field with that name already exists, pressing Add simply jumps you to it.",
+        ],
+      },
+      { type: "heading", content: ["Groups"] },
+      {
+        type: "paragraph",
+        content: [
+          "Fields are organised into ",
+          strong("groups"),
+          " — the collapsible sections in the panel. Every project starts with the Document and Story Timeline groups. When you create a field you choose which group it belongs to, and you can add more groups from the Metadata Fields manager to keep related fields together.",
+        ],
+      },
+      { type: "heading", content: ["The Metadata Fields manager"] },
+      {
+        type: "paragraph",
+        content: [
+          "For larger changes, open the settings menu (gear icon) and choose ",
+          strong("Metadata"),
+          ". The Metadata Fields manager lets you reshape the whole schema:",
+        ],
+      },
+      {
+        type: "tip-card",
+        items: [
+          ["Add, reorder, and remove groups and fields."],
+          [
+            "Rename a field's display ",
+            strong("label"),
+            ", or rename its underlying ",
+            strong("key"),
+            " — renaming the key migrates existing values across the whole project.",
+          ],
+          [
+            "Change a field's ",
+            strong("type"),
+            " — a preview shows how existing values will convert before you commit.",
+          ],
+          [
+            "Edit the list of options for ",
+            strong("Select"),
+            " and ",
+            strong("Multi"),
+            " fields.",
+          ],
+          [
+            "Set the folder scope and a maximum number of selections for ",
+            strong("Multi Ref"),
+            " fields.",
+          ],
+        ],
+      },
+      { type: "heading", content: ["Removing a field: Deprecate or Clear"] },
+      {
+        type: "paragraph",
+        content: [
+          "Only ",
+          strong("Status"),
+          " is permanent. Every other field — the ones you added as well as the built-in Synopsis, Notes, Point of View, and Timeline fields — can be renamed or removed. When you remove one, GetWrite asks how to treat the values already stored on your resources:",
+        ],
+      },
+      {
+        type: "tip-card",
+        items: [
+          [
+            strong("Deprecate"),
+            " - hides the field from the panel but keeps every stored value. It stays available in queries, flagged as deprecated, so nothing is lost.",
+          ],
+          [
+            strong("Clear"),
+            " - permanently deletes the field's values from every resource. This ",
+            em("cannot be undone"),
+            ".",
+          ],
+        ],
+      },
+      { type: "heading", content: ["What metadata unlocks"] },
+      {
+        type: "paragraph",
+        content: [
+          "Metadata is not just record-keeping — it drives several of GetWrite's most useful features:",
+        ],
+      },
+      {
+        type: "tip-card",
+        items: [
+          [
+            strong("Smart folders"),
+            " - every field becomes something you can search on. Save a query (for example ",
+            em("Status is Draft"),
+            ", or ",
+            em("Point of View is a given character"),
+            ") and it appears as a smart folder in the resource tree that gathers every matching resource.",
+          ],
+          [
+            strong("Timeline View"),
+            " - when enabled for the project, plots every resource that has a Story Date, colour-coded by point of view.",
+          ],
+          [
+            strong("Organizer View"),
+            " - filters cards by Status, Character, Location, and Word Count, and can show any metadata field as each card's body.",
+          ],
+        ],
+      },
+      { type: "heading", content: ["Tags"] },
+      {
+        type: "paragraph",
+        content: [
+          "At the bottom of the panel is a ",
+          strong("Tags"),
+          " section — a lightweight way to label a resource with keywords when a full field would be overkill. Tags are shared across the project and can be managed from the settings menu under ",
+          strong("Manage Tags"),
+          ".",
+        ],
+      },
+      { type: "heading", content: ["Image and audio metadata"] },
+      {
+        type: "paragraph",
+        content: [
+          "Image and audio resources carry the same editable fields and tags as text documents, so you can describe them however your project needs. Above those fields they also show a ",
+          strong("read-only"),
+          " technical section — image dimensions and EXIF data, or audio format and duration — extracted automatically when the file is added.",
+        ],
+      },
+    ],
+  },
+  {
     id: "editor",
     label: "Editor",
     blocks: [
@@ -303,7 +609,11 @@ export const HELP_TABS: HelpTabDefinition[] = [
           ["Image files show a thumbnail."],
           ["Audio files show an inline player."],
           [
-            "Toggle the card body between its default content and the resource's notes using the button in the view header.",
+            "Choose what each card shows beneath its title — nothing, a text excerpt, or the value of any metadata field — from ",
+            strong("User Preferences"),
+            " under ",
+            strong("Organizer Card Body"),
+            ". A button in the view header toggles the body on and off.",
           ],
         ],
       },
