@@ -65,6 +65,7 @@ export const SettingsMenuOpen: Story = {
         onToggleProjectMenuOpen={noop}
         onCloseProjectMenu={noop}
         onAction={action("onAction")}
+        appVersion="0.2.49"
       />
     </div>
   ),
@@ -103,6 +104,7 @@ export const DarkMode: Story = {
         onToggleProjectMenuOpen={noop}
         onCloseProjectMenu={noop}
         onAction={action("onAction")}
+        appVersion="0.2.49"
       />
     </div>
   ),

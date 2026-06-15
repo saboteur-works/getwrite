@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut } from "electron";
+import { app, BrowserWindow, globalShortcut, shell } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import http from "http";
@@ -17,6 +17,25 @@ function log(msg: string) {
   const line = `[${new Date().toISOString()}] ${msg}\n`;
   process.stdout.write(line);
   logStream?.write(line);
+}
+
+function resolveAppVersion(): string {
+  // Read the app's own package.json so the version is correct in dev too
+  // (app.getVersion() falls back to Electron's framework version when running
+  // unpackaged via `electron dist/main.js`). __dirname is electron/dist, so the
+  // package.json sits one level up — and inside the asar in packaged builds.
+  try {
+    const pkgPath = path.join(__dirname, "..", "package.json");
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as {
+      version?: string;
+    };
+    if (typeof pkg.version === "string") {
+      return pkg.version;
+    }
+  } catch {
+    // fall through to app.getVersion()
+  }
+  return app.getVersion();
 }
 
 function getRepoRoot(): string {
@@ -74,6 +93,12 @@ function startServer(
     HOSTNAME: "127.0.0.1",
     GETWRITE_PROJECTS_DIR: dirs.projectsDir,
     GETWRITE_TEMPLATES_DIR: dirs.templatesDir,
+    // Marks this server as the Electron desktop build so the frontend can gate
+    // the update notice to desktop only. The repo slug and running version feed
+    // the version check against the latest GitHub Release.
+    GETWRITE_DESKTOP: "1",
+    GETWRITE_REPO: "saboteur-works/getwrite",
+    GETWRITE_APP_VERSION: resolveAppVersion(),
   };
 
   log(`standaloneDir: ${dirs.standaloneDir}`);
@@ -114,6 +139,15 @@ function createWindow(): BrowserWindow {
   });
 
   win.once("ready-to-show", () => win.show());
+
+  // Open external links (e.g. update-notice "View release notes" / "Download")
+  // in the user's default browser rather than a chrome-less in-app window.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//.test(url)) {
+      void shell.openExternal(url);
+    }
+    return { action: "deny" };
+  });
 
   // Cmd+Shift+I toggles DevTools
   globalShortcut.register("CommandOrControl+Shift+I", () => {

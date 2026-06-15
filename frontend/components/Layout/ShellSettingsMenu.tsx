@@ -43,6 +43,8 @@ export interface ShellSettingsMenuProps {
   onCloseProjectMenu: () => void;
   onToggleProjectMenuOpen: () => void;
   onAction: (action: SettingsMenuAction) => void;
+  /** Running app version shown in the menu footer. Footer is hidden when empty. */
+  appVersion?: string;
 }
 
 export default function ShellSettingsMenu({
@@ -56,6 +58,7 @@ export default function ShellSettingsMenu({
   onCloseProjectMenu,
   onToggleProjectMenuOpen,
   onAction,
+  appVersion,
 }: ShellSettingsMenuProps): JSX.Element {
   const { containerRef: settingsMenuRef } = useDismissableMenu({
     isOpen,
@@ -203,6 +206,14 @@ export default function ShellSettingsMenu({
                   label="Close Project"
                   onClick={() => onAction("close-project")}
                 />
+              ) : null}
+              {appVersion ? (
+                <>
+                  <hr className="appshell-topbar-dropdown-separator" />
+                  <div className="appshell-topbar-dropdown-footer">
+                    GetWrite v{appVersion}
+                  </div>
+                </>
               ) : null}
             </div>
           ) : null}
