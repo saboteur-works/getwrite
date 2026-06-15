@@ -19,6 +19,9 @@ interface ExcerptsBody {
   maxChars?: number;
 }
 
+/** Upper bound on resourceIds per request — far above any one folder's children. */
+const MAX_RESOURCE_IDS = 1000;
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: ExcerptsBody;
   try {
@@ -37,6 +40,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!Array.isArray(resourceIds)) {
     return NextResponse.json(
       { error: "resourceIds must be an array." },
+      { status: 400 },
+    );
+  }
+  if (resourceIds.length > MAX_RESOURCE_IDS) {
+    return NextResponse.json(
+      { error: `Too many resourceIds (max ${MAX_RESOURCE_IDS}).` },
       { status: 400 },
     );
   }

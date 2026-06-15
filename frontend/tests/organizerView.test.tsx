@@ -215,6 +215,41 @@ describe("OrganizerView", () => {
     expect(screen.queryByText(/stale fallback/i)).toBeNull();
   });
 
+  it("does not fetch excerpts when card bodies are hidden", async () => {
+    const mockFetch = vi.mocked(fetchResourceExcerpts);
+    mockFetch.mockClear();
+    const resource = createTextResource({
+      name: "Dated Scene",
+      plainText: "x",
+      folderId: FOLDER_ID,
+    });
+
+    const store = makeStore();
+    store.dispatch(
+      setProject({
+        id: PROJECT_ID,
+        name: "Proj",
+        rootPath: "/projects/p1",
+        folders: [],
+        resources: [],
+        organizerCardBody: { source: "text-excerpt", excerptLength: 50 },
+      } as any),
+    );
+    store.dispatch(setSelectedProjectId(PROJECT_ID));
+    store.dispatch(setFolders([makeFolder(FOLDER_ID, "Folder A")] as any));
+    store.dispatch(setResources([resource] as any));
+    store.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    await Promise.resolve();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
   it("renders no card body when source is none", () => {
     const store = makeStoreWithBodyConfig({ source: "none" }, {});
 

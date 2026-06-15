@@ -104,7 +104,14 @@ export default function OrganizerView({
     .join(",");
 
   React.useEffect(() => {
-    if (cardBodySource !== "text-excerpt" || !rootPath || textIdsKey === "") {
+    // Skip the fetch entirely when bodies are hidden, not text-excerpt mode, or
+    // there's nothing to read — the excerpts would never be displayed.
+    if (
+      !showBodyState ||
+      cardBodySource !== "text-excerpt" ||
+      !rootPath ||
+      textIdsKey === ""
+    ) {
       setExcerpts({});
       return;
     }
@@ -119,7 +126,7 @@ export default function OrganizerView({
     return () => {
       cancelled = true;
     };
-  }, [cardBodySource, excerptLength, rootPath, textIdsKey]);
+  }, [showBodyState, cardBodySource, excerptLength, rootPath, textIdsKey]);
 
   const handleOpen = (id: string) => dispatch(setSelectedResourceId(id));
 

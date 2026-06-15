@@ -350,4 +350,18 @@ describe("readResourceExcerpts", () => {
       await removeDirRetry(projectRoot);
     }
   });
+
+  it("strips leading whitespace before capping so the truncation signal survives", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-excerpts-"),
+    );
+    try {
+      await writeContent(projectRoot, "r1", "\n\n\nThe quick brown fox");
+      // Leading newlines are stripped, so the cap+1 chars are real content.
+      const excerpts = readResourceExcerpts(projectRoot, ["r1"], 5);
+      expect(excerpts.r1).toBe("The qu");
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
 });

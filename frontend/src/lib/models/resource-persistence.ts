@@ -256,13 +256,30 @@ export const readResourceExcerpts = (
   maxChars = 200,
 ): Record<string, string> => {
   const cap = maxChars > 0 ? maxChars : 200;
+  // Read only a bounded prefix — enough bytes to cover `cap + 1` UTF-8 chars
+  // (max 4 bytes/char) — so a multi-MB content.txt is never loaded in full.
+  const maxBytes = (cap + 1) * 4;
   const excerpts: Record<string, string> = {};
   for (const id of resourceIds) {
     const contentPath = path.join(projectPath, "resources", id, "content.txt");
-    if (!fs.existsSync(contentPath)) continue;
-    const content = fs.readFileSync(contentPath, "utf-8");
-    if (content.trim() === "") continue;
-    excerpts[id] = content.slice(0, cap + 1);
+    let fd: number;
+    try {
+      fd = fs.openSync(contentPath, "r");
+    } catch {
+      continue; // no content.txt (folder/media) or unreadable
+    }
+    try {
+      const buf = Buffer.alloc(maxBytes);
+      const bytesRead = fs.readSync(fd, buf, 0, maxBytes, 0);
+      // Trim before capping so the `cap + 1` "was-truncated" signal reflects
+      // real content (the caller adds an ellipsis when the excerpt exceeds the
+      // cap); leading whitespace must not eat into that one-char headroom.
+      const text = buf.toString("utf-8", 0, bytesRead).trim();
+      if (text === "") continue;
+      excerpts[id] = text.slice(0, cap + 1);
+    } finally {
+      fs.closeSync(fd);
+    }
   }
   return excerpts;
 };
