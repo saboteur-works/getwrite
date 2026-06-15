@@ -71,7 +71,17 @@ describe("store/projectsSlice controller guardrails (T008)", () => {
         id: "project-1",
         name: "Project One",
         folders: [{ id: "folder-1", name: "Workspace" }],
-        resources: [{ id: "resource-1", name: "Scene One" }],
+        // setProjects maps resources through buildStoredProject, normalizing to
+        // the same shape the create/open flows produce (folderId/userMetadata
+        // defaulted) so both store-entry paths agree.
+        resources: [
+          {
+            id: "resource-1",
+            name: "Scene One",
+            folderId: null,
+            userMetadata: {},
+          },
+        ],
       }),
     );
     expect(second).toBe(first);

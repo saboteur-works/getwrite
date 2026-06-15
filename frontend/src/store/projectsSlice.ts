@@ -685,18 +685,13 @@ const projectsSlice = createSlice({
       >,
     ) {
       action.payload.forEach((p) => {
+        // Single source of truth for the Project -> StoredProject mapping (also
+        // used by the create/open flows). Keep the list path's historical
+        // default-schema fallback on top.
+        const stored = buildStoredProject(p.project, p.folders, p.resources);
         state.projects[p.project.id] = {
-          id: p.project.id,
-          name: p.project.name,
-          rootPath: p.project.rootPath ?? "",
-          folders: p.folders,
-          resources: p.resources,
-          metadata: p.project.metadata,
-          statuses: p.project.config?.statuses ?? [],
-          metadataSchema:
-            p.project.config?.metadataSchema ?? DEFAULT_METADATA_SCHEMA,
-          features: p.project.config?.features,
-          organizerCardBody: p.project.config?.organizerCardBody,
+          ...stored,
+          metadataSchema: stored.metadataSchema ?? DEFAULT_METADATA_SCHEMA,
         };
       });
       return state;
