@@ -225,6 +225,30 @@ export default function SchemaManager({
   // Same pattern for key edit.
   const keyEditCancelledRef = React.useRef(false);
 
+  // Radix's useEscapeKeydown registers on document in capture phase, so
+  // e.stopPropagation() in React's onKeyDown is too late. We register our
+  // own capture listener and call preventDefault() when an inline edit is in
+  // progress, which prevents Radix from closing the outer SchemaManager dialog.
+  const inlineEditActiveRef = React.useRef(false);
+  React.useLayoutEffect(() => {
+    inlineEditActiveRef.current = keyEditTarget !== null || editTarget !== null;
+  }, [keyEditTarget, editTarget]);
+  React.useEffect(() => {
+    // Radix's useEscapeKeydown registers on document in capture phase and
+    // calls onDismiss unless e.defaultPrevented. By calling preventDefault()
+    // here (which fires first, since children's effects run before parents'),
+    // we block Radix from closing the outer dialog while an inline edit is
+    // active. The event still propagates to the input so onKeyDown fires.
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && inlineEditActiveRef.current) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener("keydown", handler, { capture: true });
+    return () =>
+      document.removeEventListener("keydown", handler, { capture: true });
+  }, []);
+
   function beginLabelEdit(
     groupId: string,
     fieldKey: string,
@@ -853,7 +877,14 @@ export default function SchemaManager({
                                   }}
                                   onBlur={commitKeyEdit}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") commitKeyEdit();
+                                    if (e.key === "Enter") {
+                                      // Prevent the browser from activating the
+                                      // ConfirmDialog's Cancel button as Enter's
+                                      // default action after focus moves into the
+                                      // just-mounted dialog.
+                                      e.preventDefault();
+                                      commitKeyEdit();
+                                    }
                                     if (e.key === "Escape") cancelKeyEdit();
                                   }}
                                   autoFocus

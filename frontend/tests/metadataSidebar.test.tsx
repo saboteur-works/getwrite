@@ -855,9 +855,13 @@ describe("MetadataSidebar — media resource display", () => {
     expect(screen.getByText("WAV")).toBeInTheDocument();
   });
 
-  it("does not show the text-only metadata editor for image resources", () => {
-    const res = createImageResource({ name: "Banner" });
+  it("shows the editable schema metadata editor for image resources", () => {
+    const res = createImageResource({ name: "Banner", width: 100, height: 50 });
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { synopsis: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -865,10 +869,53 @@ describe("MetadataSidebar — media resource display", () => {
         <MetadataSidebar />
       </Provider>,
     );
-    expect(screen.queryByLabelText("synopsis")).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText("add-metadata-field"),
-    ).not.toBeInTheDocument();
+    // Editable schema fields + add-field affordance are available, like text
+    expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
+    expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
+    // The read-only image section still renders alongside the editor
+    expect(screen.getByText(/100/)).toBeInTheDocument();
+  });
+
+  it("invokes onChangeField when editing a custom field on an image resource", () => {
+    const res = createImageResource({ name: "Banner" });
+    const onChangeField = vi.fn();
+    const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { synopsis: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar onChangeField={onChangeField} />
+      </Provider>,
+    );
+    const synopsis = screen.getByLabelText("synopsis") as HTMLTextAreaElement;
+    fireEvent.change(synopsis, { target: { value: "A striking banner." } });
+    expect(onChangeField).toHaveBeenCalledWith(
+      "synopsis",
+      "A striking banner.",
+    );
+  });
+
+  it("shows the editable schema metadata editor for audio resources", () => {
+    const res = createAudioResource({ name: "Theme", format: "mp3" });
+    const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { synopsis: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+    expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
+    expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
+    expect(screen.getByText("MP3")).toBeInTheDocument();
   });
 
   it("formats hours correctly for long audio tracks", () => {
