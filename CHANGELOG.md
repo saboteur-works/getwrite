@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.49](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.48...getwrite-v0.2.49) (2026-06-15)
+
+
+### Features
+
+* **metadata:** make built-in metadata fields optional per project ([#128](https://github.com/saboteur-works/getwrite/issues/128)) ([73c1729](https://github.com/saboteur-works/getwrite/commit/73c1729d4d3187cbdc03d9b036d0e2d2f2ba74dd))
+
 ## [0.2.48](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.47...getwrite-v0.2.48) (2026-06-13)
 
 
