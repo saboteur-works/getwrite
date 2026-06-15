@@ -50,6 +50,20 @@ describe("checkForUpdate", () => {
     );
   });
 
+  it("normalizes the repo's getwrite-v<semver> tag format", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse(makeRelease({ tag_name: "getwrite-v0.3.0" })),
+    );
+    const result = await checkForUpdate({
+      currentVersion: "0.2.49",
+      repo: "saboteur-works/getwrite",
+      platform: "darwin",
+      fetchImpl,
+    });
+    expect(result.updateAvailable).toBe(true);
+    expect(result.latestVersion).toBe("0.3.0");
+  });
+
   it("picks the Windows asset on win32", async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(makeRelease()));
     const result = await checkForUpdate({

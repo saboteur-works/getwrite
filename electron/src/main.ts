@@ -19,6 +19,25 @@ function log(msg: string) {
   logStream?.write(line);
 }
 
+function resolveAppVersion(): string {
+  // Read the app's own package.json so the version is correct in dev too
+  // (app.getVersion() falls back to Electron's framework version when running
+  // unpackaged via `electron dist/main.js`). __dirname is electron/dist, so the
+  // package.json sits one level up — and inside the asar in packaged builds.
+  try {
+    const pkgPath = path.join(__dirname, "..", "package.json");
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as {
+      version?: string;
+    };
+    if (typeof pkg.version === "string") {
+      return pkg.version;
+    }
+  } catch {
+    // fall through to app.getVersion()
+  }
+  return app.getVersion();
+}
+
 function getRepoRoot(): string {
   // __dirname is electron/dist/ — two levels up reaches the repo root
   return app.isPackaged
@@ -79,7 +98,7 @@ function startServer(
     // the version check against the latest GitHub Release.
     GETWRITE_DESKTOP: "1",
     GETWRITE_REPO: "saboteur-works/getwrite",
-    GETWRITE_APP_VERSION: app.getVersion(),
+    GETWRITE_APP_VERSION: resolveAppVersion(),
   };
 
   log(`standaloneDir: ${dirs.standaloneDir}`);

@@ -62,8 +62,14 @@ const PLATFORM_ASSET_PATTERNS: Record<string, RegExp> = {
   linux: /\.appimage$|\.deb$|\.rpm$|linux/i,
 };
 
-function stripV(tag: string): string {
-  return tag.replace(/^v/i, "");
+/**
+ * Extracts the `MAJOR.MINOR.PATCH` core (with any pre-release/build suffix) from
+ * a release tag. Tolerates the repo's `getwrite-v0.2.49` convention as well as
+ * plain `v0.2.49` / `0.2.49`. Returns `null` when the tag holds no semver.
+ */
+function extractVersion(tag: string): string | null {
+  const match = tag.match(/(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)/);
+  return match ? match[1] : null;
 }
 
 /** Selects the first asset matching the platform, or `null` if none match. */
@@ -124,7 +130,10 @@ export async function checkForUpdate(
       return NO_UPDATE;
     }
 
-    const latestVersion = stripV(release.tag_name);
+    const latestVersion = extractVersion(release.tag_name);
+    if (!latestVersion) {
+      return NO_UPDATE;
+    }
     const releaseUrl =
       typeof release.html_url === "string" ? release.html_url : "";
 
