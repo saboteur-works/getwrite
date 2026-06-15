@@ -102,6 +102,9 @@ export default function TimelineTooltip({
           {item.metadata?.folder && (
             <TooltipRow label="SOURCE" value={item.metadata.folder} />
           )}
+          {item.metadata?.notes && (
+            <TooltipRow label="NOTES" value={item.metadata.notes} />
+          )}
 
           {/* Status badge */}
           {status && status !== "Draft" && (

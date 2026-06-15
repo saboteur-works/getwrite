@@ -188,6 +188,44 @@ export const MetadataSchemaSchema = z.object({
 });
 
 /**
+ * Per-project opt-in flags gating the previously-locked built-in metadata
+ * features. An absent flag is treated as disabled.
+ */
+export const ProjectFeatureFlagsSchema = z.object({
+  /** Activates the story-timeline metadata fields in the sidebar. */
+  timeline: z.boolean().optional(),
+  /** Activates the Timeline view/tab (independent of the date fields). */
+  timelineView: z.boolean().optional(),
+  /** Activates the Point of View metadata field. */
+  pov: z.boolean().optional(),
+  /** Activates the Synopsis metadata field. */
+  synopsis: z.boolean().optional(),
+  /** Activates the Notes metadata field. */
+  notes: z.boolean().optional(),
+});
+
+/**
+ * Source that drives the body text shown on Organizer cards.
+ */
+export const OrganizerCardBodySourceSchema = z.enum([
+  "none",
+  "text-excerpt",
+  "field",
+]);
+
+/**
+ * Per-project configuration for what Organizer cards render as their body.
+ *
+ * - `fieldKey` is only meaningful when `source` is `"field"`.
+ * - `excerptLength` is only meaningful when `source` is `"text-excerpt"`.
+ */
+export const OrganizerCardBodyConfigSchema = z.object({
+  source: OrganizerCardBodySourceSchema,
+  fieldKey: z.string().min(1).optional(),
+  excerptLength: z.number().int().positive().optional(),
+});
+
+/**
  * Project-level configuration schema persisted in `project.json`.
  */
 export const ProjectConfigSchema = z.object({
@@ -205,6 +243,8 @@ export const ProjectConfigSchema = z.object({
   defaultRevisionName: z.string().optional(),
   metadataSchema: MetadataSchemaSchema.optional(),
   metadataRevision: z.number().int().nonnegative().optional(),
+  features: ProjectFeatureFlagsSchema.optional(),
+  organizerCardBody: OrganizerCardBodyConfigSchema.optional(),
 });
 
 /**

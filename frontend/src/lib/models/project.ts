@@ -20,6 +20,8 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
     editorConfig: config?.editorConfig ?? {},
     defaultRevisionName: config?.defaultRevisionName,
     metadataRevision: config?.metadataRevision,
+    features: config?.features,
+    organizerCardBody: config?.organizerCardBody,
   };
 }
 

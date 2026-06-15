@@ -30,6 +30,10 @@ import {
   selectActiveProjectStatuses,
   selectActiveProjectMetadataSchema,
   selectSelectedProjectId,
+  selectSynopsisEnabled,
+  selectNotesEnabled,
+  selectPovEnabled,
+  selectTimelineEnabled,
 } from "../../src/store/projectsSlice";
 import type {
   Folder,
@@ -210,6 +214,10 @@ export default function MetadataSidebar({
 }: MetadataSidebarProps): JSX.Element {
   const schema = useAppSelector(selectActiveProjectMetadataSchema);
   const selectedProjectId = useAppSelector(selectSelectedProjectId);
+  const synopsisEnabled = useAppSelector(selectSynopsisEnabled);
+  const notesEnabled = useAppSelector(selectNotesEnabled);
+  const povEnabled = useAppSelector(selectPovEnabled);
+  const timelineEnabled = useAppSelector(selectTimelineEnabled);
 
   const selectedResource = useAppSelector((state) =>
     selectResource(state.resources),
@@ -272,6 +280,30 @@ export default function MetadataSidebar({
 
   const emit = (key: string, value: MetadataValue): void => {
     onChangeField?.(key, value);
+  };
+
+  /**
+   * Whether a field's sidebar control should render. Built-in fields governed by
+   * a project feature toggle are hidden when their feature is disabled; the
+   * schema entry and any stored sidecar value are left untouched, so toggling the
+   * feature back on restores the control with its prior value. Non-gated fields
+   * (custom fields and the always-on `status`) always render.
+   */
+  const isFieldVisible = (field: MetadataField): boolean => {
+    switch (field.key) {
+      case "synopsis":
+        return synopsisEnabled;
+      case "notes":
+        return notesEnabled;
+      case "pov":
+        return povEnabled;
+      case "storyDate":
+      case "storyDuration":
+      case "storyEndDate":
+        return timelineEnabled;
+      default:
+        return true;
+    }
   };
 
   const renderField = (field: MetadataField): JSX.Element | null => {
@@ -440,25 +472,45 @@ export default function MetadataSidebar({
     }
   };
 
+  // Text, image, and audio resources all support custom (schema-driven)
+  // metadata. Folders and the empty selection show a placeholder instead.
+  const editableResource =
+    selectedResource &&
+    (selectedResource.type === "text" ||
+      selectedResource.type === "image" ||
+      selectedResource.type === "audio")
+      ? selectedResource
+      : null;
+
   return (
     <aside
       ref={sidebarRef}
       className={`metadata-sidebar-root flex flex-col h-full overflow-hidden ${className}`}
       aria-label="metadata-sidebar"
     >
-      {selectedResource?.type === "text" ? (
+      {editableResource ? (
         <React.Fragment>
           <div className="shrink-0 mb-4">
             <h3 className="text-gw-secondary-light pl-4 text-gw-label tracking-label uppercase">
-              {selectedResource.name}
+              {editableResource.name}
             </h3>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto px-4">
+            {editableResource.type === "image" && (
+              <ImageMetadataSection resource={editableResource} />
+            )}
+            {editableResource.type === "audio" && (
+              <AudioMetadataSection resource={editableResource} />
+            )}
             {schema.groups.map((group) => {
               if (
                 group.folderId &&
-                selectedResource.folderId !== group.folderId
+                editableResource.folderId !== group.folderId
               ) {
+                return null;
+              }
+              const visibleFields = group.fields.filter(isFieldVisible);
+              if (visibleFields.length === 0) {
                 return null;
               }
               return (
@@ -467,7 +519,7 @@ export default function MetadataSidebar({
                   title={group.label}
                   variant="sidebar"
                 >
-                  {group.fields.map((field) => (
+                  {visibleFields.map((field) => (
                     <React.Fragment key={field.key}>
                       {renderField(field)}
                     </React.Fragment>
@@ -484,7 +536,7 @@ export default function MetadataSidebar({
               <AddFieldForm
                 schema={schema}
                 selectedProjectId={selectedProjectId}
-                currentFolderId={selectedResource.folderId}
+                currentFolderId={editableResource.folderId}
                 onCancel={() => setShowAddForm(false)}
                 onFieldFocused={handleFieldFocused}
                 onCreated={handleFieldCreated}
@@ -502,28 +554,6 @@ export default function MetadataSidebar({
                 </button>
               </div>
             )}
-          </div>
-        </React.Fragment>
-      ) : selectedResource?.type === "image" ? (
-        <React.Fragment>
-          <div className="shrink-0 mb-4">
-            <h3 className="text-gw-secondary-light pl-4 text-gw-label tracking-label uppercase">
-              {selectedResource.name}
-            </h3>
-          </div>
-          <div className="flex-1 min-h-0 overflow-y-auto px-4">
-            <ImageMetadataSection resource={selectedResource} />
-          </div>
-        </React.Fragment>
-      ) : selectedResource?.type === "audio" ? (
-        <React.Fragment>
-          <div className="shrink-0 mb-4">
-            <h3 className="text-gw-secondary-light pl-4 text-gw-label tracking-label uppercase">
-              {selectedResource.name}
-            </h3>
-          </div>
-          <div className="flex-1 min-h-0 overflow-y-auto px-4">
-            <AudioMetadataSection resource={selectedResource} />
           </div>
         </React.Fragment>
       ) : (

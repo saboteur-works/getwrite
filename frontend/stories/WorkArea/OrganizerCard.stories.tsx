@@ -13,6 +13,12 @@ type Story = StoryObj<typeof OrganizerCard>;
 
 const sample = createTextResource({ name: "Sample Card", plainText: "" });
 
-export const Default: Story = { args: { resource: sample, showBody: true } };
+export const Default: Story = {
+  args: {
+    resource: sample,
+    showBody: true,
+    body: "A short body preview, sourced from the project's configured card-body source (a metadata field or a text excerpt).",
+  },
+};
 
 export const Compact: Story = { args: { resource: sample, showBody: false } };

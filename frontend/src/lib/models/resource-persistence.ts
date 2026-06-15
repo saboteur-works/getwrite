@@ -234,3 +234,52 @@ export const getLocalResources = (projectPath: string): AnyResource[] => {
 
   return resources;
 };
+
+/**
+ * Reads short text excerpts for the given resources straight from their
+ * `content.txt`. Intended for a bounded, on-demand set (e.g. the cards visible
+ * in one Organizer folder) — not the whole project — so it stays off the hot
+ * load path.
+ *
+ * Each excerpt is capped to `maxChars + 1` characters: the extra character lets
+ * the caller's truncation add a trailing ellipsis when the source was longer.
+ * Resources with no `content.txt` (folders, media) or empty content are omitted.
+ *
+ * @param projectPath - Absolute project root directory.
+ * @param resourceIds - Resource ids to read excerpts for.
+ * @param maxChars - Maximum excerpt length to read (defaults to 200).
+ * @returns A map of resource id → excerpt for the resources that had content.
+ */
+export const readResourceExcerpts = (
+  projectPath: string,
+  resourceIds: readonly string[],
+  maxChars = 200,
+): Record<string, string> => {
+  const cap = maxChars > 0 ? maxChars : 200;
+  // Read only a bounded prefix — enough bytes to cover `cap + 1` UTF-8 chars
+  // (max 4 bytes/char) — so a multi-MB content.txt is never loaded in full.
+  const maxBytes = (cap + 1) * 4;
+  const excerpts: Record<string, string> = {};
+  for (const id of resourceIds) {
+    const contentPath = path.join(projectPath, "resources", id, "content.txt");
+    let fd: number;
+    try {
+      fd = fs.openSync(contentPath, "r");
+    } catch {
+      continue; // no content.txt (folder/media) or unreadable
+    }
+    try {
+      const buf = Buffer.alloc(maxBytes);
+      const bytesRead = fs.readSync(fd, buf, 0, maxBytes, 0);
+      // Trim before capping so the `cap + 1` "was-truncated" signal reflects
+      // real content (the caller adds an ellipsis when the excerpt exceeds the
+      // cap); leading whitespace must not eat into that one-char headroom.
+      const text = buf.toString("utf-8", 0, bytesRead).trim();
+      if (text === "") continue;
+      excerpts[id] = text.slice(0, cap + 1);
+    } finally {
+      fs.closeSync(fd);
+    }
+  }
+  return excerpts;
+};

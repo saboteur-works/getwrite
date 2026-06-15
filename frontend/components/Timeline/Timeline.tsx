@@ -190,7 +190,12 @@ export default function Timeline({
     [items],
   );
 
-  const showLegend = povNamesResolved.length > 1 || hasUnassigned;
+  // Only surface the POV legend when there is at least one POV to label. When
+  // POV is disabled or simply absent the legend (and its pills) are neutralized
+  // so the Timeline degrades cleanly to a plain chronology.
+  const showLegend =
+    povNamesResolved.length > 0 &&
+    (povNamesResolved.length > 1 || hasUnassigned);
 
   // Tooltip: use item's POV color for the dot in the legend via CSS var
   const handleChipHover = React.useCallback(
