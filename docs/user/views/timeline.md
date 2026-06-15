@@ -4,7 +4,7 @@
 
 The Timeline View gives writers a horizontal, time-based picture of their story. Each scene is represented as a chip placed along a date axis according to its Story Date — the in-story date and time the scene takes place, not the date the writer worked on it. The view answers the question: *in what order do things actually happen in the world of this story?*
 
-Writers open the Timeline by switching to the Timeline tab in the Work Area. The view loads automatically for the active project and reflects whatever story dates have been entered in the metadata sidebar for individual scenes.
+The Timeline View is enabled per project. Turn it on from **User Preferences → Timeline view**; because the view reads the story-date fields, enabling it also turns those fields on (and turning the date fields off turns the view off). Once enabled, writers open the Timeline by switching to the Timeline tab in the Work Area, where it reflects whatever story dates have been entered in the metadata sidebar for individual scenes. While the view is disabled, its tab is greyed out with a tooltip pointing to the preference.
 
 ### Setting story dates
 

@@ -12,9 +12,9 @@ Open a folder in the Organizer and its resources are laid out as cards, left-to-
 
 This gives you a bird's-eye read on a chunk of your project — what's there, how much, and in what order — without opening each item.
 
-## Notes and content
+## Card body
 
-Flip the cards between their default content preview and the resource's notes using the toggle in the view header. It's an easy way to switch between *what you wrote* and *what you planned*.
+Each card can show a line of context beneath its title. Choose what that body is from **User Preferences → Organizer Card Body**: nothing, a text excerpt of the resource's content, or the value of any metadata field (for example its notes). The toggle in the view header shows or hides the body, letting you switch between a clean grid and the extra context at a glance.
 
 ## Filtering
 
