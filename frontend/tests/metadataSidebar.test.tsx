@@ -858,6 +858,10 @@ describe("MetadataSidebar — media resource display", () => {
   it("shows the editable schema metadata editor for image resources", () => {
     const res = createImageResource({ name: "Banner", width: 100, height: 50 });
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { synopsis: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -876,6 +880,10 @@ describe("MetadataSidebar — media resource display", () => {
     const res = createImageResource({ name: "Banner" });
     const onChangeField = vi.fn();
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { synopsis: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
@@ -894,6 +902,10 @@ describe("MetadataSidebar — media resource display", () => {
   it("shows the editable schema metadata editor for audio resources", () => {
     const res = createAudioResource({ name: "Theme", format: "mp3" });
     const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", features: { synopsis: true } }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
     render(
