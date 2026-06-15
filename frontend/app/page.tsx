@@ -28,18 +28,14 @@ import {
   addResource,
   removeResource,
   setProjects as setProjectsInStore,
+  buildStoredProject,
 } from "../src/store/projectsSlice";
 import AppShell from "../components/Layout/AppShell";
 import StartPage, {
   type StartPageProjectEntry,
   type StartPageCreateResult,
 } from "../components/Start/StartPage";
-import type {
-  Folder,
-  AnyResource,
-  ResourceBase,
-  TextResource,
-} from "../src/lib/models";
+import type { Folder, AnyResource, TextResource } from "../src/lib/models";
 import type { MetadataValue, ResourceRef } from "../src/lib/models/types";
 import { buildProjectView } from "../src/lib/models/project-view";
 import { listProjects, openProject } from "../src/lib/api/projects";
@@ -173,23 +169,13 @@ export default function Home(): JSX.Element {
     ]);
     // persist project in redux store and mark selected
     dispatch(
-      setProject({
-        id: projectFiles.project.id,
-        name: projectFiles.project.name,
-        rootPath: projectFiles.project.rootPath ?? "",
-        folders: (projectFiles as any).folders ?? [],
-        resources: (projectFiles as any).resources
-          ? (projectFiles as any).resources.map((r: ResourceBase) => ({
-              id: r.id,
-              name: r.name,
-              userMetadata: r.userMetadata ?? {},
-              folderId: r.folderId ?? null,
-            }))
-          : [],
-        metadata: projectFiles.project.metadata,
-        statuses: projectFiles.project.config?.statuses ?? [],
-        metadataSchema: projectFiles.project.config?.metadataSchema,
-      }),
+      setProject(
+        buildStoredProject(
+          projectFiles.project,
+          (projectFiles as any).folders ?? [],
+          (projectFiles as any).resources ?? [],
+        ),
+      ),
     );
     dispatch(setSelectedProjectId(projectFiles.project.id));
     dispatch(setResources(projectFiles.resources));
@@ -220,23 +206,7 @@ export default function Home(): JSX.Element {
    */
   const handleOpen = async (id: string) => {
     const p = await openProject(id);
-    dispatch(
-      setProject({
-        id: p.project.id,
-        name: p.project.name,
-        rootPath: p.project.rootPath ?? "",
-        folders: p.folders,
-        resources: p.resources.map((r) => ({
-          id: r.id,
-          name: r.name,
-          folderId: r.folderId ?? null,
-          userMetadata: r.userMetadata ?? {},
-        })),
-        metadata: p.project.metadata,
-        statuses: p.project.config?.statuses ?? [],
-        metadataSchema: p.project.config?.metadataSchema,
-      }),
-    );
+    dispatch(setProject(buildStoredProject(p.project, p.folders, p.resources)));
     dispatch(
       setEditorConfig({
         headings: p.project.config?.editorConfig?.headings ?? {},

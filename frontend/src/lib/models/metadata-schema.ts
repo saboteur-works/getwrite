@@ -22,6 +22,7 @@ import type {
   MetadataField,
   MetadataFieldType,
   MetadataValue,
+  ProjectFeatureFlags,
   UUID,
 } from "./types";
 
@@ -107,24 +108,312 @@ function migrateMultipleToMultiRef(schema: MetadataSchema): {
   return { schema: { ...schema, groups }, changed };
 }
 
+// ─── Locked-builtin / feature-flag migration ──────────────────────────────────
+
+/**
+ * Built-in field keys that older projects persisted with `locked: true` and that
+ * the load-time migration unlocks. `status` is intentionally excluded — it stays
+ * locked.
+ */
+const UNLOCK_BUILTIN_KEYS = new Set<string>([
+  "synopsis",
+  "notes",
+  "pov",
+  "storyDate",
+  "storyDuration",
+  "storyEndDate",
+]);
+
+const STORY_TIMELINE_GROUP_ID = "builtin-story-timeline";
+const STORY_TIMELINE_GROUP_LABEL = "Timeline";
+
+/**
+ * Maps each feature toggle to the field keys whose stored presence seeds it on
+ * during the one-time load migration.
+ */
+const FEATURE_FIELD_KEYS: Record<keyof ProjectFeatureFlags, readonly string[]> =
+  {
+    timeline: ["storyDate", "storyDuration", "storyEndDate"],
+    // The view is seeded from the same story data as the fields, preserving the
+    // pre-split behavior where stored timeline data lit up both.
+    timelineView: ["storyDate", "storyDuration", "storyEndDate"],
+    pov: ["pov"],
+    synopsis: ["synopsis"],
+    notes: ["notes"],
+  };
+
+/**
+ * Strips `locked` from the previously-locked built-in fields (everything except
+ * `status`) and renames the story-timeline group's label to "Timeline". Safe to
+ * call repeatedly — returns `changed: false` once the schema is already
+ * migrated.
+ */
+function migrateLockedBuiltins(schema: MetadataSchema): {
+  schema: MetadataSchema;
+  changed: boolean;
+} {
+  let changed = false;
+  const groups = schema.groups.map((group) => {
+    let groupChanged = false;
+    const fields = group.fields.map((field) => {
+      if (field.locked && UNLOCK_BUILTIN_KEYS.has(field.key)) {
+        groupChanged = true;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { locked: _removed, ...rest } = field;
+        return rest;
+      }
+      return field;
+    });
+    const needsRename =
+      group.id === STORY_TIMELINE_GROUP_ID &&
+      group.label !== STORY_TIMELINE_GROUP_LABEL;
+    if (needsRename) groupChanged = true;
+    if (!groupChanged) return group;
+    changed = true;
+    return {
+      ...group,
+      ...(needsRename ? { label: STORY_TIMELINE_GROUP_LABEL } : {}),
+      fields,
+    };
+  });
+  return changed
+    ? { schema: { ...schema, groups }, changed }
+    : { schema, changed };
+}
+
+/**
+ * Applies every idempotent schema migration in order: the legacy
+ * `resource-ref { multiple: true }` upgrade, then the locked-builtin unlock and
+ * group rename. Returns `changed: false` when the schema is already current.
+ */
+function applySchemaMigrations(schema: MetadataSchema): {
+  schema: MetadataSchema;
+  changed: boolean;
+} {
+  const multi = migrateMultipleToMultiRef(schema);
+  const unlocked = migrateLockedBuiltins(multi.schema);
+  return {
+    schema: unlocked.schema,
+    changed: multi.changed || unlocked.changed,
+  };
+}
+
+/**
+ * Treats `undefined`, `null`, blank strings, and empty arrays as "no value".
+ * Numbers (including 0), booleans, ref objects, and non-empty collections count.
+ */
+function hasStoredValue(value: MetadataValue | undefined): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+/**
+ * Reports whether a sidecar holds a meaningful value for `key`. Metadata field
+ * values live under `userMetadata` (the query evaluator flattens them only at
+ * read time), so detection deliberately ignores top-level keys — that avoids a
+ * false positive from the unrelated top-level resource `notes` field.
+ */
+function userMetadataHasValue(
+  sidecar: Record<string, MetadataValue>,
+  key: string,
+): boolean {
+  const userMeta = userMetadataOf(sidecar);
+  return userMeta !== null && hasStoredValue(userMeta[key]);
+}
+
+/**
+ * Returns a sidecar's `userMetadata` map for in-place mutation, or `null` when
+ * the sidecar has no object-valued `userMetadata` (nothing to migrate). Field
+ * values are stored nested here — never at the sidecar's top level (which holds
+ * structural fields like `id`/`type`/`wordCount` and the unrelated resource
+ * `notes`). All value-migration helpers operate through this accessor.
+ */
+function userMetadataOf(
+  sidecar: Record<string, MetadataValue>,
+): Record<string, MetadataValue> | null {
+  const userMeta = sidecar.userMetadata;
+  if (
+    userMeta === null ||
+    typeof userMeta !== "object" ||
+    Array.isArray(userMeta)
+  ) {
+    return null;
+  }
+  return userMeta as Record<string, MetadataValue>;
+}
+
+/**
+ * Iterates every resource sidecar under `meta/`, invoking `mutate` with each
+ * sidecar's `userMetadata` map; when `mutate` returns `true` the sidecar is
+ * written back. Sidecars that are missing, unreadable, or have no object
+ * `userMetadata` are skipped. Centralizes the readdir + filename-parse + read +
+ * guard + conditional-write scaffold shared by the value-migration helpers.
+ */
+async function forEachUserMetadata(
+  projectRoot: string,
+  mutate: (meta: Record<string, MetadataValue>) => boolean,
+): Promise<void> {
+  const metaDir = path.join(projectRoot, "meta");
+  let entries: string[];
+  try {
+    entries = await fs.readdir(metaDir);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json")) {
+      continue;
+    }
+    const resourceId = entry.slice(
+      "resource-".length,
+      -".meta.json".length,
+    ) as UUID;
+    const sidecar = await readSidecar(projectRoot, resourceId);
+    if (!sidecar) continue;
+    const meta = userMetadataOf(sidecar);
+    if (!meta) continue;
+    if (mutate(meta)) {
+      await writeSidecar(projectRoot, resourceId, sidecar);
+    }
+  }
+}
+
+/**
+ * Scans every sidecar in `meta/` and returns which feature toggles should be
+ * seeded on — a toggle is on when any sidecar holds a value for one of the
+ * feature's field keys. Missing `meta/` yields an empty result.
+ */
+async function detectFeatureDataFromSidecars(
+  projectRoot: string,
+): Promise<ProjectFeatureFlags> {
+  const detected: ProjectFeatureFlags = {};
+  const metaDir = path.join(projectRoot, "meta");
+  let entries: string[];
+  try {
+    entries = await fs.readdir(metaDir);
+  } catch {
+    return detected;
+  }
+  const featureEntries = Object.entries(FEATURE_FIELD_KEYS) as [
+    keyof ProjectFeatureFlags,
+    readonly string[],
+  ][];
+  for (const entry of entries) {
+    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
+      continue;
+    const resourceId = entry.slice(
+      "resource-".length,
+      -".meta.json".length,
+    ) as UUID;
+    const sidecar = await readSidecar(projectRoot, resourceId);
+    if (!sidecar) continue;
+    for (const [feature, keys] of featureEntries) {
+      if (detected[feature]) continue;
+      if (keys.some((k) => userMetadataHasValue(sidecar, k))) {
+        detected[feature] = true;
+      }
+    }
+    if (featureEntries.every(([feature]) => detected[feature])) break;
+  }
+  return detected;
+}
+
+/**
+ * One-time, idempotent migration run when a project is loaded from disk:
+ *
+ * 1. Unlocks the previously-locked built-in fields and renames the story-timeline
+ *    group label to "Timeline" (when a schema is persisted; never materializes a
+ *    default schema for projects that rely on `DEFAULT_METADATA_SCHEMA`).
+ * 2. Seeds `config.features` exactly once — when it is absent — turning each
+ *    toggle on for any feature whose field keys already hold stored values.
+ *
+ * Sidecar values are never modified. The project is written (bumping
+ * `metadataRevision` a single time) only when something actually changed, so
+ * repeat loads are no-ops. The write happens under the project lock.
+ */
+export async function migrateProjectOnLoad(
+  projectRoot: string,
+): Promise<Project> {
+  const initial = await readProject(projectRoot);
+  const needsSeed = initial.config?.features === undefined;
+  // Scan outside the lock — sidecar reads are independent of the project file.
+  const seeded = needsSeed
+    ? await detectFeatureDataFromSidecars(projectRoot)
+    : undefined;
+
+  const release = await acquireLock(projectRoot);
+  try {
+    const project = await readProject(projectRoot);
+    if (!project.config) project.config = { editorConfig: {} };
+    let changed = false;
+
+    if (project.config.metadataSchema) {
+      const result = applySchemaMigrations(project.config.metadataSchema);
+      if (result.changed) {
+        project.config.metadataSchema = result.schema;
+        changed = true;
+      }
+    }
+
+    if (project.config.features === undefined && seeded !== undefined) {
+      project.config.features = seeded;
+      changed = true;
+    }
+
+    // Backfill the view flag for projects migrated before the timeline fields
+    // and the Timeline view were split into separate toggles. The old `timeline`
+    // flag gated both, so a project that had it on keeps its view. Runs once — a
+    // already-defined `timelineView` is never overwritten.
+    if (
+      project.config.features !== undefined &&
+      project.config.features.timelineView === undefined &&
+      project.config.features.timeline === true
+    ) {
+      project.config.features.timelineView = true;
+      changed = true;
+    }
+
+    if (changed) {
+      await writeProject(projectRoot, project);
+    }
+    return project;
+  } finally {
+    release();
+  }
+}
+
 /**
  * Returns the current metadata schema for a project, or `{ groups: [] }` if
  * none has been stored yet.
  *
- * Automatically upgrades any legacy `resource-ref` fields with `multiple: true`
- * to the `multi-resource-ref` type and persists the change to disk so subsequent
+ * Automatically applies the idempotent schema migrations (legacy `resource-ref`
+ * `multiple: true` → `multi-resource-ref`, plus the locked-builtin unlock and
+ * group rename) and persists the change — under the project lock — so subsequent
  * reads see the canonical form.
  */
 export async function getSchema(projectRoot: string): Promise<MetadataSchema> {
   const project = await readProject(projectRoot);
   const raw = project.config?.metadataSchema ?? { groups: [] };
-  const { schema, changed } = migrateMultipleToMultiRef(raw);
-  if (changed) {
-    if (!project.config) project.config = { editorConfig: {} };
-    project.config.metadataSchema = schema;
-    await writeProject(projectRoot, project);
+  const first = applySchemaMigrations(raw);
+  if (!first.changed) return first.schema;
+
+  // A migration is needed — persist it under the project lock. Re-read inside
+  // the lock so a concurrent writer is not clobbered, then re-apply.
+  const release = await acquireLock(projectRoot);
+  try {
+    const fresh = await readProject(projectRoot);
+    if (!fresh.config?.metadataSchema) return first.schema;
+    const result = applySchemaMigrations(fresh.config.metadataSchema);
+    if (result.changed) {
+      fresh.config.metadataSchema = result.schema;
+      await writeProject(projectRoot, fresh);
+    }
+    return result.schema;
+  } finally {
+    release();
   }
-  return schema;
 }
 
 /**
@@ -230,25 +519,11 @@ async function clearFieldFromSidecars(
   projectRoot: string,
   fieldKey: string,
 ): Promise<void> {
-  const metaDir = path.join(projectRoot, "meta");
-  let entries: string[];
-  try {
-    entries = await fs.readdir(metaDir);
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
-      continue;
-    const resourceId = entry.slice(
-      "resource-".length,
-      -".meta.json".length,
-    ) as UUID;
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar || !(fieldKey in sidecar)) continue;
-    delete sidecar[fieldKey];
-    await writeSidecar(projectRoot, resourceId, sidecar);
-  }
+  await forEachUserMetadata(projectRoot, (meta) => {
+    if (!(fieldKey in meta)) return false;
+    delete meta[fieldKey];
+    return true;
+  });
 }
 
 /**
@@ -450,26 +725,12 @@ async function migrateFieldKeyInSidecars(
   oldKey: string,
   newKey: string,
 ): Promise<void> {
-  const metaDir = path.join(projectRoot, "meta");
-  let entries: string[];
-  try {
-    entries = await fs.readdir(metaDir);
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
-      continue;
-    const resourceId = entry.slice(
-      "resource-".length,
-      -".meta.json".length,
-    ) as UUID;
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar || !(oldKey in sidecar)) continue;
-    sidecar[newKey] = sidecar[oldKey];
-    delete sidecar[oldKey];
-    await writeSidecar(projectRoot, resourceId, sidecar);
-  }
+  await forEachUserMetadata(projectRoot, (meta) => {
+    if (!(oldKey in meta)) return false;
+    meta[newKey] = meta[oldKey];
+    delete meta[oldKey];
+    return true;
+  });
 }
 
 async function renameFieldKeyInSchema(
@@ -594,36 +855,24 @@ async function migrateFieldTypeInSidecars(
   migrations: Record<string, TypeMigrationEntry>,
 ): Promise<void> {
   if (Object.keys(migrations).length === 0) return;
-  const metaDir = path.join(projectRoot, "meta");
-  let entries: string[];
-  try {
-    entries = await fs.readdir(metaDir);
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
-      continue;
-    const resourceId = entry.slice(
-      "resource-".length,
-      -".meta.json".length,
-    ) as UUID;
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null)
-      continue;
-    const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
+  await forEachUserMetadata(projectRoot, (meta) => {
+    if (!(fieldKey in meta) || meta[fieldKey] === null) return false;
+    const key = canonicalValueKey(meta[fieldKey] as MetadataValue);
     const migration = migrations[key];
-    if (!migration || migration.action === "keep") continue;
+    if (!migration || migration.action === "keep") return false;
     if (migration.action === "clear") {
-      delete sidecar[fieldKey];
-    } else if (
+      delete meta[fieldKey];
+      return true;
+    }
+    if (
       migration.action === "normalize" &&
       migration.normalizedTo !== undefined
     ) {
-      sidecar[fieldKey] = migration.normalizedTo;
+      meta[fieldKey] = migration.normalizedTo;
+      return true;
     }
-    await writeSidecar(projectRoot, resourceId, sidecar);
-  }
+    return false;
+  });
 }
 
 /**
@@ -714,26 +963,11 @@ async function migrateFieldOptionsInSidecars(
   fieldType: MetadataFieldType,
 ): Promise<void> {
   if (Object.keys(migrations).length === 0) return;
-  const metaDir = path.join(projectRoot, "meta");
-  let entries: string[];
-  try {
-    entries = await fs.readdir(metaDir);
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
-      continue;
-    const resourceId = entry.slice(
-      "resource-".length,
-      -".meta.json".length,
-    ) as UUID;
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar || !(fieldKey in sidecar) || sidecar[fieldKey] === null)
-      continue;
+  await forEachUserMetadata(projectRoot, (meta) => {
+    if (!(fieldKey in meta) || meta[fieldKey] === null) return false;
 
-    if (fieldType === "multiselect" && Array.isArray(sidecar[fieldKey])) {
-      const arr = sidecar[fieldKey] as string[];
+    if (fieldType === "multiselect" && Array.isArray(meta[fieldKey])) {
+      const arr = meta[fieldKey] as string[];
       let changed = false;
       const newArr: string[] = [];
       for (const element of arr) {
@@ -754,33 +988,37 @@ async function migrateFieldOptionsInSidecars(
           changed = true;
         }
       }
-      if (!changed) continue;
+      if (!changed) return false;
       if (newArr.length === 0) {
-        delete sidecar[fieldKey];
+        delete meta[fieldKey];
       } else {
-        sidecar[fieldKey] = newArr;
+        meta[fieldKey] = newArr;
       }
-      await writeSidecar(projectRoot, resourceId, sidecar);
-    } else {
-      const key = canonicalValueKey(sidecar[fieldKey] as MetadataValue);
-      const migration = migrations[key];
-      if (
-        !migration ||
-        migration.action === "keep" ||
-        migration.action === "add-to-options"
-      )
-        continue;
-      if (migration.action === "clear") {
-        delete sidecar[fieldKey];
-      } else if (
-        migration.action === "normalize" &&
-        migration.normalizedTo !== undefined
-      ) {
-        sidecar[fieldKey] = migration.normalizedTo;
-      }
-      await writeSidecar(projectRoot, resourceId, sidecar);
+      return true;
     }
-  }
+
+    const key = canonicalValueKey(meta[fieldKey] as MetadataValue);
+    const migration = migrations[key];
+    if (
+      !migration ||
+      migration.action === "keep" ||
+      migration.action === "add-to-options"
+    ) {
+      return false;
+    }
+    if (migration.action === "clear") {
+      delete meta[fieldKey];
+      return true;
+    }
+    if (
+      migration.action === "normalize" &&
+      migration.normalizedTo !== undefined
+    ) {
+      meta[fieldKey] = migration.normalizedTo;
+      return true;
+    }
+    return false;
+  });
 }
 
 /**

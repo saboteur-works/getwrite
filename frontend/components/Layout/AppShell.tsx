@@ -27,6 +27,7 @@ import {
   removeResource,
   selectActiveProjectMetadataSchema,
   selectActiveProjectStatuses,
+  selectTimelineViewEnabled,
 } from "../../src/store/projectsSlice";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import ResourceTree from "../ResourceTree/ResourceTree";
@@ -319,6 +320,7 @@ export default function AppShell({
   const activeQueryIds = useAppSelector(selectActiveQueryIds);
   const isQueryEvaluating = useAppSelector(selectIsEvaluating);
   const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
+  const timelineViewEnabled = useAppSelector(selectTimelineViewEnabled);
   const savedQueriesList = useAppSelector(selectSavedQueriesList);
   const liveEditorConfig = useAppSelector(selectEditorConfig);
   const resolvedEditorConfig = useAppSelector(selectResolvedEditorConfig);
@@ -387,6 +389,16 @@ export default function AppShell({
       setQueryBuilderOpen(false);
     }
   }, [selectedResource?.id, selectedResource?.type]);
+
+  // When the Timeline view is turned off, never strand the user on the (now
+  // hidden) Timeline view — fall back to a sensible default for the selection.
+  useEffect(() => {
+    if (timelineViewEnabled) return;
+    setView((current) => {
+      if (current !== "timeline") return current;
+      return selectedResource?.type === "folder" ? "organizer" : "edit";
+    });
+  }, [timelineViewEnabled, selectedResource?.type]);
 
   const isSavingRevision = useAppSelector(selectIsSavingRevision);
   const deletingRevisionId = useAppSelector(selectDeletingRevisionId);
@@ -1262,8 +1274,17 @@ export default function AppShell({
                           if (type !== "folder") {
                             disabled.push("organizer");
                           }
+                          // The Timeline tab is gated behind its own view toggle
+                          // (separate from the timeline date fields).
+                          if (!timelineViewEnabled) {
+                            disabled.push("timeline");
+                          }
                           return Array.from(new Set(disabled));
                         })()}
+                        disabledReasons={{
+                          timeline:
+                            "The Timeline view is off. Turn it on in User Preferences → Timeline view.",
+                        }}
                       />
                       <div style={{ width: 320 }}>
                         <SearchBar onSelect={(id) => onResourceSelect?.(id)} />
@@ -1420,7 +1441,12 @@ export default function AppShell({
                             case "organizer":
                               return <OrganizerView />;
                             case "timeline":
-                              return <TimelineView />;
+                              // Defensive guard: the tab is disabled when the
+                              // view is off, but never mount TimelineView even
+                              // if the view state somehow lands here.
+                              return timelineViewEnabled ? (
+                                <TimelineView />
+                              ) : null;
                             default:
                               return (
                                 <div>

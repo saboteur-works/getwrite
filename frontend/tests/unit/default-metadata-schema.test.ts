@@ -18,20 +18,18 @@ describe("DEFAULT_METADATA_SCHEMA", () => {
       expect(getDocumentGroup()!.fields).toHaveLength(4);
     });
 
-    it("contains synopsis as a locked text field", () => {
+    it("contains synopsis as an unlocked text field", () => {
       const field = getDocumentGroup()!.fields.find(
         (f) => f.key === "synopsis",
       );
-      expect(field).toMatchObject({
-        key: "synopsis",
-        type: "text",
-        locked: true,
-      });
+      expect(field).toMatchObject({ key: "synopsis", type: "text" });
+      expect(field?.locked).not.toBe(true);
     });
 
-    it("contains notes as a locked text field", () => {
+    it("contains notes as an unlocked text field", () => {
       const field = getDocumentGroup()!.fields.find((f) => f.key === "notes");
-      expect(field).toMatchObject({ key: "notes", type: "text", locked: true });
+      expect(field).toMatchObject({ key: "notes", type: "text" });
+      expect(field?.locked).not.toBe(true);
     });
 
     it("contains status as a locked select field", () => {
@@ -43,66 +41,59 @@ describe("DEFAULT_METADATA_SCHEMA", () => {
       });
     });
 
-    it("contains pov as a locked resource-ref field", () => {
+    it("contains pov as an unlocked resource-ref field", () => {
       const field = getDocumentGroup()!.fields.find((f) => f.key === "pov");
-      expect(field).toMatchObject({
-        key: "pov",
-        type: "resource-ref",
-        locked: true,
-      });
+      expect(field).toMatchObject({ key: "pov", type: "resource-ref" });
+      expect(field?.locked).not.toBe(true);
     });
   });
 
-  describe("Story Timeline group", () => {
+  describe("Timeline group", () => {
     const getTimelineGroup = () =>
-      DEFAULT_METADATA_SCHEMA.groups.find((g) => g.label === "Story Timeline");
+      DEFAULT_METADATA_SCHEMA.groups.find((g) => g.label === "Timeline");
 
     it("exists", () => {
       expect(getTimelineGroup()).toBeDefined();
+    });
+
+    it("keeps the builtin-story-timeline group id", () => {
+      expect(getTimelineGroup()!.id).toBe("builtin-story-timeline");
     });
 
     it("has exactly three fields", () => {
       expect(getTimelineGroup()!.fields).toHaveLength(3);
     });
 
-    it("contains storyDate as a locked date field", () => {
+    it("contains storyDate as an unlocked date field", () => {
       const field = getTimelineGroup()!.fields.find(
         (f) => f.key === "storyDate",
       );
-      expect(field).toMatchObject({
-        key: "storyDate",
-        type: "date",
-        locked: true,
-      });
+      expect(field).toMatchObject({ key: "storyDate", type: "date" });
+      expect(field?.locked).not.toBe(true);
     });
 
-    it("contains storyDuration as a locked number field", () => {
+    it("contains storyDuration as an unlocked number field", () => {
       const field = getTimelineGroup()!.fields.find(
         (f) => f.key === "storyDuration",
       );
-      expect(field).toMatchObject({
-        key: "storyDuration",
-        type: "number",
-        locked: true,
-      });
+      expect(field).toMatchObject({ key: "storyDuration", type: "number" });
+      expect(field?.locked).not.toBe(true);
     });
 
-    it("contains storyEndDate as a locked date field", () => {
+    it("contains storyEndDate as an unlocked date field", () => {
       const field = getTimelineGroup()!.fields.find(
         (f) => f.key === "storyEndDate",
       );
-      expect(field).toMatchObject({
-        key: "storyEndDate",
-        type: "date",
-        locked: true,
-      });
+      expect(field).toMatchObject({ key: "storyEndDate", type: "date" });
+      expect(field?.locked).not.toBe(true);
     });
   });
 
-  it("has all seven fields across both groups locked", () => {
+  it("locks only the status field across both groups", () => {
     const allFields = DEFAULT_METADATA_SCHEMA.groups.flatMap((g) => g.fields);
     expect(allFields).toHaveLength(7);
-    expect(allFields.every((f) => f.locked === true)).toBe(true);
+    const lockedFields = allFields.filter((f) => f.locked === true);
+    expect(lockedFields.map((f) => f.key)).toEqual(["status"]);
   });
 
   it("has no duplicate field keys", () => {

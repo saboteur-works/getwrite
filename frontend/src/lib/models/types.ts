@@ -44,6 +44,40 @@ export type EditorBodyConfig = {
 };
 
 /**
+ * Per-project opt-in flags gating the previously-locked built-in metadata
+ * features. An absent flag is treated as disabled.
+ */
+export interface ProjectFeatureFlags {
+  /** Activates the story-timeline metadata fields (`storyDate`/`storyDuration`/`storyEndDate`) in the sidebar. */
+  timeline?: boolean;
+  /**
+   * Activates the Timeline view/tab. Independent of {@link ProjectFeatureFlags.timeline}
+   * (the date fields the view reads): a project can keep the fields without the
+   * view, or vice versa.
+   */
+  timelineView?: boolean;
+  /** Activates the Point of View (`pov`) metadata field. */
+  pov?: boolean;
+  /** Activates the Synopsis (`synopsis`) metadata field. */
+  synopsis?: boolean;
+  /** Activates the Notes (`notes`) metadata field. */
+  notes?: boolean;
+}
+
+/** Source that drives the body text shown on Organizer cards. */
+export type OrganizerCardBodySource = "none" | "text-excerpt" | "field";
+
+/** Per-project configuration for what Organizer cards render as their body. */
+export interface OrganizerCardBodyConfig {
+  /** Where the card body text comes from. */
+  source: OrganizerCardBodySource;
+  /** Metadata field key whose value is shown; only meaningful when `source` is `"field"`. */
+  fieldKey?: string;
+  /** Max characters of the resource's text content to show; only meaningful when `source` is `"text-excerpt"`. */
+  excerptLength?: number;
+}
+
+/**
  * Project-level configuration persisted with the project (project.json).
  * Contains user-editable preferences that affect model behavior.
  */
@@ -74,6 +108,10 @@ export interface ProjectConfig {
   metadataSchema?: MetadataSchema;
   /** Monotonically-increasing counter bumped on every sidecar or schema write. Used as a cache-invalidation key by the query evaluator. */
   metadataRevision?: number;
+  /** Per-project opt-in flags gating the previously-locked built-in metadata features. Absent flag = disabled. */
+  features?: ProjectFeatureFlags;
+  /** Configures what Organizer cards render as their body text. */
+  organizerCardBody?: OrganizerCardBodyConfig;
 }
 
 /** Allowed field types for user-defined metadata fields. */

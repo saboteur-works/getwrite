@@ -4,6 +4,7 @@ import fsSync from "node:fs";
 import type { Project } from "./types";
 import { readSidecar } from "./sidecar";
 import { readFolderTree } from "./folder-utils";
+import { migrateProjectOnLoad } from "./metadata-schema";
 
 /** A resource entry assembled from its sidecar metadata and plaintext content. */
 export interface LoadedResource {
@@ -40,11 +41,10 @@ export interface LoadedProject {
 export async function loadProjectFromDisk(
   projectPath: string,
 ): Promise<LoadedProject> {
-  const projectFile = await fs.readFile(
-    path.join(projectPath, "project.json"),
-    { encoding: "utf-8" },
-  );
-  const project = JSON.parse(projectFile) as Project;
+  // Apply the one-time load migration (unlock built-ins, rename the timeline
+  // group, seed feature toggles) and use the returned, migrated project so the
+  // store sees the canonical config.
+  const project = await migrateProjectOnLoad(projectPath);
 
   const foldersDir = path.join(projectPath, "folders");
   const metadataDir = path.join(projectPath, "meta");

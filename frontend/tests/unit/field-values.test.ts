@@ -1,11 +1,16 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   enumerateFieldValues,
+  scanAllFieldValues,
   canonicalValueKey,
   NULL_VALUE_KEY,
   MISSING_VALUE_KEY,
 } from "../../src/lib/models/field-values";
 import type { MetadataValue, ResourceRef } from "../../src/lib/models/types";
+import { removeDirRetry } from "./helpers/fs-utils";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -230,5 +235,39 @@ describe("enumerateFieldValues", () => {
     expect(result.get(NULL_VALUE_KEY)?.count).toBe(1);
     expect(result.get(MISSING_VALUE_KEY)?.count).toBe(1);
     expect(result.size).toBe(3);
+  });
+});
+
+describe("scanAllFieldValues — reads values nested under userMetadata", () => {
+  async function writeNestedSidecar(
+    dir: string,
+    id: string,
+    userMetadata: Record<string, MetadataValue>,
+  ): Promise<void> {
+    const metaDir = path.join(dir, "meta");
+    await fs.mkdir(metaDir, { recursive: true });
+    await fs.writeFile(
+      path.join(metaDir, `resource-${id}.meta.json`),
+      JSON.stringify({ id, type: "text", userMetadata }, null, 2),
+      "utf8",
+    );
+  }
+
+  it("counts values stored under userMetadata (so the migration preview matches the migration)", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-fieldvals-"));
+    try {
+      await writeNestedSidecar(dir, "r1", { tone: "ominous" });
+      await writeNestedSidecar(dir, "r2", { tone: "ominous" });
+      await writeNestedSidecar(dir, "r3", { tone: "hopeful" });
+      await writeNestedSidecar(dir, "r4", { other: "x" }); // no `tone`
+
+      const result = await scanAllFieldValues(dir, "tone");
+
+      expect(result.get("ominous")?.count).toBe(2);
+      expect(result.get("hopeful")?.count).toBe(1);
+      expect(result.get(MISSING_VALUE_KEY)?.count).toBe(1);
+    } finally {
+      await removeDirRetry(dir);
+    }
   });
 });

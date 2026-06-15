@@ -1,6 +1,10 @@
 import React from "react";
 import useAppSelector, { useAppDispatch } from "../../../../src/store/hooks";
 import { setSelectedResourceId } from "../../../../src/store/resourcesSlice";
+import {
+  selectPovEnabled,
+  selectNotesEnabled,
+} from "../../../../src/store/projectsSlice";
 import { Timeline } from "../../../Timeline";
 import type { TimelineItem, TimelineGroup } from "../../../Timeline";
 
@@ -46,7 +50,14 @@ export default function TimelineView({
   const resources = useAppSelector((state) => state.resources.resources);
   const folders = useAppSelector((state) => state.resources.folders ?? []);
 
+  // POV and Notes are independent opt-ins (spec FR4): when a feature is off the
+  // Timeline must ignore its data entirely — no coloring, pills, or legend for
+  // POV; no notes carried into item metadata. Values are preserved on disk.
+  const povEnabled = useAppSelector(selectPovEnabled);
+  const notesEnabled = useAppSelector(selectNotesEnabled);
+
   const povColorMap = React.useMemo(() => {
+    if (!povEnabled) return {} as Record<string, string>;
     const povs = [
       ...new Set(
         resources
@@ -57,7 +68,7 @@ export default function TimelineView({
     return Object.fromEntries(
       povs.map((p, i) => [p, colors[i % colors.length]]),
     );
-  }, [resources, colors]);
+  }, [resources, colors, povEnabled]);
 
   const items = React.useMemo((): TimelineItem[] => {
     return resources
@@ -87,12 +98,19 @@ export default function TimelineView({
         const durationH =
           storyDuration != null ? storyDuration / 60 : undefined;
 
-        const pov = resolvePovDisplay(r.userMetadata?.pov);
+        const pov = povEnabled
+          ? resolvePovDisplay(r.userMetadata?.pov)
+          : undefined;
         const statusArr = r.userMetadata?.status as string[] | undefined;
         const status = r.userMetadata?.status as string | undefined;
-        const rawNotes = typeof r.notes === "string" ? r.notes : undefined;
-        const notes = rawNotes
-          ? rawNotes.slice(0, 120) + (rawNotes.length > 120 ? "…" : "")
+        // Notes is the `userMetadata.notes` metadata field (what the sidebar
+        // reads/writes and the Notes toggle gates) — not the legacy
+        // resource-level `r.notes`.
+        const rawNotes = r.userMetadata?.notes;
+        const notesText =
+          notesEnabled && typeof rawNotes === "string" ? rawNotes : undefined;
+        const notes = notesText
+          ? notesText.slice(0, 120) + (notesText.length > 120 ? "…" : "")
           : undefined;
         const folder = folders.find((f) => f.id === r.folderId)?.name;
 
@@ -109,7 +127,7 @@ export default function TimelineView({
           metadata: { pov, status: statusArr, folder, notes },
         };
       });
-  }, [resources, povColorMap, folders, dispatch]);
+  }, [resources, povColorMap, folders, dispatch, povEnabled, notesEnabled]);
 
   const groups = React.useMemo((): TimelineGroup[] => {
     const groupIds = new Set(

@@ -116,11 +116,35 @@ export async function scanFieldValues(
   const sidecars = await Promise.all(
     resourceIds.map(async (id) => {
       try {
-        return await readSidecar(projectRoot, id);
+        return flattenUserMetadata(await readSidecar(projectRoot, id));
       } catch {
         return null;
       }
     }),
   );
   return enumerateFieldValues(sidecars, fieldKey);
+}
+
+/**
+ * Flattens a sidecar's nested `userMetadata` map onto the top level so a
+ * field value can be looked up by key. Metadata field values are stored under
+ * `userMetadata` on disk; `enumerateFieldValues` (and the query evaluator) read
+ * by top-level key, so this must run on every raw sidecar before enumeration —
+ * otherwise the field-value scan (e.g. the SchemaManager change-type /
+ * option-removal preview) reports every value as MISSING while the actual
+ * migration, which reads `userMetadata`, would change them.
+ */
+function flattenUserMetadata(
+  sidecar: Record<string, MetadataValue> | null,
+): Record<string, MetadataValue> | null {
+  if (!sidecar) return null;
+  const userMeta = sidecar.userMetadata;
+  if (
+    userMeta === null ||
+    typeof userMeta !== "object" ||
+    Array.isArray(userMeta)
+  ) {
+    return sidecar;
+  }
+  return { ...sidecar, ...(userMeta as Record<string, MetadataValue>) };
 }

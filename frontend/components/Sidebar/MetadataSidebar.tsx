@@ -30,6 +30,10 @@ import {
   selectActiveProjectStatuses,
   selectActiveProjectMetadataSchema,
   selectSelectedProjectId,
+  selectSynopsisEnabled,
+  selectNotesEnabled,
+  selectPovEnabled,
+  selectTimelineEnabled,
 } from "../../src/store/projectsSlice";
 import type {
   Folder,
@@ -210,6 +214,10 @@ export default function MetadataSidebar({
 }: MetadataSidebarProps): JSX.Element {
   const schema = useAppSelector(selectActiveProjectMetadataSchema);
   const selectedProjectId = useAppSelector(selectSelectedProjectId);
+  const synopsisEnabled = useAppSelector(selectSynopsisEnabled);
+  const notesEnabled = useAppSelector(selectNotesEnabled);
+  const povEnabled = useAppSelector(selectPovEnabled);
+  const timelineEnabled = useAppSelector(selectTimelineEnabled);
 
   const selectedResource = useAppSelector((state) =>
     selectResource(state.resources),
@@ -272,6 +280,30 @@ export default function MetadataSidebar({
 
   const emit = (key: string, value: MetadataValue): void => {
     onChangeField?.(key, value);
+  };
+
+  /**
+   * Whether a field's sidebar control should render. Built-in fields governed by
+   * a project feature toggle are hidden when their feature is disabled; the
+   * schema entry and any stored sidecar value are left untouched, so toggling the
+   * feature back on restores the control with its prior value. Non-gated fields
+   * (custom fields and the always-on `status`) always render.
+   */
+  const isFieldVisible = (field: MetadataField): boolean => {
+    switch (field.key) {
+      case "synopsis":
+        return synopsisEnabled;
+      case "notes":
+        return notesEnabled;
+      case "pov":
+        return povEnabled;
+      case "storyDate":
+      case "storyDuration":
+      case "storyEndDate":
+        return timelineEnabled;
+      default:
+        return true;
+    }
   };
 
   const renderField = (field: MetadataField): JSX.Element | null => {
@@ -461,13 +493,17 @@ export default function MetadataSidebar({
               ) {
                 return null;
               }
+              const visibleFields = group.fields.filter(isFieldVisible);
+              if (visibleFields.length === 0) {
+                return null;
+              }
               return (
                 <CollapsibleSection
                   key={group.id}
                   title={group.label}
                   variant="sidebar"
                 >
-                  {group.fields.map((field) => (
+                  {visibleFields.map((field) => (
                     <React.Fragment key={field.key}>
                       {renderField(field)}
                     </React.Fragment>

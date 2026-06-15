@@ -191,6 +191,38 @@ describe("ne predicate", () => {
   });
 });
 
+// ── FR7: query-continuity for hidden / removed fields ─────────────────────
+
+describe("FR7 — querying field keys hidden or removed from the schema", () => {
+  // The evaluator is schema-agnostic: EvaluationInput carries `resources`,
+  // `sidecars`, and `context` — never a metadata schema. A field key that has
+  // been removed or hidden from the schema therefore stays fully queryable as
+  // long as its values remain in the sidecars (FR6 preserves them; FR7 keeps
+  // them matchable). `removedField` below is intentionally absent from any
+  // schema yet present in stored sidecar values.
+  const legacyResources: ResourceBase[] = [{ ...r1 }, { ...r3 }];
+  const legacySidecars: Record<string, Record<string, MetadataValue>> = {
+    [R1]: { removedField: "legacy value" },
+    [R3]: { removedField: "other value" },
+  };
+
+  it("matches resources by a removed/hidden field key that still has stored values", async () => {
+    const result = await ids(
+      { op: "eq", field: "removedField", value: "legacy value" },
+      { resources: legacyResources, sidecars: legacySidecars },
+    );
+    expect(result).toEqual([R1]);
+  });
+
+  it("evaluates inequality on a removed field key independent of any schema", async () => {
+    const result = await ids(
+      { op: "ne", field: "removedField", value: "legacy value" },
+      { resources: legacyResources, sidecars: legacySidecars },
+    );
+    expect(result).toEqual([R3]);
+  });
+});
+
 // ── lt / gt / gte / lte predicates ───────────────────────────────────────
 
 describe("comparison predicates on numbers", () => {

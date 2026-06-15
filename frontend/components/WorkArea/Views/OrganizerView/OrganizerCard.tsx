@@ -1,4 +1,3 @@
-import React from "react";
 import type {
   AnyResource,
   TextResource,
@@ -30,6 +29,12 @@ export interface OrganizerCardProps {
    * @defaultValue true
    */
   showBody?: boolean;
+  /**
+   * Resolved body preview text to display. The source (a metadata field, a
+   * text-content excerpt, or none) is decided by the caller from the project's
+   * `config.organizerCardBody`; the card never reads resource data for this.
+   */
+  body?: string;
   /** Called when the user clicks the Open button on the card. */
   onOpen?: () => void;
   /** Fallback status shown when the resource has no status set. Defaults to the first project status. */
@@ -50,13 +55,12 @@ export interface OrganizerCardProps {
 export default function OrganizerCard({
   resource,
   showBody = true,
+  body,
   onOpen,
   defaultStatus = "",
 }: OrganizerCardProps): JSX.Element {
   /** Best-effort display title fallback chain. */
   const title = (resource as any).title ?? resource.name ?? "Untitled";
-  /** Optional body preview text, sourced from resource notes metadata. */
-  const body = resource.userMetadata?.notes as string;
   /** Most relevant timestamp used for human-readable date display. */
   const updated = resource.updatedAt ?? resource.createdAt ?? "";
   /** Normalized status value shown in the metadata footer. */
@@ -84,7 +88,7 @@ export default function OrganizerCard({
 
       {showBody && body && (
         <div className="text-sm mb-3 overflow-y-auto h-16 text-gw-primary">
-          {body || "No notes available."}
+          {body}
         </div>
       )}
 

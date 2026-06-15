@@ -31,6 +31,7 @@ import { slugifyName, deriveLabel } from "../../src/lib/models/field-dedup";
 import ConfirmDialog from "../common/ConfirmDialog";
 import { DialogTitle } from "../common/UI/Dialog/Dialog";
 import EditContextMenu from "../common/UI/ContextMenu/EditContextMenu";
+import ProjectFeatureToggles from "../preferences/ProjectFeatureToggles";
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
@@ -487,6 +488,9 @@ export default function SchemaManager({
             Close
           </Button>
         </header>
+
+        {/* ── Built-in feature toggles (co-located with the fields they govern) ── */}
+        <ProjectFeatureToggles />
 
         {/* ── Prefill "Create field" form ── */}
         {prefillVisible && (

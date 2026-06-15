@@ -7,10 +7,20 @@ import {
   selectResources,
   setSelectedResourceId,
 } from "../../../../src/store/resourcesSlice";
-import { selectActiveProjectStatuses } from "../../../../src/store/projectsSlice";
+import {
+  selectActiveProjectStatuses,
+  selectActiveProjectOrganizerCardBody,
+  selectActiveProjectRootPath,
+  selectNotesEnabled,
+} from "../../../../src/store/projectsSlice";
 import { Eye, EyeClosed } from "lucide-react";
 import { shallowEqual } from "react-redux";
 import Button from "../../../common/UI/Button";
+import {
+  resolveOrganizerCardBody,
+  DEFAULT_CARD_EXCERPT_LENGTH,
+} from "./cardBody";
+import { fetchResourceExcerpts } from "../../../../src/lib/api/resource-excerpts";
 
 export interface OrganizerViewProps {
   /** Whether to show the body/content of each resource */
@@ -45,8 +55,16 @@ export default function OrganizerView({
   );
   const defaultStatus =
     useAppSelector((s) => selectActiveProjectStatuses(s))[0] ?? "";
+  // Card body source is project-configured (field / text-excerpt / none); the
+  // Notes flag only drives the back-compat default when no config is set.
+  const cardBodyConfig = useAppSelector(selectActiveProjectOrganizerCardBody);
+  const notesEnabled = useAppSelector(selectNotesEnabled);
+  const rootPath = useAppSelector(selectActiveProjectRootPath);
 
   const [showBodyState, setShowBodyState] = React.useState(showBody);
+  // Text content for `text-excerpt` cards, fetched on demand for the visible
+  // folder children only (store resources don't carry their content).
+  const [excerpts, setExcerpts] = React.useState<Record<string, string>>({});
 
   const handleToggle = React.useCallback(() => {
     setShowBodyState((prev) => {
@@ -75,6 +93,40 @@ export default function OrganizerView({
     : [];
 
   const allChildren: AnyResource[] = [...childFolders, ...childResources];
+
+  // Only text resources have content.txt to excerpt. Keyed as a stable string
+  // so the effect re-runs only when the visible set actually changes.
+  const cardBodySource = cardBodyConfig?.source;
+  const excerptLength = cardBodyConfig?.excerptLength;
+  const textIdsKey = childResources
+    .filter((r) => r.type === "text")
+    .map((r) => r.id)
+    .join(",");
+
+  React.useEffect(() => {
+    // Skip the fetch entirely when bodies are hidden, not text-excerpt mode, or
+    // there's nothing to read — the excerpts would never be displayed.
+    if (
+      !showBodyState ||
+      cardBodySource !== "text-excerpt" ||
+      !rootPath ||
+      textIdsKey === ""
+    ) {
+      setExcerpts({});
+      return;
+    }
+    let cancelled = false;
+    void fetchResourceExcerpts(
+      rootPath,
+      textIdsKey.split(","),
+      excerptLength ?? DEFAULT_CARD_EXCERPT_LENGTH,
+    ).then((result) => {
+      if (!cancelled) setExcerpts(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showBodyState, cardBodySource, excerptLength, rootPath, textIdsKey]);
 
   const handleOpen = (id: string) => dispatch(setSelectedResourceId(id));
 
@@ -110,6 +162,10 @@ export default function OrganizerView({
               key={child.id}
               resource={child}
               showBody={showBodyState}
+              body={resolveOrganizerCardBody(child, cardBodyConfig, {
+                notesEnabled,
+                textExcerpt: excerpts[child.id],
+              })}
               defaultStatus={defaultStatus}
               onOpen={() => handleOpen(child.id)}
             />

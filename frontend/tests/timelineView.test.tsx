@@ -137,3 +137,97 @@ describe("TimelineView", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("TimelineView — POV / Notes feature gating (Task 9)", () => {
+  /** Enable the given feature flags on the active project in fakeState. */
+  function enableFeatures(features: Record<string, boolean>): void {
+    fakeState.projects.projects.proj1.features = features;
+  }
+
+  it("renders POV pills and legend when POV is enabled and present", () => {
+    enableFeatures({ pov: true });
+    fakeState.resources.resources = [
+      createTextResource({
+        name: "Scene A",
+        plainText: "",
+        userMetadata: { storyDate: "2024-01-01", pov: "Alice" },
+      }),
+      createTextResource({
+        name: "Scene B",
+        plainText: "",
+        userMetadata: { storyDate: "2024-02-01", pov: "Bob" },
+      }),
+    ];
+    render(<TimelineView />);
+
+    // "ALL" filter pill + one pill per POV, plus the legend header.
+    expect(screen.getByRole("button", { name: "ALL" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Alice" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Bob" })).toBeInTheDocument();
+    expect(screen.getByText("POV")).toBeInTheDocument();
+  });
+
+  it("hides POV pills and legend when POV is disabled, even if resources carry POV", () => {
+    enableFeatures({ pov: false });
+    fakeState.resources.resources = [
+      createTextResource({
+        name: "Scene A",
+        plainText: "",
+        userMetadata: { storyDate: "2024-01-01", pov: "Alice" },
+      }),
+    ];
+    render(<TimelineView />);
+
+    // The scene still renders, but no POV affordances are present.
+    expect(
+      screen.getByRole("listitem", { name: "Scene A" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "ALL" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Alice" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("POV")).not.toBeInTheDocument();
+  });
+
+  it("renders a plain chronology when POV is enabled but absent (FR4)", () => {
+    enableFeatures({ pov: true });
+    fakeState.resources.resources = [
+      createTextResource({
+        name: "Scene A",
+        plainText: "",
+        userMetadata: { storyDate: "2024-01-01" },
+      }),
+    ];
+    render(<TimelineView />);
+
+    expect(
+      screen.getByRole("listitem", { name: "Scene A" }),
+    ).toBeInTheDocument();
+    // No POV in the data → no pills, no legend.
+    expect(
+      screen.queryByRole("button", { name: "ALL" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("POV")).not.toBeInTheDocument();
+  });
+
+  it("renders without error when Notes is disabled and a resource has a notes value", () => {
+    enableFeatures({ notes: false });
+    const res = createTextResource({
+      name: "Scene A",
+      plainText: "",
+      // Notes is the userMetadata field, not the legacy resource-level `notes`.
+      userMetadata: {
+        storyDate: "2024-01-01",
+        notes: "A private authoring note.",
+      },
+    });
+    fakeState.resources.resources = [res];
+
+    expect(() => render(<TimelineView />)).not.toThrow();
+    expect(
+      screen.getByRole("listitem", { name: "Scene A" }),
+    ).toBeInTheDocument();
+  });
+});
