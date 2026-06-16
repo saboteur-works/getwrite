@@ -36,7 +36,7 @@ Derived from [markdown-support-spec.md](./markdown-support-spec.md). Granularity
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-4 and FR-9. Math (`@tiptap/extension-mathematics`) and text color have no GFM equivalent → HTML fallback path. Confirm `TableKit` round-trips as GFM tables; if not, add a handler here.
-**Done:** [ ]
+**Done:** [x] — In Tiptap 3.26 the official `image`, `highlight`, and `inlineMath`/`blockMath` extensions already ship `renderMarkdown`/`parseMarkdown`, so highlight (`==..==`) and math (`$..$`, `$$..$$`) round-trip unchanged. Custom work: (1) `GetWriteImage.renderMarkdown` emits an inline-HTML `<img data-resource-id>` fallback when a `resourceId` is present (clean `![]()` otherwise), restored on parse via the attribute's `parseHTML`; (2) `unescapeWikiLinkBrackets` in `WikiLinkDecoration.ts` keeps wiki links literal (`[[Target]]`) in exported Markdown. Tests in `tests/unit/markdown-custom-nodes.test.ts` (7). Two deliberate scope calls in `follow-up-work.md`: `paragraphLeading` (line-height) is presentational and not preserved in Markdown; text color (`textStyle`) is out of this task's done-condition and left for Task 4.
 
 ---
 

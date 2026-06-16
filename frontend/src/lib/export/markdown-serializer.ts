@@ -16,6 +16,7 @@ import { MarkdownManager } from "@tiptap/markdown";
 import type { JSONContent } from "@tiptap/core";
 import Math from "@tiptap/extension-mathematics";
 import CustomHeading from "../../../components/Editor/Extensions/CustomHeading";
+import { unescapeWikiLinkBrackets } from "../../../components/Editor/Extensions/WikiLinkDecoration";
 import { baseSchemaExtensions } from "../../../components/Editor/editorExtensions";
 
 /**
@@ -49,7 +50,7 @@ function getManager(): MarkdownManager {
  *   input.
  */
 export function documentToMarkdown(doc: JSONContent): string {
-  return getManager().serialize(doc);
+  return unescapeWikiLinkBrackets(getManager().serialize(doc));
 }
 
 /**
