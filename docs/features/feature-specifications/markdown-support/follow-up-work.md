@@ -49,3 +49,8 @@
    JSON input`) but passes reliably in isolation. Observed across Tasks 1–3, so
    it predates this feature. Likely a parallel temp-directory setup/cleanup
    race. Worth fixing independently (unique temp dirs per test / await cleanup).
+   Update (Task 8): `tests/reorder-persistence.test.tsx` and an
+   `EnvironmentTeardownError` in `tests/unit/revision-manager.test.ts` were also
+   seen failing intermittently in the full run (counts varied 1–3 between runs),
+   both passing in isolation — same parallel-worker temp-dir/teardown flake
+   family, unrelated to the Markdown work.

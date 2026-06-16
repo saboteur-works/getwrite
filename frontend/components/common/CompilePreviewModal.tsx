@@ -15,9 +15,11 @@ import { Dialog, DialogContent, DialogTitle } from "./UI/Dialog";
 import Checkbox from "./UI/Checkbox/Checkbox";
 import Select from "./UI/Select/Select";
 
+export type CompileFormat = "txt" | "md" | "pdf" | "docx";
+
 export interface CompileOptions {
   includeHeaders: boolean;
-  format: "txt" | "pdf" | "docx";
+  format: CompileFormat;
   compilationName: string;
 }
 
@@ -51,7 +53,7 @@ export default function CompilePreviewModal(
     initAllChecked(tree),
   );
   const [includeHeaders, setIncludeHeaders] = useState(true);
-  const [compileAs, setCompileAs] = useState<"txt" | "pdf" | "docx">("txt");
+  const [compileAs, setCompileAs] = useState<CompileFormat>("txt");
   const [compilationName, setCompilationName] = useState("");
 
   // Reset selection when modal opens or resource list changes.
@@ -140,12 +142,11 @@ export default function CompilePreviewModal(
           <Select
             id="compile-as"
             value={compileAs}
-            onChange={(e) =>
-              setCompileAs(e.target.value as "txt" | "pdf" | "docx")
-            }
+            onChange={(e) => setCompileAs(e.target.value as CompileFormat)}
             className="w-auto"
           >
             <option value="txt">txt</option>
+            <option value="md">md</option>
             <option value="pdf">pdf</option>
             <option value="docx">docx</option>
           </Select>

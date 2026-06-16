@@ -96,7 +96,7 @@ Derived from [markdown-support-spec.md](./markdown-support-spec.md). Granularity
 **Depends on:** 7
 **Estimate:** 2
 **Notes:** Satisfies FR-6, FR-8. Format union is at `CompilePreviewModal.tsx:20` (`"txt" | "pdf" | "docx"`) — extend to include `"md"`.
-**Done:** [ ]
+**Done:** [x] — Extended the format union to a shared `CompileFormat = "txt" | "md" | "pdf" | "docx"` in `CompilePreviewModal.tsx` and added an `md` option to the "Compile as" selector. Added `compileMarkdown` (+ `MarkdownCompileResult`) to `src/lib/api/compile.ts`, calling the Task 7 `/api/compile/markdown` route. **Deviation from the listed Files:** the actual format dispatch/download lives in the two `onConfirmCompile` callers (`AppShell.tsx` and `StartPage.tsx`), not in `compileSelection.ts` (which only handles tree selection, no format) — so the `md` branch (download `<name>.md` + aggregated-warning `toastService.info`, mirroring the single-resource export toast) was wired in both. Existing txt/pdf/docx paths untouched. Test added to `tests/compilePreviewModal.test.tsx` (selector exposes `md` and reports `format: "md"` on confirm). No `*.stories.tsx` change — `CompilePreviewModal` has no story file.
 
 ---
 
