@@ -31,12 +31,17 @@
    literal reading of the Task 3 done-condition ("parse back to the original
    node").* It should instead be reported by the Task 4 lossy-export warning.
 
-2. **Text color (`textStyle` color) deferred to Task 4.**
+2. **Text color (`textStyle` color) deferred to Task 4. — RESOLVED in Task 4.**
    `textStyle` color/background/font marks have no GFM representation and are
    currently dropped on export (content text is preserved). They are outside
    Task 3's done-condition (which lists wiki links, images, leading paragraphs,
    highlight, math). Decide in Task 4 whether to (a) HTML-fallback them as
    `<span style>` or (b) drop-and-warn. Same applies to `paragraphLeading`.
+   **Resolution (2026-06-16, Task 4):** chose **(b) drop-and-warn** for both
+   `text-style` and `paragraph-leading` — presentational styling, content text
+   preserved, surfaced via `collectMarkdownWarnings`. Revisit only if users ask
+   for style-preserving exports (would need `<span style>` / `<p style>` HTML
+   fallback).
 
 3. **Flaky test: `tests/unit/media-file-route.test.ts` (test-isolation bug).**
    This file fails intermittently in the full `pnpm test:ci` run (errors:

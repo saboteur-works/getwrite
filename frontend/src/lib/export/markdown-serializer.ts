@@ -18,6 +18,11 @@ import Math from "@tiptap/extension-mathematics";
 import CustomHeading from "../../../components/Editor/Extensions/CustomHeading";
 import { unescapeWikiLinkBrackets } from "../../../components/Editor/Extensions/WikiLinkDecoration";
 import { baseSchemaExtensions } from "../../../components/Editor/editorExtensions";
+import type {
+  MarkdownConstructWarning,
+  MarkdownLossKind,
+  MarkdownSerialization,
+} from "./types";
 
 /**
  * Full document schema for serialization: the shared base plus the schema
@@ -61,4 +66,120 @@ export function documentToMarkdown(doc: JSONContent): string {
  */
 export function markdownToDocument(markdown: string): JSONContent {
   return getManager().parse(markdown);
+}
+
+/** Default paragraph line-height; see `GetWriteParagraphLeading`. */
+const DEFAULT_PARAGRAPH_LEADING = "1.5";
+
+/** `textStyle` attributes that carry presentational styling Markdown cannot keep. */
+const TEXT_STYLE_ATTRS = ["color", "backgroundColor", "fontSize", "fontFamily"];
+
+/**
+ * Catalogue of constructs Markdown cannot represent as plain GFM, in stable
+ * display order. Each maps a detector-emitted id to its label and loss kind.
+ */
+const CONSTRUCT_CATALOGUE: Record<
+  string,
+  { label: string; kind: MarkdownLossKind }
+> = {
+  "image-link": { label: "Image with GetWrite link", kind: "html-fallback" },
+  "paragraph-leading": { label: "Paragraph line spacing", kind: "dropped" },
+  "text-style": { label: "Text colour & font styling", kind: "dropped" },
+};
+
+/** Record one occurrence of a lossy construct found at `node`. */
+function tallyNode(node: JSONContent, counts: Map<string, number>): void {
+  if (node.type === "image" && node.attrs?.resourceId) {
+    counts.set("image-link", (counts.get("image-link") ?? 0) + 1);
+  }
+
+  if (node.type === "paragraph") {
+    const leading = node.attrs?.paragraphLeading;
+    if (leading != null && leading !== DEFAULT_PARAGRAPH_LEADING) {
+      counts.set(
+        "paragraph-leading",
+        (counts.get("paragraph-leading") ?? 0) + 1,
+      );
+    }
+  }
+
+  for (const mark of node.marks ?? []) {
+    if (
+      mark.type === "textStyle" &&
+      TEXT_STYLE_ATTRS.some((attr) => mark.attrs?.[attr] != null)
+    ) {
+      counts.set("text-style", (counts.get("text-style") ?? 0) + 1);
+    }
+  }
+}
+
+/** Recursively walk a document, tallying every lossy construct it contains. */
+function walk(node: JSONContent, counts: Map<string, number>): void {
+  tallyNode(node, counts);
+  for (const child of node.content ?? []) {
+    walk(child, counts);
+  }
+}
+
+/** Build the ordered warning list from a construct → count tally. */
+function countsToWarnings(
+  counts: Map<string, number>,
+): MarkdownConstructWarning[] {
+  return Object.entries(CONSTRUCT_CATALOGUE)
+    .filter(([construct]) => (counts.get(construct) ?? 0) > 0)
+    .map(([construct, { label, kind }]) => ({
+      construct,
+      label,
+      kind,
+      count: counts.get(construct) ?? 0,
+    }));
+}
+
+/**
+ * Inspect a TipTap document for constructs that GitHub Flavored Markdown cannot
+ * represent (and that are therefore emitted as inline HTML or dropped).
+ *
+ * @param doc - A TipTap JSON document.
+ * @returns One warning per affected construct, in stable display order, each
+ *   with the number of occurrences. Empty when the document is fully GFM-
+ *   representable.
+ */
+export function collectMarkdownWarnings(
+  doc: JSONContent,
+): MarkdownConstructWarning[] {
+  const counts = new Map<string, number>();
+  walk(doc, counts);
+  return countsToWarnings(counts);
+}
+
+/**
+ * Serialize a document to Markdown together with its loss warnings, so callers
+ * (export/compile) can emit the file and surface what could not be represented
+ * in a single pass.
+ */
+export function serializeMarkdown(doc: JSONContent): MarkdownSerialization {
+  return {
+    markdown: documentToMarkdown(doc),
+    warnings: collectMarkdownWarnings(doc),
+  };
+}
+
+/**
+ * Combine warning lists from several documents into one aggregated list,
+ * summing occurrence counts per construct. Used when compiling multiple
+ * resources into a single Markdown file (FR-8).
+ */
+export function mergeMarkdownWarnings(
+  lists: MarkdownConstructWarning[][],
+): MarkdownConstructWarning[] {
+  const counts = new Map<string, number>();
+  for (const list of lists) {
+    for (const warning of list) {
+      counts.set(
+        warning.construct,
+        (counts.get(warning.construct) ?? 0) + warning.count,
+      );
+    }
+  }
+  return countsToWarnings(counts);
 }

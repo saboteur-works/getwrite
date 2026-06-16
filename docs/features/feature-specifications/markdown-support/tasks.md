@@ -48,7 +48,7 @@ Derived from [markdown-support-spec.md](./markdown-support-spec.md). Granularity
 **Depends on:** 3
 **Estimate:** 3
 **Notes:** Tiptap's `htmlContainsUnrecognizedTag` util / the HTML-fallback handlers from Task 3 are the detection hooks. Satisfies FR-7; FR-8 aggregation builds on this list.
-**Done:** [ ]
+**Done:** [x] — `collectMarkdownWarnings(doc)` walks the tree and reports a typed `MarkdownConstructWarning[]` (`types.ts`); `serializeMarkdown(doc)` returns `{ markdown, warnings }`; `mergeMarkdownWarnings(lists)` aggregates per-construct counts for the Task 8 compile case. Detected constructs: `image-link` (html-fallback), `paragraph-leading` and `text-style` (dropped). Tests in `tests/unit/markdown-warnings.test.ts` (6). **Deviation from the done-condition example:** it cited "a wiki link and a math node" as warned, but Task 3 proved wiki links, math, and highlight round-trip cleanly in 3.26 — warning about them would be misleading. The empty-list-for-clean-content half is satisfied as written; the lossy half flags the constructs that are *actually* lossy. Resolves the text-color / paragraph-leading decisions deferred from Task 3 as drop-and-warn (presentational, content preserved). See `follow-up-work.md`.
 
 ---
 
