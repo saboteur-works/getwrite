@@ -1,11 +1,12 @@
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, shell, utilityProcess } from "electron";
+import type { UtilityProcess } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import http from "http";
 import fs from "fs";
 
 const PORT = 3000;
-let serverProcess: ChildProcess | null = null;
+let serverProcess: ChildProcess | UtilityProcess | null = null;
 let logStream: fs.WriteStream | null = null;
 
 function initLog() {
@@ -86,7 +87,7 @@ function waitForServer(url: string, timeoutMs = 30_000): Promise<void> {
 
 function startServer(
   dirs: ReturnType<typeof resolveDirectories>,
-): ChildProcess {
+): ChildProcess | UtilityProcess {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PORT: String(PORT),
@@ -111,10 +112,17 @@ function startServer(
     // so server.js lands at standalone/frontend/server.js (not standalone/server.js).
     const serverCwd = path.join(dirs.standaloneDir, "frontend");
     const serverScript = path.join(serverCwd, "server.js");
-    log(`Spawning packaged server: ${process.execPath} ${serverScript}`);
-    return spawn(process.execPath, [serverScript], {
+    log(`Forking packaged server: ${serverScript}`);
+    // Run the Next server via Electron's utilityProcess rather than
+    // child_process.spawn(process.execPath, …, ELECTRON_RUN_AS_NODE). Spawning the
+    // app's own bundle executable as Node still gets a bouncing Dock tile on macOS
+    // (the generic "exec" icon named GetWrite). A utilityProcess runs headless as a
+    // managed Node child — like the other Helper processes — with no Dock presence.
+    // stdio pipes stdout/stderr back so we can keep logging them.
+    return utilityProcess.fork(serverScript, [], {
       cwd: serverCwd,
-      env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
     });
   }
 
@@ -258,7 +266,9 @@ if (!app.requestSingleInstanceLock()) {
 
     openMainWindow();
 
-    serverProcess.on("exit", (code) => {
+    // ChildProcess and UtilityProcess both extend EventEmitter and emit "exit"
+    // with the code first; subscribe via the common base so the union typechecks.
+    (serverProcess as NodeJS.EventEmitter).on("exit", (code: number | null) => {
       log(`server exited with code ${code}`);
       if (code !== 0) {
         currentAbort?.(`Server exited unexpectedly (code ${code})`);
