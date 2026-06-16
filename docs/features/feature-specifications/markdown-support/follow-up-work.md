@@ -100,3 +100,26 @@
    is exercised only via the modal component tests, not a full browser flow.
    *To close:* a Storybook-driven Playwright pass once the `inTestEnv` editor
    mock constraint (Task 5 item 1) is addressed.
+
+## 2026-06-16 — "Edit as Markdown" confirmation modal (enhancement)
+
+Added a warning modal that intercepts the "Edit as Markdown" toggle so the
+switch to source mode no longer happens silently. `TipTapEditor` now computes
+`collectMarkdownWarnings(editor.getJSON())` on toggle, opens
+`MarkdownSwitchWarningModal` (built on the shared `ConfirmDialog`), and only
+runs the existing `switchToSource` conversion if the user confirms. The modal
+always states the general impact (the conversion is one-way for formatting GFM
+can't represent) and, when the live document contains lossy constructs, lists
+each affected construct with its occurrence count and how it is handled
+(HTML fallback vs. dropped). Covered by component tests in
+`tests/markdownSourceToggle.test.tsx` plus a Storybook story.
+
+1. **TipTapEditor wiring is not unit-tested (same `inTestEnv` limit).**
+   The new `requestSwitchToSource` → modal → confirm/cancel path lives in
+   `TipTapEditor`, which short-circuits to the deterministic mock under Vitest
+   and never mounts ProseMirror (see Task 5 item 1). The modal and its
+   warning-rendering logic are tested directly via `MarkdownSwitchWarningModal`;
+   the toolbar-button → modal → `switchToSource` thread is exercised only once
+   the broader editor e2e gap is closed. A manual `pnpm dev` smoke-test (click
+   "Edit as Markdown", confirm the modal appears, cancel keeps rich mode,
+   confirm enters source mode) is recommended before release.

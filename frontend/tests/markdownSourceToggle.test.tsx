@@ -2,10 +2,12 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import MarkdownSourceView from "../components/Editor/MarkdownSourceView";
+import MarkdownSwitchWarningModal from "../components/Editor/MarkdownSwitchWarningModal";
 import {
   documentToMarkdown,
   markdownToDocument,
 } from "../src/lib/export/markdown-serializer";
+import type { MarkdownConstructWarning } from "../src/lib/export/types";
 import type { JSONContent } from "@tiptap/core";
 
 describe("MarkdownSourceView", () => {
@@ -89,5 +91,83 @@ describe("Markdown source/rich toggle boundary conversion", () => {
     const markdown = documentToMarkdown(richDoc);
     expect(markdown).toContain("**Bold**");
     expect(markdown).toContain("and plain");
+  });
+});
+
+describe("MarkdownSwitchWarningModal", () => {
+  const baseProps = {
+    isOpen: true,
+    warnings: [] as MarkdownConstructWarning[],
+    onConfirm: vi.fn(),
+    onCancel: vi.fn(),
+  };
+
+  it("explains the impact of switching to Markdown editing", () => {
+    render(<MarkdownSwitchWarningModal {...baseProps} />);
+    // A warning is always shown so the user understands the switch converts the
+    // document and that some formatting will not survive the round trip.
+    expect(
+      screen.getByText(/converts this document to github-flavored markdown/i),
+    ).toBeTruthy();
+    expect(screen.getByText(/won't bring it back/i)).toBeTruthy();
+  });
+
+  it("exhaustively lists formatting Markdown cannot preserve, even when the document is clean", () => {
+    render(<MarkdownSwitchWarningModal {...baseProps} warnings={[]} />);
+    // These are dropped by the conversion but are NOT caught by the per-document
+    // detector, so they must always be spelled out for the user.
+    expect(screen.getByText(/Text alignment/i)).toBeTruthy();
+    expect(screen.getByText(/highlight, and background colours/i)).toBeTruthy();
+    expect(screen.getByText(/Custom fonts and font sizes/i)).toBeTruthy();
+    expect(screen.getByText(/Paragraph line spacing/i)).toBeTruthy();
+    // Image-link behaviour (kept as inline HTML) is always explained too.
+    expect(screen.getByText(/inline HTML/i)).toBeTruthy();
+  });
+
+  it("calls out the lossy constructs found in the current document, with counts", () => {
+    const warnings: MarkdownConstructWarning[] = [
+      {
+        construct: "text-style",
+        label: "Text colour & font styling",
+        kind: "dropped",
+        count: 2,
+      },
+      {
+        construct: "image-link",
+        label: "Image with GetWrite link",
+        kind: "html-fallback",
+        count: 1,
+      },
+    ];
+    render(<MarkdownSwitchWarningModal {...baseProps} warnings={warnings} />);
+    expect(screen.getByText(/Found in this document/i)).toBeTruthy();
+    expect(screen.getByText(/Text colour & font styling/)).toBeTruthy();
+    expect(screen.getByText(/Image with GetWrite link/)).toBeTruthy();
+  });
+
+  it("omits the document-specific section when nothing lossy is present", () => {
+    render(<MarkdownSwitchWarningModal {...baseProps} warnings={[]} />);
+    // The general exhaustive list still renders; only the per-document callout
+    // is hidden when the document contains no detected lossy constructs.
+    expect(screen.queryByText(/Found in this document/i)).toBeNull();
+  });
+
+  it("calls onConfirm when the user confirms the switch", () => {
+    const onConfirm = vi.fn();
+    render(<MarkdownSwitchWarningModal {...baseProps} onConfirm={onConfirm} />);
+    fireEvent.click(screen.getByRole("button", { name: /edit as markdown/i }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onCancel when the user cancels", () => {
+    const onCancel = vi.fn();
+    render(<MarkdownSwitchWarningModal {...baseProps} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders nothing when closed", () => {
+    render(<MarkdownSwitchWarningModal {...baseProps} isOpen={false} />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

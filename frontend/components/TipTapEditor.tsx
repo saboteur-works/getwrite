@@ -24,10 +24,13 @@ import type { Editor } from "@tiptap/core";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
 import MarkdownSourceView from "./Editor/MarkdownSourceView";
+import MarkdownSwitchWarningModal from "./Editor/MarkdownSwitchWarningModal";
 import {
   documentToMarkdown,
   markdownToDocument,
+  collectMarkdownWarnings,
 } from "../src/lib/export/markdown-serializer";
+import type { MarkdownConstructWarning } from "../src/lib/export/types";
 import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import CustomHeading from "./Editor/Extensions/CustomHeading";
 import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
@@ -153,6 +156,14 @@ export default function TipTapEditor({
   // mounted across the toggle so its document survives the round trip.
   const [mode, setMode] = useState<"rich" | "source">("rich");
   const [sourceText, setSourceText] = useState<string>("");
+
+  // Pending "Edit as Markdown" confirmation. Non-null means the warning modal
+  // is open; the value is the set of lossy constructs detected in the live
+  // document, shown so the user knows exactly what the switch will affect.
+  // Null means no confirmation is in progress.
+  const [pendingSourceWarnings, setPendingSourceWarnings] = useState<
+    MarkdownConstructWarning[] | null
+  >(null);
 
   // During unit tests we avoid initializing TipTap (ProseMirror) because the
   // full editor lifecycle and extension loading can be brittle in jsdom.
@@ -301,12 +312,25 @@ export default function TipTapEditor({
   }, [value, editor, emitNodeTypes]);
 
   /**
+   * Handle the "Edit as Markdown" toolbar action: inspect the live document for
+   * formatting GFM cannot represent and open the confirmation modal. The actual
+   * switch is deferred to {@link switchToSource}, run only if the user confirms,
+   * so no conversion happens behind their back.
+   */
+  const requestSwitchToSource = useCallback(() => {
+    if (!editor) return;
+    setPendingSourceWarnings(collectMarkdownWarnings(editor.getJSON()));
+  }, [editor]);
+
+  /**
    * Enter Markdown source mode: serialize the live document to GFM and show it
-   * in the textarea. Conversion happens here, at the toggle boundary.
+   * in the textarea. Conversion happens here, at the toggle boundary. Invoked
+   * only after the user confirms the warning modal.
    */
   const switchToSource = useCallback(() => {
     if (!editor) return;
     setSourceText(documentToMarkdown(editor.getJSON()));
+    setPendingSourceWarnings(null);
     setMode("source");
   }, [editor]);
 
@@ -363,7 +387,7 @@ export default function TipTapEditor({
           <>
             <MenuBar
               editor={editor}
-              onToggleSource={readonly ? undefined : switchToSource}
+              onToggleSource={readonly ? undefined : requestSwitchToSource}
             />
             <EditorContent
               editor={editor}
@@ -372,6 +396,12 @@ export default function TipTapEditor({
             />
           </>
         )}
+        <MarkdownSwitchWarningModal
+          isOpen={pendingSourceWarnings !== null}
+          warnings={pendingSourceWarnings ?? []}
+          onConfirm={switchToSource}
+          onCancel={() => setPendingSourceWarnings(null)}
+        />
       </div>
     </EditorContext.Provider>
   );
