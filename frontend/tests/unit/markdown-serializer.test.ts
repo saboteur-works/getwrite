@@ -101,3 +101,77 @@ describe("markdown-serializer", () => {
     expect(doc2).toEqual(doc1);
   });
 });
+
+/**
+ * FR-4 requires that each of these constructs survives a Markdown -> rich text
+ * -> Markdown round trip without loss. The whole-document round trip above
+ * proves the set survives together; these per-construct cases isolate each one
+ * so a regression names the specific construct that broke rather than failing
+ * as one opaque object diff. The `node`/`mark` field asserts the construct was
+ * actually parsed into the schema (not silently swallowed into plain text).
+ */
+const FR4_CONSTRUCTS: ReadonlyArray<{
+  name: string;
+  markdown: string;
+  node?: string;
+  mark?: string;
+}> = [
+  { name: "heading", markdown: "## Section heading", node: "heading" },
+  { name: "bold", markdown: "A paragraph with **bold** text.", mark: "bold" },
+  {
+    name: "italic",
+    markdown: "A paragraph with *italic* text.",
+    mark: "italic",
+  },
+  { name: "blockquote", markdown: "> A quoted line.", node: "blockquote" },
+  {
+    name: "unordered list",
+    markdown: ["- alpha", "- beta"].join("\n"),
+    node: "bulletList",
+  },
+  {
+    name: "ordered list",
+    markdown: ["1. first", "2. second"].join("\n"),
+    node: "orderedList",
+  },
+  {
+    name: "code block",
+    markdown: ["```", "const x = 1;", "```"].join("\n"),
+    node: "codeBlock",
+  },
+  {
+    name: "inline code",
+    markdown: "A paragraph with `inline code` here.",
+    mark: "code",
+  },
+  {
+    name: "link",
+    markdown: "A [link](https://example.com) here.",
+    mark: "link",
+  },
+  {
+    name: "GFM table",
+    markdown: ["| Col A | Col B |", "| --- | --- |", "| 1 | 2 |"].join("\n"),
+    node: "table",
+  },
+];
+
+describe("markdown-serializer FR-4 per-construct round trip", () => {
+  it.each(FR4_CONSTRUCTS)(
+    "round-trips $name without structural loss",
+    ({ markdown, node, mark }) => {
+      const doc1 = markdownToDocument(markdown);
+
+      // The construct must be present in the parsed schema, never dropped.
+      if (node) expect(collectNodeTypes(doc1)).toContain(node);
+      if (mark) expect(collectMarkTypes(doc1)).toContain(mark);
+
+      const serialized = documentToMarkdown(doc1);
+      const doc2 = markdownToDocument(serialized);
+
+      // Markdown -> rich text -> Markdown -> rich text is stable: the construct
+      // survives serialization and re-parsing with no structural change.
+      expect(doc2).toEqual(doc1);
+    },
+  );
+});

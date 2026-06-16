@@ -108,7 +108,7 @@ Derived from [markdown-support-spec.md](./markdown-support-spec.md). Granularity
 **Depends on:** 3, 4, 5, 6, 7, 8
 **Estimate:** 3
 **Notes:** Prefer extending existing test files per CLAUDE.md/testing standards rather than creating new ones.
-**Done:** [ ]
+**Done:** [x] — **Largely an audit/consolidation pass: the four done-conditions were already covered by tests written incrementally in Tasks 2–8** — FR-4 round trip (`tests/unit/markdown-serializer.test.ts`), HTML-fallback + warning (`markdown-warnings.test.ts` + `markdown-custom-nodes.test.ts`), single-resource export output (`export-markdown-route.test.ts`), and multi-resource compile ordering/headers (`compile-markdown-route.test.ts`). Net-new this task: extended `markdown-serializer.test.ts` with an `it.each` **FR-4 per-construct round-trip** block (heading, bold, italic, blockquote, unordered list, ordered list, code block, inline code, link, GFM table — 10 cases) so a fidelity regression names the *specific* construct that broke instead of failing as one opaque `toEqual` diff over the whole sample doc, and each case asserts the construct actually parsed into the schema (not swallowed into plain text). No new test file created (per the extend-don't-create note). All 6 Markdown suites green (37 tests). `pnpm test:ci`: 2043 passed / 1 skipped, with the lone failure being the **documented pre-existing parallel-worker temp-dir teardown flake** in `tests/unit/media-file-route.test.ts` (`ENOTEMPTY` on rmdir — see Task 3 follow-up item 3), confirmed passing 5/5 in isolation and unrelated to the Markdown work. typecheck clean; eslint clean on the changed file.
 
 ---
 

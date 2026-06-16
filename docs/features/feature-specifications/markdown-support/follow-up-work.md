@@ -77,3 +77,26 @@
    edit, toggle back, and confirm the edited structure renders and autosaves to
    the canonical revision. *Why deferred:* no interactive app session during
    implementation (same constraint noted for Task 1).
+
+## 2026-06-16 — Task 9 (consolidated test coverage)
+
+1. **Pre-existing temp-dir teardown flake persists (not resolved here).**
+   The full `pnpm test:ci` run for Task 9 again surfaced the documented
+   parallel-worker flake — `tests/unit/media-file-route.test.ts` failing with
+   `ENOTEMPTY: directory not empty` on temp-dir `rmdir`, passing 5/5 in
+   isolation (see Task 3 follow-up item 3). Task 9 is a Markdown-coverage task
+   and deliberately did **not** fix this test-infra issue; it remains open and
+   worth fixing independently (unique temp dirs per test / awaited cleanup, or
+   `pool: "forks"` isolation for the FS-touching route tests).
+
+2. **No end-to-end (Playwright/Storybook) Markdown coverage added.**
+   Task 9 consolidated unit/integration coverage only. The live-editor toggle
+   gap from Task 5 (item 1) is unchanged: there is still no e2e exercising the
+   real ProseMirror editor through the source/rich toggle, nor an e2e driving
+   the export/compile modals end-to-end (download + warning toast). The route
+   handlers, serializer, and the `MarkdownSourceView` presentational component
+   are covered at the unit/integration layer; the UI wiring that threads
+   `format` through the shell (`page.tsx`/`AppShell`/`ShellModalCoordinator`)
+   is exercised only via the modal component tests, not a full browser flow.
+   *To close:* a Storybook-driven Playwright pass once the `inTestEnv` editor
+   mock constraint (Task 5 item 1) is addressed.
