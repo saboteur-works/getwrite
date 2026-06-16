@@ -72,7 +72,7 @@ Derived from [markdown-support-spec.md](./markdown-support-spec.md). Granularity
 **Depends on:** 3, 4
 **Estimate:** 3
 **Notes:** Satisfies FR-5 and FR-7. The current `export/text` route has no callers; confirm the actual single-resource export trigger before wiring (TBD which caller invokes `onConfirmExport`).
-**Done:** [ ]
+**Done:** [x] — **Resolved the TBD:** the live export flow is entirely client-side in `app/page.tsx` (`handleResourceAction` "export" case); the `export/text` route is dead. Markdown needs the TipTap JSON (not the cached plaintext), so it goes through a new server route. Added: `app/api/export/markdown/route.ts` (loads docs, returns `{markdown, filename, warnings}`); shared `src/lib/export/compile-markdown.ts` (`compileToMarkdown`, reused by Task 7); `src/lib/api/export.ts` (`exportMarkdown` client helper). Wired a Text/Markdown selector into `ExportPreviewModal` (via `ConfirmDialog.details`), threaded `format` through `ShellModalCoordinator` → `AppShell` → `page.tsx`, where the md branch downloads `.md` and surfaces aggregated warnings via a toast. Route tests in `tests/unit/export-markdown-route.test.ts` (3). `txt` remains the default (existing behavior unchanged).
 
 ---
 
@@ -84,7 +84,7 @@ Derived from [markdown-support-spec.md](./markdown-support-spec.md). Granularity
 **Depends on:** 3, 4
 **Estimate:** 3
 **Notes:** Satisfies FR-6. Mirror `app/api/compile/text/route.ts`, swapping plain-text concatenation for per-resource Markdown serialization; reuse `loadResourceContent` to get TipTap JSON.
-**Done:** [ ]
+**Done:** [x] — Added `app/api/compile/markdown/route.ts`, mirroring `compile/text/route.ts` (same `CompileBody` shape, `resourceMap` lookup, text-only filter in requested order) but loading each resource's TipTap JSON via `loadResourceContent` and delegating to the shared `compileToMarkdown` (`src/lib/export/compile-markdown.ts`, built in Task 6 — per-section `# <name>` headers gated on `includeHeaders`, sections joined by two blank lines, warnings aggregated via `mergeMarkdownWarnings`). Returns `{ markdown, filename: slugify(projectName)+".md", warnings }`. Route tests in `tests/unit/compile-markdown-route.test.ts` (3): multi-resource ordering + headers + empty warnings; header omission when `includeHeaders` is false; cross-section warning aggregation (count 2) with non-text resources filtered out. The compile route honors the caller-supplied `includeHeaders` (unlike export, which derives it from selection size).
 
 ---
 
