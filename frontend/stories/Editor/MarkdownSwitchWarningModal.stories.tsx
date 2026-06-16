@@ -1,3 +1,4 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { action } from "storybook/actions";
 import MarkdownSwitchWarningModal from "../../components/Editor/MarkdownSwitchWarningModal";
@@ -62,5 +63,47 @@ export const WithAffectedFormatting: Story = {
     warnings: LOSSY_WARNINGS,
     onConfirm: action("confirm-switch"),
     onCancel: action("cancel-switch"),
+  },
+};
+
+/**
+ * Interactive variant for end-to-end coverage: confirm/cancel/escape toggle
+ * local state, exposed through hidden `is-open` / `last-action` probes (mirrors
+ * the ConfirmDialog Interactive story the e2e suite drives).
+ */
+export const Interactive: Story = {
+  args: {
+    isOpen: true,
+    warnings: LOSSY_WARNINGS,
+    onConfirm: action("confirm-switch"),
+    onCancel: action("cancel-switch"),
+  },
+  render: (args) => {
+    const [isOpen, setIsOpen] = React.useState(true);
+    const [lastAction, setLastAction] = React.useState<string | null>(null);
+    return (
+      <div>
+        <MarkdownSwitchWarningModal
+          {...args}
+          isOpen={isOpen}
+          onConfirm={() => {
+            setLastAction("confirmed");
+            setIsOpen(false);
+            args.onConfirm();
+          }}
+          onCancel={() => {
+            setLastAction("canceled");
+            setIsOpen(false);
+            args.onCancel();
+          }}
+        />
+        <div data-testid="is-open" aria-hidden style={{ display: "none" }}>
+          {String(isOpen)}
+        </div>
+        <div data-testid="last-action" aria-hidden style={{ display: "none" }}>
+          {lastAction}
+        </div>
+      </div>
+    );
   },
 };

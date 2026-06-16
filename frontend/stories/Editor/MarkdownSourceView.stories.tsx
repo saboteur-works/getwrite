@@ -73,6 +73,7 @@ export const Interactive: Story = {
   },
   render: (args) => {
     const [value, setValue] = useState(args.value);
+    const [lastAction, setLastAction] = useState<string | null>(null);
     return (
       <div style={{ height: 360, border: "1px solid var(--gw-border, #ccc)" }}>
         <MarkdownSourceView
@@ -82,7 +83,14 @@ export const Interactive: Story = {
             setValue(next);
             args.onChange(next);
           }}
+          onExitToRichText={() => {
+            setLastAction("exit");
+            args.onExitToRichText();
+          }}
         />
+        <div data-testid="last-action" aria-hidden style={{ display: "none" }}>
+          {lastAction}
+        </div>
       </div>
     );
   },

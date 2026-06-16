@@ -2,13 +2,12 @@
 
 ## 2026-06-16 — Task 1 (Tiptap version bump)
 
-1. **Manual editor smoke-test in the running app (deferred).**
+1. **Manual editor smoke-test in the running app. — RESOLVED 2026-06-16.**
    The version bump to `@tiptap/*` 3.26.1 passed typecheck, the full Vitest
    suite (2006 tests), and `next build`. Automated coverage includes the
    editor-mount flow (`tests/flows.test.tsx`), but the app was not launched
-   here. Before release, run `pnpm dev` (or `pnpm electron:dev`) and confirm an
-   existing resource opens, renders, and autosaves unchanged. *Why deferred:*
-   no interactive app session available during implementation.
+   during implementation. **Resolution:** user ran the app and confirmed an
+   existing resource opens, renders, and autosaves unchanged.
 
 2. **jsdom landmine for future editor tests (context for Task 5).**
    Tiptap 3.26's Placeholder extension (`@tiptap/extensions`) added viewport
@@ -57,26 +56,64 @@
 
 ## 2026-06-16 — Task 5 (editor source/rich toggle)
 
-1. **No live-editor integration test for the toggle (test-harness limit).**
+1. **No live-editor integration test for the toggle (test-harness limit).
+   — PARTIALLY ADDRESSED 2026-06-16.**
    `TipTapEditor` short-circuits to a deterministic HTML mock under Vitest
    (`inTestEnv` guard) and never instantiates ProseMirror, so the actual
    in-editor toggle (click "Edit as Markdown" → textarea → "Rich text" → live
    re-render) cannot be exercised from the unit suite. Task 5 covers the
    behavior with a `MarkdownSourceView` component test plus boundary-conversion
-   round-trips over the serializer functions the toggle invokes. *To close the
-   gap:* a Playwright/Storybook e2e that mounts the real editor (relying on the
-   `elementFromPoint` stub from Task 1) and drives the toggle end-to-end, or
-   refactoring `TipTapEditor` so the real editor can mount under a dedicated
-   test flag. Deferred: out of scope for the unit-test rhythm and would require
-   reworking the long-standing `inTestEnv` editor mock.
+   round-trips over the serializer functions the toggle invokes.
+   **Update (2026-06-16):** added a Storybook-driven Playwright e2e
+   (`e2e/markdown-source-toggle.e2e.spec.ts`, 9 tests) covering the
+   presentational layer end-to-end — the "Edit as Markdown" warning modal
+   (open/contents/confirm/cancel/escape) and the `MarkdownSourceView` source
+   view (textarea display, editing, return-to-rich toggle). *Still open:* this
+   drives the Storybook components, not the real ProseMirror editor wired inside
+   `TipTapEditor`. Fully closing the gap still needs the real editor to mount in
+   a browser test (relying on the Task 1 `elementFromPoint` stub) or a dedicated
+   test flag that bypasses the `inTestEnv` mock — deferred as a larger refactor
+   inappropriate for this branch.
 
-2. **Manual smoke-test of the toggle in the running app (deferred).**
-   The conversion path, autosave wiring, and view swap pass typecheck, the
-   targeted Vitest suites, and `next build`, but the app was not launched here.
-   Before release, run `pnpm dev`, open a text resource, toggle to Markdown,
-   edit, toggle back, and confirm the edited structure renders and autosaves to
-   the canonical revision. *Why deferred:* no interactive app session during
-   implementation (same constraint noted for Task 1).
+2. **Manual smoke-test of the toggle in the running app. — RESOLVED 2026-06-16.**
+   **Resolution:** user toggled a text resource to Markdown, edited, toggled
+   back, and confirmed the edited structure renders and autosaves to the
+   canonical revision. Noted during the test (and **by design**, per the Task 5
+   "conversion only at the toggle boundary" non-goal): there is **no autosave
+   while in source mode** — edits live only in the textarea buffer and are
+   committed on toggle-back. See the new data-loss follow-up below.
+
+3. **Source-mode edits are discarded if the resource changes before toggling
+   back (potential data loss). — Option B implemented 2026-06-16.**
+   Because nothing was emitted while editing Markdown source, the in-progress
+   `sourceText` was a detached buffer, and `TipTapEditor`'s value-sync effect
+   calls `setMode("rich")` on any external `value` change (resource/revision
+   switch), dropping the unsaved edits. *Surfaced while smoke-testing the toggle
+   on 2026-06-16.*
+   **Resolution (Option B — autosave in source mode):** `MarkdownSourceView`'s
+   `onChange` now routes through a debounced `commitSourceMarkdown` (400 ms) that
+   parses GFM → doc, loads it into the hidden editor, and emits `onChange` so the
+   existing canonical-revision autosave records it — exactly the path rich mode
+   uses. Because the emit fires while still on the resource, it inherits the
+   autosave queue's wrong-target protection; the debounce is additionally
+   cancelled on toggle-back, on external `value` swaps, and on unmount so a late
+   fire can't write the old buffer into a newly-selected resource.
+   - *Residual (accepted):* a sub-second trailing window — the last keystrokes
+     within the debounce before a resource switch — can still be lost, because
+     the only safe flush point is "while still on the resource." The normal exit
+     (toggle-back) always commits fully.
+   - *Open question:* the canonical revision is now continuously rewritten with
+     the **normalized** round-tripped doc during source editing (consistent with
+     toggle-back, but it diverges from the literal source text once typing
+     starts).
+   - *Test coverage:* the commit path is editor-coupled and lives inside
+     `TipTapEditor`, which short-circuits to the mock under Vitest (same
+     `inTestEnv` limit as the rest of the toggle wiring), so it is verified by
+     manual smoke-test plus the serializer/source-view unit tests rather than a
+     direct unit test.
+   - *Deferred alternatives* (lift mode to the shell for guaranteed commit-on-
+     leave / warn-on-leave / per-resource draft buffer) are captured in the
+     `saboteur-pos` note "markdown source-mode autosave: data-loss options".
 
 ## 2026-06-16 — Task 9 (consolidated test coverage)
 
@@ -89,17 +126,17 @@
    worth fixing independently (unique temp dirs per test / awaited cleanup, or
    `pool: "forks"` isolation for the FS-touching route tests).
 
-2. **No end-to-end (Playwright/Storybook) Markdown coverage added.**
-   Task 9 consolidated unit/integration coverage only. The live-editor toggle
-   gap from Task 5 (item 1) is unchanged: there is still no e2e exercising the
-   real ProseMirror editor through the source/rich toggle, nor an e2e driving
-   the export/compile modals end-to-end (download + warning toast). The route
-   handlers, serializer, and the `MarkdownSourceView` presentational component
-   are covered at the unit/integration layer; the UI wiring that threads
-   `format` through the shell (`page.tsx`/`AppShell`/`ShellModalCoordinator`)
-   is exercised only via the modal component tests, not a full browser flow.
-   *To close:* a Storybook-driven Playwright pass once the `inTestEnv` editor
-   mock constraint (Task 5 item 1) is addressed.
+2. **No end-to-end (Playwright/Storybook) Markdown coverage added.
+   — PARTIALLY ADDRESSED 2026-06-16.**
+   Task 9 consolidated unit/integration coverage only.
+   **Update (2026-06-16):** the source/rich toggle UI now has a Storybook
+   Playwright pass (`e2e/markdown-source-toggle.e2e.spec.ts`); the export and
+   compile modals already had e2e (`e2e/export-modal.e2e.spec.ts`,
+   `e2e/compile-preview.e2e.spec.ts`). *Still open:* no e2e exercises the **real
+   ProseMirror editor** through the toggle (see Task 5 item 1), and no e2e drives
+   a full export/compile **download + warning** round trip through the live shell
+   (`page.tsx`/`AppShell`/`ShellModalCoordinator`) — that wiring is still covered
+   only at the modal-component layer.
 
 ## 2026-06-16 — "Edit as Markdown" confirmation modal (enhancement)
 
@@ -114,12 +151,15 @@ each affected construct with its occurrence count and how it is handled
 (HTML fallback vs. dropped). Covered by component tests in
 `tests/markdownSourceToggle.test.tsx` plus a Storybook story.
 
-1. **TipTapEditor wiring is not unit-tested (same `inTestEnv` limit).**
+1. **TipTapEditor wiring is not unit-tested (same `inTestEnv` limit).
+   — Manual smoke-test RESOLVED 2026-06-16; full wiring e2e still open.**
    The new `requestSwitchToSource` → modal → confirm/cancel path lives in
    `TipTapEditor`, which short-circuits to the deterministic mock under Vitest
    and never mounts ProseMirror (see Task 5 item 1). The modal and its
-   warning-rendering logic are tested directly via `MarkdownSwitchWarningModal`;
-   the toolbar-button → modal → `switchToSource` thread is exercised only once
-   the broader editor e2e gap is closed. A manual `pnpm dev` smoke-test (click
-   "Edit as Markdown", confirm the modal appears, cancel keeps rich mode,
-   confirm enters source mode) is recommended before release.
+   warning-rendering logic are tested directly via `MarkdownSwitchWarningModal`
+   (unit) and a Storybook Playwright pass (`e2e/markdown-source-toggle.e2e.spec
+   .ts`). **Resolution:** user smoke-tested in the running app — the modal
+   appears on "Edit as Markdown", Cancel keeps rich mode, Confirm enters source
+   mode. *Still open:* the toolbar-button → modal → `switchToSource` thread
+   inside the real editor is exercised only manually, not by an automated test,
+   for the same `inTestEnv` reason above.

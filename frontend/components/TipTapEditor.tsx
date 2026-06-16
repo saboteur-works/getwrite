@@ -13,7 +13,13 @@
  */
 import "katex/dist/katex.min.css";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   useEditor,
   EditorContent,
@@ -21,6 +27,7 @@ import {
   Content,
 } from "@tiptap/react";
 import type { Editor } from "@tiptap/core";
+import debounce from "lodash/debounce";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
 import MarkdownSourceView from "./Editor/MarkdownSourceView";
@@ -80,6 +87,13 @@ export interface TipTapEditorProps {
 export const extensions = baseSchemaExtensions;
 
 /**
+ * Debounce window (ms) for source-mode autosave. Edits to the raw Markdown
+ * buffer are re-parsed and pushed through `onChange` at most this often; the
+ * canonical-revision write is debounced again downstream by the autosave queue.
+ */
+const SOURCE_AUTOSAVE_DEBOUNCE_MS = 400;
+
+/**
  * Renders the TipTap editor with toolbar and project-specific behavior.
  *
  * Runtime behavior:
@@ -115,6 +129,11 @@ export default function TipTapEditor({
   // call it without being re-created when the prop identity changes.
   const onNodeTypesChangeRef = useRef(onNodeTypesChange);
   onNodeTypesChangeRef.current = onNodeTypesChange;
+  // Keep the latest onChange in a ref so the debounced source-mode autosave can
+  // emit through the current handler without re-creating the debounced function
+  // (which would drop pending edits) on every parent re-render.
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   // Last emitted label list, joined, so repeat emits for the same node context
   // are suppressed (avoids churn on every keystroke / selection nudge).
   const lastNodeLabelsKeyRef = useRef<string | null>(null);
@@ -280,6 +299,57 @@ export default function TipTapEditor({
   );
 
   /**
+   * Commit the current Markdown source buffer through the normal persistence
+   * path: parse GFM → document, load it into the (hidden) editor without
+   * emitting an update, then push HTML + JSON to the consumer's `onChange` so
+   * the canonical-revision autosave records it. Shared by the debounced
+   * source-mode autosave below and by {@link switchToRich}. Reads `onChange`
+   * from a ref so the debounced scheduler stays stable across parent renders.
+   */
+  const commitSourceMarkdown = useCallback(
+    (markdown: string) => {
+      if (!editor) return;
+      const doc = markdownToDocument(markdown) as Content;
+      editor.commands.setContent(doc, { emitUpdate: false });
+      const html = editor.getHTML();
+      const json = editor.getJSON() as TipTapDocument;
+      lastEmittedDocRef.current = json;
+      onChangeRef.current?.(html, json);
+    },
+    [editor],
+  );
+
+  /**
+   * Debounced source-mode autosave. While editing raw Markdown there is no live
+   * editor `onUpdate`, so without this a resource/revision switch would silently
+   * drop the buffer. It is cancelled on toggle-back, on external `value` swaps,
+   * and on unmount so a late fire can never write the old buffer into a
+   * newly-selected resource (the consumer's `onChange` is rebound on switch).
+   */
+  const scheduleSourceCommit = useMemo(
+    () => debounce(commitSourceMarkdown, SOURCE_AUTOSAVE_DEBOUNCE_MS),
+    [commitSourceMarkdown],
+  );
+
+  useEffect(() => {
+    return () => {
+      scheduleSourceCommit.cancel();
+    };
+  }, [scheduleSourceCommit]);
+
+  /**
+   * Source textarea change handler: keep the buffer in local state and schedule
+   * a debounced autosave so source-mode edits survive a resource switch.
+   */
+  const handleSourceChange = useCallback(
+    (next: string) => {
+      setSourceText(next);
+      scheduleSourceCommit(next);
+    },
+    [scheduleSourceCommit],
+  );
+
+  /**
    * Synchronizes externally provided `value` into TipTap when it diverges
    * from the editor's current content.
    *
@@ -304,12 +374,15 @@ export default function TipTapEditor({
       // rather than a stale value carried over from the previous one.
       lastNodeLabelsKeyRef.current = null;
       emitNodeTypes(editor);
+      // Cancel any pending source-mode autosave first: a late fire after the
+      // swap would push the previous buffer into the now-selected resource.
+      scheduleSourceCommit.cancel();
       // An external content swap (resource/revision switch) invalidates any
       // in-progress source edit; return to the rich view so the user sees the
       // newly loaded document rather than stale Markdown.
       setMode("rich");
     }
-  }, [value, editor, emitNodeTypes]);
+  }, [value, editor, emitNodeTypes, scheduleSourceCommit]);
 
   /**
    * Handle the "Edit as Markdown" toolbar action: inspect the live document for
@@ -335,22 +408,25 @@ export default function TipTapEditor({
   }, [editor]);
 
   /**
-   * Return to rich mode: parse the edited GFM back into a TipTap document,
-   * replace the editor content, and emit the change through the normal
-   * persistence path (mirrors `onUpdate`) so autosave picks up the edit.
+   * Return to rich mode: flush the source buffer through the shared commit path
+   * (parse GFM → document, load it, emit for autosave), then swap the view back.
+   * Cancels the pending debounced autosave first so it can't double-fire after
+   * we have already committed synchronously here.
    */
   const switchToRich = useCallback(() => {
     if (!editor) return;
-    const doc = markdownToDocument(sourceText) as Content;
-    editor.commands.setContent(doc, { emitUpdate: false });
-    const html = editor.getHTML();
-    const json = editor.getJSON() as TipTapDocument;
-    lastEmittedDocRef.current = json;
-    if (onChange) onChange(html, json);
+    scheduleSourceCommit.cancel();
+    commitSourceMarkdown(sourceText);
     lastNodeLabelsKeyRef.current = null;
     emitNodeTypes(editor);
     setMode("rich");
-  }, [editor, sourceText, onChange, emitNodeTypes]);
+  }, [
+    editor,
+    sourceText,
+    emitNodeTypes,
+    commitSourceMarkdown,
+    scheduleSourceCommit,
+  ]);
 
   if (!isClient) return <div>Loading editor...</div>;
 
@@ -380,7 +456,7 @@ export default function TipTapEditor({
           <MarkdownSourceView
             id={id}
             value={sourceText}
-            onChange={setSourceText}
+            onChange={handleSourceChange}
             onExitToRichText={switchToRich}
           />
         ) : (
