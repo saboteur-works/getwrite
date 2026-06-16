@@ -24,7 +24,18 @@ extraResources:
   # start with a clean workspace instead of shipping the repo's dev/test projects.
 mac:
   category: public.app-category.productivity
-  target: dmg
+  # Build a dmg per architecture so Intel (x64) Macs get a runnable binary —
+  # an arm64-only build cannot launch on Intel (Rosetta only translates x64→arm64,
+  # not the reverse). Produces GetWrite-<version>-x64.dmg and -arm64.dmg.
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  # Put the arch in every dmg name so users pick deliberately. Without this,
+  # electron-builder leaves the x64 dmg arch-less (GetWrite-<v>.dmg), which an
+  # Apple Silicon user can grab by mistake and end up running under Rosetta.
+  artifactName: ${productName}-${version}-${arch}.${ext}
 win:
   target: nsis
 linux:
