@@ -24,7 +24,7 @@ Derived from [markdown-support-spec.md](./markdown-support-spec.md). Granularity
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** `extensions` is already exported from `TipTapEditor.tsx:92`. Server use is viable because `MarkdownManager` consumes `@tiptap/core` extensions without a live editor; configure GFM. Conversion is normalized, not byte-preserving (per spec non-goal).
-**Done:** [ ]
+**Done:** [x] — extracted the document schema into server-safe `components/Editor/editorExtensions.ts` (`baseSchemaExtensions`, shared by the editor + serializer); added `src/lib/export/markdown-serializer.ts` (`documentToMarkdown`/`markdownToDocument` via `MarkdownManager`). Round-trip test `tests/unit/markdown-serializer.test.ts` green (headings, bold/italic, inline code, blockquote, lists, code block, link, GFM table; JSON→MD→JSON structural equality). GFM tables round-trip out of the box — no custom table handler needed in Task 3. The live-editor `Markdown` extension (`getMarkdown()`) was deferred to Task 5 where the toggle uses it.
 
 ---
 
