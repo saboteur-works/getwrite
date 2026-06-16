@@ -71,8 +71,23 @@ export default function ShellSettingsMenu({
 
   return (
     <header className="appshell-topbar">
-      <div className="appshell-topbar-project" title={projectName}>
-        {projectName}
+      <div className="appshell-topbar-left">
+        <span className="appshell-topbar-wordmark" aria-label="GetWrite">
+          <span className="font-display font-normal tracking-heading text-gw-secondary">
+            Get
+          </span>
+          <span className="font-display font-bold tracking-wordmark text-gw-primary">
+            Write
+          </span>
+        </span>
+        {projectName ? (
+          <>
+            <span className="appshell-topbar-divider" aria-hidden="true" />
+            <span className="appshell-topbar-project" title={projectName}>
+              {projectName}
+            </span>
+          </>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-1">

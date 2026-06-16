@@ -1812,6 +1812,31 @@ html.gw-theme-dark {
     background-color: var(--color-gw-chrome);
   }
 
+  .appshell-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .appshell-topbar-wordmark {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: baseline;
+    font-family: var(--font-display);
+    font-size: 15px;
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .appshell-topbar-divider {
+    flex-shrink: 0;
+    width: 0;
+    height: 16px;
+    border-left: 0.5px solid var(--color-gw-border);
+  }
+
   .appshell-topbar-project {
     min-width: 0;
     font-size: 14px;
