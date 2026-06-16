@@ -19,10 +19,9 @@ extraResources:
     to: getwrite-config
     filter:
       - "**/*"
-  - from: ../projects
-    to: projects
-    filter:
-      - "**/*"
+  # Note: projects/ is intentionally NOT bundled — the packaged app creates an
+  # empty projects dir under resourcesPath on first run (see main.ts), so installs
+  # start with a clean workspace instead of shipping the repo's dev/test projects.
 mac:
   category: public.app-category.productivity
   target: dmg

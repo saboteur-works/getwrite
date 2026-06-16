@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, shell } from "electron";
+import { app, BrowserWindow, shell } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import http from "http";
@@ -131,6 +131,8 @@ function createWindow(): BrowserWindow {
     width: 1400,
     height: 900,
     show: false,
+    // Brand chrome color so the window doesn't flash white before the app paints.
+    backgroundColor: "#1C1C1A",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -149,9 +151,26 @@ function createWindow(): BrowserWindow {
     return { action: "deny" };
   });
 
-  // Cmd+Shift+I toggles DevTools
-  globalShortcut.register("CommandOrControl+Shift+I", () => {
-    win.webContents.toggleDevTools();
+  // Keep the window pinned to the local app origin. In-page <a href> clicks to
+  // external sites are handed to the default browser instead of navigating the
+  // window away from localhost (setWindowOpenHandler only covers window.open).
+  win.webContents.on("will-navigate", (event, url) => {
+    if (!url.startsWith(`http://localhost:${PORT}`)) {
+      event.preventDefault();
+      if (/^https?:\/\//.test(url)) {
+        void shell.openExternal(url);
+      }
+    }
+  });
+
+  // Cmd/Ctrl+Shift+I toggles DevTools — scoped to this window's input rather
+  // than a process-global hotkey that would be captured system-wide.
+  win.webContents.on("before-input-event", (event, input) => {
+    const mod = process.platform === "darwin" ? input.meta : input.control;
+    if (mod && input.shift && input.key.toLowerCase() === "i") {
+      win.webContents.toggleDevTools();
+      event.preventDefault();
+    }
   });
 
   return win;
@@ -202,27 +221,60 @@ function loadWhenReady(win: BrowserWindow): { abort: (msg: string) => void } {
   return { abort };
 }
 
-app.whenReady().then(() => {
-  initLog();
-  log(`app ready — isPackaged: ${app.isPackaged}`);
-  log(`resourcesPath: ${process.resourcesPath}`);
+// Tracks the active window's abort handler so a server crash can surface the
+// error screen regardless of which window opened it (e.g. after a macOS reopen).
+let currentAbort: ((msg: string) => void) | null = null;
 
-  const dirs = resolveDirectories();
-  serverProcess = startServer(dirs);
-
-  serverProcess.stdout?.on("data", (d) => log(d.toString().trim()));
-  serverProcess.stderr?.on("data", (d) =>
-    log(`[stderr] ${d.toString().trim()}`),
-  );
-
+function openMainWindow(): void {
   const win = createWindow();
-  const { abort } = loadWhenReady(win);
+  currentAbort = loadWhenReady(win).abort;
+}
 
-  serverProcess.on("exit", (code) => {
-    log(`server exited with code ${code}`);
-    if (code !== 0) abort(`Server exited unexpectedly (code ${code})`);
+// Single-instance lock: a second launch would collide on the fixed server port,
+// so hand focus back to the running window and quit the duplicate.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    const [win] = BrowserWindow.getAllWindows();
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
   });
-});
+
+  app.whenReady().then(() => {
+    initLog();
+    log(`app ready — isPackaged: ${app.isPackaged}`);
+    log(`resourcesPath: ${process.resourcesPath}`);
+
+    const dirs = resolveDirectories();
+    serverProcess = startServer(dirs);
+
+    serverProcess.stdout?.on("data", (d) => log(d.toString().trim()));
+    serverProcess.stderr?.on("data", (d) =>
+      log(`[stderr] ${d.toString().trim()}`),
+    );
+
+    openMainWindow();
+
+    serverProcess.on("exit", (code) => {
+      log(`server exited with code ${code}`);
+      if (code !== 0) {
+        currentAbort?.(`Server exited unexpectedly (code ${code})`);
+      }
+    });
+  });
+
+  // macOS: the app stays alive after its window closes (window-all-closed below
+  // only quits on other platforms). Recreate the window when the dock icon is
+  // clicked — the spawned server is still running, so it reloads immediately.
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      openMainWindow();
+    }
+  });
+}
 
 app.on("before-quit", () => {
   serverProcess?.kill();
