@@ -87,6 +87,7 @@ import {
   Plus,
 } from "lucide-react";
 import Button from "../common/UI/Button/Button";
+import { type ExportFormat } from "../common/ExportPreviewModal";
 import UpdateNotice from "./UpdateNotice";
 import { APP_VERSION } from "../../src/lib/app-version";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
@@ -634,8 +635,9 @@ export default function AppShell({
   const handleExportConfirmed = async (
     resourceIds: string[],
     resourceId?: string,
+    format?: ExportFormat,
   ) => {
-    await onResourceAction?.("export", resourceId, { resourceIds });
+    await onResourceAction?.("export", resourceId, { resourceIds, format });
     setExportModal({ open: false });
   };
 
@@ -1135,8 +1137,16 @@ export default function AppShell({
                     await handleCreateConfirmed(payload, parentId);
                   }}
                   onMediaCreateConfirmed={onMediaCreateConfirmed}
-                  onExportConfirmed={async (resourceIds, resourceId) => {
-                    await handleExportConfirmed(resourceIds, resourceId);
+                  onExportConfirmed={async (
+                    resourceIds,
+                    resourceId,
+                    format,
+                  ) => {
+                    await handleExportConfirmed(
+                      resourceIds,
+                      resourceId,
+                      format,
+                    );
                   }}
                   onSelectResource={onResourceSelect}
                   onBuildCompilePreview={(resourceId) => {

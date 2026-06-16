@@ -1,5 +1,8 @@
-import React from "react";
+import { useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
+
+/** Output formats offered by the single-resource export flow. */
+export type ExportFormat = "txt" | "md";
 
 export interface ExportPreviewModalProps {
   isOpen: boolean;
@@ -7,7 +10,7 @@ export interface ExportPreviewModalProps {
   /** Pre-resolved display names of the resources that will be exported. */
   resourceNames?: string[];
   onClose?: () => void;
-  onConfirmExport?: () => void;
+  onConfirmExport?: (format: ExportFormat) => void;
   onShowCompile?: () => void;
 }
 
@@ -27,7 +30,24 @@ export default function ExportPreviewModal({
   onConfirmExport,
   onShowCompile,
 }: ExportPreviewModalProps): JSX.Element | null {
+  const [format, setFormat] = useState<ExportFormat>("txt");
+
   if (!isOpen) return null;
+
+  const formatPicker = (
+    <label className="flex items-center gap-2 text-sm">
+      <span>Format</span>
+      <select
+        className="rounded border border-gw-chrome2 bg-transparent px-2 py-1"
+        value={format}
+        onChange={(e) => setFormat(e.target.value as ExportFormat)}
+        aria-label="Export format"
+      >
+        <option value="txt">Plain text (.txt)</option>
+        <option value="md">Markdown (.md)</option>
+      </select>
+    </label>
+  );
 
   return (
     <>
@@ -35,10 +55,11 @@ export default function ExportPreviewModal({
         isOpen={isOpen}
         title={resourceTitle ? `Export ${resourceTitle}` : "Export"}
         description={buildDescription(resourceNames)}
+        details={formatPicker}
         confirmLabel="Export"
         cancelLabel="Cancel"
         onConfirm={() => {
-          onConfirmExport?.();
+          onConfirmExport?.(format);
           onClose?.();
         }}
         onCancel={onClose ?? (() => {})}
