@@ -26,3 +26,5 @@ tsconfig.tsbuildinfo
 # Local development and testing
 experiments-nopush/
 dist-electron/
+# Tiptap reference repos (skill)
+.reference/
