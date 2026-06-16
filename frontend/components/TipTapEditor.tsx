@@ -13,7 +13,7 @@
  */
 import "katex/dist/katex.min.css";
 
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   useEditor,
   EditorContent,
@@ -23,6 +23,11 @@ import {
 import type { Editor } from "@tiptap/core";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
+import MarkdownSourceView from "./Editor/MarkdownSourceView";
+import {
+  documentToMarkdown,
+  markdownToDocument,
+} from "../src/lib/export/markdown-serializer";
 import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import CustomHeading from "./Editor/Extensions/CustomHeading";
 import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
@@ -141,6 +146,13 @@ export default function TipTapEditor({
   // triggers setContent → cursor reset because an object value never equals
   // the string returned by editor.getHTML().
   const lastEmittedDocRef = useRef<unknown>(null);
+
+  // Editing mode for the current resource. "rich" shows the TipTap editor;
+  // "source" shows raw GFM in a textarea. Conversion happens only at the
+  // toggle boundary (non-goal: per-keystroke sync). The editor instance stays
+  // mounted across the toggle so its document survives the round trip.
+  const [mode, setMode] = useState<"rich" | "source">("rich");
+  const [sourceText, setSourceText] = useState<string>("");
 
   // During unit tests we avoid initializing TipTap (ProseMirror) because the
   // full editor lifecycle and extension loading can be brittle in jsdom.
@@ -281,8 +293,40 @@ export default function TipTapEditor({
       // rather than a stale value carried over from the previous one.
       lastNodeLabelsKeyRef.current = null;
       emitNodeTypes(editor);
+      // An external content swap (resource/revision switch) invalidates any
+      // in-progress source edit; return to the rich view so the user sees the
+      // newly loaded document rather than stale Markdown.
+      setMode("rich");
     }
   }, [value, editor, emitNodeTypes]);
+
+  /**
+   * Enter Markdown source mode: serialize the live document to GFM and show it
+   * in the textarea. Conversion happens here, at the toggle boundary.
+   */
+  const switchToSource = useCallback(() => {
+    if (!editor) return;
+    setSourceText(documentToMarkdown(editor.getJSON()));
+    setMode("source");
+  }, [editor]);
+
+  /**
+   * Return to rich mode: parse the edited GFM back into a TipTap document,
+   * replace the editor content, and emit the change through the normal
+   * persistence path (mirrors `onUpdate`) so autosave picks up the edit.
+   */
+  const switchToRich = useCallback(() => {
+    if (!editor) return;
+    const doc = markdownToDocument(sourceText) as Content;
+    editor.commands.setContent(doc, { emitUpdate: false });
+    const html = editor.getHTML();
+    const json = editor.getJSON() as TipTapDocument;
+    lastEmittedDocRef.current = json;
+    if (onChange) onChange(html, json);
+    lastNodeLabelsKeyRef.current = null;
+    emitNodeTypes(editor);
+    setMode("rich");
+  }, [editor, sourceText, onChange, emitNodeTypes]);
 
   if (!isClient) return <div>Loading editor...</div>;
 
@@ -308,12 +352,26 @@ export default function TipTapEditor({
   return (
     <EditorContext.Provider value={{ editor }}>
       <div className="tiptap-editor-shell" style={bodyStyle}>
-        <MenuBar editor={editor} />
-        <EditorContent
-          editor={editor}
-          id={id}
-          className="tiptap tiptap-editor-content"
-        />
+        {mode === "source" ? (
+          <MarkdownSourceView
+            id={id}
+            value={sourceText}
+            onChange={setSourceText}
+            onExitToRichText={switchToRich}
+          />
+        ) : (
+          <>
+            <MenuBar
+              editor={editor}
+              onToggleSource={readonly ? undefined : switchToSource}
+            />
+            <EditorContent
+              editor={editor}
+              id={id}
+              className="tiptap tiptap-editor-content"
+            />
+          </>
+        )}
       </div>
     </EditorContext.Provider>
   );

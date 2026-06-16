@@ -54,3 +54,26 @@
    seen failing intermittently in the full run (counts varied 1–3 between runs),
    both passing in isolation — same parallel-worker temp-dir/teardown flake
    family, unrelated to the Markdown work.
+
+## 2026-06-16 — Task 5 (editor source/rich toggle)
+
+1. **No live-editor integration test for the toggle (test-harness limit).**
+   `TipTapEditor` short-circuits to a deterministic HTML mock under Vitest
+   (`inTestEnv` guard) and never instantiates ProseMirror, so the actual
+   in-editor toggle (click "Edit as Markdown" → textarea → "Rich text" → live
+   re-render) cannot be exercised from the unit suite. Task 5 covers the
+   behavior with a `MarkdownSourceView` component test plus boundary-conversion
+   round-trips over the serializer functions the toggle invokes. *To close the
+   gap:* a Playwright/Storybook e2e that mounts the real editor (relying on the
+   `elementFromPoint` stub from Task 1) and drives the toggle end-to-end, or
+   refactoring `TipTapEditor` so the real editor can mount under a dedicated
+   test flag. Deferred: out of scope for the unit-test rhythm and would require
+   reworking the long-standing `inTestEnv` editor mock.
+
+2. **Manual smoke-test of the toggle in the running app (deferred).**
+   The conversion path, autosave wiring, and view swap pass typecheck, the
+   targeted Vitest suites, and `next build`, but the app was not launched here.
+   Before release, run `pnpm dev`, open a text resource, toggle to Markdown,
+   edit, toggle back, and confirm the edited structure renders and autosaves to
+   the canonical revision. *Why deferred:* no interactive app session during
+   implementation (same constraint noted for Task 1).
