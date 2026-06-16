@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.52](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.51...getwrite-v0.2.52) (2026-06-16)
+
+
+### Features
+
+* **layout:** add GetWrite wordmark to topbar ([6044f6c](https://github.com/saboteur-works/getwrite/commit/6044f6c717cdd54a577065dd4ac405948e2e5a19))
+* **layout:** add GetWrite wordmark to topbar ([ca2befb](https://github.com/saboteur-works/getwrite/commit/ca2befb0b4e6a775dd8e22af2dea968a5b87e0c7))
+
 ## [0.2.51](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.50...getwrite-v0.2.51) (2026-06-16)
 
 
