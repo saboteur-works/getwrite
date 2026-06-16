@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.51](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.50...getwrite-v0.2.51) (2026-06-16)
+
+
+### Features
+
+* **electron:** add app icon and harden desktop shell [task_4bf73ace] ([339227b](https://github.com/saboteur-works/getwrite/commit/339227b787d0ffedc09e5e88aa84e219257425ee))
+
+
+### Bug Fixes
+
+* **electron:** build x64 mac dmg so Intel Macs can run the app [task_a23320fd] ([c3e1253](https://github.com/saboteur-works/getwrite/commit/c3e12534dd16a37471f2e625f5b9e3d45455293d))
+* **electron:** run Next server via utilityProcess to drop phantom Dock icon [task_4bf73ace] ([e1b0722](https://github.com/saboteur-works/getwrite/commit/e1b07222a0b09a89ff31268aacf8ff3b4397b837))
+
 ## [0.2.50](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.49...getwrite-v0.2.50) (2026-06-15)
 
 
