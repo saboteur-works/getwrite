@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GripVertical, MoreHorizontal } from "lucide-react";
 import type {
   MetadataFieldType,
@@ -130,7 +130,6 @@ function OperatorSelect({
   onChange: (v: string) => void;
 }): JSX.Element {
   const groups = getOperators(fieldType);
-  let dividerIndex = 0;
 
   return (
     <select
@@ -142,7 +141,7 @@ function OperatorSelect({
       {groups.map((entry, i) => {
         if (entry === "divider") {
           return (
-            <option key={`divider-${dividerIndex++}`} disabled value="">
+            <option key={`divider-${i}`} disabled value="">
               ─────────────
             </option>
           );
@@ -280,40 +279,40 @@ function ValueInput({
 
   if (valueShape === "multiValues") {
     const opts = field.options ?? [];
-    const selected = Array.isArray(value) ? value : [];
-    if (opts.length > 0) {
+    if (opts.length === 0) {
       return (
-        <select
-          className="filter-chip__select"
-          multiple
-          value={selected}
-          aria-label="Values"
-          onChange={(e) => {
-            const picked = Array.from(e.target.selectedOptions).map(
-              (o) => o.value,
-            );
-            onChange(picked);
-          }}
-        >
-          {opts.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
+        <EditContextMenu>
+          <input
+            type="text"
+            className="filter-chip__value-input"
+            value={typeof value === "string" ? value : ""}
+            placeholder="values..."
+            aria-label="Values"
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </EditContextMenu>
       );
     }
+    const selected = Array.isArray(value) ? value : [];
     return (
-      <EditContextMenu>
-        <input
-          type="text"
-          className="filter-chip__value-input"
-          value={typeof value === "string" ? value : ""}
-          placeholder="values..."
-          aria-label="Values"
-          onChange={(e) => onChange(e.target.value)}
-        />
-      </EditContextMenu>
+      <select
+        className="filter-chip__select"
+        multiple
+        value={selected}
+        aria-label="Values"
+        onChange={(e) => {
+          const picked = Array.from(e.target.selectedOptions).map(
+            (o) => o.value,
+          );
+          onChange(picked);
+        }}
+      >
+        {opts.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
     );
   }
 
@@ -368,26 +367,26 @@ function ValueInput({
         ? (resolveFolderOptions?.() ?? [])
         : (resolveResourceOptions?.(field.refFolder, field.includeSubfolders) ??
           []);
-      if (resourceOptions.length > 0) {
+      if (resourceOptions.length === 0) {
         return (
-          <SingleRefInput
-            value={value}
-            resourceOptions={resourceOptions}
-            onChange={(v) => onChange(v as FilterChipValue)}
-          />
+          <EditContextMenu>
+            <input
+              type="text"
+              className="filter-chip__value-input"
+              value={typeof value === "string" ? value : ""}
+              placeholder="resource..."
+              aria-label="Resource"
+              onChange={(e) => onChange(e.target.value)}
+            />
+          </EditContextMenu>
         );
       }
       return (
-        <EditContextMenu>
-          <input
-            type="text"
-            className="filter-chip__value-input"
-            value={typeof value === "string" ? value : ""}
-            placeholder="resource..."
-            aria-label="Resource"
-            onChange={(e) => onChange(e.target.value)}
-          />
-        </EditContextMenu>
+        <SingleRefInput
+          value={value}
+          resourceOptions={resourceOptions}
+          onChange={(v) => onChange(v as FilterChipValue)}
+        />
       );
     }
     default:
@@ -438,13 +437,13 @@ export default function FilterChip({
   onDelete,
   onMove,
 }: FilterChipProps): JSX.Element {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuWrapperRef = useRef<HTMLDivElement>(null);
 
-  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const closeMenu = useCallback(() => setIsMenuOpen(false), []);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!isMenuOpen) return;
     function handleOutsideClick(e: MouseEvent): void {
       if (
         menuWrapperRef.current &&
@@ -455,7 +454,7 @@ export default function FilterChip({
     }
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [menuOpen, closeMenu]);
+  }, [isMenuOpen, closeMenu]);
 
   function handleOperatorChange(next: string): void {
     if (!onOperatorChange || !field) return;
@@ -465,6 +464,15 @@ export default function FilterChip({
       onValueChange(null);
     }
   }
+
+  // Wraps a menu action: executes it, then closes the menu.
+  const menuAction = useCallback(
+    (action: () => void) => () => {
+      action();
+      closeMenu();
+    },
+    [closeMenu],
+  );
 
   const effectiveOperator =
     operator ?? (field ? getDefaultOperator(field.type) : null);
@@ -545,23 +553,20 @@ export default function FilterChip({
             type="button"
             className="filter-chip__overflow"
             aria-label="Chip actions"
-            aria-expanded={menuOpen}
+            aria-expanded={isMenuOpen}
             aria-haspopup="menu"
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={() => setIsMenuOpen((v) => !v)}
           >
             <MoreHorizontal size={12} aria-hidden="true" />
           </button>
-          {menuOpen && (
+          {isMenuOpen && (
             <div className="filter-chip__menu" role="menu">
               {onDuplicate && (
                 <button
                   type="button"
                   role="menuitem"
                   className="filter-chip__menu-item"
-                  onClick={() => {
-                    onDuplicate();
-                    closeMenu();
-                  }}
+                  onClick={menuAction(onDuplicate)}
                 >
                   Duplicate
                 </button>
@@ -572,10 +577,7 @@ export default function FilterChip({
                     type="button"
                     role="menuitem"
                     className="filter-chip__menu-item"
-                    onClick={() => {
-                      onMove("up");
-                      closeMenu();
-                    }}
+                    onClick={menuAction(() => onMove("up"))}
                   >
                     Move up
                   </button>
@@ -583,10 +585,7 @@ export default function FilterChip({
                     type="button"
                     role="menuitem"
                     className="filter-chip__menu-item"
-                    onClick={() => {
-                      onMove("down");
-                      closeMenu();
-                    }}
+                    onClick={menuAction(() => onMove("down"))}
                   >
                     Move down
                   </button>
@@ -601,10 +600,7 @@ export default function FilterChip({
                     type="button"
                     role="menuitem"
                     className="filter-chip__menu-item filter-chip__menu-item--destructive"
-                    onClick={() => {
-                      onDelete();
-                      closeMenu();
-                    }}
+                    onClick={menuAction(onDelete)}
                   >
                     Delete
                   </button>

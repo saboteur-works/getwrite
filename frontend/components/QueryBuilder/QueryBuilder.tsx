@@ -112,28 +112,20 @@ export default function QueryBuilder({
   onRestoreFromAdvanced,
   onSaveRequest,
 }: QueryBuilderProps): JSX.Element {
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
 
-  const showGroupDelete =
+  const shouldShowGroupDelete =
     Boolean(onGroupDelete) && groups.length > 1 && !isAdvanced;
   const nextGlobal: GlobalCombinator =
     globalCombinator === "and" ? "or" : "and";
 
-  const handleOpenEditor = useCallback(() => {
-    setEditorOpen(true);
-  }, []);
-
   const handleRestoreFromAdvanced = useCallback(
     (restoredGroups: QueryGroup[], restoredCombinator: GlobalCombinator) => {
-      setEditorOpen(false);
+      setIsEditorOpen(false);
       onRestoreFromAdvanced?.(restoredGroups, restoredCombinator);
     },
     [onRestoreFromAdvanced],
   );
-
-  const handleCancelEditor = useCallback(() => {
-    setEditorOpen(false);
-  }, []);
 
   const editorJson = React.useMemo((): string => {
     if (rawAst) return JSON.stringify(rawAst, null, 2);
@@ -144,7 +136,7 @@ export default function QueryBuilder({
   return (
     <div className="query-builder">
       {/* ── Advanced mode banner ── */}
-      {isAdvanced && !editorOpen && (
+      {isAdvanced && !isEditorOpen && (
         <div className="query-builder__advanced" role="status">
           <span className="query-builder__advanced-label">
             Query uses advanced nesting — chip editing is disabled
@@ -152,7 +144,7 @@ export default function QueryBuilder({
           <button
             type="button"
             className="query-builder__advanced-edit"
-            onClick={handleOpenEditor}
+            onClick={() => setIsEditorOpen(true)}
           >
             Edit in advanced mode
           </button>
@@ -160,12 +152,12 @@ export default function QueryBuilder({
       )}
 
       {/* ── Advanced JSON editor ── */}
-      {editorOpen && (
+      {isEditorOpen && (
         <AdvancedModeToggle
           initialJson={editorJson}
           availableFields={availableFields}
           onRestore={handleRestoreFromAdvanced}
-          onCancel={handleCancelEditor}
+          onCancel={() => setIsEditorOpen(false)}
         />
       )}
 
@@ -173,7 +165,7 @@ export default function QueryBuilder({
       <div className="query-builder__groups">
         {groups.length === 0 ? (
           <div className="query-builder__empty">
-            No conditions — click "+ Add group" to start
+            No conditions — click &quot;+ Add group&quot; to start
           </div>
         ) : (
           groups.map((group, index) => (
@@ -235,7 +227,7 @@ export default function QueryBuilder({
                           onChipReorder?.(group.id, fromIndex, toIndex)
                   }
                 />
-                {showGroupDelete && (
+                {shouldShowGroupDelete && (
                   <button
                     type="button"
                     className="query-builder__group-delete"

@@ -32,16 +32,30 @@ export function resolveQueryRequestContext(
   return { projectId: selectedProjectId, projectPath: project.rootPath };
 }
 
-function getApiErrorMessage(errorBody: unknown, fallback: string): string {
-  if (
-    errorBody &&
-    typeof errorBody === "object" &&
-    "error" in errorBody &&
-    typeof (errorBody as { error?: unknown }).error === "string"
-  ) {
-    return (errorBody as { error: string }).error;
+async function postJson<T>(
+  url: string,
+  body: unknown,
+  fallbackError: string,
+): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    const message =
+      errorBody &&
+      typeof errorBody === "object" &&
+      "error" in errorBody &&
+      typeof (errorBody as { error?: unknown }).error === "string"
+        ? (errorBody as { error: string }).error
+        : fallbackError;
+    throw new Error(message);
   }
-  return fallback;
+
+  return (await response.json()) as T;
 }
 
 interface ListQueriesResponse {
@@ -59,90 +73,54 @@ interface EvaluateQueryResponse {
 /**
  * Fetch all saved queries for a project.
  */
-export async function fetchSavedQueryList(
+export function fetchSavedQueryList(
   context: QueryRequestContext,
 ): Promise<ListQueriesResponse> {
-  const response = await fetch("/api/project/query/saved", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "list", projectPath: context.projectPath }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(
-      getApiErrorMessage(errorBody, "Unable to load saved queries."),
-    );
-  }
-
-  return (await response.json()) as ListQueriesResponse;
+  return postJson(
+    "/api/project/query/saved",
+    { action: "list", projectPath: context.projectPath },
+    "Unable to load saved queries.",
+  );
 }
 
 /**
  * Write (create or overwrite) a saved query.
  */
-export async function persistSavedQuery(
+export function persistSavedQuery(
   context: QueryRequestContext,
   query: SavedQuery,
 ): Promise<WriteQueryResponse> {
-  const response = await fetch("/api/project/query/saved", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "write",
-      projectPath: context.projectPath,
-      query,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(getApiErrorMessage(errorBody, "Failed to save query."));
-  }
-
-  return (await response.json()) as WriteQueryResponse;
+  return postJson(
+    "/api/project/query/saved",
+    { action: "write", projectPath: context.projectPath, query },
+    "Failed to save query.",
+  );
 }
 
 /**
  * Delete a saved query by id.
  */
-export async function removeSavedQuery(
+export function removeSavedQuery(
   context: QueryRequestContext,
   id: string,
 ): Promise<void> {
-  const response = await fetch("/api/project/query/saved", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "delete",
-      projectPath: context.projectPath,
-      id,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(getApiErrorMessage(errorBody, "Failed to delete query."));
-  }
+  return postJson(
+    "/api/project/query/saved",
+    { action: "delete", projectPath: context.projectPath, id },
+    "Failed to delete query.",
+  );
 }
 
 /**
  * Evaluate a query AST inline and return matching resource IDs.
  */
-export async function evaluateQueryAst(
+export function evaluateQueryAst(
   context: QueryRequestContext,
   definition: QueryAST,
 ): Promise<EvaluateQueryResponse> {
-  const response = await fetch("/api/project/query/evaluate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ projectPath: context.projectPath, definition }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(getApiErrorMessage(errorBody, "Query evaluation failed."));
-  }
-
-  return (await response.json()) as EvaluateQueryResponse;
+  return postJson(
+    "/api/project/query/evaluate",
+    { projectPath: context.projectPath, definition },
+    "Query evaluation failed.",
+  );
 }

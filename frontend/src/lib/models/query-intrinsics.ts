@@ -136,15 +136,10 @@ export const INTRINSIC_FIELDS: readonly IntrinsicField[] = [
     label: "Linked From",
     type: "multi-resource-ref",
     source: "backlinks",
-    read: (resource, context) => {
-      const refs: ResourceRef[] = [];
-      for (const [sourceId, targets] of Object.entries(context.backlinks)) {
-        if (targets.includes(resource.id)) {
-          refs.push({ id: sourceId, name: "" });
-        }
-      }
-      return refs;
-    },
+    read: (resource, context) =>
+      Object.entries(context.backlinks)
+        .filter(([, targets]) => targets.includes(resource.id))
+        .map(([sourceId]): ResourceRef => ({ id: sourceId, name: "" })),
   },
   {
     // Resources that this resource links to (forward links).

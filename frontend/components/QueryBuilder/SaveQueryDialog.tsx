@@ -50,6 +50,7 @@ export default function SaveQueryDialog({
   );
   const [localError, setLocalError] = React.useState("");
 
+  // Reset form state each time the dialog opens so stale values don't bleed across invocations.
   React.useEffect(() => {
     if (isOpen) {
       setName(existingQuery?.name ?? "");
@@ -62,6 +63,8 @@ export default function SaveQueryDialog({
   const isSaving =
     pendingIdRef.current !== null && savingQueryId === pendingIdRef.current;
 
+  // Detect save completion: pendingIdRef tracks the in-flight query ID so we
+  // can distinguish "never started" (null) from "finished" (savingQueryId cleared).
   React.useEffect(() => {
     if (pendingIdRef.current === null) return;
     if (savingQueryId === null && !errorMessage) {
@@ -72,7 +75,7 @@ export default function SaveQueryDialog({
     }
   }, [savingQueryId, errorMessage, onSaved, onClose]);
 
-  async function handleSubmit(e: React.FormEvent): Promise<void> {
+  function handleSubmit(e: React.FormEvent): void {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
@@ -92,6 +95,8 @@ export default function SaveQueryDialog({
     dispatch(saveQuery({ projectId, query }));
   }
 
+  // Guard on pendingIdRef prevents a stale Redux error from a prior save attempt
+  // surfacing when the dialog is freshly opened (before any dispatch).
   const displayError = localError || (pendingIdRef.current ? errorMessage : "");
 
   return (

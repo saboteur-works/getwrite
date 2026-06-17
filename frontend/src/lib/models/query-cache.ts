@@ -51,12 +51,8 @@ export function setCached(
   revision: number,
   resultIds: string[],
 ): void {
-  let projectMap = store.get(projectRoot);
-  if (!projectMap) {
-    projectMap = new Map();
-    store.set(projectRoot, projectMap);
-  }
-  projectMap.set(queryId, { lastRevision: revision, resultIds });
+  if (!store.has(projectRoot)) store.set(projectRoot, new Map());
+  store.get(projectRoot)!.set(queryId, { lastRevision: revision, resultIds });
 }
 
 /**
@@ -89,10 +85,10 @@ export async function readRevision(projectRoot: string): Promise<number> {
       path.join(projectRoot, PROJECT_FILENAME),
       "utf8",
     );
-    const parsed = JSON.parse(raw) as {
-      config?: { metadataRevision?: number };
-    };
-    return parsed?.config?.metadataRevision ?? 0;
+    return (
+      (JSON.parse(raw) as { config?: { metadataRevision?: number } })?.config
+        ?.metadataRevision ?? 0
+    );
   } catch {
     return 0;
   }

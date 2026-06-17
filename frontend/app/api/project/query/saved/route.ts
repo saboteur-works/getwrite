@@ -22,8 +22,8 @@ import {
   writeQuery,
   deleteQuery,
   SavedQuerySchema,
+  type SavedQuery,
 } from "../../../../../src/lib/models/saved-queries";
-import type { SavedQuery } from "../../../../../src/lib/models/saved-queries";
 
 // ─── Request shapes ───────────────────────────────────────────────────────────
 
@@ -102,40 +102,46 @@ export async function POST(
   }
 
   try {
-    if (body.action === "list") {
-      const queries = await listQueries(body.projectPath);
-      return NextResponse.json({ queries });
-    }
+    switch (body.action) {
+      case "list": {
+        const queries = await listQueries(body.projectPath);
+        return NextResponse.json({ queries });
+      }
 
-    if (body.action === "read") {
-      const query = await readQuery(body.projectPath, body.id);
-      return NextResponse.json({ query });
-    }
+      case "read": {
+        const query = await readQuery(body.projectPath, body.id);
+        return NextResponse.json({ query });
+      }
 
-    if (body.action === "write") {
-      const parseResult = SavedQuerySchema.safeParse(body.query);
-      if (!parseResult.success) {
+      case "write": {
+        const parseResult = SavedQuerySchema.safeParse(body.query);
+        if (!parseResult.success) {
+          return NextResponse.json(
+            {
+              error: "Invalid saved query",
+              details: parseResult.error.message,
+            },
+            { status: 400 },
+          );
+        }
+        await writeQuery(body.projectPath, parseResult.data);
+        return NextResponse.json({ query: parseResult.data });
+      }
+
+      case "delete": {
+        const didDelete = await deleteQuery(body.projectPath, body.id);
+        return NextResponse.json({ deleted: didDelete });
+      }
+
+      default:
         return NextResponse.json(
-          { error: "Invalid saved query", details: parseResult.error.message },
+          {
+            error: "Invalid action",
+            details: "Expected one of: list, read, write, delete",
+          },
           { status: 400 },
         );
-      }
-      await writeQuery(body.projectPath, parseResult.data);
-      return NextResponse.json({ query: parseResult.data });
     }
-
-    if (body.action === "delete") {
-      const deleted = await deleteQuery(body.projectPath, body.id);
-      return NextResponse.json({ deleted });
-    }
-
-    return NextResponse.json(
-      {
-        error: "Invalid action",
-        details: "Expected one of: list, read, write, delete",
-      },
-      { status: 400 },
-    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Operation failed";
     return NextResponse.json(

@@ -25,12 +25,14 @@ export type SavedQuery = z.infer<typeof SavedQuerySchema>;
 
 // ─── Path helpers ─────────────────────────────────────────────────────────────
 
+const QUERY_FILE_EXT = ".query.json";
+
 function queriesDir(projectRoot: string): string {
   return path.join(projectRoot, "meta", "queries");
 }
 
 function queryFilePath(projectRoot: string, id: string): string {
-  return path.join(queriesDir(projectRoot), `${id}.query.json`);
+  return path.join(queriesDir(projectRoot), `${id}${QUERY_FILE_EXT}`);
 }
 
 async function ensureQueriesDir(projectRoot: string): Promise<void> {
@@ -65,8 +67,8 @@ export async function listQueries(projectRoot: string): Promise<SavedQuery[]> {
 
   const queries: SavedQuery[] = [];
   for (const entry of entries) {
-    if (!entry.endsWith(".query.json")) continue;
-    const id = entry.slice(0, -".query.json".length);
+    if (!entry.endsWith(QUERY_FILE_EXT)) continue;
+    const id = entry.slice(0, -QUERY_FILE_EXT.length);
     const q = await readQuery(projectRoot, id);
     if (q !== null) queries.push(q);
   }

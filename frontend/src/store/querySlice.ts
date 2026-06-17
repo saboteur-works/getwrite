@@ -101,24 +101,14 @@ const initialState: QueryState = {
 };
 
 function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim().length > 0) {
+  if (error instanceof Error && error.message.trim()) {
     return error.message;
   }
   return fallback;
 }
 
 function resetQueryState(state: QueryState): void {
-  state.projectId = null;
-  state.requestedProjectId = null;
-  state.savedQueries = {};
-  state.isLoadingQueries = false;
-  state.isEvaluating = false;
-  state.evaluatingForProjectId = null;
-  state.activeQueryDefinition = null;
-  state.activeQueryIds = [];
-  state.savingQueryId = null;
-  state.deletingQueryId = null;
-  state.errorMessage = "";
+  Object.assign(state, initialState);
 }
 
 // ─── Async thunks ─────────────────────────────────────────────────────────────
@@ -138,10 +128,7 @@ export const loadSavedQueries = createAsyncThunk<
 
   try {
     const data = await fetchSavedQueryList(context);
-    const savedQueries: Record<string, SavedQuery> = {};
-    for (const query of data.queries) {
-      savedQueries[query.id] = query;
-    }
+    const savedQueries = Object.fromEntries(data.queries.map((q) => [q.id, q]));
     return { projectId, savedQueries };
   } catch (error) {
     return thunkApi.rejectWithValue(
@@ -230,14 +217,12 @@ const querySlice = createSlice({
      */
     clearQueries(state) {
       resetQueryState(state);
-      return state;
     },
   },
   extraReducers: (builder) => {
     builder.addCase(setSelectedProjectId, (state, action) => {
-      if (state.projectId === action.payload) return state;
+      if (state.projectId === action.payload) return;
       resetQueryState(state);
-      return state;
     });
 
     // ── loadSavedQueries ─────────────────────────────────────────────────
@@ -247,23 +232,17 @@ const querySlice = createSlice({
       state.errorMessage = "";
     });
     builder.addCase(loadSavedQueries.fulfilled, (state, action) => {
-      if (state.requestedProjectId !== action.payload.projectId) {
-        return state;
-      }
+      if (state.requestedProjectId !== action.payload.projectId) return;
       state.projectId = action.payload.projectId;
       state.requestedProjectId = null;
       state.savedQueries = action.payload.savedQueries;
       state.isLoadingQueries = false;
-      return state;
     });
     builder.addCase(loadSavedQueries.rejected, (state, action) => {
-      if (state.requestedProjectId !== action.meta.arg.projectId) {
-        return state;
-      }
+      if (state.requestedProjectId !== action.meta.arg.projectId) return;
       state.requestedProjectId = null;
       state.isLoadingQueries = false;
       state.errorMessage = action.payload ?? "Unable to load saved queries.";
-      return state;
     });
 
     // ── saveQuery ────────────────────────────────────────────────────────
@@ -276,20 +255,18 @@ const querySlice = createSlice({
         state.projectId !== null &&
         state.projectId !== action.payload.projectId
       ) {
-        return state;
+        return;
       }
       state.savedQueries[action.payload.query.id] = action.payload.query;
       if (state.savingQueryId === action.payload.query.id) {
         state.savingQueryId = null;
       }
-      return state;
     });
     builder.addCase(saveQuery.rejected, (state, action) => {
       if (state.savingQueryId === action.meta.arg.query.id) {
         state.savingQueryId = null;
       }
       state.errorMessage = action.payload ?? "Failed to save query.";
-      return state;
     });
 
     // ── deleteQuery ──────────────────────────────────────────────────────
@@ -302,22 +279,16 @@ const querySlice = createSlice({
         state.projectId !== null &&
         state.projectId !== action.payload.projectId
       ) {
-        return state;
+        return;
       }
-      if (state.deletingQueryId !== action.payload.queryId) {
-        return state;
-      }
+      if (state.deletingQueryId !== action.payload.queryId) return;
       delete state.savedQueries[action.payload.queryId];
       state.deletingQueryId = null;
-      return state;
     });
     builder.addCase(deleteQuery.rejected, (state, action) => {
-      if (state.deletingQueryId !== action.meta.arg.queryId) {
-        return state;
-      }
+      if (state.deletingQueryId !== action.meta.arg.queryId) return;
       state.deletingQueryId = null;
       state.errorMessage = action.payload ?? "Failed to delete query.";
-      return state;
     });
 
     // ── evaluateQuery ────────────────────────────────────────────────────
@@ -327,23 +298,17 @@ const querySlice = createSlice({
       state.errorMessage = "";
     });
     builder.addCase(evaluateQuery.fulfilled, (state, action) => {
-      if (state.evaluatingForProjectId !== action.payload.projectId) {
-        return state;
-      }
+      if (state.evaluatingForProjectId !== action.payload.projectId) return;
       state.isEvaluating = false;
       state.evaluatingForProjectId = null;
       state.activeQueryDefinition = action.payload.definition;
       state.activeQueryIds = action.payload.ids;
-      return state;
     });
     builder.addCase(evaluateQuery.rejected, (state, action) => {
-      if (state.evaluatingForProjectId !== action.meta.arg.projectId) {
-        return state;
-      }
+      if (state.evaluatingForProjectId !== action.meta.arg.projectId) return;
       state.isEvaluating = false;
       state.evaluatingForProjectId = null;
       state.errorMessage = action.payload ?? "Query evaluation failed.";
-      return state;
     });
   },
 });
