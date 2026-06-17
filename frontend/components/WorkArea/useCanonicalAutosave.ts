@@ -2,6 +2,8 @@ import React from "react";
 import debounce from "lodash/debounce";
 import type { TipTapDocument } from "../../src/lib/models";
 import { patchRevisionContent } from "../../src/lib/api/resources";
+import { tiptapToPlainText } from "../../src/lib/tiptap-text";
+import { countWords } from "../../src/lib/word-count";
 import { useAppDispatch } from "../../src/store/hooks";
 import { updateResource } from "../../src/store/resourcesSlice";
 
@@ -75,6 +77,9 @@ export function useCanonicalAutosave({
             updateResource({
               id: selectedResourceId,
               updatedAt: result.updatedAt,
+              // Keep the resource tree's word count / stub state in sync with
+              // the content just persisted to the canonical revision.
+              wordCount: countWords(tiptapToPlainText(doc)),
             }),
           );
         }
