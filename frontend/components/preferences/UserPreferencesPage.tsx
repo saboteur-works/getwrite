@@ -55,16 +55,10 @@ export default function UserPreferencesPage({
   const [appearance, setAppearance] = useState<AppearancePreferences>(
     DEFAULT_APPEARANCE_PREFERENCES,
   );
-  const selectedProjectId = useAppSelector((state) =>
-    selectSelectedProjectId(state),
+  const selectedProjectId = useAppSelector(selectSelectedProjectId);
+  const selectedProject = useAppSelector((state) =>
+    selectedProjectId ? selectProject(state, selectedProjectId) : null,
   );
-  const selectedProject = useAppSelector((state) => {
-    if (!selectedProjectId) {
-      return null;
-    }
-
-    return selectProject(state, selectedProjectId);
-  });
 
   useEffect(() => {
     const metadata = selectedProject?.metadata as

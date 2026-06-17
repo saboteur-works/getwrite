@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import type { Dirent } from "node:fs";
 import path from "node:path";
 import type { NextRequest } from "next/server";
 import {
@@ -16,8 +17,9 @@ async function findProjectRoot(projectsDir: string, projectId: string) {
       const candidate = path.join(projectsDir, d.name);
       const pj = path.join(candidate, "project.json");
       try {
-        const raw = await fs.readFile(pj, "utf8");
-        const parsed = JSON.parse(raw) as { id?: string };
+        const parsed = JSON.parse(await fs.readFile(pj, "utf8")) as {
+          id?: string;
+        };
         if (parsed?.id === projectId) return candidate;
       } catch (_) {
         // ignore
@@ -45,7 +47,7 @@ export async function POST(
     orderIndex: number;
     folderId?: string | null;
   }> = body.resourceOrder ?? [];
-  // locate projects directory
+
   const projectsDir = resolveProjectsDir();
   const projectRoot =
     body.projectRoot ?? (await findProjectRoot(projectsDir, projectId));
@@ -61,15 +63,16 @@ export async function POST(
       const foldersDir = path.join(projectRoot, "folders");
       const folderDirs = await fs
         .readdir(foldersDir, { withFileTypes: true })
-        .catch(() => [] as any[]);
+        .catch(() => [] as Dirent[]);
 
       for (const fo of folderOrder) {
         for (const d of folderDirs) {
           if (!d.isDirectory()) continue;
           const folderJson = path.join(foldersDir, d.name, "folder.json");
           try {
-            const raw = await fs.readFile(folderJson, "utf8");
-            const parsed = JSON.parse(raw) as any;
+            const parsed = JSON.parse(
+              await fs.readFile(folderJson, "utf8"),
+            ) as { id?: string; orderIndex?: number; parentId?: string | null };
             if (parsed && parsed.id === fo.id) {
               parsed.orderIndex = fo.orderIndex;
               parsed.parentId = fo.folderId ?? null;

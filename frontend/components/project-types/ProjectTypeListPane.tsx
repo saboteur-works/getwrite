@@ -10,7 +10,6 @@
  * it holds no draft state and performs no validation.
  */
 
-import React from "react";
 import type { ProjectTypeListItem } from "./ProjectTypeDraftService";
 
 /**

@@ -22,12 +22,10 @@ export async function GET() {
     const results: ProjectTypeSpec[] = [];
     for (const e of entries) {
       if (!e.isFile() || !e.name.endsWith(".json")) continue;
-      const fp = path.join(TEMPLATES_DIR, e.name);
+      const filePath = path.join(TEMPLATES_DIR, e.name);
       try {
-        const raw = await fs.readFile(fp, "utf8");
-        const parsed = JSON.parse(raw);
-        const res: ReturnType<typeof validateProjectType> =
-          validateProjectType(parsed);
+        const parsed = JSON.parse(await fs.readFile(filePath, "utf8"));
+        const res = validateProjectType(parsed);
         if (res.success) {
           results.push(res.value as ProjectTypeSpec);
         }

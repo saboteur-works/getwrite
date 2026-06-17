@@ -9,7 +9,6 @@
  * mutation semantics to callbacks supplied by the parent orchestrator.
  */
 
-import React from "react";
 import Button from "../common/UI/Button/Button";
 import Input from "../common/UI/Input/Input";
 import Textarea from "../common/UI/Textarea/Textarea";
@@ -252,43 +251,29 @@ export default function ProjectTypeEditorForm({
                 </div>
               </div>
 
-              <div className="project-type-editor-form-grid project-type-editor-form-grid--two-column">
-                <div className="project-type-editor-row-end">
-                  <label className="project-type-editor-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(folder.metadataSource?.isMetadataSource)}
-                      onChange={(e) =>
-                        patchFolder(index, {
-                          metadataSource: {
-                            isMetadataSource: e.target.checked,
-                            metadataInputType:
-                              folder.metadataSource?.metadataInputType,
-                          },
-                        })
-                      }
-                      className="project-type-editor-checkbox"
-                    />
-                    Metadata Source
-                  </label>
-                </div>
-
-                {folder.metadataSource?.isMetadataSource ? (
-                  <LabeledSelect
-                    label="Input Type"
-                    value={folder.metadataSource?.metadataInputType ?? "text"}
-                    options={[...METADATA_INPUT_TYPES]}
-                    onChange={(value) =>
-                      patchFolder(index, {
-                        metadataSource: {
-                          isMetadataSource: true,
-                          metadataInputType: value as MetadataInputType,
-                        },
-                      })
-                    }
-                  />
-                ) : null}
-              </div>
+              <MetadataSourceRow
+                isMetadataSource={Boolean(
+                  folder.metadataSource?.isMetadataSource,
+                )}
+                metadataInputType={folder.metadataSource?.metadataInputType}
+                onIsMetadataSourceChange={(checked) =>
+                  patchFolder(index, {
+                    metadataSource: {
+                      isMetadataSource: checked,
+                      metadataInputType:
+                        folder.metadataSource?.metadataInputType,
+                    },
+                  })
+                }
+                onMetadataInputTypeChange={(value) =>
+                  patchFolder(index, {
+                    metadataSource: {
+                      isMetadataSource: true,
+                      metadataInputType: value,
+                    },
+                  })
+                }
+              />
             </div>
           ))}
         </div>
@@ -332,43 +317,26 @@ export default function ProjectTypeEditorForm({
                 />
               </div>
 
-              <div className="project-type-editor-form-grid project-type-editor-form-grid--two-column">
-                <div className="project-type-editor-row-end">
-                  <label className="project-type-editor-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(df.metadataSource?.isMetadataSource)}
-                      onChange={(e) =>
-                        patchDefaultFolder(index, {
-                          metadataSource: {
-                            isMetadataSource: e.target.checked,
-                            metadataInputType:
-                              df.metadataSource?.metadataInputType,
-                          },
-                        })
-                      }
-                      className="project-type-editor-checkbox"
-                    />
-                    Metadata Source
-                  </label>
-                </div>
-
-                {df.metadataSource?.isMetadataSource ? (
-                  <LabeledSelect
-                    label="Input Type"
-                    value={df.metadataSource?.metadataInputType ?? "text"}
-                    options={[...METADATA_INPUT_TYPES]}
-                    onChange={(value) =>
-                      patchDefaultFolder(index, {
-                        metadataSource: {
-                          isMetadataSource: true,
-                          metadataInputType: value as MetadataInputType,
-                        },
-                      })
-                    }
-                  />
-                ) : null}
-              </div>
+              <MetadataSourceRow
+                isMetadataSource={Boolean(df.metadataSource?.isMetadataSource)}
+                metadataInputType={df.metadataSource?.metadataInputType}
+                onIsMetadataSourceChange={(checked) =>
+                  patchDefaultFolder(index, {
+                    metadataSource: {
+                      isMetadataSource: checked,
+                      metadataInputType: df.metadataSource?.metadataInputType,
+                    },
+                  })
+                }
+                onMetadataInputTypeChange={(value) =>
+                  patchDefaultFolder(index, {
+                    metadataSource: {
+                      isMetadataSource: true,
+                      metadataInputType: value,
+                    },
+                  })
+                }
+              />
 
               <div className="project-type-editor-row-end project-type-editor-row-end--right">
                 <Button
@@ -588,6 +556,46 @@ export default function ProjectTypeEditorForm({
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+interface MetadataSourceRowProps {
+  isMetadataSource: boolean;
+  metadataInputType: MetadataInputType | undefined;
+  onIsMetadataSourceChange: (checked: boolean) => void;
+  onMetadataInputTypeChange: (value: MetadataInputType) => void;
+}
+
+function MetadataSourceRow({
+  isMetadataSource,
+  metadataInputType,
+  onIsMetadataSourceChange,
+  onMetadataInputTypeChange,
+}: MetadataSourceRowProps): JSX.Element {
+  return (
+    <div className="project-type-editor-form-grid project-type-editor-form-grid--two-column">
+      <div className="project-type-editor-row-end">
+        <label className="project-type-editor-checkbox-label">
+          <input
+            type="checkbox"
+            checked={isMetadataSource}
+            onChange={(e) => onIsMetadataSourceChange(e.target.checked)}
+            className="project-type-editor-checkbox"
+          />
+          Metadata Source
+        </label>
+      </div>
+      {isMetadataSource ? (
+        <LabeledSelect
+          label="Input Type"
+          value={metadataInputType ?? "text"}
+          options={[...METADATA_INPUT_TYPES]}
+          onChange={(value) =>
+            onMetadataInputTypeChange(value as MetadataInputType)
+          }
+        />
+      ) : null}
+    </div>
+  );
+}
 
 interface LabeledInputProps {
   label: string;

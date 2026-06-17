@@ -23,15 +23,8 @@ export interface FeatureConfigResult {
 }
 
 function getApiErrorMessage(errorBody: unknown, fallback: string): string {
-  if (
-    errorBody &&
-    typeof errorBody === "object" &&
-    "error" in errorBody &&
-    typeof (errorBody as { error?: unknown }).error === "string"
-  ) {
-    return (errorBody as { error: string }).error;
-  }
-  return fallback;
+  const error = (errorBody as Record<string, unknown>)?.error;
+  return typeof error === "string" ? error : fallback;
 }
 
 /**

@@ -55,15 +55,15 @@ function parsePositiveInt(raw: string): number | null {
  * Computes the `<select>` value for the current (or default) card-body config.
  *
  * @param config - Persisted card-body config, or `null` when unset.
- * @param notesEnabled - Whether the Notes feature is enabled (drives the unset default).
+ * @param isNotesEnabled - Whether the Notes feature is enabled (drives the unset default).
  * @returns The encoded select value.
  */
 function resolveSelectValue(
   config: OrganizerCardBodyConfig | null,
-  notesEnabled: boolean,
+  isNotesEnabled: boolean,
 ): string {
   if (!config) {
-    return notesEnabled ? `${FIELD_OPTION_PREFIX}notes` : "none";
+    return isNotesEnabled ? `${FIELD_OPTION_PREFIX}notes` : "none";
   }
   if (config.source === "field") {
     return config.fieldKey
@@ -87,9 +87,9 @@ export default function OrganizerCardBodySettings(): JSX.Element | null {
   const selectedProjectId = useAppSelector(selectSelectedProjectId);
   const schema = useAppSelector(selectActiveProjectMetadataSchema);
   const cardBody = useAppSelector(selectActiveProjectOrganizerCardBody);
-  const notesEnabled = useAppSelector(selectNotesEnabled);
+  const isNotesEnabled = useAppSelector(selectNotesEnabled);
 
-  const selectValue = resolveSelectValue(cardBody, notesEnabled);
+  const selectValue = resolveSelectValue(cardBody, isNotesEnabled);
   const persistedExcerptLength =
     cardBody?.source === "text-excerpt"
       ? (cardBody.excerptLength ?? DEFAULT_EXCERPT_LENGTH)

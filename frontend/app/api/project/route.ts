@@ -17,26 +17,7 @@
  * - `{ error: string, details: string }` with HTTP 500
  */
 import { NextRequest, NextResponse } from "next/server";
-import type { LoadedResource } from "../../../src/lib/models/project-loader";
 import { loadProjectFromDisk } from "../../../src/lib/models/project-loader";
-import type { Project } from "../../../src/lib/models";
-
-/** Request payload accepted by {@link POST}. */
-interface LoadProjectRequestBody {
-  /** Absolute path to the project root directory on disk. */
-  projectPath: string;
-}
-
-interface LoadProjectSuccessResponse {
-  project: Project;
-  folders: unknown[];
-  resources: LoadedResource[];
-}
-
-interface LoadProjectErrorResponse {
-  error: string;
-  details: string;
-}
 
 /**
  * Loads a project and related entities from the local filesystem.
@@ -45,16 +26,10 @@ interface LoadProjectErrorResponse {
  * @returns JSON response with project data on success, or error payload with
  *   HTTP 500 on failure.
  */
-export async function POST(
-  req: NextRequest,
-): Promise<
-  NextResponse<LoadProjectSuccessResponse | LoadProjectErrorResponse>
-> {
+export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const body = await req.json();
-    const { projectPath } = body as LoadProjectRequestBody;
-    const result = await loadProjectFromDisk(projectPath);
-    return NextResponse.json(result);
+    const { projectPath } = (await req.json()) as { projectPath: string };
+    return NextResponse.json(await loadProjectFromDisk(projectPath));
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to load project", details: (error as Error).message },

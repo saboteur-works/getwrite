@@ -58,15 +58,15 @@ export default function CreateProjectModal({
       }[]
     | null
   >(null);
-  const [loadingTypes, setLoadingTypes] = useState(false);
+  const [isLoadingTypes, setIsLoadingTypes] = useState(false);
   const [filter, setFilter] = useState<string>("");
   const [typesError, setTypesError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const nameRef = useRef<HTMLInputElement | null>(null);
 
   const loadTypes = useCallback(async () => {
-    setLoadingTypes(true);
+    setIsLoadingTypes(true);
     setTypesError(null);
     try {
       const list = await listProjectTypes();
@@ -100,7 +100,7 @@ export default function CreateProjectModal({
         // swallow if toast lib not available in some test environments
       }
     } finally {
-      setLoadingTypes(false);
+      setIsLoadingTypes(false);
     }
   }, [defaultType]);
 
@@ -114,7 +114,7 @@ export default function CreateProjectModal({
   }, [isOpen, defaultName, defaultType]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
-    if (creating) return; // ignore duplicate submits while creating
+    if (isCreating) return; // ignore duplicate submits while creating
     e?.preventDefault();
     if (!name.trim()) {
       setError("Please enter a project name.");
@@ -124,17 +124,14 @@ export default function CreateProjectModal({
 
     const payload: CreateProjectPayload = { name: name.trim(), projectType };
 
-    setCreating(true);
+    setIsCreating(true);
     setError(null);
     try {
       const body = await createProject(payload.name, payload.projectType);
-      const createdProject: CanonicalProject = body.project;
-      const createdFolders = body.folders;
-      const createdResources = body.resources;
       onCreate(payload, {
-        project: createdProject,
-        folders: createdFolders,
-        resources: createdResources,
+        project: body.project as CanonicalProject,
+        folders: body.folders,
+        resources: body.resources,
       });
       onClose();
     } catch (err) {
@@ -144,9 +141,11 @@ export default function CreateProjectModal({
         toast.error(`Failed to create project: ${msg}`);
       } catch (_) {}
     } finally {
-      setCreating(false);
+      setIsCreating(false);
     }
   };
+
+  const selectedType = types?.find((t) => t.id === projectType);
 
   return (
     <Dialog
@@ -164,7 +163,7 @@ export default function CreateProjectModal({
           nameRef.current?.focus();
         }}
       >
-        <form onSubmit={handleSubmit} aria-busy={creating}>
+        <form onSubmit={handleSubmit} aria-busy={isCreating}>
           <DialogTitle asChild>
             <h2 className="font-sans text-gw-h2 text-gw-primary mb-5">
               Create Project
@@ -185,7 +184,7 @@ export default function CreateProjectModal({
               }}
               className="w-full mt-1"
               aria-required
-              disabled={creating}
+              disabled={isCreating}
             />
           </label>
 
@@ -199,19 +198,19 @@ export default function CreateProjectModal({
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 className="w-full mt-1 mb-2"
-                disabled={creating || loadingTypes}
+                disabled={isCreating || isLoadingTypes}
               />
               <Select
                 value={projectType}
                 onChange={(e) => setProjectType(e.target.value as string)}
                 className="w-full mt-1"
                 disabled={
-                  creating ||
-                  loadingTypes ||
+                  isCreating ||
+                  isLoadingTypes ||
                   (Array.isArray(types) && types.length === 0)
                 }
               >
-                {loadingTypes ? (
+                {isLoadingTypes ? (
                   <option>Loading...</option>
                 ) : types && types.length > 0 ? (
                   // filter by id, name, or description
@@ -238,23 +237,15 @@ export default function CreateProjectModal({
             </div>
             {types && types.length > 0 && (
               <div className="project-modal-hint">
-                {types.find((t) => t.id === projectType)?.description}
+                {selectedType?.description}
               </div>
             )}
             {/* Show validation error for selected template (friendly messages) */}
-            {types &&
-              projectType &&
-              (() => {
-                const sel = types.find((t) => t.id === projectType);
-                if (!sel) return null;
-                if (sel.validationError)
-                  return (
-                    <div className="project-modal-error">
-                      Template validation: {sel.validationError}
-                    </div>
-                  );
-                return null;
-              })()}
+            {selectedType?.validationError && (
+              <div className="project-modal-error">
+                Template validation: {selectedType.validationError}
+              </div>
+            )}
             {typesError && (
               <div className="project-modal-error">
                 Failed to load project types: {typesError}
@@ -272,24 +263,17 @@ export default function CreateProjectModal({
           {error ? <div className="project-modal-error">{error}</div> : null}
 
           <div className="project-modal-actions">
-            <Button variant="secondary" onClick={onClose} disabled={creating}>
+            <Button variant="secondary" onClick={onClose} disabled={isCreating}>
               <X size={14} aria-hidden="true" />
               Cancel
             </Button>
             <Button
               type="submit"
               variant="default"
-              disabled={
-                creating ||
-                (!!types &&
-                  !!projectType &&
-                  !!types.find(
-                    (t) => t.id === projectType && t.validationError,
-                  ))
-              }
+              disabled={isCreating || !!selectedType?.validationError}
             >
               <FolderPlus size={14} aria-hidden="true" />
-              {creating ? "Creating…" : "Create"}
+              {isCreating ? "Creating…" : "Create"}
             </Button>
           </div>
         </form>

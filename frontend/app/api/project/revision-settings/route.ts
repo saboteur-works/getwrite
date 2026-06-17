@@ -19,19 +19,7 @@ interface UpdateRevisionSettingsBody {
   defaultRevisionName: string;
 }
 
-interface UpdateRevisionSettingsSuccess {
-  defaultRevisionName: string;
-}
-
-interface UpdateRevisionSettingsError {
-  error: string;
-}
-
-export async function POST(
-  req: NextRequest,
-): Promise<
-  NextResponse<UpdateRevisionSettingsSuccess | UpdateRevisionSettingsError>
-> {
+export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: UpdateRevisionSettingsBody;
   try {
     body = (await req.json()) as UpdateRevisionSettingsBody;

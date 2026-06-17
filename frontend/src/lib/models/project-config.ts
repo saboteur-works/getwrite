@@ -43,18 +43,18 @@ export const PROJECT_FILENAME = "project.json";
 export async function loadProject(
   projectRoot: string,
 ): Promise<Infer<typeof ProjectSchema>> {
-  const p = path.join(projectRoot, PROJECT_FILENAME);
-  const raw = await fs.readFile(p, "utf8");
+  const filePath = path.join(projectRoot, PROJECT_FILENAME);
+  const raw = await fs.readFile(filePath, "utf8");
   const parsed = JSON.parse(raw) as unknown;
 
   // Validate the overall project shape first.
   const project = ProjectSchema.parse(parsed);
 
   // Ensure config has sensible defaults applied.
-  const normalizedConfig = normalizeProjectConfig(
-    project.config as ProjectConfig | undefined,
-  );
-  return { ...project, config: normalizedConfig };
+  return {
+    ...project,
+    config: normalizeProjectConfig(project.config as ProjectConfig | undefined),
+  };
 }
 
 /**
@@ -79,8 +79,8 @@ export async function loadProject(
 export async function loadProjectConfig(
   projectRoot: string,
 ): Promise<ProjectConfig> {
-  const p = path.join(projectRoot, PROJECT_FILENAME);
-  const raw = await fs.readFile(p, "utf8");
+  const filePath = path.join(projectRoot, PROJECT_FILENAME);
+  const raw = await fs.readFile(filePath, "utf8");
   const parsed = JSON.parse(raw) as { config?: unknown } | undefined;
 
   const cfg = parsed?.config ?? {};

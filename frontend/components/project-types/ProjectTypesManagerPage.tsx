@@ -10,7 +10,7 @@
  * - Resolve dark/light mode from selected project metadata.
  */
 
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useAppSelector from "../../src/store/hooks";
 import {
@@ -53,18 +53,12 @@ export default function ProjectTypesManagerPage({
   const router = useRouter();
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
-  const selectedProjectId = useAppSelector((state) =>
-    selectSelectedProjectId(state),
-  );
   const selectedProject = useAppSelector((state) => {
-    if (!selectedProjectId) {
-      return null;
-    }
-
-    return selectProject(state, selectedProjectId);
+    const id = selectSelectedProjectId(state);
+    return id ? selectProject(state, id) : null;
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     const metadata = selectedProject?.metadata as
       | Record<string, MetadataValue>
       | undefined;
@@ -95,12 +89,10 @@ export default function ProjectTypesManagerPage({
       onClose();
       return;
     }
-
     if (window.history.length > 1) {
       router.back();
       return;
     }
-
     router.push("/");
   };
 

@@ -5,10 +5,6 @@
  * project management surfaces.
  */
 
-interface ApiErrorResponse {
-  error?: unknown;
-}
-
 interface BaseProjectAction {
   projectId: string;
   projectPath?: string;
@@ -24,16 +20,10 @@ interface DeleteProjectAction extends BaseProjectAction {
 }
 
 function getApiErrorMessage(errorBody: unknown, fallback: string): string {
-  if (!errorBody || typeof errorBody !== "object") {
-    return fallback;
-  }
-
-  const error = (errorBody as ApiErrorResponse).error;
-  if (typeof error === "string" && error.trim().length > 0) {
-    return error;
-  }
-
-  return fallback;
+  const error = (errorBody as Record<string, unknown>)?.error;
+  return typeof error === "string" && error.trim().length > 0
+    ? error
+    : fallback;
 }
 
 function requireProjectPath(
@@ -67,9 +57,7 @@ export const projectActionsController = {
       "Project path is required to rename project.",
     );
 
-    if (onRename) {
-      onRename(projectId, newName);
-    }
+    onRename?.(projectId, newName);
 
     const response = await fetch("/api/project/rename", {
       method: "POST",
@@ -95,9 +83,7 @@ export const projectActionsController = {
       "Project path is required to delete project.",
     );
 
-    if (onDelete) {
-      onDelete(projectId);
-    }
+    onDelete?.(projectId);
 
     const response = await fetch("/api/project/delete", {
       method: "POST",

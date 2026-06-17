@@ -6,7 +6,7 @@
  * Applies app-wide appearance preferences to the document root at runtime.
  */
 
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import {
   APPEARANCE_CHANGED_EVENT,
   getStoredGlobalAppearancePreferences,
@@ -48,14 +48,16 @@ export default function AppearanceRuntime(): JSX.Element | null {
   useEffect(() => {
     applyAppearanceToDocument();
 
-    const onAppearanceChanged = () => {
-      applyAppearanceToDocument();
-    };
-
-    window.addEventListener(APPEARANCE_CHANGED_EVENT, onAppearanceChanged);
+    window.addEventListener(
+      APPEARANCE_CHANGED_EVENT,
+      applyAppearanceToDocument,
+    );
 
     return () => {
-      window.removeEventListener(APPEARANCE_CHANGED_EVENT, onAppearanceChanged);
+      window.removeEventListener(
+        APPEARANCE_CHANGED_EVENT,
+        applyAppearanceToDocument,
+      );
     };
   }, []);
 

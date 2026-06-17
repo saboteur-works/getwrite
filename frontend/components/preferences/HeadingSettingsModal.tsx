@@ -41,20 +41,9 @@ function toFontSizeInputValue(fontSize: string | undefined): string {
 }
 
 function toFontWeightSelectValue(fontWeight: string | undefined): string {
-  if (!fontWeight) {
-    return "";
-  }
-
-  const normalizedWeight = fontWeight.trim().toLowerCase();
-
-  if (normalizedWeight === "bold" || normalizedWeight === "700") {
-    return "700";
-  }
-
-  if (normalizedWeight === "normal" || normalizedWeight === "400") {
-    return "400";
-  }
-
+  const normalized = fontWeight?.trim().toLowerCase();
+  if (normalized === "bold" || normalized === "700") return "700";
+  if (normalized === "normal" || normalized === "400") return "400";
   return "";
 }
 
