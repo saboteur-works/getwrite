@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.54](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.53...getwrite-v0.2.54) (2026-06-17)
+
+
+### Bug Fixes
+
+* ensure compile/export output reflects latest content ([#140](https://github.com/saboteur-works/getwrite/issues/140)) ([4439652](https://github.com/saboteur-works/getwrite/commit/4439652870a064e3bf70bbccd4ce7abfa7d8ca8b))
+
 ## [0.2.53](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.52...getwrite-v0.2.53) (2026-06-17)
 
 
