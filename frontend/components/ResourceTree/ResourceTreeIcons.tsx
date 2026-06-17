@@ -47,15 +47,13 @@ export function ChevronRight({
   );
 }
 
+type IconProps = { className?: string };
+
 /**
  * Icon for text resources. Re-exports Lucide's FileText icon.
  * @param className - CSS class(es) for sizing and styling. Default: w-4 h-4
  */
-export function FileTextIcon({
-  className = "w-4 h-4",
-}: {
-  className?: string;
-}) {
+export function FileTextIcon({ className = "w-4 h-4" }: IconProps) {
   return <FileText className={className} aria-hidden />;
 }
 
@@ -63,7 +61,7 @@ export function FileTextIcon({
  * Icon for image resources. Re-exports Lucide's Image icon.
  * @param className - CSS class(es) for sizing and styling. Default: w-4 h-4
  */
-export function ImageIcon({ className = "w-4 h-4" }: { className?: string }) {
+export function ImageIcon({ className = "w-4 h-4" }: IconProps) {
   return <Image className={className} aria-hidden />;
 }
 
@@ -71,7 +69,7 @@ export function ImageIcon({ className = "w-4 h-4" }: { className?: string }) {
  * Icon for audio resources. Re-exports Lucide's Music icon.
  * @param className - CSS class(es) for sizing and styling. Default: w-4 h-4
  */
-export function AudioIcon({ className = "w-4 h-4" }: { className?: string }) {
+export function AudioIcon({ className = "w-4 h-4" }: IconProps) {
   return <Music className={className} aria-hidden />;
 }
 
@@ -79,13 +77,13 @@ export function AudioIcon({ className = "w-4 h-4" }: { className?: string }) {
  * Icon for folder resources. Re-exports Lucide's Folder icon.
  * @param className - CSS class(es) for sizing and styling. Default: w-4 h-4
  */
-export function FolderIcon({ className = "w-4 h-4" }: { className?: string }) {
+export function FolderIcon({ className = "w-4 h-4" }: IconProps) {
   return <Folder className={className} aria-hidden />;
 }
 
 /**
  * @deprecated Use FileTextIcon instead. Kept for backward compatibility.
  */
-export function FileIcon({ className = "w-4 h-4" }: { className?: string }) {
+export function FileIcon({ className = "w-4 h-4" }: IconProps) {
   return <FileTextIcon className={className} />;
 }

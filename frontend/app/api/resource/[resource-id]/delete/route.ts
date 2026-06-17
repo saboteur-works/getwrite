@@ -10,13 +10,12 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
 ) {
-  const resourceId = await (await params)["resource-id"];
+  const resourceId = (await params)["resource-id"];
   const body = await req.json();
   const { projectRoot } = body as { projectRoot: string };
 
   const sidecar = await readSidecar(projectRoot, resourceId);
-  const deletedName =
-    typeof sidecar?.["name"] === "string" ? sidecar["name"] : "";
+  const deletedName = typeof sidecar?.name === "string" ? sidecar.name : "";
 
   let resourceRefKeys: string[] = [];
   try {

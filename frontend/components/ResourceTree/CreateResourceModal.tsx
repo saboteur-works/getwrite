@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, FilePlus2, Upload } from "lucide-react";
 import type {
   ResourceType as CanonicalResourceType,
@@ -67,7 +67,7 @@ export default function CreateResourceModal({
     parentId,
   );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -103,7 +103,7 @@ export default function CreateResourceModal({
         return;
       }
       if (!onUpload) return;
-      setUploading(true);
+      setIsUploading(true);
       setUploadError(null);
       try {
         await onUpload(selectedFile, {
@@ -118,7 +118,7 @@ export default function CreateResourceModal({
             : "Upload failed. Please try again.",
         );
       } finally {
-        setUploading(false);
+        setIsUploading(false);
       }
       return;
     }
@@ -239,16 +239,20 @@ export default function CreateResourceModal({
           </div>
 
           <div className="project-modal-actions">
-            <Button variant="secondary" onClick={onClose} disabled={uploading}>
+            <Button
+              variant="secondary"
+              onClick={onClose}
+              disabled={isUploading}
+            >
               <X size={14} aria-hidden="true" />
               Cancel
             </Button>
             <Button
               variant="outline"
               onClick={handleCreate}
-              disabled={uploading}
+              disabled={isUploading}
             >
-              {uploading ? (
+              {isUploading ? (
                 <>
                   <Upload size={14} aria-hidden="true" />
                   Uploading…

@@ -33,69 +33,35 @@ import type { Revision } from "../../../../../src/lib/models/types";
 import { persistResourceContent } from "../../../../../src/lib/tiptap-utils";
 import type { TipTapDocument } from "../../../../../src/lib/models";
 
-/**
- * Shape of the response returned by the GET handler.
- */
 interface GetRevisionResponse {
-  /** Revision metadata. */
   revision: Revision;
-  /** Raw revision content as a UTF-8 string. */
   content: string;
 }
 
 /**
- * Expected shape of the POST request body.
- *
  * When `content` is omitted the handler reads the resource's current saved
  * content from the filesystem.
  */
 interface SaveRevisionBody {
-  /** Absolute path to the project root on the server filesystem. */
   projectPath: string;
-  /**
-   * Revision content to persist in `content.bin`.
-   * When omitted, the current resource content is read from the filesystem.
-   */
   content?: string;
-  /** Optional author identifier or display name stored in metadata. */
   author?: string;
-  /** When true, marks the new revision as canonical. Defaults to false. */
   isCanonical?: boolean;
-  /** Optional arbitrary metadata to persist with the revision (e.g. user-provided name). */
   metadata?: Record<string, unknown>;
 }
 
-/**
- * Expected shape of the DELETE request body.
- */
 interface DeleteRevisionBody {
-  /** Absolute path to the project root on the server filesystem. */
   projectPath: string;
-  /** Revision UUID to delete. */
   revisionId: string;
 }
 
-/**
- * Expected shape of the PATCH request body.
- */
 interface SetCanonicalRevisionBody {
-  /** Absolute path to the project root on the server filesystem. */
   projectPath: string;
-  /** Revision UUID to mark canonical. */
   revisionId: string;
   /** Optional revision content to persist in-place for canonical revisions. */
   content?: string;
 }
 
-/**
- * Finds a revision by UUID within a resource's stored revisions.
- *
- * @param projectPath - Absolute path to the project root.
- * @param resourceId - Resource UUID.
- * @param revisionId - Revision UUID to locate.
- * @returns Matching revision metadata.
- * @throws {Error} If the revision is not found.
- */
 async function findRevisionById(
   projectPath: string,
   resourceId: string,
@@ -103,21 +69,10 @@ async function findRevisionById(
 ): Promise<Revision> {
   const revisions = await listRevisions(projectPath, resourceId);
   const match = revisions.find((r) => r.id === revisionId);
-  if (!match) {
-    throw new Error(`Revision ${revisionId} not found.`);
-  }
+  if (!match) throw new Error(`Revision ${revisionId} not found.`);
   return match;
 }
 
-/**
- * Reads the `content.bin` file for a specific revision.
- *
- * @param projectPath - Absolute path to the project root.
- * @param resourceId - Resource UUID.
- * @param versionNumber - Revision version number.
- * @returns Raw content as a UTF-8 string.
- * @throws {Error} If `content.bin` cannot be read.
- */
 async function readRevisionContent(
   projectPath: string,
   resourceId: string,
@@ -130,14 +85,6 @@ async function readRevisionContent(
   return fs.readFile(contentPath, "utf8");
 }
 
-/**
- * Writes `content.bin` for a specific revision version.
- *
- * @param projectPath - Absolute path to the project root.
- * @param resourceId - Resource UUID.
- * @param versionNumber - Revision version number.
- * @param content - Raw content string to persist.
- */
 async function writeRevisionContent(
   projectPath: string,
   resourceId: string,
@@ -163,10 +110,6 @@ async function writeRevisionContent(
  *
  * Silently no-ops when the content is not a TipTap document (e.g. a legacy
  * plain-text revision); the revision write remains the source of truth then.
- *
- * @param projectPath - Absolute path to the project root.
- * @param resourceId - Resource UUID.
- * @param content - Serialized canonical revision content.
  */
 async function syncDerivedResourceContent(
   projectPath: string,
@@ -200,11 +143,6 @@ async function syncDerivedResourceContent(
  *
  * Checks for `content.tiptap.json` first, then falls back to `content.txt`.
  * Returns the raw file contents as a string, or throws if neither file exists.
- *
- * @param projectPath - Absolute path to the project root.
- * @param resourceId - Resource UUID.
- * @returns Raw content string.
- * @throws {Error} If no readable content file is found.
  */
 async function readCurrentResourceContent(
   projectPath: string,
@@ -234,10 +172,6 @@ async function readCurrentResourceContent(
  *
  * Returns 1 when no prior revisions exist, otherwise increments the
  * highest existing version number by 1.
- *
- * @param projectPath - Absolute path to the project root.
- * @param resourceId - Resource UUID.
- * @returns The next version number to assign.
  */
 async function resolveNextVersionNumber(
   projectPath: string,
@@ -249,54 +183,6 @@ async function resolveNextVersionNumber(
   return highest + 1;
 }
 
-/**
- * Deletes a single revision by revision UUID.
- *
- * @param projectPath - Absolute path to the project root.
- * @param resourceId - Resource UUID.
- * @param revisionId - Revision UUID.
- * @returns Deleted revision metadata.
- * @throws {Error} If the revision does not exist or deletion fails.
- */
-async function deleteRevisionById(
-  projectPath: string,
-  resourceId: string,
-  revisionId: string,
-) {
-  const revisions = await listRevisions(projectPath, resourceId);
-  const revision = revisions.find((entry) => entry.id === revisionId);
-
-  if (!revision) {
-    throw new Error(`Revision ${revisionId} not found.`);
-  }
-
-  const directory = revisionDir(
-    projectPath,
-    resourceId,
-    revision.versionNumber,
-  );
-  await fs.rm(directory, { recursive: true, force: true });
-
-  return revision;
-}
-
-/**
- * GET handler — retrieves a revision's metadata and content by revision UUID.
- *
- * Query parameters:
- * - `projectPath` (required) — absolute path to the project root.
- * - `revisionId`  (required) — UUID of the revision to retrieve.
- *
- * Responses:
- * - `200 OK` with `{ revision, content }` on success.
- * - `400 Bad Request` when required query params are missing.
- * - `404 Not Found` when the revision cannot be found.
- * - `500 Internal Server Error` when reading content fails.
- *
- * @param req - Incoming Next.js request.
- * @param context - Route context containing the `resource-id` path param.
- * @returns JSON response containing revision metadata and content.
- */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
@@ -327,13 +213,11 @@ export async function GET(
       resourceId,
       revisionId,
     );
-
     const content = await readRevisionContent(
       projectPath,
       resourceId,
       revision.versionNumber,
     );
-
     const responseBody: GetRevisionResponse = { revision, content };
     return NextResponse.json(responseBody, { status: 200 });
   } catch (error) {
@@ -344,20 +228,6 @@ export async function GET(
   }
 }
 
-/**
- * POST handler — saves a new revision for the given resource.
- *
- * Request body: {@link SaveRevisionBody}
- *
- * Responses:
- * - `201 Created` with the persisted `Revision` metadata on success.
- * - `400 Bad Request` when required fields are missing.
- * - `500 Internal Server Error` when the write fails.
- *
- * @param req - Incoming Next.js request.
- * @param context - Route context containing the `resource-id` path param.
- * @returns JSON response containing the saved revision or an error message.
- */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
@@ -416,21 +286,6 @@ export async function POST(
   }
 }
 
-/**
- * DELETE handler — removes a persisted revision for the given resource.
- *
- * Request body: {@link DeleteRevisionBody}
- *
- * Responses:
- * - `200 OK` with the deleted `Revision` metadata on success.
- * - `400 Bad Request` when required fields are missing.
- * - `404 Not Found` when the revision cannot be found.
- * - `500 Internal Server Error` when deletion fails.
- *
- * @param req - Incoming Next.js request.
- * @param context - Route context containing the `resource-id` path param.
- * @returns JSON response containing the deleted revision or an error message.
- */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
@@ -481,13 +336,14 @@ export async function DELETE(
       );
     }
 
-    const deletedRevision = await deleteRevisionById(
+    const directory = revisionDir(
       projectPath,
       resourceId,
-      revisionId,
+      target.versionNumber,
     );
+    await fs.rm(directory, { recursive: true, force: true });
 
-    return NextResponse.json(deletedRevision, { status: 200 });
+    return NextResponse.json(target, { status: 200 });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to delete revision.";
@@ -496,21 +352,6 @@ export async function DELETE(
   }
 }
 
-/**
- * PATCH handler — marks an existing revision as canonical.
- *
- * Request body: {@link SetCanonicalRevisionBody}
- *
- * Responses:
- * - `200 OK` with the updated canonical `Revision` metadata on success.
- * - `400 Bad Request` when required fields are missing.
- * - `404 Not Found` when the revision cannot be found.
- * - `500 Internal Server Error` when update fails.
- *
- * @param req - Incoming Next.js request.
- * @param context - Route context containing the `resource-id` path param.
- * @returns JSON response containing the updated revision or an error message.
- */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },

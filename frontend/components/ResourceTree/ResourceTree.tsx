@@ -36,7 +36,6 @@ import {
   ItemInstance,
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
-import { AnyResource } from "../../src/lib/models";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
   selectFoldersAndResources,
@@ -101,6 +100,40 @@ const customClickBehavior: FeatureImplementation = {
 };
 
 /**
+ * Returns the appropriate icon element for a tree node based on resource type.
+ *
+ * - Folders receive a `FolderIcon`
+ * - Text resources receive a `FileTextIcon`
+ * - Image resources receive an `ImageIcon`
+ * - Audio resources receive an `AudioIcon`
+ */
+function renderResourceIcon(item: ItemInstance<ResourceItemData>) {
+  switch (item.getItemData().resourceType) {
+    case "folder":
+      return <FolderIcon />;
+    case "text":
+      return <FileTextIcon />;
+    case "image":
+      return <ImageIcon />;
+    case "audio":
+      return <AudioIcon />;
+    default:
+      return <FileTextIcon />;
+  }
+}
+
+/**
+ * Returns the expand/collapse chevron icon for a folder node.
+ *
+ * Renders `ChevronDown` when the folder is expanded and `ChevronRight`
+ * when it is collapsed, giving the user a visual affordance for the
+ * current state.
+ */
+function renderExpandableStateIcon(item: ItemInstance<ResourceItemData>) {
+  return item.isExpanded() ? <ChevronDown /> : <ChevronRight />;
+}
+
+/**
  * Props accepted by the {@link ResourceTree} component.
  */
 interface ResourceTreeProps {
@@ -151,9 +184,10 @@ export default function ResourceTree({
     (s) => s.resources.selectedResourceId,
   );
 
-  const transformedResourceData = useMemo(() => {
-    return buildResourceTree(rawResources);
-  }, [rawResources]);
+  const transformedResourceData = useMemo(
+    () => buildResourceTree(rawResources),
+    [rawResources],
+  );
 
   const onDrop = useResourceReorder({
     dispatch,
@@ -191,53 +225,9 @@ export default function ResourceTree({
     }
   };
 
-  /**
-   * Returns the appropriate icon element for a tree node based on resource type.
-   *
-   * - Folders receive a `FolderIcon`
-   * - Text resources receive a `FileTextIcon`
-   * - Image resources receive an `ImageIcon`
-   * - Audio resources receive an `AudioIcon`
-   *
-   * @param item - The tree item to render an icon for.
-   * @returns A React icon element matching the resource type.
-   */
-  const renderResourceIcon = (item: ItemInstance<ResourceItemData>) => {
-    const resourceType = item.getItemData().resourceType;
-
-    switch (resourceType) {
-      case "folder":
-        return <FolderIcon />;
-      case "text":
-        return <FileTextIcon />;
-      case "image":
-        return <ImageIcon />;
-      case "audio":
-        return <AudioIcon />;
-      default:
-        return <FileTextIcon />;
-    }
-  };
-
-  /**
-   * Returns the expand/collapse chevron icon for a folder node.
-   *
-   * Renders `ChevronDown` when the folder is expanded and `ChevronRight`
-   * when it is collapsed, giving the user a visual affordance for the
-   * current state.
-   *
-   * @param item - The folder item to render an expander icon for.
-   * @returns A React icon element representing the collapsed/expanded state.
-   */
-  const renderExpandableStateIcon = (item: ItemInstance<ResourceItemData>) => {
-    return item.isExpanded() ? <ChevronDown /> : <ChevronRight />;
-  };
-
   const tree = useTree<ResourceItemData>({
     rootItemId: ROOT_ITEM_ID,
-    getItemName: (item) => {
-      return item.getItemData().name;
-    },
+    getItemName: (item) => item.getItemData().name,
     isItemFolder: (item) => item.getItemData().isFolder,
     dataLoader: {
       getItem: (itemId) =>
@@ -250,17 +240,12 @@ export default function ResourceTree({
           orderIndex: 0,
           resourceType: "text" as const,
         },
-      getChildren: (itemId) => {
-        return transformedResourceData[itemId].children.sort((a, b) => {
+      getChildren: (itemId) =>
+        transformedResourceData[itemId].children.sort((a, b) => {
           const aData = transformedResourceData[a];
           const bData = transformedResourceData[b];
-
-          return (
-            (transformedResourceData[aData.resourceId]?.orderIndex || 0) -
-            (transformedResourceData[bData.resourceId]?.orderIndex || 0)
-          );
-        });
-      },
+          return (aData?.orderIndex ?? 0) - (bData?.orderIndex ?? 0);
+        }),
     },
     indent: INDENTATION_WIDTH,
     onPrimaryAction: (item) => {
@@ -281,6 +266,7 @@ export default function ResourceTree({
       dragAndDropFeature,
     ],
   });
+
   useEffect(() => {
     tree.rebuildTree();
   }, [transformedResourceData]);
@@ -323,16 +309,14 @@ export default function ResourceTree({
             <button
               {...item.getProps()}
               key={item.getId()}
-              onClick={(e) => {
-                handleClick(e, item);
-              }}
+              onClick={(e) => handleClick(e, item)}
               className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""} ${item.isFolder() ? "text-gw-label text-gw-secondary" : ""}`}
             >
               <div
                 className={`resource-tree-item-row ${item.isDragTarget() ? "resource-tree-item-row--drag-target" : ""}`}
               >
                 {renderResourceIcon(item)}
-                <div className={`truncate`}>{item.getItemName()}</div>
+                <div className="truncate">{item.getItemName()}</div>
               </div>
             </button>
           </div>

@@ -80,7 +80,7 @@ function resolveFolderDir(projectPath: string, folder: Folder): string {
  * Type guard for text resources.
  */
 function isTextResource(resource: AnyResource): resource is TextResource {
-  return resource.type === "text" && !isFolderResource(resource);
+  return resource.type === "text";
 }
 
 /**
@@ -111,12 +111,6 @@ export async function writeResourceToFile(
   resource: AnyResource,
   options?: WriteResourceOptions,
 ): Promise<AnyResource> {
-  const base = path.join(
-    projectPath,
-    resource.type === "folder" ? "folders" : "resources",
-    resource.id,
-  );
-
   if (isFolderResource(resource)) {
     const dir = resolveFolderDir(projectPath, resource);
     if (!fs.existsSync(dir)) {
@@ -129,6 +123,8 @@ export async function writeResourceToFile(
     );
     return resource;
   }
+
+  const base = path.join(projectPath, "resources", resource.id);
 
   if (isTextResource(resource)) {
     if (!fs.existsSync(base)) {
@@ -215,24 +211,20 @@ export const getLocalResources = (projectPath: string): AnyResource[] => {
     resources.push(validateResource(metaData));
   }
 
-  for (let i = 0; i < resources.length; i++) {
-    const r = resources[i];
-    if (r.type === "text" && (r as TextResource).wordCount === undefined) {
-      const contentPath = path.join(
-        projectPath,
-        "resources",
-        r.id,
-        "content.txt",
-      );
-      if (fs.existsSync(contentPath)) {
-        const plain = fs.readFileSync(contentPath, "utf-8");
-        const wordCount = countWords(plain);
-        resources[i] = { ...r, wordCount } as TextResource;
-      }
+  return resources.map((r) => {
+    if (r.type !== "text" || (r as TextResource).wordCount !== undefined) {
+      return r;
     }
-  }
-
-  return resources;
+    const contentPath = path.join(
+      projectPath,
+      "resources",
+      r.id,
+      "content.txt",
+    );
+    if (!fs.existsSync(contentPath)) return r;
+    const plain = fs.readFileSync(contentPath, "utf-8");
+    return { ...r, wordCount: countWords(plain) } as TextResource;
+  });
 };
 
 /**

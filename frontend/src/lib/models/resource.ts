@@ -8,6 +8,7 @@
  * - Re-exporting stable persistence APIs from `resource-persistence`.
  * - Re-exporting template inspection/validation helpers from `template-service`.
  */
+// Named imports required to assemble the default export object below.
 import {
   createAudioResource,
   createImageResource,

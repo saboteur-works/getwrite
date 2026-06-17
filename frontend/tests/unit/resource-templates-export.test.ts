@@ -32,13 +32,13 @@ test("T033: export/import template roundtrip", async () => {
     const tplFile = path.join(tmp, "meta", "templates", `${tpl.id}.json`);
     await fs.unlink(tplFile);
     // ensure removed
-    let exists = true;
+    let isExisting = true;
     try {
       await fs.access(tplFile);
     } catch (_) {
-      exists = false;
+      isExisting = false;
     }
-    expect(exists).toBe(false);
+    expect(isExisting).toBe(false);
 
     // import back
     const imported = await importResourceTemplates(tmp, out);

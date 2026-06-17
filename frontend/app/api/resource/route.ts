@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import {
   createResourceOfType,
   CreateResourceOpts,
@@ -6,14 +7,11 @@ import {
 import { loadProjectConfig } from "../../../src/lib/models/project-config";
 import { writeRevision } from "../../../src/lib/models/revision";
 import { resolveInitialRevisionName } from "../../../src/lib/models/resource-revision";
-import { NextResponse } from "next/dist/server/web/spec-extension/response";
 import type { TextResource } from "../../../src/lib/models/types";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-
-    const { projectPath, resourceData } = body as {
+    const { projectPath, resourceData } = (await req.json()) as {
       projectPath: string;
       resourceData: CreateResourceOpts;
     };

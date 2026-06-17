@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -66,7 +66,7 @@ function TreeNode({
   onSelect,
   depth,
 }: TreeNodeProps): JSX.Element {
-  const [expanded, setExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const hasChildren = node.children.length > 0;
   const isSelected = selectedId === node.folder.id;
 
@@ -86,14 +86,14 @@ function TreeNode({
         {hasChildren ? (
           <span
             role="button"
-            aria-label={expanded ? "Collapse" : "Expand"}
+            aria-label={isExpanded ? "Collapse" : "Expand"}
             onClick={(e) => {
               e.stopPropagation();
-              setExpanded((v) => !v);
+              setIsExpanded((v) => !v);
             }}
             className="shrink-0 text-gw-secondary hover:text-gw-primary"
           >
-            {expanded ? (
+            {isExpanded ? (
               <ChevronDown size={12} strokeWidth={1.5} />
             ) : (
               <ChevronRight size={12} strokeWidth={1.5} />
@@ -105,7 +105,7 @@ function TreeNode({
         <FolderIcon size={12} strokeWidth={1.5} className="shrink-0" />
         <span className="truncate">{node.folder.name}</span>
       </button>
-      {hasChildren && expanded && (
+      {hasChildren && isExpanded && (
         <div>
           {node.children.map((child) => (
             <TreeNode
@@ -142,7 +142,7 @@ export default function FolderTreePicker({
   rootLabel = "Project Root",
   "aria-label": ariaLabel,
 }: FolderTreePickerProps): JSX.Element {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const tree = buildFolderTree(folders);
@@ -150,7 +150,7 @@ export default function FolderTreePicker({
 
   const handleSelect = (id: string | undefined) => {
     onChange(id);
-    setOpen(false);
+    setIsOpen(false);
   };
 
   // When nested inside a modal Dialog, react-remove-scroll blocks wheel events
@@ -162,11 +162,11 @@ export default function FolderTreePicker({
         triggerRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null,
       );
     }
-    setOpen(next);
+    setIsOpen(next);
   };
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           ref={triggerRef}
@@ -174,7 +174,7 @@ export default function FolderTreePicker({
           type="button"
           aria-label={ariaLabel}
           aria-haspopup="listbox"
-          aria-expanded={open}
+          aria-expanded={isOpen}
           className={cn(
             "flex w-full items-center justify-between border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 hover:border-gw-border-md focus-visible:border-gw-border-md",
             className,
@@ -193,7 +193,7 @@ export default function FolderTreePicker({
             strokeWidth={1.5}
             className={cn(
               "shrink-0 text-gw-secondary transition-transform duration-150",
-              open && "rotate-180",
+              isOpen && "rotate-180",
             )}
           />
         </button>

@@ -43,32 +43,29 @@ export function useResourceReorder({
   ) {
     transformedResourceData[item.getId()].children = newChildren;
 
-    const updateData = newChildren.reduce(
-      (previous, childId) => {
-        const childData = rawResources.find((resource) => {
-          return resource.id === childId;
-        });
+    const reorderPayload = newChildren.reduce(
+      (acc, childId) => {
+        const childData = rawResources.find((r) => r.id === childId);
 
         if (!childData) {
           console.error(
             `Resource with ID ${childId} not found in raw resources.`,
           );
-          return previous;
+          return acc;
         }
 
-        const newOrderIndex =
-          previous.folderOrder.length + previous.resourceOrder.length;
+        const newOrderIndex = acc.folderOrder.length + acc.resourceOrder.length;
 
         if (childData.type === "folder") {
           const newParentId = item.getId() === rootItemId ? null : item.getId();
-          previous.folderOrder.push({
+          acc.folderOrder.push({
             id: childId,
             orderIndex: newOrderIndex,
             parentId: newParentId,
             folderId: newParentId,
           } as Partial<Folder> & { id: string });
         } else {
-          previous.resourceOrder.push({
+          acc.resourceOrder.push({
             id: childId,
             orderIndex: newOrderIndex,
             folderId: item.getId() === rootItemId ? null : item.getId(),
@@ -77,7 +74,7 @@ export function useResourceReorder({
 
         transformedResourceData[childId].orderIndex = newOrderIndex;
 
-        return previous;
+        return acc;
       },
       {
         folderOrder: [] as (Partial<Folder> & { id: string })[],
@@ -85,12 +82,12 @@ export function useResourceReorder({
       },
     );
 
-    if (updateData.folderOrder.length > 0) {
-      dispatch(updateFolders(updateData.folderOrder));
+    if (reorderPayload.folderOrder.length > 0) {
+      dispatch(updateFolders(reorderPayload.folderOrder));
     }
 
-    if (updateData.resourceOrder.length > 0) {
-      dispatch(updateResources(updateData.resourceOrder));
+    if (reorderPayload.resourceOrder.length > 0) {
+      dispatch(updateResources(reorderPayload.resourceOrder));
     }
 
     if (!currentProject) {
@@ -101,8 +98,8 @@ export function useResourceReorder({
       persistReorder({
         projectId: currentProject.id,
         projectRoot: currentProject.rootPath,
-        folderOrder: updateData.folderOrder,
-        resourceOrder: updateData.resourceOrder,
+        folderOrder: reorderPayload.folderOrder,
+        resourceOrder: reorderPayload.resourceOrder,
       }),
     );
   }

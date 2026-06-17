@@ -1,5 +1,5 @@
 import Schemas from "./schemas";
-import type { MetadataValue, ResourceType } from "./types";
+import type { ResourceType } from "./types";
 import type { ResourceTemplate } from "./resource-templates";
 
 export interface TemplateInspection {
@@ -18,17 +18,13 @@ function collectPlaceholdersFromString(
   input: string,
   collector: Set<string>,
 ): void {
-  const placeholderPattern = /{{\s*([A-Za-z0-9_]+)\s*}}/g;
-  let match: RegExpExecArray | null = placeholderPattern.exec(input);
-
-  while (match) {
+  for (const match of input.matchAll(/{{\s*([A-Za-z0-9_]+)\s*}}/g)) {
     collector.add(match[1]);
-    match = placeholderPattern.exec(input);
   }
 }
 
 function scanValueForPlaceholders(
-  value: MetadataValue | string[] | number[] | boolean[] | unknown,
+  value: unknown,
   collector: Set<string>,
 ): void {
   if (typeof value === "string") {
@@ -47,8 +43,7 @@ function scanValueForPlaceholders(
     return;
   }
 
-  const record = value as Record<string, unknown>;
-  for (const nestedValue of Object.values(record)) {
+  for (const nestedValue of Object.values(value as Record<string, unknown>)) {
     scanValueForPlaceholders(nestedValue, collector);
   }
 }
@@ -70,9 +65,7 @@ export function inspectTemplate(
     name: template.name,
     type: template.type,
     placeholders: Array.from(placeholders),
-    metadataKeys: template.userMetadata
-      ? Object.keys(template.userMetadata)
-      : [],
+    metadataKeys: Object.keys(template.userMetadata ?? {}),
   };
 }
 

@@ -1,6 +1,26 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+/** Returns immediate child directory paths of `dir`, ignoring `.DS_Store`. Returns `[]` if `dir` is missing or unreadable. */
+async function childDirs(dir: string): Promise<string[]> {
+  let names: string[];
+  try {
+    names = (await fs.readdir(dir)).filter((n) => n !== ".DS_Store");
+  } catch {
+    return [];
+  }
+  const dirs: string[] = [];
+  for (const name of names) {
+    const subDir = path.join(dir, name);
+    try {
+      if ((await fs.stat(subDir)).isDirectory()) dirs.push(subDir);
+    } catch {
+      // stat failed (race condition, broken symlink) — skip
+    }
+  }
+  return dirs;
+}
+
 /**
  * Recursively reads folder descriptors from a `folders/` directory tree.
  *
@@ -11,20 +31,7 @@ import path from "node:path";
  */
 export async function readFolderTree(dir: string): Promise<unknown[]> {
   const result: unknown[] = [];
-  let names: string[];
-  try {
-    names = (await fs.readdir(dir)).filter((n) => n !== ".DS_Store");
-  } catch {
-    return result;
-  }
-  for (const name of names) {
-    const subDir = path.join(dir, name);
-    try {
-      const stat = await fs.stat(subDir);
-      if (!stat.isDirectory()) continue;
-    } catch {
-      continue;
-    }
+  for (const subDir of await childDirs(dir)) {
     try {
       const data = await fs.readFile(path.join(subDir, "folder.json"), "utf-8");
       result.push(JSON.parse(data));
@@ -46,20 +53,7 @@ export async function renameFolderById(
   folderId: string,
   newName: string,
 ): Promise<Record<string, unknown> | null> {
-  let names: string[];
-  try {
-    names = (await fs.readdir(foldersDir)).filter((n) => n !== ".DS_Store");
-  } catch {
-    return null;
-  }
-  for (const name of names) {
-    const subDir = path.join(foldersDir, name);
-    try {
-      const stat = await fs.stat(subDir);
-      if (!stat.isDirectory()) continue;
-    } catch {
-      continue;
-    }
+  for (const subDir of await childDirs(foldersDir)) {
     const folderJsonPath = path.join(subDir, "folder.json");
     try {
       const raw = await fs.readFile(folderJsonPath, "utf-8");
@@ -76,7 +70,6 @@ export async function renameFolderById(
     } catch {
       // no folder.json or parse error — continue
     }
-    // recurse into subdirectories
     const nested = await renameFolderById(subDir, folderId, newName);
     if (nested !== null) return nested;
   }
