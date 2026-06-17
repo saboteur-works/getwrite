@@ -30,6 +30,8 @@ import {
   writeSidecar,
 } from "../../../../../src/lib/models/sidecar";
 import type { Revision } from "../../../../../src/lib/models/types";
+import { persistResourceContent } from "../../../../../src/lib/tiptap-utils";
+import type { TipTapDocument } from "../../../../../src/lib/models";
 
 /**
  * Shape of the response returned by the GET handler.
@@ -147,6 +149,50 @@ async function writeRevisionContent(
     "content.bin",
   );
   await fs.writeFile(contentPath, content, "utf8");
+}
+
+/**
+ * Best-effort sync of a resource's derived content files from a canonical
+ * revision's serialized TipTap content.
+ *
+ * Compile, export, and the search index read `resources/<id>/content.txt` and
+ * `content.tiptap.json` — not the revision's `content.bin`. Rewriting them here
+ * keeps them from drifting behind the canonical revision, so newly typed text
+ * reaches a compile without first remounting the editor (which previously was
+ * the only thing that re-synced these files).
+ *
+ * Silently no-ops when the content is not a TipTap document (e.g. a legacy
+ * plain-text revision); the revision write remains the source of truth then.
+ *
+ * @param projectPath - Absolute path to the project root.
+ * @param resourceId - Resource UUID.
+ * @param content - Serialized canonical revision content.
+ */
+async function syncDerivedResourceContent(
+  projectPath: string,
+  resourceId: string,
+  content: string,
+): Promise<void> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return;
+  }
+
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    (parsed as { type?: unknown }).type !== "doc"
+  ) {
+    return;
+  }
+
+  await persistResourceContent(
+    projectPath,
+    resourceId,
+    parsed as TipTapDocument,
+  );
 }
 
 /**
@@ -519,6 +565,10 @@ export async function PATCH(
         target.versionNumber,
         content,
       );
+
+      // Keep the derived content files (read by compile/export/search) in sync
+      // with the canonical revision so they cannot drift behind the editor.
+      await syncDerivedResourceContent(projectPath, resourceId, content);
 
       const updatedAt = new Date().toISOString();
       const existingSidecar = await readSidecar(projectPath, resourceId);
