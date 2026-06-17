@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import type {
   AnyResource,
   Folder,
@@ -141,6 +140,13 @@ export interface ShellModalCoordinatorProps {
   ) => Promise<void>;
 }
 
+/** Returns an onOpenChange handler that calls setter(false) when the dialog closes. */
+function onDialogClose(setter: (open: boolean) => void) {
+  return (open: boolean) => {
+    if (!open) setter(false);
+  };
+}
+
 export default function ShellModalCoordinator({
   contextAction,
   setContextAction,
@@ -185,7 +191,6 @@ export default function ShellModalCoordinator({
   resources,
   folders,
   project,
-  hasUnsavedEditorChanges,
   syncBlockers,
   onDeleteConfirm,
   onCloseProjectConfirm,
@@ -321,9 +326,7 @@ export default function ShellModalCoordinator({
 
       <Dialog
         open={isHeadingSettingsModalOpen}
-        onOpenChange={(open) => {
-          if (!open) setIsHeadingSettingsModalOpen(false);
-        }}
+        onOpenChange={onDialogClose(setIsHeadingSettingsModalOpen)}
       >
         <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
           <HeadingSettingsModal
@@ -336,9 +339,7 @@ export default function ShellModalCoordinator({
 
       <Dialog
         open={isBodySettingsModalOpen}
-        onOpenChange={(open) => {
-          if (!open) setIsBodySettingsModalOpen(false);
-        }}
+        onOpenChange={onDialogClose(setIsBodySettingsModalOpen)}
       >
         <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
           <BodySettingsModal
@@ -351,9 +352,7 @@ export default function ShellModalCoordinator({
 
       <Dialog
         open={isDefaultRevisionNameModalOpen}
-        onOpenChange={(open) => {
-          if (!open) setIsDefaultRevisionNameModalOpen(false);
-        }}
+        onOpenChange={onDialogClose(setIsDefaultRevisionNameModalOpen)}
       >
         <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
           <DefaultRevisionNameModal
@@ -366,9 +365,7 @@ export default function ShellModalCoordinator({
 
       <Dialog
         open={isPreferencesModalOpen}
-        onOpenChange={(open) => {
-          if (!open) setIsPreferencesModalOpen(false);
-        }}
+        onOpenChange={onDialogClose(setIsPreferencesModalOpen)}
       >
         <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
           <UserPreferencesPage
@@ -380,9 +377,7 @@ export default function ShellModalCoordinator({
 
       <Dialog
         open={isHelpModalOpen}
-        onOpenChange={(open) => {
-          if (!open) setIsHelpModalOpen(false);
-        }}
+        onOpenChange={onDialogClose(setIsHelpModalOpen)}
       >
         <DialogContent maxWidth="max-w-[860px]" aria-describedby={undefined}>
           <DialogTitle className="sr-only">Help</DialogTitle>
@@ -392,9 +387,7 @@ export default function ShellModalCoordinator({
 
       <Dialog
         open={isProjectTypesModalOpen}
-        onOpenChange={(open) => {
-          if (!open) setIsProjectTypesModalOpen(false);
-        }}
+        onOpenChange={onDialogClose(setIsProjectTypesModalOpen)}
       >
         <DialogContent maxWidth="max-w-[1200px]" aria-describedby={undefined}>
           {isProjectTypesLoading ? (
@@ -423,9 +416,7 @@ export default function ShellModalCoordinator({
 
       <Dialog
         open={isTagsManagerOpen && Boolean(projectPath)}
-        onOpenChange={(open) => {
-          if (!open) setIsTagsManagerOpen(false);
-        }}
+        onOpenChange={onDialogClose(setIsTagsManagerOpen)}
       >
         <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
           {projectPath ? (
@@ -439,16 +430,12 @@ export default function ShellModalCoordinator({
 
       <Dialog
         open={isSchemaManagerOpen}
-        onOpenChange={(open) => {
-          if (!open) setIsSchemaManagerOpen(false);
-        }}
+        onOpenChange={onDialogClose(setIsSchemaManagerOpen)}
       >
         <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
           <SchemaManager onClose={() => setIsSchemaManagerOpen(false)} />
         </DialogContent>
       </Dialog>
-
-      {hasUnsavedEditorChanges ? null : null}
     </>
   );
 }

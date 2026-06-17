@@ -50,7 +50,7 @@ async function loadProjectTypeTemplates(): Promise<ProjectTypeTemplateFile[]> {
     .map((entry) => entry.name)
     .sort((left, right) => left.localeCompare(right));
 
-  const templateFiles = await Promise.all(
+  return await Promise.all(
     jsonFileNames.map(async (fileName) => {
       const filePath = path.join(directoryPath, fileName);
       const rawContent = await fs.readFile(filePath, "utf8");
@@ -59,8 +59,6 @@ async function loadProjectTypeTemplates(): Promise<ProjectTypeTemplateFile[]> {
       return { fileName, definition: parsed };
     }),
   );
-
-  return templateFiles;
 }
 
 /**

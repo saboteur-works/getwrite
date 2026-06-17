@@ -108,7 +108,14 @@ import {
   selectDeletingRevisionId,
   selectFetchingRevisionId,
 } from "../../src/store/revisionsSlice";
-import type { SyncBlocker } from "./ShellModalCoordinator";
+import type {
+  SyncBlocker,
+  ShellContextActionState as ContextActionState,
+  ShellCreateModalState as CreateModalState,
+  ShellExportModalState as ExportModalState,
+  ShellCompileModalState as CompileModalState,
+  ShellRenameModalState as RenameModalState,
+} from "./ShellModalCoordinator";
 import {
   buildCompileTree,
   getDescendantLeafIds,
@@ -133,55 +140,6 @@ import { toastService } from "../../src/lib/toast-service";
  */
 export interface AppShellResourceActionOptions {
   [key: string]: unknown;
-}
-
-/**
- * Local modal state for context-menu destructive actions.
- */
-interface ContextActionState {
-  open: boolean;
-  action?: ResourceContextAction;
-  resourceId?: string;
-  resourceTitle?: string;
-}
-
-/**
- * Local modal state for resource creation flow.
- */
-interface CreateModalState {
-  open: boolean;
-  parentId?: string;
-  initialTitle?: string;
-  sourceResourceId?: string;
-}
-
-/**
- * Local modal state for export preview flow.
- */
-interface ExportModalState {
-  open: boolean;
-  resourceId?: string;
-  resourceTitle?: string;
-  resourceIds?: string[];
-  resourceNames?: string[];
-}
-
-/**
- * Local modal state for compile preview flow.
- */
-interface CompileModalState {
-  open: boolean;
-  resourceId?: string;
-  preview?: string;
-}
-
-/**
- * Local modal state for resource rename flow.
- */
-interface RenameModalState {
-  open: boolean;
-  resourceId?: string;
-  resourceTitle?: string;
 }
 
 /**
@@ -301,8 +259,8 @@ export default function AppShell({
   const [activeSmartFolderId, setActiveSmartFolderId] = useState<string | null>(
     null,
   );
-  const [queryBuilderOpen, setQueryBuilderOpen] = useState(false);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [isQueryBuilderOpen, setIsQueryBuilderOpen] = useState(false);
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [editingQuery, setEditingQuery] = useState<SavedQuery | null>(null);
   const combined = React.useMemo(() => {
     return [...(resources ?? []), ...(folders ?? [])];
@@ -316,7 +274,7 @@ export default function AppShell({
   const activeQueryIds = useAppSelector(selectActiveQueryIds);
   const isQueryEvaluating = useAppSelector(selectIsEvaluating);
   const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
-  const timelineViewEnabled = useAppSelector(selectTimelineViewEnabled);
+  const isTimelineViewEnabled = useAppSelector(selectTimelineViewEnabled);
   const savedQueriesList = useAppSelector(selectSavedQueriesList);
   const liveEditorConfig = useAppSelector(selectEditorConfig);
   const resolvedEditorConfig = useAppSelector(selectResolvedEditorConfig);
@@ -363,13 +321,13 @@ export default function AppShell({
     if (selectedResource?.type === "text") {
       setView((current) => (current === "organizer" ? "edit" : current));
       setActiveSmartFolderId(null);
-      setQueryBuilderOpen(false);
+      setIsQueryBuilderOpen(false);
     } else if (selectedResource?.type === "folder") {
       setView((current) =>
         current === "edit" || current === "diff" ? "organizer" : current,
       );
       setActiveSmartFolderId(null);
-      setQueryBuilderOpen(false);
+      setIsQueryBuilderOpen(false);
     } else if (
       selectedResource?.type === "image" ||
       selectedResource?.type === "audio"
@@ -382,19 +340,19 @@ export default function AppShell({
           : current,
       );
       setActiveSmartFolderId(null);
-      setQueryBuilderOpen(false);
+      setIsQueryBuilderOpen(false);
     }
   }, [selectedResource?.id, selectedResource?.type]);
 
   // When the Timeline view is turned off, never strand the user on the (now
   // hidden) Timeline view — fall back to a sensible default for the selection.
   useEffect(() => {
-    if (timelineViewEnabled) return;
+    if (isTimelineViewEnabled) return;
     setView((current) => {
       if (current !== "timeline") return current;
       return selectedResource?.type === "folder" ? "organizer" : "edit";
     });
-  }, [timelineViewEnabled, selectedResource?.type]);
+  }, [isTimelineViewEnabled, selectedResource?.type]);
 
   const isSavingRevision = useAppSelector(selectIsSavingRevision);
   const deletingRevisionId = useAppSelector(selectDeletingRevisionId);
@@ -581,13 +539,13 @@ export default function AppShell({
     const resourceId = renameModal.resourceId;
     const isFolder = (folders ?? []).some((f) => f.id === resourceId);
     try {
-      const ok = await renameResource(
+      const isOk = await renameResource(
         resourceId,
         project.rootPath,
         newName,
         isFolder ? "folder" : "resource",
       );
-      if (!ok) return;
+      if (!isOk) return;
       if (isFolder) {
         dispatch(updateFolder({ id: resourceId, name: newName }));
       } else {
@@ -673,14 +631,14 @@ export default function AppShell({
       qb.reset({ rawAst: query.definition as QueryAST });
     }
     setEditingQuery(query);
-    setQueryBuilderOpen(true);
+    setIsQueryBuilderOpen(true);
   };
 
   const handleNewQuery = (): void => {
     qb.reset();
     setEditingQuery(null);
     setActiveSmartFolderId(null);
-    setQueryBuilderOpen(true);
+    setIsQueryBuilderOpen(true);
     setView("data");
   };
 
@@ -699,7 +657,7 @@ export default function AppShell({
       qb.reset({ rawAst: query.definition as QueryAST });
     }
     setEditingQuery(query);
-    setQueryBuilderOpen(true);
+    setIsQueryBuilderOpen(true);
     setActiveSmartFolderId(query.id);
     setView("data");
     if (project?.id) {
@@ -717,17 +675,17 @@ export default function AppShell({
     dispatch(deleteQuery({ projectId: project.id, queryId }));
     if (activeSmartFolderId === queryId) {
       setActiveSmartFolderId(null);
-      setQueryBuilderOpen(false);
+      setIsQueryBuilderOpen(false);
       setEditingQuery(null);
     }
   };
 
   const handleSaveRequest = (): void => {
-    setSaveDialogOpen(true);
+    setIsSaveDialogOpen(true);
   };
 
   const handleQuerySaved = (savedId: string): void => {
-    setSaveDialogOpen(false);
+    setIsSaveDialogOpen(false);
     setEditingQuery(null);
     if (!project?.id) return;
     setActiveSmartFolderId(savedId);
@@ -908,6 +866,17 @@ export default function AppShell({
     }
     await saveRevisionSettings(project.rootPath, name);
   };
+
+  function triggerDownload(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div
@@ -1113,59 +1082,44 @@ export default function AppShell({
                             "PDF compiled with fallback fonts — IBM Plex fonts were unreachable",
                           );
                         }
-                        const blob = new Blob([result.arrayBuffer], {
-                          type: "application/pdf",
-                        });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = rawName
-                          ? rawName.endsWith(".pdf")
-                            ? rawName
-                            : `${rawName}.pdf`
-                          : result.filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
+                        triggerDownload(
+                          new Blob([result.arrayBuffer], {
+                            type: "application/pdf",
+                          }),
+                          rawName
+                            ? rawName.endsWith(".pdf")
+                              ? rawName
+                              : `${rawName}.pdf`
+                            : result.filename,
+                        );
                         return;
                       }
                       if (options.format === "docx") {
                         const result = await compileDocx(compileBody);
-                        const blob = new Blob([result.arrayBuffer], {
-                          type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = rawName
-                          ? rawName.endsWith(".docx")
-                            ? rawName
-                            : `${rawName}.docx`
-                          : result.filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
+                        triggerDownload(
+                          new Blob([result.arrayBuffer], {
+                            type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                          }),
+                          rawName
+                            ? rawName.endsWith(".docx")
+                              ? rawName
+                              : `${rawName}.docx`
+                            : result.filename,
+                        );
                         return;
                       }
                       if (options.format === "md") {
                         const result = await compileMarkdown(compileBody);
-                        const blob = new Blob([result.markdown], {
-                          type: "text/markdown;charset=utf-8",
-                        });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = rawName
-                          ? rawName.endsWith(".md")
-                            ? rawName
-                            : `${rawName}.md`
-                          : result.filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
+                        triggerDownload(
+                          new Blob([result.markdown], {
+                            type: "text/markdown;charset=utf-8",
+                          }),
+                          rawName
+                            ? rawName.endsWith(".md")
+                              ? rawName
+                              : `${rawName}.md`
+                            : result.filename,
+                        );
                         if (result.warnings.length > 0) {
                           toastService.info(
                             `Some formatting couldn't be represented in Markdown: ${result.warnings
@@ -1176,21 +1130,16 @@ export default function AppShell({
                         return;
                       }
                       const result = await compileText(compileBody);
-                      const blob = new Blob([result.text], {
-                        type: "text/plain;charset=utf-8",
-                      });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = rawName
-                        ? rawName.endsWith(".txt")
-                          ? rawName
-                          : `${rawName}.txt`
-                        : result.filename;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
+                      triggerDownload(
+                        new Blob([result.text], {
+                          type: "text/plain;charset=utf-8",
+                        }),
+                        rawName
+                          ? rawName.endsWith(".txt")
+                            ? rawName
+                            : `${rawName}.txt`
+                          : result.filename,
+                      );
                     } catch (err) {
                       toastService.error(
                         "Compile failed",
@@ -1244,7 +1193,7 @@ export default function AppShell({
                           }
                           // The Timeline tab is gated behind its own view toggle
                           // (separate from the timeline date fields).
-                          if (!timelineViewEnabled) {
+                          if (!isTimelineViewEnabled) {
                             disabled.push("timeline");
                           }
                           return Array.from(new Set(disabled));
@@ -1283,7 +1232,7 @@ export default function AppShell({
                               : liveResources;
                             return (
                               <>
-                                {queryBuilderOpen && (
+                                {isQueryBuilderOpen && (
                                   <div className="mb-4">
                                     <QueryBuilder
                                       groups={qb.groups}
@@ -1322,10 +1271,10 @@ export default function AppShell({
                                       onSaveRequest={handleSaveRequest}
                                     />
                                     <SaveQueryDialog
-                                      isOpen={saveDialogOpen}
+                                      isOpen={isSaveDialogOpen}
                                       definition={currentAst}
                                       projectId={project?.id ?? ""}
-                                      onClose={() => setSaveDialogOpen(false)}
+                                      onClose={() => setIsSaveDialogOpen(false)}
                                       onSaved={handleQuerySaved}
                                       existingQuery={editingQuery ?? undefined}
                                     />
@@ -1350,7 +1299,7 @@ export default function AppShell({
                                     }
                                     if (activeSmartFolderId) {
                                       setActiveSmartFolderId(null);
-                                      setQueryBuilderOpen(false);
+                                      setIsQueryBuilderOpen(false);
                                     }
                                   }}
                                   onSelectFolder={(folderId) => {
@@ -1412,7 +1361,7 @@ export default function AppShell({
                               // Defensive guard: the tab is disabled when the
                               // view is off, but never mount TimelineView even
                               // if the view state somehow lands here.
-                              return timelineViewEnabled ? (
+                              return isTimelineViewEnabled ? (
                                 <TimelineView />
                               ) : null;
                             default:

@@ -58,19 +58,19 @@ export default function OrganizerView({
   // Card body source is project-configured (field / text-excerpt / none); the
   // Notes flag only drives the back-compat default when no config is set.
   const cardBodyConfig = useAppSelector(selectActiveProjectOrganizerCardBody);
-  const notesEnabled = useAppSelector(selectNotesEnabled);
+  const isNotesEnabled = useAppSelector(selectNotesEnabled);
   const rootPath = useAppSelector(selectActiveProjectRootPath);
 
-  const [showBodyState, setShowBodyState] = React.useState(showBody);
+  const [isShowingBody, setIsShowingBody] = React.useState(showBody);
   // Text content for `text-excerpt` cards, fetched on demand for the visible
   // folder children only (store resources don't carry their content).
   const [excerpts, setExcerpts] = React.useState<Record<string, string>>({});
 
   const handleToggle = React.useCallback(() => {
-    setShowBodyState((prev) => {
-      const next = !prev;
-      if (onToggleBody) onToggleBody(next);
-      return next;
+    setIsShowingBody((prev) => {
+      const isNextShowing = !prev;
+      if (onToggleBody) onToggleBody(isNextShowing);
+      return isNextShowing;
     });
   }, [onToggleBody]);
 
@@ -107,7 +107,7 @@ export default function OrganizerView({
     // Skip the fetch entirely when bodies are hidden, not text-excerpt mode, or
     // there's nothing to read — the excerpts would never be displayed.
     if (
-      !showBodyState ||
+      !isShowingBody ||
       cardBodySource !== "text-excerpt" ||
       !rootPath ||
       textIdsKey === ""
@@ -115,18 +115,18 @@ export default function OrganizerView({
       setExcerpts({});
       return;
     }
-    let cancelled = false;
+    let isCancelled = false;
     void fetchResourceExcerpts(
       rootPath,
       textIdsKey.split(","),
       excerptLength ?? DEFAULT_CARD_EXCERPT_LENGTH,
     ).then((result) => {
-      if (!cancelled) setExcerpts(result);
+      if (!isCancelled) setExcerpts(result);
     });
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
-  }, [showBodyState, cardBodySource, excerptLength, rootPath, textIdsKey]);
+  }, [isShowingBody, cardBodySource, excerptLength, rootPath, textIdsKey]);
 
   const handleOpen = (id: string) => dispatch(setSelectedResourceId(id));
 
@@ -137,7 +137,7 @@ export default function OrganizerView({
           {selectedFolder ? selectedFolder.name : "Organizer"}
         </h2>
         <Button variant="secondary" onClick={handleToggle}>
-          {showBodyState ? (
+          {isShowingBody ? (
             <EyeClosed
               size={16}
               className="inline-block mr-1 text-gw-secondary"
@@ -145,7 +145,7 @@ export default function OrganizerView({
           ) : (
             <Eye size={16} className="inline-block mr-1 text-gw-secondary" />
           )}{" "}
-          {showBodyState ? "Hide bodies" : "Show bodies"}
+          {isShowingBody ? "Hide bodies" : "Show bodies"}
         </Button>
       </div>
 
@@ -161,9 +161,9 @@ export default function OrganizerView({
             <OrganizerCard
               key={child.id}
               resource={child}
-              showBody={showBodyState}
+              showBody={isShowingBody}
               body={resolveOrganizerCardBody(child, cardBodyConfig, {
-                notesEnabled,
+                notesEnabled: isNotesEnabled,
                 textExcerpt: excerpts[child.id],
               })}
               defaultStatus={defaultStatus}
