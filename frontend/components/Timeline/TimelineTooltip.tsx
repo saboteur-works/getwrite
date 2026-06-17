@@ -1,6 +1,14 @@
 import React from "react";
 import type { TimelineItem } from "./types";
-import { formatTooltipDate, formatTooltipDuration } from "./utils";
+import {
+  parseDateString,
+  formatTooltipDate,
+  formatTooltipDuration,
+} from "./utils";
+
+// CSS font-family tokens used across the tooltip
+const FONT_SANS = "var(--font-sans, 'IBM Plex Sans', sans-serif)";
+const FONT_MONO = "var(--font-mono, 'IBM Plex Mono', monospace)";
 
 export interface TimelineTooltipProps {
   visible: boolean;
@@ -65,7 +73,7 @@ export default function TimelineTooltip({
           {/* Scene name */}
           <div
             style={{
-              fontFamily: "var(--font-sans, 'IBM Plex Sans', sans-serif)",
+              fontFamily: FONT_SANS,
               fontWeight: 700,
               fontSize: 12,
               color: "var(--color-gw-primary, #F5F4F0)",
@@ -90,7 +98,7 @@ export default function TimelineTooltip({
           {/* Key–value rows */}
           <TooltipRow
             label="DATE"
-            value={formatTooltipDate(Date.parse(item.startDate))}
+            value={formatTooltipDate(parseDateString(item.startDate))}
           />
           {item.metadata?.pov && (
             <TooltipRow label="POV" value={item.metadata.pov} />
@@ -106,13 +114,13 @@ export default function TimelineTooltip({
             <TooltipRow label="NOTES" value={item.metadata.notes} />
           )}
 
-          {/* Status badge */}
+          {/* Status badge — omitted for Draft, red for Final */}
           {status && status !== "Draft" && (
             <div
               style={{
                 marginTop: 7,
                 display: "inline-block",
-                fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)",
+                fontFamily: FONT_MONO,
                 fontSize: 8,
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
@@ -150,7 +158,7 @@ function TooltipRow({
     >
       <span
         style={{
-          fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)",
+          fontFamily: FONT_MONO,
           fontSize: 9,
           letterSpacing: "0.10em",
           textTransform: "uppercase",
@@ -162,7 +170,7 @@ function TooltipRow({
       </span>
       <span
         style={{
-          fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)",
+          fontFamily: FONT_MONO,
           fontSize: 9,
           letterSpacing: "0.06em",
           color: "var(--color-gw-primary, #F5F4F0)",
