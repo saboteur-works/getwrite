@@ -35,17 +35,21 @@ function extractFilename(disposition: string, fallback: string): string {
   return disposition.match(/filename="([^"]+)"/)?.[1] ?? fallback;
 }
 
-export async function compilePdf(body: CompileBody): Promise<PdfCompileResult> {
-  const response = await fetch("/api/compile/pdf", {
+async function postCompileRequest(
+  format: string,
+  body: CompileBody,
+): Promise<Response> {
+  const response = await fetch(`/api/compile/${format}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  if (!response.ok) throw new Error(`Compile failed (${response.status})`);
+  return response;
+}
 
-  if (!response.ok) {
-    throw new Error(`Compile failed (${response.status})`);
-  }
-
+export async function compilePdf(body: CompileBody): Promise<PdfCompileResult> {
+  const response = await postCompileRequest("pdf", body);
   const warning =
     response.headers.get("X-Compile-Warning") === "font-fallback"
       ? "font-fallback"
@@ -61,16 +65,7 @@ export async function compilePdf(body: CompileBody): Promise<PdfCompileResult> {
 export async function compileDocx(
   body: CompileBody,
 ): Promise<DocxCompileResult> {
-  const response = await fetch("/api/compile/docx", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Compile failed (${response.status})`);
-  }
-
+  const response = await postCompileRequest("docx", body);
   const filename = extractFilename(
     response.headers.get("Content-Disposition") ?? "",
     "project.docx",
@@ -82,31 +77,13 @@ export async function compileDocx(
 export async function compileText(
   body: CompileBody,
 ): Promise<TextCompileResult> {
-  const response = await fetch("/api/compile/text", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Compile failed (${response.status})`);
-  }
-
+  const response = await postCompileRequest("text", body);
   return (await response.json()) as TextCompileResult;
 }
 
 export async function compileMarkdown(
   body: CompileBody,
 ): Promise<MarkdownCompileResult> {
-  const response = await fetch("/api/compile/markdown", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Compile failed (${response.status})`);
-  }
-
+  const response = await postCompileRequest("markdown", body);
   return (await response.json()) as MarkdownCompileResult;
 }
