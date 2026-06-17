@@ -18,7 +18,7 @@ one agent can refactor a whole feature with the tests that cover it.
 |---|---|---|---|---|---|
 | 1 | Foundation (shared) | 1.5k | 🔴 | ⬜ Not started | [01-foundation.md](01-foundation.md) |
 | 2 | Query / Smart Folders | 4.5k | 🟡 | ✅ Done (2026-06-17) | [02-query.md](02-query.md) |
-| 3 | Revisions | 3k | 🔴 | ⬜ Not started | [03-revisions.md](03-revisions.md) |
+| 3 | Revisions | 3k | 🔴 | ✅ Done (2026-06-17) | [03-revisions.md](03-revisions.md) |
 | 4 | Metadata & Schema | 5.5k | 🟡 | ✅ Done (2026-06-17) | [04-metadata-schema.md](04-metadata-schema.md) |
 | 5 | Resources / Templates / Trash | 4k | 🟡 | ✅ Done (2026-06-17) | [05-resources.md](05-resources.md) |
 | 6 | Projects & Types | 6k | 🟡 | ✅ Done (2026-06-17) | [06-projects.md](06-projects.md) |
@@ -32,7 +32,7 @@ one agent can refactor a whole feature with the tests that cover it.
 Status legend: ⬜ Not started · 🚧 In progress · ✅ Done (gate green for the slice's own files). Slice 9 landed via commits `f21de5e` (brevity/clarity pass) and `a1a08cd` (route unification); route unification was its headline goal.
 
 Per-file change deltas for completed slices live in [`deltas/`](deltas/) — see
-[02](deltas/02-query.md), [04](deltas/04-metadata-schema.md), [05](deltas/05-resources.md), [06](deltas/06-projects.md),
+[02](deltas/02-query.md), [03](deltas/03-revisions.md), [04](deltas/04-metadata-schema.md), [05](deltas/05-resources.md), [06](deltas/06-projects.md),
 [07](deltas/07-index-search.md), [08](deltas/08-editor.md), [09](deltas/09-compile-export.md), [11](deltas/11-timeline.md).
 
 ## Recommended sequence

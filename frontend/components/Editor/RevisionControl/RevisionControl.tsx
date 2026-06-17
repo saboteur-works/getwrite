@@ -55,18 +55,15 @@ export default function RevisionControl() {
   const errorMessage = useAppSelector(selectRevisionsErrorMessage);
 
   const resolveRevisionName = useCallback(
-    (revisionId: string): string => {
-      const match = revisionItems.find(
-        (revision) => revision.id === revisionId,
-      );
-      return match?.displayName ?? "Revision";
-    },
+    (revisionId: string): string =>
+      revisionItems.find((r) => r.id === revisionId)?.displayName ?? "Revision",
     [revisionItems],
   );
 
-  const canInteract = useMemo(() => {
-    return !!project?.rootPath && !!selectedResource?.id;
-  }, [project?.rootPath, selectedResource?.id]);
+  const canInteract = useMemo(
+    () => !!project?.rootPath && !!selectedResource?.id,
+    [project?.rootPath, selectedResource?.id],
+  );
 
   useEffect(() => {
     if (!canInteract || !selectedResource?.id) {
@@ -114,13 +111,9 @@ export default function RevisionControl() {
   );
 
   const handleViewRevision = (revisionId: string) => {
-    setCollapsedPreviewRevisionIds((previous) => {
-      if (!previous[revisionId]) {
-        return previous;
-      }
-
-      return { ...previous, [revisionId]: false };
-    });
+    setCollapsedPreviewRevisionIds((previous) =>
+      previous[revisionId] ? { ...previous, [revisionId]: false } : previous,
+    );
     void fetchRevision(revisionId);
   };
 
@@ -131,23 +124,31 @@ export default function RevisionControl() {
     }));
   };
 
-  const handleSetCanonical = async (revisionId: string) => {
-    if (!selectedResource?.id) return;
+  const promoteRevisionAndFetch = useCallback(
+    async (revisionId: string, successPrefix: string, errorMsg: string) => {
+      if (!selectedResource?.id) return;
+      try {
+        await dispatch(
+          setCanonicalRevisionForSelectedResource({
+            resourceId: selectedResource.id,
+            revisionId,
+          }),
+        ).unwrap();
+        await fetchRevision(revisionId);
+        toast.success(`${successPrefix}: ${resolveRevisionName(revisionId)}`);
+      } catch {
+        toast.error(errorMsg);
+      }
+    },
+    [dispatch, fetchRevision, resolveRevisionName, selectedResource?.id],
+  );
 
-    try {
-      await dispatch(
-        setCanonicalRevisionForSelectedResource({
-          resourceId: selectedResource.id,
-          revisionId,
-        }),
-      ).unwrap();
-      await fetchRevision(revisionId);
-      toast.success(`Set canonical: ${resolveRevisionName(revisionId)}`);
-    } catch {
-      toast.error("Failed to set canonical revision.");
-      return;
-    }
-  };
+  const handleSetCanonical = (revisionId: string) =>
+    promoteRevisionAndFetch(
+      revisionId,
+      "Set canonical",
+      "Failed to set canonical revision.",
+    );
 
   const handleDeleteRevision = async (revisionId: string) => {
     if (!project?.rootPath || !selectedResource?.id) return;
@@ -162,27 +163,15 @@ export default function RevisionControl() {
       toast.success(`Deleted: ${resolveRevisionName(revisionId)}`);
     } catch {
       toast.error("Failed to delete revision.");
-      return;
     }
   };
 
-  const handleRollbackRevision = async (revisionId: string) => {
-    if (!selectedResource?.id) return;
-
-    try {
-      await dispatch(
-        setCanonicalRevisionForSelectedResource({
-          resourceId: selectedResource.id,
-          revisionId,
-        }),
-      ).unwrap();
-      await fetchRevision(revisionId);
-      toast.success(`Rolled back to: ${resolveRevisionName(revisionId)}`);
-    } catch {
-      toast.error("Failed to roll back revision.");
-      return;
-    }
-  };
+  const handleRollbackRevision = (revisionId: string) =>
+    promoteRevisionAndFetch(
+      revisionId,
+      "Rolled back to",
+      "Failed to roll back revision.",
+    );
 
   return (
     <section className="revision-control-root">
@@ -239,9 +228,7 @@ export default function RevisionControl() {
                   variant="secondary"
                   type="button"
                   onClick={handleSaveRevision}
-                  disabled={
-                    !canInteract || isSaving || !revisionName.trim().length
-                  }
+                  disabled={!canInteract || isSaving || !revisionName.trim()}
                 >
                   <Save className="h-4 w-4" />
                   Save

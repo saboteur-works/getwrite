@@ -61,6 +61,110 @@ function renderPaneContent(
   });
 }
 
+function renderLeftPane(
+  canonicalContent: string,
+  diffChunks: DiffChunk[] | undefined,
+  isLoadingCanonical: boolean,
+): React.ReactNode {
+  if (isLoadingCanonical) {
+    return (
+      <p className="diff-pane-placeholder">
+        Loading canonical revision&hellip;
+      </p>
+    );
+  }
+  if (!canonicalContent) {
+    return (
+      <p className="diff-pane-placeholder">No canonical revision available.</p>
+    );
+  }
+  return (
+    <div className="workarea-pane-content prose prose-sm max-w-none">
+      {renderPaneContent(diffChunks, canonicalContent, "canonical")}
+    </div>
+  );
+}
+
+function renderRightPane(
+  selectedContent: string | undefined,
+  diffChunks: DiffChunk[] | undefined,
+  isFetchingRevision: boolean,
+): React.ReactNode {
+  if (selectedContent === undefined && !isFetchingRevision) {
+    return (
+      <p className="diff-pane-placeholder">Select a revision to compare.</p>
+    );
+  }
+  if (isFetchingRevision) {
+    return <p className="diff-pane-placeholder">Loading revision&hellip;</p>;
+  }
+  return (
+    <div className="workarea-pane-content prose prose-sm max-w-none">
+      {renderPaneContent(diffChunks, selectedContent ?? "", "historical")}
+    </div>
+  );
+}
+
+function renderRevisionsList(
+  revisions: RevisionEntry[],
+  selectedRevisionId: string | null,
+  isLoadingRevisions: boolean,
+  onSelectRevision: ((revId: string) => void) | undefined,
+): React.ReactNode {
+  if (isLoadingRevisions) {
+    return <p className="workarea-list-item-meta">Loading revisions&hellip;</p>;
+  }
+  if (revisions.length === 0) {
+    return <p className="workarea-list-item-meta">No revisions available.</p>;
+  }
+
+  return (
+    <ul className="workarea-list flex flex-col gap-2">
+      {revisions.map((r) => {
+        const isSelected = r.id === selectedRevisionId;
+        const dateStr = new Date(r.createdAt).toLocaleDateString();
+        return (
+          <li
+            key={r.id}
+            className="workarea-list-item"
+            style={
+              isSelected
+                ? {
+                    borderColor: "var(--color-gw-border-md)",
+                    borderWidth: "1px",
+                    borderStyle: "solid",
+                    borderRadius: "var(--radius-md)",
+                  }
+                : undefined
+            }
+          >
+            <div className="flex items-start justify-between gap-2 p-2">
+              <div>
+                <div className="workarea-list-item-label">{r.displayName}</div>
+                <div className="workarea-list-item-meta">
+                  v{r.versionNumber} &middot; {dateStr}
+                </div>
+              </div>
+              {r.isCanonical ? (
+                <span className="revision-control-badge">Canonical</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onSelectRevision?.(r.id)}
+                  className="workarea-button"
+                  aria-pressed={isSelected}
+                >
+                  Compare
+                </button>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 /**
  * `DiffView` presents two read-only panes side-by-side for comparing the
  * canonical revision (left) against a chosen historical revision (right),
@@ -79,121 +183,33 @@ export default function DiffView({
   isFetchingRevision = false,
   className = "",
 }: DiffViewProps): JSX.Element {
-  const renderLeftPane = () => {
-    if (isLoadingCanonical) {
-      return (
-        <p className="diff-pane-placeholder">
-          Loading canonical revision&hellip;
-        </p>
-      );
-    }
-    if (!canonicalContent) {
-      return (
-        <p className="diff-pane-placeholder">
-          No canonical revision available.
-        </p>
-      );
-    }
-    return (
-      <div className="workarea-pane-content prose prose-sm max-w-none">
-        {renderPaneContent(diffChunks, canonicalContent, "canonical")}
-      </div>
-    );
-  };
-
-  const renderRightPane = () => {
-    if (selectedContent === undefined && !isFetchingRevision) {
-      return (
-        <p className="diff-pane-placeholder">Select a revision to compare.</p>
-      );
-    }
-    if (isFetchingRevision) {
-      return <p className="diff-pane-placeholder">Loading revision&hellip;</p>;
-    }
-    return (
-      <div className="workarea-pane-content prose prose-sm max-w-none">
-        {renderPaneContent(diffChunks, selectedContent ?? "", "historical")}
-      </div>
-    );
-  };
-
-  const renderRevisionsList = () => {
-    if (isLoadingRevisions) {
-      return (
-        <p className="workarea-list-item-meta">Loading revisions&hellip;</p>
-      );
-    }
-    if (revisions.length === 0) {
-      return <p className="workarea-list-item-meta">No revisions available.</p>;
-    }
-
-    return (
-      <ul className="workarea-list flex flex-col gap-2">
-        {revisions.map((r) => {
-          const isSelected = r.id === selectedRevisionId;
-          const dateStr = new Date(r.createdAt).toLocaleDateString();
-          return (
-            <li
-              key={r.id}
-              className="workarea-list-item"
-              style={
-                isSelected
-                  ? {
-                      borderColor: "var(--color-gw-border-md)",
-                      borderWidth: "1px",
-                      borderStyle: "solid",
-                      borderRadius: "var(--radius-md)",
-                    }
-                  : undefined
-              }
-            >
-              <div className="flex items-start justify-between gap-2 p-2">
-                <div>
-                  <div className="workarea-list-item-label">
-                    {r.displayName}
-                  </div>
-                  <div className="workarea-list-item-meta">
-                    v{r.versionNumber} &middot; {dateStr}
-                  </div>
-                </div>
-                {r.isCanonical ? (
-                  <span className="revision-control-badge">Canonical</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onSelectRevision && onSelectRevision(r.id)}
-                    className="workarea-button"
-                    aria-pressed={isSelected}
-                  >
-                    Compare
-                  </button>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    );
-  };
-
   return (
-    <div className={`${className}`}>
+    <div className={className}>
       <div className="flex flex-col gap-4">
         <div className="flex gap-4">
           <section className="flex-1 workarea-pane">
             <h3 className="workarea-pane-title">Canonical</h3>
-            <div aria-label="canonical-pane">{renderLeftPane()}</div>
+            <div aria-label="canonical-pane">
+              {renderLeftPane(canonicalContent, diffChunks, isLoadingCanonical)}
+            </div>
           </section>
 
           <section className="flex-1 workarea-pane">
             <h3 className="workarea-pane-title">Historical</h3>
-            <div aria-label="historical-pane">{renderRightPane()}</div>
+            <div aria-label="historical-pane">
+              {renderRightPane(selectedContent, diffChunks, isFetchingRevision)}
+            </div>
           </section>
         </div>
 
         <aside className="w-full workarea-pane">
           <h4 className="workarea-pane-title">Revisions</h4>
-          {renderRevisionsList()}
+          {renderRevisionsList(
+            revisions,
+            selectedRevisionId,
+            isLoadingRevisions,
+            onSelectRevision,
+          )}
         </aside>
       </div>
     </div>

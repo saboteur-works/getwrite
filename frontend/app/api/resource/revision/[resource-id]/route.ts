@@ -62,6 +62,51 @@ interface SetCanonicalRevisionBody {
   content?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+/** Parses the JSON body of a request, returning a 400 response on failure. */
+async function parseJsonBody<T>(
+  req: NextRequest,
+): Promise<{ body: T } | NextResponse> {
+  try {
+    const body = (await req.json()) as T;
+    return { body };
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+}
+
+/**
+ * Returns a 400 response if `value` is falsy or not a string, otherwise
+ * returns null.
+ */
+function requireString(value: unknown, fieldName: string): NextResponse | null {
+  if (!value || typeof value !== "string") {
+    return NextResponse.json(
+      { error: `Missing required field: ${fieldName}.` },
+      { status: 400 },
+    );
+  }
+  return null;
+}
+
+/** Builds an error JSON response from a caught value. */
+function errorResponse(
+  error: unknown,
+  fallback: string,
+  status?: number,
+): NextResponse {
+  const message = error instanceof Error ? error.message : fallback;
+  const resolvedStatus = status ?? (message.includes("not found") ? 404 : 500);
+  return NextResponse.json({ error: message }, { status: resolvedStatus });
+}
+
+// ---------------------------------------------------------------------------
+// Private route helpers
+// ---------------------------------------------------------------------------
+
 async function findRevisionById(
   projectPath: string,
   resourceId: string,
@@ -183,6 +228,10 @@ async function resolveNextVersionNumber(
   return highest + 1;
 }
 
+// ---------------------------------------------------------------------------
+// Route handlers
+// ---------------------------------------------------------------------------
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
@@ -221,10 +270,7 @@ export async function GET(
     const responseBody: GetRevisionResponse = { revision, content };
     return NextResponse.json(responseBody, { status: 200 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to retrieve revision.";
-    const status = message.includes("not found") ? 404 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return errorResponse(error, "Failed to retrieve revision.");
   }
 }
 
@@ -234,27 +280,18 @@ export async function POST(
 ) {
   const resourceId = (await params)["resource-id"];
 
-  let body: SaveRevisionBody;
-  try {
-    body = (await req.json()) as SaveRevisionBody;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
-
+  const parsed = await parseJsonBody<SaveRevisionBody>(req);
+  if (parsed instanceof NextResponse) return parsed;
   const {
     projectPath,
     content: bodyContent,
     author,
     isCanonical,
     metadata,
-  } = body;
+  } = parsed.body;
 
-  if (!projectPath || typeof projectPath !== "string") {
-    return NextResponse.json(
-      { error: "Missing required field: projectPath." },
-      { status: 400 },
-    );
-  }
+  const projectPathError = requireString(projectPath, "projectPath");
+  if (projectPathError) return projectPathError;
 
   try {
     const content =
@@ -280,9 +317,7 @@ export async function POST(
 
     return NextResponse.json(revision, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to save revision.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return errorResponse(error, "Failed to save revision.", 500);
   }
 }
 
@@ -292,28 +327,15 @@ export async function DELETE(
 ) {
   const resourceId = (await params)["resource-id"];
 
-  let body: DeleteRevisionBody;
-  try {
-    body = (await req.json()) as DeleteRevisionBody;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
+  const parsed = await parseJsonBody<DeleteRevisionBody>(req);
+  if (parsed instanceof NextResponse) return parsed;
+  const { projectPath, revisionId } = parsed.body;
 
-  const { projectPath, revisionId } = body;
+  const projectPathError = requireString(projectPath, "projectPath");
+  if (projectPathError) return projectPathError;
 
-  if (!projectPath || typeof projectPath !== "string") {
-    return NextResponse.json(
-      { error: "Missing required field: projectPath." },
-      { status: 400 },
-    );
-  }
-
-  if (!revisionId || typeof revisionId !== "string") {
-    return NextResponse.json(
-      { error: "Missing required field: revisionId." },
-      { status: 400 },
-    );
-  }
+  const revisionIdError = requireString(revisionId, "revisionId");
+  if (revisionIdError) return revisionIdError;
 
   try {
     const revisions = await listRevisions(projectPath, resourceId);
@@ -345,10 +367,7 @@ export async function DELETE(
 
     return NextResponse.json(target, { status: 200 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to delete revision.";
-    const status = message.includes("not found") ? 404 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return errorResponse(error, "Failed to delete revision.");
   }
 }
 
@@ -358,28 +377,15 @@ export async function PATCH(
 ) {
   const resourceId = (await params)["resource-id"];
 
-  let body: SetCanonicalRevisionBody;
-  try {
-    body = (await req.json()) as SetCanonicalRevisionBody;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
+  const parsed = await parseJsonBody<SetCanonicalRevisionBody>(req);
+  if (parsed instanceof NextResponse) return parsed;
+  const { projectPath, revisionId, content } = parsed.body;
 
-  const { projectPath, revisionId, content } = body;
+  const projectPathError = requireString(projectPath, "projectPath");
+  if (projectPathError) return projectPathError;
 
-  if (!projectPath || typeof projectPath !== "string") {
-    return NextResponse.json(
-      { error: "Missing required field: projectPath." },
-      { status: 400 },
-    );
-  }
-
-  if (!revisionId || typeof revisionId !== "string") {
-    return NextResponse.json(
-      { error: "Missing required field: revisionId." },
-      { status: 400 },
-    );
-  }
+  const revisionIdError = requireString(revisionId, "revisionId");
+  if (revisionIdError) return revisionIdError;
 
   try {
     const revisions = await listRevisions(projectPath, resourceId);
@@ -436,10 +442,6 @@ export async function PATCH(
 
     return NextResponse.json(canonicalRevision, { status: 200 });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to set canonical revision.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return errorResponse(error, "Failed to set canonical revision.", 500);
   }
 }

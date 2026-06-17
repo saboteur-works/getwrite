@@ -1,18 +1,12 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import type { UUID, Revision } from "./types";
 import {
   listRevisions,
   writeRevision,
   pruneRevisions,
-  revisionsBaseDir,
   setCanonicalRevision,
-  getCanonicalRevision,
 } from "./revision";
 import { acquireLock } from "./locks";
 import { enqueueIndex } from "./indexer-queue";
-import { readSidecar } from "./sidecar";
-import type { TextResource } from "./types";
 
 /** Determine the next version number for a resource (1-based, sequential). */
 export async function nextVersionNumber(
@@ -69,9 +63,7 @@ export async function createRevision(
     try {
       // enqueue indexing in background and do not await (fire-and-forget)
       void enqueueIndex(projectRoot, resourceId);
-    } catch (err) {
-      // ignore queueing errors
-    }
+    } catch {}
 
     return rev;
   } finally {
@@ -81,8 +73,10 @@ export async function createRevision(
 
 /** Mark the specified revision as canonical and unset others. */
 
-export default {
+const revisionManager = {
   nextVersionNumber,
   createRevision,
   // canonical functions live in storage (`revision.ts`); manager delegates when needed
 };
+
+export default revisionManager;

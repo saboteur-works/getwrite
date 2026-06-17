@@ -31,10 +31,9 @@ export async function updateDefaultRevisionName(
   }
 
   const filePath = path.join(projectPath, PROJECT_FILENAME);
-  const raw = await fs.readFile(filePath, "utf8");
-  const project = JSON.parse(raw) as Project;
+  const project = JSON.parse(await fs.readFile(filePath, "utf8")) as Project;
 
-  const nextProject: Project = {
+  const updated: Project = {
     ...project,
     config: {
       ...(project.config ?? { editorConfig: {} }),
@@ -43,6 +42,6 @@ export async function updateDefaultRevisionName(
     updatedAt: new Date().toISOString(),
   };
 
-  await fs.writeFile(filePath, JSON.stringify(nextProject, null, 2), "utf8");
+  await fs.writeFile(filePath, JSON.stringify(updated, null, 2), "utf8");
   return trimmed;
 }

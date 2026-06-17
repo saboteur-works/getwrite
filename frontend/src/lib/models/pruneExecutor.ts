@@ -14,8 +14,7 @@ export async function listResourceIds(projectRoot: string): Promise<string[]> {
     });
     return children.filter((d) => d.isDirectory()).map((d) => d.name);
   } catch (err) {
-    const e = err as NodeJS.ErrnoException;
-    if (e && e.code === "ENOENT") return [];
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw err;
   }
 }
@@ -46,9 +45,10 @@ export async function runCli(argv: string[]): Promise<number> {
   const projectRoot = argv[2] ?? process.cwd();
   const maxRevisions = Number(argv[3] ?? 50);
   try {
-    const res = await pruneAllResources(projectRoot, maxRevisions);
+    const pruneResults = await pruneAllResources(projectRoot, maxRevisions);
     console.log("Prune results:");
-    for (const [k, v] of Object.entries(res)) console.log(`${k}: pruned ${v}`);
+    for (const [resourceId, deletedCount] of Object.entries(pruneResults))
+      console.log(`${resourceId}: pruned ${deletedCount}`);
     return 0;
   } catch (err) {
     console.error("Error running prune executor", err);
