@@ -31,6 +31,11 @@ one agent can refactor a whole feature with the tests that cover it.
 
 Status legend: ⬜ Not started · 🚧 In progress · ✅ Done (gate green for the slice's own files). Slice 9 landed via commits `f21de5e` (brevity/clarity pass) and `a1a08cd` (route unification); route unification was its headline goal.
 
+Per-file change deltas for completed slices live in [`deltas/`](deltas/) — see
+[09](deltas/09-compile-export.md), [11](deltas/11-timeline.md),
+[08](deltas/08-editor.md). Future slices get richer records (with the
+per-change narrative from each file's refactor pass).
+
 ## Recommended sequence
 
 1. **Leaves first** (calibrate the agents on low blast radius): 9 → 11 → 8.
