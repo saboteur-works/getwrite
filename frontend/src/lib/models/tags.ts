@@ -25,8 +25,8 @@ import { PROJECT_FILENAME } from "./project-config";
  *   denied) or if its contents are not valid JSON.
  */
 async function readProject(projectRoot: string): Promise<Project> {
-  const p = path.join(projectRoot, PROJECT_FILENAME);
-  const raw = await fs.readFile(p, "utf8");
+  const projectPath = path.join(projectRoot, PROJECT_FILENAME);
+  const raw = await fs.readFile(projectPath, "utf8");
   // JSON.parse returns `any`; we cast to Project here because strict Zod
   // validation is intentionally deferred to higher-level callers.
   return JSON.parse(raw) as Project;
@@ -54,7 +54,7 @@ async function writeProject(
   projectRoot: string,
   projectObj: Project,
 ): Promise<void> {
-  const p = path.join(projectRoot, PROJECT_FILENAME);
+  const projectPath = path.join(projectRoot, PROJECT_FILENAME);
   // Defensive normalisation: on-disk data may originate from an older code
   // version where tagAssignment values were scalars. Cast to Record<string,
   // unknown> so we can narrow safely before overwriting with the correct type.
@@ -63,19 +63,18 @@ async function writeProject(
       string,
       unknown
     >;
-    for (const k of Object.keys(rawAssignments)) {
-      const v = rawAssignments[k];
-      if (typeof v === "string") {
-        projectObj.config.tagAssignments[k] = [v];
-      } else if (!Array.isArray(v)) {
-        projectObj.config.tagAssignments[k] = [];
+    for (const [resourceId, value] of Object.entries(rawAssignments)) {
+      if (typeof value === "string") {
+        projectObj.config.tagAssignments[resourceId] = [value];
+      } else if (!Array.isArray(value)) {
+        projectObj.config.tagAssignments[resourceId] = [];
       }
     }
   }
   // Intentionally skip strict schema validation here to allow flexible
   // project.config augmentation (tags, assignments) without causing
   // unexpected Zod errors during incremental writes from helpers.
-  await fs.writeFile(p, JSON.stringify(projectObj, null, 2), "utf8");
+  await fs.writeFile(projectPath, JSON.stringify(projectObj, null, 2), "utf8");
 }
 
 /**
@@ -150,16 +149,20 @@ export async function deleteTag(
 ): Promise<boolean> {
   const project = await readProject(projectRoot);
   if (!project.config?.tags) return false;
-  const before = project.config.tags.length;
+  const countBefore = project.config.tags.length;
   project.config.tags = project.config.tags.filter((t: Tag) => t.id !== tagId);
   // Remove assignments referencing the tag
   if (project.config?.tagAssignments) {
-    for (const [res, arr] of Object.entries(project.config.tagAssignments)) {
-      project.config.tagAssignments[res] = arr.filter((id) => id !== tagId);
+    for (const [resourceId, tagIds] of Object.entries(
+      project.config.tagAssignments,
+    )) {
+      project.config.tagAssignments[resourceId] = tagIds.filter(
+        (id) => id !== tagId,
+      );
     }
   }
   await writeProject(projectRoot, project);
-  return project.config.tags.length < before;
+  return project.config.tags.length < countBefore;
 }
 
 /**
@@ -216,7 +219,7 @@ export async function unassignTagFromResource(
   if (!project.config?.tagAssignments?.[resourceId]) return;
   project.config.tagAssignments[resourceId] = project.config.tagAssignments[
     resourceId
-  ].filter((t: string) => t !== tagId);
+  ].filter((id: string) => id !== tagId);
   await writeProject(projectRoot, project);
 }
 
@@ -239,11 +242,9 @@ export async function listResourcesByTag(
 ): Promise<string[]> {
   const project = await readProject(projectRoot);
   const assignments = project.config?.tagAssignments ?? {};
-  const results: string[] = [];
-  for (const [res, arr] of Object.entries(assignments)) {
-    if (arr.includes(tagId)) results.push(res);
-  }
-  return results;
+  return Object.entries(assignments)
+    .filter(([, tagIds]) => tagIds.includes(tagId))
+    .map(([resourceId]) => resourceId);
 }
 
 /**
@@ -251,7 +252,7 @@ export async function listResourcesByTag(
  * object. Prefer named imports for tree-shaking; use this default export when
  * the full API surface needs to be passed around as a dependency.
  */
-export default {
+const tagOperations = {
   listTags,
   createTag,
   deleteTag,
@@ -259,3 +260,5 @@ export default {
   unassignTagFromResource,
   listResourcesByTag,
 };
+
+export default tagOperations;

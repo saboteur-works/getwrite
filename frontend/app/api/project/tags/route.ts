@@ -59,13 +59,15 @@ interface ErrorResponse {
   details: string;
 }
 
+type TagsResponse =
+  | ListTagsResponse
+  | CreateTagResponse
+  | AssignmentsResponse
+  | ErrorResponse;
+
 export async function POST(
   req: NextRequest,
-): Promise<
-  NextResponse<
-    ListTagsResponse | CreateTagResponse | AssignmentsResponse | ErrorResponse
-  >
-> {
+): Promise<NextResponse<TagsResponse>> {
   try {
     const body = (await req.json()) as TagsRequestBody;
 

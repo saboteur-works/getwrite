@@ -10,7 +10,6 @@ import {
   selectSelectedProjectId,
   selectActiveProjectRootPath,
   addMetadataField,
-  removeMetadataField,
   deprecateMetadataField,
   clearMetadataField,
   reorderMetadataFields,
@@ -156,7 +155,9 @@ export default function SchemaManager({
     return projectGroup?.id ?? schema.groups[0]?.id ?? "";
   }
 
-  const [prefillVisible, setPrefillVisible] = React.useState(Boolean(prefill));
+  const [isPrefillVisible, setIsPrefillVisible] = React.useState(
+    Boolean(prefill),
+  );
   const [prefillKey, setPrefillKey] = React.useState(() =>
     prefill ? slugifyName(prefill.name) : "",
   );
@@ -169,7 +170,7 @@ export default function SchemaManager({
     prefill ? defaultGroupForPrefill() : "",
   );
   const [prefillError, setPrefillError] = React.useState("");
-  const [prefillSubmitting, setPrefillSubmitting] = React.useState(false);
+  const [isPrefillSubmitting, setIsPrefillSubmitting] = React.useState(false);
 
   async function handlePrefillCreate(): Promise<void> {
     if (!projectId) return;
@@ -192,7 +193,7 @@ export default function SchemaManager({
       setPrefillError("No group available. Add a group first.");
       return;
     }
-    setPrefillSubmitting(true);
+    setIsPrefillSubmitting(true);
     try {
       await dispatch(
         addMetadataField({
@@ -205,14 +206,14 @@ export default function SchemaManager({
           },
         }),
       ).unwrap();
-      setPrefillVisible(false);
+      setIsPrefillVisible(false);
       onCreated?.(key);
     } catch (error) {
       setPrefillError(
         typeof error === "string" ? error : "Failed to create field.",
       );
     } finally {
-      setPrefillSubmitting(false);
+      setIsPrefillSubmitting(false);
     }
   }
 
@@ -517,7 +518,7 @@ export default function SchemaManager({
         <ProjectFeatureToggles />
 
         {/* ── Prefill "Create field" form ── */}
-        {prefillVisible && (
+        {isPrefillVisible && (
           <div className="rounded border border-gw-border bg-gw-chrome2 p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-gw-secondary">
@@ -525,7 +526,7 @@ export default function SchemaManager({
               </span>
               <Button
                 variant="ghost"
-                onClick={() => setPrefillVisible(false)}
+                onClick={() => setIsPrefillVisible(false)}
                 aria-label="Dismiss create field form"
               >
                 <X size={13} aria-hidden="true" />
@@ -629,8 +630,8 @@ export default function SchemaManager({
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => setPrefillVisible(false)}
-                  disabled={prefillSubmitting}
+                  onClick={() => setIsPrefillVisible(false)}
+                  disabled={isPrefillSubmitting}
                 >
                   Cancel
                 </Button>
@@ -640,9 +641,9 @@ export default function SchemaManager({
                   onClick={() => {
                     void handlePrefillCreate();
                   }}
-                  disabled={prefillSubmitting || !projectId}
+                  disabled={isPrefillSubmitting || !projectId}
                 >
-                  {prefillSubmitting ? "Creating…" : "Create field"}
+                  {isPrefillSubmitting ? "Creating…" : "Create field"}
                 </Button>
               </div>
             </div>
@@ -659,7 +660,7 @@ export default function SchemaManager({
           {schema.groups.map((group, groupIndex) => {
             const isFirstGroup = groupIndex === 0;
             const isLastGroup = groupIndex === schema.groups.length - 1;
-            const groupHasLockedFields = group.fields.some((f) => f.locked);
+            const hasGroupLockedFields = group.fields.some((f) => f.locked);
 
             return (
               <Card key={group.id} padding="none">
@@ -684,7 +685,7 @@ export default function SchemaManager({
                   >
                     <ChevronDown size={14} aria-hidden="true" />
                   </Button>
-                  {!groupHasLockedFields ? (
+                  {!hasGroupLockedFields ? (
                     <Button
                       variant="ghost"
                       onClick={() =>

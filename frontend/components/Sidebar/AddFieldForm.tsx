@@ -83,13 +83,13 @@ export default function AddFieldForm({
 
   const [name, setName] = useState("");
   const [label, setLabel] = useState("");
-  const [labelEdited, setLabelEdited] = useState(false);
+  const [isLabelEdited, setIsLabelEdited] = useState(false);
   const [type, setType] = useState<MetadataFieldType>("text");
   const [groupId, setGroupId] = useState(() =>
     defaultGroupId(schema, currentFolderId),
   );
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [isShowingSuggestions, setIsShowingSuggestions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -102,7 +102,7 @@ export default function AddFieldForm({
   useEffect(() => {
     function handleOutside(e: MouseEvent): void {
       if (formRef.current && !formRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false);
+        setIsShowingSuggestions(false);
       }
     }
     document.addEventListener("mousedown", handleOutside);
@@ -134,16 +134,16 @@ export default function AddFieldForm({
     (value: string): void => {
       setName(value);
       setError("");
-      if (!labelEdited) {
+      if (!isLabelEdited) {
         setLabel(deriveLabel(value));
       }
-      setShowSuggestions(true);
+      setIsShowingSuggestions(true);
     },
-    [labelEdited],
+    [isLabelEdited],
   );
 
   function handleSuggestionClick(fieldKey: string): void {
-    setShowSuggestions(false);
+    setIsShowingSuggestions(false);
     onFieldFocused(fieldKey);
   }
 
@@ -170,7 +170,7 @@ export default function AddFieldForm({
       return;
     }
 
-    setSubmitting(true);
+    setIsSubmitting(true);
     setError("");
     try {
       await dispatch(
@@ -183,7 +183,7 @@ export default function AddFieldForm({
       onCreated(key);
     } catch (err) {
       setError(typeof err === "string" ? err : "Failed to create field.");
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -210,13 +210,13 @@ export default function AddFieldForm({
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 onFocus={() => {
-                  if (name.trim()) setShowSuggestions(true);
+                  if (name.trim()) setIsShowingSuggestions(true);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {
-                    if (showSuggestions) {
+                    if (isShowingSuggestions) {
                       e.stopPropagation();
-                      setShowSuggestions(false);
+                      setIsShowingSuggestions(false);
                     } else {
                       onCancel();
                     }
@@ -226,9 +226,9 @@ export default function AddFieldForm({
                 placeholder="e.g. tension"
                 aria-label="field-name"
                 aria-autocomplete="list"
-                aria-expanded={showSuggestions && suggestions.length > 0}
+                aria-expanded={isShowingSuggestions && suggestions.length > 0}
               />
-              {showSuggestions && suggestions.length > 0 && (
+              {isShowingSuggestions && suggestions.length > 0 && (
                 <div
                   className="absolute left-0 top-full mt-0.5 w-full bg-gw-chrome2 border border-gw-border-md rounded-sm z-50 max-h-36 overflow-y-auto shadow-sm"
                   role="listbox"
@@ -298,7 +298,7 @@ export default function AddFieldForm({
                 value={label}
                 onChange={(e) => {
                   setLabel(e.target.value);
-                  setLabelEdited(true);
+                  setIsLabelEdited(true);
                 }}
                 placeholder="Display label"
                 aria-label="field-label"
@@ -357,7 +357,7 @@ export default function AddFieldForm({
             variant="ghost"
             size="sm"
             onClick={onCancel}
-            disabled={submitting}
+            disabled={isSubmitting}
           >
             Cancel
           </Button>
@@ -365,9 +365,9 @@ export default function AddFieldForm({
             type="submit"
             variant="secondary"
             size="sm"
-            disabled={submitting || (!isExactMatch && !slug)}
+            disabled={isSubmitting || (!isExactMatch && !slug)}
           >
-            {submitting ? "Adding…" : isExactMatch ? "Go to field" : "Add"}
+            {isSubmitting ? "Adding…" : isExactMatch ? "Go to field" : "Add"}
           </Button>
         </div>
       </form>

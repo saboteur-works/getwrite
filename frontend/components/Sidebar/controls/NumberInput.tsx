@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import LabeledField from "./LabeledField";
 import useSyncedControlledValue from "./useSyncedControlledValue";
 import Input from "../../common/UI/Input/Input";
@@ -35,11 +34,7 @@ export default function NumberInput({
   className = "",
   ariaLabel = "number-input",
 }: NumberInputProps): JSX.Element {
-  const defaultValue = 0;
-  const [number, setNumber] = useSyncedControlledValue(
-    value ?? defaultValue,
-    onChange,
-  );
+  const [number, setNumber] = useSyncedControlledValue(value ?? 0, onChange);
 
   return (
     <LabeledField label={label} className={className}>

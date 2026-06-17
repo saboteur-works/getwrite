@@ -31,8 +31,8 @@ export async function POST(
 ): Promise<NextResponse<DeleteTagResponse | ErrorResponse>> {
   try {
     const body = (await req.json()) as DeleteTagRequestBody;
-    const deleted = await deleteTag(body.projectPath, body.tagId);
-    return NextResponse.json({ deleted });
+    const didDelete = await deleteTag(body.projectPath, body.tagId);
+    return NextResponse.json({ deleted: didDelete });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to delete tag", details: (error as Error).message },

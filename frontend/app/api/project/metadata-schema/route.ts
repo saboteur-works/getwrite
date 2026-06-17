@@ -203,6 +203,24 @@ interface ErrorResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function okSchema(schema: MetadataSchema): NextResponse<SchemaResponse> {
+  return NextResponse.json({ schema });
+}
+
+function invalidFieldKey(key: string): NextResponse<ErrorResponse> {
+  return NextResponse.json(
+    {
+      error: "Invalid field key",
+      details: `Key "${key}" must match /^[a-z0-9-]+$/`,
+    },
+    { status: 400 },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
 
@@ -221,143 +239,118 @@ export async function POST(
 
   try {
     if (body.action === "add-field") {
-      if (!SLUG_RE.test(body.field.key)) {
-        return NextResponse.json(
-          {
-            error: "Invalid field key",
-            details: `Key "${body.field.key}" must match /^[a-z0-9-]+$/`,
-          },
-          { status: 400 },
-        );
-      }
-      const schema = await addField(body.projectPath, body.groupId, body.field);
-      return NextResponse.json({ schema });
+      if (!SLUG_RE.test(body.field.key)) return invalidFieldKey(body.field.key);
+      return okSchema(
+        await addField(body.projectPath, body.groupId, body.field),
+      );
     }
 
     if (body.action === "remove-field") {
-      const schema = await removeField(
-        body.projectPath,
-        body.groupId,
-        body.fieldKey,
+      return okSchema(
+        await removeField(body.projectPath, body.groupId, body.fieldKey),
       );
-      return NextResponse.json({ schema });
     }
 
     if (body.action === "deprecate-field") {
-      const schema = await deprecateField(
-        body.projectPath,
-        body.groupId,
-        body.fieldKey,
+      return okSchema(
+        await deprecateField(body.projectPath, body.groupId, body.fieldKey),
       );
-      return NextResponse.json({ schema });
     }
 
     if (body.action === "clear-field") {
-      const schema = await clearField(
-        body.projectPath,
-        body.groupId,
-        body.fieldKey,
+      return okSchema(
+        await clearField(body.projectPath, body.groupId, body.fieldKey),
       );
-      return NextResponse.json({ schema });
     }
 
     if (body.action === "reorder-fields") {
-      const schema = await reorderFields(
-        body.projectPath,
-        body.groupId,
-        body.newKeyOrder,
+      return okSchema(
+        await reorderFields(body.projectPath, body.groupId, body.newKeyOrder),
       );
-      return NextResponse.json({ schema });
     }
 
     if (body.action === "rename-field") {
-      const schema = await renameField(
-        body.projectPath,
-        body.groupId,
-        body.fieldKey,
-        body.newLabel,
+      return okSchema(
+        await renameField(
+          body.projectPath,
+          body.groupId,
+          body.fieldKey,
+          body.newLabel,
+        ),
       );
-      return NextResponse.json({ schema });
     }
 
     if (body.action === "update-field-options") {
-      const schema = await updateFieldOptions(
-        body.projectPath,
-        body.groupId,
-        body.fieldKey,
-        body.options,
+      return okSchema(
+        await updateFieldOptions(
+          body.projectPath,
+          body.groupId,
+          body.fieldKey,
+          body.options,
+        ),
       );
-      return NextResponse.json({ schema });
     }
 
     if (body.action === "add-group") {
-      const schema = await addGroup(body.projectPath, body.group);
-      return NextResponse.json({ schema });
+      return okSchema(await addGroup(body.projectPath, body.group));
     }
 
     if (body.action === "remove-group") {
-      const schema = await removeGroup(body.projectPath, body.groupId);
-      return NextResponse.json({ schema });
+      return okSchema(await removeGroup(body.projectPath, body.groupId));
     }
 
     if (body.action === "reorder-groups") {
-      const schema = await reorderGroups(
-        body.projectPath,
-        body.newGroupIdOrder,
+      return okSchema(
+        await reorderGroups(body.projectPath, body.newGroupIdOrder),
       );
-      return NextResponse.json({ schema });
     }
 
     if (body.action === "rename-key") {
-      if (!SLUG_RE.test(body.newKey)) {
-        return NextResponse.json(
-          {
-            error: "Invalid field key",
-            details: `Key "${body.newKey}" must match /^[a-z0-9-]+$/`,
-          },
-          { status: 400 },
-        );
-      }
-      const schema = await renameFieldKey(
-        body.projectPath,
-        body.groupId,
-        body.fieldKey,
-        body.newKey,
+      if (!SLUG_RE.test(body.newKey)) return invalidFieldKey(body.newKey);
+      return okSchema(
+        await renameFieldKey(
+          body.projectPath,
+          body.groupId,
+          body.fieldKey,
+          body.newKey,
+        ),
       );
-      return NextResponse.json({ schema });
     }
 
     if (body.action === "change-field-type") {
-      const schema = await changeFieldType(
-        body.projectPath,
-        body.groupId,
-        body.fieldKey,
-        body.newType,
+      return okSchema(
+        await changeFieldType(
+          body.projectPath,
+          body.groupId,
+          body.fieldKey,
+          body.newType,
+        ),
       );
-      return NextResponse.json({ schema });
     }
 
     if (body.action === "change-field-type-with-migration") {
-      const schema = await changeFieldTypeWithMigration(
-        body.projectPath,
-        body.groupId,
-        body.fieldKey,
-        body.newType,
-        body.newOptions,
-        body.migrations,
+      return okSchema(
+        await changeFieldTypeWithMigration(
+          body.projectPath,
+          body.groupId,
+          body.fieldKey,
+          body.newType,
+          body.newOptions,
+          body.migrations,
+        ),
       );
-      return NextResponse.json({ schema });
     }
 
     if (body.action === "update-field-options-with-migration") {
-      const schema = await updateFieldOptionsWithMigration(
-        body.projectPath,
-        body.groupId,
-        body.fieldKey,
-        body.newOptions,
-        body.migrations,
+      return okSchema(
+        await updateFieldOptionsWithMigration(
+          body.projectPath,
+          body.groupId,
+          body.fieldKey,
+          body.newOptions,
+          body.migrations,
+        ),
       );
-      return NextResponse.json({ schema });
     }
 
     if (body.action === "update-ref-properties") {
@@ -370,13 +363,14 @@ export async function POST(
       if ("includeSubfolders" in body)
         updates.includeSubfolders = body.includeSubfolders;
       if ("maxSelections" in body) updates.maxSelections = body.maxSelections;
-      const schema = await updateRefProperties(
-        body.projectPath,
-        body.groupId,
-        body.fieldKey,
-        updates,
+      return okSchema(
+        await updateRefProperties(
+          body.projectPath,
+          body.groupId,
+          body.fieldKey,
+          updates,
+        ),
       );
-      return NextResponse.json({ schema });
     }
 
     return NextResponse.json(
@@ -396,16 +390,9 @@ export async function POST(
       /Invalid field key/i.test(message) ||
       /must contain exactly/i.test(message);
 
-    if (isClientError) {
-      return NextResponse.json(
-        { error: "Metadata schema operation failed", details: message },
-        { status: 400 },
-      );
-    }
-
     return NextResponse.json(
       { error: "Metadata schema operation failed", details: message },
-      { status: 500 },
+      { status: isClientError ? 400 : 500 },
     );
   }
 }
@@ -443,10 +430,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   try {
     const map = await scanAllFieldValues(projectPath, fieldKey);
-    const values: FieldValueEntry[] = [];
-    for (const [canonicalKey, entry] of map.entries()) {
-      values.push({ canonicalKey, count: entry.count, sample: entry.sample });
-    }
+    const values: FieldValueEntry[] = Array.from(
+      map.entries(),
+      ([canonicalKey, entry]) => ({
+        canonicalKey,
+        count: entry.count,
+        sample: entry.sample,
+      }),
+    );
     return NextResponse.json({
       values,
       nullKey: NULL_VALUE_KEY,
