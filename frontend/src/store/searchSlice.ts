@@ -5,11 +5,9 @@ import {
   type SearchFilters,
   type SearchResult,
 } from "./search-transport-service";
-
-export type { SearchFilters } from "./search-transport-service";
 import type { RootState } from "./store";
 
-export type { SearchResult } from "./search-transport-service";
+export type { SearchFilters, SearchResult } from "./search-transport-service";
 
 export interface SearchState {
   requestedProjectId: string | null;
@@ -78,7 +76,6 @@ const searchSlice = createSlice({
       state.results = [];
       state.isLoading = false;
       state.errorMessage = "";
-      return state;
     },
   },
   extraReducers: (builder) => {
@@ -94,13 +91,12 @@ const searchSlice = createSlice({
         state.requestedProjectId !== action.payload.projectId ||
         state.requestedQuery !== action.payload.query
       ) {
-        return state;
+        return;
       }
 
       state.requestedProjectId = null;
       state.results = action.payload.results;
       state.isLoading = false;
-      return state;
     });
 
     builder.addCase(runSearch.rejected, (state, action) => {
@@ -108,13 +104,12 @@ const searchSlice = createSlice({
         state.requestedProjectId !== action.meta.arg.projectId ||
         state.requestedQuery !== action.meta.arg.query
       ) {
-        return state;
+        return;
       }
 
       state.requestedProjectId = null;
       state.isLoading = false;
       state.errorMessage = action.payload ?? "Unable to perform search.";
-      return state;
     });
   },
 });

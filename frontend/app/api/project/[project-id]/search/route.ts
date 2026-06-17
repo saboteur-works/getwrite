@@ -60,6 +60,16 @@ interface ErrorResponse {
   error: string;
 }
 
+type SidecarData = Awaited<ReturnType<typeof readSidecar>>;
+
+interface ScoredCandidate {
+  id: string;
+  text: string | null;
+  sidecar: SidecarData;
+  proxScore: number;
+  rank: number;
+}
+
 // --- Internal helpers ---
 
 async function findProjectRoot(
@@ -121,6 +131,58 @@ async function loadCanonicalText(
   return text;
 }
 
+async function loadTagAssignments(
+  projectRoot: string,
+): Promise<Record<string, string[]>> {
+  // Load tag assignments from project.json (tags live in project config, not sidecars).
+  try {
+    const raw = await fs.readFile(
+      path.join(projectRoot, "project.json"),
+      "utf8",
+    );
+    const project = JSON.parse(raw) as Project;
+    return project.config?.tagAssignments ?? {};
+  } catch {
+    // proceed without tag data
+    return {};
+  }
+}
+
+// For multi-term queries, preload canonical text and sidecar for all
+// candidates (up to PROXIMITY_CANDIDATE_LIMIT), then re-rank by how
+// closely the query terms appear together. The title is included in the
+// proximity text so that a resource named "Dragon Knight" scores as a
+// tight phrase match even when the body is sparse. Within equal proximity
+// scores the original term-freq rank is preserved as a tiebreaker.
+async function scoreMultiTermCandidates(
+  projectRoot: string,
+  rankedIds: string[],
+  terms: string[],
+): Promise<ScoredCandidate[]> {
+  const cap = Math.min(rankedIds.length, PROXIMITY_CANDIDATE_LIMIT);
+  const candidates: ScoredCandidate[] = [];
+  for (let i = 0; i < cap; i++) {
+    const id = rankedIds[i]!;
+    const [text, sidecar] = await Promise.all([
+      loadCanonicalText(projectRoot, id),
+      readSidecar(projectRoot, id),
+    ]);
+    const title = typeof sidecar?.name === "string" ? sidecar.name : "";
+    const textForProximity = title ? `${title}\n${text}` : text;
+    candidates.push({
+      id,
+      text,
+      sidecar,
+      proxScore: computeProximityScore(textForProximity, terms),
+      rank: i,
+    });
+  }
+  candidates.sort((a, b) =>
+    b.proxScore !== a.proxScore ? b.proxScore - a.proxScore : a.rank - b.rank,
+  );
+  return candidates;
+}
+
 // --- Core search logic (exported for testing) ---
 
 export async function executeSearch(
@@ -129,73 +191,21 @@ export async function executeSearch(
   filters: SearchFilters,
   limit: number,
 ): Promise<SearchResult[]> {
-  // Load tag assignments from project.json (tags live in project config, not sidecars).
-  let tagAssignments: Record<string, string[]> = {};
-  try {
-    const raw = await fs.readFile(
-      path.join(projectRoot, "project.json"),
-      "utf8",
-    );
-    const project = JSON.parse(raw) as Project;
-    tagAssignments = project.config?.tagAssignments ?? {};
-  } catch {
-    // proceed without tag data
-  }
+  const tagAssignments = await loadTagAssignments(projectRoot);
 
   const terms = tokenize(query);
-  const isMultiTerm = terms.length > 1;
   const rankedIds = await search(projectRoot, query);
 
-  // For multi-term queries, preload canonical text and sidecar for all
-  // candidates (up to PROXIMITY_CANDIDATE_LIMIT), then re-rank by how
-  // closely the query terms appear together. The title is included in the
-  // proximity text so that a resource named "Dragon Knight" scores as a
-  // tight phrase match even when the body is sparse. Within equal proximity
-  // scores the original term-freq rank is preserved as a tiebreaker.
-  type SidecarData = Awaited<ReturnType<typeof readSidecar>>;
-
-  interface ScoredCandidate {
-    id: string;
-    text: string | null;
-    sidecar: SidecarData;
-    proxScore: number;
-    rank: number;
-  }
-
-  let candidates: ScoredCandidate[];
-
-  if (isMultiTerm) {
-    const cap = Math.min(rankedIds.length, PROXIMITY_CANDIDATE_LIMIT);
-    const scored: ScoredCandidate[] = [];
-    for (let i = 0; i < cap; i++) {
-      const id = rankedIds[i]!;
-      const [text, sidecar] = await Promise.all([
-        loadCanonicalText(projectRoot, id),
-        readSidecar(projectRoot, id),
-      ]);
-      const title = typeof sidecar?.name === "string" ? sidecar.name : "";
-      const textForProximity = title ? `${title}\n${text}` : text;
-      scored.push({
-        id,
-        text,
-        sidecar,
-        proxScore: computeProximityScore(textForProximity, terms),
-        rank: i,
-      });
-    }
-    scored.sort((a, b) =>
-      b.proxScore !== a.proxScore ? b.proxScore - a.proxScore : a.rank - b.rank,
-    );
-    candidates = scored;
-  } else {
-    candidates = rankedIds.map((id, rank) => ({
-      id,
-      text: null,
-      sidecar: null,
-      proxScore: 0,
-      rank,
-    }));
-  }
+  const candidates: ScoredCandidate[] =
+    terms.length > 1
+      ? await scoreMultiTermCandidates(projectRoot, rankedIds, terms)
+      : rankedIds.map((id, rank) => ({
+          id,
+          text: null,
+          sidecar: null,
+          proxScore: 0,
+          rank,
+        }));
 
   const results: SearchResult[] = [];
 

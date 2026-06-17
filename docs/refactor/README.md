@@ -22,7 +22,7 @@ one agent can refactor a whole feature with the tests that cover it.
 | 4 | Metadata & Schema | 5.5k | 🟡 | ⬜ Not started | [04-metadata-schema.md](04-metadata-schema.md) |
 | 5 | Resources / Templates / Trash | 4k | 🟡 | ⬜ Not started | [05-resources.md](05-resources.md) |
 | 6 | Projects & Types | 6k | 🟡 | ⬜ Not started | [06-projects.md](06-projects.md) |
-| 7 | Index & Search | 2.5k | 🟡 | ⬜ Not started | [07-index-search.md](07-index-search.md) |
+| 7 | Index & Search | 2.5k | 🟡 | ✅ Done (2026-06-17) | [07-index-search.md](07-index-search.md) |
 | 8 | Editor (TipTap) | 3k | 🟡 | ✅ Done (2026-06-17) | [08-editor.md](08-editor.md) |
 | 9 | Compile & Export | 1.2k | 🟢 | ✅ Done (2026-06-17) | [09-compile-export.md](09-compile-export.md) |
 | 10 | Layout / Shell | 3.5k | 🔴 | ⬜ Not started | [10-shell.md](10-shell.md) |
@@ -32,7 +32,7 @@ one agent can refactor a whole feature with the tests that cover it.
 Status legend: ⬜ Not started · 🚧 In progress · ✅ Done (gate green for the slice's own files). Slice 9 landed via commits `f21de5e` (brevity/clarity pass) and `a1a08cd` (route unification); route unification was its headline goal.
 
 Per-file change deltas for completed slices live in [`deltas/`](deltas/) — see
-[02](deltas/02-query.md), [08](deltas/08-editor.md),
+[02](deltas/02-query.md), [07](deltas/07-index-search.md), [08](deltas/08-editor.md),
 [09](deltas/09-compile-export.md), [11](deltas/11-timeline.md).
 
 ## Recommended sequence

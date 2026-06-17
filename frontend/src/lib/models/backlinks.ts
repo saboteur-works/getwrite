@@ -1,10 +1,10 @@
 import path from "node:path";
-import fs from "node:fs/promises";
+import type { Dirent } from "node:fs";
 import { readFile, atomicWriteFile, readdir, mkdir } from "./io";
 import { withMetaLock } from "./meta-locks";
 import { loadResourceContent } from "../tiptap-utils";
 import { readSidecar } from "./sidecar";
-import type { UUID } from "./types";
+import type { ResourceRef, MetadataValue } from "./types";
 import { slugify } from "../utils";
 
 const UUID_REGEX =
@@ -16,9 +16,7 @@ const WIKI_LINK_REGEX = /\[\[([^\]]+)\]\]/g;
  * Type guard for a single `ResourceRef` value shape `{ id: string|null, name: string }`.
  * Detects resource-ref sidecar values structurally without consulting the metadata schema.
  */
-function isResourceRef(
-  value: unknown,
-): value is { id: string | null; name: string } {
+function isResourceRef(value: unknown): value is ResourceRef {
   if (value === null || typeof value !== "object" || Array.isArray(value))
     return false;
   const v = value as Record<string, unknown>;
@@ -38,7 +36,9 @@ function isResourceRef(
  * array of such values is treated as a resource reference. The schema is not
  * consulted so this works even for undeclared fields.
  */
-function extractSidecarRefIds(sidecar: Record<string, unknown>): string[] {
+function extractSidecarRefIds(
+  sidecar: Record<string, MetadataValue>,
+): string[] {
   const ids = new Set<string>();
   for (const value of Object.values(sidecar)) {
     if (isResourceRef(value)) {
@@ -59,8 +59,10 @@ export async function listResourceIds(projectRoot: string): Promise<string[]> {
   const base = path.join(projectRoot, "resources");
   try {
     const entries = await readdir(base, { withFileTypes: true });
-    return entries.filter((e: any) => e.isDirectory()).map((d: any) => d.name);
-  } catch (err) {
+    return (entries as Dirent[])
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
+  } catch {
     return [];
   }
 }
@@ -73,13 +75,22 @@ async function loadRedirects(
   try {
     const raw = await readFile(p, "utf8");
     return JSON.parse(raw) as Record<string, string>;
-  } catch (_) {
+  } catch {
     return {};
   }
 }
 
+type ResolverMaps = {
+  slugToId: Record<string, string>;
+  nameToId: Record<string, string>;
+  aliasesToId: Record<string, string>;
+};
+
 /** Build resolver maps from resource sidecars: slug -> id, nameLower -> id, aliases -> id */
-async function buildResolverMaps(projectRoot: string, ids: string[]) {
+async function buildResolverMaps(
+  projectRoot: string,
+  ids: string[],
+): Promise<ResolverMaps> {
   const slugToId: Record<string, string> = {};
   const nameToId: Record<string, string> = {};
   const aliasesToId: Record<string, string> = {};
@@ -88,17 +99,16 @@ async function buildResolverMaps(projectRoot: string, ids: string[]) {
     try {
       const side = await readSidecar(projectRoot, id);
       if (!side) continue;
-      const name = (side as any).name;
-      const slug =
-        (side as any).slug ?? (name ? slugify(String(name)) : undefined);
-      const aliases = (side as any).aliases as string[] | undefined;
+      const name = side["name"];
+      const slug = side["slug"] ?? (name ? slugify(String(name)) : undefined);
+      const aliases = side["aliases"];
 
       if (slug) slugToId[String(slug).toLowerCase()] = id;
       if (name) nameToId[String(name).toLowerCase()] = id;
       if (Array.isArray(aliases)) {
         for (const a of aliases) aliasesToId[String(a).toLowerCase()] = id;
       }
-    } catch (err) {
+    } catch {
       // ignore sidecar read errors per-resource
     }
   }
@@ -110,7 +120,7 @@ async function buildResolverMaps(projectRoot: string, ids: string[]) {
 function resolveTarget(
   target: string,
   redirects: Record<string, string>,
-  maps: ReturnType<typeof buildResolverMaps> extends Promise<infer R> ? R : any,
+  maps: ResolverMaps,
 ): string | null {
   const t = target.trim();
   // If target looks like a UUID, return it directly
@@ -126,17 +136,17 @@ function resolveTarget(
   if (redirects[low]) return redirects[low];
 
   // exact slug
-  if (maps.slugToId && maps.slugToId[low]) return maps.slugToId[low];
+  if (maps.slugToId[low]) return maps.slugToId[low];
 
   // exact name
-  if (maps.nameToId && maps.nameToId[low]) return maps.nameToId[low];
+  if (maps.nameToId[low]) return maps.nameToId[low];
 
   // aliases
-  if (maps.aliasesToId && maps.aliasesToId[low]) return maps.aliasesToId[low];
+  if (maps.aliasesToId[low]) return maps.aliasesToId[low];
 
   // slugify fallback
   const s = slugify(t);
-  if (s && maps.slugToId && maps.slugToId[s]) return maps.slugToId[s];
+  if (s && maps.slugToId[s]) return maps.slugToId[s];
 
   return null;
 }
@@ -173,16 +183,14 @@ export async function computeBacklinks(
       const inner = m[1];
       // allow `Title|alias` or `id` inside wiki link; take left side before pipe
       const primary = inner.split("|")[0].trim();
-      const resolved = resolveTarget(primary, redirects, maps as any);
+      const resolved = resolveTarget(primary, redirects, maps);
       if (resolved && resolved !== id) refs.add(resolved);
     }
 
     // resource-ref and multi-resource-ref sidecar values
     const sidecar = await readSidecar(projectRoot, id);
     if (sidecar) {
-      for (const refId of extractSidecarRefIds(
-        sidecar as Record<string, unknown>,
-      )) {
+      for (const refId of extractSidecarRefIds(sidecar)) {
         if (refId !== id) refs.add(refId);
       }
     }
@@ -201,7 +209,7 @@ export async function persistBacklinks(
   const metaDir = path.join(projectRoot, "meta");
   try {
     await mkdir(metaDir, { recursive: true });
-  } catch (_) {
+  } catch {
     // ignore
   }
   const out = path.join(metaDir, "backlinks.json");
@@ -221,14 +229,15 @@ export async function loadBacklinks(
   try {
     const raw = await readFile(p, "utf8");
     return JSON.parse(raw) as BacklinkIndex;
-  } catch (_) {
+  } catch {
     return {};
   }
 }
 
-export default {
+const backlinks = {
   listResourceIds,
   computeBacklinks,
   persistBacklinks,
   loadBacklinks,
 };
+export default backlinks;

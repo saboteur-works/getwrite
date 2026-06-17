@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Image as ImageIcon, Music2, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
 import { Dialog, DialogContent, DialogTitle } from "./UI/Dialog";
 import Input from "./UI/Input/Input";
 import Listbox from "./UI/Listbox/Listbox";
-import type { ListboxOption } from "./UI/Listbox/Listbox";
 
 interface ResourceCommandPaletteProps {
   isOpen: boolean;
@@ -29,22 +28,6 @@ function getResourceTypeLabel(resource: AnyResource): string {
   }
 
   return "Text";
-}
-
-function ResourceTypeIcon({
-  resource,
-}: {
-  resource: AnyResource;
-}): JSX.Element {
-  if (resource.type === "image") {
-    return <ImageIcon size={16} aria-hidden="true" />;
-  }
-
-  if (resource.type === "audio") {
-    return <Music2 size={16} aria-hidden="true" />;
-  }
-
-  return <FileText size={16} aria-hidden="true" />;
 }
 
 export default function ResourceCommandPalette({

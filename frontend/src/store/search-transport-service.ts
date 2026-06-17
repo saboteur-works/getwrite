@@ -35,7 +35,7 @@ function getApiErrorMessage(errorBody: unknown, fallback: string): string {
     errorBody &&
     typeof errorBody === "object" &&
     "error" in errorBody &&
-    typeof (errorBody as { error?: unknown }).error === "string"
+    typeof (errorBody as { error: unknown }).error === "string"
   ) {
     return (errorBody as { error: string }).error;
   }

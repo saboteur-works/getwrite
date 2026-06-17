@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import Listbox from "../common/UI/Listbox/Listbox";
-import type { ListboxOption } from "../common/UI/Listbox/Listbox";
 import Input from "../common/UI/Input/Input";
 import useDismissableMenu from "../common/UI/hooks/useDismissableMenu";
 import {
@@ -71,14 +70,14 @@ export default function SearchBar({
   });
 
   const [query, setQuery] = useState<string>("");
-  const [open, setOpen] = useState<boolean>(false);
+  const [isOpen, setOpen] = useState<boolean>(false);
   const [highlight, setHighlight] = useState<number>(0);
   const [activeFilters, setActiveFilters] = useState<SearchFilters>({});
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const { containerRef } = useDismissableMenu({
-    isOpen: open,
+    isOpen,
     onClose: () => setOpen(false),
   });
 
@@ -129,7 +128,7 @@ export default function SearchBar({
   }, [query, selectedProjectId, activeFilters, dispatch]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!open) return;
+    if (!isOpen) return;
     if (e.key === "ArrowDown") {
       setHighlight((h) => Math.min(h + 1, results.length - 1));
       e.preventDefault();
@@ -181,7 +180,7 @@ export default function SearchBar({
         />
       </div>
 
-      {open ? (
+      {isOpen ? (
         <Listbox
           options={results.map((r) => ({
             value: r.resourceId,
