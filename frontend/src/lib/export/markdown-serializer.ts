@@ -38,8 +38,7 @@ let manager: MarkdownManager | null = null;
 
 /** Lazily construct and memoise a single MarkdownManager for the schema. */
 function getManager(): MarkdownManager {
-  if (manager) return manager;
-  manager = new MarkdownManager({
+  manager ??= new MarkdownManager({
     extensions: schemaExtensions,
     markedOptions: { gfm: true },
   });
@@ -87,19 +86,21 @@ const CONSTRUCT_CATALOGUE: Record<
   "text-style": { label: "Text colour & font styling", kind: "dropped" },
 };
 
+/** Add `by` (default 1) to the counter for `key` in `counts`. */
+function increment(counts: Map<string, number>, key: string, by = 1): void {
+  counts.set(key, (counts.get(key) ?? 0) + by);
+}
+
 /** Record one occurrence of a lossy construct found at `node`. */
 function tallyNode(node: JSONContent, counts: Map<string, number>): void {
   if (node.type === "image" && node.attrs?.resourceId) {
-    counts.set("image-link", (counts.get("image-link") ?? 0) + 1);
+    increment(counts, "image-link");
   }
 
   if (node.type === "paragraph") {
     const leading = node.attrs?.paragraphLeading;
     if (leading != null && leading !== DEFAULT_PARAGRAPH_LEADING) {
-      counts.set(
-        "paragraph-leading",
-        (counts.get("paragraph-leading") ?? 0) + 1,
-      );
+      increment(counts, "paragraph-leading");
     }
   }
 
@@ -108,7 +109,7 @@ function tallyNode(node: JSONContent, counts: Map<string, number>): void {
       mark.type === "textStyle" &&
       TEXT_STYLE_ATTRS.some((attr) => mark.attrs?.[attr] != null)
     ) {
-      counts.set("text-style", (counts.get("text-style") ?? 0) + 1);
+      increment(counts, "text-style");
     }
   }
 }
@@ -125,14 +126,12 @@ function walk(node: JSONContent, counts: Map<string, number>): void {
 function countsToWarnings(
   counts: Map<string, number>,
 ): MarkdownConstructWarning[] {
-  return Object.entries(CONSTRUCT_CATALOGUE)
-    .filter(([construct]) => (counts.get(construct) ?? 0) > 0)
-    .map(([construct, { label, kind }]) => ({
-      construct,
-      label,
-      kind,
-      count: counts.get(construct) ?? 0,
-    }));
+  return Object.entries(CONSTRUCT_CATALOGUE).flatMap(
+    ([construct, { label, kind }]) => {
+      const count = counts.get(construct) ?? 0;
+      return count > 0 ? [{ construct, label, kind, count }] : [];
+    },
+  );
 }
 
 /**
@@ -174,11 +173,8 @@ export function mergeMarkdownWarnings(
 ): MarkdownConstructWarning[] {
   const counts = new Map<string, number>();
   for (const list of lists) {
-    for (const warning of list) {
-      counts.set(
-        warning.construct,
-        (counts.get(warning.construct) ?? 0) + warning.count,
-      );
+    for (const { construct, count } of list) {
+      increment(counts, construct, count);
     }
   }
   return countsToWarnings(counts);
