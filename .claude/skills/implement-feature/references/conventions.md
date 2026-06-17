@@ -12,85 +12,78 @@ here — the agent already knows standard practices.
 
 ## Naming
 
-<!-- File names, variable names, function names, class names, constants.
-     Note anything that deviates from language defaults.
+- Files: `kebab-case.ts` for modules, `PascalCase.tsx` for React components.
+- Variables: `camelCase`; `UPPER_CASE` for constants; `PascalCase` for values
+  that hold a component or factory.
+- Functions: `camelCase`, or `PascalCase` for component/factory functions.
+- Types, interfaces, enums, classes, type params: `PascalCase`. Interfaces
+  must **not** use an `I` prefix (`Foo`, never `IFoo`).
 
-Example:
-- Files: `kebab-case.ts` for modules, `PascalCase.tsx` for React components
-- Variables and functions: `camelCase`
-- Classes and types: `PascalCase`
-- Constants: `SCREAMING_SNAKE_CASE`
-- Database columns: `snake_case` (Prisma maps these automatically)
-- React hooks: prefix with `use`, e.g. `useCurrentUser`
--->
+**Booleans must read as predicates (enforced, type-aware).** A boolean
+**variable** must start with one of `is | has | should | can | did | will`
+(e.g. `isOpen`, `shouldIncludeHeaders`, `hasLeaves`). This is enforced by
+`@typescript-eslint/naming-convention` with a `types: ["boolean"]` selector,
+so it needs type information — it is active for typed source and disabled for
+scripts / `.storybook`. A plain name like `includeHeaders` or `checked` is a
+lint **error**.
 
-_Not yet documented._
+**The boolean rule targets `variable`, not properties.** Object-literal and
+interface/type **member** names are exempt — `interface CompileOptions {
+includeHeaders: boolean }` is fine, and so is a `{ includeHeaders }` field.
+This matters when renaming a local that is also used as an object shorthand:
+rename the variable (`shouldIncludeHeaders`) but keep the property name, i.e.
+convert `{ includeHeaders }` to `{ includeHeaders: shouldIncludeHeaders }`.
+Renaming the property itself would change a typed shape.
 
 ---
 
 ## File and directory structure
 
-<!-- Where do different kinds of files live? What is the top-level structure?
-
-Example:
-src/
-  components/   React components (one file per component)
-  hooks/        Custom React hooks
-  routes/       Express route handlers
-  services/     Business logic (no HTTP or DB concerns)
-  lib/          Shared utilities and helpers
-  types/        Shared TypeScript types and interfaces
-tests/
-  integration/  Tests that require a running server or database
--->
-
-_Not yet documented._
+The repo-root `CLAUDE.md` is authoritative for workspace layout, the
+`frontend/` structure, and the model-layer "Code Map" — read it rather than
+relying on a copy here. In brief: pnpm workspace with `frontend/`, `electron/`,
+`cli/`; the filesystem-backed data layer lives in `frontend/src/lib/models/`;
+Redux store in `frontend/src/store/`; App Router pages + API routes in
+`frontend/app/`; components in `frontend/components/`; tests in
+`frontend/tests/` (Vitest) and `frontend/e2e/` (Playwright vs. Storybook).
 
 ---
 
 ## Code style
 
-<!-- Anything not covered by the linter config. Patterns that are enforced
-     by convention rather than tooling.
-
-Example:
-- Prefer `const` over `let`. Never use `var`.
-- Use explicit return types on all exported functions.
-- Avoid default exports — use named exports everywhere.
-- Keep files under 200 lines. Split if larger.
-- No inline comments explaining *what* the code does. Comments explain *why*.
--->
-
-_Not yet documented._
+- `docs/standards/typescript-implementation.md` is authoritative: no `any`,
+  explicit types, pure functions, single responsibility. `no-explicit-any` is
+  currently a **warning** (extensive pre-existing usage being paid down), not
+  an error — but do not add new `any`.
+- **lodash must use path imports** — `import debounce from "lodash/debounce"`,
+  not `import { debounce } from "lodash"`. Enforced via `no-restricted-imports`
+  to avoid pulling the whole package into the bundle.
+- Comments explain *why*, not *what*. Do not delete comments on working code
+  when refactoring; reducing comment count is never a goal.
+- Prettier formats on commit via lint-staged, so don't hand-fight formatting.
+- Note: the repo-wide `pnpm lint` currently has pre-existing baseline errors in
+  many files. When you touch a file, leave **that file** lint-clean (fix any
+  clarity-level baseline issues in it, e.g. the boolean-naming renames above);
+  don't take on unrelated files.
 
 ---
 
 ## Import order and aliasing
 
-<!-- How are imports organized? Are there path aliases?
-
-Example:
-Import order (enforced by eslint-plugin-import):
-1. Node built-ins
-2. External packages
-3. Internal packages (using `@/` alias for `src/`)
-4. Relative imports
-
-Path alias: `@/` maps to `src/`. Use `@/lib/errors` not `../../lib/errors`.
--->
-
-_Not yet documented._
+No `@/`-style path alias is in use — modules import each other with relative
+paths (e.g. an API route reaches the model layer via
+`../../../../src/lib/export/section-loader`). Match the relative-path style of
+the file you are editing. See the lodash path-import rule under Code style.
 
 ---
 
 ## Git and commit conventions
 
-<!-- Commit message format, branch naming, PR conventions.
-
-Example:
-Commits: Conventional Commits format (`feat:`, `fix:`, `chore:`, etc.)
-Branches: `<type>/<short-description>` e.g. `feat/user-csv-export`
-PRs: one feature per PR; link to the relevant issue or spec in the description.
--->
-
-_Not yet documented._
+- Conventional Commits with a scope: `feat(...)`, `fix(...)`, `refactor(...)`,
+  `docs(...)`, `chore(...)` — e.g. `refactor(compile-export): unify route
+  section-loading`.
+- A `lint-staged` pre-commit hook runs Prettier (and only matches `*.{ts,tsx}`),
+  so commits touching only docs/markdown skip it.
+- Branches: `<type>/<short-description>`, e.g. `refactor/brevity-and-clarity`.
+- End commit messages with the trailer:
+  `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`

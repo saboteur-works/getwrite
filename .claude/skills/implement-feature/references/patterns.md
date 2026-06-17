@@ -14,32 +14,35 @@ single router, errors are thrown as `AppError` instances from
 
 ## API / route handlers
 
-<!-- How are routes structured? Where do they live? What do they return?
-     What error format do they use?
+Next.js App Router. Routes are `route.ts` files under `frontend/app/api/...`
+that read/write the filesystem directly (there is no database). A handler
+typically: parses the typed request body, validates persisted data with a Zod
+schema from `src/lib/models/schemas.ts` at the filesystem boundary, does its
+work through the model layer in `src/lib/models/`, and serializes writes behind
+the per-key async mutex in `locks.ts` / `meta-locks.ts` to avoid concurrent
+corruption.
 
-Example:
-Routes live in `src/routes/<resource>.ts`. Each file exports a single
-Express Router. Handlers call service functions from `src/services/`.
-Errors are thrown as `AppError` with a `statusCode` and `message`. The
-global error handler in `src/middleware/errorHandler.ts` formats responses.
--->
+When several routes share a shape, factor the shared part into the model layer
+(e.g. the compile/export routes all load sections via `loadTextSections` in
+`src/lib/export/section-loader.ts`) rather than duplicating it per route.
 
-_Not yet documented._
+**Use the `getwrite-api-route` skill when creating a route** — it is the
+authoritative guide for the typed-request/response, error-handling, and locking
+conventions.
 
 ---
 
 ## State management
 
-<!-- How is state managed in the frontend (if applicable)?
-     Redux slices? Zustand stores? React context? Server state via React Query?
+Redux Toolkit, with a non-standard split that is easy to miss: each feature is
+`<feature>Slice.ts` + a `*-transport-service.ts` (the HTTP calls) + optional
+`*-guards.ts` (invariants). Sync is **explicit** — state loads on mount and is
+updated via API calls; there is no optimistic or auto-sync layer, so don't add
+one. Typed hooks `useAppDispatch` / `useAppSelector` live in `store/hooks.ts`.
 
-Example:
-Server state: React Query with hooks in `src/hooks/use<Resource>.ts`.
-Local UI state: `useState` or `useReducer` in the component.
-No Redux — do not introduce it.
--->
-
-_Not yet documented._
+**Use the `getwrite-redux-slice` skill when adding a slice or thunk** — the
+transport-service/guards separation is the part improvised code usually gets
+wrong.
 
 ---
 
@@ -59,32 +62,29 @@ _Not yet documented._
 
 ## Database access
 
-<!-- ORM, query builder, or raw SQL? Migration tool? Connection pooling?
+**There is no database.** All persistence is the filesystem under `projects/`
+at the repo root (one UUID-named folder per project; see CLAUDE.md's Data Layer
+section for the on-disk layout). Do not introduce a DB, ORM, or migration tool.
 
-Example:
-Prisma ORM. Schema is in `prisma/schema.prisma`.
-Migrations: `npx prisma migrate dev --name <description>`.
-Never use `prisma.$queryRaw` for user-supplied values — use parameterized
-Prisma queries.
--->
-
-_Not yet documented._
+All filesystem I/O goes through the `StorageAdapter` abstraction in
+`src/lib/models/io.ts` (over `fs/promises`) rather than calling `fs` directly —
+this is what lets tests swap in the in-memory `memoryAdapter.ts`. Write new
+model code against the adapter, not raw `fs`.
 
 ---
 
 ## Testing patterns
 
-<!-- Test framework, file location conventions, fixture patterns, mocking
-     approach.
+Vitest for unit/integration/component/a11y tests, which live in
+`frontend/tests/` (not colocated). Prefer TDD and add to an existing test file
+before creating a new one. Model-layer tests use the in-memory `memoryAdapter`
+rather than touching the real filesystem. E2E (`frontend/e2e/`, Playwright,
+Chromium-only) run against Storybook — start `pnpm storybook` on :6006 first.
+Run a focused gate with `pnpm exec vitest run <filters>`; see
+`docs/standards/testing.md`.
 
-Example:
-Jest + ts-jest. Test files are colocated: `src/utils/parseDate.test.ts`.
-Mocks live in `src/__mocks__/`. Use `jest.mock()` for module-level mocks.
-Integration tests are in `tests/integration/` and use a real test database
-seeded by `tests/fixtures/seed.ts`.
--->
-
-_Not yet documented._
+**Never hallucinate component props** — before using a prop on an in-project
+component, open its source and `*.stories.tsx` to confirm it exists.
 
 ---
 
