@@ -27,6 +27,7 @@ import {
   compilePdf,
   compileDocx,
   compileText,
+  compileMarkdown,
 } from "../../src/lib/api/compile";
 import { formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 import Button from "../common/UI/Button";
@@ -381,6 +382,35 @@ export default function StartPage({
               })
               .catch(() =>
                 toastService.error("Compile failed", "Could not generate DOCX"),
+              );
+            setCompileTargetProjectId(null);
+            return;
+          }
+          if (options.format === "md") {
+            void compileMarkdown(compileBody)
+              .then((result) => {
+                const blob = new Blob([result.markdown], {
+                  type: "text/markdown;charset=utf-8",
+                });
+                const filename = rawName
+                  ? rawName.endsWith(".md")
+                    ? rawName
+                    : `${rawName}.md`
+                  : result.filename;
+                triggerDownload(blob, filename);
+                if (result.warnings.length > 0) {
+                  toastService.info(
+                    `Some formatting couldn't be represented in Markdown: ${result.warnings
+                      .map((w) => w.label)
+                      .join(", ")}`,
+                  );
+                }
+              })
+              .catch(() =>
+                toastService.error(
+                  "Compile failed",
+                  "Could not generate Markdown",
+                ),
               );
             setCompileTargetProjectId(null);
             return;

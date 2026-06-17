@@ -74,6 +74,7 @@ import {
   compilePdf,
   compileDocx,
   compileText,
+  compileMarkdown,
 } from "../../src/lib/api/compile";
 import { formatRelativeTimestamp as _formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 import {
@@ -87,6 +88,7 @@ import {
   Plus,
 } from "lucide-react";
 import Button from "../common/UI/Button/Button";
+import { type ExportFormat } from "../common/ExportPreviewModal";
 import UpdateNotice from "./UpdateNotice";
 import { APP_VERSION } from "../../src/lib/app-version";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
@@ -634,8 +636,9 @@ export default function AppShell({
   const handleExportConfirmed = async (
     resourceIds: string[],
     resourceId?: string,
+    format?: ExportFormat,
   ) => {
-    await onResourceAction?.("export", resourceId, { resourceIds });
+    await onResourceAction?.("export", resourceId, { resourceIds, format });
     setExportModal({ open: false });
   };
 
@@ -1135,8 +1138,16 @@ export default function AppShell({
                     await handleCreateConfirmed(payload, parentId);
                   }}
                   onMediaCreateConfirmed={onMediaCreateConfirmed}
-                  onExportConfirmed={async (resourceIds, resourceId) => {
-                    await handleExportConfirmed(resourceIds, resourceId);
+                  onExportConfirmed={async (
+                    resourceIds,
+                    resourceId,
+                    format,
+                  ) => {
+                    await handleExportConfirmed(
+                      resourceIds,
+                      resourceId,
+                      format,
+                    );
                   }}
                   onSelectResource={onResourceSelect}
                   onBuildCompilePreview={(resourceId) => {
@@ -1210,6 +1221,32 @@ export default function AppShell({
                         a.click();
                         document.body.removeChild(a);
                         URL.revokeObjectURL(url);
+                        return;
+                      }
+                      if (options.format === "md") {
+                        const result = await compileMarkdown(compileBody);
+                        const blob = new Blob([result.markdown], {
+                          type: "text/markdown;charset=utf-8",
+                        });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = rawName
+                          ? rawName.endsWith(".md")
+                            ? rawName
+                            : `${rawName}.md`
+                          : result.filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        if (result.warnings.length > 0) {
+                          toastService.info(
+                            `Some formatting couldn't be represented in Markdown: ${result.warnings
+                              .map((w) => w.label)
+                              .join(", ")}`,
+                          );
+                        }
                         return;
                       }
                       const result = await compileText(compileBody);

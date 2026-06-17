@@ -36,6 +36,12 @@ export interface MenuBarProps {
    * deterministic toolbar active/disabled states without editor subscriptions.
    */
   stateOverride?: MenuBarState;
+  /**
+   * Optional handler that switches the editor to raw Markdown source view.
+   * When provided, a "Edit as Markdown" toggle is rendered at the end of the
+   * toolbar; when omitted, the toggle is hidden (existing rich-only usages).
+   */
+  onToggleSource?: () => void;
 }
 
 /**
@@ -53,7 +59,11 @@ export interface MenuBarProps {
  * @example
  * <MenuBar editor={editor} />
  */
-export const MenuBar = ({ editor, stateOverride }: MenuBarProps) => {
+export const MenuBar = ({
+  editor,
+  stateOverride,
+  onToggleSource,
+}: MenuBarProps) => {
   const selectedEditorState = useEditorState({
     editor,
     selector: menuBarStateSelector,
@@ -132,6 +142,16 @@ export const MenuBar = ({ editor, stateOverride }: MenuBarProps) => {
       <EditorMenuIconGroup groupName="Images" groupId="image-controls">
         <ImagePickerSubmenu editor={editor} />
       </EditorMenuIconGroup>
+      {onToggleSource ? (
+        <EditorMenuIconGroup groupName="Markdown" groupId="markdown-source">
+          <EditorMenuIcon
+            onClick={onToggleSource}
+            Icon="markdown"
+            iconSize={ICON_SIZE}
+            tooltipContent="Edit as Markdown"
+          />
+        </EditorMenuIconGroup>
+      ) : null}
       <Tooltip id="my-tooltip" place="top" />
     </div>
   );

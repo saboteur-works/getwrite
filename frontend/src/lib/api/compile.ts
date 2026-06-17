@@ -1,3 +1,5 @@
+import type { MarkdownConstructWarning } from "../export/types";
+
 export interface CompileBody {
   projectPath: string;
   resourceIds: string[];
@@ -20,6 +22,13 @@ export interface DocxCompileResult {
 export interface TextCompileResult {
   text: string;
   filename: string;
+}
+
+export interface MarkdownCompileResult {
+  markdown: string;
+  filename: string;
+  /** Loss warnings aggregated across every included section. */
+  warnings: MarkdownConstructWarning[];
 }
 
 function extractFilename(disposition: string, fallback: string): string {
@@ -84,4 +93,20 @@ export async function compileText(
   }
 
   return (await response.json()) as TextCompileResult;
+}
+
+export async function compileMarkdown(
+  body: CompileBody,
+): Promise<MarkdownCompileResult> {
+  const response = await fetch("/api/compile/markdown", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Compile failed (${response.status})`);
+  }
+
+  return (await response.json()) as MarkdownCompileResult;
 }

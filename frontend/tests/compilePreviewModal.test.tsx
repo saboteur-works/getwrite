@@ -249,4 +249,26 @@ describe("CompilePreviewModal — tree selection", () => {
     expect(passedIds).toContain("r1");
     expect(passedIds).toContain("r2");
   });
+
+  it("offers a Markdown format option and reports it on confirm", () => {
+    const onConfirmCompile = vi.fn();
+
+    render(
+      <CompilePreviewModal
+        isOpen={true}
+        resources={sampleResources}
+        onConfirmCompile={onConfirmCompile}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const formatSelect = screen.getByLabelText(/compile as/i);
+    expect(screen.getByRole("option", { name: "md" })).toBeInTheDocument();
+
+    fireEvent.change(formatSelect, { target: { value: "md" } });
+    fireEvent.click(screen.getByRole("button", { name: /compile \(2\)/i }));
+
+    expect(onConfirmCompile).toHaveBeenCalledTimes(1);
+    expect(onConfirmCompile.mock.calls[0][1].format).toBe("md");
+  });
 });

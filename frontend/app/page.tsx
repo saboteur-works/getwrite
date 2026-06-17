@@ -63,6 +63,7 @@ import {
   type CompileSection,
 } from "../src/lib/export/compile-text";
 import { slugify } from "../src/lib/utils";
+import { exportMarkdown } from "../src/lib/api/export";
 
 /**
  * Flat representation of a project that has been opened in the current session.
@@ -423,6 +424,8 @@ export default function Home(): JSX.Element {
       folderId?: string;
       /** Resolved leaf resource IDs to export (used by the export action). */
       resourceIds?: string[];
+      /** Output format for the export action; defaults to plain text. */
+      format?: "txt" | "md";
     },
   ) => {
     if (!selectedProject) return;
@@ -570,6 +573,49 @@ export default function Home(): JSX.Element {
         selectedProject.resources.find((x) => x.id === resourceId) ??
         selectedProject.folders.find((x) => x.id === resourceId);
       const exportName = exportNode?.name ?? "export";
+
+      // Markdown export needs each resource's TipTap document (not the cached
+      // plaintext), so it goes through the server route which loads the doc and
+      // serializes it, returning the file plus any loss warnings.
+      if (opts?.format === "md") {
+        const resourcesMeta = resolvedIds.map((id) => {
+          const r = selectedProject.resources.find((x) => x.id === id);
+          return {
+            id,
+            name: r?.name ?? id,
+            type: (r as { type?: string } | undefined)?.type ?? "text",
+          };
+        });
+
+        const { markdown, filename, warnings } = await exportMarkdown({
+          projectPath: selectedProject.rootPath,
+          resourceIds: resolvedIds,
+          resources: resourcesMeta,
+          exportName,
+        });
+
+        const mdBlob = new Blob([markdown], {
+          type: "text/markdown;charset=utf-8",
+        });
+        const mdUrl = URL.createObjectURL(mdBlob);
+        const mdAnchor = document.createElement("a");
+        mdAnchor.href = mdUrl;
+        mdAnchor.download = filename;
+        document.body.appendChild(mdAnchor);
+        mdAnchor.click();
+        document.body.removeChild(mdAnchor);
+        URL.revokeObjectURL(mdUrl);
+
+        toastService.success("Exported", filename);
+        if (warnings.length > 0) {
+          toastService.info(
+            `Some formatting couldn't be represented in Markdown: ${warnings
+              .map((w) => w.label)
+              .join(", ")}`,
+          );
+        }
+        return;
+      }
 
       // Build a lookup map for content from already-loaded resources.
       // Resources have a `plaintext` field loaded when the project opened.

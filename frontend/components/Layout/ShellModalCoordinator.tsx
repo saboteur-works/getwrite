@@ -12,7 +12,9 @@ import RenameResourceModal from "../ResourceTree/RenameResourceModal";
 import ConfirmDialog from "../common/ConfirmDialog";
 import ResourceCommandPalette from "../common/ResourceCommandPalette";
 import CreateResourceModal from "../ResourceTree/CreateResourceModal";
-import ExportPreviewModal from "../common/ExportPreviewModal";
+import ExportPreviewModal, {
+  type ExportFormat,
+} from "../common/ExportPreviewModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import HeadingSettingsModal from "../preferences/HeadingSettingsModal";
 import BodySettingsModal from "../preferences/BodySettingsModal";
@@ -129,6 +131,7 @@ export interface ShellModalCoordinatorProps {
   onExportConfirmed: (
     resourceIds: string[],
     resourceId?: string,
+    format?: ExportFormat,
   ) => Promise<void>;
   onSelectResource?: (resourceId: string) => void;
   onBuildCompilePreview: (resourceId?: string) => string;
@@ -281,11 +284,12 @@ export default function ShellModalCoordinator({
         resourceTitle={exportModal.resourceTitle}
         resourceNames={exportModal.resourceNames}
         onClose={() => setExportModal({ open: false })}
-        onConfirmExport={() =>
+        onConfirmExport={(format) =>
           onExportConfirmed(
             exportModal.resourceIds ??
               (exportModal.resourceId ? [exportModal.resourceId] : []),
             exportModal.resourceId,
+            format,
           )
         }
         onShowCompile={() => {

@@ -18,6 +18,7 @@ import {
   Bold,
   Code,
   CodeSquare,
+  FileCode2,
   Heading1,
   Heading2,
   Heading3,
@@ -77,6 +78,7 @@ export const iconRegistry = {
   redo: Redo,
   underline: Underline,
   latex: Radical,
+  markdown: FileCode2,
   fontSize: ALargeSmall,
   fontStyle: Type,
   // Table
