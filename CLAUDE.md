@@ -21,7 +21,7 @@ Additional repo-root directories that are **not** workspace packages but are ref
 - `specs/` — Numbered feature specs (`001-…` through `005-…`) that drive larger work; per the authority hierarchy, specs win conflicts.
 - `docs/standards/` — Coding/testing standards (see below).
 - `scripts/` — Repo-level scripts (currently `showcase`).
-- `electron-builder.yml` — Packaging config for the desktop build.
+- `electron/electron-builder.yml` — Packaging config for the desktop build.
 
 Repo-root scripts (run from the repo root):
 
@@ -66,7 +66,7 @@ From the repo root: `pnpm --filter getwrite-frontend exec vitest` runs frontend 
   - `meta/templates/` — resource template scaffolds
   - `revisions/<uuid>/v-<N>/` — versioned snapshots per resource
   - `.trash/{resources,meta}/` — soft-deleted content (see [Glossary: Trash](#glossary))
-- **API routes** (`frontend/app/api/`): Read/write the filesystem directly. Top-level groups: `projects`, `project/*` (id, delete, rename, tags, preferences, editor-config, metadata-schema, revision-settings, query), `project-resources`, `project-types`, `resource/*` (id, revision), `compile`, `export`, `version-check` (Electron update check).
+- **API routes** (`frontend/app/api/`): Read/write the filesystem directly. Top-level groups: `projects`, `project/*` (id, delete, rename, tags, preferences, editor-config, metadata-schema, revision-settings, query, features), `project-resources`, `project-types`, `resource/*` (id, revision, upload), `compile`, `export`, `version-check` (Electron update check).
 - **Schemas** (`frontend/src/lib/models/schemas.ts`): Zod validators gate all persisted data crossing the filesystem boundary
 - **File locking**: `frontend/src/lib/models/locks.ts` is a generic per-key async mutex; `meta-locks.ts` serializes metadata-affecting operations keyed by project root
 
@@ -110,18 +110,21 @@ All paths relative to `frontend/src/`. Use these as orientation; open the files 
 **Models (`lib/models/`)** — boundary between filesystem and the rest of the app.
 
 - *Validation & types*: `schemas.ts`, `types.ts`
-- *Projects*: `project-creator.ts`, `project-loader.ts`, `project-config.ts`, `projects-dir.ts`, `project-view.ts`, `project-view-adapter.ts`
-- *Resources & templates*: `resource.ts`, `resource-factory.ts`, `resource-persistence.ts`, `resource-templates.ts`, `template-service.ts`, `sidecar.ts`, `trash.ts`, `folder-utils.ts`
+- *Projects*: `project.ts` (create/validate/normalize), `project-creator.ts`, `project-loader.ts`, `project-config.ts`, `project-features.ts` (per-project feature flags), `projects-dir.ts`, `project-view.ts`, `project-view-adapter.ts`
+- *Resources & templates*: `resource.ts`, `resource-factory.ts`, `resource-persistence.ts`, `resource-revision.ts` (initial canonical revision), `resource-templates.ts`, `template-service.ts`, `sidecar.ts`, `trash.ts`, `folder-utils.ts`
+- *Media*: `media-metadata.ts` (image/audio metadata at ingest), `media-validation.ts` (type + size-cap checks)
 - *Revisions*: `revision.ts`, `revision-manager.ts`, `revision-settings.ts`, `pruneExecutor.ts`
 - *Metadata & tags*: `metadata-schema.ts`, `default-metadata-schema.ts`, `tags.ts`
 - *Query pipeline*: `query-ast.ts`, `query-evaluator.ts`, `query-cache.ts`, `query-intrinsics.ts`, `saved-queries.ts`
 - *Index & search*: `indexer-queue.ts`, `inverted-index.ts`, `backlinks.ts`, `backlinks-watcher.ts`, `field-values.ts`, `field-value-keys.ts`, `field-dedup.ts`, `previews.ts`, `search-scoring.ts`, `search-snippet.ts`
+- *I/O*: `io.ts` (StorageAdapter over `fs/promises`), `memoryAdapter.ts` (in-memory adapter for tests)
+- *Update check*: `update-check.ts` (compares running version to latest GitHub release)
 - *Concurrency*: `locks.ts`, `meta-locks.ts`
 
 **Store (`store/`)** — Redux Toolkit. Pattern per feature: `<feature>Slice.ts` + `*-transport-service.ts` (HTTP) + `*-guards.ts` (invariants).
 
 - *Slices*: `projectsSlice`, `resourcesSlice`, `revisionsSlice`, `editorConfigSlice`, `querySlice`, `searchSlice`
-- *Transports*: `revision-transport-service`, `query-transport-service`, `search-transport-service`, `metadata-schema-transport-service`
+- *Transports*: `revision-transport-service`, `query-transport-service`, `search-transport-service`, `metadata-schema-transport-service`, `feature-config-transport-service` (per-project feature flags), `update-check-transport-service` (Electron update notice)
 - *Guards & normalizers*: `revision-canonical-guards` (single-canonical invariant), `queries-guards`, `revision-normalization`
 - *Controllers*: `project-actions-controller` (multi-step project ops)
 - *Plumbing*: `store.ts`, `ClientProvider.tsx`, `hooks.ts` (typed `useAppDispatch`/`useAppSelector`)
