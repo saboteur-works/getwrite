@@ -58,12 +58,7 @@ import {
 import { shallowEqual } from "react-redux";
 import { toastService } from "../src/lib/toast-service";
 import { setEditorConfig } from "../src/store/editorConfigSlice";
-import {
-  compileToText,
-  type CompileSection,
-} from "../src/lib/export/compile-text";
-import { slugify } from "../src/lib/utils";
-import { exportMarkdown } from "../src/lib/api/export";
+import { exportMarkdown, exportText } from "../src/lib/api/export";
 
 /**
  * Flat representation of a project that has been opened in the current session.
@@ -617,36 +612,25 @@ export default function Home(): JSX.Element {
         return;
       }
 
-      // Build a lookup map for content from already-loaded resources.
-      // Resources have a `plaintext` field loaded when the project opened.
-      const contentById = new Map(
-        selectedProject.resources.map((r) => [
-          r.id,
-          (r as any).plaintext ?? (r as any).plainText ?? "",
-        ]),
-      );
-      const nameById = new Map(
-        [...selectedProject.resources, ...selectedProject.folders].map((r) => [
-          r.id,
-          r.name,
-        ]),
-      );
+      // Plain-text export goes through the server route so it reads each
+      // resource's current saved content from disk, matching the Markdown path.
+      // Using the client-side `plaintext` snapshot here would miss text typed
+      // after the project was opened (it is only refreshed on project reload).
+      const resourcesMeta = resolvedIds.map((id) => {
+        const r = selectedProject.resources.find((x) => x.id === id);
+        return {
+          id,
+          name: r?.name ?? id,
+          type: (r as { type?: string } | undefined)?.type ?? "text",
+        };
+      });
 
-      // Only include text resources in the exported output.
-      const textIds = resolvedIds.filter(
-        (id) =>
-          (selectedProject.resources.find((r) => r.id === id) as any)?.type ===
-          "text",
-      );
-
-      const sections: CompileSection[] = textIds.map((id) => ({
-        name: nameById.get(id) ?? id,
-        content: contentById.get(id) ?? "",
-      }));
-
-      const includeHeaders = textIds.length > 1;
-      const text = compileToText(sections, { includeHeaders });
-      const filename = `${slugify(exportName)}.txt`;
+      const { text, filename } = await exportText({
+        projectPath: selectedProject.rootPath,
+        resourceIds: resolvedIds,
+        resources: resourcesMeta,
+        exportName,
+      });
 
       const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
