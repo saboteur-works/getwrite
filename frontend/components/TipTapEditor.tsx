@@ -158,7 +158,7 @@ export default function TipTapEditor({
   /**
    * Test-environment guard used to bypass full ProseMirror lifecycle in jsdom.
    */
-  const inTestEnv =
+  const isTestEnv =
     typeof process !== "undefined" &&
     (process.env?.VITEST === "true" || process.env?.NODE_ENV === "test");
 
@@ -368,6 +368,7 @@ export default function TipTapEditor({
       // Use a minimal, explicit cast to satisfy the Tiptap typing
       // while preserving the previous behaviour (no-emitted update).
       // TODO: refine to the precise options type when migrating tiptap types.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       editor.commands.setContent(value || "", false as any);
       // The content swap resets the selection; refresh the node-type indicator
       // so it reflects the newly loaded document (resource/revision switch)
@@ -430,7 +431,7 @@ export default function TipTapEditor({
 
   if (!isClient) return <div>Loading editor...</div>;
 
-  if (inTestEnv) {
+  if (isTestEnv) {
     // Minimal mock for tests: render content as plain HTML so components
     // that read initial content (like EditView) behave deterministically.
     return (

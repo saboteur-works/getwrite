@@ -143,18 +143,9 @@ export default function EditorMenuInput({
           style={{ transform: rotate ? `rotate(${rotate}deg)` : undefined }}
         />
       </label>
-      {type === "color" && (
+      {(type === "color" || type === "range") && (
         <input
-          type="color"
-          {...sharedInputProps}
-          onClick={onClick}
-          onInput={onInput}
-          className={`editor-menu-icon-button ${buttonClasses}`}
-        />
-      )}
-      {type === "range" && (
-        <input
-          type="range"
+          type={type}
           {...sharedInputProps}
           onClick={onClick}
           onInput={onInput}

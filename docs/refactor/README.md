@@ -23,7 +23,7 @@ one agent can refactor a whole feature with the tests that cover it.
 | 5 | Resources / Templates / Trash | 4k | 🟡 | ⬜ Not started | [05-resources.md](05-resources.md) |
 | 6 | Projects & Types | 6k | 🟡 | ⬜ Not started | [06-projects.md](06-projects.md) |
 | 7 | Index & Search | 2.5k | 🟡 | ⬜ Not started | [07-index-search.md](07-index-search.md) |
-| 8 | Editor (TipTap) | 3k | 🟡 | ⬜ Not started | [08-editor.md](08-editor.md) |
+| 8 | Editor (TipTap) | 3k | 🟡 | ✅ Done (2026-06-17) | [08-editor.md](08-editor.md) |
 | 9 | Compile & Export | 1.2k | 🟢 | ✅ Done (2026-06-17) | [09-compile-export.md](09-compile-export.md) |
 | 10 | Layout / Shell | 3.5k | 🔴 | ⬜ Not started | [10-shell.md](10-shell.md) |
 | 11 | Timeline | 1.2k | 🟢 | ✅ Done (2026-06-17) | [11-timeline.md](11-timeline.md) |

@@ -44,7 +44,7 @@ export default function EditorMenuColorSubmenu({
   onClearColor,
   clearLabel = "Clear color",
 }: EditorMenuColorSubmenuProps) {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const rootRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -56,13 +56,15 @@ export default function EditorMenuColorSubmenu({
   const Icon = iconName ? colorIconRegistry[iconName] : icon;
 
   useEffect(() => {
-    if (!open || !buttonRef.current) {
+    if (!isOpen || !buttonRef.current) {
       return;
     }
 
     const updateMenuPosition = () => {
       if (!buttonRef.current) return;
       const rect = buttonRef.current.getBoundingClientRect();
+      // Estimate menu width from CSS values (rem → px at 16 px/rem) to
+      // clamp the left position before the DOM paints the menu.
       const optionWidth = 1.75 * 16;
       const optionGap = 0.25 * 16;
       const horizontalPadding = 0.375 * 16 * 2;
@@ -85,16 +87,16 @@ export default function EditorMenuColorSubmenu({
       window.removeEventListener("resize", updateMenuPosition);
       window.removeEventListener("scroll", updateMenuPosition, true);
     };
-  }, [open]);
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      const clickedTrigger = rootRef.current?.contains(target) ?? false;
-      const clickedMenu = menuRef.current?.contains(target) ?? false;
+      const didClickTrigger = rootRef.current?.contains(target) ?? false;
+      const didClickMenu = menuRef.current?.contains(target) ?? false;
 
-      if (!clickedTrigger && !clickedMenu) {
-        setOpen(false);
+      if (!didClickTrigger && !didClickMenu) {
+        setIsOpen(false);
       }
     };
 
@@ -119,16 +121,16 @@ export default function EditorMenuColorSubmenu({
         className={`editor-menu-icon-button ${buildButtonClasses(false, disabled)}`}
         onClick={() => {
           if (disabled) return;
-          setOpen((previous) => !previous);
+          setIsOpen((previous) => !previous);
         }}
-        aria-expanded={open}
+        aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label={tooltipContent || iconName || "color menu"}
       >
         <Icon size={iconSize} />
       </button>
 
-      {open ? (
+      {isOpen ? (
         <div
           ref={menuRef}
           className="editor-menu-color-submenu"
@@ -146,7 +148,7 @@ export default function EditorMenuColorSubmenu({
               className="editor-menu-color-option editor-menu-color-option-clear"
               onClick={() => {
                 onClearColor();
-                setOpen(false);
+                setIsOpen(false);
               }}
               role="menuitem"
               aria-label={clearLabel}
@@ -170,7 +172,7 @@ export default function EditorMenuColorSubmenu({
                 style={{ color }}
                 onClick={() => {
                   onSelectColor(color);
-                  setOpen(false);
+                  setIsOpen(false);
                 }}
                 role="menuitemradio"
                 aria-checked={Boolean(isActive)}

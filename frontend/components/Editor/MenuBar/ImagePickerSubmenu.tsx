@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Image as ImageIcon } from "lucide-react";
 import type { Editor } from "@tiptap/core";
 import { useAppSelector } from "../../../src/store/hooks";
@@ -14,7 +14,7 @@ export interface ImagePickerSubmenuProps {
 export default function ImagePickerSubmenu({
   editor,
 }: ImagePickerSubmenuProps) {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -29,7 +29,7 @@ export default function ImagePickerSubmenu({
   );
 
   useEffect(() => {
-    if (!open || !buttonRef.current) return;
+    if (!isOpen || !buttonRef.current) return;
 
     const update = () => {
       if (!buttonRef.current) return;
@@ -44,7 +44,7 @@ export default function ImagePickerSubmenu({
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [open]);
+  }, [isOpen]);
 
   useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {
@@ -53,22 +53,27 @@ export default function ImagePickerSubmenu({
         !rootRef.current?.contains(target) &&
         !menuRef.current?.contains(target)
       ) {
-        setOpen(false);
+        setIsOpen(false);
       }
     };
     document.addEventListener("mousedown", onMouseDown);
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, []);
 
+  const buildResourceImageUrl = (resourceId: string) =>
+    `/api/resource/${resourceId}/file?projectPath=${encodeURIComponent(projectPath!)}`;
+
   const handleInsert = (resource: ImageResource) => {
     if (!projectPath) return;
-    const src = `/api/resource/${resource.id}/file?projectPath=${encodeURIComponent(projectPath)}`;
     editor
       .chain()
       .focus()
-      .insertGetWriteImage({ src, resourceId: resource.id })
+      .insertGetWriteImage({
+        src: buildResourceImageUrl(resource.id),
+        resourceId: resource.id,
+      })
       .run();
-    setOpen(false);
+    setIsOpen(false);
   };
 
   return (
@@ -79,15 +84,15 @@ export default function ImagePickerSubmenu({
         data-tooltip-id={TOOLBAR_TOOLTIP_ID}
         data-tooltip-content="Insert Image"
         className={`editor-menu-icon-button ${buildButtonClasses(false, false)}`}
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
+        onClick={() => setIsOpen((prev) => !prev)}
+        aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label="Insert image"
       >
         <ImageIcon size={16} />
       </button>
 
-      {open ? (
+      {isOpen ? (
         <div
           ref={menuRef}
           className="editor-image-picker"
@@ -114,7 +119,7 @@ export default function ImagePickerSubmenu({
                 >
                   {resource.file && projectPath ? (
                     <img
-                      src={`/api/resource/${resource.id}/file?projectPath=${encodeURIComponent(projectPath)}`}
+                      src={buildResourceImageUrl(resource.id)}
                       alt={resource.name}
                       className="editor-image-picker-thumb"
                     />

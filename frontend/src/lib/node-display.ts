@@ -81,18 +81,18 @@ export function nodeTypeLabel(
  * @param ancestry - Nodes ordered outermost → innermost.
  */
 export function labelForAncestry(ancestry: NodeAncestry): string | null {
-  let sawParagraph = false;
+  let hasParagraph = false;
   // Scan innermost → outermost: the closest specific container takes priority.
   for (let i = ancestry.length - 1; i >= 0; i--) {
     const node = ancestry[i];
     if (node.name === "paragraph") {
-      sawParagraph = true;
+      hasParagraph = true;
       continue;
     }
     const label = nodeTypeLabel(node.name, node.attrs);
     if (label !== null) return label;
   }
-  return sawParagraph ? BODY_LABEL : null;
+  return hasParagraph ? BODY_LABEL : null;
 }
 
 /**

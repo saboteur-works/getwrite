@@ -52,13 +52,8 @@ export const HEADING_FIELD_DEFINITIONS: EditorHeadingFieldDefinition[] = [
 ];
 
 function normalizeHeadingValue(value: string | undefined): string | undefined {
-  const trimmedValue = value?.trim();
-
-  if (!trimmedValue) {
-    return undefined;
-  }
-
-  return trimmedValue;
+  const trimmed = value?.trim();
+  return trimmed || undefined;
 }
 
 export function sanitizeEditorHeading(
@@ -68,38 +63,16 @@ export function sanitizeEditorHeading(
     return undefined;
   }
 
-  const sanitizedHeading: EditorHeading = {};
-  const fontSize = normalizeHeadingValue(heading.fontSize);
-  const fontFamily = normalizeHeadingValue(heading.fontFamily);
-  const fontWeight = normalizeHeadingValue(heading.fontWeight);
-  const letterSpacing = normalizeHeadingValue(heading.letterSpacing);
-  const color = normalizeHeadingValue(heading.color);
+  const sanitizedHeading = Object.fromEntries(
+    HEADING_FIELD_DEFINITIONS.flatMap(({ key }) => {
+      const value = normalizeHeadingValue(heading[key]);
+      return value ? [[key, value]] : [];
+    }),
+  ) as EditorHeading;
 
-  if (fontSize) {
-    sanitizedHeading.fontSize = fontSize;
-  }
-
-  if (fontFamily) {
-    sanitizedHeading.fontFamily = fontFamily;
-  }
-
-  if (fontWeight) {
-    sanitizedHeading.fontWeight = fontWeight;
-  }
-
-  if (letterSpacing) {
-    sanitizedHeading.letterSpacing = letterSpacing;
-  }
-
-  if (color) {
-    sanitizedHeading.color = color;
-  }
-
-  if (Object.keys(sanitizedHeading).length === 0) {
-    return undefined;
-  }
-
-  return sanitizedHeading;
+  return Object.keys(sanitizedHeading).length > 0
+    ? sanitizedHeading
+    : undefined;
 }
 
 export function sanitizeEditorHeadingMap(
@@ -165,6 +138,14 @@ export function getNextHeadingLevel(
   return null;
 }
 
+const CSS_PROPERTY_NAMES: Record<EditorHeadingFieldKey, string> = {
+  fontSize: "font-size",
+  fontFamily: "font-family",
+  fontWeight: "font-weight",
+  letterSpacing: "letter-spacing",
+  color: "color",
+};
+
 export function buildHeadingStyleAttribute(
   heading: EditorHeading | undefined,
 ): string | undefined {
@@ -174,31 +155,9 @@ export function buildHeadingStyleAttribute(
     return undefined;
   }
 
-  const styleDeclarations: string[] = [];
+  const declarations = (
+    Object.entries(sanitizedHeading) as [EditorHeadingFieldKey, string][]
+  ).map(([key, value]) => `${CSS_PROPERTY_NAMES[key]}: ${value}`);
 
-  if (sanitizedHeading.fontSize) {
-    styleDeclarations.push(`font-size: ${sanitizedHeading.fontSize}`);
-  }
-
-  if (sanitizedHeading.fontFamily) {
-    styleDeclarations.push(`font-family: ${sanitizedHeading.fontFamily}`);
-  }
-
-  if (sanitizedHeading.fontWeight) {
-    styleDeclarations.push(`font-weight: ${sanitizedHeading.fontWeight}`);
-  }
-
-  if (sanitizedHeading.letterSpacing) {
-    styleDeclarations.push(`letter-spacing: ${sanitizedHeading.letterSpacing}`);
-  }
-
-  if (sanitizedHeading.color) {
-    styleDeclarations.push(`color: ${sanitizedHeading.color}`);
-  }
-
-  if (styleDeclarations.length === 0) {
-    return undefined;
-  }
-
-  return `${styleDeclarations.join("; ")};`;
+  return declarations.length > 0 ? `${declarations.join("; ")};` : undefined;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import type { EditorHeading, EditorHeadings } from "../../src/lib/models/types";
 import { Pipette } from "lucide-react";
 import {
@@ -36,13 +36,8 @@ const FONT_WEIGHT_OPTIONS: Array<{ label: string; value: string }> = [
 ];
 
 function toFontSizeInputValue(fontSize: string | undefined): string {
-  if (!fontSize) {
-    return "";
-  }
-
-  const numericValue = Number.parseInt(fontSize, 10);
-
-  return Number.isNaN(numericValue) ? "" : String(numericValue);
+  const n = Number.parseInt(fontSize ?? "", 10);
+  return Number.isNaN(n) ? "" : String(n);
 }
 
 function toFontWeightSelectValue(fontWeight: string | undefined): string {
@@ -64,13 +59,8 @@ function toFontWeightSelectValue(fontWeight: string | undefined): string {
 }
 
 function toLetterSpacingInputValue(letterSpacing: string | undefined): string {
-  if (!letterSpacing) {
-    return "";
-  }
-
-  const numericValue = Number.parseFloat(letterSpacing);
-
-  return Number.isNaN(numericValue) ? "" : String(numericValue);
+  const n = Number.parseFloat(letterSpacing ?? "");
+  return Number.isNaN(n) ? "" : String(n);
 }
 
 function toColorInputValue(color: string | undefined): string {
@@ -99,9 +89,7 @@ export default function HeadingSettingsModal({
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const nextHeadingLevel = useMemo(() => {
-    return getNextHeadingLevel(visibleLevels);
-  }, [visibleLevels]);
+  const nextHeadingLevel = getNextHeadingLevel(visibleLevels);
 
   const handleFieldChange = (
     level: EditorHeadings,
@@ -165,6 +153,21 @@ export default function HeadingSettingsModal({
     }
   };
 
+  const handleColorPickerClick = (level: EditorHeadings): void => {
+    const colorInput = document.getElementById(
+      `${level}-color`,
+    ) as HTMLInputElement | null;
+
+    colorInput?.click();
+  };
+
+  const makeUnitChangeHandler =
+    (level: EditorHeadings, key: EditorHeadingFieldKey, unit: string) =>
+    (event: React.ChangeEvent<HTMLInputElement>): void => {
+      const { value } = event.target;
+      handleFieldChange(level, key, value ? `${value}${unit}` : "");
+    };
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8 lg:px-10">
       <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
@@ -187,6 +190,7 @@ export default function HeadingSettingsModal({
       <div className="flex flex-col gap-4">
         {visibleLevels.map((level) => {
           const heading = draftHeadings[level] ?? {};
+          const label = getHeadingLabel(level);
           const isOptionalLevel =
             !DEFAULT_VISIBLE_HEADING_LEVELS.includes(level);
 
@@ -195,11 +199,11 @@ export default function HeadingSettingsModal({
               <div className="flex items-center justify-between gap-4 border-b border-gw-border pb-4">
                 <div>
                   <h2 className="text-sm font-semibold text-gw-primary">
-                    {getHeadingLabel(level)}
+                    {label}
                   </h2>
                   <p className="mt-1 text-sm text-gw-secondary">
-                    Set the typography attributes applied to{" "}
-                    {getHeadingLabel(level)} in the editor.
+                    Set the typography attributes applied to {label} in the
+                    editor.
                   </p>
                 </div>
                 {isOptionalLevel ? (
@@ -208,7 +212,7 @@ export default function HeadingSettingsModal({
                     size="sm"
                     onClick={() => handleRemoveHeading(level)}
                   >
-                    Remove {getHeadingLabel(level)}
+                    Remove {label}
                   </Button>
                 ) : null}
               </div>
@@ -217,21 +221,13 @@ export default function HeadingSettingsModal({
                 <HeadingStyleField id={`${level}-fontSize`} label="Font Size">
                   <Input
                     id={`${level}-fontSize`}
-                    aria-label={`${getHeadingLabel(level)} Font Size`}
+                    aria-label={`${label} Font Size`}
                     type="number"
                     step="1"
                     min="1"
                     value={toFontSizeInputValue(heading.fontSize)}
                     placeholder="e.g. 32"
-                    onChange={(event) => {
-                      const value = event.target.value;
-
-                      handleFieldChange(
-                        level,
-                        "fontSize",
-                        value ? `${value}px` : "",
-                      );
-                    }}
+                    onChange={makeUnitChangeHandler(level, "fontSize", "px")}
                   />
                 </HeadingStyleField>
 
@@ -241,7 +237,7 @@ export default function HeadingSettingsModal({
                 >
                   <FontFamilyInput
                     id={`${level}-fontFamily`}
-                    aria-label={`${getHeadingLabel(level)} Font Family`}
+                    aria-label={`${label} Font Family`}
                     value={heading.fontFamily ?? ""}
                     placeholder="e.g. IBM Plex Sans"
                     onChange={(event) =>
@@ -256,7 +252,7 @@ export default function HeadingSettingsModal({
                 >
                   <Select
                     id={`${level}-fontWeight`}
-                    aria-label={`${getHeadingLabel(level)} Font Weight`}
+                    aria-label={`${label} Font Weight`}
                     value={toFontWeightSelectValue(heading.fontWeight)}
                     onChange={(event) =>
                       handleFieldChange(level, "fontWeight", event.target.value)
@@ -277,21 +273,17 @@ export default function HeadingSettingsModal({
                 >
                   <Input
                     id={`${level}-letterSpacing`}
-                    aria-label={`${getHeadingLabel(level)} Letter Spacing`}
+                    aria-label={`${label} Letter Spacing`}
                     type="number"
                     step="0.01"
                     min="0"
                     value={toLetterSpacingInputValue(heading.letterSpacing)}
                     placeholder="e.g. 0.08"
-                    onChange={(event) => {
-                      const value = event.target.value;
-
-                      handleFieldChange(
-                        level,
-                        "letterSpacing",
-                        value ? `${value}em` : "",
-                      );
-                    }}
+                    onChange={makeUnitChangeHandler(
+                      level,
+                      "letterSpacing",
+                      "em",
+                    )}
                   />
                 </HeadingStyleField>
 
@@ -299,14 +291,8 @@ export default function HeadingSettingsModal({
                   <div className="flex items-center gap-3 rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2">
                     <button
                       type="button"
-                      aria-label={`Choose ${getHeadingLabel(level)} color`}
-                      onClick={() => {
-                        const colorInput = document.getElementById(
-                          `${level}-color`,
-                        ) as HTMLInputElement | null;
-
-                        colorInput?.click();
-                      }}
+                      aria-label={`Choose ${label} color`}
+                      onClick={() => handleColorPickerClick(level)}
                       className="inline-flex items-center justify-center rounded-sm border border-gw-border px-2 py-1 transition-colors duration-150 hover:bg-gw-surface"
                     >
                       <Pipette
@@ -317,7 +303,7 @@ export default function HeadingSettingsModal({
                     </button>
                     <input
                       id={`${level}-color`}
-                      aria-label={`${getHeadingLabel(level)} Color`}
+                      aria-label={`${label} Color`}
                       type="color"
                       value={toColorInputValue(heading.color)}
                       onChange={(event) =>
@@ -334,7 +320,7 @@ export default function HeadingSettingsModal({
                   Preview
                 </span>
                 <p
-                  aria-label={`${getHeadingLabel(level)} preview`}
+                  aria-label={`${label} preview`}
                   className="mt-2 leading-snug"
                   style={{
                     fontFamily: heading.fontFamily || undefined,

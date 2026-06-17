@@ -39,13 +39,13 @@ function ancestryForBlock(
   pos: number,
   parent: ProseMirrorNode | null,
 ): AncestorNode[] {
-  const parentIsTransparent =
+  const isParentTransparent =
     node.type.name === "paragraph" &&
     parent !== null &&
     parent.type.name !== "doc" &&
     nodeTypeLabel(parent.type.name, parent.attrs) === null;
 
-  if (!parentIsTransparent) {
+  if (!isParentTransparent) {
     const ancestry: AncestorNode[] = [];
     if (parent) {
       ancestry.push({ name: parent.type.name, attrs: parent.attrs });
