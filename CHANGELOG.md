@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.53](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.52...getwrite-v0.2.53) (2026-06-17)
+
+
+### Features
+
+* Markdown support (serializer, editor source toggle, export/compile) ([#138](https://github.com/saboteur-works/getwrite/issues/138)) ([5851de1](https://github.com/saboteur-works/getwrite/commit/5851de17f32de1eb4388100375296e7e908f340f))
+
 ## [0.2.52](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.51...getwrite-v0.2.52) (2026-06-16)
 
 
