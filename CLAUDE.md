@@ -8,10 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Workspace Layout
 
-This is a pnpm workspace (pnpm@10.28.0, pinned). `pnpm-workspace.yaml` lists two packages:
+This is a pnpm workspace (pnpm@10.28.0, pinned). `pnpm-workspace.yaml` lists three packages:
 
-- `frontend/` — `getwrite-frontend`. The Next.js app, Redux store, Zod models, Storybook, CLI source, and all UI tests.
+- `frontend/` — `getwrite-frontend`. The Next.js app, Redux store, Zod models, Storybook, and all UI tests.
 - `electron/` — `getwrite-electron`. Desktop shell that spawns the Next.js standalone server and opens a `BrowserWindow`.
+- `cli/` — `getwrite-cli`. Standalone CLI tools bundled separately with esbuild.
 
 Additional repo-root directories that are **not** workspace packages but are referenced at runtime:
 
@@ -65,7 +66,7 @@ From the repo root: `pnpm --filter getwrite-frontend exec vitest` runs frontend 
   - `meta/templates/` — resource template scaffolds
   - `revisions/<uuid>/v-<N>/` — versioned snapshots per resource
   - `.trash/{resources,meta}/` — soft-deleted content (see [Glossary: Trash](#glossary))
-- **API routes** (`frontend/app/api/`): Read/write the filesystem directly. Top-level groups: `projects`, `project/*` (id, delete, rename, tags, preferences, editor-config, metadata-schema, revision-settings, query), `project-resources`, `project-types`, `resource/*` (id, revision), `compile`, `export`.
+- **API routes** (`frontend/app/api/`): Read/write the filesystem directly. Top-level groups: `projects`, `project/*` (id, delete, rename, tags, preferences, editor-config, metadata-schema, revision-settings, query), `project-resources`, `project-types`, `resource/*` (id, revision), `compile`, `export`, `version-check` (Electron update check).
 - **Schemas** (`frontend/src/lib/models/schemas.ts`): Zod validators gate all persisted data crossing the filesystem boundary
 - **File locking**: `frontend/src/lib/models/locks.ts` is a generic per-key async mutex; `meta-locks.ts` serializes metadata-affecting operations keyed by project root
 
@@ -98,7 +99,6 @@ frontend/
   src/
     lib/models/          # Filesystem-backed data layer (see Code Map)
     store/               # Redux store and slices
-    cli/                 # CLI tooling (bundled separately with esbuild)
   tests/                 # Vitest unit + integration tests
   e2e/                   # Playwright tests (run against Storybook)
 ```
@@ -134,15 +134,16 @@ All paths relative to `frontend/src/`. Use these as orientation; open the files 
 - Build flow: `pnpm electron:build` (frontend `next build` → electron `tsc`); package with `pnpm electron:package` (electron-builder).
 - Logs go to `app.getPath("logs")/getwrite.log` in production.
 
-### CLI (`frontend/src/cli/`)
+### CLI (`cli/`)
 
-Bundled to `frontend/dist-cli/bin/getwrite-cli.cjs` via `pnpm build:cli` (esbuild, Node target). Built on `commander`. Commands:
+Bundled to `cli/dist/bin/getwrite-cli.cjs` via `pnpm cli:build` (esbuild, Node target). Built on `commander`. Commands:
 
 - `getwrite-cli project create [projectRoot] --spec <specPath> [-n <name>]` — Scaffold a new project from a project-type JSON spec (delegates to `project-creator.ts`).
 - `getwrite-cli prune [projectRoot] [--max <n>]` — Delete oldest non-canonical revisions until at most `--max` (default 50) remain per resource. Logic in `pruneExecutor.ts`.
 - `getwrite-cli reindex [projectRoot]` — Rebuild inverted index + backlinks from scratch by re-scanning all resources. Use after bulk filesystem changes that bypassed the save path.
 - `getwrite-cli templates save|create|duplicate|list <projectRoot> …` — Manage resource templates under `<projectRoot>/meta/templates/`.
 - `getwrite-cli screenshots capture [-b <storybook-url>] [-o <out-dir>] [-l <limit>]` — Playwright-driven full-page screenshots of every Storybook story.
+- `getwrite-cli doctor [projectRoot]` — Check a project for broken folder associations (orphaned resources/folders). Logic in `cli/src/commands/doctor.ts`.
 
 Set `GETWRITE_CLI_TESTING=1` to suppress `process.exit` when invoking commands from tests.
 
