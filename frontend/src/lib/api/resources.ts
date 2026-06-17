@@ -107,21 +107,6 @@ export async function renameResource(
   return response.ok;
 }
 
-export async function persistContent(
-  resourceId: string,
-  projectPath: string,
-  doc: TipTapDocument,
-): Promise<void> {
-  const response = await fetch(`/api/resource/${resourceId}/content`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ projectPath, doc }),
-  });
-  if (!response.ok) {
-    throw new Error(`Failed to persist content (${response.status})`);
-  }
-}
-
 export async function fetchResourceContent(
   projectPath: string,
   resourceId: string,

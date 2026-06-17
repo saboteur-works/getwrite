@@ -24,8 +24,13 @@ import { countWords } from "../../src/lib/word-count";
 export interface EditViewProps {
   /** Initial editor content (HTML or plain text) */
   initialContent?: string;
-  /** Called when content changes */
-  onChange?: (content: string, doc: TipTapDocument) => void;
+  /**
+   * Notifies the parent when the editor has unsaved work, so it can guard
+   * destructive actions (e.g. closing the project). Reflects the canonical
+   * autosave status, plus uncommitted edits made while viewing an older
+   * revision.
+   */
+  onUnsavedChange?: (unsaved: boolean) => void;
 }
 
 /**
@@ -37,7 +42,7 @@ export interface EditViewProps {
  */
 export default function EditView({
   initialContent = "",
-  onChange,
+  onUnsavedChange,
 }: EditViewProps): JSX.Element {
   const currentRevisionId = useAppSelector(selectCurrentRevisionId);
   const currentRevisionContent = useAppSelector(selectCurrentRevisionContent);
@@ -111,8 +116,25 @@ export default function EditView({
       clearSaveErrors();
       queueAutosave(doc);
     }
-    if (onChange) onChange(next, doc);
   };
+
+  // Surface unsaved state to the parent: the canonical autosave is in flight
+  // (pending/saving) or failed, or there are uncommitted edits made while
+  // viewing a non-canonical revision (which are never autosaved).
+  const hasUnsavedWork = React.useMemo(() => {
+    if (isViewingNonCanonical) {
+      return hasEditsAfterRevisionSwitch;
+    }
+    return (
+      saveStatus === "pending" ||
+      saveStatus === "saving" ||
+      saveStatus === "error"
+    );
+  }, [isViewingNonCanonical, hasEditsAfterRevisionSwitch, saveStatus]);
+
+  useEffect(() => {
+    onUnsavedChange?.(hasUnsavedWork);
+  }, [hasUnsavedWork, onUnsavedChange]);
 
   const wordCount = React.useMemo(() => {
     if (tipTapDoc && tipTapDoc.content && tipTapDoc.content.length > 0) {

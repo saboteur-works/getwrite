@@ -11,7 +11,7 @@
  * create/export/compile flows, resizable/collapsible split panes, and debounced persistence
  * of editor content.
  */
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import type {
   AnyResource,
   EditorBodyConfig,
@@ -19,7 +19,6 @@ import type {
   Project as CanonicalProject,
   ResourceType,
   Folder,
-  TipTapDocument,
   ResourceRef,
 } from "../../src/lib/models/types";
 import { shallowEqual } from "react-redux";
@@ -55,9 +54,6 @@ import DataView from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/Views/TimelineView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
-import debounce from "lodash/debounce";
-import { tiptapToPlainText } from "../../src/lib/tiptap-text";
-import { countWords } from "../../src/lib/word-count";
 import {
   saveHeadingSettings,
   saveBodySettings,
@@ -66,10 +62,7 @@ import {
   saveProjectPreferences,
   saveRevisionSettings,
 } from "../../src/lib/api/preferences";
-import {
-  renameResource,
-  persistContent as persistResourceContent,
-} from "../../src/lib/api/resources";
+import { renameResource } from "../../src/lib/api/resources";
 import {
   compilePdf,
   compileDocx,
@@ -311,7 +304,6 @@ export default function AppShell({
   const [queryBuilderOpen, setQueryBuilderOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [editingQuery, setEditingQuery] = useState<SavedQuery | null>(null);
-  const latestEditorEditVersionRef = useRef<number>(0);
   const combined = React.useMemo(() => {
     return [...(resources ?? []), ...(folders ?? [])];
   }, [resources, folders]);
@@ -742,73 +734,8 @@ export default function AppShell({
     dispatch(evaluateQuery({ projectId: project.id, definition: currentAst }));
   };
 
-  /**
-   * Persists editor content to resource API using debounced transport.
-   *
-   * Guard clauses ensure this only runs for open projects with selected
-   * resources and known `rootPath`.
-   *
-   * @param doc - Current TipTap document snapshot to persist.
-   */
-  const persistContent = useCallback(
-    async (doc: TipTapDocument, editVersion: number): Promise<void> => {
-      if (!project || !selectedResourceId) {
-        setHasUnsavedEditorChanges(false);
-        return;
-      }
-      if (!project.rootPath) {
-        setHasUnsavedEditorChanges(false);
-        return;
-      }
-
-      try {
-        await persistResourceContent(selectedResourceId, project.rootPath, doc);
-
-        const wordCount = countWords(tiptapToPlainText(doc));
-        dispatch(updateResource({ id: selectedResourceId, wordCount }));
-
-        if (latestEditorEditVersionRef.current === editVersion) {
-          setHasUnsavedEditorChanges(false);
-        }
-      } catch (err) {
-        console.error("Failed to persist content:", err);
-        setHasUnsavedEditorChanges(true);
-      }
-    },
-    [project, selectedResourceId, dispatch],
-  );
-
-  /**
-   * Debounced content persistence function to limit API write frequency while
-   * users are typing.
-   */
-  const debouncedPersistContent = React.useMemo(
-    () => debounce(persistContent, 2500),
-    [persistContent],
-  );
-
-  /**
-   * Editor change handler that feeds updates into debounced persistence.
-   *
-   * @param content - Latest plain-text content.
-   * @param doc - Latest TipTap document snapshot.
-   */
-  const handlerEditorChange = (_content: string, doc: TipTapDocument) => {
-    latestEditorEditVersionRef.current += 1;
-    const nextEditVersion = latestEditorEditVersionRef.current;
-    setHasUnsavedEditorChanges(true);
-    debouncedPersistContent(doc, nextEditVersion);
-  };
-
-  useEffect(() => {
-    return () => {
-      debouncedPersistContent.cancel(); // Cancel any pending debounced calls
-    };
-  }, [debouncedPersistContent]);
-
   useEffect(() => {
     setHasUnsavedEditorChanges(false);
-    latestEditorEditVersionRef.current = 0;
   }, [project?.id, selectedResourceId]);
 
   useEffect(() => {
@@ -940,7 +867,6 @@ export default function AppShell({
   const handleConfirmCloseProject = (): void => {
     setIsCloseProjectConfirmOpen(false);
     setHasUnsavedEditorChanges(false);
-    debouncedPersistContent.cancel();
     onCloseProject?.();
   };
 
@@ -1472,7 +1398,7 @@ export default function AppShell({
                               }
                               return (
                                 <EditView
-                                  onChange={handlerEditorChange}
+                                  onUnsavedChange={setHasUnsavedEditorChanges}
                                   initialContent={getResourceContent(
                                     selectedResource,
                                   )}
