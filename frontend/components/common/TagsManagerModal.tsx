@@ -34,7 +34,7 @@ export default function TagsManagerModal({
   const [tags, setTags] = useState<Tag[]>([]);
   const [newName, setNewName] = useState<string>("");
   const [newColor, setNewColor] = useState<string>("#000000"); // GW-HEX-EXEMPT: color picker initial value — user-selected arbitrary colors
-  const [useColor, setUseColor] = useState<boolean>(false);
+  const [shouldUseColor, setShouldUseColor] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,9 +63,13 @@ export default function TagsManagerModal({
     if (!trimmed || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await createTag(projectPath, trimmed, useColor ? newColor : undefined);
+      await createTag(
+        projectPath,
+        trimmed,
+        shouldUseColor ? newColor : undefined,
+      );
       setNewName("");
-      setUseColor(false);
+      setShouldUseColor(false);
       loadTags();
       nameInputRef.current?.focus();
     } finally {
@@ -153,13 +157,13 @@ export default function TagsManagerModal({
             <label className="flex items-center gap-2 text-sm text-gw-secondary cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={useColor}
-                onChange={(e) => setUseColor(e.target.checked)}
+                checked={shouldUseColor}
+                onChange={(e) => setShouldUseColor(e.target.checked)}
                 aria-label="Set tag color"
               />
               Color
             </label>
-            {useColor ? (
+            {shouldUseColor ? (
               <input
                 type="color"
                 value={toColorInputValue(newColor)}

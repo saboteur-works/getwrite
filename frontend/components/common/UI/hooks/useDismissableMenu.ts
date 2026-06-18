@@ -62,12 +62,11 @@ export default function useDismissableMenu({
       }
     }
 
-    document.addEventListener("mousedown", onMouseDown, { capture: true });
+    const captureOpts: AddEventListenerOptions = { capture: true };
+    document.addEventListener("mousedown", onMouseDown, captureOpts);
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("mousedown", onMouseDown, {
-        capture: true,
-      } as EventListenerOptions);
+      document.removeEventListener("mousedown", onMouseDown, captureOpts);
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [isOpen, onClose]);

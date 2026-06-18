@@ -9,14 +9,6 @@
  * - Error messages with context
  *
  * Configuration: Stack in bottom-right, auto-dismiss in ~3s.
- *
- * @example
- * ```tsx
- * import { toastService } from '@/lib/toast-service';
- *
- * toastService.success("Project created: My Book");
- * toastService.error("Failed to delete resource", "Please try again");
- * ```
  */
 
 import toast from "react-hot-toast";
@@ -103,12 +95,6 @@ export const toastService = {
    * Dismiss a specific toast by ID.
    *
    * @param toastId - The ID returned from a toast function.
-   *
-   * @example
-   * ```tsx
-   * const id = toastService.loading("Working...");
-   * toastService.dismiss(id);
-   * ```
    */
   dismiss: (toastId: string): void => {
     toast.remove(toastId);
@@ -116,11 +102,6 @@ export const toastService = {
 
   /**
    * Dismiss all toasts currently visible.
-   *
-   * @example
-   * ```tsx
-   * toastService.dismissAll();
-   * ```
    */
   dismissAll: (): void => {
     toast.remove();

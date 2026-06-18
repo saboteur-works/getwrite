@@ -27,13 +27,13 @@ one agent can refactor a whole feature with the tests that cover it.
 | 9 | Compile & Export | 1.2k | 🟢 | ✅ Done (2026-06-17) | [09-compile-export.md](09-compile-export.md) |
 | 10 | Layout / Shell | 3.5k | 🔴 | ✅ Done (2026-06-17) | [10-shell.md](10-shell.md) |
 | 11 | Timeline | 1.2k | 🟢 | ✅ Done (2026-06-17) | [11-timeline.md](11-timeline.md) |
-| 12 | Common UI primitives | 2k | 🟡 | ⬜ Not started | [12-common-ui.md](12-common-ui.md) |
+| 12 | Common UI primitives | 2k | 🟡 | ✅ Done (2026-06-17) | [12-common-ui.md](12-common-ui.md) |
 
 Status legend: ⬜ Not started · 🚧 In progress · ✅ Done (gate green for the slice's own files). Slice 9 landed via commits `f21de5e` (brevity/clarity pass) and `a1a08cd` (route unification); route unification was its headline goal.
 
 Per-file change deltas for completed slices live in [`deltas/`](deltas/) — see
 [02](deltas/02-query.md), [03](deltas/03-revisions.md), [04](deltas/04-metadata-schema.md), [05](deltas/05-resources.md), [06](deltas/06-projects.md),
-[07](deltas/07-index-search.md), [08](deltas/08-editor.md), [09](deltas/09-compile-export.md), [10](deltas/10-shell.md), [11](deltas/11-timeline.md).
+[07](deltas/07-index-search.md), [08](deltas/08-editor.md), [09](deltas/09-compile-export.md), [10](deltas/10-shell.md), [11](deltas/11-timeline.md), [12](deltas/12-common-ui.md).
 
 ## Recommended sequence
 

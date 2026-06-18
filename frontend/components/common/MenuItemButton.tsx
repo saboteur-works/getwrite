@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import { type ReactNode } from "react";
 
 export interface MenuItemButtonProps {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   onClick: () => void;
   danger?: boolean;
