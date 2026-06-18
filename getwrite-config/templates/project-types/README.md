@@ -18,11 +18,11 @@ Templates included
 
 Usage
 
-You can point the CLI at one of these templates when creating a new project. Example (from `frontend` or any working directory):
+You can point the CLI at one of these templates when creating a new project. Example (from the repo root):
 
 ```sh
-node ./dist-cli/bin/getwrite-cli.cjs project create ./my/new-project \
-  --spec ../getwrite-config/templates/project-types/novel_project_type.json \
+node cli/dist/bin/getwrite-cli.cjs project create ./my/new-project \
+  --spec getwrite-config/templates/project-types/novel_project_type.json \
   --name "My Project"
 ```
 

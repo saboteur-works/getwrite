@@ -9,7 +9,7 @@ Common subcommands (each section shows Usage, example and expected output)
 `templates save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]` — Capture an existing resource into `meta/templates/<templateId>.json`.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates save-from-resource ./my/project <resourceId> my-template --name "My Template"
+node cli/dist/bin/getwrite-cli.cjs templates save-from-resource ./my/project <resourceId> my-template --name "My Template"
 ```
 
 Expected output:
@@ -23,7 +23,7 @@ Saved template my-template from resource <resourceId>
 `templates save <projectRoot> <templateId> <name>` — Create a simple template file.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates save ./my/project my-template "My Template"
+node cli/dist/bin/getwrite-cli.cjs templates save ./my/project my-template "My Template"
 ```
 
 Expected output:
@@ -38,10 +38,10 @@ Saved template my-template
 
 ```bash
 # dry-run
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates create ./my/project my-template --vars '{"TITLE":"Hello"}' --dry-run
+node cli/dist/bin/getwrite-cli.cjs templates create ./my/project my-template --vars '{"TITLE":"Hello"}' --dry-run
 
 # real create
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates create ./my/project my-template --vars '{"TITLE":"Hello"}'
+node cli/dist/bin/getwrite-cli.cjs templates create ./my/project my-template --vars '{"TITLE":"Hello"}'
 ```
 
 Expected output (dry-run):
@@ -63,7 +63,7 @@ Created resource <id>
 `templates duplicate <projectRoot> <resourceId>` — Duplicate a resource (new id, cloned sidecar/file).
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates duplicate ./my/project <resourceId>
+node cli/dist/bin/getwrite-cli.cjs templates duplicate ./my/project <resourceId>
 ```
 
 Expected output:
@@ -77,7 +77,7 @@ Duplicated resource -> <newId>
 `templates list <projectRoot> [--query <text>]` — List templates (id, name, type).
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates list ./my/project --query "novel"
+node cli/dist/bin/getwrite-cli.cjs templates list ./my/project --query "novel"
 ```
 
 Expected output:
@@ -91,7 +91,7 @@ my-template-id	My Template	text
 `templates inspect <projectRoot> <templateId>` — Print template details: placeholders and metadata keys.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates inspect ./my/project my-template
+node cli/dist/bin/getwrite-cli.cjs templates inspect ./my/project my-template
 ```
 
 Expected output:
@@ -109,7 +109,7 @@ metadataKeys: author,tags
 `templates parametrize <projectRoot> <templateId> --placeholder "{{NAME}}"` — Replace literal strings with a placeholder variable and return introduced variables.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates parametrize ./my/project my-template --placeholder "{{TITLE}}"
+node cli/dist/bin/getwrite-cli.cjs templates parametrize ./my/project my-template --placeholder "{{TITLE}}"
 ```
 
 Expected output:
@@ -124,7 +124,7 @@ Variables: TITLE
 `templates export <projectRoot> <templateId> <out.zip>` — Export template JSON into a .zip package.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates export ./my/project my-template out.zip
+node cli/dist/bin/getwrite-cli.cjs templates export ./my/project my-template out.zip
 ```
 
 Expected output:
@@ -138,7 +138,7 @@ Exported template my-template -> out.zip
 `templates import <projectRoot> <pack.zip>` — Import templates from a .zip package into `meta/templates/`.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates import ./my/project out.zip
+node cli/dist/bin/getwrite-cli.cjs templates import ./my/project out.zip
 ```
 
 Expected output:
@@ -152,7 +152,7 @@ Imported templates: my-template
 `templates validate <projectRoot> <templateId>` — Validate template JSON against the runtime schema (zod) and print errors.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates validate ./my/project my-template
+node cli/dist/bin/getwrite-cli.cjs templates validate ./my/project my-template
 ```
 
 Expected output (valid):
@@ -173,7 +173,7 @@ Template my-template is invalid:
 `templates scaffold <projectRoot> <templateId> <count>` — Generate `<count>` resources from a template using sequential names.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates scaffold ./my/project my-template 5
+node cli/dist/bin/getwrite-cli.cjs templates scaffold ./my/project my-template 5
 ```
 
 Expected output:
@@ -187,7 +187,7 @@ Created 5 resources
 `templates apply-multiple <projectRoot> <templateId> <inputPath>` — Create multiple resources from a JSON array or CSV file of variable sets.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates apply-multiple ./my/project my-template ./rows.json
+node cli/dist/bin/getwrite-cli.cjs templates apply-multiple ./my/project my-template ./rows.json
 ```
 
 Expected output:
@@ -201,7 +201,7 @@ Created 3 resources
 `templates preview <projectRoot> <templateId> [--vars '{}'] [--out <file>]` — Render the template with vars; prints plainText or writes to `--out`.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates preview ./my/project my-template --vars '{"TITLE":"Preview"}'
+node cli/dist/bin/getwrite-cli.cjs templates preview ./my/project my-template --vars '{"TITLE":"Preview"}'
 ```
 
 Expected output (stdout):
@@ -215,7 +215,7 @@ Hello Preview
 `templates version <projectRoot> <templateId>` — Snapshot current template to `<templateId>.v<N>.json`.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates version ./my/project my-template
+node cli/dist/bin/getwrite-cli.cjs templates version ./my/project my-template
 ```
 
 Expected output:
@@ -229,7 +229,7 @@ Saved version -> /path/to/meta/templates/my-template.v1.json
 `templates history <projectRoot> <templateId>` — List saved template versions.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates history ./my/project my-template
+node cli/dist/bin/getwrite-cli.cjs templates history ./my/project my-template
 ```
 
 Expected output:
@@ -243,7 +243,7 @@ Expected output:
 `templates rollback <projectRoot> <templateId> <version>` — Restore a saved version into the main template file.
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates rollback ./my/project my-template 1
+node cli/dist/bin/getwrite-cli.cjs templates rollback ./my/project my-template 1
 ```
 
 Expected output:
@@ -257,7 +257,7 @@ Rolled back my-template -> v1
 `templates changeset <projectRoot> <templateId> [--since <ISO-date>]` — Show compact change entries recorded when templates are saved (timestamps, action, changed keys).
 
 ```bash
-pnpm dlx tsx ./frontend/bin/getwrite-cli.mjs templates changeset ./my/project my-template --since "2026-02-01T00:00:00Z"
+node cli/dist/bin/getwrite-cli.cjs templates changeset ./my/project my-template --since "2026-02-01T00:00:00Z"
 ```
 
 Expected output:

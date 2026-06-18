@@ -62,7 +62,7 @@ pnpm run dev
 - `getwrite-config/` — example runtime configuration and templates shipped alongside the app
 - `specs/` — specification artifacts and example project-type definitions used for docs and tests
 - `docs/` — user- and developer-facing documentation (see `docs/features`)
-- `src/cli/` and `dist-cli/` — CLI code and built CLI artifacts
+- `cli/` — `getwrite-cli` workspace package; bundled to `cli/dist/bin/getwrite-cli.cjs`
 
 ## Runtime models & validation
 

@@ -9,9 +9,6 @@ slices**. Each slice is a self-contained unit of work spanning its core logic
 (`src/lib/models`, `src/store`, `app/api`) and its UI (`frontend/components`), so
 one agent can refactor a whole feature with the tests that cover it.
 
-> Note: CLAUDE.md still documents a CLI under `frontend/src/cli/`. That directory
-> no longer exists. Flagged for the `doc-drift-reconciler` pass; not a slice.
-
 ## Slices
 
 | # | Slice | ~Lines | Risk | Status | Doc |
