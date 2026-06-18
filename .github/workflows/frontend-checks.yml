@@ -29,3 +29,34 @@ jobs:
             - name: Check for hardcoded hex color literals
               working-directory: frontend
               run: pnpm run check:no-hex
+
+    quality-gate:
+        name: Typecheck, lint & tests
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v2
+
+            - name: Use Node.js 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+
+            - name: Install dependencies
+              working-directory: frontend
+              run: pnpm install --frozen-lockfile
+
+            - name: Typecheck
+              working-directory: frontend
+              run: pnpm typecheck
+
+            - name: Lint
+              working-directory: frontend
+              run: pnpm lint
+
+            - name: Unit & integration tests
+              working-directory: frontend
+              run: pnpm test:ci
