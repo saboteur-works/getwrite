@@ -16,13 +16,14 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { POST } from "../../app/api/resource/upload/route";
 import type { AnyResource } from "../../src/lib/models/types";
+import { removeDirRetry } from "./helpers/fs-utils";
 
 const tmpDirs: string[] = [];
 
 afterEach(async () => {
   while (tmpDirs.length > 0) {
     const dir = tmpDirs.pop();
-    if (dir) await fs.rm(dir, { recursive: true, force: true });
+    if (dir) await removeDirRetry(dir);
   }
 });
 

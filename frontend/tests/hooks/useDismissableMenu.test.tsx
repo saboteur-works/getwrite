@@ -33,8 +33,8 @@ function TestMenu({
 }
 
 function ControlledTestMenu() {
-  const [open, setOpen] = useState(true);
-  return <TestMenu isOpen={open} onClose={() => setOpen(false)} />;
+  const [isOpen, setOpen] = useState(true);
+  return <TestMenu isOpen={isOpen} onClose={() => setOpen(false)} />;
 }
 
 describe("useDismissableMenu", () => {

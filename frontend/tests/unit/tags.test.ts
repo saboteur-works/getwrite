@@ -49,8 +49,8 @@ describe("tags (T023)", () => {
     const res = await listResourcesByTag(dir, tag.id);
     expect(res).toEqual([]);
 
-    const deleted = await deleteTag(dir, tag.id);
-    expect(deleted).toBe(true);
+    const isDeleted = await deleteTag(dir, tag.id);
+    expect(isDeleted).toBe(true);
     const tags = await listTags(dir);
     expect(tags.find((t) => t.id === tag.id)).toBeUndefined();
   });

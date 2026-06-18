@@ -14,9 +14,9 @@ export default function WordCountProgressBar({
   className = "",
 }: WordCountProgressBarProps): JSX.Element {
   const pct = Math.round((Math.min(current, goal) / goal) * 100);
-  const achieved = current >= goal;
+  const isGoalReached = current >= goal;
 
-  const label = achieved
+  const label = isGoalReached
     ? `${current.toLocaleString()} / ${goal.toLocaleString()} words · Goal reached`
     : current === 0
       ? `0 / ${goal.toLocaleString()} words`

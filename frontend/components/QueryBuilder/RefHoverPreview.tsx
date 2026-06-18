@@ -18,7 +18,7 @@ export default function RefHoverPreview({
   resource,
   children,
 }: RefHoverPreviewProps): JSX.Element {
-  const [visible, setVisible] = useState(false);
+  const [isVisible, setVisible] = useState(false);
 
   return (
     <span
@@ -27,7 +27,7 @@ export default function RefHoverPreview({
       onMouseLeave={() => setVisible(false)}
     >
       {children}
-      {visible && (
+      {isVisible && (
         <div className="ref-hover-preview__popover" role="tooltip">
           <span className="ref-hover-preview__name">{resource.name}</span>
           {resource.id === null ? (

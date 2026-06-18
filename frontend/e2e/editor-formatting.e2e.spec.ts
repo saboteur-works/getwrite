@@ -204,12 +204,12 @@ test.describe("Alignment", () => {
     expect(value).toBe("right");
 
     // The center button should no longer carry its active class.
-    const centerActive = await page
+    const isCenterActive = await page
       .getByRole("button", { name: /^Align Center$/i })
       .evaluate((el) =>
         el.classList.contains("editor-menu-icon-button-active"),
       );
-    expect(centerActive).toBe(false);
+    expect(isCenterActive).toBe(false);
   });
 });
 

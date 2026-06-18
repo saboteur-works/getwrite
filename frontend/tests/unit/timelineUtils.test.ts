@@ -206,39 +206,45 @@ describe("getAdaptiveTickStrategy", () => {
   const week = 7 * DAY;
 
   it("uses 24h interval for spans > 7 days", () => {
-    const { intervalMs, includeTime } = getAdaptiveTickStrategy(8 * DAY, 2);
+    const { intervalMs, includeTime: shouldIncludeTime } =
+      getAdaptiveTickStrategy(8 * DAY, 2);
     expect(intervalMs).toBe(DAY);
-    expect(includeTime).toBe(false);
+    expect(shouldIncludeTime).toBe(false);
   });
 
   it("uses 12h interval for 2-7 day spans at zoom < 4", () => {
-    const { intervalMs, includeTime } = getAdaptiveTickStrategy(3 * DAY, 2);
+    const { intervalMs, includeTime: shouldIncludeTime } =
+      getAdaptiveTickStrategy(3 * DAY, 2);
     expect(intervalMs).toBe(12 * HOUR);
-    expect(includeTime).toBe(false);
+    expect(shouldIncludeTime).toBe(false);
   });
 
   it("uses 3h interval for 2-7 day spans at zoom ≥ 4", () => {
-    const { intervalMs, includeTime } = getAdaptiveTickStrategy(3 * DAY, 4);
+    const { intervalMs, includeTime: shouldIncludeTime } =
+      getAdaptiveTickStrategy(3 * DAY, 4);
     expect(intervalMs).toBe(3 * HOUR);
-    expect(includeTime).toBe(true);
+    expect(shouldIncludeTime).toBe(true);
   });
 
   it("uses 1h interval for spans ≤ 12 hours", () => {
-    const { intervalMs, includeTime } = getAdaptiveTickStrategy(6 * HOUR, 2);
+    const { intervalMs, includeTime: shouldIncludeTime } =
+      getAdaptiveTickStrategy(6 * HOUR, 2);
     expect(intervalMs).toBe(HOUR);
-    expect(includeTime).toBe(true);
+    expect(shouldIncludeTime).toBe(true);
   });
 
   it("uses 3h without time for ≤2 day spans at zoom < 2", () => {
-    const { intervalMs, includeTime } = getAdaptiveTickStrategy(1.5 * DAY, 1);
+    const { intervalMs, includeTime: shouldIncludeTime } =
+      getAdaptiveTickStrategy(1.5 * DAY, 1);
     expect(intervalMs).toBe(3 * HOUR);
-    expect(includeTime).toBe(false);
+    expect(shouldIncludeTime).toBe(false);
   });
 
   it("uses 1h with time for ≤2 day spans at zoom ≥ 2", () => {
-    const { intervalMs, includeTime } = getAdaptiveTickStrategy(1.5 * DAY, 2);
+    const { intervalMs, includeTime: shouldIncludeTime } =
+      getAdaptiveTickStrategy(1.5 * DAY, 2);
     expect(intervalMs).toBe(HOUR);
-    expect(includeTime).toBe(true);
+    expect(shouldIncludeTime).toBe(true);
   });
 });
 

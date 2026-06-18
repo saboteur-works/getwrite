@@ -14,19 +14,19 @@ test("folder list scrolls via wheel inside a modal dialog", async ({
   await expect(list).toBeVisible();
 
   // The list must actually overflow its 12rem cap, otherwise the test is moot.
-  const overflowing = await list.evaluate(
+  const isOverflowing = await list.evaluate(
     (el) => el.scrollHeight > el.clientHeight,
   );
-  expect(overflowing).toBe(true);
+  expect(isOverflowing).toBe(true);
 
   // Deterministic guard for the actual fix: react-remove-scroll (used by the
   // modal Dialog) only permits wheel scrolling for nodes inside the dialog
   // subtree. The bug was the popover portaling to document.body; the fix
   // portals it into the nearest [role="dialog"]. This assertion can't flake.
-  const insideDialog = await list.evaluate(
+  const isInsideDialog = await list.evaluate(
     (el) => !!el.closest('[role="dialog"]'),
   );
-  expect(insideDialog).toBe(true);
+  expect(isInsideDialog).toBe(true);
 
   // Then verify the user-observable outcome with a real wheel event (a
   // programmatic scrollBy would bypass react-remove-scroll entirely). Re-hover

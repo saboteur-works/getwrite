@@ -58,7 +58,7 @@ export function useRevisionContent({
     [],
   );
 
-  const fetchResourceContent_ =
+  const loadResourceContent =
     React.useCallback(async (): Promise<ResourceContentResponse | null> => {
       if (!selectedResourceId || !projectRootPath) return null;
       return fetchResourceContent(projectRootPath, selectedResourceId);
@@ -83,7 +83,7 @@ export function useRevisionContent({
       setContent(initialContent);
       setTipTapDoc(null);
 
-      const resourceData = await fetchResourceContent_();
+      const resourceData = await loadResourceContent();
       if (!resourceData || isCancelled) {
         return;
       }
@@ -138,7 +138,7 @@ export function useRevisionContent({
     };
   }, [
     fetchCanonicalRevisionContent,
-    fetchResourceContent_,
+    loadResourceContent,
     initialContent,
     parseTipTapRevisionContent,
     projectRootPath,
