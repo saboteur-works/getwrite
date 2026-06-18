@@ -1,6 +1,17 @@
 # GetWrite
 
-GetWrite is a local-first writing workspace focused on structured projects, resource templates, and reproducible project scaffolding. This monorepo contains the frontend app, CLI tooling, specs, and documentation used to develop, test, and extend GetWrite.
+GetWrite is a local-first writing workspace focused on structured projects, resource templates, and reproducible project scaffolding. There is no database — your projects live as plain files and folders on your own machine. This monorepo contains the frontend app, CLI tooling, specs, and documentation used to develop, test, and extend GetWrite.
+
+## Install (desktop app)
+
+GetWrite ships as a desktop app for macOS, Windows, and Linux. Download the
+latest build from the [Releases page](https://github.com/saboteur-works/getwrite/releases/latest).
+
+The current builds are **not yet signed by Apple/Microsoft**, so the OS will warn
+before the first launch — see **[docs/user/installing.md](docs/user/installing.md)**
+for the one-time steps to open it (and a note on [why GetWrite is desktop, not web](docs/user/installing.md#why-desktop-not-web)).
+
+The rest of this README is for developing GetWrite from source.
 
 ## Quick links
 
