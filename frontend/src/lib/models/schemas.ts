@@ -263,6 +263,17 @@ export const ProjectSchema = z.object({
 });
 
 /**
+ * Metadata source configuration shape shared by `FolderSchema`,
+ * `ProjectTypeFolderSchema`, and `ProjectTypeDefaultFolderSchema`.
+ *
+ * Not exported — the three schemas that use it are the public API.
+ */
+const MetadataSourceSchema = z.object({
+  isMetadataSource: z.boolean(),
+  metadataInputType: z.enum(["text", "multiselect", "autocomplete"]).optional(),
+});
+
+/**
  * Folder schema used for logical project hierarchy.
  */
 export const FolderSchema = z.object({
@@ -275,14 +286,7 @@ export const FolderSchema = z.object({
   createdAt: IsoDateString,
   updatedAt: IsoDateString.optional(),
   special: z.boolean().optional(),
-  metadataSource: z
-    .object({
-      isMetadataSource: z.boolean(),
-      metadataInputType: z
-        .enum(["text", "multiselect", "autocomplete"])
-        .optional(),
-    })
-    .optional(),
+  metadataSource: MetadataSourceSchema.optional(),
 });
 
 /**
@@ -440,14 +444,7 @@ export const ProjectTypeResourceSchema = z.object({
 export const ProjectTypeFolderSchema = z.object({
   name: z.string(),
   special: z.boolean().optional(),
-  metadataSource: z
-    .object({
-      isMetadataSource: z.boolean(),
-      metadataInputType: z
-        .enum(["text", "multiselect", "autocomplete"])
-        .optional(),
-    })
-    .optional(),
+  metadataSource: MetadataSourceSchema.optional(),
   defaultResources: z.array(ProjectTypeResourceSchema).optional(),
 });
 
@@ -459,14 +456,7 @@ export const ProjectTypeDefaultFolderSchema = z.object({
   folder: z.string(),
   name: z.string(),
   special: z.boolean().optional(),
-  metadataSource: z
-    .object({
-      isMetadataSource: z.boolean(),
-      metadataInputType: z
-        .enum(["text", "multiselect", "autocomplete"])
-        .optional(),
-    })
-    .optional(),
+  metadataSource: MetadataSourceSchema.optional(),
 });
 
 export type ProjectTypeDefaultFolder = z.infer<
@@ -537,16 +527,14 @@ export function validateProjectType(spec: unknown) {
 export async function validateProjectTypeFile(filePath: string) {
   const { default: fs } = await import("node:fs/promises");
   const raw = await fs.readFile(filePath, "utf8");
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    return validateProjectType(JSON.parse(raw));
   } catch (err) {
     return {
       success: false,
       errors: [`Invalid JSON: ${(err as Error).message}`],
     };
   }
-  return validateProjectType(parsed);
 }
 
 /**

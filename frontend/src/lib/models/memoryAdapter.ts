@@ -94,30 +94,31 @@ export function createMemoryAdapter(): StorageAdapter {
    * @param p - Target file/directory path.
    * @returns Parent directory and leaf name when resolvable, otherwise `null`.
    */
-  function resolveParent(p: string) {
+  function resolveParent(p: string): { parent: DirNode; name: string } | null {
     const parts = splitPath(p);
     const name = parts.pop();
+    if (!name) return null;
     let cur: DirNode = root;
     for (const part of parts) {
       const child: Node | undefined = cur.children.get(part);
       if (!child || child.type !== "dir") return null;
       cur = child;
     }
-    return { parent: cur, name } as { parent: DirNode; name?: string } | null;
+    return { parent: cur, name };
   }
 
   return {
     /** @inheritdoc */
-    mkdir: async (p: string, opts?: { recursive?: boolean }) => {
+    mkdir: async (p: string, _opts?: { recursive?: boolean }) => {
       mkdirSync(p);
     },
     /** @inheritdoc */
     writeFile: async (p: string, data: string | Buffer) => {
       const res = resolveParent(p);
-      if (!res || !res.name) throw new Error("ENOENT");
+      if (!res) throw new Error("ENOENT");
       const { parent, name } = res;
       if (parent.type !== "dir") throw new Error("ENOTDIR");
-      parent.children.set(name!, { type: "file", data });
+      parent.children.set(name, { type: "file", data });
     },
     /** @inheritdoc */
     readFile: async (p: string) => {
@@ -135,7 +136,7 @@ export function createMemoryAdapter(): StorageAdapter {
       return cur.data.toString();
     },
     /** @inheritdoc */
-    readdir: async (p: string, opts?: { withFileTypes?: boolean }) => {
+    readdir: async (p: string, _opts?: { withFileTypes?: boolean }) => {
       const parts = splitPath(p);
       let cur: Node = root;
       for (const part of parts) {
@@ -161,7 +162,8 @@ export function createMemoryAdapter(): StorageAdapter {
     stat: async (p: string) => {
       const parts = splitPath(p);
       let cur: Node = root;
-      if (parts.length === 0) return { isDirectory: () => true } as any;
+      if (parts.length === 0)
+        return { isDirectory: () => true } as unknown as Stats;
       for (const part of parts) {
         const child: Node | undefined =
           cur.type === "dir" ? cur.children.get(part) : undefined;
@@ -172,12 +174,12 @@ export function createMemoryAdapter(): StorageAdapter {
       return { isDirectory: () => cur.type === "dir" } as unknown as Stats;
     },
     /** @inheritdoc */
-    rm: async (p: string, opts?: { recursive?: boolean; force?: boolean }) => {
+    rm: async (p: string, _opts?: { recursive?: boolean; force?: boolean }) => {
       const res = resolveParent(p);
-      if (!res || !res.name) return;
+      if (!res) return;
       const { parent, name } = res;
       if (parent.type !== "dir") return;
-      parent.children.delete(name!);
+      parent.children.delete(name);
     },
     /** @inheritdoc */
     rename: async (oldPath: string, newPath: string) => {
@@ -185,14 +187,13 @@ export function createMemoryAdapter(): StorageAdapter {
       // Ensure new parent dirs exist before resolving destination parent.
       mkdirSync(path.posix.dirname(newPath));
       const newRes = resolveParent(newPath);
-      if (!oldRes || !oldRes.name || !newRes || !newRes.name)
-        throw new Error("ENOENT");
+      if (!oldRes || !newRes) throw new Error("ENOENT");
       const { parent: oldParent, name: oldName } = oldRes;
-      const node = oldParent.children.get(oldName!);
+      const node = oldParent.children.get(oldName);
       if (!node) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
       const { parent: newParent, name: newName } = newRes;
-      newParent.children.set(newName!, node);
-      oldParent.children.delete(oldName!);
+      newParent.children.set(newName, node);
+      oldParent.children.delete(oldName);
     },
     /** @inheritdoc */
     fsyncFile: async () => {

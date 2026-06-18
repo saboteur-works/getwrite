@@ -72,7 +72,7 @@ export type StorageAdapter = {
    */
   readdir(
     path: string,
-    opts?: { withFileTypes?: boolean } | undefined,
+    opts?: { withFileTypes?: boolean },
   ): Promise<ReaddirResult>;
   /**
    * Retrieves filesystem metadata for a path.
@@ -91,7 +91,7 @@ export type StorageAdapter = {
    */
   rm(
     path: string,
-    opts?: { recursive?: boolean; force?: boolean } | undefined,
+    opts?: { recursive?: boolean; force?: boolean },
   ): Promise<void>;
   /**
    * Renames or moves a file/directory.
@@ -293,11 +293,11 @@ function normalizeAtomicWriteOptions(
 ): { writeOptions?: string | object; durable: boolean } {
   if (opts == null) return { writeOptions: undefined, durable: false };
   if (typeof opts === "string") return { writeOptions: opts, durable: false };
-  const maybe = opts as AtomicWriteOptions;
-  if ("durable" in maybe || "writeOptions" in maybe) {
+  const typed = opts as AtomicWriteOptions;
+  if ("durable" in typed || "writeOptions" in typed) {
     return {
-      writeOptions: maybe.writeOptions,
-      durable: maybe.durable === true,
+      writeOptions: typed.writeOptions,
+      durable: typed.durable === true,
     };
   }
   return { writeOptions: opts, durable: false };
