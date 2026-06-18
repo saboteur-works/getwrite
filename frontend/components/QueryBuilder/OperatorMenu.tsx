@@ -36,13 +36,13 @@ export default function OperatorMenu({
   onChange,
   disabled = false,
 }: OperatorMenuProps): JSX.Element {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const closeMenu = useCallback(() => setOpen(false), []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     function handleOutsideClick(e: MouseEvent): void {
       if (
         wrapperRef.current &&
@@ -53,7 +53,7 @@ export default function OperatorMenu({
     }
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [open, closeMenu]);
+  }, [isOpen, closeMenu]);
 
   const effectiveValue = value ?? getDefaultOperator(fieldType);
   const currentOption = getOperatorOption(fieldType, effectiveValue);
@@ -74,7 +74,7 @@ export default function OperatorMenu({
         className="operator-menu__trigger"
         disabled={disabled}
         aria-haspopup="listbox"
-        aria-expanded={open}
+        aria-expanded={isOpen}
         aria-label={`Operator: ${currentOption?.label ?? "unset"}`}
         onClick={() => {
           if (!disabled) setOpen((v) => !v);
@@ -85,14 +85,14 @@ export default function OperatorMenu({
         </span>
         <span
           className={
-            open ? "operator-menu__chevron--open" : "operator-menu__chevron"
+            isOpen ? "operator-menu__chevron--open" : "operator-menu__chevron"
           }
         >
           <ChevronDown size={10} aria-hidden="true" />
         </span>
       </button>
 
-      {open && (
+      {isOpen && (
         <div
           className="operator-menu__dropdown"
           role="listbox"

@@ -23,22 +23,22 @@ import {
 /** Self-fetching update notice; renders the banner only when an update is actionable. */
 export default function UpdateNotice(): JSX.Element | null {
   const [result, setResult] = useState<UpdateCheckResult | null>(null);
-  const [hidden, setHidden] = useState<boolean>(false);
+  const [isHidden, setHidden] = useState<boolean>(false);
 
   useEffect(() => {
-    let active = true;
+    let isActive = true;
     void fetchUpdateCheck().then((res) => {
-      if (active) {
+      if (isActive) {
         setResult(res);
       }
     });
     return () => {
-      active = false;
+      isActive = false;
     };
   }, []);
 
   if (
-    hidden ||
+    isHidden ||
     !result?.updateAvailable ||
     !result.latestVersion ||
     isSuppressed(result.latestVersion)

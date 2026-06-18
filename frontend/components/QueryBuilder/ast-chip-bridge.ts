@@ -401,9 +401,9 @@ export function astToGroups(
 
   if (ast.op !== "and" && ast.op !== "or") return null;
 
-  const allChips = ast.children.every(isChipNode);
+  const hasOnlyChipChildren = ast.children.every(isChipNode);
 
-  if (allChips) {
+  if (hasOnlyChipChildren) {
     // Single group: the and/or IS the group combinator
     const chips = ast.children
       .filter(isChipNode)

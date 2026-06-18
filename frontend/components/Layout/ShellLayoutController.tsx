@@ -22,8 +22,8 @@ export default function ShellLayoutController({
 }: ShellLayoutControllerProps): JSX.Element {
   const [leftWidth, setLeftWidth] = useState<number>(280);
   const [rightWidth, setRightWidth] = useState<number>(320);
-  const [leftOpen, setLeftOpen] = useState<boolean>(true);
-  const [rightOpen, setRightOpen] = useState<boolean>(true);
+  const [isLeftOpen, setLeftOpen] = useState<boolean>(true);
+  const [isRightOpen, setRightOpen] = useState<boolean>(true);
 
   const MIN_SIDEBAR_WIDTH = 160;
   const COLLAPSE_THRESHOLD = 120;
@@ -104,8 +104,8 @@ export default function ShellLayoutController({
       {children({
         leftWidth,
         rightWidth,
-        leftOpen,
-        rightOpen,
+        leftOpen: isLeftOpen,
+        rightOpen: isRightOpen,
         setLeftOpen,
         setRightOpen,
         startLeftResize,

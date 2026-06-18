@@ -13,6 +13,7 @@ import {
 import { writeResourceToFile } from "../../src/lib/models/resource";
 import { writeSidecar } from "../../src/lib/models/sidecar";
 import { generateUUID } from "../../src/lib/models/uuid";
+import { removeDirRetry } from "./helpers/fs-utils";
 
 const PNG_BYTES = Uint8Array.from(
   Buffer.from(
@@ -26,7 +27,7 @@ const tmpDirs: string[] = [];
 afterEach(async () => {
   while (tmpDirs.length > 0) {
     const dir = tmpDirs.pop();
-    if (dir) await fs.rm(dir, { recursive: true, force: true });
+    if (dir) await removeDirRetry(dir);
   }
 });
 

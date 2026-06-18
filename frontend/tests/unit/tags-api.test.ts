@@ -78,8 +78,8 @@ describe("tags API route — delete action", () => {
     await assignTagToResource(dir, "res-1", tag.id);
     await assignTagToResource(dir, "res-2", tag.id);
 
-    const deleted = await deleteTag(dir, tag.id);
-    expect(deleted).toBe(true);
+    const isDeleted = await deleteTag(dir, tag.id);
+    expect(isDeleted).toBe(true);
 
     const remaining = await listTags(dir);
     expect(remaining.find((t) => t.id === tag.id)).toBeUndefined();
@@ -90,8 +90,8 @@ describe("tags API route — delete action", () => {
 
   it("returns false when the tag does not exist", async () => {
     const { dir } = await makeTmpProject();
-    const result = await deleteTag(dir, "non-existent-id");
-    expect(result).toBe(false);
+    const isDeleted = await deleteTag(dir, "non-existent-id");
+    expect(isDeleted).toBe(false);
   });
 });
 

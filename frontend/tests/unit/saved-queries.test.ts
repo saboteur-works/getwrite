@@ -237,16 +237,16 @@ describe("writeQuery", () => {
 describe("deleteQuery", () => {
   it("returns false when the query does not exist", async () => {
     const tmp = await makeTmp();
-    const result = await deleteQuery(tmp, SAMPLE_QUERY.id);
-    expect(result).toBe(false);
+    const isDeleted = await deleteQuery(tmp, SAMPLE_QUERY.id);
+    expect(isDeleted).toBe(false);
     await removeDirRetry(tmp);
   });
 
   it("returns true and removes the file when the query exists", async () => {
     const tmp = await makeTmp();
     await writeQuery(tmp, SAMPLE_QUERY);
-    const result = await deleteQuery(tmp, SAMPLE_QUERY.id);
-    expect(result).toBe(true);
+    const isDeleted = await deleteQuery(tmp, SAMPLE_QUERY.id);
+    expect(isDeleted).toBe(true);
     expect(await readQuery(tmp, SAMPLE_QUERY.id)).toBeNull();
     await removeDirRetry(tmp);
   });
@@ -255,8 +255,8 @@ describe("deleteQuery", () => {
     const tmp = await makeTmp();
     await writeQuery(tmp, SAMPLE_QUERY);
     await deleteQuery(tmp, SAMPLE_QUERY.id);
-    const second = await deleteQuery(tmp, SAMPLE_QUERY.id);
-    expect(second).toBe(false);
+    const isSecondDeleted = await deleteQuery(tmp, SAMPLE_QUERY.id);
+    expect(isSecondDeleted).toBe(false);
     await removeDirRetry(tmp);
   });
 });
