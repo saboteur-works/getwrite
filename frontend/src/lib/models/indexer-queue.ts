@@ -22,6 +22,13 @@ let isShutdownHooksInstalled = false;
  * sync without callers having to manage watcher lifecycle.
  */
 function ensureBacklinkWatcher(projectRoot: string): void {
+  // The recursive fs.watch backlinks watcher provides no value under the unit
+  // test runner, and because indexing is enqueued via a deferred dynamic import
+  // it can start a watcher on a temp project dir *after* a test has begun
+  // tearing it down. On Linux, Node's internal recursive-watch walk then throws
+  // an uncaught ENOENT that fails the whole run. Skip the watcher under test;
+  // backlinks tests exercise computeBacklinks/persistBacklinks directly.
+  if (process.env.VITEST || process.env.NODE_ENV === "test") return;
   if (activeBacklinkWatchers.has(projectRoot)) return;
   try {
     const stop = startBacklinkWatcher(projectRoot);
