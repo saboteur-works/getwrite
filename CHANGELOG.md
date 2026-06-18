@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.54...getwrite-v1.0.0) (2026-06-18)
+
+
+### Miscellaneous Chores
+
+* cut GetWrite 1.0.0 ([#145](https://github.com/saboteur-works/getwrite/issues/145)) ([95fe63b](https://github.com/saboteur-works/getwrite/commit/95fe63b00386828d1d51bcbec36414ced8b6dad6))
+
 ## [0.2.54](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.53...getwrite-v0.2.54) (2026-06-17)
 
 
