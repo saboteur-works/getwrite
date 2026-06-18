@@ -70,7 +70,7 @@ async function loadIndex(projectRoot: string): Promise<InvertedIndex> {
   try {
     const raw = await readFile(p, "utf8");
     return JSON.parse(raw) as InvertedIndex;
-  } catch (_) {
+  } catch {
     return {};
   }
 }
@@ -87,7 +87,7 @@ async function saveIndex(projectRoot: string, index: InvertedIndex) {
 }
 
 /** Remove any existing occurrences of resourceId from the index (helper). */
-function removeFromIndexObj(index: InvertedIndex, resourceId: string) {
+function purgeTermsForResource(index: InvertedIndex, resourceId: string) {
   for (const term of Object.keys(index)) {
     const posting = index[term];
     if (posting[resourceId] !== undefined) {
@@ -101,27 +101,31 @@ function removeFromIndexObj(index: InvertedIndex, resourceId: string) {
 // reliably ranks above one that merely mentions those words in passing.
 const TITLE_BOOST = 10;
 
+/** Resolve a resource's body text: prefer in-memory fields, fall back to persisted content. */
+async function resolveBodyText(
+  projectRoot: string,
+  res: TextResource,
+): Promise<string> {
+  if (res.plainText) return res.plainText;
+  if (res.tiptap) return tiptapToPlainText(res.tiptap);
+  try {
+    const loaded = await loadResourceContent(projectRoot, res.id);
+    if (loaded.plainText) return loaded.plainText;
+    if (loaded.tiptap) return tiptapToPlainText(loaded.tiptap);
+  } catch {
+    // persisted content unreadable — index with title only
+  }
+  return "";
+}
+
 /** Index a resource's plain text into the project's inverted index. */
 export async function indexResource(projectRoot: string, res: TextResource) {
   const index = await loadIndex(projectRoot);
 
   // Remove previous entries for resource
-  removeFromIndexObj(index, res.id);
+  purgeTermsForResource(index, res.id);
 
-  // Determine body text: prefer resource.plainText, else tiptap, else load persisted
-  let text = res.plainText ?? "";
-  if (!text && res.tiptap) text = tiptapToPlainText(res.tiptap as any);
-  if (!text) {
-    try {
-      const loaded = await loadResourceContent(projectRoot, res.id);
-      text = loaded.plainText ?? "";
-      if (!text && loaded.tiptap)
-        text = tiptapToPlainText(loaded.tiptap as any);
-    } catch (_) {
-      text = "";
-    }
-  }
-
+  const text = await resolveBodyText(projectRoot, res);
   const counts: Record<string, number> = {};
 
   // Title terms with boost (applied even when body text is empty).
@@ -153,7 +157,7 @@ export async function removeResourceFromIndex(
   resourceId: string,
 ) {
   const index = await loadIndex(projectRoot);
-  removeFromIndexObj(index, resourceId);
+  purgeTermsForResource(index, resourceId);
   await saveIndex(projectRoot, index);
 }
 
@@ -168,15 +172,15 @@ export async function search(
   const index = await loadIndex(projectRoot);
   const terms = tokenize(query);
   const scores: Record<string, number> = {};
-  const perTermFreq: Record<string, Record<string, number>> = {};
+  const termHits: Record<string, Record<string, number>> = {};
 
   for (const t of terms) {
     const posting = index[t];
-    perTermFreq[t] = {};
+    termHits[t] = {};
     if (!posting) continue;
     for (const [rid, freq] of Object.entries(posting)) {
       scores[rid] = (scores[rid] ?? 0) + freq;
-      perTermFreq[t][rid] = freq;
+      termHits[t][rid] = freq;
     }
   }
 
@@ -185,7 +189,7 @@ export async function search(
   const qualifiedIds =
     terms.length > 1
       ? Object.keys(scores).filter((rid) =>
-          terms.every((t) => (perTermFreq[t]?.[rid] ?? 0) > 0),
+          terms.every((t) => (termHits[t]?.[rid] ?? 0) > 0),
         )
       : Object.keys(scores);
 
@@ -196,8 +200,8 @@ export async function search(
     if (scoreB !== scoreA) return scoreB - scoreA;
     // tie-break: prefer higher frequency for first query term
     if (firstTerm) {
-      const fa = perTermFreq[firstTerm]?.[a] ?? 0;
-      const fb = perTermFreq[firstTerm]?.[b] ?? 0;
+      const fa = termHits[firstTerm]?.[a] ?? 0;
+      const fb = termHits[firstTerm]?.[b] ?? 0;
       if (fb !== fa) return fb - fa;
     }
     // final deterministic tie-break: lexicographic id
@@ -225,12 +229,7 @@ export async function reindexMissingResources(
   }
 
   const index = await loadIndex(projectRoot);
-  const indexedIds = new Set<string>();
-  for (const posting of Object.values(index)) {
-    for (const rid of Object.keys(posting)) {
-      indexedIds.add(rid);
-    }
-  }
+  const indexedIds = new Set(Object.values(index).flatMap(Object.keys));
 
   const { enqueueIndex } = await import("./indexer-queue");
   let queued = 0;
@@ -248,9 +247,10 @@ export async function reindexMissingResources(
   return queued;
 }
 
-export default {
+const invertedIndex = {
   indexResource,
   removeResourceFromIndex,
   search,
   reindexMissingResources,
 };
+export default invertedIndex;

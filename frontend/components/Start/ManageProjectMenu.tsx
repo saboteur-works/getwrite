@@ -38,13 +38,14 @@ export default function ManageProjectMenu({
 }: ManageProjectMenuProps): JSX.Element {
   const dispatch = useAppDispatch();
   const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
-  const [open, setOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
   const [name, setName] = useState<string>(projectName);
-  const [renameOpen, setRenameOpen] = useState<boolean>(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
+  const [isRenameOpen, setIsRenameOpen] = useState<boolean>(false);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] =
+    useState<boolean>(false);
   const { containerRef: menuRef } = useDismissableMenu({
-    isOpen: open,
-    onClose: () => setOpen(false),
+    isOpen,
+    onClose: () => setIsOpen(false),
   });
 
   useEffect(() => {
@@ -64,8 +65,8 @@ export default function ManageProjectMenu({
       });
 
     dispatch(deleteProjectInStore({ projectId }));
-    setConfirmDeleteOpen(false);
-    setOpen(false);
+    setIsConfirmDeleteOpen(false);
+    setIsOpen(false);
     toastService.success("Project deleted", projectName);
   };
 
@@ -74,61 +75,59 @@ export default function ManageProjectMenu({
       <button
         type="button"
         aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((v) => !v)}
         className="inline-flex items-center justify-center px-2 py-1 border border-gw-border text-sm text-gw-secondary hover:border-gw-border-md hover:text-gw-primary transition-colors duration-150"
       >
         <MoreHorizontal size={16} aria-hidden="true" />
       </button>
 
-      {open ? (
+      {isOpen ? (
         <div
           role="menu"
           aria-label="Manage project"
           className="absolute right-0 mt-2 w-56 bg-gw-chrome border border-gw-border rounded z-20"
         >
           <div className="p-2">
-            <>
-              <MenuItemButton
-                icon={<Pencil size={14} aria-hidden="true" />}
-                label="Rename"
-                onClick={() => setRenameOpen(true)}
-              />
+            <MenuItemButton
+              icon={<Pencil size={14} aria-hidden="true" />}
+              label="Rename"
+              onClick={() => setIsRenameOpen(true)}
+            />
 
-              <MenuItemButton
-                icon={<Package size={14} aria-hidden="true" />}
-                label="Package"
-                onClick={() => {
-                  setOpen(false);
-                  onRequestCompile?.();
-                }}
-              />
+            <MenuItemButton
+              icon={<Package size={14} aria-hidden="true" />}
+              label="Package"
+              onClick={() => {
+                setIsOpen(false);
+                onRequestCompile?.();
+              }}
+            />
 
-              <MenuItemButton
-                icon={<Trash2 size={14} aria-hidden="true" />}
-                label="Delete"
-                danger
-                onClick={() => setConfirmDeleteOpen(true)}
-              />
-            </>
+            <MenuItemButton
+              icon={<Trash2 size={14} aria-hidden="true" />}
+              label="Delete"
+              danger
+              onClick={() => setIsConfirmDeleteOpen(true)}
+            />
           </div>
         </div>
       ) : null}
 
       <ConfirmDialog
-        isOpen={confirmDeleteOpen}
+        isOpen={isConfirmDeleteOpen}
         title="Delete project"
         description="This will permanently remove the project and its resources. Are you sure?"
         confirmLabel="Delete"
         cancelLabel="Cancel"
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setConfirmDeleteOpen(false)}
+        onCancel={() => setIsConfirmDeleteOpen(false)}
       />
 
       <RenameProjectModal
-        isOpen={renameOpen}
+        isOpen={isRenameOpen}
         initialName={name}
-        onClose={() => setRenameOpen(false)}
+        onClose={() => setIsRenameOpen(false)}
         onConfirm={async (newName) => {
           await projectActionsController.renameProject({
             projectId,
@@ -138,8 +137,8 @@ export default function ManageProjectMenu({
           });
           dispatch(renameProjectInStore({ projectId, newName }));
           setName(newName);
-          setRenameOpen(false);
-          setOpen(false);
+          setIsRenameOpen(false);
+          setIsOpen(false);
         }}
       />
     </div>

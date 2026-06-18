@@ -106,7 +106,7 @@ export default function EditContextMenu({
     }
   };
 
-  const hasSelection = saved ? saved.end > saved.start : false;
+  const hasSelection = !!saved && saved.end > saved.start;
   const isReadOnly = saved?.readOnly ?? false;
 
   return (

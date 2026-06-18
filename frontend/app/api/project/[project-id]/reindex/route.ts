@@ -1,4 +1,3 @@
-import type { Dirent } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
@@ -17,7 +16,7 @@ async function findProjectRoot(
   projectsDir: string,
   projectId: string,
 ): Promise<string | null> {
-  let entries: Dirent[];
+  let entries;
   try {
     entries = await fs.readdir(projectsDir, { withFileTypes: true });
   } catch {

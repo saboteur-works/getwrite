@@ -20,6 +20,41 @@ export interface DeprecateOrClearDialogProps {
   onCancel: () => void;
 }
 
+interface RadioOptionProps {
+  value: RemoveFieldChoice;
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: () => void;
+}
+
+function RadioOption({
+  value,
+  label,
+  description,
+  checked,
+  onChange,
+}: RadioOptionProps) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded border border-gw-border p-3 transition-colors duration-150 hover:border-gw-border-md has-checked:border-gw-border-md has-checked:bg-gw-chrome3">
+      <input
+        type="radio"
+        name="remove-field-choice"
+        value={value}
+        checked={checked}
+        onChange={onChange}
+        className="mt-0.5 shrink-0 accent-current"
+      />
+      <div>
+        <div className="font-mono text-[11px] font-medium uppercase tracking-[0.10em] text-gw-primary">
+          {label}
+        </div>
+        <div className="mt-0.5 text-xs text-gw-secondary">{description}</div>
+      </div>
+    </label>
+  );
+}
+
 export default function DeprecateOrClearDialog({
   isOpen,
   fieldLabel,
@@ -32,11 +67,6 @@ export default function DeprecateOrClearDialog({
   React.useEffect(() => {
     if (isOpen) setChoice("deprecate");
   }, [isOpen]);
-
-  function handleConfirm(): void {
-    if (choice === "deprecate") onDeprecate();
-    else onClear();
-  }
 
   return (
     <Dialog
@@ -53,46 +83,22 @@ export default function DeprecateOrClearDialog({
 
         <div className="mt-2 flex flex-col gap-3">
           {/* Deprecate option */}
-          <label className="flex cursor-pointer items-start gap-3 rounded border border-gw-border p-3 transition-colors duration-150 hover:border-gw-border-md has-checked:border-gw-border-md has-checked:bg-gw-chrome3">
-            <input
-              type="radio"
-              name="remove-field-choice"
-              value="deprecate"
-              checked={choice === "deprecate"}
-              onChange={() => setChoice("deprecate")}
-              className="mt-0.5 shrink-0 accent-current"
-            />
-            <div>
-              <div className="font-mono text-[11px] font-medium uppercase tracking-[0.10em] text-gw-primary">
-                Deprecate
-              </div>
-              <div className="mt-0.5 text-xs text-gw-secondary">
-                Keep values in sidecars; hide field from sidebar; mark as
-                deprecated in chip UI (queryable but flagged).
-              </div>
-            </div>
-          </label>
+          <RadioOption
+            value="deprecate"
+            label="Deprecate"
+            description="Keep values in sidecars; hide field from sidebar; mark as deprecated in chip UI (queryable but flagged)."
+            checked={choice === "deprecate"}
+            onChange={() => setChoice("deprecate")}
+          />
 
           {/* Clear option */}
-          <label className="flex cursor-pointer items-start gap-3 rounded border border-gw-border p-3 transition-colors duration-150 hover:border-gw-border-md has-checked:border-gw-border-md has-checked:bg-gw-chrome3">
-            <input
-              type="radio"
-              name="remove-field-choice"
-              value="clear"
-              checked={choice === "clear"}
-              onChange={() => setChoice("clear")}
-              className="mt-0.5 shrink-0 accent-current"
-            />
-            <div>
-              <div className="font-mono text-[11px] font-medium uppercase tracking-[0.10em] text-gw-primary">
-                Clear
-              </div>
-              <div className="mt-0.5 text-xs text-gw-secondary">
-                Remove the field key from all sidecars (cannot undo). All stored
-                values for this field are permanently deleted.
-              </div>
-            </div>
-          </label>
+          <RadioOption
+            value="clear"
+            label="Clear"
+            description="Remove the field key from all sidecars (cannot undo). All stored values for this field are permanently deleted."
+            checked={choice === "clear"}
+            onChange={() => setChoice("clear")}
+          />
         </div>
 
         <DialogFooter>
@@ -101,7 +107,7 @@ export default function DeprecateOrClearDialog({
           </Button>
           <Button
             variant={choice === "clear" ? "destructive" : "default"}
-            onClick={handleConfirm}
+            onClick={choice === "deprecate" ? onDeprecate : onClear}
           >
             {choice === "deprecate" ? "Deprecate" : "Clear"}
           </Button>

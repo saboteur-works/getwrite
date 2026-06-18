@@ -7,14 +7,14 @@
  */
 import type { UUID } from "./types";
 
+// Narrow `globalThis.crypto` without using `any`.
+type GlobalCrypto = {
+  randomUUID?: () => string;
+  getRandomValues?: (arr: Uint8Array) => void;
+};
+
 /** Generate a UUID v4 string. */
 export function generateUUID(): UUID {
-  // Narrow `globalThis.crypto` without using `any`.
-  type GlobalCrypto = {
-    randomUUID?: () => string;
-    getRandomValues?: (arr: Uint8Array) => void;
-  };
-
   const g = globalThis as unknown as { crypto?: GlobalCrypto };
 
   if (g.crypto && typeof g.crypto.randomUUID === "function") {
@@ -48,4 +48,5 @@ export function isValidUUID(value: string): value is UUID {
   );
 }
 
-export default { generateUUID, isValidUUID };
+const uuidUtils = { generateUUID, isValidUUID };
+export default uuidUtils;

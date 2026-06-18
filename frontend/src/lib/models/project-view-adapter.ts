@@ -32,6 +32,13 @@ export interface BuildProjectViewOptions {
   resources: TextResource[];
 }
 
+function byOrderIndex(
+  a: { _orderIndex: number },
+  b: { _orderIndex: number },
+): number {
+  return a._orderIndex - b._orderIndex;
+}
+
 function toUIResource(resource: TextResource, projectId: string): UIResource {
   return {
     id: resource.id,
@@ -89,16 +96,14 @@ export function buildProjectViewAdapter(options: BuildProjectViewOptions): {
     }
   }
 
-  rootResources.sort((left, right) => left._orderIndex - right._orderIndex);
+  rootResources.sort(byOrderIndex);
 
   const sortedFolders = Array.from(folderMap.values()).sort(
-    (left, right) => left.orderIndex - right.orderIndex,
+    (a, b) => a.orderIndex - b.orderIndex,
   );
 
   for (const folder of sortedFolders) {
-    folder.resources.sort(
-      (left, right) => left._orderIndex - right._orderIndex,
-    );
+    folder.resources.sort(byOrderIndex);
   }
 
   const flatResources: UIResource[] = [...rootResources];

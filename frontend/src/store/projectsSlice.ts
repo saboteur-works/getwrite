@@ -48,6 +48,7 @@ import {
   postRemoveGroup,
   postReorderGroups,
   postRenameFieldKey,
+  type MetadataSchemaRequestContext,
 } from "./metadata-schema-transport-service";
 
 /**
@@ -138,6 +139,36 @@ export function buildStoredProject(
 }
 
 /**
+ * Normalizes legacy persisted project shapes to the runtime StoredProject shape
+ * used by the UI. This accepts the historical `{ resources?: ResourceMeta[] }`
+ * shape and ensures `resources` items have a `metadata` object and folders
+ * are present as an array. Keep this small and conservative so it is safe to
+ * remove once the app no longer persists the legacy shape.
+ */
+export function normalizeStoredProject(p: StoredProject): StoredProject {
+  if (!p) return p;
+  // If resources are already full canonical resource objects (contain `name`),
+  // assume they're migrated and return as-is to preserve display fields.
+  if (Array.isArray(p.resources) && p.resources.length > 0) {
+    const first = p.resources[0] as any;
+    if (first && typeof first.name === "string") {
+      return { ...p, folders: p.folders ?? [] };
+    }
+  }
+
+  const resources = Array.isArray(p.resources)
+    ? p.resources.map((r) => ({
+        id: r.id,
+        name: r.name ?? "",
+        userMetadata: r.userMetadata ?? {},
+      }))
+    : p.resources;
+  const folders = p.folders ?? [];
+
+  return { ...p, resources, folders };
+}
+
+/**
  * Root state shape managed by this slice.
  */
 export interface ProjectsState {
@@ -168,414 +199,184 @@ interface SchemaActionResult {
   schema: MetadataSchema;
 }
 
-export const addMetadataField = createAsyncThunk<
-  SchemaActionResult,
-  { projectId: string; groupId: string; field: MetadataField },
-  { state: any; rejectValue: string }
->(
-  "projects/addMetadataField",
-  async ({ projectId, groupId, field }, thunkApi) => {
+/**
+ * Factory for the 15 metadata-schema thunks that share identical boilerplate:
+ * resolve context → guard → call transport → return { projectId, schema }.
+ */
+function makeSchemaThunk<Args extends { projectId: string }>(
+  typePrefix: string,
+  transportFn: (
+    context: MetadataSchemaRequestContext,
+    args: Args,
+  ) => Promise<MetadataSchema>,
+) {
+  return createAsyncThunk<
+    SchemaActionResult,
+    Args,
+    { state: any; rejectValue: string }
+  >(typePrefix, async (args, thunkApi) => {
     const context = resolveMetadataSchemaRequestContext(
       thunkApi.getState(),
-      projectId,
+      args.projectId,
     );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
+    if ("error" in context) return thunkApi.rejectWithValue(context.error);
     try {
-      const schema = await postAddField(context, groupId, field);
-      return { projectId, schema };
+      const schema = await transportFn(context, args);
+      return { projectId: args.projectId, schema };
     } catch (error) {
       return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
     }
-  },
+  });
+}
+
+export const addMetadataField = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  field: MetadataField;
+}>("projects/addMetadataField", (ctx, { groupId, field }) =>
+  postAddField(ctx, groupId, field),
 );
 
-export const removeMetadataField = createAsyncThunk<
-  SchemaActionResult,
-  { projectId: string; groupId: string; fieldKey: string },
-  { state: any; rejectValue: string }
->(
-  "projects/removeMetadataField",
-  async ({ projectId, groupId, fieldKey }, thunkApi) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postRemoveField(context, groupId, fieldKey);
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+export const removeMetadataField = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+}>("projects/removeMetadataField", (ctx, { groupId, fieldKey }) =>
+  postRemoveField(ctx, groupId, fieldKey),
 );
 
-export const deprecateMetadataField = createAsyncThunk<
-  SchemaActionResult,
-  { projectId: string; groupId: string; fieldKey: string },
-  { state: any; rejectValue: string }
->(
-  "projects/deprecateMetadataField",
-  async ({ projectId, groupId, fieldKey }, thunkApi) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postDeprecateField(context, groupId, fieldKey);
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+export const deprecateMetadataField = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+}>("projects/deprecateMetadataField", (ctx, { groupId, fieldKey }) =>
+  postDeprecateField(ctx, groupId, fieldKey),
 );
 
-export const clearMetadataField = createAsyncThunk<
-  SchemaActionResult,
-  { projectId: string; groupId: string; fieldKey: string },
-  { state: any; rejectValue: string }
->(
-  "projects/clearMetadataField",
-  async ({ projectId, groupId, fieldKey }, thunkApi) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postClearField(context, groupId, fieldKey);
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+export const clearMetadataField = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+}>("projects/clearMetadataField", (ctx, { groupId, fieldKey }) =>
+  postClearField(ctx, groupId, fieldKey),
 );
 
-export const reorderMetadataFields = createAsyncThunk<
-  SchemaActionResult,
-  { projectId: string; groupId: string; newKeyOrder: string[] },
-  { state: any; rejectValue: string }
->(
-  "projects/reorderMetadataFields",
-  async ({ projectId, groupId, newKeyOrder }, thunkApi) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postReorderFields(context, groupId, newKeyOrder);
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+export const reorderMetadataFields = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  newKeyOrder: string[];
+}>("projects/reorderMetadataFields", (ctx, { groupId, newKeyOrder }) =>
+  postReorderFields(ctx, groupId, newKeyOrder),
 );
 
-export const renameMetadataField = createAsyncThunk<
-  SchemaActionResult,
-  { projectId: string; groupId: string; fieldKey: string; newLabel: string },
-  { state: any; rejectValue: string }
->(
-  "projects/renameMetadataField",
-  async ({ projectId, groupId, fieldKey, newLabel }, thunkApi) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postRenameField(
-        context,
-        groupId,
-        fieldKey,
-        newLabel,
-      );
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+export const renameMetadataField = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+  newLabel: string;
+}>("projects/renameMetadataField", (ctx, { groupId, fieldKey, newLabel }) =>
+  postRenameField(ctx, groupId, fieldKey, newLabel),
 );
 
-export const updateMetadataFieldOptions = createAsyncThunk<
-  SchemaActionResult,
-  { projectId: string; groupId: string; fieldKey: string; options: string[] },
-  { state: any; rejectValue: string }
->(
+export const updateMetadataFieldOptions = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+  options: string[];
+}>(
   "projects/updateMetadataFieldOptions",
-  async ({ projectId, groupId, fieldKey, options }, thunkApi) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postUpdateFieldOptions(
-        context,
-        groupId,
-        fieldKey,
-        options,
-      );
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+  (ctx, { groupId, fieldKey, options }) =>
+    postUpdateFieldOptions(ctx, groupId, fieldKey, options),
 );
 
-export const updateMetadataFieldOptionsWithMigration = createAsyncThunk<
-  SchemaActionResult,
-  {
-    projectId: string;
-    groupId: string;
-    fieldKey: string;
-    newOptions: string[];
-    migrations: Record<string, OptionsMigrationEntry>;
-  },
-  { state: any; rejectValue: string }
->(
+export const updateMetadataFieldOptionsWithMigration = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+  newOptions: string[];
+  migrations: Record<string, OptionsMigrationEntry>;
+}>(
   "projects/updateMetadataFieldOptionsWithMigration",
-  async (
-    { projectId, groupId, fieldKey, newOptions, migrations },
-    thunkApi,
-  ) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postUpdateFieldOptionsWithMigration(
-        context,
-        groupId,
-        fieldKey,
-        newOptions,
-        migrations,
-      );
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+  (ctx, { groupId, fieldKey, newOptions, migrations }) =>
+    postUpdateFieldOptionsWithMigration(
+      ctx,
+      groupId,
+      fieldKey,
+      newOptions,
+      migrations,
+    ),
 );
 
-export const addMetadataGroup = createAsyncThunk<
-  SchemaActionResult,
-  { projectId: string; group: MetadataGroup },
-  { state: any; rejectValue: string }
->("projects/addMetadataGroup", async ({ projectId, group }, thunkApi) => {
-  const context = resolveMetadataSchemaRequestContext(
-    thunkApi.getState(),
-    projectId,
-  );
-  if ("error" in context) {
-    return thunkApi.rejectWithValue(context.error);
-  }
-  try {
-    const schema = await postAddGroup(context, group);
-    return { projectId, schema };
-  } catch (error) {
-    return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-  }
-});
+export const addMetadataGroup = makeSchemaThunk<{
+  projectId: string;
+  group: MetadataGroup;
+}>("projects/addMetadataGroup", (ctx, { group }) => postAddGroup(ctx, group));
 
-export const removeMetadataGroup = createAsyncThunk<
-  SchemaActionResult,
-  { projectId: string; groupId: string },
-  { state: any; rejectValue: string }
->("projects/removeMetadataGroup", async ({ projectId, groupId }, thunkApi) => {
-  const context = resolveMetadataSchemaRequestContext(
-    thunkApi.getState(),
-    projectId,
-  );
-  if ("error" in context) {
-    return thunkApi.rejectWithValue(context.error);
-  }
-  try {
-    const schema = await postRemoveGroup(context, groupId);
-    return { projectId, schema };
-  } catch (error) {
-    return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-  }
-});
-
-export const reorderMetadataGroups = createAsyncThunk<
-  SchemaActionResult,
-  { projectId: string; newGroupIdOrder: string[] },
-  { state: any; rejectValue: string }
->(
-  "projects/reorderMetadataGroups",
-  async ({ projectId, newGroupIdOrder }, thunkApi) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postReorderGroups(context, newGroupIdOrder);
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+export const removeMetadataGroup = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+}>("projects/removeMetadataGroup", (ctx, { groupId }) =>
+  postRemoveGroup(ctx, groupId),
 );
 
-export const renameMetadataFieldKey = createAsyncThunk<
-  SchemaActionResult,
-  { projectId: string; groupId: string; fieldKey: string; newKey: string },
-  { state: any; rejectValue: string }
->(
-  "projects/renameMetadataFieldKey",
-  async ({ projectId, groupId, fieldKey, newKey }, thunkApi) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postRenameFieldKey(
-        context,
-        groupId,
-        fieldKey,
-        newKey,
-      );
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+export const reorderMetadataGroups = makeSchemaThunk<{
+  projectId: string;
+  newGroupIdOrder: string[];
+}>("projects/reorderMetadataGroups", (ctx, { newGroupIdOrder }) =>
+  postReorderGroups(ctx, newGroupIdOrder),
 );
 
-export const changeMetadataFieldType = createAsyncThunk<
-  SchemaActionResult,
-  {
-    projectId: string;
-    groupId: string;
-    fieldKey: string;
-    newType: MetadataFieldType;
-  },
-  { state: any; rejectValue: string }
->(
-  "projects/changeMetadataFieldType",
-  async ({ projectId, groupId, fieldKey, newType }, thunkApi) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postChangeFieldType(
-        context,
-        groupId,
-        fieldKey,
-        newType,
-      );
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+export const renameMetadataFieldKey = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+  newKey: string;
+}>("projects/renameMetadataFieldKey", (ctx, { groupId, fieldKey, newKey }) =>
+  postRenameFieldKey(ctx, groupId, fieldKey, newKey),
 );
 
-export const changeMetadataFieldTypeWithMigration = createAsyncThunk<
-  SchemaActionResult,
-  {
-    projectId: string;
-    groupId: string;
-    fieldKey: string;
-    newType: MetadataFieldType;
-    newOptions: string[];
-    migrations: Record<string, TypeMigrationEntry>;
-  },
-  { state: any; rejectValue: string }
->(
+export const changeMetadataFieldType = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+  newType: MetadataFieldType;
+}>("projects/changeMetadataFieldType", (ctx, { groupId, fieldKey, newType }) =>
+  postChangeFieldType(ctx, groupId, fieldKey, newType),
+);
+
+export const changeMetadataFieldTypeWithMigration = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+  newType: MetadataFieldType;
+  newOptions: string[];
+  migrations: Record<string, TypeMigrationEntry>;
+}>(
   "projects/changeMetadataFieldTypeWithMigration",
-  async (
-    { projectId, groupId, fieldKey, newType, newOptions, migrations },
-    thunkApi,
-  ) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postChangeFieldTypeWithMigration(
-        context,
-        groupId,
-        fieldKey,
-        newType,
-        newOptions,
-        migrations,
-      );
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+  (ctx, { groupId, fieldKey, newType, newOptions, migrations }) =>
+    postChangeFieldTypeWithMigration(
+      ctx,
+      groupId,
+      fieldKey,
+      newType,
+      newOptions,
+      migrations,
+    ),
 );
 
-export const updateMetadataRefProperties = createAsyncThunk<
-  SchemaActionResult,
-  {
-    projectId: string;
-    groupId: string;
-    fieldKey: string;
-    updates: {
-      refFolder?: string | null;
-      includeSubfolders?: boolean | null;
-      maxSelections?: number | null;
-    };
-  },
-  { state: any; rejectValue: string }
->(
+export const updateMetadataRefProperties = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+  updates: {
+    refFolder?: string | null;
+    includeSubfolders?: boolean | null;
+    maxSelections?: number | null;
+  };
+}>(
   "projects/updateMetadataRefProperties",
-  async ({ projectId, groupId, fieldKey, updates }, thunkApi) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const schema = await postUpdateRefProperties(
-        context,
-        groupId,
-        fieldKey,
-        updates,
-      );
-      return { projectId, schema };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getSchemaThunkErrorMessage(error));
-    }
-  },
+  (ctx, { groupId, fieldKey, updates }) =>
+    postUpdateRefProperties(ctx, groupId, fieldKey, updates),
 );
 
 // ---------------------------------------------------------------------------
@@ -597,53 +398,47 @@ function getFeatureConfigErrorMessage(error: unknown): string {
   return "Feature configuration update failed.";
 }
 
-export const updateProjectFeatures = createAsyncThunk<
-  FeatureConfigActionResult,
-  { projectId: string; features: ProjectFeatureFlags },
-  { state: any; rejectValue: string }
->(
-  "projects/updateProjectFeatures",
-  async ({ projectId, features }, thunkApi) => {
+/**
+ * Factory for the feature-config thunks that share the same resolve → guard →
+ * postFeatureConfig → return { projectId, result } pattern.
+ */
+function makeFeatureConfigThunk<Args extends { projectId: string }>(
+  typePrefix: string,
+  buildBody: (args: Args) => Parameters<typeof postFeatureConfig>[1],
+) {
+  return createAsyncThunk<
+    FeatureConfigActionResult,
+    Args,
+    { state: any; rejectValue: string }
+  >(typePrefix, async (args, thunkApi) => {
     const context = resolveMetadataSchemaRequestContext(
       thunkApi.getState(),
-      projectId,
+      args.projectId,
     );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
+    if ("error" in context) return thunkApi.rejectWithValue(context.error);
     try {
-      const result = await postFeatureConfig(context.projectPath, { features });
-      return { projectId, result };
+      const result = await postFeatureConfig(
+        context.projectPath,
+        buildBody(args),
+      );
+      return { projectId: args.projectId, result };
     } catch (error) {
       return thunkApi.rejectWithValue(getFeatureConfigErrorMessage(error));
     }
-  },
-);
+  });
+}
 
-export const updateProjectOrganizerCardBody = createAsyncThunk<
-  FeatureConfigActionResult,
-  { projectId: string; organizerCardBody: OrganizerCardBodyConfig },
-  { state: any; rejectValue: string }
->(
-  "projects/updateProjectOrganizerCardBody",
-  async ({ projectId, organizerCardBody }, thunkApi) => {
-    const context = resolveMetadataSchemaRequestContext(
-      thunkApi.getState(),
-      projectId,
-    );
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-    try {
-      const result = await postFeatureConfig(context.projectPath, {
-        organizerCardBody,
-      });
-      return { projectId, result };
-    } catch (error) {
-      return thunkApi.rejectWithValue(getFeatureConfigErrorMessage(error));
-    }
-  },
-);
+export const updateProjectFeatures = makeFeatureConfigThunk<{
+  projectId: string;
+  features: ProjectFeatureFlags;
+}>("projects/updateProjectFeatures", ({ features }) => ({ features }));
+
+export const updateProjectOrganizerCardBody = makeFeatureConfigThunk<{
+  projectId: string;
+  organizerCardBody: OrganizerCardBodyConfig;
+}>("projects/updateProjectOrganizerCardBody", ({ organizerCardBody }) => ({
+  organizerCardBody,
+}));
 
 /**
  * Initial state for the `projects` slice.
@@ -871,6 +666,18 @@ export const {
 } = projectsSlice.actions;
 export default projectsSlice.reducer;
 
+// ---------------------------------------------------------------------------
+// Selectors
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-project normalization cache used by {@link selectProject}.
+ */
+const selectProjectCache: Map<
+  string,
+  { raw: any; result: StoredProject | null }
+> = new Map();
+
 /**
  * Selects a normalized project record for `projectId`.
  *
@@ -906,14 +713,6 @@ export const selectProject = (
   selectProjectCache.set(projectId, { raw, result });
   return result;
 };
-
-/**
- * Per-project normalization cache used by {@link selectProject}.
- */
-const selectProjectCache: Map<
-  string,
-  { raw: any; result: StoredProject | null }
-> = new Map();
 
 /**
  * Selects the currently selected project ID.
@@ -1026,33 +825,3 @@ export const selectActiveProjectOrganizerCardBody = (
   const id = state?.projects?.selectedProjectId;
   return state?.projects?.projects?.[id]?.organizerCardBody ?? null;
 };
-
-/**
- * Normalizes legacy persisted project shapes to the runtime StoredProject shape
- * used by the UI. This accepts the historical `{ resources?: ResourceMeta[] }`
- * shape and ensures `resources` items have a `metadata` object and folders
- * are present as an array. Keep this small and conservative so it is safe to
- * remove once the app no longer persists the legacy shape.
- */
-export function normalizeStoredProject(p: StoredProject): StoredProject {
-  if (!p) return p;
-  // If resources are already full canonical resource objects (contain `name`),
-  // assume they're migrated and return as-is to preserve display fields.
-  if (Array.isArray(p.resources) && p.resources.length > 0) {
-    const first = p.resources[0] as any;
-    if (first && typeof first.name === "string") {
-      return { ...p, folders: p.folders ?? [] };
-    }
-  }
-
-  const resources = Array.isArray(p.resources)
-    ? p.resources.map((r) => ({
-        id: r.id,
-        name: r.name ?? "",
-        userMetadata: r.userMetadata ?? {},
-      }))
-    : p.resources;
-  const folders = p.folders ?? [];
-
-  return { ...p, resources, folders };
-}

@@ -47,54 +47,50 @@ export async function loadProjectFromDisk(
   const project = await migrateProjectOnLoad(projectPath);
 
   const foldersDir = path.join(projectPath, "folders");
-  const metadataDir = path.join(projectPath, "meta");
+  const metaDir = path.join(projectPath, "meta");
   const resourcesDir = path.join(projectPath, "resources");
 
   const folders = await readFolderTree(foldersDir);
 
-  let metadataEntries: string[];
+  let metaFilenames: string[];
   try {
-    metadataEntries = await fs.readdir(metadataDir);
+    metaFilenames = await fs.readdir(metaDir);
   } catch {
-    metadataEntries = [];
+    metaFilenames = [];
   }
 
-  const resourcePromises = metadataEntries
-    .filter(
-      (name) => name.startsWith("resource-") && name.endsWith(".meta.json"),
-    )
-    .map(async (metadataName) => {
-      const sidecar = await readSidecar(
-        projectPath,
-        metadataName.replace("resource-", "").replace(".meta.json", ""),
-      );
-      const sidecarId =
-        sidecar && typeof sidecar.id === "string" ? sidecar.id : "";
-      const type =
-        sidecar && typeof sidecar.type === "string" ? sidecar.type : "";
-      // Only text resources persist a content.txt. Image/audio resources store
-      // a binary original.<ext> with no content.txt, so reading it would throw.
-      const resourcePlaintext =
-        type === "text"
-          ? fsSync.readFileSync(
-              path.join(resourcesDir, sidecarId, "content.txt"),
-              { encoding: "utf-8" },
-            )
-          : "";
-      const wordCount =
-        type === "text"
-          ? resourcePlaintext.trim() === ""
-            ? 0
-            : resourcePlaintext.trim().split(/\s+/).length
-          : undefined;
-      return {
-        ...sidecar,
-        plaintext: resourcePlaintext,
-        ...(wordCount !== undefined && { wordCount }),
-      } as LoadedResource;
-    });
-
-  const resources = await Promise.all(resourcePromises);
+  const resources = await Promise.all(
+    metaFilenames
+      .filter((f) => f.startsWith("resource-") && f.endsWith(".meta.json"))
+      .map(async (filename) => {
+        const sidecar = await readSidecar(
+          projectPath,
+          filename.replace("resource-", "").replace(".meta.json", ""),
+        );
+        const id = sidecar && typeof sidecar.id === "string" ? sidecar.id : "";
+        const type =
+          sidecar && typeof sidecar.type === "string" ? sidecar.type : "";
+        // Only text resources persist a content.txt. Image/audio resources store
+        // a binary original.<ext> with no content.txt, so reading it would throw.
+        const plaintext =
+          type === "text"
+            ? fsSync.readFileSync(path.join(resourcesDir, id, "content.txt"), {
+                encoding: "utf-8",
+              })
+            : "";
+        const wordCount =
+          type === "text"
+            ? plaintext.trim() === ""
+              ? 0
+              : plaintext.trim().split(/\s+/).length
+            : undefined;
+        return {
+          ...sidecar,
+          plaintext,
+          ...(wordCount !== undefined && { wordCount }),
+        } as LoadedResource;
+      }),
+  );
 
   return { project, folders, resources };
 }

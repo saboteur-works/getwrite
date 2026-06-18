@@ -52,8 +52,8 @@ export default function CompilePreviewModal(
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() =>
     initAllChecked(tree),
   );
-  const [includeHeaders, setIncludeHeaders] = useState(true);
-  const [compileAs, setCompileAs] = useState<CompileFormat>("txt");
+  const [shouldIncludeHeaders, setShouldIncludeHeaders] = useState(true);
+  const [format, setFormat] = useState<CompileFormat>("txt");
   const [compilationName, setCompilationName] = useState("");
 
   // Reset selection when modal opens or resource list changes.
@@ -61,7 +61,7 @@ export default function CompilePreviewModal(
     if (isOpen) {
       const t = buildCompileTree(resources);
       setCheckedIds(initAllChecked(t));
-      setCompileAs("txt");
+      setFormat("txt");
       setCompilationName("");
     }
   }, [isOpen, resources]);
@@ -123,8 +123,8 @@ export default function CompilePreviewModal(
         <div className="mt-3 flex items-center gap-2">
           <Checkbox
             id="compile-include-headers"
-            checked={includeHeaders}
-            onChange={(e) => setIncludeHeaders(e.target.checked)}
+            checked={shouldIncludeHeaders}
+            onChange={(e) => setShouldIncludeHeaders(e.target.checked)}
             aria-label="Include section headers"
           />
           <label
@@ -141,8 +141,8 @@ export default function CompilePreviewModal(
           </label>
           <Select
             id="compile-as"
-            value={compileAs}
-            onChange={(e) => setCompileAs(e.target.value as CompileFormat)}
+            value={format}
+            onChange={(e) => setFormat(e.target.value as CompileFormat)}
             className="w-auto"
           >
             <option value="txt">txt</option>
@@ -176,8 +176,8 @@ export default function CompilePreviewModal(
                 tree,
               ).filter((id) => checkedIds.has(id));
               onConfirmCompile?.(orderedIds, {
-                includeHeaders,
-                format: compileAs,
+                includeHeaders: shouldIncludeHeaders,
+                format,
                 compilationName,
               });
               onConfirm?.();

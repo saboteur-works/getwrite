@@ -10,7 +10,6 @@ import {
   listTagAssignments,
   assignTag,
 } from "../../src/lib/api/tags";
-import LabeledField from "./controls/LabeledField";
 import Chip from "../common/UI/Chip";
 
 /**
@@ -26,12 +25,10 @@ export default function TagsSection(): JSX.Element | null {
     return state.projects.projects[id]?.rootPath ?? null;
   });
 
-  const selectedResource = useAppSelector(
-    (state) => selectResource(state.resources),
+  const resourceId = useAppSelector(
+    (state) => selectResource(state.resources)?.id ?? null,
     shallowEqual,
   );
-
-  const resourceId = selectedResource?.id ?? null;
 
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [assignedTagIds, setAssignedTagIds] = useState<string[]>([]);

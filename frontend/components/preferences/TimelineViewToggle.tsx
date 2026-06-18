@@ -41,21 +41,22 @@ export default function TimelineViewToggle(): JSX.Element | null {
     return null;
   }
 
-  const metadataEnabled = features.timeline === true;
+  const isTimelineFieldsEnabled = features.timeline === true;
   // Only warn when the date fields are off — that's the case where enabling the
   // view will also flip them on. When they're already on, no hint is needed.
-  const tooltip = metadataEnabled
+  const tooltip = isTimelineFieldsEnabled
     ? undefined
     : "Also turns on the Timeline date fields, which the view reads.";
 
   const handleToggle = async (next: boolean): Promise<void> => {
-    const updated = { ...features, timelineView: next };
     // The view is useless without its date fields, so enabling it enables them
     // too (no-op when already on). Disabling the view leaves the fields alone.
-    const cascadesFieldsOn = next && !metadataEnabled;
-    if (cascadesFieldsOn) {
-      updated.timeline = true;
-    }
+    const willEnableFields = next && !isTimelineFieldsEnabled;
+    const updated = {
+      ...features,
+      timelineView: next,
+      ...(willEnableFields && { timeline: true }),
+    };
     try {
       await dispatch(
         updateProjectFeatures({
@@ -65,7 +66,7 @@ export default function TimelineViewToggle(): JSX.Element | null {
       ).unwrap();
       toastService.success(
         `Timeline view ${next ? "enabled" : "disabled"}`,
-        cascadesFieldsOn ? "Timeline fields turned on too." : undefined,
+        willEnableFields ? "Timeline fields turned on too." : undefined,
       );
     } catch (error) {
       toastService.error(

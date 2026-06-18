@@ -102,9 +102,9 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
     const updated: ProjectFeatureFlags = { ...features, [key]: next };
     // The Timeline view depends on the date fields; disabling the fields takes
     // the view with them (no-op when the view is already off).
-    const cascadesViewOff =
+    const isCascadesViewOff =
       key === "timeline" && !next && features.timelineView === true;
-    if (cascadesViewOff) {
+    if (isCascadesViewOff) {
       updated.timelineView = false;
     }
     try {
@@ -116,7 +116,7 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
       ).unwrap();
       toastService.success(
         `${label} ${next ? "enabled" : "disabled"}`,
-        cascadesViewOff ? "Timeline view turned off too." : undefined,
+        isCascadesViewOff ? "Timeline view turned off too." : undefined,
       );
     } catch (error) {
       toastService.error(

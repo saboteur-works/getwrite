@@ -1,36 +1,42 @@
 import { NextResponse } from "next/server";
 import path from "node:path";
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import { ResourceType, TipTapDocument } from "../../../src/lib/models";
 import { listRevisions } from "../../../src/lib/models/revision";
-const getProjectResource = (
+
+async function getProjectResource(
   projectPath: string,
   resourceId: string,
   resourceType: ResourceType,
-) => {
-  const resourcePath = path.join(projectPath, "resources", resourceId);
-  // Read the content at the resource path
-  // If it contains a content.tiptap.json file, it is a text resource
+) {
+  const resourceDir = path.join(projectPath, "resources", resourceId);
+
   if (resourceType === "text") {
-    const tiptapContentPath = path.join(resourcePath, "content.tiptap.json");
+    const tiptapPath = path.join(resourceDir, "content.tiptap.json");
     let tipTapContent: TipTapDocument | null = null;
-    if (fs.existsSync(tiptapContentPath)) {
-      const content = fs.readFileSync(tiptapContentPath, "utf-8");
-      tipTapContent = JSON.parse(content) as TipTapDocument;
+    try {
+      tipTapContent = JSON.parse(
+        await fs.readFile(tiptapPath, "utf-8"),
+      ) as TipTapDocument;
+    } catch {
+      // no tiptap file
     }
+
     let plaintextContent: string | null = null;
-    const plaintextContentPath = path.join(resourcePath, "content.txt");
-    if (fs.existsSync(plaintextContentPath)) {
-      plaintextContent = fs.readFileSync(plaintextContentPath, "utf-8");
+    const plaintextPath = path.join(resourceDir, "content.txt");
+    try {
+      plaintextContent = await fs.readFile(plaintextPath, "utf-8");
+    } catch {
+      // no plaintext file
     }
 
     return { tipTapContent, plaintextContent };
   }
-  // If no valid content is found, throw an error
+
   throw new Error(
-    `No valid content found for resource ${resourceId} at path ${resourcePath}`,
+    `No valid content found for resource ${resourceId} at path ${resourceDir}`,
   );
-};
+}
 
 // Fetch project resources from the filesystem
 // Body expects a project file path
@@ -41,11 +47,14 @@ export async function POST(req: Request) {
     resourceId: string;
   };
   const revisions = await listRevisions(projectPath, resourceId);
-  // Get the project resources from the filesystem based on the provided project path and resource ID
+  // For now, we assume all resources are text resources and fetch accordingly.
+  // In the future, we can extend this to handle different resource types based on additional parameters in the request body.
   try {
-    // For now, we assume all resources are text resources and fetch accordingly.
-    // In the future, we can extend this to handle different resource types based on additional parameters in the request body.
-    const resourceContent = getProjectResource(projectPath, resourceId, "text");
+    const resourceContent = await getProjectResource(
+      projectPath,
+      resourceId,
+      "text",
+    );
 
     return NextResponse.json({
       message: "Project resources endpoint",

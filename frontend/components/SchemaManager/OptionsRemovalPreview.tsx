@@ -81,37 +81,38 @@ export default function OptionsRemovalPreview({
 }: OptionsRemovalPreviewProps): JSX.Element {
   const dispatch = useAppDispatch();
 
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [rows, setRows] = useState<RowState[]>([]);
-  const [applying, setApplying] = useState(false);
+  const [isApplying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let isCancelled = false;
     setLoading(true);
     setFetchError(null);
     fetchFieldValues(projectPath, fieldKey)
       .then((entries) => {
-        if (cancelled) return;
-        const initialRows: RowState[] = orphanedOptions.map((opt) => ({
-          option: opt,
-          count: countOrphanedOption(entries, opt, fieldType),
-          action: "add-to-options" as ActionChoice,
-          normalizedTo: "",
-        }));
-        setRows(initialRows);
+        if (isCancelled) return;
+        setRows(
+          orphanedOptions.map((opt) => ({
+            option: opt,
+            count: countOrphanedOption(entries, opt, fieldType),
+            action: "add-to-options" as ActionChoice,
+            normalizedTo: "",
+          })),
+        );
         setLoading(false);
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
+        if (isCancelled) return;
         setFetchError(
           err instanceof Error ? err.message : "Failed to load values.",
         );
         setLoading(false);
       });
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
   }, [projectPath, fieldKey, fieldType, orphanedOptions]);
 
@@ -189,7 +190,7 @@ export default function OptionsRemovalPreview({
 
         {/* Body */}
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
-          {loading && (
+          {isLoading && (
             <p className="font-mono text-[10px] text-gw-dim text-center py-6">
               Scanning values…
             </p>
@@ -201,7 +202,7 @@ export default function OptionsRemovalPreview({
             </p>
           )}
 
-          {!loading && !fetchError && rows.length > 0 && (
+          {!isLoading && !fetchError && rows.length > 0 && (
             <div className="mb-4">
               <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1 items-center">
                 <span className="font-mono text-[8px] uppercase tracking-[0.14em] text-gw-dim pb-1">
@@ -266,23 +267,17 @@ export default function OptionsRemovalPreview({
           )}
 
           {/* Summary */}
-          {!loading && !fetchError && (
+          {!isLoading && !fetchError && (
             <div className="border-t border-gw-border pt-3 space-y-1">
               <p className="font-mono text-[9px] text-gw-secondary">
                 Final options:{" "}
                 {finalOptions.length > 0 ? finalOptions.join(", ") : "(none)"}
               </p>
-              {affectedCount > 0 && (
-                <p className="font-mono text-[9px] text-gw-dim">
-                  {affectedCount} resource{affectedCount !== 1 ? "s" : ""} use
-                  removed options
-                </p>
-              )}
-              {affectedCount === 0 && (
-                <p className="font-mono text-[9px] text-gw-dim">
-                  No resources use these options — safe to remove.
-                </p>
-              )}
+              <p className="font-mono text-[9px] text-gw-dim">
+                {affectedCount > 0
+                  ? `${affectedCount} resource${affectedCount !== 1 ? "s" : ""} use removed options`
+                  : "No resources use these options — safe to remove."}
+              </p>
             </div>
           )}
 
@@ -299,7 +294,7 @@ export default function OptionsRemovalPreview({
             variant="ghost"
             size="sm"
             onClick={onCancel}
-            disabled={applying}
+            disabled={isApplying}
           >
             Cancel
           </Button>
@@ -309,9 +304,9 @@ export default function OptionsRemovalPreview({
             onClick={() => {
               void handleApply();
             }}
-            disabled={applying || loading || Boolean(fetchError)}
+            disabled={isApplying || isLoading || Boolean(fetchError)}
           >
-            {applying ? "Applying…" : "Apply"}
+            {isApplying ? "Applying…" : "Apply"}
           </Button>
         </div>
       </div>

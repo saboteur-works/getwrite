@@ -19,7 +19,7 @@ Format
 
 Operations
 
-- Use the CLI helper at `frontend/src/cli/templates.ts` for quick management in development. The helper supports the following commands (developer-facing):
+- Use the CLI helper at `cli/src/templates.ts` for quick management in development. The helper supports the following commands (developer-facing):
   - `save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]` — capture an existing resource and persist it as a template.
   - `save <projectRoot> <templateId> <name>` — create an empty template stub.
   - `create <projectRoot> <templateId> [name] [--vars '{}'] [--dry-run]` — create a resource from a template; `--vars` accepts a JSON object of substitutions; `--dry-run` prints planned writes.

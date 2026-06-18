@@ -58,7 +58,7 @@ export default function MultiResourceRefInput({
     return filterOptions(defaultInputValue, resourceOptions, selected);
   });
 
-  const atCap = maxSelections !== undefined && value.length >= maxSelections;
+  const isAtCap = maxSelections !== undefined && value.length >= maxSelections;
 
   const selectedNames = React.useMemo(
     () => new Set(value.map((r) => r.name.toLowerCase())),
@@ -66,7 +66,7 @@ export default function MultiResourceRefInput({
   );
 
   const addRef = (option: ResourceOption) => {
-    if (atCap) return;
+    if (isAtCap) return;
     onChange?.([...value, { id: option.id, name: option.name }]);
     setInputVal("");
     setSuggestions([]);
@@ -138,7 +138,7 @@ export default function MultiResourceRefInput({
           onBlur={handleBlur}
           placeholder="Search resources..."
           autoComplete="off"
-          disabled={atCap}
+          disabled={isAtCap}
         />
         <Listbox
           options={suggestions.map((opt) => ({

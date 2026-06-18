@@ -17,6 +17,15 @@ function isEnoent(err: unknown): boolean {
   );
 }
 
+function trashPaths(projectRoot: string) {
+  const trashRoot = path.join(projectRoot, ".trash");
+  return {
+    trashRoot,
+    trashResourcesDir: path.join(trashRoot, "resources"),
+    trashMetaDir: path.join(trashRoot, "meta"),
+  };
+}
+
 /**
  * Recursively patches a value: if it is a ResourceRef object whose `id`
  * matches `deletedId`, replaces `id` with `null`. Handles arrays of
@@ -36,13 +45,13 @@ function patchRef(
   }
 
   if (Array.isArray(raw)) {
-    let anyChanged = false;
-    const patched = (raw as unknown[]).map((el) => {
+    let isAnyChanged = false;
+    const patched = raw.map((el: unknown) => {
       const r = patchRef(el, deletedId);
-      if (r.changed) anyChanged = true;
+      if (r.changed) isAnyChanged = true;
       return r.value;
     });
-    return anyChanged
+    return isAnyChanged
       ? { changed: true, value: patched }
       : { changed: false, value: raw };
   }
@@ -106,7 +115,7 @@ export async function nullifyResourceRefs(
     }
 
     const userMetadata = rawMeta as Record<string, MetadataValue>;
-    let dirty = false;
+    let isDirty = false;
 
     for (const fieldKey of resourceRefFieldKeys) {
       const value = userMetadata[fieldKey];
@@ -115,22 +124,14 @@ export async function nullifyResourceRefs(
       const result = patchRef(value, deletedResourceId);
       if (result.changed) {
         userMetadata[fieldKey] = result.value as MetadataValue;
-        dirty = true;
+        isDirty = true;
       }
     }
 
-    if (dirty) {
+    if (isDirty) {
       sidecar["userMetadata"] = userMetadata;
       await writeSidecar(projectRoot, resourceId, sidecar);
     }
-  }
-}
-
-async function ensureDir(dir: string): Promise<void> {
-  try {
-    await fs.mkdir(dir, { recursive: true });
-  } catch (err) {
-    throw err;
   }
 }
 
@@ -142,12 +143,11 @@ export async function softDeleteResource(
   projectRoot: string,
   resourceId: UUID,
 ): Promise<string> {
-  const trashRoot = path.join(projectRoot, ".trash");
-  const trashResourcesDir = path.join(trashRoot, "resources");
-  const trashMetaDir = path.join(trashRoot, "meta");
+  const { trashRoot, trashResourcesDir, trashMetaDir } =
+    trashPaths(projectRoot);
 
-  await ensureDir(trashResourcesDir);
-  await ensureDir(trashMetaDir);
+  await fs.mkdir(trashResourcesDir, { recursive: true });
+  await fs.mkdir(trashMetaDir, { recursive: true });
 
   // Move sidecar if present
   const sidecarSrc = sidecarPathForProject(projectRoot, resourceId);
@@ -157,16 +157,7 @@ export async function softDeleteResource(
     await fs.rename(sidecarSrc, sidecarDest);
   } catch (err: unknown) {
     // If file does not exist, ignore; otherwise rethrow
-    if (
-      err &&
-      typeof err === "object" &&
-      "code" in err &&
-      (err as any).code === "ENOENT"
-    ) {
-      // no-op
-    } else {
-      throw err;
-    }
+    if (!isEnoent(err)) throw err;
   }
 
   // Move any resource files matching the resourceId under `resources/`.
@@ -181,16 +172,8 @@ export async function softDeleteResource(
       }
     }
   } catch (err: unknown) {
-    if (
-      err &&
-      typeof err === "object" &&
-      "code" in err &&
-      (err as any).code === "ENOENT"
-    ) {
-      // resources directory missing: ignore
-    } else {
-      throw err;
-    }
+    // resources directory missing: ignore
+    if (!isEnoent(err)) throw err;
   }
 
   return trashRoot;
@@ -204,28 +187,18 @@ export async function restoreResource(
   projectRoot: string,
   resourceId: UUID,
 ): Promise<void> {
-  const trashRoot = path.join(projectRoot, ".trash");
-  const trashResourcesDir = path.join(trashRoot, "resources");
-  const trashMetaDir = path.join(trashRoot, "meta");
+  const { trashResourcesDir, trashMetaDir } = trashPaths(projectRoot);
 
   // Restore sidecar
   const sidecarName = sidecarFilename(resourceId);
   const sidecarSrc = path.join(trashMetaDir, sidecarName);
   const sidecarDest = sidecarPathForProject(projectRoot, resourceId);
   try {
-    await ensureDir(path.dirname(sidecarDest));
+    await fs.mkdir(path.dirname(sidecarDest), { recursive: true });
     await fs.rename(sidecarSrc, sidecarDest);
   } catch (err: unknown) {
-    if (
-      err &&
-      typeof err === "object" &&
-      "code" in err &&
-      (err as any).code === "ENOENT"
-    ) {
-      // sidecar not present in trash
-    } else {
-      throw err;
-    }
+    // sidecar not present in trash
+    if (!isEnoent(err)) throw err;
   }
 
   // Restore resource files
@@ -236,23 +209,15 @@ export async function restoreResource(
       if (e.startsWith(resourceId + "-")) {
         const src = path.join(trashResourcesDir, e);
         const originalName = e.replace(`${resourceId}-`, "");
-        await ensureDir(resourcesDir);
+        await fs.mkdir(resourcesDir, { recursive: true });
         const dest = path.join(resourcesDir, originalName);
         await fs.rename(src, dest);
         // restore only one file per matching entry
       }
     }
   } catch (err: unknown) {
-    if (
-      err &&
-      typeof err === "object" &&
-      "code" in err &&
-      (err as any).code === "ENOENT"
-    ) {
-      // nothing to restore
-    } else {
-      throw err;
-    }
+    // nothing to restore
+    if (!isEnoent(err)) throw err;
   }
 }
 
@@ -263,16 +228,14 @@ export async function purgeResource(
   projectRoot: string,
   resourceId: UUID,
 ): Promise<void> {
-  const trashRoot = path.join(projectRoot, ".trash");
-  const trashResourcesDir = path.join(trashRoot, "resources");
-  const trashMetaDir = path.join(trashRoot, "meta");
+  const { trashResourcesDir, trashMetaDir } = trashPaths(projectRoot);
 
   // Delete sidecar from trash
   const sidecarName = sidecarFilename(resourceId);
   const sidecarPath = path.join(trashMetaDir, sidecarName);
   try {
     await fs.rm(sidecarPath, { force: true });
-  } catch (err) {
+  } catch {
     // ignore
   }
 
@@ -285,7 +248,7 @@ export async function purgeResource(
         await fs.rm(p, { force: true });
       }
     }
-  } catch (err) {
+  } catch {
     // ignore
   }
 }

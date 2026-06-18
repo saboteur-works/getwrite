@@ -6,17 +6,13 @@ import type {
 } from "./types";
 import { ProjectSchema, Infer } from "./schemas";
 
-/** Default values applied when creating a new project. */
-const DEFAULT_MAX_REVISIONS = 50;
-const DEFAULT_AUTO_PRUNE = true;
-
 /** Apply sensible defaults to a `ProjectConfig` object. */
 export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
   return {
-    maxRevisions: config?.maxRevisions ?? DEFAULT_MAX_REVISIONS,
+    maxRevisions: config?.maxRevisions ?? 50,
     wordCountGoal: config?.wordCountGoal,
     statuses: config?.statuses ?? [],
-    autoPrune: config?.autoPrune ?? DEFAULT_AUTO_PRUNE,
+    autoPrune: config?.autoPrune ?? true,
     editorConfig: config?.editorConfig ?? {},
     defaultRevisionName: config?.defaultRevisionName,
     metadataRevision: config?.metadataRevision,

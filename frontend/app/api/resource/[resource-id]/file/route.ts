@@ -43,8 +43,7 @@ export async function GET(
   }
 
   const sidecar = await readSidecar(projectPath, resourceId);
-  const fileName =
-    typeof sidecar?.["file"] === "string" ? sidecar["file"] : null;
+  const fileName = typeof sidecar?.file === "string" ? sidecar.file : null;
 
   if (!fileName) {
     return NextResponse.json(
@@ -62,12 +61,7 @@ export async function GET(
       headers: { "Content-Type": mimeForFile(fileName) },
     });
   } catch (err: unknown) {
-    if (
-      err &&
-      typeof err === "object" &&
-      "code" in err &&
-      (err as NodeJS.ErrnoException).code === "ENOENT"
-    ) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
     throw err;

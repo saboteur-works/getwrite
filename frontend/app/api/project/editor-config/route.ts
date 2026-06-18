@@ -23,24 +23,13 @@ interface UpdateProjectEditorConfigBody {
   body?: EditorBodyConfig;
 }
 
-interface UpdateProjectEditorConfigSuccess {
-  editorConfig: ProjectConfig["editorConfig"];
-}
-
-interface UpdateProjectEditorConfigError {
-  error: string;
-}
-
-export async function POST(
-  req: NextRequest,
-): Promise<
-  NextResponse<
-    UpdateProjectEditorConfigSuccess | UpdateProjectEditorConfigError
-  >
-> {
+export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const body = (await req.json()) as UpdateProjectEditorConfigBody;
-    const { projectPath, headings, body: bodyConfig } = body;
+    const {
+      projectPath,
+      headings,
+      body: bodyConfig,
+    } = (await req.json()) as UpdateProjectEditorConfigBody;
 
     if (!projectPath) {
       return NextResponse.json(
@@ -50,8 +39,10 @@ export async function POST(
     }
 
     const projectFilePath = path.join(projectPath, "project.json");
-    const rawProject = await fs.readFile(projectFilePath, "utf-8");
-    const parsedProject = JSON.parse(rawProject) as Project;
+    const parsedProject = JSON.parse(
+      await fs.readFile(projectFilePath, "utf-8"),
+    ) as Project;
+
     const nextEditorConfig: ProjectConfig["editorConfig"] = {
       ...(parsedProject.config?.editorConfig ?? {}),
       headings: sanitizeEditorHeadingMap(headings),
@@ -60,13 +51,13 @@ export async function POST(
           ? sanitizeEditorBody(bodyConfig)
           : parsedProject.config?.editorConfig?.body,
     };
-    const nextConfig: ProjectConfig = {
-      ...(parsedProject.config ?? {}),
-      editorConfig: nextEditorConfig,
-    };
+
     const nextProject: Project = {
       ...parsedProject,
-      config: nextConfig,
+      config: {
+        ...(parsedProject.config ?? {}),
+        editorConfig: nextEditorConfig,
+      },
       updatedAt: new Date().toISOString(),
     };
 

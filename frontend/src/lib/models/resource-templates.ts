@@ -91,16 +91,6 @@ function getCreatedResourceId(result: TemplateCreateResult): string | null {
 }
 
 /**
- * Ensure a directory exists (creates parent directories recursively).
- *
- * @param dir - directory path to ensure exists
- */
-async function ensureDir(dir: string): Promise<void> {
-  await fs.mkdir(dir, { recursive: true });
-}
-
-/** Persist a resource template under project meta/templates. */
-/**
  * Persist a `ResourceTemplate` to disk under `meta/templates/<id>.json`.
  *
  * This operation obtains the project meta lock to serialize concurrent
@@ -117,7 +107,7 @@ export async function saveResourceTemplate(
   template: ResourceTemplate,
 ): Promise<void> {
   const dir = TEMPLATES_DIR(projectRoot);
-  await ensureDir(dir);
+  await fs.mkdir(dir, { recursive: true });
   const file = path.join(dir, `${template.id}.json`);
   await withMetaLock(projectRoot, async () => {
     // read previous content if exists for change tracking
@@ -175,16 +165,14 @@ export async function listResourceTemplates(
       const raw = await fs.readFile(path.join(dir, e), "utf8");
       const parsed = JSON.parse(raw) as ResourceTemplate;
       const candidate = { id: parsed.id, name: parsed.name, type: parsed.type };
-      if (!query) out.push(candidate);
-      else {
-        const q = query.toLowerCase();
-        if (
-          candidate.id.toLowerCase().includes(q) ||
-          candidate.name.toLowerCase().includes(q) ||
-          candidate.type.toLowerCase().includes(q)
-        ) {
-          out.push(candidate);
-        }
+      const q = query?.toLowerCase();
+      if (
+        !q ||
+        candidate.id.toLowerCase().includes(q) ||
+        candidate.name.toLowerCase().includes(q) ||
+        candidate.type.toLowerCase().includes(q)
+      ) {
+        out.push(candidate);
       }
     }
   } catch (_) {
@@ -278,7 +266,7 @@ export async function createResourceFromTemplate(
   const name = (opts?.name ?? tmpl.name) as string;
   const appliedName = (applyVars(name) as string) ?? name;
 
-  await ensureDir(RESOURCES_DIR(projectRoot));
+  await fs.mkdir(RESOURCES_DIR(projectRoot), { recursive: true });
 
   const plannedWrites: Array<{ path: string; content: string | null }> = [];
 
@@ -403,7 +391,7 @@ export async function duplicateResource(
         break;
       }
     }
-  } catch (err) {
+  } catch (_) {
     // no resources dir
   }
 
@@ -419,30 +407,13 @@ export async function duplicateResource(
 
   if (foundName) {
     const src = path.join(resourcesDir, foundName);
-    const ext = path.extname(foundName);
-    const base = foundName.replace(resourceId, newId);
-    const dest = path.join(resourcesDir, base);
-    try {
-      const st = await fs.stat(src);
-      if (st.isDirectory()) {
-        // Resource stored as a directory (newer layout); copy recursively
-        // `fs.cp` supports recursive copy on Node >=16.7
-        if (typeof (fs as any).cp === "function") {
-          await (fs as any).cp(src, dest, { recursive: true });
-        } else {
-          // Fallback: create dest dir and copy individual entries
-          await fs.mkdir(dest, { recursive: true });
-          const entries = await fs.readdir(src);
-          for (const e of entries) {
-            await fs.copyFile(path.join(src, e), path.join(dest, e));
-          }
-        }
-      } else {
-        await fs.copyFile(src, dest);
-      }
-    } catch (err) {
-      // propagate error to caller for visibility in tests
-      throw err;
+    const dest = path.join(resourcesDir, foundName.replace(resourceId, newId));
+    const st = await fs.stat(src);
+    if (st.isDirectory()) {
+      // Resource stored as a directory (newer layout); copy recursively
+      await fs.cp(src, dest, { recursive: true });
+    } else {
+      await fs.copyFile(src, dest);
     }
   }
 
@@ -473,7 +444,7 @@ export async function exportResourceTemplate(
   const name = `${tpl.id}.json`;
   const data = Buffer.from(JSON.stringify(tpl, null, 2), "utf8");
   const zip = createZipBuffer([{ name, data }]);
-  await ensureDir(path.dirname(outPath));
+  await fs.mkdir(path.dirname(outPath), { recursive: true });
   await fs.writeFile(outPath, zip);
 }
 
@@ -496,7 +467,7 @@ export async function importResourceTemplates(
     throw new Error("Invalid or empty template package");
   }
   const dir = TEMPLATES_DIR(projectRoot);
-  await ensureDir(dir);
+  await fs.mkdir(dir, { recursive: true });
   const imported: string[] = [];
   for (const e of entries) {
     if (!e.name.endsWith(".json")) continue;
@@ -712,7 +683,7 @@ export async function recordTemplateChange(
   next: ResourceTemplate,
 ): Promise<void> {
   const dir = TEMPLATES_DIR(projectRoot);
-  await ensureDir(dir);
+  await fs.mkdir(dir, { recursive: true });
   const changesFile = path.join(dir, `${templateId}.changes.jsonl`);
   const ts = new Date().toISOString();
   const changedKeys: string[] = [];
@@ -720,8 +691,8 @@ export async function recordTemplateChange(
   else {
     const keys = new Set<string>([...Object.keys(prev), ...Object.keys(next)]);
     for (const k of keys) {
-      const pv = (prev as any)[k];
-      const nv = (next as any)[k];
+      const pv = (prev as unknown as Record<string, unknown>)[k];
+      const nv = (next as unknown as Record<string, unknown>)[k];
       if (JSON.stringify(pv) !== JSON.stringify(nv)) changedKeys.push(k);
     }
   }
@@ -882,6 +853,7 @@ const CRC32_TABLE = (() => {
   }
   return Array.from(t);
 })();
+
 /**
  * Create and persist a resource template based on an existing resource in the project.
  * Captures sidecar metadata and (for text resources) the file contents as `plainText`.
@@ -998,13 +970,16 @@ export async function previewResourceTemplate(
 ): Promise<string> {
   // reuse createResourceFromTemplate in dry-run mode to get a resource preview
   const res = await createResourceFromTemplate(projectRoot, templateId, {
-    vars: opts?.vars as any,
+    vars: opts?.vars,
     dryRun: true,
   });
-  const preview = (res as any).resourcePreview;
-  const plain = preview && preview.plainText ? preview.plainText : "";
+  const preview = (res as TemplateCreatePreview).resourcePreview;
+  const plain =
+    preview && "plainText" in preview
+      ? ((preview as { plainText?: string }).plainText ?? "")
+      : "";
   if (opts?.outPath) {
-    await ensureDir(path.dirname(opts.outPath));
+    await fs.mkdir(path.dirname(opts.outPath), { recursive: true });
     await fs.writeFile(opts.outPath, plain, "utf8");
     return opts.outPath;
   }

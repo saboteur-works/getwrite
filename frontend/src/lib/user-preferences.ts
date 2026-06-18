@@ -125,14 +125,7 @@ export function resolvePreferredColorMode(
     }
   }
 
-  try {
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    return prefersDark ? "dark" : "light";
-  } catch {
-    return "light";
-  }
+  return detectSystemColorMode();
 }
 
 /**
@@ -217,12 +210,12 @@ export function getStoredGlobalAppearancePreferences(): AppearancePreferences {
         ? parsed.density
         : DEFAULT_APPEARANCE_PREFERENCES.density;
 
-    const reducedMotion =
+    const isReducedMotion =
       typeof parsed.reducedMotion === "boolean"
         ? parsed.reducedMotion
         : DEFAULT_APPEARANCE_PREFERENCES.reducedMotion;
 
-    return { colorModePreference, density, reducedMotion };
+    return { colorModePreference, density, reducedMotion: isReducedMotion };
   } catch {
     return DEFAULT_APPEARANCE_PREFERENCES;
   }
@@ -269,14 +262,7 @@ export function resolveColorModeFromAppearance(
     return "dark";
   }
 
-  try {
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    return prefersDark ? "dark" : "light";
-  } catch {
-    return "light";
-  }
+  return detectSystemColorMode();
 }
 
 /**
@@ -300,5 +286,22 @@ function hasStoredGlobalAppearancePreferences(): boolean {
     return window.localStorage.getItem(GLOBAL_APPEARANCE_STORAGE_KEY) !== null;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Reads the OS/browser color scheme preference via `matchMedia`.
+ *
+ * @returns `"dark"` when the system prefers dark mode, `"light"` otherwise.
+ *   Falls back to `"light"` if `matchMedia` is unavailable (e.g. SSR).
+ */
+function detectSystemColorMode(): ColorMode {
+  try {
+    const isDarkPreferred = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
+    return isDarkPreferred ? "dark" : "light";
+  } catch {
+    return "light";
   }
 }

@@ -40,6 +40,25 @@ function slugify(s: string): string {
     .replace(/[^a-z0-9\-]/g, "");
 }
 
+/** Returns a fresh UUID and the current timestamp as an ISO string. */
+function newIdAndTimestamp(): { id: string; createdAt: string } {
+  return { id: generateUUID(), createdAt: new Date().toISOString() };
+}
+
+/** Derives word, character, and paragraph counts from plain text. */
+function deriveTextMetrics(plain: string): {
+  wordCount: number;
+  charCount: number;
+  paragraphCount: number;
+} {
+  return {
+    wordCount: countWords(plain),
+    charCount: plain.length,
+    paragraphCount:
+      plain.split(/\n\s*\n/).filter(Boolean).length || (plain.trim() ? 1 : 0),
+  };
+}
+
 /**
  * Creates a validated `TextResource` with derived text metrics.
  */
@@ -52,26 +71,18 @@ export function createTextResource(params: {
   userMetadata?: Record<string, MetadataValue>;
   orderIndex?: number;
 }): TextResource {
-  const now = new Date().toISOString();
-  const id = generateUUID();
+  const { id, createdAt } = newIdAndTimestamp();
   const plain = params.plainText ?? "";
-
-  const wordCount = countWords(plain);
-  const charCount = plain.length;
-  const paragraphCount =
-    plain.split(/\n\s*\n/).filter(Boolean).length || (plain.trim() ? 1 : 0);
   const res: TextResource = {
     id,
     name: params.name,
     slug: params.slug ?? slugify(params.name),
     type: "text",
     folderId: params.folderId,
-    createdAt: now,
+    createdAt,
     plainText: plain,
     tiptap: params.tiptap,
-    wordCount,
-    charCount,
-    paragraphCount,
+    ...deriveTextMetrics(plain),
     userMetadata: params.userMetadata,
     orderIndex: params.orderIndex ?? 0,
   };
@@ -94,15 +105,14 @@ export function createImageResource(params: {
   orderIndex?: number;
   userMetadata?: Record<string, MetadataValue>;
 }): ImageResource {
-  const now = new Date().toISOString();
-  const id = generateUUID();
+  const { id, createdAt } = newIdAndTimestamp();
   const res: ImageResource = {
     id,
     name: params.name,
     slug: params.slug ?? slugify(params.name),
     type: "image",
     folderId: params.folderId,
-    createdAt: now,
+    createdAt,
     file: params.file,
     width: params.width,
     height: params.height,
@@ -128,15 +138,14 @@ export function createAudioResource(params: {
   orderIndex?: number;
   userMetadata?: Record<string, MetadataValue>;
 }): AudioResource {
-  const now = new Date().toISOString();
-  const id = generateUUID();
+  const { id, createdAt } = newIdAndTimestamp();
   const res: AudioResource = {
     id,
     name: params.name,
     slug: params.slug ?? slugify(params.name),
     type: "audio",
     folderId: params.folderId,
-    createdAt: now,
+    createdAt,
     file: params.file,
     durationSeconds: params.durationSeconds,
     format: params.format,
@@ -170,15 +179,14 @@ export function createFolderResource(params: {
     metadataInputType?: "multiselect" | "text";
   };
 }): Folder {
-  const now = new Date().toISOString();
-  const id = generateUUID();
+  const { id, createdAt } = newIdAndTimestamp();
   const res: Folder = {
     id,
     name: params.name,
     slug: params.slug ?? slugify(params.name),
     type: "folder",
     parentId: params.parentFolderId,
-    createdAt: now,
+    createdAt,
     userMetadata: params.userMetadata,
     orderIndex: params.orderIndex ?? 0,
     special: params.special ?? false,

@@ -40,11 +40,11 @@ export default function POVAutocomplete({
   className = "",
 }: POVAutocompleteProps) {
   const [inputVal, setInputVal] = useState<string>(toDisplayString(value));
-  const [open, setOpen] = useState(false);
+  const [isOpen, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
 
   const { containerRef } = useDismissableMenu({
-    isOpen: open,
+    isOpen: isOpen,
     onClose: () => setOpen(false),
   });
 
@@ -73,7 +73,7 @@ export default function POVAutocomplete({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!open) {
+    if (!isOpen) {
       if (e.key === "ArrowDown" && listboxOptions.length > 0) {
         setOpen(true);
         e.preventDefault();
@@ -114,7 +114,7 @@ export default function POVAutocomplete({
           onKeyDown={handleKeyDown}
           className="w-full"
         />
-        {open && (
+        {isOpen && (
           <Listbox
             options={listboxOptions}
             highlightedIndex={highlightedIndex}

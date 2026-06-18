@@ -39,13 +39,9 @@ interface SchemaResponse {
 }
 
 function getApiErrorMessage(errorBody: unknown, fallback: string): string {
-  if (
-    errorBody &&
-    typeof errorBody === "object" &&
-    "error" in errorBody &&
-    typeof (errorBody as { error?: unknown }).error === "string"
-  ) {
-    return (errorBody as { error: string }).error;
+  const body = errorBody as Record<string, unknown> | null | undefined;
+  if (body && typeof body.error === "string") {
+    return body.error;
   }
   return fallback;
 }
@@ -75,9 +71,10 @@ export async function postAddField(
   groupId: string,
   field: MetadataField,
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "add-field",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     field,
   });
@@ -88,9 +85,10 @@ export async function postRemoveField(
   groupId: string,
   fieldKey: string,
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "remove-field",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     fieldKey,
   });
@@ -101,9 +99,10 @@ export async function postDeprecateField(
   groupId: string,
   fieldKey: string,
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "deprecate-field",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     fieldKey,
   });
@@ -114,9 +113,10 @@ export async function postClearField(
   groupId: string,
   fieldKey: string,
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "clear-field",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     fieldKey,
   });
@@ -127,9 +127,10 @@ export async function postReorderFields(
   groupId: string,
   newKeyOrder: string[],
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "reorder-fields",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     newKeyOrder,
   });
@@ -141,9 +142,10 @@ export async function postRenameField(
   fieldKey: string,
   newLabel: string,
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "rename-field",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     fieldKey,
     newLabel,
@@ -156,9 +158,10 @@ export async function postUpdateFieldOptions(
   fieldKey: string,
   options: string[],
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "update-field-options",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     fieldKey,
     options,
@@ -169,20 +172,18 @@ export async function postAddGroup(
   context: MetadataSchemaRequestContext,
   group: MetadataGroup,
 ): Promise<MetadataSchema> {
-  return postToMetadataSchemaRoute({
-    action: "add-group",
-    projectPath: context.projectPath,
-    group,
-  });
+  const { projectPath } = context;
+  return postToMetadataSchemaRoute({ action: "add-group", projectPath, group });
 }
 
 export async function postRemoveGroup(
   context: MetadataSchemaRequestContext,
   groupId: string,
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "remove-group",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
   });
 }
@@ -191,9 +192,10 @@ export async function postReorderGroups(
   context: MetadataSchemaRequestContext,
   newGroupIdOrder: string[],
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "reorder-groups",
-    projectPath: context.projectPath,
+    projectPath,
     newGroupIdOrder,
   });
 }
@@ -204,9 +206,10 @@ export async function postChangeFieldType(
   fieldKey: string,
   newType: MetadataFieldType,
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "change-field-type",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     fieldKey,
     newType,
@@ -219,9 +222,10 @@ export async function postRenameFieldKey(
   fieldKey: string,
   newKey: string,
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "rename-key",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     fieldKey,
     newKey,
@@ -238,9 +242,10 @@ export async function postUpdateRefProperties(
     maxSelections?: number | null;
   },
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "update-ref-properties",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     fieldKey,
     ...updates,
@@ -254,9 +259,10 @@ export async function postUpdateFieldOptionsWithMigration(
   newOptions: string[],
   migrations: Record<string, OptionsMigrationEntry>,
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "update-field-options-with-migration",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     fieldKey,
     newOptions,
@@ -272,9 +278,10 @@ export async function postChangeFieldTypeWithMigration(
   newOptions: string[],
   migrations: Record<string, TypeMigrationEntry>,
 ): Promise<MetadataSchema> {
+  const { projectPath } = context;
   return postToMetadataSchemaRoute({
     action: "change-field-type-with-migration",
-    projectPath: context.projectPath,
+    projectPath,
     groupId,
     fieldKey,
     newType,

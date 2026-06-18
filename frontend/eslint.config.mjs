@@ -22,6 +22,24 @@ const REACT_COMPILER_RULES = {
   "react-hooks/gating": "off",
 };
 
+// The naming-convention rule below uses a `types: ["boolean"]` selector to
+// require an is/has/should/... prefix on booleans. That selector needs type
+// information, so we enable type-aware linting via the TypeScript project
+// service. Config/setup/script files that live outside tsconfig's program are
+// parsed syntactically in a later override (see NON_PROJECT_FILES).
+const TYPE_AWARE_LANGUAGE_OPTIONS = {
+  parserOptions: {
+    projectService: true,
+    tsconfigRootDir: import.meta.dirname,
+  },
+};
+
+// Files not covered by tsconfig.json's program: root config files, build
+// scripts, and the .storybook setup (TypeScript's `**` include skips
+// dot-directories). The type-aware parser can't resolve these, so we parse them
+// without type info and disable the type-requiring naming rule for them.
+const NON_PROJECT_FILES = ["**/*.mjs", "**/*.cjs", ".storybook/**/*.{ts,tsx}"];
+
 const eslintConfig = [
   {
     ignores: [
@@ -36,8 +54,59 @@ const eslintConfig = [
   ...coreWebVitals,
   ...nextTypescript,
   {
+    languageOptions: TYPE_AWARE_LANGUAGE_OPTIONS,
     rules: {
       ...REACT_COMPILER_RULES,
+      // Naming conventions. Selectors are listed most-specific first.
+      // Object/type *property* names are intentionally left unconstrained:
+      // much of this codebase mirrors on-disk JSON shapes (metadata fields,
+      // TipTap nodes, project-type specs) whose keys aren't camelCase.
+      "@typescript-eslint/naming-convention": [
+        "error",
+        // Booleans must read as predicates (requires type info).
+        {
+          selector: "variable",
+          types: ["boolean"],
+          format: ["PascalCase"],
+          prefix: ["is", "has", "should", "can", "did", "will"],
+          leadingUnderscore: "allowSingleOrDouble",
+        },
+        // Variables: camelCase normally, UPPER_CASE for constants,
+        // PascalCase for values holding components/factories.
+        {
+          selector: "variable",
+          format: ["camelCase", "UPPER_CASE", "PascalCase"],
+          leadingUnderscore: "allowSingleOrDouble",
+        },
+        // Functions: camelCase, or PascalCase for component/factory functions.
+        {
+          selector: "function",
+          format: ["camelCase", "PascalCase"],
+          leadingUnderscore: "allowSingleOrDouble",
+        },
+        // Parameters: camelCase, with a leading underscore for unused args.
+        {
+          selector: "parameter",
+          format: ["camelCase", "PascalCase"],
+          leadingUnderscore: "allowSingleOrDouble",
+        },
+        // Interfaces: PascalCase, and never an `I`-prefix (IFoo -> Foo).
+        {
+          selector: "interface",
+          format: ["PascalCase"],
+          custom: { regex: "^I[A-Z]", match: false },
+        },
+        // Classes, type aliases, enums, type parameters.
+        {
+          selector: "typeLike",
+          format: ["PascalCase"],
+        },
+        // Enum members.
+        {
+          selector: "enumMember",
+          format: ["PascalCase"],
+        },
+      ],
       // Extensive pre-existing any usage; warn rather than error until
       // addressed systematically per docs/standards/typescript-implementation.md
       "@typescript-eslint/no-explicit-any": "warn",
@@ -55,6 +124,15 @@ const eslintConfig = [
           ],
         },
       ],
+    },
+  },
+  {
+    files: NON_PROJECT_FILES,
+    languageOptions: {
+      parserOptions: { projectService: false },
+    },
+    rules: {
+      "@typescript-eslint/naming-convention": "off",
     },
   },
 ];

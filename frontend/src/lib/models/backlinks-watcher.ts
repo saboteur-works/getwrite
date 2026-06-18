@@ -32,7 +32,7 @@ export function startBacklinkWatcher(
   opts: BacklinkWatcherOptions = {},
 ): () => void {
   const debounceMs = opts.debounceMs ?? 250;
-  const verbose = opts.verbose ?? false;
+  const isVerbose = opts.verbose ?? false;
 
   const resourcesDir = path.join(projectRoot, "resources");
 
@@ -43,24 +43,26 @@ export function startBacklinkWatcher(
     if (timer) clearTimeout(timer);
     timer = setTimeout(async () => {
       try {
-        if (verbose) console.log("backlinks: recomputing...");
+        if (isVerbose) console.log("backlinks: recomputing...");
         const index = await computeBacklinks(projectRoot);
         await persistBacklinks(projectRoot, index);
-        if (verbose) console.log("backlinks: persisted");
+        if (isVerbose) console.log("backlinks: persisted");
       } catch (err) {
         // Keep watcher alive on errors but surface to console when verbose
-        if (verbose) console.error("backlinks: error recomputing", err);
+        if (isVerbose) console.error("backlinks: error recomputing", err);
       }
     }, debounceMs);
   }
 
+  function startWatcher() {
+    watcher = fs.watch(resourcesDir, { recursive: true }, scheduleRecompute);
+  }
+
   try {
-    watcher = fs.watch(resourcesDir, { recursive: true }, () => {
-      scheduleRecompute();
-    });
-  } catch (err) {
+    startWatcher();
+  } catch {
     // Directory may not exist yet; create a no-op watcher that retries on first resource creation
-    if (verbose)
+    if (isVerbose)
       console.warn(
         "backlinks: resources dir not found, falling back to polling",
       );
@@ -70,11 +72,9 @@ export function startBacklinkWatcher(
       if (fs.existsSync(resourcesDir)) {
         clearInterval(poll);
         try {
-          watcher = fs.watch(resourcesDir, { recursive: true }, () => {
-            scheduleRecompute();
-          });
+          startWatcher();
         } catch (e) {
-          if (verbose) console.error("backlinks: failed to start watcher", e);
+          if (isVerbose) console.error("backlinks: failed to start watcher", e);
         }
       }
     }, 1000);
@@ -87,7 +87,7 @@ export function startBacklinkWatcher(
   return () => {
     try {
       watcher.close();
-    } catch (_) {
+    } catch {
       // ignore
     }
     if (timer) {
@@ -97,4 +97,5 @@ export function startBacklinkWatcher(
   };
 }
 
-export default { startBacklinkWatcher };
+const backlinkWatcher = { startBacklinkWatcher };
+export default backlinkWatcher;

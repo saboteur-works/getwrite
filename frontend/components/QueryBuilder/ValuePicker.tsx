@@ -128,6 +128,78 @@ function NumberInput({
   );
 }
 
+/** Shared range wrapper used by NumberBetweenInput and DateBetweenInput. */
+function BetweenInput({
+  type,
+  value,
+  onChange,
+}: {
+  type: "number" | "date";
+  value: ValuePickerValue;
+  onChange: (v: ValuePickerValue) => void;
+}): JSX.Element {
+  const isNumber = type === "number";
+  const range = isRange(value)
+    ? value
+    : { from: isNumber ? 0 : "", to: isNumber ? 0 : "" };
+
+  return (
+    <span className="picker-range">
+      <EditContextMenu>
+        <input
+          type={type}
+          className={`picker-input picker-input--${type}`}
+          value={
+            isNumber
+              ? typeof range.from === "number"
+                ? range.from
+                : ""
+              : typeof range.from === "string"
+                ? range.from
+                : ""
+          }
+          aria-label={isNumber ? "From" : "From date"}
+          onChange={(e) => {
+            const from = isNumber
+              ? (() => {
+                  const n = parseFloat(e.target.value);
+                  return isNaN(n) ? 0 : n;
+                })()
+              : e.target.value;
+            onChange({ from, to: range.to });
+          }}
+        />
+      </EditContextMenu>
+      <span className="picker-range__sep">–</span>
+      <EditContextMenu>
+        <input
+          type={type}
+          className={`picker-input picker-input--${type}`}
+          value={
+            isNumber
+              ? typeof range.to === "number"
+                ? range.to
+                : ""
+              : typeof range.to === "string"
+                ? range.to
+                : ""
+          }
+          aria-label={isNumber ? "To" : "To date"}
+          onChange={(e) => {
+            const to = isNumber
+              ? (() => {
+                  const n = parseFloat(e.target.value);
+                  return isNaN(n) ? 0 : n;
+                })()
+              : e.target.value;
+            onChange({ from: range.from, to });
+          }}
+        />
+      </EditContextMenu>
+    </span>
+  );
+}
+
 function NumberBetweenInput({
   value,
   onChange,
@@ -135,36 +207,17 @@ function NumberBetweenInput({
   value: ValuePickerValue;
   onChange: (v: ValuePickerValue) => void;
 }): JSX.Element {
-  const range = isRange(value) ? value : { from: 0, to: 0 };
-  return (
-    <span className="picker-range">
-      <EditContextMenu>
-        <input
-          type="number"
-          className="picker-input picker-input--number"
-          value={typeof range.from === "number" ? range.from : ""}
-          aria-label="From"
-          onChange={(e) => {
-            const n = parseFloat(e.target.value);
-            onChange({ from: isNaN(n) ? 0 : n, to: range.to });
-          }}
-        />
-      </EditContextMenu>
-      <span className="picker-range__sep">–</span>
-      <EditContextMenu>
-        <input
-          type="number"
-          className="picker-input picker-input--number"
-          value={typeof range.to === "number" ? range.to : ""}
-          aria-label="To"
-          onChange={(e) => {
-            const n = parseFloat(e.target.value);
-            onChange({ from: range.from, to: isNaN(n) ? 0 : n });
-          }}
-        />
-      </EditContextMenu>
-    </span>
-  );
+  return <BetweenInput type="number" value={value} onChange={onChange} />;
+}
+
+function DateBetweenInput({
+  value,
+  onChange,
+}: {
+  value: ValuePickerValue;
+  onChange: (v: ValuePickerValue) => void;
+}): JSX.Element {
+  return <BetweenInput type="date" value={value} onChange={onChange} />;
 }
 
 function DateInput({
@@ -184,39 +237,6 @@ function DateInput({
         onChange={(e) => onChange(e.target.value)}
       />
     </EditContextMenu>
-  );
-}
-
-function DateBetweenInput({
-  value,
-  onChange,
-}: {
-  value: ValuePickerValue;
-  onChange: (v: ValuePickerValue) => void;
-}): JSX.Element {
-  const range = isRange(value) ? value : { from: "", to: "" };
-  return (
-    <span className="picker-range">
-      <EditContextMenu>
-        <input
-          type="date"
-          className="picker-input picker-input--date"
-          value={typeof range.from === "string" ? range.from : ""}
-          aria-label="From date"
-          onChange={(e) => onChange({ from: e.target.value, to: range.to })}
-        />
-      </EditContextMenu>
-      <span className="picker-range__sep">–</span>
-      <EditContextMenu>
-        <input
-          type="date"
-          className="picker-input picker-input--date"
-          value={typeof range.to === "string" ? range.to : ""}
-          aria-label="To date"
-          onChange={(e) => onChange({ from: range.from, to: e.target.value })}
-        />
-      </EditContextMenu>
-    </span>
   );
 }
 
@@ -274,7 +294,7 @@ function SelectPickerInput({
   onChange: (v: ValuePickerValue) => void;
 }): JSX.Element {
   const currentVal = typeof value === "string" ? value : "";
-  const inDomain = !currentVal || options.includes(currentVal);
+  const isInDomain = !currentVal || options.includes(currentVal);
   return (
     <select
       className="picker-select"
@@ -283,7 +303,7 @@ function SelectPickerInput({
       onChange={(e) => onChange(e.target.value)}
     >
       <option value="">select…</option>
-      {!inDomain && currentVal && (
+      {!isInDomain && currentVal && (
         <option value={currentVal}>{currentVal} (unknown)</option>
       )}
       {options.map((opt) => (
@@ -304,7 +324,7 @@ function MultiOptionInput({
   options: string[];
   onChange: (v: ValuePickerValue) => void;
 }): JSX.Element {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const selected: string[] =
@@ -313,18 +333,18 @@ function MultiOptionInput({
       : [];
 
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     function handleOutside(e: MouseEvent): void {
       if (
         wrapperRef.current &&
         !wrapperRef.current.contains(e.target as Node)
       ) {
-        setOpen(false);
+        setIsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
-  }, [open]);
+  }, [isOpen]);
 
   function toggle(opt: string): void {
     const next = selected.includes(opt)
@@ -338,17 +358,17 @@ function MultiOptionInput({
   return (
     <div className="picker-multi-wrapper" ref={wrapperRef}>
       {selected.map((val) => {
-        const inDomain = options.includes(val);
+        const isInDomain = options.includes(val);
         return (
           <span
             key={val}
             className={
-              inDomain
+              isInDomain
                 ? "picker-multi__chip"
                 : "picker-multi__chip picker-multi__chip--unknown"
             }
           >
-            {inDomain ? val : <em>{val}</em>}
+            {isInDomain ? val : <em>{val}</em>}
             <button
               type="button"
               className="picker-multi__chip-dismiss"
@@ -365,13 +385,13 @@ function MultiOptionInput({
           type="button"
           className="picker-multi-trigger"
           aria-label="Add value"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((v) => !v)}
         >
           + add
         </button>
       )}
-      {open && (
+      {isOpen && (
         <div className="picker-multi-dropdown" role="listbox">
           {unselected.map((opt) => (
             <button
@@ -382,7 +402,7 @@ function MultiOptionInput({
               className="picker-multi-option"
               onClick={() => {
                 toggle(opt);
-                if (unselected.length <= 1) setOpen(false);
+                if (unselected.length <= 1) setIsOpen(false);
               }}
             >
               {opt}
@@ -390,6 +410,34 @@ function MultiOptionInput({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Shared typeahead dropdown used by SingleRefInput and MultiRefInput. */
+function SuggestionList({
+  suggestions,
+  onSelect,
+}: {
+  suggestions: ResourceOption[];
+  onSelect: (opt: ResourceOption) => void;
+}): JSX.Element | null {
+  if (suggestions.length === 0) return null;
+  return (
+    <div className="picker-typeahead__suggestions" role="listbox">
+      {suggestions.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          role="option"
+          aria-selected={false}
+          className="picker-typeahead__suggestion"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onSelect(opt)}
+        >
+          {opt.name}
+        </button>
+      ))}
     </div>
   );
 }
@@ -472,22 +520,7 @@ export function SingleRefInput({
           onBlur={() => setTimeout(() => setSuggestions([]), 150)}
         />
       </EditContextMenu>
-      {suggestions.length > 0 && (
-        <div className="picker-typeahead__suggestions" role="listbox">
-          {suggestions.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              role="option"
-              className="picker-typeahead__suggestion"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => handleSelect(opt)}
-            >
-              {opt.name}
-            </button>
-          ))}
-        </div>
-      )}
+      <SuggestionList suggestions={suggestions} onSelect={handleSelect} />
     </span>
   );
 }
@@ -507,7 +540,7 @@ function MultiRefInput({
   const [inputVal, setInputVal] = useState("");
   const [suggestions, setSuggestions] = useState<ResourceOption[]>([]);
 
-  const atCap =
+  const isAtCap =
     maxSelections !== undefined && currentRefs.length >= maxSelections;
   const selectedNames = new Set(currentRefs.map((r) => r.name.toLowerCase()));
 
@@ -530,7 +563,7 @@ function MultiRefInput({
   }
 
   function handleAdd(opt: ResourceOption): void {
-    if (atCap) return;
+    if (isAtCap) return;
     onChange([...currentRefs, { id: opt.id, name: opt.name }]);
     setInputVal("");
     setSuggestions([]);
@@ -557,7 +590,7 @@ function MultiRefInput({
           </span>
         </RefHoverPreview>
       ))}
-      {!atCap && (
+      {!isAtCap && (
         <span className="picker-typeahead">
           <EditContextMenu>
             <input
@@ -571,22 +604,7 @@ function MultiRefInput({
               onBlur={() => setTimeout(() => setSuggestions([]), 150)}
             />
           </EditContextMenu>
-          {suggestions.length > 0 && (
-            <div className="picker-typeahead__suggestions" role="listbox">
-              {suggestions.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  role="option"
-                  className="picker-typeahead__suggestion"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => handleAdd(opt)}
-                >
-                  {opt.name}
-                </button>
-              ))}
-            </div>
-          )}
+          <SuggestionList suggestions={suggestions} onSelect={handleAdd} />
         </span>
       )}
     </span>

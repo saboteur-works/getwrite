@@ -15,7 +15,7 @@ export function buildCompileTree(resources: AnyResource[]): CompileTree {
 }
 
 /** Returns child IDs of a node sorted by orderIndex. */
-function sortedChildren(nodeId: string, tree: CompileTree): string[] {
+export function sortedChildren(nodeId: string, tree: CompileTree): string[] {
   const node = tree[nodeId];
   if (!node) return [];
   return [...node.children].sort(
@@ -67,8 +67,9 @@ export function toggleNode(
 
   if (node.isFolder) {
     const leaves = getDescendantLeafIds(nodeId, tree);
-    const allChecked = leaves.length > 0 && leaves.every((id) => next.has(id));
-    if (allChecked) {
+    const isAllChecked =
+      leaves.length > 0 && leaves.every((id) => next.has(id));
+    if (isAllChecked) {
       leaves.forEach((id) => next.delete(id));
     } else {
       leaves.forEach((id) => next.add(id));
@@ -106,9 +107,9 @@ export function isFolderIndeterminate(
   tree: CompileTree,
 ): boolean {
   const leaves = getDescendantLeafIds(folderId, tree);
-  const someChecked = leaves.some((id) => checkedIds.has(id));
-  const allChecked = leaves.every((id) => checkedIds.has(id));
-  return someChecked && !allChecked;
+  const isSomeChecked = leaves.some((id) => checkedIds.has(id));
+  const isAllChecked = leaves.every((id) => checkedIds.has(id));
+  return isSomeChecked && !isAllChecked;
 }
 
 /** Returns a Set containing every leaf ID in the tree (initial "all selected" state). */

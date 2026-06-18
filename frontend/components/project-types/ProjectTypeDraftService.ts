@@ -198,18 +198,14 @@ export function useProjectTypeDraftService(
   const updateSelectedDefinition = (
     updater: (current: ProjectTypeDefinition) => ProjectTypeDefinition,
   ): void => {
-    setItems((previous) => {
-      return previous.map((item) => {
-        if (item.key !== selectedKey) {
-          return item;
-        }
+    setItems((previous) =>
+      previous.map((item) => {
+        if (item.key !== selectedKey) return item;
 
         const updatedDefinition = normalizeDefinition(updater(item.definition));
-
         const nextKey = toItemKey(item.fileName, updatedDefinition);
-        if (nextKey !== item.key) {
-          setSelectedKey(nextKey);
-        }
+
+        if (nextKey !== item.key) setSelectedKey(nextKey);
 
         return {
           ...item,
@@ -217,8 +213,8 @@ export function useProjectTypeDraftService(
           definition: updatedDefinition,
           hasChanges: true,
         };
-      });
-    });
+      }),
+    );
   };
 
   const handleCreateProjectType = (): void => {
@@ -242,9 +238,7 @@ export function useProjectTypeDraftService(
   const handleRemoveFolder = (index: number): void => {
     updateSelectedDefinition((current) => ({
       ...current,
-      folders: current.folders.filter(
-        (_, folderIndex) => folderIndex !== index,
-      ),
+      folders: current.folders.filter((_, i) => i !== index),
     }));
   };
 
@@ -267,7 +261,7 @@ export function useProjectTypeDraftService(
     updateSelectedDefinition((current) => ({
       ...current,
       defaultResources: (current.defaultResources ?? []).filter(
-        (_, resourceIndex) => resourceIndex !== index,
+        (_, i) => i !== index,
       ),
     }));
   };
@@ -289,17 +283,15 @@ export function useProjectTypeDraftService(
   const handleRemoveStatus = (index: number): void => {
     updateSelectedDefinition((current) => ({
       ...current,
-      statuses: (current.statuses ?? []).filter(
-        (_, statusIndex) => statusIndex !== index,
-      ),
+      statuses: (current.statuses ?? []).filter((_, i) => i !== index),
     }));
   };
 
   const handleUpdateStatus = (index: number, value: string): void => {
     updateSelectedDefinition((current) => ({
       ...current,
-      statuses: (current.statuses ?? []).map((status, statusIndex) =>
-        statusIndex === index ? value : status,
+      statuses: (current.statuses ?? []).map((status, i) =>
+        i === index ? value : status,
       ),
     }));
   };
@@ -318,7 +310,7 @@ export function useProjectTypeDraftService(
     updateSelectedDefinition((current) => ({
       ...current,
       defaultFolders: (current.defaultFolders ?? []).filter(
-        (_, folderIndex) => folderIndex !== index,
+        (_, i) => i !== index,
       ),
     }));
   };

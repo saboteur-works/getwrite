@@ -32,13 +32,9 @@ interface UpdateFeaturesBody {
   organizerCardBody?: OrganizerCardBodyConfig;
 }
 
-interface UpdateFeaturesError {
-  error: string;
-}
-
 export async function POST(
   req: NextRequest,
-): Promise<NextResponse<FeatureConfigResult | UpdateFeaturesError>> {
+): Promise<NextResponse<FeatureConfigResult | { error: string }>> {
   let body: UpdateFeaturesBody;
   try {
     body = (await req.json()) as UpdateFeaturesBody;
@@ -63,15 +59,13 @@ export async function POST(
   }
 
   try {
-    const result = await updateFeatureConfig(projectPath, {
-      features,
-      organizerCardBody,
-    });
-    return NextResponse.json(result);
+    return NextResponse.json(
+      await updateFeatureConfig(projectPath, { features, organizerCardBody }),
+    );
   } catch (error) {
     // Zod validation failures and malformed input map to 400; everything else
     // (e.g. read/write failures) maps to 500.
-    const isValidation =
+    const isZodError =
       error !== null &&
       typeof error === "object" &&
       "name" in error &&
@@ -82,7 +76,7 @@ export async function POST(
         : "Failed to update feature configuration.";
     return NextResponse.json(
       { error: message },
-      { status: isValidation ? 400 : 500 },
+      { status: isZodError ? 400 : 500 },
     );
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Button from "../common/UI/Button/Button";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import Input from "../common/UI/Input/Input";

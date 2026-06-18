@@ -8,6 +8,7 @@ import {
   isFolderChecked,
   isFolderIndeterminate,
   toggleNode,
+  sortedChildren,
   ROOT_ITEM_ID,
   type CompileTree,
   type ResourceItemData,
@@ -33,14 +34,6 @@ function initExpandedFolders(tree: CompileTree): Set<string> {
     Object.values(tree)
       .filter((n) => n.isFolder && n.resourceId !== ROOT_ITEM_ID)
       .map((n) => n.resourceId),
-  );
-}
-
-function sortedChildren(nodeId: string, tree: CompileTree): string[] {
-  const node = tree[nodeId];
-  if (!node) return [];
-  return [...node.children].sort(
-    (a, b) => (tree[a]?.orderIndex ?? 0) - (tree[b]?.orderIndex ?? 0),
   );
 }
 
@@ -85,8 +78,8 @@ export default function CompileResourceTree({
 
     if (node.isFolder) {
       const isExpanded = expandedFolders.has(nodeId);
-      const checked = isFolderChecked(nodeId, checkedIds, tree);
-      const indeterminate = isFolderIndeterminate(nodeId, checkedIds, tree);
+      const isChecked = isFolderChecked(nodeId, checkedIds, tree);
+      const isIndeterminate = isFolderIndeterminate(nodeId, checkedIds, tree);
       const leaves = getDescendantLeafIds(nodeId, tree);
       const hasLeaves = leaves.length > 0;
 
@@ -109,10 +102,10 @@ export default function CompileResourceTree({
             <label className="compile-tree-label">
               <Checkbox
                 className="w-[13px] h-[13px] flex-shrink-0"
-                checked={checked}
+                checked={isChecked}
                 disabled={!hasLeaves}
                 ref={(el) => {
-                  if (el) el.indeterminate = indeterminate;
+                  if (el) el.indeterminate = isIndeterminate;
                 }}
                 onChange={() => onChange(toggleNode(nodeId, checkedIds, tree))}
                 aria-label={node.name}

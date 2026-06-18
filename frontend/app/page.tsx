@@ -95,6 +95,18 @@ interface SelectedProjectState {
  * @returns The root application page element.
  */
 export default function Home(): JSX.Element {
+  /** Triggers a browser file-save for the given blob at the given filename. */
+  const downloadBlob = (blob: Blob, filename: string): void => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   /** All projects known to the app, fetched from `GET /api/projects` on mount. */
   const [projects, setProjects] = useState<StartPageProjectEntry[]>([]);
 
@@ -569,19 +581,19 @@ export default function Home(): JSX.Element {
         selectedProject.folders.find((x) => x.id === resourceId);
       const exportName = exportNode?.name ?? "export";
 
+      const resourcesMeta = resolvedIds.map((id) => {
+        const r = selectedProject.resources.find((x) => x.id === id);
+        return {
+          id,
+          name: r?.name ?? id,
+          type: (r as { type?: string } | undefined)?.type ?? "text",
+        };
+      });
+
       // Markdown export needs each resource's TipTap document (not the cached
       // plaintext), so it goes through the server route which loads the doc and
       // serializes it, returning the file plus any loss warnings.
       if (opts?.format === "md") {
-        const resourcesMeta = resolvedIds.map((id) => {
-          const r = selectedProject.resources.find((x) => x.id === id);
-          return {
-            id,
-            name: r?.name ?? id,
-            type: (r as { type?: string } | undefined)?.type ?? "text",
-          };
-        });
-
         const { markdown, filename, warnings } = await exportMarkdown({
           projectPath: selectedProject.rootPath,
           resourceIds: resolvedIds,
@@ -589,18 +601,10 @@ export default function Home(): JSX.Element {
           exportName,
         });
 
-        const mdBlob = new Blob([markdown], {
-          type: "text/markdown;charset=utf-8",
-        });
-        const mdUrl = URL.createObjectURL(mdBlob);
-        const mdAnchor = document.createElement("a");
-        mdAnchor.href = mdUrl;
-        mdAnchor.download = filename;
-        document.body.appendChild(mdAnchor);
-        mdAnchor.click();
-        document.body.removeChild(mdAnchor);
-        URL.revokeObjectURL(mdUrl);
-
+        downloadBlob(
+          new Blob([markdown], { type: "text/markdown;charset=utf-8" }),
+          filename,
+        );
         toastService.success("Exported", filename);
         if (warnings.length > 0) {
           toastService.info(
@@ -616,15 +620,6 @@ export default function Home(): JSX.Element {
       // resource's current saved content from disk, matching the Markdown path.
       // Using the client-side `plaintext` snapshot here would miss text typed
       // after the project was opened (it is only refreshed on project reload).
-      const resourcesMeta = resolvedIds.map((id) => {
-        const r = selectedProject.resources.find((x) => x.id === id);
-        return {
-          id,
-          name: r?.name ?? id,
-          type: (r as { type?: string } | undefined)?.type ?? "text",
-        };
-      });
-
       const { text, filename } = await exportText({
         projectPath: selectedProject.rootPath,
         resourceIds: resolvedIds,
@@ -632,16 +627,10 @@ export default function Home(): JSX.Element {
         exportName,
       });
 
-      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
+      downloadBlob(
+        new Blob([text], { type: "text/plain;charset=utf-8" }),
+        filename,
+      );
       toastService.success("Exported", filename);
       return;
     }

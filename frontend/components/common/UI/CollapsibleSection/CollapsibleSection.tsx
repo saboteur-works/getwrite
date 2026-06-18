@@ -31,9 +31,9 @@ export default function CollapsibleSection({
   const contentId = `collapsible-section-${slugify(title)}`;
 
   const toggle = () => {
-    const next = !isOpen;
-    setIsOpen(next);
-    onToggle?.(next);
+    const isNowOpen = !isOpen;
+    setIsOpen(isNowOpen);
+    onToggle?.(isNowOpen);
   };
 
   if (variant === "sidebar") {

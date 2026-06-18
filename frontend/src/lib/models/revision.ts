@@ -65,7 +65,9 @@ export function selectPruneCandidates(
 
   // Exclude canonical and preserved revisions from pruning candidates.
   const nonCanonical = revisions.filter(
-    (r) => !r.isCanonical && !(r as any).metadata?.preserve,
+    (r) =>
+      !r.isCanonical &&
+      !(r.metadata as Record<string, unknown> | undefined)?.preserve,
   );
   if (nonCanonical.length === 0) return [];
 
@@ -151,12 +153,8 @@ export async function writeRevision(
   const base = revisionsBaseDir(projectRoot, resourceId);
 
   // Ensure final dir does not already exist to avoid clobbering.
-  try {
-    const st = await stat(finalDir).catch(() => null);
-    if (st) throw new Error(`revision directory already exists: ${finalDir}`);
-  } catch (err) {
-    throw err;
-  }
+  const st = await stat(finalDir).catch(() => null);
+  if (st) throw new Error(`revision directory already exists: ${finalDir}`);
 
   // Create a temp directory next to the revisions base and write files there,
   // then atomically rename the temp dir to the final v-<version> directory.
@@ -164,9 +162,7 @@ export async function writeRevision(
   try {
     await mkdir(tmpDir, { recursive: true });
 
-    const filename = "content.bin";
-    const finalFilePath = path.join(finalDir, filename);
-    const tmpFilePath = path.join(tmpDir, filename);
+    const tmpFilePath = path.join(tmpDir, "content.bin");
     await writeFile(tmpFilePath, content);
 
     const now = new Date().toISOString();
@@ -177,7 +173,7 @@ export async function writeRevision(
       createdAt: now,
       savedAt: now,
       author: options?.author,
-      filePath: finalFilePath,
+      filePath: path.join(finalDir, "content.bin"),
       isCanonical: !!options?.isCanonical,
       metadata: options?.metadata,
     };
@@ -193,7 +189,7 @@ export async function writeRevision(
     // Best-effort cleanup of tmpDir on error.
     try {
       await rm(tmpDir, { recursive: true, force: true });
-    } catch (_) {
+    } catch {
       // ignore cleanup errors
     }
     throw err;
@@ -228,10 +224,11 @@ export async function listRevisions(
     const revDirs = entries
       .filter(
         (entry): entry is Dirent =>
-          typeof entry !== "string" && entry.isDirectory(),
+          typeof entry !== "string" &&
+          entry.isDirectory() &&
+          entry.name.startsWith("v-"),
       )
-      .filter((entry) => entry.name.startsWith("v-"))
-      .map((dirEntry) => dirEntry.name);
+      .map((entry) => entry.name);
     const results: Revision[] = [];
     for (const d of revDirs) {
       const metaPath = path.join(base, d, "metadata.json");
@@ -239,7 +236,7 @@ export async function listRevisions(
         const raw = await readFile(metaPath, "utf8");
         const parsed = JSON.parse(raw) as Revision;
         results.push(parsed);
-      } catch (err: unknown) {
+      } catch {
         continue;
       }
     }
@@ -249,7 +246,7 @@ export async function listRevisions(
       err &&
       typeof err === "object" &&
       "code" in err &&
-      (err as unknown as { code?: string }).code === "ENOENT"
+      (err as { code?: string }).code === "ENOENT"
     )
       return [];
     throw err;
@@ -365,7 +362,7 @@ export async function getCanonicalRevision(
 /**
  * Bundled revision API surface for consumers that prefer object-style imports.
  */
-export default {
+const revisionApi = {
   selectPruneCandidates,
   revisionsBaseDir,
   revisionDir,
@@ -375,3 +372,5 @@ export default {
   setCanonicalRevision,
   getCanonicalRevision,
 };
+
+export default revisionApi;

@@ -15,11 +15,11 @@ export function computeProximityScore(text: string, terms: string[]): number {
 
   // Collect (charPosition, termIndex, termLength) for every occurrence of every term.
   const events: Array<{ pos: number; termIdx: number; len: number }> = [];
-  for (let ti = 0; ti < terms.length; ti++) {
-    const term = terms[ti]!;
+  for (let termIdx = 0; termIdx < terms.length; termIdx++) {
+    const term = terms[termIdx]!;
     let pos = 0;
     while ((pos = lower.indexOf(term, pos)) !== -1) {
-      events.push({ pos, termIdx: ti, len: term.length });
+      events.push({ pos, termIdx, len: term.length });
       pos += term.length;
     }
   }

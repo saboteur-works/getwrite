@@ -114,6 +114,18 @@ function isRenderableResource(
   return resource.type !== "folder";
 }
 
+/** Triggers a file download from a Blob by briefly appending an anchor to the DOM. */
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 /**
  * Props for {@link StartPage}.
  */
@@ -242,15 +254,6 @@ export default function StartPage({
   }, [localProjects]);
 
   /**
-   * Forwards open action to parent callback when provided.
-   *
-   * @param id - Project identifier/path used by parent open handler.
-   */
-  const handleOpen = (id: string): void => {
-    if (onOpen) onOpen(id);
-  };
-
-  /**
    * Handles successful project creation from modal and updates local list.
    *
    * @param payload - Raw create form payload from modal (not used directly).
@@ -271,11 +274,6 @@ export default function StartPage({
       onCreate(projectFiles);
     }
     setIsModalOpen(false);
-  };
-
-  /** Opens the create-project modal. */
-  const handleCreateClick = (): void => {
-    setIsModalOpen(true);
   };
 
   /** Synchronizes local project list when external `projects` prop changes. */
@@ -332,16 +330,15 @@ export default function StartPage({
           };
           const rawName = options.compilationName.trim();
 
-          const triggerDownload = (blob: Blob, filename: string) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          };
+          /** Appends the expected extension to `rawName` when it is missing. */
+          const resolveFilename = (ext: string, serverFilename: string) =>
+            rawName
+              ? rawName.endsWith(`.${ext}`)
+                ? rawName
+                : `${rawName}.${ext}`
+              : serverFilename;
+
+          setCompileTargetProjectId(null);
 
           if (options.format === "pdf") {
             void compilePdf(compileBody)
@@ -351,53 +348,40 @@ export default function StartPage({
                     "PDF compiled with fallback fonts — IBM Plex fonts were unreachable",
                   );
                 }
-                const blob = new Blob([result.arrayBuffer], {
-                  type: "application/pdf",
-                });
-                const filename = rawName
-                  ? rawName.endsWith(".pdf")
-                    ? rawName
-                    : `${rawName}.pdf`
-                  : result.filename;
-                triggerDownload(blob, filename);
+                triggerDownload(
+                  new Blob([result.arrayBuffer], { type: "application/pdf" }),
+                  resolveFilename("pdf", result.filename),
+                );
               })
               .catch(() =>
                 toastService.error("Compile failed", "Could not generate PDF"),
               );
-            setCompileTargetProjectId(null);
             return;
           }
           if (options.format === "docx") {
             void compileDocx(compileBody)
               .then((result) => {
-                const blob = new Blob([result.arrayBuffer], {
-                  type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                });
-                const filename = rawName
-                  ? rawName.endsWith(".docx")
-                    ? rawName
-                    : `${rawName}.docx`
-                  : result.filename;
-                triggerDownload(blob, filename);
+                triggerDownload(
+                  new Blob([result.arrayBuffer], {
+                    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                  }),
+                  resolveFilename("docx", result.filename),
+                );
               })
               .catch(() =>
                 toastService.error("Compile failed", "Could not generate DOCX"),
               );
-            setCompileTargetProjectId(null);
             return;
           }
           if (options.format === "md") {
             void compileMarkdown(compileBody)
               .then((result) => {
-                const blob = new Blob([result.markdown], {
-                  type: "text/markdown;charset=utf-8",
-                });
-                const filename = rawName
-                  ? rawName.endsWith(".md")
-                    ? rawName
-                    : `${rawName}.md`
-                  : result.filename;
-                triggerDownload(blob, filename);
+                triggerDownload(
+                  new Blob([result.markdown], {
+                    type: "text/markdown;charset=utf-8",
+                  }),
+                  resolveFilename("md", result.filename),
+                );
                 if (result.warnings.length > 0) {
                   toastService.info(
                     `Some formatting couldn't be represented in Markdown: ${result.warnings
@@ -412,21 +396,15 @@ export default function StartPage({
                   "Could not generate Markdown",
                 ),
               );
-            setCompileTargetProjectId(null);
             return;
           }
 
           void compileText(compileBody)
             .then((result) => {
-              const blob = new Blob([result.text], {
-                type: "text/plain;charset=utf-8",
-              });
-              const filename = rawName
-                ? rawName.endsWith(".txt")
-                  ? rawName
-                  : `${rawName}.txt`
-                : result.filename;
-              triggerDownload(blob, filename);
+              triggerDownload(
+                new Blob([result.text], { type: "text/plain;charset=utf-8" }),
+                resolveFilename("txt", result.filename),
+              );
             })
             .catch(() =>
               toastService.error(
@@ -434,7 +412,6 @@ export default function StartPage({
                 "Could not generate output file",
               ),
             );
-          setCompileTargetProjectId(null);
         }}
       />
 
@@ -515,7 +492,7 @@ export default function StartPage({
 
                 <Button
                   variant="default"
-                  onClick={handleCreateClick}
+                  onClick={() => setIsModalOpen(true)}
                   title="Start a New Projct"
                   aria-label="Start a new project"
                 >
@@ -561,7 +538,7 @@ export default function StartPage({
               </p>
               <Button
                 variant="default"
-                onClick={handleCreateClick}
+                onClick={() => setIsModalOpen(true)}
                 title="Start a New Projct"
                 aria-label="Start a new project"
                 className=" mt-6 inline-flex items-center"
@@ -663,7 +640,7 @@ export default function StartPage({
                   <Button
                     variant="secondary"
                     onClick={() =>
-                      handleOpen(
+                      onOpen?.(
                         projectEntry.project.rootPath ??
                           projectEntry.project.id,
                       )

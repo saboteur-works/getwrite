@@ -25,6 +25,7 @@ import {
   persistCanonicalRevision,
   removeRevision,
   resolveRevisionRequestContext,
+  type RevisionRequestContext,
 } from "./revision-transport-service";
 import { setSelectedResourceId } from "./resourcesSlice";
 import type { RootState } from "./store";
@@ -57,77 +58,44 @@ export interface RevisionsState {
   errorMessage: string;
 }
 
-/**
- * Request payload used when the caller expects a specific resource to still be
- * selected by the time the async operation resolves.
- */
+// ---------------------------------------------------------------------------
+// Internal payload / result types
+// ---------------------------------------------------------------------------
+
 interface ResourceScopedPayload {
-  /** Resource expected to remain selected. */
   resourceId: string;
 }
 
-/**
- * Save payload for creating a named explicit revision.
- */
 interface SaveRevisionPayload extends ResourceScopedPayload {
-  /** User-provided display label for the saved revision. */
   revisionName: string;
 }
 
-/**
- * Delete payload for removing a persisted revision.
- */
-interface DeleteRevisionPayload extends ResourceScopedPayload {
-  /** Revision identifier to remove. */
+interface ResourceAndRevisionPayload extends ResourceScopedPayload {
   revisionId: string;
 }
 
-/**
- * Fetch payload for loading preview content for a specific revision.
- */
-type FetchRevisionContentPayload = DeleteRevisionPayload;
-
-/**
- * Fulfilled payload for loading a resource's revisions.
- */
 interface LoadRevisionsResult {
   resourceId: string;
   revisions: RevisionEntry[];
   currentRevisionId: string | null;
 }
 
-/**
- * Fulfilled payload for saving a single revision.
- */
 interface SaveRevisionResult {
   resourceId: string;
   revision: RevisionEntry;
 }
 
-/**
- * Fulfilled payload for deleting a single revision.
- */
-interface DeleteRevisionResult {
-  resourceId: string;
-  revisionId: string;
-}
+type ResourceAndRevisionResult = ResourceAndRevisionPayload;
 
-/**
- * Fulfilled payload for previewing a revision.
- */
 interface FetchRevisionContentResult {
   resourceId: string;
   revisionId: string;
   content: string;
 }
 
-/**
- * Fulfilled payload for setting canonical revision.
- */
-interface SetCanonicalRevisionResult {
-  resourceId: string;
-  revisionId: string;
-}
+// ---------------------------------------------------------------------------
+// Slice state
+// ---------------------------------------------------------------------------
 
 /**
  * Initial `revisions` slice state.
@@ -145,170 +113,128 @@ const initialState: RevisionsState = {
   errorMessage: "",
 };
 
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
-  }
+// ---------------------------------------------------------------------------
+// Thunk factory
+// ---------------------------------------------------------------------------
 
-  return fallback;
+/**
+ * Factory for the five revision thunks that share identical boilerplate:
+ * resolve context → guard → call transport → return result.
+ */
+function makeRevisionThunk<Args extends ResourceScopedPayload, Result>(
+  typePrefix: string,
+  transportFn: (context: RevisionRequestContext, args: Args) => Promise<Result>,
+  errorFallback: string,
+) {
+  return createAsyncThunk<
+    Result,
+    Args,
+    { state: RootState; rejectValue: string }
+  >(typePrefix, async (args, thunkApi) => {
+    const context = resolveRevisionRequestContext(
+      thunkApi.getState(),
+      args.resourceId,
+    );
+    if ("error" in context) return thunkApi.rejectWithValue(context.error);
+    try {
+      return await transportFn(context, args);
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message
+          : errorFallback;
+      return thunkApi.rejectWithValue(message);
+    }
+  });
 }
+
+// ---------------------------------------------------------------------------
+// Async thunks
+// ---------------------------------------------------------------------------
 
 /**
  * Loads all revisions for the currently selected resource.
  */
-export const loadRevisionsForSelectedResource = createAsyncThunk<
-  LoadRevisionsResult,
+export const loadRevisionsForSelectedResource = makeRevisionThunk<
   ResourceScopedPayload,
-  { state: RootState; rejectValue: string }
+  LoadRevisionsResult
 >(
   "revisions/loadRevisionsForSelectedResource",
-  async ({ resourceId }, thunkApi) => {
-    const context = resolveRevisionRequestContext(
-      thunkApi.getState(),
+  async (context, { resourceId }) => {
+    const data = await fetchRevisionList(context);
+    const revisions = parseRevisionEntries(data);
+    return {
       resourceId,
-    );
-
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-
-    try {
-      const data = await fetchRevisionList(context);
-      const revisions = parseRevisionEntries(data);
-
-      return {
-        resourceId,
-        revisions,
-        currentRevisionId: resolveCurrentRevisionId(revisions),
-      };
-    } catch (error) {
-      return thunkApi.rejectWithValue(
-        getErrorMessage(error, "Unable to load revisions."),
-      );
-    }
+      revisions,
+      currentRevisionId: resolveCurrentRevisionId(revisions),
+    };
   },
+  "Unable to load revisions.",
 );
 
 /**
  * Saves a new explicit revision for the currently selected resource.
  */
-export const saveRevisionForSelectedResource = createAsyncThunk<
-  SaveRevisionResult,
+export const saveRevisionForSelectedResource = makeRevisionThunk<
   SaveRevisionPayload,
-  { state: RootState; rejectValue: string }
+  SaveRevisionResult
 >(
   "revisions/saveRevisionForSelectedResource",
-  async ({ resourceId, revisionName }, thunkApi) => {
-    const context = resolveRevisionRequestContext(
-      thunkApi.getState(),
-      resourceId,
-    );
-
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-
-    try {
-      const revision = await createRevision(context, revisionName);
-
-      return { resourceId, revision: toRevisionEntry(revision, revisionName) };
-    } catch (error) {
-      return thunkApi.rejectWithValue(
-        getErrorMessage(error, "Failed to save revision."),
-      );
-    }
+  async (context, { resourceId, revisionName }) => {
+    const revision = await createRevision(context, revisionName);
+    return { resourceId, revision: toRevisionEntry(revision, revisionName) };
   },
+  "Failed to save revision.",
 );
 
 /**
  * Removes a persisted revision for the currently selected resource.
  */
-export const deleteRevisionForSelectedResource = createAsyncThunk<
-  DeleteRevisionResult,
-  DeleteRevisionPayload,
-  { state: RootState; rejectValue: string }
+export const deleteRevisionForSelectedResource = makeRevisionThunk<
+  ResourceAndRevisionPayload,
+  ResourceAndRevisionResult
 >(
   "revisions/deleteRevisionForSelectedResource",
-  async ({ resourceId, revisionId }, thunkApi) => {
-    const context = resolveRevisionRequestContext(
-      thunkApi.getState(),
-      resourceId,
-    );
-
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-
-    try {
-      await removeRevision(context, revisionId);
-      return { resourceId, revisionId };
-    } catch (error) {
-      return thunkApi.rejectWithValue(
-        getErrorMessage(error, "Failed to delete revision."),
-      );
-    }
+  async (context, { resourceId, revisionId }) => {
+    await removeRevision(context, revisionId);
+    return { resourceId, revisionId };
   },
+  "Failed to delete revision.",
 );
 
 /**
  * Fetches preview content for a specific revision on the selected resource.
  */
-export const fetchRevisionContentForSelectedResource = createAsyncThunk<
-  FetchRevisionContentResult,
-  FetchRevisionContentPayload,
-  { state: RootState; rejectValue: string }
+export const fetchRevisionContentForSelectedResource = makeRevisionThunk<
+  ResourceAndRevisionPayload,
+  FetchRevisionContentResult
 >(
   "revisions/fetchRevisionContentForSelectedResource",
-  async ({ resourceId, revisionId }, thunkApi) => {
-    const context = resolveRevisionRequestContext(
-      thunkApi.getState(),
-      resourceId,
-    );
-
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-
-    try {
-      const data = await fetchRevisionContent(context, revisionId);
-      return { resourceId, revisionId, content: data.content };
-    } catch (error) {
-      return thunkApi.rejectWithValue(
-        getErrorMessage(error, "Failed to fetch revision."),
-      );
-    }
+  async (context, { resourceId, revisionId }) => {
+    const data = await fetchRevisionContent(context, revisionId);
+    return { resourceId, revisionId, content: data.content };
   },
+  "Failed to fetch revision.",
 );
 
 /**
  * Persists the canonical revision for the currently selected resource.
  */
-export const setCanonicalRevisionForSelectedResource = createAsyncThunk<
-  SetCanonicalRevisionResult,
-  DeleteRevisionPayload,
-  { state: RootState; rejectValue: string }
+export const setCanonicalRevisionForSelectedResource = makeRevisionThunk<
+  ResourceAndRevisionPayload,
+  ResourceAndRevisionResult
 >(
   "revisions/setCanonicalRevisionForSelectedResource",
-  async ({ resourceId, revisionId }, thunkApi) => {
-    const context = resolveRevisionRequestContext(
-      thunkApi.getState(),
-      resourceId,
-    );
-
-    if ("error" in context) {
-      return thunkApi.rejectWithValue(context.error);
-    }
-
-    try {
-      await persistCanonicalRevision(context, revisionId);
-      return { resourceId, revisionId };
-    } catch (error) {
-      return thunkApi.rejectWithValue(
-        getErrorMessage(error, "Failed to set canonical revision."),
-      );
-    }
+  async (context, { resourceId, revisionId }) => {
+    await persistCanonicalRevision(context, revisionId);
+    return { resourceId, revisionId };
   },
+  "Failed to set canonical revision.",
 );
+
+// ---------------------------------------------------------------------------
+// Slice
+// ---------------------------------------------------------------------------
 
 /**
  * Resets the slice back to its initial empty state.
@@ -316,16 +242,7 @@ export const setCanonicalRevisionForSelectedResource = createAsyncThunk<
  * @param state - Slice draft state to reset.
  */
 function resetRevisionState(state: RevisionsState): void {
-  state.resourceId = null;
-  state.requestedResourceId = null;
-  state.currentRevisionId = null;
-  state.currentRevisionContent = null;
-  state.revisions = [];
-  state.isLoading = false;
-  state.isSaving = false;
-  state.fetchingRevisionId = null;
-  state.deletingRevisionId = null;
-  state.errorMessage = "";
+  Object.assign(state, initialState);
 }
 
 /**
@@ -573,6 +490,10 @@ const revisionsSlice = createSlice({
 export const { clearRevisions, setCurrentRevisionId, setCanonicalRevisionId } =
   revisionsSlice.actions;
 export default revisionsSlice.reducer;
+
+// ---------------------------------------------------------------------------
+// Selectors
+// ---------------------------------------------------------------------------
 
 /**
  * Selects the raw `revisions` slice state.

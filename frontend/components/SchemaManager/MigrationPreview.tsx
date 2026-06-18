@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Button from "../common/UI/Button/Button";
 import EditContextMenu from "../common/UI/ContextMenu/EditContextMenu";
 import { useAppDispatch } from "../../src/store/hooks";
@@ -63,8 +63,7 @@ function displayValue(entry: FieldValueEntry): string {
   return String(entry.sample ?? entry.canonicalKey);
 }
 
-function defaultAction(_key: string, newType: MetadataFieldType): ActionChoice {
-  if (newType === "select" || newType === "multiselect") return "keep";
+function defaultAction(): ActionChoice {
   return "keep";
 }
 
@@ -91,38 +90,38 @@ export default function MigrationPreview({
 }: MigrationPreviewProps): JSX.Element {
   const dispatch = useAppDispatch();
 
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [rows, setRows] = useState<RowState[]>([]);
-  const [applying, setApplying] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
+    let isCancelled = false;
+    setIsLoading(true);
     setFetchError(null);
     fetchFieldValues(projectPath, fieldKey)
       .then((entries) => {
-        if (cancelled) return;
+        if (isCancelled) return;
         const initialRows: RowState[] = entries.map((e) => ({
           canonicalKey: e.canonicalKey,
           count: e.count,
           display: displayValue(e),
-          action: defaultAction(e.canonicalKey, newType),
+          action: defaultAction(),
           normalizedTo: "",
         }));
         setRows(initialRows);
-        setLoading(false);
+        setIsLoading(false);
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
+        if (isCancelled) return;
         setFetchError(
           err instanceof Error ? err.message : "Failed to load values.",
         );
-        setLoading(false);
+        setIsLoading(false);
       });
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
   }, [projectPath, fieldKey, newType]);
 
@@ -172,7 +171,7 @@ export default function MigrationPreview({
   }, [activeRows, isSelectTarget]);
 
   async function handleApply(): Promise<void> {
-    setApplying(true);
+    setIsApplying(true);
     setApplyError(null);
 
     const migrations: Record<string, TypeMigrationEntry> = {};
@@ -203,7 +202,7 @@ export default function MigrationPreview({
       onApplied();
     } catch (err) {
       setApplyError(typeof err === "string" ? err : "Migration failed.");
-      setApplying(false);
+      setIsApplying(false);
     }
   }
 
@@ -225,7 +224,7 @@ export default function MigrationPreview({
 
         {/* Body */}
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
-          {loading && (
+          {isLoading && (
             <p className="font-mono text-[10px] text-gw-dim text-center py-6">
               Scanning values…
             </p>
@@ -237,13 +236,13 @@ export default function MigrationPreview({
             </p>
           )}
 
-          {!loading && !fetchError && rows.length === 0 && (
+          {!isLoading && !fetchError && rows.length === 0 && (
             <p className="font-mono text-[10px] text-gw-dim py-4 text-center">
               No values found — nothing to migrate.
             </p>
           )}
 
-          {!loading && !fetchError && activeRows.length > 0 && (
+          {!isLoading && !fetchError && activeRows.length > 0 && (
             <div className="mb-4">
               <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1 items-center">
                 {/* Column headers */}
@@ -258,7 +257,7 @@ export default function MigrationPreview({
                 </span>
 
                 {activeRows.map((row) => (
-                  <React.Fragment key={row.canonicalKey}>
+                  <Fragment key={row.canonicalKey}>
                     <span
                       className="font-mono text-[10px] text-gw-primary truncate"
                       title={row.display}
@@ -302,14 +301,14 @@ export default function MigrationPreview({
                         </EditContextMenu>
                       )}
                     </div>
-                  </React.Fragment>
+                  </Fragment>
                 ))}
               </div>
             </div>
           )}
 
           {/* Summary */}
-          {!loading && !fetchError && (
+          {!isLoading && !fetchError && (
             <div className="border-t border-gw-border pt-3 space-y-1">
               {isSelectTarget && (
                 <p className="font-mono text-[9px] text-gw-secondary">
@@ -337,7 +336,7 @@ export default function MigrationPreview({
             variant="ghost"
             size="sm"
             onClick={onCancel}
-            disabled={applying}
+            disabled={isApplying}
           >
             Cancel
           </Button>
@@ -347,9 +346,9 @@ export default function MigrationPreview({
             onClick={() => {
               void handleApply();
             }}
-            disabled={applying || loading || Boolean(fetchError)}
+            disabled={isApplying || isLoading || Boolean(fetchError)}
           >
-            {applying ? "Applying…" : "Apply migration"}
+            {isApplying ? "Applying…" : "Apply migration"}
           </Button>
         </div>
       </div>

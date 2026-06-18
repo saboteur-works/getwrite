@@ -53,7 +53,7 @@ export async function loadPreview(
   try {
     const raw = await readFile(p, "utf8");
     return JSON.parse(raw) as Preview;
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -73,28 +73,27 @@ export async function generatePreview(
 ) {
   let out: Preview | null = null;
 
-  if ((resource as ImageResource).type === "image") {
-    const img = resource as ImageResource;
-    if (generators && generators.image) out = await generators.image(img);
-    else out = { type: "image", width: 160, height: 90 };
-  } else if ((resource as AudioResource).type === "audio") {
-    const aud = resource as AudioResource;
-    if (generators && generators.audio) out = await generators.audio(aud);
-    else
-      out = {
-        type: "audio",
-        duration: (aud as any).duration ?? 0,
-        waveform: [],
-      };
+  if (resource.type === "image") {
+    out = generators?.image
+      ? await generators.image(resource)
+      : { type: "image", width: 160, height: 90 };
+  } else if (resource.type === "audio") {
+    out = generators?.audio
+      ? await generators.audio(resource)
+      : {
+          type: "audio",
+          duration: (resource as any).duration ?? 0,
+          waveform: [],
+        };
   } else {
-    const txt = resource as TextResource;
-    if (generators && generators.text) out = await generators.text(txt);
-    else
-      out = {
-        type: "text",
-        excerpt: (txt.plainText ?? "").slice(0, 200),
-        wordCount: (txt.plainText ?? "").split(/\s+/).filter(Boolean).length,
-      };
+    const plainText = resource.plainText ?? "";
+    out = generators?.text
+      ? await generators.text(resource)
+      : {
+          type: "text",
+          excerpt: plainText.slice(0, 200),
+          wordCount: plainText.split(/\s+/).filter(Boolean).length,
+        };
   }
 
   if (out) {
@@ -104,4 +103,5 @@ export async function generatePreview(
   return out;
 }
 
-export default { previewPath, savePreview, loadPreview, generatePreview };
+const previews = { previewPath, savePreview, loadPreview, generatePreview };
+export default previews;

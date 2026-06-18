@@ -139,12 +139,8 @@ function flattenUserMetadata(
 ): Record<string, MetadataValue> | null {
   if (!sidecar) return null;
   const userMeta = sidecar.userMetadata;
-  if (
-    userMeta === null ||
-    typeof userMeta !== "object" ||
-    Array.isArray(userMeta)
-  ) {
-    return sidecar;
+  if (userMeta && typeof userMeta === "object" && !Array.isArray(userMeta)) {
+    return { ...sidecar, ...(userMeta as Record<string, MetadataValue>) };
   }
-  return { ...sidecar, ...(userMeta as Record<string, MetadataValue>) };
+  return sidecar;
 }

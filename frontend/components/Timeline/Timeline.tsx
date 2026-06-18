@@ -5,7 +5,6 @@ import {
   computeAxisBounds,
   buildAdaptiveTicks,
   getAdaptiveTickStrategy,
-  dateToPercent,
 } from "./utils";
 import TimelineAxis from "./TimelineAxis";
 import TimelineRow from "./TimelineRow";
@@ -57,9 +56,8 @@ export default function Timeline({
   const captureAnchor = React.useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const total = trackWidth;
     const vw = el.clientWidth;
-    anchorFracRef.current = (el.scrollLeft + vw / 2) / total;
+    anchorFracRef.current = (el.scrollLeft + vw / 2) / trackWidth;
   }, [trackWidth]);
 
   const zoomIn = React.useCallback(() => {
@@ -132,12 +130,11 @@ export default function Timeline({
     [items, config],
   );
 
-  const spanMs = axisBounds.end - axisBounds.start;
-
   const ticks = React.useMemo(() => {
+    const spanMs = axisBounds.end - axisBounds.start;
     const strategy = getAdaptiveTickStrategy(spanMs, zoom);
     return buildAdaptiveTicks(axisBounds.start, axisBounds.end, strategy, zoom);
-  }, [axisBounds, spanMs, zoom]);
+  }, [axisBounds, zoom]);
 
   // Filter items by active POV
   const filteredItems = React.useMemo((): TimelineItem[] => {
@@ -166,14 +163,12 @@ export default function Timeline({
     return result;
   }, [groups, filteredItems]);
 
-  const hasGroupLabels = groups && groups.length > 0;
-
   // Label column width: fit longest group label, clamped 84–120px
   const labelWidth = React.useMemo(() => {
-    if (!hasGroupLabels) return 84;
-    const longest = Math.max(0, ...(groups ?? []).map((g) => g.label.length));
+    if (!groups || groups.length === 0) return 84;
+    const longest = Math.max(0, ...groups.map((g) => g.label.length));
     return Math.min(120, Math.max(84, Math.round(longest * 7.5)));
-  }, [groups, hasGroupLabels]);
+  }, [groups]);
 
   // Detect POVs present in items (for legend + filter pills when povNames is not provided)
   const povNamesResolved = React.useMemo(() => {
@@ -193,7 +188,7 @@ export default function Timeline({
   // Only surface the POV legend when there is at least one POV to label. When
   // POV is disabled or simply absent the legend (and its pills) are neutralized
   // so the Timeline degrades cleanly to a plain chronology.
-  const showLegend =
+  const shouldShowLegend =
     povNamesResolved.length > 0 &&
     (povNamesResolved.length > 1 || hasUnassigned);
 
@@ -212,6 +207,46 @@ export default function Timeline({
 
   const sceneLabel =
     filteredItems.length === 1 ? "1 SCENE" : `${filteredItems.length} SCENES`;
+
+  const emptyState = filteredItems.length === 0 && (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        flex: 1,
+        minHeight: 200,
+        gap: 10,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--timeline-font-family)",
+          fontSize: 10,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--color-gw-secondary)",
+          userSelect: "none",
+        }}
+      >
+        {activePoV ? "No scenes match this filter" : "No dated scenes"}
+      </span>
+      <span
+        style={{
+          fontFamily: "var(--timeline-font-family)",
+          fontSize: 9,
+          letterSpacing: "0.08em",
+          color: "var(--color-gw-secondary)",
+          userSelect: "none",
+        }}
+      >
+        {activePoV
+          ? "Set POV in the metadata sidebar"
+          : "Add story dates in the metadata sidebar"}
+      </span>
+    </div>
+  );
 
   return (
     <div
@@ -295,7 +330,7 @@ export default function Timeline({
       </div>
 
       {/* ── POV legend ── */}
-      {showLegend && (
+      {shouldShowLegend && (
         <div className="timeline-legend">
           <div
             style={{
@@ -368,45 +403,7 @@ export default function Timeline({
           />
 
           {/* Empty state */}
-          {filteredItems.length === 0 && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                flex: 1,
-                minHeight: 200,
-                gap: 10,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: "var(--timeline-font-family)",
-                  fontSize: 10,
-                  letterSpacing: "0.14em",
-                  textTransform: "uppercase",
-                  color: "var(--color-gw-secondary)",
-                  userSelect: "none",
-                }}
-              >
-                {activePoV ? "No scenes match this filter" : "No dated scenes"}
-              </span>
-              <span
-                style={{
-                  fontFamily: "var(--timeline-font-family)",
-                  fontSize: 9,
-                  letterSpacing: "0.08em",
-                  color: "var(--color-gw-secondary)",
-                  userSelect: "none",
-                }}
-              >
-                {activePoV
-                  ? "Set POV in the metadata sidebar"
-                  : "Add story dates in the metadata sidebar"}
-              </span>
-            </div>
-          )}
+          {emptyState}
 
           {/* Rows */}
           {rows.map((row, i) => (

@@ -9,7 +9,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
 ) {
-  const resourceId = await (await params)["resource-id"];
+  const resourceId = (await params)["resource-id"];
   const body = await req.json();
   const { projectRoot, updatedResource } = body as {
     projectRoot: string;

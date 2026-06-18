@@ -36,23 +36,7 @@ async function bumpMetadataRevision(projectRoot: string): Promise<void> {
       (project.config.metadataRevision ?? 0) + 1;
     await fs.writeFile(projectPath, JSON.stringify(project, null, 2), "utf8");
   } catch (err: unknown) {
-    if (
-      err &&
-      typeof err === "object" &&
-      "code" in err &&
-      (err as NodeJS.ErrnoException).code === "ENOENT"
-    ) {
-      return;
-    }
-    throw err;
-  }
-}
-
-async function ensureDir(dirPath: string): Promise<void> {
-  try {
-    await fs.mkdir(dirPath, { recursive: true });
-  } catch (err) {
-    // Let caller see fs errors rather than swallowing them.
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
     throw err;
   }
 }
@@ -70,17 +54,10 @@ export async function readSidecar(
   const filePath = sidecarPathForProject(projectRoot, resourceId);
   try {
     const raw = await fs.readFile(filePath, "utf8");
-    const parsed = JSON.parse(raw) as Record<string, MetadataValue>;
-    return parsed;
+    return JSON.parse(raw) as Record<string, MetadataValue>;
   } catch (err: unknown) {
     // If the file doesn't exist, return null. Otherwise rethrow.
-    // Check error code in a type-safe way.
-    if (
-      err &&
-      typeof err === "object" &&
-      "code" in err &&
-      (err as any).code === "ENOENT"
-    ) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       console.warn("sidecar not found for", resourceId, "at", filePath);
       return null;
     }
@@ -101,23 +78,19 @@ export async function writeSidecar(
   const filePath = sidecarPathForProject(projectRoot, resourceId);
   const json = JSON.stringify(metadata, null, 2);
   await withMetaLock(projectRoot, async () => {
-    await ensureDir(dir);
+    await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(filePath, json, "utf8");
     await bumpMetadataRevision(projectRoot);
   });
   // Enqueue background indexing after sidecar update. Use dynamic import
   // to avoid circular static imports between sidecar and the indexer queue.
-  try {
-    setImmediate(() => {
-      import("./indexer-queue")
-        .then((m) => m.enqueueIndex(projectRoot, resourceId))
-        .catch(() => {
-          /* ignore enqueue errors */
-        });
-    });
-  } catch (_) {
-    // ignore
-  }
+  setImmediate(() => {
+    import("./indexer-queue")
+      .then((m) => m.enqueueIndex(projectRoot, resourceId))
+      .catch(() => {
+        /* ignore enqueue errors */
+      });
+  });
 }
 
 export default {

@@ -193,31 +193,18 @@ export default function EditView({
     return `All changes saved · ${lastSavedLabel}`;
   }, [isEditingCanonicalRevision, saveStatus, lastSavedLabel]);
 
-  const autosaveClassName = React.useMemo(() => {
-    if (saveStatus === "error") {
-      return "text-red-600";
-    }
+  const { labelClass: autosaveClassName, dotClass: autosaveDotClassName } =
+    React.useMemo(() => {
+      if (saveStatus === "error") {
+        return { labelClass: "text-red-600", dotClass: "bg-red-500" };
+      }
+      if (saveStatus === "saving" || saveStatus === "pending") {
+        return { labelClass: "text-gw-primary", dotClass: "bg-amber-500" };
+      }
+      return { labelClass: "text-gw-secondary", dotClass: "bg-emerald-500" };
+    }, [saveStatus]);
 
-    if (saveStatus === "saving" || saveStatus === "pending") {
-      return "text-gw-primary";
-    }
-
-    return "text-gw-secondary";
-  }, [saveStatus]);
-
-  const autosaveDotClassName = React.useMemo(() => {
-    if (saveStatus === "error") {
-      return "bg-red-500";
-    }
-
-    if (saveStatus === "saving" || saveStatus === "pending") {
-      return "bg-amber-500";
-    }
-
-    return "bg-emerald-500";
-  }, [saveStatus]);
-
-  const showAnimatedSavingSpinner = React.useMemo(() => {
+  const shouldShowSavingSpinner = React.useMemo(() => {
     if (isReducedMotionEnabled) {
       return false;
     }
@@ -277,10 +264,10 @@ export default function EditView({
       }
 
       try {
-        const prefersReducedMotion = window.matchMedia(
+        const isReducedMotionPreferred = window.matchMedia(
           "(prefers-reduced-motion: reduce)",
         ).matches;
-        setIsReducedMotionEnabled(prefersReducedMotion);
+        setIsReducedMotionEnabled(isReducedMotionPreferred);
       } catch {
         setIsReducedMotionEnabled(false);
       }
@@ -324,10 +311,6 @@ export default function EditView({
       }
     };
   }, []);
-
-  const handleRetrySave = (): void => {
-    retryFailedSave();
-  };
 
   return (
     <div
@@ -375,7 +358,7 @@ export default function EditView({
           </p>
         )}
         <div className="flex items-center gap-2" aria-live="polite">
-          {showAnimatedSavingSpinner ? (
+          {shouldShowSavingSpinner ? (
             <span
               className="inline-block h-3 w-3 rounded-full border-2 border-amber-500 border-r-transparent animate-spin"
               aria-hidden="true"
@@ -393,7 +376,7 @@ export default function EditView({
             <button
               type="button"
               className="text-xs font-medium text-gw-primary hover:text-gw-secondary"
-              onClick={handleRetrySave}
+              onClick={retryFailedSave}
             >
               Retry now
             </button>

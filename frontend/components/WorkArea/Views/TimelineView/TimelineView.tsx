@@ -53,11 +53,11 @@ export default function TimelineView({
   // POV and Notes are independent opt-ins (spec FR4): when a feature is off the
   // Timeline must ignore its data entirely — no coloring, pills, or legend for
   // POV; no notes carried into item metadata. Values are preserved on disk.
-  const povEnabled = useAppSelector(selectPovEnabled);
-  const notesEnabled = useAppSelector(selectNotesEnabled);
+  const isPovEnabled = useAppSelector(selectPovEnabled);
+  const isNotesEnabled = useAppSelector(selectNotesEnabled);
 
   const povColorMap = React.useMemo(() => {
-    if (!povEnabled) return {} as Record<string, string>;
+    if (!isPovEnabled) return {} as Record<string, string>;
     const povs = [
       ...new Set(
         resources
@@ -68,7 +68,7 @@ export default function TimelineView({
     return Object.fromEntries(
       povs.map((p, i) => [p, colors[i % colors.length]]),
     );
-  }, [resources, colors, povEnabled]);
+  }, [resources, colors, isPovEnabled]);
 
   const items = React.useMemo((): TimelineItem[] => {
     return resources
@@ -98,7 +98,7 @@ export default function TimelineView({
         const durationH =
           storyDuration != null ? storyDuration / 60 : undefined;
 
-        const pov = povEnabled
+        const pov = isPovEnabled
           ? resolvePovDisplay(r.userMetadata?.pov)
           : undefined;
         const statusArr = r.userMetadata?.status as string[] | undefined;
@@ -108,7 +108,7 @@ export default function TimelineView({
         // resource-level `r.notes`.
         const rawNotes = r.userMetadata?.notes;
         const notesText =
-          notesEnabled && typeof rawNotes === "string" ? rawNotes : undefined;
+          isNotesEnabled && typeof rawNotes === "string" ? rawNotes : undefined;
         const notes = notesText
           ? notesText.slice(0, 120) + (notesText.length > 120 ? "…" : "")
           : undefined;
@@ -127,7 +127,7 @@ export default function TimelineView({
           metadata: { pov, status: statusArr, folder, notes },
         };
       });
-  }, [resources, povColorMap, folders, dispatch, povEnabled, notesEnabled]);
+  }, [resources, povColorMap, folders, dispatch, isPovEnabled, isNotesEnabled]);
 
   const groups = React.useMemo((): TimelineGroup[] => {
     const groupIds = new Set(

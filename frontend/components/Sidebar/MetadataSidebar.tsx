@@ -35,6 +35,7 @@ import {
   selectPovEnabled,
   selectTimelineEnabled,
 } from "../../src/store/projectsSlice";
+import type { RootState } from "../../src/store/store";
 import type {
   Folder,
   ImageResource,
@@ -155,8 +156,13 @@ function toResourceRefArray(raw: unknown): ResourceRef[] {
   );
 }
 
+type RawResource = { id: string; name: string; folderId?: string | null };
+const EMPTY_RAW_RESOURCES: RawResource[] = [];
+const EMPTY_FOLDERS: Folder[] = [];
+
 const selectAllResourceOptions = createSelector(
-  (state: any) => state.resources.resources as { id: string; name: string }[],
+  (state: RootState) =>
+    state.resources.resources as { id: string; name: string }[],
   (resources): ResourceOption[] => {
     if (!resources?.length) return EMPTY_REF_OPTIONS;
     return resources.reduce((acc: ResourceOption[], r) => {
@@ -166,14 +172,10 @@ const selectAllResourceOptions = createSelector(
   },
 );
 
-type RawResource = { id: string; name: string; folderId?: string | null };
-const EMPTY_RAW_RESOURCES: RawResource[] = [];
-const EMPTY_FOLDERS: Folder[] = [];
-
-const selectRawResourcesList = (state: any): RawResource[] =>
+const selectRawResourcesList = (state: RootState): RawResource[] =>
   (state.resources.resources as RawResource[]) ?? EMPTY_RAW_RESOURCES;
 
-const selectFoldersList = (state: any): Folder[] =>
+const selectFoldersList = (state: RootState): Folder[] =>
   (state.resources.folders as Folder[]) ?? EMPTY_FOLDERS;
 
 export interface MetadataSidebarProps {
@@ -214,10 +216,10 @@ export default function MetadataSidebar({
 }: MetadataSidebarProps): JSX.Element {
   const schema = useAppSelector(selectActiveProjectMetadataSchema);
   const selectedProjectId = useAppSelector(selectSelectedProjectId);
-  const synopsisEnabled = useAppSelector(selectSynopsisEnabled);
-  const notesEnabled = useAppSelector(selectNotesEnabled);
-  const povEnabled = useAppSelector(selectPovEnabled);
-  const timelineEnabled = useAppSelector(selectTimelineEnabled);
+  const isSynopsisEnabled = useAppSelector(selectSynopsisEnabled);
+  const isNotesEnabled = useAppSelector(selectNotesEnabled);
+  const isPovEnabled = useAppSelector(selectPovEnabled);
+  const isTimelineEnabled = useAppSelector(selectTimelineEnabled);
 
   const selectedResource = useAppSelector((state) =>
     selectResource(state.resources),
@@ -231,7 +233,7 @@ export default function MetadataSidebar({
   const [pendingFocusKey, setPendingFocusKey] = React.useState<string | null>(
     null,
   );
-  const [showAddForm, setShowAddForm] = React.useState(false);
+  const [isAddFormVisible, setIsAddFormVisible] = React.useState(false);
   const sidebarRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
@@ -246,13 +248,8 @@ export default function MetadataSidebar({
     }
   }, [schema, pendingFocusKey]);
 
-  function handleFieldFocused(fieldKey: string): void {
-    setShowAddForm(false);
-    setPendingFocusKey(fieldKey);
-  }
-
-  function handleFieldCreated(fieldKey: string): void {
-    setShowAddForm(false);
+  function handleAddFormDismissed(fieldKey: string): void {
+    setIsAddFormVisible(false);
     setPendingFocusKey(fieldKey);
   }
 
@@ -278,10 +275,6 @@ export default function MetadataSidebar({
     ).toISOString();
   }, [storyDate, storyDuration]);
 
-  const emit = (key: string, value: MetadataValue): void => {
-    onChangeField?.(key, value);
-  };
-
   /**
    * Whether a field's sidebar control should render. Built-in fields governed by
    * a project feature toggle are hidden when their feature is disabled; the
@@ -292,15 +285,15 @@ export default function MetadataSidebar({
   const isFieldVisible = (field: MetadataField): boolean => {
     switch (field.key) {
       case "synopsis":
-        return synopsisEnabled;
+        return isSynopsisEnabled;
       case "notes":
-        return notesEnabled;
+        return isNotesEnabled;
       case "pov":
-        return povEnabled;
+        return isPovEnabled;
       case "storyDate":
       case "storyDuration":
       case "storyEndDate":
-        return timelineEnabled;
+        return isTimelineEnabled;
       default:
         return true;
     }
@@ -308,7 +301,7 @@ export default function MetadataSidebar({
 
   const renderField = (field: MetadataField): JSX.Element | null => {
     const rawValue = selectedResource?.userMetadata?.[field.key];
-    const { key, label, type, options, multiple } = field;
+    const { key, label, type, options, multiple: isMultiple } = field;
 
     // Built-in locked fields use their specialized controls
     switch (key) {
@@ -318,7 +311,7 @@ export default function MetadataSidebar({
             ariaLabel="synopsis"
             value={(rawValue as string) ?? ""}
             className="text-brand-mid text-gw-nano tracking-label uppercase mb-4"
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "notes":
@@ -327,7 +320,7 @@ export default function MetadataSidebar({
             ariaLabel="notes"
             value={(rawValue as string) ?? ""}
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "status":
@@ -337,7 +330,7 @@ export default function MetadataSidebar({
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
             value={(rawValue as string) ?? ""}
             options={projectStatuses.length > 0 ? projectStatuses : undefined}
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "pov":
@@ -346,7 +339,7 @@ export default function MetadataSidebar({
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
             resourceOptions={allResourceOptions}
             value={(rawValue as string | ResourceRef) ?? undefined}
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "storyDate":
@@ -354,7 +347,7 @@ export default function MetadataSidebar({
           <DateTimeInput
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
             value={(rawValue as string) ?? ""}
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "storyDuration":
@@ -362,7 +355,7 @@ export default function MetadataSidebar({
           <DurationInput
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
             value={(rawValue as number | null) ?? null}
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "storyEndDate":
@@ -371,7 +364,7 @@ export default function MetadataSidebar({
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
             computedEndDate={computedEndDate}
             overrideValue={(rawValue as string) ?? undefined}
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
     }
@@ -385,7 +378,7 @@ export default function MetadataSidebar({
             ariaLabel={key}
             value={(rawValue as string) ?? ""}
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "number":
@@ -395,7 +388,7 @@ export default function MetadataSidebar({
             ariaLabel={key}
             value={(rawValue as number) ?? undefined}
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "date":
@@ -403,7 +396,7 @@ export default function MetadataSidebar({
           <DateTimeInput
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
             value={(rawValue as string) ?? ""}
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "boolean":
@@ -413,7 +406,7 @@ export default function MetadataSidebar({
             ariaLabel={key}
             value={(rawValue as boolean) ?? false}
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "select":
@@ -424,7 +417,7 @@ export default function MetadataSidebar({
             options={options ?? []}
             value={(rawValue as string) ?? ""}
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "multiselect":
@@ -436,7 +429,7 @@ export default function MetadataSidebar({
             value={(rawValue as string[]) ?? []}
             multiple
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "resource-ref":
@@ -447,8 +440,8 @@ export default function MetadataSidebar({
             value={(rawValue as ResourceRef | ResourceRef[] | null) ?? null}
             resourceOptions={allResourceOptions}
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
-            multiple={multiple}
-            onChange={(v) => emit(key, v)}
+            multiple={isMultiple}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "multi-resource-ref":
@@ -464,7 +457,7 @@ export default function MetadataSidebar({
             value={toResourceRefArray(rawValue)}
             maxSelections={field.maxSelections}
             className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
-            onChange={(v) => emit(key, v)}
+            onChange={(v) => onChangeField?.(key, v)}
           />
         );
       default:
@@ -489,7 +482,7 @@ export default function MetadataSidebar({
       aria-label="metadata-sidebar"
     >
       {editableResource ? (
-        <React.Fragment>
+        <>
           <div className="shrink-0 mb-4">
             <h3 className="text-gw-secondary-light pl-4 text-gw-label tracking-label uppercase">
               {editableResource.name}
@@ -532,20 +525,20 @@ export default function MetadataSidebar({
             </CollapsibleSection>
           </div>
           <div className="shrink-0 mt-2">
-            {showAddForm && selectedProjectId ? (
+            {isAddFormVisible && selectedProjectId ? (
               <AddFieldForm
                 schema={schema}
                 selectedProjectId={selectedProjectId}
                 currentFolderId={editableResource.folderId}
-                onCancel={() => setShowAddForm(false)}
-                onFieldFocused={handleFieldFocused}
-                onCreated={handleFieldCreated}
+                onCancel={() => setIsAddFormVisible(false)}
+                onFieldFocused={handleAddFormDismissed}
+                onCreated={handleAddFormDismissed}
               />
             ) : (
               <div className="py-3 pl-4 border-t border-gw-border">
                 <button
                   type="button"
-                  onClick={() => setShowAddForm(true)}
+                  onClick={() => setIsAddFormVisible(true)}
                   disabled={!selectedProjectId || schema.groups.length === 0}
                   className="flex w-full items-center gap-1.5 py-1 text-gw-label font-mono uppercase tracking-label text-gw-secondary hover:text-gw-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label="add-metadata-field"
@@ -555,7 +548,7 @@ export default function MetadataSidebar({
               </div>
             )}
           </div>
-        </React.Fragment>
+        </>
       ) : (
         <div className="px-4">
           <h4 className="text-gw-secondary text-gw-label tracking-label mt-4">

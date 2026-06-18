@@ -28,7 +28,9 @@ export type MetadataValue =
   | ResourceRef[]
   | { [key: string]: MetadataValue };
 
+/** Union of heading levels supported in the editor. */
 export type EditorHeadings = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+/** Per-heading visual styling overrides applied in the editor. All fields are optional. */
 export type EditorHeading = {
   fontSize?: string;
   fontFamily?: string;
@@ -36,6 +38,7 @@ export type EditorHeading = {
   letterSpacing?: string;
   color?: string;
 };
+/** Body text styling configuration for the editor. All fields are optional. */
 export type EditorBodyConfig = {
   fontFamily?: string;
   fontSize?: string;
@@ -254,7 +257,9 @@ export interface Folder extends ResourceBase {
   type: "folder";
   /** Parent folder UUID; null or undefined for top-level. */
   parentId?: UUID | null;
+  /** @deprecated Legacy folder flag from older project-type files; still accepted and propagated, but assigns no special semantics. */
   special?: boolean;
+  /** When set, marks this folder as a metadata collection source (see {@link MetadataSource}). */
   metadataSource?: MetadataSource;
 }
 
@@ -316,9 +321,9 @@ export interface AudioResource extends ResourceBase {
 
 /** Revision metadata describing stored copies for a resource. */
 export interface Revision {
-  /** Revision UUID */
+  /** Revision UUID. */
   id: UUID;
-  /** Parent resource UUID */
+  /** Parent resource UUID. */
   resourceId: UUID;
   /** Monotonic version number for the resource's revision history. */
   versionNumber: number;
@@ -336,4 +341,5 @@ export interface Revision {
   metadata?: Record<string, unknown>;
 }
 
+/** Discriminated union of all concrete resource types, keyed by `type`. */
 export type AnyResource = TextResource | ImageResource | AudioResource | Folder;

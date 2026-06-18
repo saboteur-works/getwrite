@@ -26,18 +26,14 @@ interface RenameResourceBody {
   resourceType?: string;
 }
 
-interface RenameResourceResponse {
-  resource: Record<string, MetadataValue>;
-}
-
-interface ErrorResponse {
-  error: string;
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
-): Promise<NextResponse<RenameResourceResponse | ErrorResponse>> {
+): Promise<NextResponse> {
   const resourceId = (await params)["resource-id"];
 
   let body: RenameResourceBody;
@@ -77,14 +73,14 @@ export async function POST(
           { status: 404 },
         );
       }
-      return NextResponse.json(
-        { resource: updated as Record<string, MetadataValue> },
-        { status: 200 },
-      );
+      return NextResponse.json({
+        resource: updated as Record<string, MetadataValue>,
+      });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to rename folder.";
-      return NextResponse.json({ error: message }, { status: 500 });
+      return NextResponse.json(
+        { error: errorMessage(error, "Failed to rename folder.") },
+        { status: 500 },
+      );
     }
   }
 
@@ -105,10 +101,11 @@ export async function POST(
 
     await writeSidecar(projectRoot, resourceId, updatedData);
 
-    return NextResponse.json({ resource: updatedData }, { status: 200 });
+    return NextResponse.json({ resource: updatedData });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to rename resource.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: errorMessage(error, "Failed to rename resource.") },
+      { status: 500 },
+    );
   }
 }

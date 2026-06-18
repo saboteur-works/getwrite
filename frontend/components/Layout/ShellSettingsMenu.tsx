@@ -47,6 +47,39 @@ export interface ShellSettingsMenuProps {
   appVersion?: string;
 }
 
+/** Menu items that only appear when a project is open, in display order. */
+const projectScopedItems: {
+  icon: React.ReactNode;
+  label: string;
+  action: SettingsMenuAction;
+}[] = [
+  {
+    icon: <Type size={14} aria-hidden="true" />,
+    label: "Heading Styles",
+    action: "heading-styles",
+  },
+  {
+    icon: <Type size={14} aria-hidden="true" />,
+    label: "Body Text Styles",
+    action: "body-text-styles",
+  },
+  {
+    icon: <PenLine size={14} aria-hidden="true" />,
+    label: "Default Revision Name",
+    action: "default-revision-name",
+  },
+  {
+    icon: <Tag size={14} aria-hidden="true" />,
+    label: "Manage Tags",
+    action: "tags-manager",
+  },
+  {
+    icon: <LayoutList size={14} aria-hidden="true" />,
+    label: "Metadata",
+    action: "metadata",
+  },
+];
+
 export default function ShellSettingsMenu({
   projectName,
   isDarkMode,
@@ -143,46 +176,16 @@ export default function ShellSettingsMenu({
                 label="User Preferences"
                 onClick={() => onAction("preferences")}
               />
-              {hasProject ? (
-                <MenuItemButton
-                  className="appshell-topbar-dropdown-item"
-                  icon={<Type size={14} aria-hidden="true" />}
-                  label="Heading Styles"
-                  onClick={() => onAction("heading-styles")}
-                />
-              ) : null}
-              {hasProject ? (
-                <MenuItemButton
-                  className="appshell-topbar-dropdown-item"
-                  icon={<Type size={14} aria-hidden="true" />}
-                  label="Body Text Styles"
-                  onClick={() => onAction("body-text-styles")}
-                />
-              ) : null}
-              {hasProject ? (
-                <MenuItemButton
-                  className="appshell-topbar-dropdown-item"
-                  icon={<PenLine size={14} aria-hidden="true" />}
-                  label="Default Revision Name"
-                  onClick={() => onAction("default-revision-name")}
-                />
-              ) : null}
-              {hasProject ? (
-                <MenuItemButton
-                  className="appshell-topbar-dropdown-item"
-                  icon={<Tag size={14} aria-hidden="true" />}
-                  label="Manage Tags"
-                  onClick={() => onAction("tags-manager")}
-                />
-              ) : null}
-              {hasProject ? (
-                <MenuItemButton
-                  className="appshell-topbar-dropdown-item"
-                  icon={<LayoutList size={14} aria-hidden="true" />}
-                  label="Metadata"
-                  onClick={() => onAction("metadata")}
-                />
-              ) : null}
+              {hasProject &&
+                projectScopedItems.map(({ icon, label, action }) => (
+                  <MenuItemButton
+                    key={action}
+                    className="appshell-topbar-dropdown-item"
+                    icon={icon}
+                    label={label}
+                    onClick={() => onAction(action)}
+                  />
+                ))}
               <MenuItemButton
                 className="appshell-topbar-dropdown-item"
                 icon={<SlidersHorizontal size={14} aria-hidden="true" />}

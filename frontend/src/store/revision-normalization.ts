@@ -11,6 +11,11 @@ export interface RevisionEntry extends Revision {
   displayName: string;
 }
 
+/** Returns the trimmed string if non-empty, otherwise undefined. */
+function trimIfNonEmpty(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim().length > 0) return value.trim();
+}
+
 /**
  * Returns a human-readable display label for a revision.
  */
@@ -18,20 +23,11 @@ export function resolveRevisionDisplayName(
   revision: Revision,
   fallbackName?: string,
 ): string {
-  const metadataName =
-    revision.metadata && typeof revision.metadata === "object"
-      ? revision.metadata["name"]
-      : undefined;
-
-  if (typeof metadataName === "string" && metadataName.trim().length > 0) {
-    return metadataName.trim();
-  }
-
-  if (typeof fallbackName === "string" && fallbackName.trim().length > 0) {
-    return fallbackName.trim();
-  }
-
-  return `Revision v${revision.versionNumber}`;
+  return (
+    trimIfNonEmpty(revision.metadata?.["name"]) ??
+    trimIfNonEmpty(fallbackName) ??
+    `Revision v${revision.versionNumber}`
+  );
 }
 
 /**

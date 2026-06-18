@@ -6,26 +6,10 @@
  *
  * @example
  * ```tsx
- * "use client";
- * import { useToast } from "@/hooks/use-toast";
- *
- * export function MyComponent() {
- *   const toast = useToast();
- *
- *   const handleSave = async () => {
- *     const id = toast.loading("Saving...");
- *     try {
- *       await saveData();
- *       toast.success("Saved successfully!", "Your changes are saved");
- *       toast.dismiss(id);
- *     } catch (error) {
- *       toast.error("Save failed", error.message);
- *       toast.dismiss(id);
- *     }
- *   };
- *
- *   return <button onClick={handleSave}>Save</button>;
- * }
+ * const toast = useToast();
+ * const id = toast.loading("Saving...");
+ * await saveData();
+ * toast.dismiss(id);
  * ```
  */
 

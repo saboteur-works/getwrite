@@ -2,7 +2,7 @@ import { indexResource } from "./inverted-index";
 import { readSidecar } from "./sidecar";
 import { listRevisions } from "./revision";
 import { readFile } from "./io";
-import { loadResourceContent } from "../tiptap-utils";
+import { loadResourceContent, tiptapToPlainText } from "../tiptap-utils";
 import { startBacklinkWatcher } from "./backlinks-watcher";
 import { computeBacklinks, persistBacklinks } from "./backlinks";
 import type { TextResource } from "./types";
@@ -10,10 +10,10 @@ import type { TextResource } from "./types";
 type Task = { projectRoot: string; resourceId: string };
 
 const queue: Task[] = [];
-let running = false;
-let stopped = false;
+let isRunning = false;
+let isStopped = false;
 const activeBacklinkWatchers = new Map<string, () => void>();
-let shutdownHooksInstalled = false;
+let isShutdownHooksInstalled = false;
 
 /**
  * Ensures a backlink watcher is running for the project. The watcher
@@ -40,8 +40,8 @@ function ensureBacklinkWatcher(projectRoot: string): void {
  * sends a termination signal to the spawned child.
  */
 export function installShutdownHooks(): void {
-  if (shutdownHooksInstalled) return;
-  shutdownHooksInstalled = true;
+  if (isShutdownHooksInstalled) return;
+  isShutdownHooksInstalled = true;
   const handle = (signal: NodeJS.Signals | "beforeExit") => () => {
     void shutdownIndexer().finally(() => {
       if (signal !== "beforeExit") process.exit(0);
@@ -52,52 +52,48 @@ export function installShutdownHooks(): void {
   process.on("beforeExit", handle("beforeExit"));
 }
 
-async function runTask(t: Task) {
+async function runTask(task: Task) {
   try {
-    const side = await readSidecar(t.projectRoot, t.resourceId);
+    const side = await readSidecar(task.projectRoot, task.resourceId);
     const now = new Date().toISOString();
 
     // Try to obtain canonical plain text from resource storage first
     let plain: string | undefined;
     try {
-      const loaded = await loadResourceContent(t.projectRoot, t.resourceId);
-      plain = loaded.plainText ?? undefined;
-      if (!plain && loaded.tiptap)
-        plain =
-          (loaded.tiptap as any) && loaded.tiptap
-            ? await Promise.resolve(
-                (await import("../tiptap-utils")).tiptapToPlainText(
-                  loaded.tiptap as any,
-                ),
-              )
-            : undefined;
-    } catch (_) {
+      const loaded = await loadResourceContent(
+        task.projectRoot,
+        task.resourceId,
+      );
+      // `||` (not `??`): empty plainText must fall through to tiptap-derived text,
+      // matching the original `if (!plain && loaded.tiptap)` falsy guard.
+      plain =
+        loaded.plainText ||
+        (loaded.tiptap ? tiptapToPlainText(loaded.tiptap) : undefined);
+    } catch {
       // ignore
     }
 
     // Fallback: read last revision content (content.bin) if present
     if (!plain) {
       try {
-        const revs = await listRevisions(t.projectRoot, t.resourceId);
-        if (revs.length > 0) {
-          const last = revs[revs.length - 1];
-          if (last.filePath) {
-            try {
-              plain = await readFile(last.filePath, "utf8");
-            } catch (_) {
-              // ignore read errors
-            }
+        const revs = await listRevisions(task.projectRoot, task.resourceId);
+        const last = revs[revs.length - 1];
+        if (last?.filePath) {
+          try {
+            plain = await readFile(last.filePath, "utf8");
+          } catch {
+            // ignore read errors
           }
         }
-      } catch (_) {
+      } catch {
         // ignore
       }
     }
 
     const minimal: TextResource = {
-      id: t.resourceId,
-      name: (side && (side as any).name) || t.resourceId,
-      slug: (side && (side as any).slug) || undefined,
+      id: task.resourceId,
+      name: (side?.["name"] as string | undefined) ?? task.resourceId,
+      slug: side?.["slug"] as string | undefined,
       type: "text",
       folderId: undefined,
       createdAt: now,
@@ -105,11 +101,11 @@ async function runTask(t: Task) {
       tiptap: undefined,
     } as unknown as TextResource;
 
-    await indexResource(t.projectRoot, minimal);
+    await indexResource(task.projectRoot, minimal);
 
     try {
-      const backlinks = await computeBacklinks(t.projectRoot);
-      await persistBacklinks(t.projectRoot, backlinks);
+      const backlinks = await computeBacklinks(task.projectRoot);
+      await persistBacklinks(task.projectRoot, backlinks);
     } catch (err) {
       console.error("[indexer-queue] backlinks update failed:", err);
     }
@@ -119,20 +115,19 @@ async function runTask(t: Task) {
 }
 
 async function processQueue() {
-  if (running) return;
-  running = true;
+  if (isRunning) return;
+  isRunning = true;
   while (queue.length > 0) {
-    const t = queue.shift()!;
+    const task = queue.shift()!;
     // process sequentially to avoid concurrent fs stress
     // don't let a single failure stop the queue
     try {
-      // eslint-disable-next-line no-await-in-loop
-      await runTask(t);
+      await runTask(task); // sequential: avoids concurrent fs stress
     } catch (err) {
       console.error("[indexer-queue] processQueue error:", err);
     }
   }
-  running = false;
+  isRunning = false;
 }
 
 /** Enqueue a resource id for indexing. Returns a Promise that resolves when the task has been processed. */
@@ -140,7 +135,7 @@ export function enqueueIndex(
   projectRoot: string,
   resourceId: string,
 ): Promise<void> {
-  if (stopped) {
+  if (isStopped) {
     // After shutdown, accept no new work. Resolve immediately so callers
     // (e.g. background save handlers) don't hang the request.
     return Promise.resolve();
@@ -154,7 +149,7 @@ export function enqueueIndex(
     // Poll for task completion by waiting until resourceId no longer in queue
     const interval = setInterval(() => {
       const pending = queue.find((q) => q.resourceId === resourceId);
-      if (!pending && !running) {
+      if (!pending && !isRunning) {
         clearInterval(interval);
         resolve();
       }
@@ -172,7 +167,7 @@ export function flushIndexer(timeout = 5000): Promise<void> {
   return new Promise((resolve) => {
     const start = Date.now();
     const iv = setInterval(() => {
-      if (queue.length === 0 && !running) {
+      if (queue.length === 0 && !isRunning) {
         clearInterval(iv);
         resolve();
         return;
@@ -197,7 +192,7 @@ export const waitForDrain = flushIndexer;
  * drain without re-stopping watchers.
  */
 export async function shutdownIndexer(timeoutMs = 5000): Promise<void> {
-  stopped = true;
+  isStopped = true;
   try {
     await flushIndexer(timeoutMs);
   } finally {
@@ -217,9 +212,9 @@ export async function shutdownIndexer(timeoutMs = 5000): Promise<void> {
  * be exercised after a `shutdownIndexer` call. Not exported via default.
  */
 export function __resetIndexerForTests(): void {
-  stopped = false;
+  isStopped = false;
   queue.length = 0;
-  running = false;
+  isRunning = false;
   for (const stop of activeBacklinkWatchers.values()) {
     try {
       stop();
@@ -230,10 +225,11 @@ export function __resetIndexerForTests(): void {
   activeBacklinkWatchers.clear();
 }
 
-export default {
+const indexerQueue = {
   enqueueIndex,
   flushIndexer,
   waitForDrain,
   shutdownIndexer,
   installShutdownHooks,
 };
+export default indexerQueue;

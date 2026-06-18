@@ -30,7 +30,7 @@ export async function persistResourceContent(
           /* ignore enqueue errors */
         });
     });
-  } catch (_) {
+  } catch {
     // ignore
   }
 }
@@ -49,12 +49,12 @@ export async function loadResourceContent(
   try {
     const raw = await readFile(tiptapPath, "utf8");
     result.tiptap = JSON.parse(raw) as TipTapDocument;
-  } catch (_) {
+  } catch {
     // ignore
   }
   try {
     result.plainText = await readFile(plainPath, "utf8");
-  } catch (_) {
+  } catch {
     // if plain missing but tiptap present, derive
     if (result.tiptap) result.plainText = tiptapToPlainText(result.tiptap);
   }

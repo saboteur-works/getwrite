@@ -13,7 +13,6 @@ import { resolveProjectsDir } from "../../../src/lib/models/projects-dir";
  */
 export async function GET() {
   try {
-    // get all projects from local
     const projectsDir = resolveProjectsDir();
     const projectIds = (await fs.readdir(projectsDir)).filter(
       (file) => file !== ".DS_Store",

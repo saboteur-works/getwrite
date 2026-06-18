@@ -24,6 +24,10 @@ const MetadataValueLocal: z.ZodTypeAny = z.lazy(() =>
   ]),
 );
 
+// ─── Shared primitives ────────────────────────────────────────────────────
+
+const nonEmptyString = z.string().min(1);
+
 // ─── Operator enums ────────────────────────────────────────────────────────
 
 export const ComparisonOpSchema = z.enum([
@@ -40,24 +44,24 @@ export const TextOpSchema = z.enum(["contains", "matches"]);
 
 export const ComparisonNodeSchema = z.object({
   op: ComparisonOpSchema,
-  field: z.string().min(1),
+  field: nonEmptyString,
   value: MetadataValueLocal,
 });
 
 export const InNodeSchema = z.object({
   op: z.literal("in"),
-  field: z.string().min(1),
+  field: nonEmptyString,
   value: MetadataValueLocal,
 });
 
 export const ExistsNodeSchema = z.object({
   op: z.literal("exists"),
-  field: z.string().min(1),
+  field: nonEmptyString,
 });
 
 export const TextNodeSchema = z.object({
   op: TextOpSchema,
-  field: z.string().min(1),
+  field: nonEmptyString,
   value: z.string(),
 });
 
@@ -77,7 +81,7 @@ export const RefNodeSchema = z.object({ op: z.literal("ref"), id: z.string() });
 
 export const ParamNodeSchema = z.object({
   op: z.literal("param"),
-  name: z.string().min(1),
+  name: nonEmptyString,
 });
 
 // ─── Recursive root schema ─────────────────────────────────────────────────

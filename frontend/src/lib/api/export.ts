@@ -27,6 +27,19 @@ export interface TextExportResult {
   filename: string;
 }
 
+async function postExportRequest(
+  format: string,
+  body: TextExportBody | MarkdownExportBody,
+): Promise<Response> {
+  const response = await fetch(`/api/export/${format}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(`Export failed (${response.status})`);
+  return response;
+}
+
 /**
  * Export one or more text resources as a single plain-text file. The server
  * reads each resource's current saved content from disk, so the output always
@@ -35,16 +48,7 @@ export interface TextExportResult {
 export async function exportText(
   body: TextExportBody,
 ): Promise<TextExportResult> {
-  const response = await fetch("/api/export/text", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Text export failed (${response.status})`);
-  }
-
+  const response = await postExportRequest("text", body);
   return (await response.json()) as TextExportResult;
 }
 
@@ -56,15 +60,6 @@ export async function exportText(
 export async function exportMarkdown(
   body: MarkdownExportBody,
 ): Promise<MarkdownExportResult> {
-  const response = await fetch("/api/export/markdown", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Markdown export failed (${response.status})`);
-  }
-
+  const response = await postExportRequest("markdown", body);
   return (await response.json()) as MarkdownExportResult;
 }

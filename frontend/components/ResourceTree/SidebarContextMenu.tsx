@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import type { ReactNode } from "react";
 import { Plus, Search } from "lucide-react";
 import {
   ContextMenu,
@@ -14,7 +14,7 @@ interface SidebarContextMenuProps {
   className?: string;
   onCreateResource: () => void;
   onCreateSmartFolder: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 /**

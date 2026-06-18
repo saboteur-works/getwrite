@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type {
   MetadataFieldType,
@@ -163,18 +163,18 @@ export default function FieldPicker({
   onSelectRef,
   refDisplay,
 }: FieldPickerProps): JSX.Element {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const closeMenu = useCallback(() => {
-    setOpen(false);
+    setIsOpen(false);
     setSearch("");
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     function handleOutsideClick(e: MouseEvent): void {
       if (
         wrapperRef.current &&
@@ -185,50 +185,49 @@ export default function FieldPicker({
     }
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [open, closeMenu]);
+  }, [isOpen, closeMenu]);
 
   useEffect(() => {
-    if (open) {
+    if (isOpen) {
       searchRef.current?.focus();
     }
-  }, [open]);
+  }, [isOpen]);
 
-  const currentField = value
-    ? (fields.find((f) => f.key === value) ?? null)
-    : null;
+  const currentField = fields.find((f) => f.key === value) ?? null;
 
   const filteredFields = search.trim()
     ? fields.filter((f) => matchesSearch(f, search))
     : fields;
 
-  const filteredSavedQueries = savedQueries
-    ? search.trim()
+  const filteredSavedQueries = !savedQueries
+    ? []
+    : search.trim()
       ? savedQueries.filter((q) =>
           q.name.toLowerCase().includes(search.toLowerCase()),
         )
-      : savedQueries
-    : [];
+      : savedQueries;
 
-  const groupedBySource: Record<FieldPickerSource, FieldPickerField[]> = {
-    builtin: [],
-    project: [],
-    system: [],
-  };
-  for (const f of filteredFields) {
-    groupedBySource[f.source].push(f);
-  }
+  const groupedBySource = filteredFields.reduce<
+    Record<FieldPickerSource, FieldPickerField[]>
+  >(
+    (acc, f) => {
+      acc[f.source].push(f);
+      return acc;
+    },
+    { builtin: [], project: [], system: [] },
+  );
 
-  const showAddRow =
+  const shouldShowAddRow =
     Boolean(onAddField) &&
     search.trim().length > 0 &&
     filteredFields.length === 0;
 
-  const fuzzyCandidate =
+  const fuzzyResult =
     schema && search.trim().length > 0 && filteredFields.length === 0
       ? fuzzyMatch(search.trim(), schema)
       : null;
-  const fuzzyField = fuzzyCandidate
-    ? (fields.find((f) => f.key === fuzzyCandidate.field.key) ?? null)
+  const fuzzyField = fuzzyResult
+    ? (fields.find((f) => f.key === fuzzyResult.field.key) ?? null)
     : null;
 
   function handleSelect(field: FieldPickerField): void {
@@ -243,7 +242,7 @@ export default function FieldPicker({
         className="field-picker__trigger"
         disabled={disabled}
         aria-haspopup="listbox"
-        aria-expanded={open}
+        aria-expanded={isOpen}
         aria-label={
           refDisplay !== undefined
             ? `Saved query: @${refDisplay}`
@@ -252,7 +251,7 @@ export default function FieldPicker({
               : "Select a field"
         }
         onClick={() => {
-          if (!disabled) setOpen((v) => !v);
+          if (!disabled) setIsOpen((v) => !v);
         }}
       >
         <span className="field-picker__trigger-label">
@@ -262,14 +261,14 @@ export default function FieldPicker({
         </span>
         <span
           className={
-            open ? "field-picker__chevron--open" : "field-picker__chevron"
+            isOpen ? "field-picker__chevron--open" : "field-picker__chevron"
           }
         >
           <ChevronDown size={10} aria-hidden="true" />
         </span>
       </button>
 
-      {open && (
+      {isOpen && (
         <div
           className="field-picker__dropdown"
           role="listbox"
@@ -307,13 +306,12 @@ export default function FieldPicker({
                     aria-selected={field.key === value}
                     tabIndex={0}
                     className={[
-                      field.key === value
-                        ? "field-picker__item field-picker__item--selected"
-                        : "field-picker__item",
-                      field.deprecated ? "field-picker__item--deprecated" : "",
+                      "field-picker__item",
+                      field.key === value && "field-picker__item--selected",
+                      field.deprecated && "field-picker__item--deprecated",
                     ]
-                      .join(" ")
-                      .trim()}
+                      .filter(Boolean)
+                      .join(" ")}
                     onClick={() => handleSelect(field)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -397,7 +395,7 @@ export default function FieldPicker({
 
           {filteredFields.length === 0 &&
             filteredSavedQueries.length === 0 &&
-            !showAddRow &&
+            !shouldShowAddRow &&
             !fuzzyField && (
               <div className="field-picker__empty">No fields match</div>
             )}
@@ -418,7 +416,7 @@ export default function FieldPicker({
             </div>
           )}
 
-          {showAddRow && (
+          {shouldShowAddRow && (
             <button
               type="button"
               className="field-picker__add"

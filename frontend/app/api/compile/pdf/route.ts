@@ -1,18 +1,15 @@
 import { NextRequest } from "next/server";
 import React from "react";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
-import { loadResourceContent } from "../../../../src/lib/tiptap-utils";
 import {
   CompilePDFDocument,
   registerIBMPlexFonts,
 } from "../../../../src/lib/export/CompilePDFDocument";
 import { CompilePDFFallbackDocument } from "../../../../src/lib/export/CompilePDFFallbackDocument";
 import type { CompileSection } from "../../../../src/lib/export/compile-text";
+import { loadTextSections } from "../../../../src/lib/export/section-loader";
 import { slugify } from "../../../../src/lib/utils";
-import type {
-  CompileBody,
-  ResourceMeta,
-} from "../../../../src/lib/export/types";
+import type { CompileBody } from "../../../../src/lib/export/types";
 
 function isFontError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
@@ -21,45 +18,41 @@ function isFontError(err: unknown): boolean {
 
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as CompileBody;
-  const { projectPath, resourceIds, resources, includeHeaders, projectName } =
-    body;
+  const {
+    projectPath,
+    resourceIds,
+    resources,
+    includeHeaders: shouldIncludeHeaders,
+    projectName,
+  } = body;
 
-  const resourceMap = new Map<string, ResourceMeta>(
-    resources.map((r) => [r.id, r]),
-  );
-
-  const textIds = resourceIds.filter(
-    (id) => resourceMap.get(id)?.type === "text",
-  );
-
-  const sections: CompileSection[] = await Promise.all(
-    textIds.map(async (id) => {
-      const meta = resourceMap.get(id)!;
-      const { plainText } = await loadResourceContent(projectPath, id);
-      return { name: meta.name, content: plainText ?? "" };
-    }),
+  const sections = await loadTextSections<CompileSection>(
+    projectPath,
+    resourceIds,
+    resources,
+    (meta, { plainText }) => ({ name: meta.name, content: plainText ?? "" }),
   );
 
   const filename = `${slugify(projectName)}.pdf`;
 
   let buffer: Buffer;
-  let fontFallback = false;
+  let didFontFallback = false;
 
   try {
     registerIBMPlexFonts();
     buffer = await renderToBuffer(
       React.createElement(CompilePDFDocument, {
         sections,
-        includeHeaders,
+        includeHeaders: shouldIncludeHeaders,
       }) as React.ReactElement<DocumentProps>,
     );
   } catch (err) {
     if (!isFontError(err)) throw err;
-    fontFallback = true;
+    didFontFallback = true;
     buffer = await renderToBuffer(
       React.createElement(CompilePDFFallbackDocument, {
         sections,
-        includeHeaders,
+        includeHeaders: shouldIncludeHeaders,
       }) as React.ReactElement<DocumentProps>,
     );
   }
@@ -68,7 +61,7 @@ export async function POST(req: NextRequest) {
     "Content-Type": "application/pdf",
     "Content-Disposition": `attachment; filename="${filename}"`,
   };
-  if (fontFallback) {
+  if (didFontFallback) {
     headers["X-Compile-Warning"] = "font-fallback";
   }
 

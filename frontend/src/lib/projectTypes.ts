@@ -9,11 +9,7 @@
  */
 import path from "node:path";
 import { readdir, readFile } from "./models/io";
-import {
-  validateProjectType,
-  validateProjectTypeFile,
-  ProjectTypeSpec,
-} from "./models/schemas";
+import { validateProjectType, ProjectTypeSpec } from "./models/schemas";
 
 /**
  * Metadata plus parsed content for one project-type template file.
@@ -106,19 +102,27 @@ export async function listProjectTypes(
     const entries = (await readdir(dir, { withFileTypes: true })) as
       | string[]
       | import("node:fs").Dirent[];
-    const filenames = (entries as any[]).map((e) =>
-      typeof e === "string" ? e : (e as import("node:fs").Dirent).name,
+    const filenames = (entries as (string | import("node:fs").Dirent)[]).map(
+      (entry) => (typeof entry === "string" ? entry : entry.name),
     );
     const results: ProjectTypeEntry[] = [];
-    for (const e of filenames) {
-      if (!e.endsWith(".json")) continue;
-      const fp = path.join(dir, e);
+    for (const filename of filenames) {
+      if (!filename.endsWith(".json")) continue;
+      const filePath = path.join(dir, filename);
       try {
-        const raw = await readFile(fp, "utf8");
+        const raw = await readFile(filePath, "utf8");
         const parsed = JSON.parse(raw);
-        const res = validateProjectType(parsed);
-        if (res.success && "value" in res && res.value) {
-          results.push({ spec: res.value, filePath: fp, fileName: e });
+        const validationResult = validateProjectType(parsed);
+        if (
+          validationResult.success &&
+          "value" in validationResult &&
+          validationResult.value
+        ) {
+          results.push({
+            spec: validationResult.value,
+            filePath,
+            fileName: filename,
+          });
         }
       } catch (err) {
         // skip invalid JSON/files
@@ -150,7 +154,7 @@ export async function getProjectType(
   forceRefresh = false,
 ): Promise<ProjectTypeEntry | undefined> {
   const list = await listProjectTypes(forceRefresh);
-  return list.find((l) => l.spec.id === id);
+  return list.find((entry) => entry.spec.id === id);
 }
 
 /**

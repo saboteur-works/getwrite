@@ -19,6 +19,7 @@ export interface TimelineRowProps {
 const CHIP_HEIGHT = 28;
 const LANE_SLOT = 40; // 28px chip + 6px top + 6px bottom
 const ROW_PADDING = 16; // 2 × 8px
+const LANE_TOP = ROW_PADDING / 2; // vertical offset for lane 0
 
 interface ChipLayout {
   item: TimelineItem;
@@ -79,6 +80,60 @@ function computeLayouts(
   });
 }
 
+/** Render gap labels in lane 0 for gaps wider than 5% of the axis span. */
+function renderGapLabels(
+  items: TimelineItem[],
+  axisBounds: { start: number; end: number },
+): React.ReactNode[] {
+  const spanMs = axisBounds.end - axisBounds.start;
+  const threshold = spanMs * 0.05;
+  const sorted = [...items].sort(
+    (a, b) => parseDateString(a.startDate) - parseDateString(b.startDate),
+  );
+
+  return sorted.flatMap((item, i) => {
+    if (i === 0) return [];
+    const prevEnd = sorted[i - 1].endDate
+      ? parseDateString(sorted[i - 1].endDate!)
+      : parseDateString(sorted[i - 1].startDate);
+    const nextStart = parseDateString(item.startDate);
+    const gapMs = nextStart - prevEnd;
+    if (gapMs <= threshold) return [];
+    const midMs = prevEnd + gapMs / 2;
+    const leftPct = dateToPercent(midMs, axisBounds.start, axisBounds.end);
+    return [
+      <div
+        key={`gap-${i}`}
+        style={{
+          position: "absolute",
+          left: `${leftPct}%`,
+          transform: "translateX(-50%)",
+          top: LANE_TOP,
+          height: CHIP_HEIGHT,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          pointerEvents: "none",
+          zIndex: 1,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--timeline-font-family)",
+            fontSize: "8px",
+            letterSpacing: "0.08em",
+            color: "var(--color-gw-secondary)",
+            whiteSpace: "nowrap",
+            userSelect: "none",
+          }}
+        >
+          {formatGapLabel(gapMs)}
+        </span>
+      </div>,
+    ];
+  });
+}
+
 export default function TimelineRow({
   group,
   items,
@@ -97,8 +152,6 @@ export default function TimelineRow({
   const numLanes =
     layouts.length > 0 ? Math.max(...layouts.map((c) => c.lane)) + 1 : 1;
   const rowHeight = Math.max(56, numLanes * LANE_SLOT + ROW_PADDING);
-
-  const spanMs = axisBounds.end - axisBounds.start;
 
   const isEven = rowIndex % 2 === 0;
 
@@ -219,7 +272,7 @@ export default function TimelineRow({
             leftPercent={leftPct}
             widthPercent={widthPct}
             variant={variant}
-            topOffset={topOffset + Math.floor(ROW_PADDING / 2)}
+            topOffset={topOffset + LANE_TOP}
             rowHeight={rowHeight}
             onMouseEnter={(e) => {
               const rect = (
@@ -233,59 +286,7 @@ export default function TimelineRow({
         ))}
 
         {/* Gap labels — lane 0 only */}
-        {(() => {
-          const threshold = spanMs * 0.05;
-          const sorted = [...items].sort(
-            (a, b) =>
-              parseDateString(a.startDate) - parseDateString(b.startDate),
-          );
-          return sorted.flatMap((item, i) => {
-            if (i === 0) return [];
-            const prevEnd = sorted[i - 1].endDate
-              ? parseDateString(sorted[i - 1].endDate!)
-              : parseDateString(sorted[i - 1].startDate);
-            const nextStart = parseDateString(item.startDate);
-            const gapMs = nextStart - prevEnd;
-            if (gapMs <= threshold) return [];
-            const midMs = prevEnd + gapMs / 2;
-            const leftPct = dateToPercent(
-              midMs,
-              axisBounds.start,
-              axisBounds.end,
-            );
-            const laneTop = Math.floor(ROW_PADDING / 2);
-            return [
-              <div
-                key={`gap-${i}`}
-                style={{
-                  position: "absolute",
-                  left: `${leftPct}%`,
-                  transform: "translateX(-50%)",
-                  top: laneTop,
-                  height: CHIP_HEIGHT,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  pointerEvents: "none",
-                  zIndex: 1,
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "var(--timeline-font-family)",
-                    fontSize: "8px",
-                    letterSpacing: "0.08em",
-                    color: "var(--color-gw-secondary)",
-                    whiteSpace: "nowrap",
-                    userSelect: "none",
-                  }}
-                >
-                  {formatGapLabel(gapMs)}
-                </span>
-              </div>,
-            ];
-          });
-        })()}
+        {renderGapLabels(items, axisBounds)}
       </div>
     </div>
   );

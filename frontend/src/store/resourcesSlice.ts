@@ -6,7 +6,7 @@ import {
 } from "@reduxjs/toolkit";
 import { AnyResource, Folder } from "../lib/models";
 import { renameMetadataFieldKey } from "./projectsSlice";
-import { reorderResources } from "../lib/api/resources";
+import { reorderResources, ReorderPayload } from "../lib/api/resources";
 
 interface ResourcesState {
   selectedResourceId: string | null;
@@ -22,20 +22,9 @@ const initialState: ResourcesState = {
 
 export const persistReorder = createAsyncThunk(
   "projects/persistReorder",
-  async (payload: {
-    projectId: string;
-    projectRoot: string;
-    folderOrder: Array<{
-      id: string;
-      orderIndex?: number;
-      folderId?: string | null;
-    }>;
-    resourceOrder: Array<{
-      id: string;
-      orderIndex?: number;
-      folderId?: string | null;
-    }>;
-  }) => {
+  async (
+    payload: ReorderPayload & { projectId: string; projectRoot: string },
+  ) => {
     const { projectRoot, folderOrder, resourceOrder, projectId } = payload;
     await reorderResources(projectId, { folderOrder, resourceOrder });
     return { projectRoot, folderOrder, resourceOrder };
@@ -101,7 +90,7 @@ const resourcesSlice = createSlice({
       state,
       action: PayloadAction<Partial<Folder> & { id: string }>,
     ) {
-      const index = state.folders.findIndex((r) => r.id === action.payload.id);
+      const index = state.folders.findIndex((f) => f.id === action.payload.id);
       if (index !== -1) {
         state.folders[index] = { ...state.folders[index], ...action.payload };
       }
@@ -111,7 +100,7 @@ const resourcesSlice = createSlice({
       state,
       action: PayloadAction<Array<Partial<Folder> & { id: string }>>,
     ) {
-      const folderMap = new Map(state.folders.map((r) => [r.id, r]));
+      const folderMap = new Map(state.folders.map((f) => [f.id, f]));
       for (const update of action.payload) {
         if (folderMap.has(update.id)) {
           folderMap.set(update.id, { ...folderMap.get(update.id)!, ...update });

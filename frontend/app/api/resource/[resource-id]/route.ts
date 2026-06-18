@@ -39,7 +39,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
 ) {
-  const resourceId = await (await params)["resource-id"];
+  const resourceId = (await params)["resource-id"];
   const body = await req.json();
   const { projectRoot, action } = body as {
     projectRoot: string;
@@ -51,8 +51,7 @@ export async function POST(
     case "delete": {
       // Read the resource name and resource-ref field keys before deletion.
       const sidecar = await readSidecar(projectRoot, resourceId);
-      const deletedName =
-        typeof sidecar?.["name"] === "string" ? sidecar["name"] : "";
+      const deletedName = typeof sidecar?.name === "string" ? sidecar.name : "";
 
       let resourceRefKeys: string[] = [];
       try {

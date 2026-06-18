@@ -80,12 +80,12 @@ function collectText(node: Record<string, unknown>): string {
 export default function DiffViewController() {
   const dispatch = useAppDispatch();
 
-  const project = useAppSelector(
-    (state) => state.projects.projects[state.projects.selectedProjectId ?? ""],
-    shallowEqual,
+  const projectRootPath = useAppSelector(
+    (state) =>
+      state.projects.projects[state.projects.selectedProjectId ?? ""]?.rootPath,
   );
-  const selectedResource = useAppSelector(
-    (state) => selectResource(state.resources),
+  const selectedResourceId = useAppSelector(
+    (state) => selectResource(state.resources)?.id,
     shallowEqual,
   );
 
@@ -106,8 +106,8 @@ export default function DiffViewController() {
   const pendingFetchPurpose = useRef<"canonical" | "selected" | null>(null);
 
   const canInteract = useMemo(
-    () => !!project?.rootPath && !!selectedResource?.id,
-    [project?.rootPath, selectedResource?.id],
+    () => !!projectRootPath && !!selectedResourceId,
+    [projectRootPath, selectedResourceId],
   );
 
   // Reset all local state when the selected resource changes.
@@ -116,15 +116,15 @@ export default function DiffViewController() {
     setCanonicalRevisionId(null);
     setSelectedRevisionId(null);
     pendingFetchPurpose.current = null;
-  }, [selectedResource?.id]);
+  }, [selectedResourceId]);
 
   // Load revisions whenever the selected resource or project changes.
   useEffect(() => {
-    if (!canInteract || !selectedResource?.id) return;
+    if (!canInteract || !selectedResourceId) return;
     void dispatch(
-      loadRevisionsForSelectedResource({ resourceId: selectedResource.id }),
+      loadRevisionsForSelectedResource({ resourceId: selectedResourceId }),
     );
-  }, [canInteract, dispatch, project?.rootPath, selectedResource?.id]);
+  }, [canInteract, dispatch, projectRootPath, selectedResourceId]);
 
   // Once revisions are loaded, fetch the canonical revision content. Re-fetch
   // when the canonical revision changes (e.g. the user promoted a new revision
@@ -135,7 +135,7 @@ export default function DiffViewController() {
   );
 
   useEffect(() => {
-    if (!canInteract || !selectedResource?.id) return;
+    if (!canInteract || !selectedResourceId) return;
     if (!currentCanonicalId) return;
     if (
       canonicalRevisionId === currentCanonicalId &&
@@ -157,7 +157,7 @@ export default function DiffViewController() {
     pendingFetchPurpose.current = "canonical";
     void dispatch(
       fetchRevisionContentForSelectedResource({
-        resourceId: selectedResource.id,
+        resourceId: selectedResourceId,
         revisionId: currentCanonicalId,
       }),
     );
@@ -166,7 +166,7 @@ export default function DiffViewController() {
     currentCanonicalId,
     canonicalRevisionId,
     canonicalContent,
-    selectedResource?.id,
+    selectedResourceId,
     dispatch,
   ]);
 
@@ -192,17 +192,17 @@ export default function DiffViewController() {
 
   const handleSelectRevision = useCallback(
     (revisionId: string) => {
-      if (!selectedResource?.id) return;
+      if (!selectedResourceId) return;
       setSelectedRevisionId(revisionId);
       pendingFetchPurpose.current = "selected";
       void dispatch(
         fetchRevisionContentForSelectedResource({
-          resourceId: selectedResource.id,
+          resourceId: selectedResourceId,
           revisionId,
         }),
       );
     },
-    [dispatch, selectedResource?.id],
+    [dispatch, selectedResourceId],
   );
 
   const canonicalPlain = canonicalContent

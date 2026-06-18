@@ -142,6 +142,31 @@ export interface ProjectTypeSpec {
   wordCountGoal?: number;
 }
 
+/** Load and validate a project-type spec from a file path or an inline object. */
+async function loadSpec(
+  spec: ProjectTypeSpec | string,
+): Promise<ProjectTypeSpec> {
+  if (typeof spec === "string") {
+    const res = await validateProjectTypeFile(spec);
+    if (!res.success || !("value" in res))
+      throw new Error(
+        `Invalid project-type spec file: ${JSON.stringify(res.errors)}`,
+      );
+    if (!res.value)
+      throw new Error("Invalid project-type spec file: missing value");
+    return res.value;
+  }
+
+  const res = validateProjectType(spec);
+  if (!res.success || !("value" in res))
+    throw new Error(
+      `Invalid project-type spec object: ${JSON.stringify(res.errors)}`,
+    );
+  if (!res.value)
+    throw new Error("Invalid project-type spec object: missing value");
+  return res.value;
+}
+
 /**
  * Create a new project on disk from a project-type spec object or JSON file
  * path.
@@ -174,11 +199,8 @@ export interface ProjectTypeSpec {
  * });
  */
 export async function createProjectFromType(options: {
-  /** Root path where the project will be created. */
   projectRoot: string;
-  /** Project-type specification, either as an object or a path to a JSON file. */
   spec: ProjectTypeSpec | string;
-  /** Optional name for the project; if not provided, will use the name from the spec. */
   name?: string;
 }): Promise<{
   project: Project;
@@ -187,29 +209,7 @@ export async function createProjectFromType(options: {
 }> {
   const { projectRoot, spec, name } = options;
 
-  // Load and validate spec (file path or object)
-  /** The spec for this project */
-  let specObj: ProjectTypeSpec;
-  if (typeof spec === "string") {
-    const res = await validateProjectTypeFile(spec);
-
-    if (!res.success || !("value" in res))
-      throw new Error(
-        `Invalid project-type spec file: ${JSON.stringify(res.errors)}`,
-      );
-    if (!res.value)
-      throw new Error("Invalid project-type spec file: missing value");
-    specObj = res.value;
-  } else {
-    const res = validateProjectType(spec);
-    if (!res.success || !("value" in res))
-      throw new Error(
-        `Invalid project-type spec object: ${JSON.stringify(res.errors)}`,
-      );
-    if (!res.value)
-      throw new Error("Invalid project-type spec object: missing value");
-    specObj = res.value;
-  }
+  const specObj = await loadSpec(spec);
 
   // Ensure project root exists
   await fs.mkdir(projectRoot, { recursive: true });
@@ -239,20 +239,18 @@ export async function createProjectFromType(options: {
   // than collapsing to the bare slug at the top level.
   const folderRelPaths = new Map<string, string>();
 
-  for (let i = 0; i < specObj.folders.length; i += 1) {
-    const f = specObj.folders[i];
+  for (const [orderIndex, f] of specObj.folders.entries()) {
     const id = generateUUID();
     const slug = slugify(String(f.name));
     const dir = path.join(foldersDir, slug);
     await fs.mkdir(dir, { recursive: true });
-    const now = new Date().toISOString();
     const folderObj: Folder = {
       id,
       slug,
       name: f.name,
       parentId: null,
-      orderIndex: i,
-      createdAt: now,
+      orderIndex,
+      createdAt: new Date().toISOString(),
       type: "folder",
       special: f.special,
       metadataSource: f.metadataSource ?? { isMetadataSource: false },
@@ -285,14 +283,13 @@ export async function createProjectFromType(options: {
     const relPath = `${parentRelPath}/${subSlug}`;
     const subDir = path.join(foldersDir, relPath);
     await fs.mkdir(subDir, { recursive: true });
-    const now = new Date().toISOString();
     const subFolder: Folder = {
       id: subId,
       slug: subSlug,
       name: sf.name,
       parentId: parentFolder.id,
       orderIndex,
-      createdAt: now,
+      createdAt: new Date().toISOString(),
       type: "folder",
       special: sf.special,
       metadataSource: sf.metadataSource ?? { isMetadataSource: false },
@@ -311,10 +308,9 @@ export async function createProjectFromType(options: {
   const resourcesDir = path.join(projectRoot, "resources");
   await fs.mkdir(resourcesDir, { recursive: true });
 
-  for (let j = 0; j < (specObj.defaultResources ?? []).length; j += 1) {
-    const r = specObj.defaultResources![j];
+  for (const [orderIndex, r] of (specObj.defaultResources ?? []).entries()) {
     const folderSlug = r.folder ? slugify(String(r.folder)) : folders[0].slug;
-    const folder = folders.find((ff) => ff.slug === folderSlug) ?? folders[0];
+    const folder = folders.find((f) => f.slug === folderSlug) ?? folders[0];
 
     // For MVP, only support text resource templates
     if (r.type === "text") {
@@ -324,7 +320,7 @@ export async function createProjectFromType(options: {
         type: "text",
         folderId: folder.id,
         text: { plainText: r.template ?? "" },
-        orderIndex: j,
+        orderIndex,
       });
       const seededTextResource = typedResource as TextResource;
 
@@ -343,4 +339,5 @@ export async function createProjectFromType(options: {
   return { project, folders, resources };
 }
 
-export default { createProjectFromType };
+const projectCreator = { createProjectFromType };
+export default projectCreator;

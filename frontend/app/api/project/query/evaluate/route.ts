@@ -41,8 +41,8 @@ import type {
   MetadataValue,
   ProjectConfig,
   Project,
+  TextResource,
 } from "../../../../../src/lib/models/types";
-import type { TextResource } from "../../../../../src/lib/models/types";
 
 // ─── Request / response shapes ────────────────────────────────────────────────
 
@@ -62,6 +62,21 @@ interface ErrorResponse {
 
 // ─── Core logic (exported for unit testing) ───────────────────────────────────
 
+function str(v: MetadataValue): string | undefined {
+  return typeof v === "string" ? v : undefined;
+}
+
+function num(v: MetadataValue): number | undefined {
+  return typeof v === "number" ? v : undefined;
+}
+
+function stringArray(v: MetadataValue): string[] | undefined {
+  return Array.isArray(v) &&
+    (v as unknown[]).every((s) => typeof s === "string")
+    ? (v as string[])
+    : undefined;
+}
+
 /**
  * Build a ResourceBase from raw sidecar data, extracting typed system fields.
  * Fields not present in sidecar fall back to safe defaults.
@@ -72,31 +87,71 @@ function sidecarToResourceBase(
 ): ResourceBase {
   const base: ResourceBase = {
     id,
-    slug: typeof sidecar.slug === "string" ? sidecar.slug : id,
-    name: typeof sidecar.name === "string" ? sidecar.name : "",
-    type: (typeof sidecar.type === "string"
-      ? sidecar.type
-      : "text") as ResourceType,
-    folderId: typeof sidecar.folderId === "string" ? sidecar.folderId : null,
-    orderIndex: typeof sidecar.orderIndex === "number" ? sidecar.orderIndex : 0,
-    createdAt:
-      typeof sidecar.createdAt === "string"
-        ? sidecar.createdAt
-        : new Date(0).toISOString(),
-    updatedAt:
-      typeof sidecar.updatedAt === "string" ? sidecar.updatedAt : undefined,
-    statuses:
-      Array.isArray(sidecar.statuses) &&
-      (sidecar.statuses as unknown[]).every((s) => typeof s === "string")
-        ? (sidecar.statuses as string[])
-        : undefined,
+    slug: str(sidecar.slug) ?? id,
+    name: str(sidecar.name) ?? "",
+    type: (str(sidecar.type) ?? "text") as ResourceType,
+    folderId: str(sidecar.folderId) ?? null,
+    orderIndex: num(sidecar.orderIndex) ?? 0,
+    createdAt: str(sidecar.createdAt) ?? new Date(0).toISOString(),
+    updatedAt: str(sidecar.updatedAt),
+    statuses: stringArray(sidecar.statuses),
   };
 
-  if (base.type === "text" && typeof sidecar.wordCount === "number") {
-    (base as TextResource).wordCount = sidecar.wordCount;
+  if (base.type === "text" && num(sidecar.wordCount) !== undefined) {
+    (base as TextResource).wordCount = num(sidecar.wordCount)!;
   }
 
   return base;
+}
+
+async function loadProjectConfig(projectRoot: string): Promise<ProjectConfig> {
+  try {
+    const raw = await fs.readFile(
+      path.join(projectRoot, PROJECT_FILENAME),
+      "utf8",
+    );
+    const project = JSON.parse(raw) as Project;
+    return project.config ?? { editorConfig: {} };
+  } catch {
+    // proceed with empty config
+    return { editorConfig: {} };
+  }
+}
+
+function flattenUserMetadata(
+  rawSidecar: Record<string, MetadataValue>,
+): Record<string, MetadataValue> {
+  // User metadata fields are nested under userMetadata in the JSON.
+  // Flatten them into the top level so the evaluator can look them up by key.
+  const userMeta = rawSidecar.userMetadata;
+  return userMeta !== null &&
+    typeof userMeta === "object" &&
+    !Array.isArray(userMeta)
+    ? { ...rawSidecar, ...(userMeta as Record<string, MetadataValue>) }
+    : rawSidecar;
+}
+
+async function deriveTextCounts(
+  projectRoot: string,
+  id: string,
+  resource: ResourceBase,
+): Promise<void> {
+  // content.txt is the source of truth for word/char counts. The sidecar's
+  // cached wordCount can be missing or stale — a content-only save via
+  // POST /resource/<id>/content rewrites content.txt without touching the
+  // sidecar — so derive the counts here rather than trusting the sidecar.
+  // Otherwise wordCount / charCount predicates silently match nothing.
+  try {
+    const plain = await fs.readFile(
+      path.join(projectRoot, "resources", id, "content.txt"),
+      "utf8",
+    );
+    (resource as TextResource).wordCount = countWords(plain);
+    (resource as TextResource).charCount = plain.length;
+  } catch {
+    // No readable content.txt (e.g. a brand-new stub) — fall back to the
+    // sidecar-derived value from sidecarToResourceBase.
+  }
 }
 
 /**
@@ -106,21 +161,11 @@ function sidecarToResourceBase(
 async function loadEvaluationInput(
   projectRoot: string,
 ): Promise<EvaluationInput> {
-  // Load project config
-  let config: ProjectConfig = { editorConfig: {} };
-  try {
-    const raw = await fs.readFile(
-      path.join(projectRoot, PROJECT_FILENAME),
-      "utf8",
-    );
-    const project = JSON.parse(raw) as Project;
-    if (project.config) config = project.config;
-  } catch {
-    // proceed with empty config
-  }
-
-  const backlinks = await loadBacklinks(projectRoot);
-  const resourceIds = await listResourceIds(projectRoot);
+  const [config, backlinks, resourceIds] = await Promise.all([
+    loadProjectConfig(projectRoot),
+    loadBacklinks(projectRoot),
+    listResourceIds(projectRoot),
+  ]);
 
   const resources: ResourceBase[] = [];
   const sidecars: Record<string, Record<string, MetadataValue>> = {};
@@ -128,35 +173,12 @@ async function loadEvaluationInput(
   for (const id of resourceIds) {
     const rawSidecar = await readSidecar(projectRoot, id);
     if (!rawSidecar) continue;
-    // User metadata fields are nested under userMetadata in the JSON.
-    // Flatten them into the top level so the evaluator can look them up by key.
-    const userMeta = rawSidecar.userMetadata;
-    const sidecar =
-      userMeta !== null &&
-      typeof userMeta === "object" &&
-      !Array.isArray(userMeta)
-        ? { ...rawSidecar, ...(userMeta as Record<string, MetadataValue>) }
-        : rawSidecar;
-    sidecars[id] = sidecar;
+
+    sidecars[id] = flattenUserMetadata(rawSidecar);
 
     const resource = sidecarToResourceBase(id, rawSidecar);
-    // content.txt is the source of truth for word/char counts. The sidecar's
-    // cached wordCount can be missing or stale — a content-only save via
-    // POST /resource/<id>/content rewrites content.txt without touching the
-    // sidecar — so derive the counts here rather than trusting the sidecar.
-    // Otherwise wordCount / charCount predicates silently match nothing.
     if (resource.type === "text") {
-      try {
-        const plain = await fs.readFile(
-          path.join(projectRoot, "resources", id, "content.txt"),
-          "utf8",
-        );
-        (resource as TextResource).wordCount = countWords(plain);
-        (resource as TextResource).charCount = plain.length;
-      } catch {
-        // No readable content.txt (e.g. a brand-new stub) — fall back to the
-        // sidecar-derived value from sidecarToResourceBase.
-      }
+      await deriveTextCounts(projectRoot, id, resource);
     }
     resources.push(resource);
   }

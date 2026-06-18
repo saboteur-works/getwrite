@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-import LabeledField from "./LabeledField";
 import useSyncedControlledValue from "./useSyncedControlledValue";
 
 export interface BooleanToggleProps {
@@ -34,7 +32,7 @@ export default function BooleanToggle({
   className = "",
   ariaLabel = "boolean-toggle",
 }: BooleanToggleProps): JSX.Element {
-  const [checked, setChecked] = useSyncedControlledValue(
+  const [isChecked, setIsChecked] = useSyncedControlledValue(
     value ?? false,
     onChange,
   );
@@ -45,8 +43,8 @@ export default function BooleanToggle({
         type="checkbox"
         aria-label={ariaLabel}
         className="w-4 h-4"
-        checked={checked}
-        onChange={(e) => setChecked(e.target.checked)}
+        checked={isChecked}
+        onChange={(e) => setIsChecked(e.target.checked)}
       />
       <label className="text-sm font-medium cursor-pointer">{label}</label>
     </div>

@@ -31,8 +31,7 @@ export const BODY_FIELD_DEFINITIONS: EditorBodyFieldDefinition[] = [
 ];
 
 function normalizeBodyValue(value: string | undefined): string | undefined {
-  const trimmed = value?.trim();
-  return trimmed || undefined;
+  return value?.trim() || undefined;
 }
 
 export function sanitizeEditorBody(
@@ -41,15 +40,11 @@ export function sanitizeEditorBody(
   if (!body) return undefined;
 
   const sanitized: EditorBodyConfig = {};
-  const fontFamily = normalizeBodyValue(body.fontFamily);
-  const fontSize = normalizeBodyValue(body.fontSize);
-  const lineHeight = normalizeBodyValue(body.lineHeight);
-  const paragraphSpacing = normalizeBodyValue(body.paragraphSpacing);
 
-  if (fontFamily) sanitized.fontFamily = fontFamily;
-  if (fontSize) sanitized.fontSize = fontSize;
-  if (lineHeight) sanitized.lineHeight = lineHeight;
-  if (paragraphSpacing) sanitized.paragraphSpacing = paragraphSpacing;
+  for (const key of Object.keys(body) as (keyof EditorBodyConfig)[]) {
+    const value = normalizeBodyValue(body[key]);
+    if (value) sanitized[key] = value;
+  }
 
   return Object.keys(sanitized).length > 0 ? sanitized : undefined;
 }

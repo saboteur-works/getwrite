@@ -33,7 +33,7 @@ export default function SmartFolders({
 }: SmartFoldersProps): JSX.Element | null {
   const queries = useAppSelector(selectSavedQueriesList);
   const isLoading = useAppSelector(selectIsLoadingQueries);
-  const [collapsed, setCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   if (!isLoading && queries.length === 0 && !onNewQuery) return null;
 
@@ -44,11 +44,11 @@ export default function SmartFolders({
         <button
           type="button"
           className="flex flex-1 items-center gap-1 px-0 py-1 text-left"
-          onClick={() => setCollapsed((c) => !c)}
-          aria-expanded={!collapsed}
+          onClick={() => setIsCollapsed((c) => !c)}
+          aria-expanded={!isCollapsed}
         >
           <span className="w-5 flex-shrink-0 text-gw-secondary">
-            {collapsed ? (
+            {isCollapsed ? (
               <ChevronRight className="w-3 h-3" />
             ) : (
               <ChevronDown className="w-3 h-3" />
@@ -72,7 +72,7 @@ export default function SmartFolders({
       </div>
 
       {/* Query rows */}
-      {!collapsed && (
+      {!isCollapsed && (
         <div>
           {isLoading ? (
             <div className="px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-gw-dim">

@@ -49,16 +49,16 @@ export function resolveRevisionRequestContext(
 }
 
 function getApiErrorMessage(errorBody: unknown, fallback: string): string {
-  if (
-    errorBody &&
-    typeof errorBody === "object" &&
-    "error" in errorBody &&
-    typeof (errorBody as { error?: unknown }).error === "string"
-  ) {
-    return (errorBody as { error: string }).error;
-  }
+  const msg = (errorBody as Record<string, unknown>)?.error;
+  return typeof msg === "string" ? msg : fallback;
+}
 
-  return fallback;
+async function throwApiError(
+  response: Response,
+  fallback: string,
+): Promise<never> {
+  const errorBody = await response.json().catch(() => ({}));
+  throw new Error(getApiErrorMessage(errorBody, fallback));
 }
 
 /**
@@ -76,10 +76,7 @@ export async function fetchRevisionList(
     }),
   });
 
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(getApiErrorMessage(errorBody, "Unable to load revisions."));
-  }
+  if (!response.ok) await throwApiError(response, "Unable to load revisions.");
 
   return (await response.json()) as ProjectResourcesResponse;
 }
@@ -101,10 +98,7 @@ export async function createRevision(
     }),
   });
 
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(getApiErrorMessage(errorBody, "Failed to save revision."));
-  }
+  if (!response.ok) await throwApiError(response, "Failed to save revision.");
 
   return (await response.json()) as Revision;
 }
@@ -122,12 +116,7 @@ export async function removeRevision(
     body: JSON.stringify({ projectPath: context.projectPath, revisionId }),
   });
 
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(
-      getApiErrorMessage(errorBody, "Failed to delete revision."),
-    );
-  }
+  if (!response.ok) await throwApiError(response, "Failed to delete revision.");
 }
 
 /**
@@ -143,13 +132,10 @@ export async function fetchRevisionContent(
   });
 
   const response = await fetch(
-    `/api/resource/revision/${context.resourceId}?${params.toString()}`,
+    `/api/resource/revision/${context.resourceId}?${params}`,
   );
 
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(getApiErrorMessage(errorBody, "Failed to fetch revision."));
-  }
+  if (!response.ok) await throwApiError(response, "Failed to fetch revision.");
 
   return (await response.json()) as RevisionContentResponse;
 }
@@ -167,10 +153,6 @@ export async function persistCanonicalRevision(
     body: JSON.stringify({ projectPath: context.projectPath, revisionId }),
   });
 
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(
-      getApiErrorMessage(errorBody, "Failed to set canonical revision."),
-    );
-  }
+  if (!response.ok)
+    await throwApiError(response, "Failed to set canonical revision.");
 }

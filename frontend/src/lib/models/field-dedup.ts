@@ -1,4 +1,4 @@
-import type { MetadataSchema, MetadataField, MetadataGroup } from "./types";
+import type { MetadataSchema, MetadataField } from "./types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,8 +46,8 @@ export function slugifyName(name: string): string {
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 function allMatches(schema: MetadataSchema): FieldMatch[] {
-  return schema.groups.flatMap((group: MetadataGroup) =>
-    group.fields.map((field: MetadataField) => ({
+  return schema.groups.flatMap((group) =>
+    group.fields.map((field) => ({
       field,
       groupId: group.id,
       groupLabel: group.label,
@@ -81,8 +81,8 @@ export function findExisting(
 function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
-  const prev = Array.from({ length: n + 1 }, (_, j) => j);
-  const curr = new Array<number>(n + 1);
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  let curr = new Array<number>(n + 1);
   for (let i = 1; i <= m; i++) {
     curr[0] = i;
     for (let j = 1; j <= n; j++) {
@@ -91,7 +91,7 @@ function levenshtein(a: string, b: string): number {
           ? prev[j - 1]
           : 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
     }
-    prev.splice(0, n + 1, ...curr);
+    [prev, curr] = [curr, prev];
   }
   return prev[n];
 }

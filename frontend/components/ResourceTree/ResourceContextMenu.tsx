@@ -1,4 +1,4 @@
-import React from "react";
+import type { ReactNode } from "react";
 import {
   Plus,
   Copy,
@@ -35,7 +35,7 @@ export interface ResourceContextMenuProps {
   onClose?: () => void;
   onAction?: (action: ResourceContextAction, resourceId?: string) => void;
   className?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export default function ResourceContextMenu({
