@@ -1,6 +1,15 @@
 # GetWrite
 
-GetWrite is a local-first writing workspace focused on structured projects, resource templates, and reproducible project scaffolding. There is no database — your projects live as plain files and folders on your own machine. This monorepo contains the frontend app, CLI tooling, specs, and documentation used to develop, test, and extend GetWrite.
+GetWrite is a local-first writing workspace for structured, long-form projects — novels, serials, articles, game docs, and more. There is no database and no cloud: every project, resource, and piece of metadata is a plain file or folder on your own machine, so your work stays inspectable, backup-friendly, and yours.
+
+## Highlights
+
+- **Local-first, no database.** Projects persist as JSON and directory trees under `projects/` — no server, no account, no lock-in. The filesystem _is_ the data model.
+- **Structured projects.** Reproducible scaffolding from project-type specs (novel, article, serial, poetry, game documentation, …), each with its own folder layout, metadata fields, and resource templates.
+- **Metadata & smart folders.** Per-resource sidecar metadata, a typed query language, and saved queries rendered as smart folders in the resource tree.
+- **Revisions built in.** Every resource keeps a versioned snapshot history with a single canonical revision the editor autosaves to.
+- **Backlinks & search.** A materialized inverted index and backlinks graph computed on save, powering cross-resource search and reference previews.
+- **Desktop app.** Ships as a signed-soon Electron desktop build that bundles the Next.js server — see [why desktop, not web](docs/user/installing.md#why-desktop-not-web).
 
 ## Install (desktop app)
 
