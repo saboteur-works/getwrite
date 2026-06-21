@@ -67,7 +67,10 @@ short bash loop; see the project chat history for the exact script.
 - `seed.mjs` — builds the demo project via the app API, then reindexes:
   chapters/characters with wiki-links, status + POV + **custom Arc & Tension
   fields**, and two saved smart-folder queries (one simple, one complex
-  multi-condition). Creates a *new* project each run — delete the old one first.
+  multi-condition). It also enables the built-in **POV & Synopsis** feature
+  toggles (`POST /api/project/features`) — since #128 those fields are opt-in
+  per project (absent flag = disabled), so without this the metadata sidebar
+  would hide them. Creates a *new* project each run — delete the old one first.
 - `screens.spec.ts` — captures caption-free stills for the montage.
 - `demo.spec.ts` — the paced walkthrough; injects an on-screen caption banner.
 - `playwright.demo.config.ts` — drives :3000 (not Storybook), video on, 1440×900.

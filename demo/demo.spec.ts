@@ -139,6 +139,7 @@ test("getwrite demo walkthrough", async ({ page }) => {
 
   // ── 3. Open a chapter — the editor ───────────────────────────────────────────
   await expandFolder(page, "Workspace");
+  await expandFolder(page, "Chapters");
   await page
     .getByRole("treeitem", { name: "Chapter One — The Light", exact: true })
     .click();
@@ -201,6 +202,7 @@ test("getwrite demo walkthrough", async ({ page }) => {
 
   // ── 6. Wiki-links + backlinks ────────────────────────────────────────────────
   await expandFolder(page, "Story Elements");
+  await expandFolder(page, "Characters");
   await page.getByRole("treeitem", { name: "Mara Vance", exact: true }).click();
   await expect(
     page
