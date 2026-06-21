@@ -32,6 +32,7 @@ test("capture demo screenshots", async ({ page }) => {
   await page.getByRole("button", { name: `Open ${PROJECT}` }).click();
   await expect(page.getByRole("tab", { name: "Edit" })).toBeVisible();
   await expandFolder(page, "Workspace");
+  await expandFolder(page, "Chapters");
   await page
     .getByRole("treeitem", { name: "Chapter One — The Light", exact: true })
     .click();
@@ -56,6 +57,7 @@ test("capture demo screenshots", async ({ page }) => {
   await page.screenshot({ path: `${DIR}/03-metadata.png` });
 
   await expandFolder(page, "Story Elements");
+  await expandFolder(page, "Characters");
   await page.getByRole("treeitem", { name: "Mara Vance", exact: true }).click();
   await expect(
     page

@@ -9,6 +9,8 @@
 // Prints the created project's id + rootPath (used by the Playwright walkthrough).
 
 import { randomUUID } from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 const BASE = process.env.GW_BASE ?? "http://localhost:3000";
 
@@ -52,7 +54,24 @@ async function createTextResource(projectPath, { name, folderId, orderIndex }) {
 }
 
 async function setContent(projectPath, resourceId, document) {
-  await api(`/api/resource/${resourceId}/content`, { projectPath, doc: document });
+  // Content now writes through the canonical revision — the old
+  // POST /api/resource/:id/content route was removed in the "single writer for
+  // resource content" refactor. Look up the resource's canonical revision, then
+  // PATCH the serialized TipTap doc in place; the route re-derives content.txt +
+  // content.tiptap.json from it.
+  const { revisions } = await api(
+    "/api/project-resources",
+    { projectPath, resourceId },
+  );
+  const canonical = revisions?.find((r) => r.isCanonical) ?? revisions?.[0];
+  if (!canonical) {
+    throw new Error(`No canonical revision for resource ${resourceId}`);
+  }
+  await api(
+    `/api/resource/revision/${resourceId}`,
+    { projectPath, revisionId: canonical.id, content: JSON.stringify(document) },
+    "PATCH",
+  );
 }
 
 async function setMeta(projectPath, resource, userMetadata) {
@@ -69,6 +88,58 @@ async function addField(projectPath, field, groupId = "builtin-document") {
   await api("/api/project/metadata-schema", { action: "add-field", projectPath, groupId, field });
 }
 
+async function setFeatures(projectPath, features) {
+  await api("/api/project/features", { projectPath, features });
+}
+
+async function deleteResource(projectPath, resourceId) {
+  await api(`/api/resource/${resourceId}/delete`, { projectRoot: projectPath });
+}
+
+// Recursively locate a folder's on-disk directory by descriptor id (folders are
+// persisted as nested `folders/**/folder.json`). Returns null if not found.
+async function findFolderDir(foldersRoot, folderId) {
+  const entries = await fs.readdir(foldersRoot, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const dir = path.join(foldersRoot, entry.name);
+    try {
+      const descriptor = JSON.parse(await fs.readFile(path.join(dir, "folder.json"), "utf-8"));
+      if (descriptor.id === folderId) return dir;
+    } catch {
+      // no/invalid folder.json — keep descending
+    }
+    const nested = await findFolderDir(dir, folderId);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+// Soft-delete a template starter folder by name along with everything in it,
+// then drop the now-empty folder directory. The demo supplies its own named
+// content, so these scaffolded placeholders are just clutter. There is no
+// folder-delete API, so the directory is removed directly off disk; folders are
+// read back by walking this tree on load, so the removal is authoritative.
+// Used for the "Chapter 1" starter folder (holds an empty "Scene 1" stub) and
+// the unused "Items" Story Element folder (holds an "Item Profile" stub).
+async function removeStarterFolder(projectPath, folders, resources, folderName) {
+  const folder = folders.find((f) => f.name === folderName);
+  if (!folder) return;
+  for (const resource of resources.filter((r) => r.folderId === folder.id)) {
+    await deleteResource(projectPath, resource.id);
+  }
+  const dir = await findFolderDir(path.join(projectPath, "folders"), folder.id);
+  if (dir) await fs.rm(dir, { recursive: true, force: true });
+}
+
+// Soft-delete a template starter stub resource by name. Used for the
+// "Character/Location Profile" placeholders the novel type scaffolds into the
+// Characters/Locations folders, which the demo fills with its own profiles.
+async function removeStarterResource(projectPath, resources, name) {
+  const resource = resources.find((r) => r.name === name);
+  if (resource) await deleteResource(projectPath, resource.id);
+}
+
 async function main() {
   console.log("Creating project…");
   const created = await api("/api/projects", {
@@ -79,6 +150,14 @@ async function main() {
   const projectPath = project.rootPath;
   console.log("  id:", project.id);
   console.log("  rootPath:", projectPath);
+
+  // ── Built-in feature toggles ───────────────────────────────────────────────
+  // Since #128 the built-in POV/Synopsis/Notes/Timeline fields are opt-in per
+  // project (absent flag = disabled), so the metadata sidebar would hide them by
+  // default. The demo's metadata beat shows Status, POV, and Synopsis, so enable
+  // those explicitly rather than relying on the load-time sidecar-scan migration.
+  console.log("Enabling built-in metadata features (POV, Synopsis)…");
+  await setFeatures(projectPath, { pov: true, synopsis: true });
 
   // ── Custom metadata fields (so "define your own fields, then query them" is
   //    literally true in the demo) ─────────────────────────────────────────────
@@ -97,13 +176,27 @@ async function main() {
     return f.id;
   };
 
-  const workspace = folderId("Workspace");
-  const storyElements = folderId("Story Elements");
+  // The novel project type nests a "Chapters" folder under Workspace; chapters
+  // belong there, not loose at the Workspace level.
+  const chapters = folderId("Chapters");
+  // Story Elements nests Characters / Items / Locations sub-folders; profiles
+  // belong in those, not loose at the Story Elements level.
+  const characters = folderId("Characters");
+  const locations = folderId("Locations");
   const outline = folderId("Outline");
   const notes = folderId("Notes");
 
-  // ── Chapters (Workspace) — prose with [[wikilinks]] for backlinks ──────────
-  const ch1 = await createTextResource(projectPath, { name: "Chapter One — The Light", folderId: workspace, orderIndex: 0 });
+  // Drop the template's starter clutter so it doesn't sit beside the demo's real
+  // content: the empty "Chapter 1" folder, the unused "Items" Story Element
+  // folder, and the "Character/Location Profile" stubs inside the folders we keep.
+  console.log("Removing template starter folders & stub resources…");
+  await removeStarterFolder(projectPath, created.folders, created.resources, "Chapter 1");
+  await removeStarterFolder(projectPath, created.folders, created.resources, "Items");
+  await removeStarterResource(projectPath, created.resources, "Character Profile");
+  await removeStarterResource(projectPath, created.resources, "Location Profile");
+
+  // ── Chapters (Workspace ▸ Chapters) — prose with [[wikilinks]] for backlinks ──
+  const ch1 = await createTextResource(projectPath, { name: "Chapter One — The Light", folderId: chapters, orderIndex: 0 });
   await setContent(projectPath, ch1.id, doc(
     h(1, "Chapter One — The Light"),
     p("[[Mara Vance]] climbed the hundred and twelve steps the way she always had — counting, breath even, one hand trailing the cold iron rail. At the top, the [[Lamp Room]] waited, its great lens turning slow as a thought."),
@@ -112,7 +205,7 @@ async function main() {
   ));
   await setMeta(projectPath, ch1, { status: "Revised", arc: "Setup", tension: 4, synopsis: "Mara takes the night watch and reckons with the keeper's last instruction.", pov: { id: null, name: "Mara Vance" } });
 
-  const ch2 = await createTextResource(projectPath, { name: "Chapter Two — Salt and Static", folderId: workspace, orderIndex: 1 });
+  const ch2 = await createTextResource(projectPath, { name: "Chapter Two — Salt and Static", folderId: chapters, orderIndex: 1 });
   await setContent(projectPath, ch2.id, doc(
     h(1, "Chapter Two — Salt and Static"),
     p("The radio coughed to life a little after midnight. [[Elias Crane]] again, calling from the mainland station, his voice furred with distance and salt."),
@@ -121,7 +214,7 @@ async function main() {
   ));
   await setMeta(projectPath, ch2, { status: "Draft", arc: "Confrontation", tension: 8, synopsis: "Elias urges Mara to abandon the light before the season's third storm.", pov: { id: null, name: "Mara Vance" } });
 
-  const ch3 = await createTextResource(projectPath, { name: "Chapter Three — The Keeper's Log", folderId: workspace, orderIndex: 2 });
+  const ch3 = await createTextResource(projectPath, { name: "Chapter Three — The Keeper's Log", folderId: chapters, orderIndex: 2 });
   await setContent(projectPath, ch3.id, doc(
     h(1, "Chapter Three — The Keeper's Log"),
     p("Every entry in the keeper's log began with the weather and ended with a lie. [[Mara Vance]] had read them all twice, looking for the seam where the old keeper's hand had started to shake."),
@@ -129,8 +222,8 @@ async function main() {
   ));
   await setMeta(projectPath, ch3, { status: "Draft", arc: "Confrontation", tension: 7, synopsis: "Mara discovers the gap in the old keeper's record.", pov: { id: null, name: "Mara Vance" } });
 
-  // ── Story Elements — characters & a location, cross-linked ─────────────────
-  const mara = await createTextResource(projectPath, { name: "Mara Vance", folderId: storyElements, orderIndex: 0 });
+  // ── Story Elements ▸ Characters / Locations — cross-linked ─────────────────
+  const mara = await createTextResource(projectPath, { name: "Mara Vance", folderId: characters, orderIndex: 0 });
   await setContent(projectPath, mara.id, doc(
     h(1, "Mara Vance"),
     h(2, "Role"),
@@ -140,7 +233,7 @@ async function main() {
   ));
   await setMeta(projectPath, mara, { status: "Polished", synopsis: "Protagonist. Keeper of the light." });
 
-  const elias = await createTextResource(projectPath, { name: "Elias Crane", folderId: storyElements, orderIndex: 1 });
+  const elias = await createTextResource(projectPath, { name: "Elias Crane", folderId: characters, orderIndex: 1 });
   await setContent(projectPath, elias.id, doc(
     h(1, "Elias Crane"),
     h(2, "Role"),
@@ -148,7 +241,7 @@ async function main() {
   ));
   await setMeta(projectPath, elias, { status: "Polished", synopsis: "Mainland operator. Mara's tether to shore." });
 
-  const lamp = await createTextResource(projectPath, { name: "Lamp Room", folderId: storyElements, orderIndex: 2 });
+  const lamp = await createTextResource(projectPath, { name: "Lamp Room", folderId: locations, orderIndex: 0 });
   await setContent(projectPath, lamp.id, doc(
     h(1, "Lamp Room"),
     p("The glass crown of the lighthouse. A first-order Fresnel lens, a brass mechanism that must be wound by hand, and a view of every way the sea can turn on you."),
