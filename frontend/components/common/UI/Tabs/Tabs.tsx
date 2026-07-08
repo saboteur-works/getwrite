@@ -137,15 +137,26 @@ export interface TabsContentProps {
   value: string;
   className?: string;
   children: React.ReactNode;
+  /**
+   * When true, keeps the panel mounted even while inactive, CSS-hiding it
+   * (via the native `hidden` attribute) instead of unmounting it. Use this
+   * to preserve in-progress state (e.g. unsaved form edits) across tab
+   * switches. Defaults to false, which preserves the original
+   * unmount-on-inactive behavior.
+   */
+  forceMount?: boolean;
 }
 
 export function TabsContent({
   value,
   className,
   children,
+  forceMount = false,
 }: TabsContentProps): JSX.Element | null {
   const { activeValue, baseId } = useTabsContext();
-  if (activeValue !== value) return null;
+  const isActive = activeValue === value;
+
+  if (!forceMount && !isActive) return null;
 
   return (
     <div
@@ -153,6 +164,7 @@ export function TabsContent({
       id={`${baseId}-panel-${value}`}
       aria-labelledby={`${baseId}-tab-${value}`}
       className={cn("tabs-content", className)}
+      hidden={forceMount && !isActive ? true : undefined}
     >
       {children}
     </div>

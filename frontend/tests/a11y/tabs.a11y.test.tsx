@@ -87,6 +87,12 @@ describe("a11y: Tabs primitive", () => {
     expect(screen.queryByText("Panel B")).toBeNull();
   });
 
+  it("default behavior: inactive panel is not in the DOM at all", () => {
+    render(<ControlledTabs defaultValue="a" />);
+    expect(screen.queryByText("Panel B")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("tabpanel")).toHaveLength(1);
+  });
+
   it("ArrowRight moves focus to next tab", () => {
     render(<ControlledTabs />);
     const tabA = screen.getByRole("tab", { name: "Tab A" });
@@ -103,5 +109,54 @@ describe("a11y: Tabs primitive", () => {
     tabB.focus();
     fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowLeft" });
     expect(document.activeElement).toBe(tabA);
+  });
+});
+
+function ForceMountTabs() {
+  const [value, setValue] = useState("a");
+  return (
+    <Tabs value={value} onValueChange={setValue}>
+      <TabsList aria-label="Force mount tabs">
+        <TabsTrigger value="a">Tab A</TabsTrigger>
+        <TabsTrigger value="b">Tab B</TabsTrigger>
+      </TabsList>
+      <TabsContent value="a" forceMount>
+        <label htmlFor="input-a">Input A</label>
+        <input id="input-a" defaultValue="" />
+      </TabsContent>
+      <TabsContent value="b" forceMount>
+        Panel B
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+describe("a11y: Tabs primitive with forceMount", () => {
+  it("keeps an inactive forceMount panel in the DOM but hides it via the hidden attribute", () => {
+    render(<ForceMountTabs />);
+    fireEvent.click(screen.getByRole("tab", { name: "Tab B" }));
+
+    const panels = screen.getAllByRole("tabpanel", { hidden: true });
+    expect(panels).toHaveLength(2);
+
+    const panelA = screen.getByText("Input A").closest('[role="tabpanel"]');
+    const panelB = screen.getByText("Panel B");
+
+    expect(panelA).toHaveAttribute("hidden", "");
+    expect(panelB).not.toHaveAttribute("hidden");
+  });
+
+  it("does not remount a forceMount panel when switching tabs, preserving typed input state", () => {
+    render(<ForceMountTabs />);
+    const input = screen.getByLabelText("Input A") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "hello" } });
+    expect(input.value).toBe("hello");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Tab B" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Tab A" }));
+
+    const inputAfter = screen.getByLabelText("Input A") as HTMLInputElement;
+    expect(inputAfter).toBe(input);
+    expect(inputAfter.value).toBe("hello");
   });
 });
