@@ -1,8 +1,56 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { configureStore } from "@reduxjs/toolkit";
+import { Provider } from "react-redux";
 import ShellModalCoordinator from "../components/Layout/ShellModalCoordinator";
 import type { ShellModalCoordinatorProps } from "../components/Layout/ShellModalCoordinator";
+import projectReducer from "../src/store/projectsSlice";
+import resourcesReducer from "../src/store/resourcesSlice";
+import revisionsReducer from "../src/store/revisionsSlice";
+import editorConfigReducer from "../src/store/editorConfigSlice";
+import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
+import type { StoredProject } from "../src/store/projectsSlice";
+
+function makeStore() {
+  return configureStore({
+    reducer: {
+      projects: projectReducer,
+      resources: resourcesReducer,
+      revisions: revisionsReducer,
+      editorConfig: editorConfigReducer,
+    },
+    preloadedState: {
+      projects: {
+        selectedProjectId: "story-proj",
+        projects: {
+          "story-proj": {
+            id: "story-proj",
+            name: "Story Project",
+            rootPath: "/story",
+            folders: [],
+            resources: [],
+            metadataSchema: DEFAULT_METADATA_SCHEMA,
+          } as StoredProject,
+        },
+      },
+      resources: { selectedResourceId: null, resources: [], folders: [] },
+      revisions: {
+        resourceId: null,
+        requestedResourceId: null,
+        currentRevisionId: null,
+        currentRevisionContent: null,
+        revisions: [],
+        isLoading: false,
+        isSaving: false,
+        fetchingRevisionId: null,
+        deletingRevisionId: null,
+        errorMessage: "",
+      },
+      editorConfig: { headings: {} },
+    },
+  });
+}
 
 function makeDefaultProps(
   overrides: Partial<ShellModalCoordinatorProps> = {},
@@ -21,13 +69,10 @@ function makeDefaultProps(
     renameModal: { open: false },
     setRenameModal: vi.fn(),
     onRenameConfirm: vi.fn(),
-    isHeadingSettingsModalOpen: false,
-    setIsHeadingSettingsModalOpen: vi.fn(),
-    isBodySettingsModalOpen: false,
-    setIsBodySettingsModalOpen: vi.fn(),
+    isProjectSettingsOpen: false,
+    setIsProjectSettingsOpen: vi.fn(),
+    onSaveHeadingSettings: vi.fn(),
     onSaveBodySettings: vi.fn(),
-    isDefaultRevisionNameModalOpen: false,
-    setIsDefaultRevisionNameModalOpen: vi.fn(),
     initialDefaultRevisionName: "",
     onSaveDefaultRevisionName: vi.fn(),
     isPreferencesModalOpen: false,
@@ -36,10 +81,6 @@ function makeDefaultProps(
     setIsHelpModalOpen: vi.fn(),
     isProjectTypesModalOpen: false,
     setIsProjectTypesModalOpen: vi.fn(),
-    isTagsManagerOpen: false,
-    setIsTagsManagerOpen: vi.fn(),
-    isSchemaManagerOpen: false,
-    setIsSchemaManagerOpen: vi.fn(),
     isResourcePaletteOpen: false,
     setIsResourcePaletteOpen: vi.fn(),
     isProjectTypesLoading: false,
@@ -48,7 +89,6 @@ function makeDefaultProps(
     hasUnsavedEditorChanges: false,
     onDeleteConfirm: vi.fn(),
     onCloseProjectConfirm: vi.fn(),
-    onSaveHeadingSettings: vi.fn(),
     onCreateConfirmed: vi.fn(),
     onExportConfirmed: vi.fn(),
     onBuildCompilePreview: vi.fn().mockReturnValue(""),
@@ -56,6 +96,28 @@ function makeDefaultProps(
     ...overrides,
   };
 }
+
+describe("ShellModalCoordinator — project settings dialog", () => {
+  it("renders the Project Settings dialog when isProjectSettingsOpen is true", () => {
+    render(
+      <Provider store={makeStore()}>
+        <ShellModalCoordinator
+          {...makeDefaultProps({ isProjectSettingsOpen: true })}
+        />
+      </Provider>,
+    );
+    expect(screen.getByText("Project Settings")).toBeTruthy();
+  });
+
+  it("does not render the Project Settings dialog when isProjectSettingsOpen is false", () => {
+    render(
+      <ShellModalCoordinator
+        {...makeDefaultProps({ isProjectSettingsOpen: false })}
+      />,
+    );
+    expect(screen.queryByText("Project Settings")).toBeNull();
+  });
+});
 
 describe("ShellModalCoordinator — close-project confirm dialog", () => {
   it("renders the close-project dialog when isCloseProjectConfirmOpen is true", () => {
