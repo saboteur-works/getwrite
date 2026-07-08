@@ -57,6 +57,27 @@ describe("BodySettingsModal", () => {
     });
   });
 
+  it("does not close on successful save when closeOnSave is false", async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    renderInDialog(
+      <BodySettingsModal
+        onClose={onClose}
+        onSave={onSave}
+        closeOnSave={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("shows an error message when save fails", async () => {
     renderInDialog(
       <BodySettingsModal

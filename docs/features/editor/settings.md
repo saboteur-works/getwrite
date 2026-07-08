@@ -4,7 +4,7 @@ This document covers all editor settings that affect the writing surface — wha
 
 Settings fall into two categories:
 
-- **Config-controlled** — stored in `project.json` under `config.editorConfig`, editable through the Heading Settings modal or the project type template.
+- **Config-controlled** — stored in `project.json` under `config.editorConfig`, editable through the Heading Styles tab of the Project Settings dialog or the project type template.
 - **CSS-only** — defined as hard values or theme tokens in `editor.css` / `getwrite-utilities.css`. Not currently exposed as user-configurable options.
 
 ---
@@ -117,7 +117,7 @@ What it does: Sets the rendered size of the heading.
 | Recommended unit | `px` |
 | Defaults | H1: `40px`, H2: `28px`, H3: `20px` |
 | Config key | `config.editorConfig.headings.<level>.fontSize` |
-| User config | Yes — integer input in Heading Settings modal, stored as `px` |
+| User config | Yes — integer input in the Heading Styles tab, stored as `px` |
 | Project type template | Yes — `editorConfig.headings.<level>.fontSize` |
 
 ### Font Family
@@ -130,7 +130,7 @@ What it does: Sets the typeface for the heading.
 | Example values | `"IBM Plex Serif"`, `"IBM Plex Sans"` |
 | Default | `IBM Plex Serif` (all levels) |
 | Config key | `config.editorConfig.headings.<level>.fontFamily` |
-| User config | Yes — free-text input in Heading Settings modal |
+| User config | Yes — free-text input in the Heading Styles tab |
 | Project type template | Yes — `editorConfig.headings.<level>.fontFamily` |
 
 ### Font Weight
@@ -143,10 +143,10 @@ What it does: Sets the weight of the heading text.
 | Accepted values | `"400"` (Normal), `"500"` (Medium), `"700"` (Bold) |
 | Defaults | H1: `700`, H2: `700`, H3: `500` |
 | Config key | `config.editorConfig.headings.<level>.fontWeight` |
-| User config | Yes — select in Heading Settings modal (Normal / Bold) |
+| User config | Yes — select in the Heading Styles tab (Normal / Bold) |
 | Project type template | Yes — `editorConfig.headings.<level>.fontWeight` |
 
-Note: The Heading Settings modal currently offers Normal (`400`) and Bold (`700`) only. Medium (`500`) is settable via project type template or direct config edit but is not currently selectable in the UI.
+Note: The Heading Styles tab currently offers Normal (`400`) and Bold (`700`) only. Medium (`500`) is settable via project type template or direct config edit but is not currently selectable in the UI.
 
 ### Letter Spacing
 
@@ -159,7 +159,7 @@ What it does: Sets horizontal spacing between characters in the heading.
 | Example values | `"0.05em"`, `"0.1em"`, `"-0.02em"` |
 | Defaults | H1: `0.01em`, H2: unset (normal), H3: unset (normal) |
 | Config key | `config.editorConfig.headings.<level>.letterSpacing` |
-| User config | Yes — decimal number input in Heading Settings modal, stored as `em` |
+| User config | Yes — decimal number input in the Heading Styles tab, stored as `em` |
 | Project type template | Yes — `editorConfig.headings.<level>.letterSpacing` |
 
 ### Color
@@ -172,7 +172,7 @@ What it does: Sets the text color for the heading, overriding the CSS default.
 | Accepted values | Hex color strings (e.g. `"#444444"`) |
 | Default | `var(--color-gw-ink)` applied by `editor.css` — `#1a1916` light / `#f5f4f0` dark |
 | Config key | `config.editorConfig.headings.<level>.color` |
-| User config | Yes — color picker in Heading Settings modal |
+| User config | Yes — color picker in the Heading Styles tab |
 | Project type template | Yes — `editorConfig.headings.<level>.color` |
 
 **Note:** Setting a hard-coded hex color here overrides the theme-aware `--color-gw-ink` token and will not respond to light/dark mode switching. This field is intended for custom accent headings (e.g. chapter headers in a specific brand color), not for setting the default text color. Project type templates should leave this unset so theme CSS controls heading color.

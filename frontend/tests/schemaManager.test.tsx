@@ -151,12 +151,6 @@ describe("SchemaManager — rendering", () => {
     expect(screen.getByLabelText("Add field to Group A")).toBeInTheDocument();
     expect(screen.getByLabelText("Add field to Group B")).toBeInTheDocument();
   });
-
-  it("calls onClose when the Close button is clicked", () => {
-    const { onClose } = setup();
-    fireEvent.click(screen.getByLabelText("Close schema manager"));
-    expect(onClose).toHaveBeenCalledOnce();
-  });
 });
 
 // ---------------------------------------------------------------------------

@@ -8,12 +8,9 @@ import {
   SlidersHorizontal,
   HelpCircle,
   LogOut,
-  Type,
   BookOpen,
   Archive,
-  Tag,
-  PenLine,
-  LayoutList,
+  FileSliders,
 } from "lucide-react";
 import MenuItemButton from "../common/MenuItemButton";
 import Button from "../common/UI/Button/Button";
@@ -21,12 +18,8 @@ import useDismissableMenu from "../common/UI/hooks/useDismissableMenu";
 
 export type SettingsMenuAction =
   | "preferences"
-  | "heading-styles"
-  | "body-text-styles"
-  | "default-revision-name"
+  | "project-settings"
   | "project-type-manager"
-  | "tags-manager"
-  | "metadata"
   | "toggle-color-mode"
   | "help"
   | "close-project"
@@ -54,29 +47,9 @@ const projectScopedItems: {
   action: SettingsMenuAction;
 }[] = [
   {
-    icon: <Type size={14} aria-hidden="true" />,
-    label: "Heading Styles",
-    action: "heading-styles",
-  },
-  {
-    icon: <Type size={14} aria-hidden="true" />,
-    label: "Body Text Styles",
-    action: "body-text-styles",
-  },
-  {
-    icon: <PenLine size={14} aria-hidden="true" />,
-    label: "Default Revision Name",
-    action: "default-revision-name",
-  },
-  {
-    icon: <Tag size={14} aria-hidden="true" />,
-    label: "Manage Tags",
-    action: "tags-manager",
-  },
-  {
-    icon: <LayoutList size={14} aria-hidden="true" />,
-    label: "Metadata",
-    action: "metadata",
+    icon: <FileSliders size={14} aria-hidden="true" />,
+    label: "Project Settings",
+    action: "project-settings",
   },
 ];
 

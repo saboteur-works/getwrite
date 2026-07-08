@@ -15,14 +15,10 @@ import ExportPreviewModal, {
   type ExportFormat,
 } from "../common/ExportPreviewModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
-import HeadingSettingsModal from "../preferences/HeadingSettingsModal";
-import BodySettingsModal from "../preferences/BodySettingsModal";
 import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import HelpPage from "../help/HelpPage";
-import TagsManagerModal from "../common/TagsManagerModal";
-import SchemaManager from "../SchemaManager/SchemaManager";
-import DefaultRevisionNameModal from "../preferences/DefaultRevisionNameModal";
+import ProjectSettingsDialog from "./ProjectSettingsDialog";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
@@ -83,29 +79,22 @@ export interface ShellModalCoordinatorProps {
   renameModal: ShellRenameModalState;
   setRenameModal: (state: ShellRenameModalState) => void;
   onRenameConfirm: (newName: string) => Promise<void>;
-  isHeadingSettingsModalOpen: boolean;
-  setIsHeadingSettingsModalOpen: (open: boolean) => void;
-  initialHeadingSettings?: EditorHeadingMap;
-  isBodySettingsModalOpen: boolean;
-  setIsBodySettingsModalOpen: (open: boolean) => void;
+  isProjectSettingsOpen: boolean;
+  setIsProjectSettingsOpen: (open: boolean) => void;
+  initialHeadings?: EditorHeadingMap;
+  onSaveHeadingSettings: (headings: EditorHeadingMap) => Promise<void>;
   initialBodySettings?: EditorBodyConfig;
   onSaveBodySettings: (body: EditorBodyConfig) => Promise<void>;
-  isDefaultRevisionNameModalOpen: boolean;
-  setIsDefaultRevisionNameModalOpen: (open: boolean) => void;
   initialDefaultRevisionName: string;
   onSaveDefaultRevisionName: (name: string) => Promise<void>;
+  /** Root path of the active project — required to render the Tags section of ProjectSettingsDialog (FR11). */
+  projectPath?: string;
   isPreferencesModalOpen: boolean;
   setIsPreferencesModalOpen: (open: boolean) => void;
   isHelpModalOpen: boolean;
   setIsHelpModalOpen: (open: boolean) => void;
   isProjectTypesModalOpen: boolean;
   setIsProjectTypesModalOpen: (open: boolean) => void;
-  isTagsManagerOpen: boolean;
-  setIsTagsManagerOpen: (open: boolean) => void;
-  /** Root path of the active project — required to render TagsManagerModal. */
-  projectPath?: string;
-  isSchemaManagerOpen: boolean;
-  setIsSchemaManagerOpen: (open: boolean) => void;
   isResourcePaletteOpen: boolean;
   setIsResourcePaletteOpen: (open: boolean) => void;
   isProjectTypesLoading: boolean;
@@ -118,7 +107,6 @@ export interface ShellModalCoordinatorProps {
   syncBlockers?: SyncBlocker[];
   onDeleteConfirm: (resourceId: string) => Promise<void>;
   onCloseProjectConfirm: () => void;
-  onSaveHeadingSettings: (headings: EditorHeadingMap) => Promise<void>;
   onCreateConfirmed: (
     payload: { title: string; type: ResourceType | string; folderId?: string },
     parentId?: string,
@@ -161,28 +149,21 @@ export default function ShellModalCoordinator({
   renameModal,
   setRenameModal,
   onRenameConfirm,
-  isHeadingSettingsModalOpen,
-  setIsHeadingSettingsModalOpen,
-  initialHeadingSettings,
-  isBodySettingsModalOpen,
-  setIsBodySettingsModalOpen,
+  isProjectSettingsOpen,
+  setIsProjectSettingsOpen,
+  initialHeadings,
+  onSaveHeadingSettings,
   initialBodySettings,
   onSaveBodySettings,
-  isDefaultRevisionNameModalOpen,
-  setIsDefaultRevisionNameModalOpen,
   initialDefaultRevisionName,
   onSaveDefaultRevisionName,
+  projectPath,
   isPreferencesModalOpen,
   setIsPreferencesModalOpen,
   isHelpModalOpen,
   setIsHelpModalOpen,
   isProjectTypesModalOpen,
   setIsProjectTypesModalOpen,
-  isTagsManagerOpen,
-  setIsTagsManagerOpen,
-  projectPath,
-  isSchemaManagerOpen,
-  setIsSchemaManagerOpen,
   isResourcePaletteOpen,
   setIsResourcePaletteOpen,
   isProjectTypesLoading,
@@ -194,7 +175,6 @@ export default function ShellModalCoordinator({
   syncBlockers,
   onDeleteConfirm,
   onCloseProjectConfirm,
-  onSaveHeadingSettings,
   onCreateConfirmed,
   onMediaCreateConfirmed,
   onExportConfirmed,
@@ -324,44 +304,17 @@ export default function ShellModalCoordinator({
         }}
       />
 
-      <Dialog
-        open={isHeadingSettingsModalOpen}
-        onOpenChange={onDialogClose(setIsHeadingSettingsModalOpen)}
-      >
-        <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
-          <HeadingSettingsModal
-            initialHeadings={initialHeadingSettings}
-            onClose={() => setIsHeadingSettingsModalOpen(false)}
-            onSave={onSaveHeadingSettings}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={isBodySettingsModalOpen}
-        onOpenChange={onDialogClose(setIsBodySettingsModalOpen)}
-      >
-        <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
-          <BodySettingsModal
-            initialBody={initialBodySettings}
-            onClose={() => setIsBodySettingsModalOpen(false)}
-            onSave={onSaveBodySettings}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={isDefaultRevisionNameModalOpen}
-        onOpenChange={onDialogClose(setIsDefaultRevisionNameModalOpen)}
-      >
-        <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
-          <DefaultRevisionNameModal
-            initialName={initialDefaultRevisionName}
-            onClose={() => setIsDefaultRevisionNameModalOpen(false)}
-            onSave={onSaveDefaultRevisionName}
-          />
-        </DialogContent>
-      </Dialog>
+      <ProjectSettingsDialog
+        open={isProjectSettingsOpen}
+        onOpenChange={setIsProjectSettingsOpen}
+        initialHeadings={initialHeadings}
+        onSaveHeadingSettings={onSaveHeadingSettings}
+        initialBodySettings={initialBodySettings}
+        onSaveBodySettings={onSaveBodySettings}
+        initialDefaultRevisionName={initialDefaultRevisionName}
+        onSaveDefaultRevisionName={onSaveDefaultRevisionName}
+        projectPath={projectPath}
+      />
 
       <Dialog
         open={isPreferencesModalOpen}
@@ -411,29 +364,6 @@ export default function ShellModalCoordinator({
               onClose={() => setIsProjectTypesModalOpen(false)}
             />
           )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={isTagsManagerOpen && Boolean(projectPath)}
-        onOpenChange={onDialogClose(setIsTagsManagerOpen)}
-      >
-        <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
-          {projectPath ? (
-            <TagsManagerModal
-              projectPath={projectPath}
-              onClose={() => setIsTagsManagerOpen(false)}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={isSchemaManagerOpen}
-        onOpenChange={onDialogClose(setIsSchemaManagerOpen)}
-      >
-        <DialogContent maxWidth="max-w-[820px]" aria-describedby={undefined}>
-          <SchemaManager onClose={() => setIsSchemaManagerOpen(false)} />
         </DialogContent>
       </Dialog>
     </>

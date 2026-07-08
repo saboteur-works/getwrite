@@ -1,30 +1,28 @@
 import { test, expect } from "@playwright/test";
 
-test("Default Revision Name menu item is visible when settings menu is open with a project", async ({
+test("Project Settings menu item is visible when settings menu is open with a project", async ({
   page,
 }) => {
   await page.goto(
     "/iframe.html?id=layout-shellsettingsmenu--settings-menu-open",
   );
-  const item = page.getByRole("menuitem", { name: /default revision name/i });
+  const item = page.getByRole("menuitem", { name: /project settings/i });
   await expect(item).toBeVisible();
 });
 
-test("Default Revision Name menu item is absent when no project is loaded", async ({
+test("Project Settings menu item is absent when no project is loaded", async ({
   page,
 }) => {
   await page.goto("/iframe.html?id=layout-shellsettingsmenu--no-project");
-  const item = page.getByRole("menuitem", { name: /default revision name/i });
+  const item = page.getByRole("menuitem", { name: /project settings/i });
   await expect(item).not.toBeVisible();
 });
 
-test("clicking Default Revision Name fires the correct action", async ({
-  page,
-}) => {
+test("clicking Project Settings fires the correct action", async ({ page }) => {
   await page.goto("/iframe.html?id=layout-shellsettingsmenu--interactive");
   const probe = page.locator('[data-testid="last-action"]');
-  await page.getByRole("menuitem", { name: /default revision name/i }).click();
-  await expect(probe).toHaveText("default-revision-name");
+  await page.getByRole("menuitem", { name: /project settings/i }).click();
+  await expect(probe).toHaveText("project-settings");
 });
 
 test("DefaultRevisionNameModal renders with the initial name in the input", async ({

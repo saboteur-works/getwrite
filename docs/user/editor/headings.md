@@ -8,7 +8,7 @@ By default three heading levels (H1–H3) are available; you can enable up to si
 
 ## Customizing heading styles
 
-Open the **Heading Settings** modal from the gear menu in the app shell. Heading styles are saved per project and take effect in the editor immediately after saving.
+Open **Project Settings** from the gear menu in the app shell, then select the **Heading Styles** tab. Heading styles are saved per project and take effect in the editor immediately after saving.
 
 For each heading level you can set:
 

@@ -11,18 +11,24 @@ import FontFamilyInput from "./FontFamilyInput";
 import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
 import Input from "../common/UI/Input/Input";
-import { DialogTitle } from "../common/UI/Dialog/Dialog";
 
 interface BodySettingsModalProps {
   initialBody?: EditorBodyConfig;
   onClose: () => void;
   onSave: (body: EditorBodyConfig) => Promise<void>;
+  /**
+   * Whether a successful save should also close the dialog. Defaults to
+   * `true` for standalone usage. The consolidated Project Settings dialog
+   * passes `false` so saving one section doesn't dismiss the whole surface.
+   */
+  closeOnSave?: boolean;
 }
 
 export default function BodySettingsModal({
   initialBody,
   onClose,
   onSave,
+  closeOnSave = true,
 }: BodySettingsModalProps): JSX.Element {
   const [draft, setDraft] = useState<EditorBodyConfig>(initialBody ?? {});
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -41,7 +47,9 @@ export default function BodySettingsModal({
 
     try {
       await onSave(sanitizeEditorBody(draft) ?? {});
-      onClose();
+      if (closeOnSave) {
+        onClose();
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -54,22 +62,15 @@ export default function BodySettingsModal({
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8 lg:px-10">
-      <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
-        <div className="space-y-1">
-          <DialogTitle asChild>
-            <h1 className="text-2xl font-semibold text-gw-primary">
-              Body Text Styles
-            </h1>
-          </DialogTitle>
-          <p className="max-w-2xl text-sm text-gw-secondary">
-            Configure default body text typography for this project. These
-            settings apply to all editor body text.
-          </p>
-        </div>
-        <Button variant="secondary" size="sm" onClick={onClose}>
-          Close
-        </Button>
+    <div className="flex w-full flex-col gap-6">
+      <header className="flex flex-col gap-1 border-b border-gw-border pb-4">
+        <h2 className="text-lg font-semibold text-gw-primary">
+          Body Text Styles
+        </h2>
+        <p className="max-w-2xl text-sm text-gw-secondary">
+          Configure default body text typography for this project. These
+          settings apply to all editor body text.
+        </p>
       </header>
 
       <Card as="section" padding="lg">
@@ -127,15 +128,21 @@ export default function BodySettingsModal({
       ) : null}
 
       <footer className="flex justify-end gap-3 border-t border-gw-border pt-5">
-        <Button variant="secondary" onClick={onClose} disabled={isSaving}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onClose}
+          disabled={isSaving}
+        >
           Cancel
         </Button>
         <Button
           variant="default"
+          size="sm"
           onClick={() => void handleSave()}
           disabled={isSaving}
         >
-          {isSaving ? "Saving…" : "Save"}
+          {isSaving ? "Saving…" : "Save Changes"}
         </Button>
       </footer>
     </div>

@@ -36,6 +36,41 @@ export const Default: Story = {
   },
 };
 
+export const WithForceMount: Story = {
+  name: "With forceMount (preserves state across tabs)",
+  render: () => {
+    const [value, setValue] = useState("edit");
+    const [draft, setDraft] = useState("");
+    return (
+      <Tabs value={value} onValueChange={setValue}>
+        <TabsList aria-label="Tabs with a forceMount panel">
+          <TabsTrigger value="edit">Edit</TabsTrigger>
+          <TabsTrigger value="preview">Preview</TabsTrigger>
+        </TabsList>
+        <TabsContent value="edit" forceMount>
+          <div style={{ padding: 16 }}>
+            <label htmlFor="story-draft-input">
+              Type here, switch tabs, then come back — your text stays.
+            </label>
+            <input
+              id="story-draft-input"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              style={{ display: "block", marginTop: 8 }}
+            />
+          </div>
+        </TabsContent>
+        <TabsContent value="preview" forceMount>
+          <p style={{ padding: 16 }}>
+            This panel stays mounted too; switching away only CSS-hides it
+            instead of unmounting it.
+          </p>
+        </TabsContent>
+      </Tabs>
+    );
+  },
+};
+
 export const WithDisabledTab: Story = {
   render: () => {
     const [value, setValue] = useState("edit");

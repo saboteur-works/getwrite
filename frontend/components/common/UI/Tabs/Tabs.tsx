@@ -3,10 +3,13 @@
 import React, { createContext, useContext, useId, useRef } from "react";
 import { cn } from "../utils";
 
+type TabsOrientation = "horizontal" | "vertical";
+
 interface TabsContextValue {
   activeValue: string;
   onValueChange: (value: string) => void;
   baseId: string;
+  orientation: TabsOrientation;
 }
 
 const TabsContext = createContext<TabsContextValue | null>(null);
@@ -21,6 +24,12 @@ export interface TabsProps {
   value: string;
   onValueChange: (value: string) => void;
   className?: string;
+  /**
+   * Layout of the tab list. "vertical" places the list as a left-hand rail
+   * (with `aria-orientation="vertical"` and Up/Down arrow navigation).
+   * Defaults to "horizontal".
+   */
+  orientation?: TabsOrientation;
   children: React.ReactNode;
 }
 
@@ -28,12 +37,23 @@ export function Tabs({
   value,
   onValueChange,
   className,
+  orientation = "horizontal",
   children,
 }: TabsProps): JSX.Element {
   const baseId = useId();
   return (
-    <TabsContext.Provider value={{ activeValue: value, onValueChange, baseId }}>
-      <div className={cn("tabs-root", className)}>{children}</div>
+    <TabsContext.Provider
+      value={{ activeValue: value, onValueChange, baseId, orientation }}
+    >
+      <div
+        className={cn(
+          "tabs-root",
+          orientation === "vertical" && "tabs-root--vertical",
+          className,
+        )}
+      >
+        {children}
+      </div>
     </TabsContext.Provider>
   );
 }
@@ -49,8 +69,10 @@ export function TabsList({
   children,
   "aria-label": ariaLabel,
 }: TabsListProps): JSX.Element {
-  const { onValueChange } = useTabsContext();
+  const { onValueChange, orientation } = useTabsContext();
   const listRef = useRef<HTMLDivElement>(null);
+  const nextKey = orientation === "vertical" ? "ArrowDown" : "ArrowRight";
+  const prevKey = orientation === "vertical" ? "ArrowUp" : "ArrowLeft";
 
   function focusAndActivate(el: HTMLElement | undefined) {
     if (!el) return;
@@ -66,10 +88,10 @@ export function TabsList({
       list.querySelectorAll<HTMLElement>('[role="tab"]:not([disabled])'),
     );
     const idx = tabs.indexOf(document.activeElement as HTMLElement);
-    if (e.key === "ArrowRight") {
+    if (e.key === nextKey) {
       focusAndActivate(tabs[(idx + 1) % tabs.length]);
       e.preventDefault();
-    } else if (e.key === "ArrowLeft") {
+    } else if (e.key === prevKey) {
       focusAndActivate(tabs[(idx - 1 + tabs.length) % tabs.length]);
       e.preventDefault();
     } else if (e.key === "Home") {
@@ -86,7 +108,12 @@ export function TabsList({
       ref={listRef}
       role="tablist"
       aria-label={ariaLabel}
-      className={cn("tabs-list", className)}
+      aria-orientation={orientation}
+      className={cn(
+        "tabs-list",
+        orientation === "vertical" && "tabs-list--vertical",
+        className,
+      )}
       onKeyDown={onKeyDown}
     >
       {children}
@@ -137,15 +164,26 @@ export interface TabsContentProps {
   value: string;
   className?: string;
   children: React.ReactNode;
+  /**
+   * When true, keeps the panel mounted even while inactive, CSS-hiding it
+   * (via the native `hidden` attribute) instead of unmounting it. Use this
+   * to preserve in-progress state (e.g. unsaved form edits) across tab
+   * switches. Defaults to false, which preserves the original
+   * unmount-on-inactive behavior.
+   */
+  forceMount?: boolean;
 }
 
 export function TabsContent({
   value,
   className,
   children,
+  forceMount = false,
 }: TabsContentProps): JSX.Element | null {
   const { activeValue, baseId } = useTabsContext();
-  if (activeValue !== value) return null;
+  const isActive = activeValue === value;
+
+  if (!forceMount && !isActive) return null;
 
   return (
     <div
@@ -153,6 +191,7 @@ export function TabsContent({
       id={`${baseId}-panel-${value}`}
       aria-labelledby={`${baseId}-tab-${value}`}
       className={cn("tabs-content", className)}
+      hidden={forceMount && !isActive ? true : undefined}
     >
       {children}
     </div>

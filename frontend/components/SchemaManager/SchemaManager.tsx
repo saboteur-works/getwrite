@@ -28,7 +28,6 @@ import DeprecateOrClearDialog from "./DeprecateOrClearDialog";
 import type { Folder, MetadataFieldType } from "../../src/lib/models/types";
 import { slugifyName, deriveLabel } from "../../src/lib/models/field-dedup";
 import ConfirmDialog from "../common/ConfirmDialog";
-import { DialogTitle } from "../common/UI/Dialog/Dialog";
 import EditContextMenu from "../common/UI/ContextMenu/EditContextMenu";
 import ProjectFeatureToggles from "../preferences/ProjectFeatureToggles";
 
@@ -99,7 +98,12 @@ export interface SchemaManagerPrefill {
 }
 
 export interface SchemaManagerProps {
-  onClose: () => void;
+  /**
+   * Optional close handler. The consolidated Project Settings dialog owns the
+   * single Close affordance, so this panel no longer renders its own; the prop
+   * is retained for standalone callers (stories/tests) that still supply one.
+   */
+  onClose?: () => void;
   /** When supplied, opens with a pre-populated "Create field" form at the top. */
   prefill?: SchemaManagerPrefill;
   /** Called with the new field's key after a prefilled creation completes. */
@@ -107,7 +111,6 @@ export interface SchemaManagerProps {
 }
 
 export default function SchemaManager({
-  onClose,
   prefill,
   onCreated,
 }: SchemaManagerProps): JSX.Element {
@@ -492,26 +495,14 @@ export default function SchemaManager({
 
   return (
     <>
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-8">
-        <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
-          <div>
-            <DialogTitle asChild>
-              <h1 className="text-2xl font-semibold text-gw-primary">
-                Metadata Fields
-              </h1>
-            </DialogTitle>
-            <p className="mt-1 text-sm text-gw-secondary">
-              Add, remove, and reorder fields shown in the metadata sidebar.
-            </p>
-          </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onClose}
-            aria-label="Close schema manager"
-          >
-            Close
-          </Button>
+      <div className="flex w-full flex-col gap-6">
+        <header className="flex flex-col gap-1 border-b border-gw-border pb-4">
+          <h2 className="text-lg font-semibold text-gw-primary">
+            Metadata Fields
+          </h2>
+          <p className="max-w-2xl text-sm text-gw-secondary">
+            Add, remove, and reorder fields shown in the metadata sidebar.
+          </p>
         </header>
 
         {/* ── Built-in feature toggles (co-located with the fields they govern) ── */}

@@ -2440,6 +2440,60 @@ html.gw-theme-dark {
     min-height: 0;
   }
 
+  /* Vertical variant: tab list becomes a left-hand rail, active panel
+     fills the remaining space to its right. */
+  .tabs-root--vertical {
+    flex-direction: row;
+    gap: 24px;
+    align-items: stretch;
+  }
+
+  /* The vertical rail mirrors ProjectTypeListPane's item styling: readable
+     13px sans rows (not mono micro-labels), a transparent left border that
+     turns red on the active row, and a chrome2 fill on hover/active. */
+  .tabs-list--vertical {
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    gap: 0;
+    flex-shrink: 0;
+    min-width: 200px;
+    border-right: 0.5px solid var(--color-gw-border);
+  }
+
+  .tabs-list--vertical .tabs-trigger {
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    height: auto;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    text-transform: none;
+    letter-spacing: normal;
+    border-bottom: none;
+    border-left: 2px solid transparent;
+    margin-bottom: 0;
+  }
+
+  .tabs-list--vertical .tabs-trigger:hover:not(:disabled) {
+    background-color: var(--color-gw-chrome2);
+    color: var(--color-gw-primary);
+  }
+
+  .tabs-list--vertical .tabs-trigger--active {
+    background-color: var(--color-gw-chrome2);
+    color: var(--color-gw-primary);
+    border-bottom: none;
+    border-left: 2px solid var(--color-gw-red);
+    padding-left: 14px; /* compensate for the 2px active border */
+  }
+
+  .tabs-root--vertical .tabs-content {
+    min-width: 0;
+  }
+
   /* ── CHIP ── */
   .chip {
     display: inline-flex;
