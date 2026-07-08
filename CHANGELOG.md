@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.0.0...getwrite-v1.1.0) (2026-07-08)
+
+
+### Features
+
+* align ProjectSettingsDialog with ProjectTypesManagerPage design language ([5450d0a](https://github.com/saboteur-works/getwrite/commit/5450d0a5ae094a38963b66e55c7daa42206d0840))
+* consolidate project settings into one tabbed dialog ([bdd7664](https://github.com/saboteur-works/getwrite/commit/bdd76640663909a2a2fa0ad8ea04fc89ada99176))
+* **task-1:** add forceMount to TabsContent for draft preservation ([39a0820](https://github.com/saboteur-works/getwrite/commit/39a08207445aa8ba195112f737f53ea84d678538))
+* **task-2:** section components support single-title + save-without-close ([2f14a52](https://github.com/saboteur-works/getwrite/commit/2f14a524931f8ee5100bc040fdfc85a24074f7f0))
+* **task-3:** add consolidated ProjectSettingsDialog component ([3c7b87a](https://github.com/saboteur-works/getwrite/commit/3c7b87ab59fc8339c194c3ebcf108e79bafa7b97))
+* **task-4:** collapse ShellSettingsMenu's 5 settings items into one ([a7337c5](https://github.com/saboteur-works/getwrite/commit/a7337c53914eac60fb76b8ea17d3cf14a916f68f))
+* **task-5:** rewire AppShell to a single project-settings state ([e6b3093](https://github.com/saboteur-works/getwrite/commit/e6b3093ff4e6ef5edc4b5d7c2eaa95ca15fe856a))
+* **task-6:** render ProjectSettingsDialog from ShellModalCoordinator ([db6ac4d](https://github.com/saboteur-works/getwrite/commit/db6ac4db3ec2cd3ce6f0379826156df983158089))
+
 ## [1.0.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v0.2.54...getwrite-v1.0.0) (2026-06-18)
 
 
