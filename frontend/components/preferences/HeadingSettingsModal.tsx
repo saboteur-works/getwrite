@@ -166,20 +166,15 @@ export default function HeadingSettingsModal({
     };
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8 lg:px-10">
-      <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-gw-primary">
-            Heading Settings
-          </h1>
-          <p className="max-w-2xl text-sm text-gw-secondary">
-            Configure project-specific heading styles for the editor. H1 through
-            H3 are always available, and you can add H4 through H6 as needed.
-          </p>
-        </div>
-        <Button variant="secondary" size="sm" onClick={onClose}>
-          Close
-        </Button>
+    <div className="flex w-full flex-col gap-6">
+      <header className="flex flex-col gap-1 border-b border-gw-border pb-4">
+        <h2 className="text-lg font-semibold text-gw-primary">
+          Heading Styles
+        </h2>
+        <p className="max-w-2xl text-sm text-gw-secondary">
+          Configure project-specific heading styles for the editor. H1 through
+          H3 are always available, and you can add H4 through H6 as needed.
+        </p>
       </header>
 
       <div className="flex flex-col gap-4">
@@ -368,7 +363,7 @@ export default function HeadingSettingsModal({
             }}
             disabled={isSaving}
           >
-            {isSaving ? "Saving..." : "Save Changes"}
+            {isSaving ? "Saving…" : "Save Changes"}
           </Button>
         </div>
       </div>

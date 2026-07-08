@@ -4,7 +4,7 @@ This guide covers what controls the look of the writing surface and what you can
 
 ## What you can change today
 
-**Heading styles** are the main thing you can customize in the app. Use the **Heading Settings** modal (gear menu) to set the size, font, weight, letter spacing, and color of each heading level, per project. See [Headings](headings.md) for details.
+**Heading styles** are the main thing you can customize in the app. Use the **Heading Styles** tab of **Project Settings** (gear menu) to set the size, font, weight, letter spacing, and color of each heading level, per project. See [Headings](headings.md) for details.
 
 ## Body text
 

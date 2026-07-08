@@ -112,6 +112,48 @@ describe("a11y: Tabs primitive", () => {
   });
 });
 
+function VerticalTabs() {
+  const [value, setValue] = useState("a");
+  return (
+    <Tabs value={value} onValueChange={setValue} orientation="vertical">
+      <TabsList aria-label="Vertical tabs">
+        <TabsTrigger value="a">Tab A</TabsTrigger>
+        <TabsTrigger value="b">Tab B</TabsTrigger>
+      </TabsList>
+      <TabsContent value="a">Panel A</TabsContent>
+      <TabsContent value="b">Panel B</TabsContent>
+    </Tabs>
+  );
+}
+
+describe("a11y: Tabs primitive (vertical orientation)", () => {
+  it("exposes aria-orientation=vertical on the tablist", () => {
+    render(<VerticalTabs />);
+    expect(screen.getByRole("tablist")).toHaveAttribute(
+      "aria-orientation",
+      "vertical",
+    );
+  });
+
+  it("ArrowDown moves focus to the next tab", () => {
+    render(<VerticalTabs />);
+    const tabA = screen.getByRole("tab", { name: "Tab A" });
+    const tabB = screen.getByRole("tab", { name: "Tab B" });
+    tabA.focus();
+    fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowDown" });
+    expect(document.activeElement).toBe(tabB);
+  });
+
+  it("ArrowUp moves focus to the previous tab", () => {
+    render(<VerticalTabs />);
+    const tabA = screen.getByRole("tab", { name: "Tab A" });
+    const tabB = screen.getByRole("tab", { name: "Tab B" });
+    tabB.focus();
+    fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowUp" });
+    expect(document.activeElement).toBe(tabA);
+  });
+});
+
 function ForceMountTabs() {
   const [value, setValue] = useState("a");
   return (

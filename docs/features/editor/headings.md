@@ -52,7 +52,7 @@ Headings are selected in the Editor via MenuBar buttons.
 
 ## Heading Style Customization
 
-Heading styles are configured through the **Heading Settings** modal (gear menu); changes are project-scoped and take effect immediately. The modal stages edits locally and commits on **Save**. For the full UI walkthrough, see the [user guide](../../user/editor/headings.md). Implementation notes follow.
+Heading styles are configured through the **Heading Styles** tab of the **Project Settings** dialog (gear menu); changes are project-scoped and take effect immediately. The tab stages edits locally and commits on **Save**. For the full UI walkthrough, see the [user guide](../../user/editor/headings.md). Implementation notes follow.
 
 ### API
 

@@ -151,14 +151,14 @@ describe("TagsManagerModal", () => {
     });
   });
 
-  it("calls onClose when the Close button is clicked", () => {
+  it("calls onClose when Escape is pressed", () => {
     setupFetchStub([]);
     const onClose = vi.fn();
     renderInDialog(
       <TagsManagerModal projectPath={PROJECT_PATH} onClose={onClose} />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+    fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledOnce();
   });
 });

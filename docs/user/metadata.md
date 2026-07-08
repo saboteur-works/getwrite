@@ -28,7 +28,7 @@ Every project includes a **Status** field, plus a set of optional built-in field
 - ✏️ **Point of View** — the POV character, set by linking to another resource (such as a character document). The Timeline view uses this to color-code scenes. _(optional)_
 - ✏️ **Story Date**, **Duration (minutes)**, and **Story End Date** — the in-story timing of the resource, grouped under the **Timeline** section of the sidebar. Adding a Story Date places the resource on the [Timeline](views/timeline.md). _(optional)_
 
-The optional fields are off by default, so a new project shows only Status until you turn on the ones you want. Toggle them per project from the **Built-in features** section at the top of the Metadata Fields manager (settings menu → **Metadata**). Hiding a field keeps every value you have already saved, so turning it back on restores them untouched. Apart from Status, the built-in fields can also be renamed or removed just like custom fields.
+The optional fields are off by default, so a new project shows only Status until you turn on the ones you want. Toggle them per project from the **Built-in features** section at the top of the Metadata Fields manager (settings menu → **Project Settings** → **Metadata** tab). Hiding a field keeps every value you have already saved, so turning it back on restores them untouched. Apart from Status, the built-in fields can also be renamed or removed just like custom fields.
 
 Beyond these, you can add your own **custom fields** of any type — text, number, date, yes/no, single- or multiple-choice, or links to other resources — to track whatever your project needs (characters, locations, props, and the like). Fields that link to other resources draw their choices from metadata-provider folders (see below).
 
