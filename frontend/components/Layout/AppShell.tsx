@@ -237,18 +237,11 @@ export default function AppShell({
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState<boolean>(false);
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] =
     useState<boolean>(false);
-  const [isHeadingSettingsModalOpen, setIsHeadingSettingsModalOpen] =
-    useState<boolean>(false);
-  const [isBodySettingsModalOpen, setIsBodySettingsModalOpen] =
-    useState<boolean>(false);
-  const [isDefaultRevisionNameModalOpen, setIsDefaultRevisionNameModalOpen] =
+  const [isProjectSettingsOpen, setIsProjectSettingsOpen] =
     useState<boolean>(false);
   const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
     useState<boolean>(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
-  const [isTagsManagerOpen, setIsTagsManagerOpen] = useState<boolean>(false);
-  const [isSchemaManagerOpen, setIsSchemaManagerOpen] =
-    useState<boolean>(false);
   const [isResourcePaletteOpen, setIsResourcePaletteOpen] =
     useState<boolean>(false);
   const [colorMode, setColorMode] = useState<ColorMode>("light");
@@ -766,29 +759,13 @@ export default function AppShell({
         setIsSettingsMenuOpen(false);
         setIsPreferencesModalOpen(true);
         break;
-      case "heading-styles":
+      case "project-settings":
         setIsSettingsMenuOpen(false);
-        setIsHeadingSettingsModalOpen(true);
-        break;
-      case "body-text-styles":
-        setIsSettingsMenuOpen(false);
-        setIsBodySettingsModalOpen(true);
-        break;
-      case "default-revision-name":
-        setIsSettingsMenuOpen(false);
-        setIsDefaultRevisionNameModalOpen(true);
+        setIsProjectSettingsOpen(true);
         break;
       case "project-type-manager":
         setIsSettingsMenuOpen(false);
         setIsProjectTypesModalOpen(true);
-        break;
-      case "tags-manager":
-        setIsSettingsMenuOpen(false);
-        setIsTagsManagerOpen(true);
-        break;
-      case "metadata":
-        setIsSettingsMenuOpen(false);
-        setIsSchemaManagerOpen(true);
         break;
       case "toggle-color-mode":
         handleToggleColorMode();
@@ -809,7 +786,7 @@ export default function AppShell({
 
   const handleCloseProject = (): void => {
     setIsSettingsMenuOpen(false);
-    setIsHeadingSettingsModalOpen(false);
+    setIsProjectSettingsOpen(false);
     setIsPreferencesModalOpen(false);
     setIsProjectTypesModalOpen(false);
     setIsHelpModalOpen(false);
@@ -981,19 +958,12 @@ export default function AppShell({
                   renameModal={renameModal}
                   setRenameModal={setRenameModal}
                   onRenameConfirm={handleRenameConfirm}
-                  isHeadingSettingsModalOpen={isHeadingSettingsModalOpen}
-                  setIsHeadingSettingsModalOpen={setIsHeadingSettingsModalOpen}
-                  initialHeadingSettings={resolvedEditorConfig.headings}
-                  isBodySettingsModalOpen={isBodySettingsModalOpen}
-                  setIsBodySettingsModalOpen={setIsBodySettingsModalOpen}
+                  isProjectSettingsOpen={isProjectSettingsOpen}
+                  setIsProjectSettingsOpen={setIsProjectSettingsOpen}
+                  initialHeadings={resolvedEditorConfig.headings}
+                  onSaveHeadingSettings={handleSaveHeadingSettings}
                   initialBodySettings={liveEditorConfig.body}
                   onSaveBodySettings={handleSaveBodySettings}
-                  isDefaultRevisionNameModalOpen={
-                    isDefaultRevisionNameModalOpen
-                  }
-                  setIsDefaultRevisionNameModalOpen={
-                    setIsDefaultRevisionNameModalOpen
-                  }
                   initialDefaultRevisionName={
                     project?.config?.defaultRevisionName ?? "Initial Draft"
                   }
@@ -1004,11 +974,7 @@ export default function AppShell({
                   setIsHelpModalOpen={setIsHelpModalOpen}
                   isProjectTypesModalOpen={isProjectTypesModalOpen}
                   setIsProjectTypesModalOpen={setIsProjectTypesModalOpen}
-                  isTagsManagerOpen={isTagsManagerOpen}
-                  setIsTagsManagerOpen={setIsTagsManagerOpen}
                   projectPath={project?.rootPath}
-                  isSchemaManagerOpen={isSchemaManagerOpen}
-                  setIsSchemaManagerOpen={setIsSchemaManagerOpen}
                   isResourcePaletteOpen={isResourcePaletteOpen}
                   setIsResourcePaletteOpen={setIsResourcePaletteOpen}
                   isProjectTypesLoading={isProjectTypesLoading}
@@ -1019,7 +985,6 @@ export default function AppShell({
                   project={project}
                   hasUnsavedEditorChanges={hasUnsavedEditorChanges}
                   syncBlockers={syncBlockers}
-                  onSaveHeadingSettings={handleSaveHeadingSettings}
                   onDeleteConfirm={async (resourceId) => {
                     if (project) {
                       dispatch(
