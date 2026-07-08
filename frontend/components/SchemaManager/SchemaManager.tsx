@@ -28,7 +28,6 @@ import DeprecateOrClearDialog from "./DeprecateOrClearDialog";
 import type { Folder, MetadataFieldType } from "../../src/lib/models/types";
 import { slugifyName, deriveLabel } from "../../src/lib/models/field-dedup";
 import ConfirmDialog from "../common/ConfirmDialog";
-import { DialogTitle } from "../common/UI/Dialog/Dialog";
 import EditContextMenu from "../common/UI/ContextMenu/EditContextMenu";
 import ProjectFeatureToggles from "../preferences/ProjectFeatureToggles";
 
@@ -495,11 +494,9 @@ export default function SchemaManager({
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-8">
         <header className="flex items-start justify-between gap-4 border-b border-gw-border pb-5">
           <div>
-            <DialogTitle asChild>
-              <h1 className="text-2xl font-semibold text-gw-primary">
-                Metadata Fields
-              </h1>
-            </DialogTitle>
+            <h1 className="text-2xl font-semibold text-gw-primary">
+              Metadata Fields
+            </h1>
             <p className="mt-1 text-sm text-gw-secondary">
               Add, remove, and reorder fields shown in the metadata sidebar.
             </p>

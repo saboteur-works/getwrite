@@ -119,6 +119,28 @@ describe("HeadingSettingsModal", () => {
     expect(h1Input.getAttribute("list")).not.toBe(h2Input.getAttribute("list"));
   });
 
+  it("does not close on successful save when closeOnSave is false", async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    renderInDialog(
+      <HeadingSettingsModal
+        initialHeadings={{}}
+        onClose={onClose}
+        onSave={onSave}
+        closeOnSave={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("does not save when cancel is clicked", () => {
     const onClose = vi.fn();
     const onSave = vi.fn();

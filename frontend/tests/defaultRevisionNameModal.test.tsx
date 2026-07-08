@@ -48,6 +48,28 @@ describe("DefaultRevisionNameModal", () => {
     });
   });
 
+  it("does not close on successful save when closeOnSave is false", async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    renderInDialog(
+      <DefaultRevisionNameModal
+        initialName="Initial Draft"
+        onClose={onClose}
+        onSave={onSave}
+        closeOnSave={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith("Initial Draft");
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("calls onClose and does not call onSave when Cancel is clicked", () => {
     const onClose = vi.fn();
     const onSave = vi.fn();
