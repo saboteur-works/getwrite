@@ -44,3 +44,7 @@ export {
 // Content loading (lib sibling; moves into core alongside the models on
 // extraction).
 export { loadResourceContent } from "./tiptap-utils";
+
+// Storage context
+export { getStorageAdapter } from "./models/io";
+export { runInStorageContext } from "./models/storage-context";

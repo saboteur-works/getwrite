@@ -47,6 +47,8 @@ import {
   saveResourceTemplate,
   createResourceFromTemplate,
   duplicateResource,
+  runInStorageContext,
+  getStorageAdapter,
 } from "@gw/core";
 
 /**
@@ -99,7 +101,10 @@ export function registerTemplates(program: Command) {
             type: "text",
             plainText: "",
           } as const;
-          await saveResourceTemplate(projectRoot, template as any);
+          await runInStorageContext(
+            { tenantRoot: projectRoot, adapter: getStorageAdapter() },
+            () => saveResourceTemplate(projectRoot, template as any),
+          );
           console.log(`Saved template ${templateId}`);
         } catch (err) {
           console.error("Error:", (err as Error).message);
@@ -125,10 +130,9 @@ export function registerTemplates(program: Command) {
         name?: string,
       ): Promise<void> => {
         try {
-          const created = await createResourceFromTemplate(
-            projectRoot,
-            templateId,
-            { name },
+          const created = await runInStorageContext(
+            { tenantRoot: projectRoot, adapter: getStorageAdapter() },
+            () => createResourceFromTemplate(projectRoot, templateId, { name }),
           );
           // createResourceFromTemplate returns an AnyResource when not
           // in dry-run mode; the dry-run branch returns a plannedWrites
@@ -156,7 +160,10 @@ export function registerTemplates(program: Command) {
     .description("Duplicate an existing resource")
     .action(async (projectRoot: string, resourceId: string): Promise<void> => {
       try {
-        const res = await duplicateResource(projectRoot, resourceId);
+        const res = await runInStorageContext(
+          { tenantRoot: projectRoot, adapter: getStorageAdapter() },
+          () => duplicateResource(projectRoot, resourceId),
+        );
         console.log(`Duplicated resource -> ${res.newId}`);
       } catch (err) {
         console.error("Error:", (err as Error).message);
@@ -178,14 +185,21 @@ export function registerTemplates(program: Command) {
     .action(async (projectRoot: string): Promise<void> => {
       const dir = path.join(projectRoot, "meta", "templates");
       try {
-        const entries = await fs.readdir(dir);
-        for (const e of entries) {
-          if (e.endsWith(".json")) {
-            const raw = await fs.readFile(path.join(dir, e), "utf8");
-            const parsed = JSON.parse(raw);
-            console.log(parsed.id + "\t" + parsed.name + "\t" + parsed.type);
-          }
-        }
+        await runInStorageContext(
+          { tenantRoot: projectRoot, adapter: getStorageAdapter() },
+          async () => {
+            const entries = await fs.readdir(dir);
+            for (const e of entries) {
+              if (e.endsWith(".json")) {
+                const raw = await fs.readFile(path.join(dir, e), "utf8");
+                const parsed = JSON.parse(raw);
+                console.log(
+                  parsed.id + "\t" + parsed.name + "\t" + parsed.type,
+                );
+              }
+            }
+          },
+        );
       } catch (err) {
         console.error("No templates found or cannot read templates directory.");
         process.exit(2);
