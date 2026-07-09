@@ -3,6 +3,7 @@ import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { reindexMissingResources } from "../../../../../src/lib/models/inverted-index";
 import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
+import { withStorageContext } from "../../../_lib/with-storage-context";
 
 interface ReindexResponse {
   queued: number;
@@ -41,7 +42,7 @@ async function findProjectRoot(
   return null;
 }
 
-export async function POST(
+async function reindex(
   _req: NextRequest,
   { params }: { params: Promise<{ "project-id": string }> },
 ): Promise<NextResponse<ReindexResponse | ErrorResponse>> {
@@ -59,5 +60,7 @@ export async function POST(
   const queued = await reindexMissingResources(projectRoot);
   return NextResponse.json({ queued }, { status: 200 });
 }
+
+export const POST = withStorageContext(reindex);
 
 export const dynamic = "force-dynamic";

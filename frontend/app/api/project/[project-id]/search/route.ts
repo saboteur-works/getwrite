@@ -28,6 +28,7 @@ import {
   revisionDir,
 } from "../../../../../src/lib/models/revision";
 import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
+import { withStorageContext } from "../../../_lib/with-storage-context";
 import { getUserPreferencesFromProjectMetadata } from "../../../../../src/lib/user-preferences";
 import { extractSnippet } from "../../../../../src/lib/models/search-snippet";
 import { tiptapToPlainText } from "../../../../../src/lib/tiptap-utils";
@@ -256,7 +257,7 @@ export async function executeSearch(
 
 // --- Route handler ---
 
-export async function GET(
+async function handleSearch(
   req: NextRequest,
   { params }: { params: Promise<{ "project-id": string }> },
 ): Promise<NextResponse<SearchResult[] | ErrorResponse>> {
@@ -319,5 +320,7 @@ export async function GET(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const GET = withStorageContext(handleSearch);
 
 export const dynamic = "force-dynamic";

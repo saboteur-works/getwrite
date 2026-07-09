@@ -8,6 +8,7 @@ import {
 } from "../../../../../src/lib/models/sidecar";
 import { withMetaLock } from "../../../../../src/lib/models/meta-locks";
 import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
+import { withStorageContext } from "../../../_lib/with-storage-context";
 
 async function findProjectRoot(projectsDir: string, projectId: string) {
   try {
@@ -31,7 +32,7 @@ async function findProjectRoot(projectsDir: string, projectId: string) {
   return null;
 }
 
-export async function POST(
+async function reorder(
   req: NextRequest,
   { params }: { params: { projectId: string } },
 ) {
@@ -122,4 +123,6 @@ export async function POST(
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 }
 
-export const GET = () => new Response(null, { status: 200 });
+export const POST = withStorageContext(reorder);
+
+export const GET = withStorageContext(() => new Response(null, { status: 200 }));
