@@ -1,10 +1,11 @@
 import { indexResource } from "./inverted-index";
 import { readSidecar } from "./sidecar";
 import { listRevisions } from "./revision";
-import { readFile } from "./io";
+import { getStorageAdapter, readFile } from "./io";
 import { loadResourceContent, tiptapToPlainText } from "../tiptap-utils";
 import { startBacklinkWatcher } from "./backlinks-watcher";
 import { computeBacklinks, persistBacklinks } from "./backlinks";
+import { runInStorageContext } from "./storage-context";
 import type { TextResource } from "./types";
 
 type Task = { projectRoot: string; resourceId: string };
@@ -61,61 +62,66 @@ export function installShutdownHooks(): void {
 
 async function runTask(task: Task) {
   try {
-    const side = await readSidecar(task.projectRoot, task.resourceId);
-    const now = new Date().toISOString();
+    await runInStorageContext(
+      { tenantRoot: task.projectRoot, adapter: getStorageAdapter() },
+      async () => {
+        const side = await readSidecar(task.projectRoot, task.resourceId);
+        const now = new Date().toISOString();
 
-    // Try to obtain canonical plain text from resource storage first
-    let plain: string | undefined;
-    try {
-      const loaded = await loadResourceContent(
-        task.projectRoot,
-        task.resourceId,
-      );
-      // `||` (not `??`): empty plainText must fall through to tiptap-derived text,
-      // matching the original `if (!plain && loaded.tiptap)` falsy guard.
-      plain =
-        loaded.plainText ||
-        (loaded.tiptap ? tiptapToPlainText(loaded.tiptap) : undefined);
-    } catch {
-      // ignore
-    }
+        // Try to obtain canonical plain text from resource storage first
+        let plain: string | undefined;
+        try {
+          const loaded = await loadResourceContent(
+            task.projectRoot,
+            task.resourceId,
+          );
+          // `||` (not `??`): empty plainText must fall through to tiptap-derived text,
+          // matching the original `if (!plain && loaded.tiptap)` falsy guard.
+          plain =
+            loaded.plainText ||
+            (loaded.tiptap ? tiptapToPlainText(loaded.tiptap) : undefined);
+        } catch {
+          // ignore
+        }
 
-    // Fallback: read last revision content (content.bin) if present
-    if (!plain) {
-      try {
-        const revs = await listRevisions(task.projectRoot, task.resourceId);
-        const last = revs[revs.length - 1];
-        if (last?.filePath) {
+        // Fallback: read last revision content (content.bin) if present
+        if (!plain) {
           try {
-            plain = await readFile(last.filePath, "utf8");
+            const revs = await listRevisions(task.projectRoot, task.resourceId);
+            const last = revs[revs.length - 1];
+            if (last?.filePath) {
+              try {
+                plain = await readFile(last.filePath, "utf8");
+              } catch {
+                // ignore read errors
+              }
+            }
           } catch {
-            // ignore read errors
+            // ignore
           }
         }
-      } catch {
-        // ignore
-      }
-    }
 
-    const minimal: TextResource = {
-      id: task.resourceId,
-      name: (side?.["name"] as string | undefined) ?? task.resourceId,
-      slug: side?.["slug"] as string | undefined,
-      type: "text",
-      folderId: undefined,
-      createdAt: now,
-      plainText: plain,
-      tiptap: undefined,
-    } as unknown as TextResource;
+        const minimal: TextResource = {
+          id: task.resourceId,
+          name: (side?.["name"] as string | undefined) ?? task.resourceId,
+          slug: side?.["slug"] as string | undefined,
+          type: "text",
+          folderId: undefined,
+          createdAt: now,
+          plainText: plain,
+          tiptap: undefined,
+        } as unknown as TextResource;
 
-    await indexResource(task.projectRoot, minimal);
+        await indexResource(task.projectRoot, minimal);
 
-    try {
-      const backlinks = await computeBacklinks(task.projectRoot);
-      await persistBacklinks(task.projectRoot, backlinks);
-    } catch (err) {
-      console.error("[indexer-queue] backlinks update failed:", err);
-    }
+        try {
+          const backlinks = await computeBacklinks(task.projectRoot);
+          await persistBacklinks(task.projectRoot, backlinks);
+        } catch (err) {
+          console.error("[indexer-queue] backlinks update failed:", err);
+        }
+      },
+    );
   } catch (err) {
     console.error("[indexer-queue] task failed:", err);
   }
