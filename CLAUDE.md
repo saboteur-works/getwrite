@@ -177,6 +177,7 @@ Key standards (read these before making significant changes):
 - `docs/standards/storybook-implementation.md` — Component documentation requirements
 - `docs/standards/code-documentation.md` — Code documentation conventions
 - `docs/standards/package-selection.md` — Guidance on adding dependencies
+- `docs/standards/storage-context.md` — Request-scoped `StorageContext` seam: when routes/CLI/background jobs must establish it
 
 ## Styling
 
