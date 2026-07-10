@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.1.0...getwrite-v1.2.0) (2026-07-10)
+
+
+### Features
+
+* request-scoped, tenant-aware storage (ADR-017 foundational slice) ([51dd5b3](https://github.com/saboteur-works/getwrite/commit/51dd5b361db9db82ebd90731b442a8b1cddea834))
+* **task-1:** add AsyncLocalStorage-backed storage-context module ([a9416d3](https://github.com/saboteur-works/getwrite/commit/a9416d34297907cfaaf0123e1c39718b48b1aa0e))
+* **task-2:** read projects dir from storage context in resolveProjectsDir ([b923f0b](https://github.com/saboteur-works/getwrite/commit/b923f0b685c3d5555f4bb6b3b8d82bebff3114c8))
+* **task-3:** resolve io.ts adapter from ambient storage context ([12dba04](https://github.com/saboteur-works/getwrite/commit/12dba04121a4368c7be568aa7908dbcad840e757))
+* **task-4:** add withStorageContext helper, wrap 4 tenant-resolving routes ([ed67026](https://github.com/saboteur-works/getwrite/commit/ed670261794ad3744695b87b8a50a5f08956a480))
+* **task-5:** wrap CLI command bodies in runInStorageContext ([b1ddd3b](https://github.com/saboteur-works/getwrite/commit/b1ddd3b4d94769d95e894bb1c30cf8256785ee0f))
+* **task-6:** wrap indexer-queue runTask and backlinks-watcher recompute ([21beb3f](https://github.com/saboteur-works/getwrite/commit/21beb3f71fff194dba04cffdb4cb938bfd9e5b1c))
+
 ## [1.1.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.0.0...getwrite-v1.1.0) (2026-07-08)
 
 
