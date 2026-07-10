@@ -45,6 +45,5 @@ export {
 // extraction).
 export { loadResourceContent } from "./tiptap-utils";
 
-// Storage context
-export { getStorageAdapter, runForTenant } from "./models/io";
-export { runInStorageContext } from "./models/storage-context";
+// Storage context (imperative helper for non-route entry points, e.g. the CLI)
+export { runForTenant } from "./models/io";
