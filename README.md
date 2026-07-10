@@ -76,6 +76,19 @@ cd frontend
 pnpm run dev
 ```
 
+## Environment variables
+
+GetWrite reads a small set of environment variables. None are required for the
+default local/desktop experience — the app resolves sensible defaults when they
+are unset.
+
+| Variable | Purpose |
+| --- | --- |
+| `GETWRITE_PROJECTS_DIR` | Absolute path to the single-tenant projects directory (the local/desktop store). Injected by the Electron main process; falls back to `<cwd>/../projects` when unset. |
+| `GETWRITE_DATA_ROOT` | Hosted multi-tenant only. Base directory under which each signed-in user's isolated data root lives at `<data-root>/<userId>/`. Distinct from `GETWRITE_PROJECTS_DIR` and has **no fallback** — if a request resolves to a signed-in user while this is unset, resolution fails closed rather than leaking into the shared directory. See [ADR-018](docs/architecture/ADRs/adr-018-tenant-resolution-per-user-data-root.md). |
+| `GETWRITE_ENABLE_DEV_IDENTITY` | Hosted/dev only. Opt-in flag that activates the **interim** development identity source, which reads a `userId` from the `x-getwrite-dev-user` request header. Inert (no identity asserted) unless set. This is a scaffold for exercising the tenant-resolution path — **not production authentication** — and logs a loud warning when active. |
+| `GETWRITE_CLI_TESTING` | Set to `1` to suppress `process.exit` when invoking `getwrite-cli` commands from tests. |
+
 ## Project structure (high level)
 
 - `frontend/` — Next.js frontend, components, tests, and runtime models
