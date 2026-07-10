@@ -29,3 +29,4 @@ This directory contains Architectural Decision Records (ADRs) for GetWrite.
 ## 2026-07
 
 17. [Request-Scoped, Directory-Per-Tenant Storage for Hosted GetWrite](./adr-017-request-scoped-directory-per-tenant-storage.md)
+18. [Tenant Resolution — Mapping a Request to a Per-User Data Root](./adr-018-tenant-resolution-per-user-data-root.md)
