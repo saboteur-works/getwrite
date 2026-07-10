@@ -7,11 +7,12 @@ import fs from "node:fs/promises";
 import { getLocalResources } from "../../../src/lib/models";
 import { readFolderTree } from "../../../src/lib/models/folder-utils";
 import { resolveProjectsDir } from "../../../src/lib/models/projects-dir";
+import { withStorageContext } from "../_lib/with-storage-context";
 
 /**
  * Get all projects from the local filesystem. Each project includes its metadata, folders, and resources.
  */
-export async function GET() {
+async function getProjects() {
   try {
     const projectsDir = resolveProjectsDir();
     const projectIds = (await fs.readdir(projectsDir)).filter(
@@ -38,7 +39,7 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
+async function createProject(req: Request) {
   try {
     const body = await req.json();
     const { name, projectType } = body as {
@@ -79,5 +80,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+export const GET = withStorageContext(getProjects);
+export const POST = withStorageContext(createProject);
 
 export const dynamic = "force-dynamic";

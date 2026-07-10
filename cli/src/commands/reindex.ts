@@ -28,6 +28,7 @@ import {
   indexResource,
   readSidecar,
   loadResourceContent,
+  runForTenant,
   type TextResource,
 } from "@gw/core";
 
@@ -40,43 +41,47 @@ export function registerReindex(program: Command) {
     .action(async (projectRoot: string | undefined): Promise<void> => {
       const root = projectRoot ?? process.cwd();
       try {
-        const ids = await listResourceIds(root);
-        const now = new Date().toISOString();
+        const ids = await runForTenant(root, async () => {
+          const resourceIds = await listResourceIds(root);
+          const now = new Date().toISOString();
 
-        for (const id of ids) {
-          let name = id;
-          try {
-            const side = await readSidecar(root, id);
-            if (side && (side as Record<string, unknown>).name) {
-              name = String((side as Record<string, unknown>).name);
+          for (const id of resourceIds) {
+            let name = id;
+            try {
+              const side = await readSidecar(root, id);
+              if (side && (side as Record<string, unknown>).name) {
+                name = String((side as Record<string, unknown>).name);
+              }
+            } catch (_) {
+              // no sidecar — use id as name
             }
-          } catch (_) {
-            // no sidecar — use id as name
+
+            let plainText: string | undefined;
+            try {
+              const loaded = await loadResourceContent(root, id);
+              plainText = loaded.plainText ?? undefined;
+            } catch (_) {
+              // no content — index will be empty for this resource
+            }
+
+            const minimal: TextResource = {
+              id,
+              name,
+              type: "text",
+              folderId: undefined,
+              createdAt: now,
+              plainText,
+              tiptap: undefined,
+            } as unknown as TextResource;
+
+            await indexResource(root, minimal);
           }
 
-          let plainText: string | undefined;
-          try {
-            const loaded = await loadResourceContent(root, id);
-            plainText = loaded.plainText ?? undefined;
-          } catch (_) {
-            // no content — index will be empty for this resource
-          }
+          const backlinks = await computeBacklinks(root);
+          await persistBacklinks(root, backlinks);
 
-          const minimal: TextResource = {
-            id,
-            name,
-            type: "text",
-            folderId: undefined,
-            createdAt: now,
-            plainText,
-            tiptap: undefined,
-          } as unknown as TextResource;
-
-          await indexResource(root, minimal);
-        }
-
-        const backlinks = await computeBacklinks(root);
-        await persistBacklinks(root, backlinks);
+          return resourceIds;
+        });
 
         console.log(
           `[reindex] Done — indexed ${ids.length} resource(s) in ${root}`,

@@ -117,7 +117,7 @@ All paths relative to `frontend/src/`. Use these as orientation; open the files 
 - *Metadata & tags*: `metadata-schema.ts`, `default-metadata-schema.ts`, `tags.ts`
 - *Query pipeline*: `query-ast.ts`, `query-evaluator.ts`, `query-cache.ts`, `query-intrinsics.ts`, `saved-queries.ts`
 - *Index & search*: `indexer-queue.ts`, `inverted-index.ts`, `backlinks.ts`, `backlinks-watcher.ts`, `field-values.ts`, `field-value-keys.ts`, `field-dedup.ts`, `previews.ts`, `search-scoring.ts`, `search-snippet.ts`
-- *I/O*: `io.ts` (StorageAdapter over `fs/promises`), `memoryAdapter.ts` (in-memory adapter for tests)
+- *I/O*: `io.ts` (StorageAdapter over `fs/promises`), `memoryAdapter.ts` (in-memory adapter for tests), `storage-context.ts` (`AsyncLocalStorage`-backed request/task-scoped `{ tenantRoot, adapter }`; see `docs/standards/storage-context.md`)
 - *Update check*: `update-check.ts` (compares running version to latest GitHub release)
 - *Concurrency*: `locks.ts`, `meta-locks.ts`
 
@@ -177,6 +177,7 @@ Key standards (read these before making significant changes):
 - `docs/standards/storybook-implementation.md` — Component documentation requirements
 - `docs/standards/code-documentation.md` — Code documentation conventions
 - `docs/standards/package-selection.md` — Guidance on adding dependencies
+- `docs/standards/storage-context.md` — Request-scoped `StorageContext` seam: when routes/CLI/background jobs must establish it
 
 ## Styling
 

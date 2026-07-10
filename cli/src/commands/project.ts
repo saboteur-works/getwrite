@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { createProjectFromType } from "@gw/core";
+import { createProjectFromType, runForTenant } from "@gw/core";
 
 export default function registerProject(program: Command): void {
   const cmd = program
@@ -27,11 +27,13 @@ export default function registerProject(program: Command): void {
 
         const specPath = String(options.spec);
 
-        const result = await createProjectFromType({
-          projectRoot: projectRoot as string,
-          spec: specPath,
-          name: options.name,
-        });
+        const result = await runForTenant(projectRoot as string, () =>
+          createProjectFromType({
+            projectRoot: projectRoot as string,
+            spec: specPath,
+            name: options.name,
+          }),
+        );
 
         console.log(`Created project at: ${projectRoot}`);
         console.log(

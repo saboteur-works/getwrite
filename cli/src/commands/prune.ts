@@ -33,7 +33,7 @@
  * the process.
  */
 import { Command } from "commander";
-import { runPruneCli } from "@gw/core";
+import { runPruneCli, runForTenant } from "@gw/core";
 
 /**
  * Registers the `prune` sub-command on the provided Commander `program`.
@@ -79,12 +79,9 @@ export function registerPrune(program: Command) {
         const root = projectRoot ?? process.cwd();
         const max = Number(options.max ?? 50);
         try {
-          const code = await runPruneCli([
-            process.execPath,
-            "getwrite-cli",
-            root,
-            String(max),
-          ]);
+          const code = await runForTenant(root, () =>
+            runPruneCli([process.execPath, "getwrite-cli", root, String(max)]),
+          );
           // When running as a real CLI, exit with the returned code. When used
           // programmatically (tests) set env GETWRITE_CLI_TESTING to avoid exit.
           if (!process.env.GETWRITE_CLI_TESTING) process.exit(code ?? 0);

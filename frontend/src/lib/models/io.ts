@@ -10,13 +10,21 @@
  * default, while tests can inject an in-memory or mocked adapter via
  * {@link setStorageAdapter}.
  *
+ * Each wrapper resolves its adapter per-call via `currentAdapter()`, which
+ * prefers the ambient {@link StorageContext.adapter} bound by
+ * `runInStorageContext` (see `storage-context.ts`), if any request/task
+ * scope is currently active, and otherwise falls back to the module-level
+ * default/override adapter set via {@link setStorageAdapter}.
+ *
  * Primary goals:
  * - Enable deterministic tests by swapping the global storage implementation.
  * - Keep call sites agnostic to concrete I/O APIs.
  * - Provide a small, explicit contract for operations used by the models.
  */
 import fs from "node:fs/promises";
+import path from "node:path";
 import type { Dirent, Stats } from "node:fs";
+import { getStorageContext, runInStorageContext } from "./storage-context";
 
 /**
  * Result type for directory listings.
@@ -150,12 +158,63 @@ export function setStorageAdapter(a: StorageAdapter) {
 }
 
 /**
- * Returns the currently configured storage adapter.
+ * Resolves the storage adapter to use for the current call.
+ *
+ * Prefers the ambient {@link StorageContext.adapter} bound via
+ * `runInStorageContext` for the current async execution chain, if any.
+ * Falls back to the module-level default/override adapter (see
+ * {@link setStorageAdapter}) when no context is active.
+ *
+ * @returns The {@link StorageAdapter} to use for this call.
+ */
+function currentAdapter(): StorageAdapter {
+  return getStorageContext()?.adapter ?? adapter;
+}
+
+/**
+ * Returns the storage adapter that would be used for the current call.
+ *
+ * Resolves via {@link currentAdapter}: the ambient context adapter (if a
+ * `runInStorageContext` scope is active), otherwise the module-level
+ * default/override adapter.
  *
  * @returns Active {@link StorageAdapter} instance.
  */
 export function getStorageAdapter(): StorageAdapter {
-  return adapter;
+  return currentAdapter();
+}
+
+/**
+ * Runs `fn` inside a {@link StorageContext} derived from a single project's
+ * root directory — the imperative sibling of the route-level
+ * `withStorageContext` helper, for non-route entry points (CLI commands,
+ * background workers).
+ *
+ * `tenantRoot` is bound to `path.dirname(projectRoot)` so it matches the value
+ * `resolveProjectsDir()` is contracted to return in a request (the *parent*
+ * directory that contains project folders), rather than the individual project
+ * dir — keeping route and non-route contexts consistent.
+ *
+ * The adapter defaults to whatever is active at the call site, but callers that
+ * schedule deferred work (a queue drain, a debounce timer) should capture the
+ * adapter at enqueue time and pass it explicitly, since by drain/fire time no
+ * ambient context is active and the default would resolve to the module
+ * fallback instead of the enqueuing scope's adapter.
+ *
+ * @param projectRoot - The project directory being operated on.
+ * @param fn - The callback to execute within the derived context.
+ * @param adapter - Adapter to bind; defaults to the currently active adapter.
+ * @returns Whatever `fn` returns (synchronously or as a `Promise`).
+ */
+export function runForTenant<T>(
+  projectRoot: string,
+  fn: () => T,
+  adapter: StorageAdapter = currentAdapter(),
+): T {
+  return runInStorageContext(
+    { tenantRoot: path.dirname(projectRoot), adapter },
+    fn,
+  );
 }
 
 /**
@@ -166,7 +225,7 @@ export function getStorageAdapter(): StorageAdapter {
  * @returns Resolves when the directory operation completes.
  */
 export const mkdir = (p: string, o?: { recursive?: boolean }) =>
-  adapter.mkdir(p, o);
+  currentAdapter().mkdir(p, o);
 
 /**
  * Writes file data using the active storage adapter.
@@ -177,7 +236,7 @@ export const mkdir = (p: string, o?: { recursive?: boolean }) =>
  * @returns Resolves when the write completes.
  */
 export const writeFile = (p: string, d: string | Buffer, o?: string | object) =>
-  adapter.writeFile(p, d, o);
+  currentAdapter().writeFile(p, d, o);
 
 /**
  * Reads a text file using the active storage adapter.
@@ -187,7 +246,7 @@ export const writeFile = (p: string, d: string | Buffer, o?: string | object) =>
  * @returns File contents as a string.
  */
 export const readFile = (p: string, e?: BufferEncoding) =>
-  adapter.readFile(p, e);
+  currentAdapter().readFile(p, e);
 
 /**
  * Reads directory entries using the active storage adapter.
@@ -197,7 +256,7 @@ export const readFile = (p: string, e?: BufferEncoding) =>
  * @returns Directory entries as `string[]` or `Dirent[]`.
  */
 export const readdir = (p: string, o?: { withFileTypes?: boolean }) =>
-  adapter.readdir(p, o);
+  currentAdapter().readdir(p, o);
 
 /**
  * Reads filesystem metadata for a path.
@@ -205,7 +264,7 @@ export const readdir = (p: string, o?: { withFileTypes?: boolean }) =>
  * @param p - File or directory path.
  * @returns Node `Stats` for the path.
  */
-export const stat = (p: string) => adapter.stat(p);
+export const stat = (p: string) => currentAdapter().stat(p);
 
 /**
  * Removes a file or directory using the active storage adapter.
@@ -215,7 +274,7 @@ export const stat = (p: string) => adapter.stat(p);
  * @returns Resolves when removal completes.
  */
 export const rm = (p: string, o?: { recursive?: boolean; force?: boolean }) =>
-  adapter.rm(p, o);
+  currentAdapter().rm(p, o);
 
 /**
  * Renames or moves a file/directory using the active storage adapter.
@@ -224,7 +283,7 @@ export const rm = (p: string, o?: { recursive?: boolean; force?: boolean }) =>
  * @param b - Destination path.
  * @returns Resolves when rename completes.
  */
-export const rename = (a: string, b: string) => adapter.rename(a, b);
+export const rename = (a: string, b: string) => currentAdapter().rename(a, b);
 
 /**
  * Flushes file data to disk using the active storage adapter. No-op when the
@@ -233,7 +292,8 @@ export const rename = (a: string, b: string) => adapter.rename(a, b);
  * @param p - File path to fsync.
  */
 export const fsyncFile = async (p: string): Promise<void> => {
-  if (adapter.fsyncFile) await adapter.fsyncFile(p);
+  const a = currentAdapter();
+  if (a.fsyncFile) await a.fsyncFile(p);
 };
 
 /**

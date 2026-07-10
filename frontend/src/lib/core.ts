@@ -44,3 +44,6 @@ export {
 // Content loading (lib sibling; moves into core alongside the models on
 // extraction).
 export { loadResourceContent } from "./tiptap-utils";
+
+// Storage context (imperative helper for non-route entry points, e.g. the CLI)
+export { runForTenant } from "./models/io";

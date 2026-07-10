@@ -2,7 +2,10 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 
 // Mock the project creator before importing the CLI so the CLI uses the mock.
 vi.mock("@gw/core", () => {
-  return { createProjectFromType: vi.fn() };
+  return {
+    createProjectFromType: vi.fn(),
+    runForTenant: vi.fn((_root: string, fn: () => unknown) => fn()),
+  };
 });
 
 import * as creator from "@gw/core";

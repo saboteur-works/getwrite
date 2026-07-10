@@ -25,3 +25,7 @@ This directory contains Architectural Decision Records (ADRs) for GetWrite.
 ## 2026-06
 
 16. [CLI Extracted to a Standalone Package; Core Extraction Deferred](./adr-016-cli-extraction-and-deferred-core-package.md)
+
+## 2026-07
+
+17. [Request-Scoped, Directory-Per-Tenant Storage for Hosted GetWrite](./adr-017-request-scoped-directory-per-tenant-storage.md)
