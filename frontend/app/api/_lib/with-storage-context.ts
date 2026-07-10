@@ -38,10 +38,12 @@ import { resolveTenant } from "./resolve-tenant";
  * The wrapper is itself asynchronous: it extracts the inbound request as
  * `args[0]` (Next.js always passes it, even to handlers that appear
  * zero-arity) and awaits `resolveTenant(request)` to determine `tenantRoot`
- * before entering the storage context. When `args[0]` is not present (e.g. a
- * handler invoked directly with no arguments, which should not occur via
- * Next.js routing but must not crash), this falls back to `defaultProjectsDir()`
- * directly without calling `resolveTenant`, matching the null-user behavior.
+ * before entering the storage context. The request is narrowed with
+ * `instanceof Request` rather than an unchecked cast, so anything that is not
+ * a `Request` — a handler invoked directly with no/other arguments, which
+ * should not occur via Next.js routing but must not crash — safely falls back
+ * to `defaultProjectsDir()` without calling `resolveTenant`, matching the
+ * null-user behavior.
  *
  * Preserves the handler's exact call signature and return type so Next.js's
  * route-handler type inference continues to accept the wrapped export.
@@ -54,10 +56,10 @@ export function withStorageContext<Args extends unknown[], Return>(
   handler: (...args: Args) => Return | Promise<Return>,
 ): (...args: Args) => Promise<Return> {
   return async (...args: Args) => {
-    const request = args[0] as Request | undefined;
+    const request = args[0];
 
     const tenantRoot =
-      request !== undefined
+      request instanceof Request
         ? (await resolveTenant(request)).dataRoot
         : defaultProjectsDir();
 

@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import path from "node:path";
-import { resolveTenant } from "../../app/api/_lib/resolve-tenant";
+import {
+  resolveTenant,
+  __resetProvisionedRootsForTests,
+} from "../../app/api/_lib/resolve-tenant";
 import { defaultProjectsDir } from "../../src/lib/models/projects-dir";
 import {
   setStorageAdapter,
@@ -41,6 +44,10 @@ describe("resolveTenant", () => {
     originalAdapter = getStorageAdapter();
     fakeAdapter = createFakeAdapter();
     setStorageAdapter(fakeAdapter);
+
+    // Clear the process-local provisioning memo so each test observes a
+    // fresh first-touch mkdir rather than a cache hit from a prior test.
+    __resetProvisionedRootsForTests();
   });
 
   afterEach(() => {

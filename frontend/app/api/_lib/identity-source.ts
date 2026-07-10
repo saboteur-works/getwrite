@@ -46,19 +46,20 @@ export interface IdentitySource {
   getUserId(request: Request): string | null;
 }
 
-/** The dev-only request header `devIdentitySource` reads once activated. */
+/** The dev-only request header `devIdentitySource` reads. */
 const DEV_USER_HEADER = "x-getwrite-dev-user";
 
 /**
  * Tracks whether the one-time activation warning has already been emitted
  * for the current activation of `GETWRITE_ENABLE_DEV_IDENTITY`.
  *
- * Deliberately module-level mutable state, not a cached copy of the env
- * flag itself: `hasWarnedForActivation` only suppresses repeat warnings
- * within a single activation. The flag itself is still read fresh from
- * `process.env` on every call (see {@link devIdentitySource}), so tests
- * that toggle the env var between calls correctly re-trigger the warning
- * the next time the flag transitions from unset to set.
+ * Deliberately module-level mutable state owned by {@link getIdentitySource}
+ * — the single place the env flag is read. It suppresses repeat warnings
+ * within one activation and is reset whenever `getIdentitySource` observes
+ * the flag unset, so a genuine off→on toggle re-warns on the next
+ * activation. Because `getIdentitySource` runs on every request (via
+ * `resolveTenant`), that reset is reachable through the real call path, not
+ * only from tests.
  */
 let hasWarnedForActivation = false;
 
@@ -66,40 +67,19 @@ let hasWarnedForActivation = false;
  * The interim `IdentitySource` implementation (ADR-018's "interim identity
  * source"): a dev-only stub, **not production authentication**.
  *
- * Inert unless `GETWRITE_ENABLE_DEV_IDENTITY` is set to any non-empty
- * value, per FR4:
- * - When unset: `getUserId` returns `null` unconditionally and does not
- *   read the request's headers at all, so it is inert regardless of
- *   request content.
- * - When set: `getUserId` reads the dev-only `x-getwrite-dev-user` request
- *   header and returns its value, or `null` when the header is absent or
- *   empty. The returned value is an unvalidated identity claim; callers
- *   must run it through `tenant-path.ts`'s allowlist guard before using it
- *   as a filesystem path segment.
+ * This is a **pure** header read with no env gating of its own: it returns
+ * the dev-only `x-getwrite-dev-user` request header value, or `null` when
+ * that header is absent or empty. The returned value is an unvalidated
+ * identity claim; callers must run it through `tenant-path.ts`'s allowlist
+ * guard before using it as a filesystem path segment.
  *
- * The env var is read fresh on every call (not cached at module load), so
- * it can be toggled per-test. On activation (the first call observed while
- * the flag is set, or again after the flag has been toggled off and back
- * on), a single loud `console.warn` fires stating that dev identity is
- * enabled and that this is not production auth.
+ * The activation gate (the `GETWRITE_ENABLE_DEV_IDENTITY` flag and the
+ * one-time warning) lives solely in {@link getIdentitySource}, which only
+ * hands out this source when the flag is set — so there is exactly one
+ * env-flag check and one authoritative security boundary, not two.
  */
 export const devIdentitySource: IdentitySource = {
   getUserId(request: Request): string | null {
-    if (!process.env.GETWRITE_ENABLE_DEV_IDENTITY) {
-      hasWarnedForActivation = false;
-      return null;
-    }
-
-    if (!hasWarnedForActivation) {
-      hasWarnedForActivation = true;
-      console.warn(
-        "[getwrite] GETWRITE_ENABLE_DEV_IDENTITY is enabled: requests are " +
-          `identified via the dev-only "${DEV_USER_HEADER}" header. This is ` +
-          "NOT production authentication — do not enable this in a real " +
-          "hosted deployment.",
-      );
-    }
-
     const headerValue = request.headers.get(DEV_USER_HEADER);
     return headerValue === null || headerValue === "" ? null : headerValue;
   },
@@ -113,19 +93,35 @@ const nullIdentitySource: IdentitySource = {
 };
 
 /**
- * Returns the currently configured `IdentitySource`.
+ * Returns the currently configured `IdentitySource` — the single authority
+ * for whether any request may assert an identity at all.
  *
- * This is the single swap point for the future real auth-backed
+ * This is also the single swap point for the future real auth-backed
  * implementation: replace this function's body to return the real source
  * (unconditionally, or behind its own gating), and no caller of
  * `getIdentitySource()` needs to change.
  *
- * Presently: returns {@link devIdentitySource} when
- * `GETWRITE_ENABLE_DEV_IDENTITY` is set, otherwise a null source whose
- * `getUserId` always returns `null`.
+ * The env var is read fresh on every call (not cached at module load) so it
+ * can be toggled per-test. Presently: returns {@link devIdentitySource}
+ * when `GETWRITE_ENABLE_DEV_IDENTITY` is set — emitting a single loud
+ * activation `console.warn` per activation — and otherwise a null source
+ * whose `getUserId` always returns `null`.
  */
 export function getIdentitySource(): IdentitySource {
-  return process.env.GETWRITE_ENABLE_DEV_IDENTITY
-    ? devIdentitySource
-    : nullIdentitySource;
+  if (!process.env.GETWRITE_ENABLE_DEV_IDENTITY) {
+    hasWarnedForActivation = false;
+    return nullIdentitySource;
+  }
+
+  if (!hasWarnedForActivation) {
+    hasWarnedForActivation = true;
+    console.warn(
+      "[getwrite] GETWRITE_ENABLE_DEV_IDENTITY is enabled: requests are " +
+        `identified via the dev-only "${DEV_USER_HEADER}" header. This is ` +
+        "NOT production authentication — do not enable this in a real " +
+        "hosted deployment.",
+    );
+  }
+
+  return devIdentitySource;
 }

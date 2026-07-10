@@ -105,20 +105,25 @@ guard.
    `frontend/src/lib/models/projects-dir.ts`.
 7. A centralized path-traversal guard must validate every non-null `userId`
    before it is joined into a filesystem path. The guard's primary rule is a
-   strict allowlist: a `userId` must match `^[A-Za-z0-9_-]{1,64}$` or
+   strict allowlist: a `userId` must match `^[a-z0-9_-]{1,64}$` or
    resolution fails (rejected, not silently falling back or truncating).
    This charset admits no path separators, no `.` (so `..` traversal is
    impossible by construction), no Unicode/homoglyph/normalization
-   ambiguity, no null bytes, and no empty string. The guard must have unit
-   test coverage showing the allowlist rejects, at minimum, all of the
-   following inputs: `../otherUser`, `../../etc`, an absolute path (e.g.
-   `/etc/passwd`), a URL-encoded separator (e.g. `..%2Fother`), an embedded
-   null byte, an empty string, and a `userId` containing an embedded path
-   separator (e.g. `foo/../../bar`, `foo/bar`). An `IdentitySource` whose
-   native identifier does not fit this charset (e.g. an email-based
-   real-auth id) is responsible for mapping/hashing it to a conforming
-   `userId` at the source boundary; that mapping is out of scope for this
-   feature.
+   ambiguity, no null bytes, and no empty string. Uppercase is excluded so
+   the `userId`→directory mapping is injective on a case-insensitive
+   filesystem (macOS/Windows): were both cases allowed, `Alice` and `alice`
+   would join to the same directory and cross a tenant boundary, so a single
+   case keeps distinct users in distinct directories on any host FS. The
+   guard must have unit test coverage showing the allowlist rejects, at
+   minimum, all of the following inputs: `../otherUser`, `../../etc`, an
+   absolute path (e.g. `/etc/passwd`), a URL-encoded separator (e.g.
+   `..%2Fother`), an embedded null byte, an empty string, a `userId`
+   containing an embedded path separator (e.g. `foo/../../bar`, `foo/bar`),
+   and a mixed/upper-case id (e.g. `Alice`). An `IdentitySource` whose native
+   identifier does not fit this charset (e.g. an email-based real-auth id, or
+   one carrying uppercase) is responsible for mapping/hashing it to a
+   conforming `userId` at the source boundary; that mapping is out of scope
+   for this feature.
 8. On a signed-in user's (non-null `userId`) first resolved request,
    `<data-root>/<userId>/` must be created if it does not already exist
    before the request proceeds, so the request's subsequent storage

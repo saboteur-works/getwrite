@@ -26,6 +26,27 @@ import { defaultProjectsDir } from "../../../src/lib/models/projects-dir";
 import { mkdir } from "../../../src/lib/models/io";
 
 /**
+ * Data roots already provisioned in this process lifetime.
+ *
+ * First-request provisioning (FR8) only needs to run once per tenant: after
+ * `<data-root>/<userId>/` exists, re-issuing `mkdir` on every subsequent
+ * request for that tenant is a wasted filesystem syscall on the request hot
+ * path. Memoizing the roots we have already `mkdir`-ed turns O(requests)
+ * provisioning calls into O(distinct tenants). The cache is intentionally
+ * process-local and best-effort — a fresh process re-provisions on first
+ * touch, which is correct because `mkdir(recursive)` is idempotent anyway.
+ */
+const provisionedRoots = new Set<string>();
+
+/**
+ * Test-only hook to clear the provisioned-roots memo so each test starts
+ * from a clean slate and can assert on `mkdir` being (or not being) called.
+ */
+export function __resetProvisionedRootsForTests(): void {
+  provisionedRoots.clear();
+}
+
+/**
  * Result of resolving a request to a tenant.
  */
 export interface ResolvedTenant {
@@ -55,9 +76,10 @@ export interface ResolvedTenant {
  *   than silently falling back to `defaultProjectsDir()`. Once `dataRoot` is
  *   derived, this best-effort provisions it with an idempotent
  *   `mkdir(dataRoot, { recursive: true })` (FR8) so the request's subsequent
- *   storage operations succeed against an existing directory. No lock and no
- *   `EEXIST` handling is needed, matching the codebase's uniform
- *   idempotent-mkdir idiom.
+ *   storage operations succeed against an existing directory — but only the
+ *   first time this process sees that root (see {@link provisionedRoots}), so
+ *   steady-state requests skip the syscall. No lock and no `EEXIST` handling
+ *   is needed, matching the codebase's uniform idempotent-mkdir idiom.
  *
  * @param request - The inbound request to resolve a tenant for.
  * @returns The resolved `{ userId, dataRoot }`.
@@ -72,6 +94,9 @@ export async function resolveTenant(request: Request): Promise<ResolvedTenant> {
   }
 
   const dataRoot = dataRootForUser(userId);
-  await mkdir(dataRoot, { recursive: true });
+  if (!provisionedRoots.has(dataRoot)) {
+    await mkdir(dataRoot, { recursive: true });
+    provisionedRoots.add(dataRoot);
+  }
   return { userId, dataRoot };
 }

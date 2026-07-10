@@ -63,13 +63,24 @@ export class TenantResolutionError extends Error {
 
 /**
  * The allowlist charset a `userId` must match in its entirety: 1-64
- * characters, each an ASCII letter, digit, underscore, or hyphen.
+ * characters, each a **lowercase** ASCII letter, digit, underscore, or
+ * hyphen.
  *
  * This charset excludes `.` (so `..` traversal is unrepresentable), `/`
  * and `\` (so no path separator can be embedded), null bytes, Unicode
  * (no homoglyph/normalization ambiguity), and the empty string.
+ *
+ * Uppercase is deliberately excluded so the `userId`→directory mapping is
+ * injective on **any** filesystem: on a case-insensitive filesystem
+ * (default macOS APFS, Windows NTFS) `Alice` and `alice` would join to the
+ * same on-disk directory and cross a tenant boundary. Restricting the
+ * allowlist to a single case means no two valid `userId`s can case-fold to
+ * the same path, so distinct tenants always get distinct directories
+ * regardless of the host FS. A source whose native identifier contains
+ * uppercase (or any other out-of-charset character) is responsible for
+ * mapping it to a conforming `userId` at its own boundary (FR7).
  */
-const USER_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+const USER_ID_PATTERN = /^[a-z0-9_-]{1,64}$/;
 
 /**
  * Validates a `userId` against the allowlist charset described above.
@@ -83,7 +94,7 @@ const USER_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
  * @param userId - The candidate user identifier to validate.
  * @returns The same `userId`, unchanged, when valid.
  * @throws {TenantResolutionError} When `userId` does not match
- *   `^[A-Za-z0-9_-]{1,64}$`.
+ *   `^[a-z0-9_-]{1,64}$`.
  */
 export function validateUserId(userId: string): string {
   if (!USER_ID_PATTERN.test(userId)) {
