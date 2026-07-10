@@ -25,12 +25,7 @@
  */
 import path from "node:path";
 import { Command } from "commander";
-import {
-  readFolderTree,
-  getLocalResources,
-  runInStorageContext,
-  getStorageAdapter,
-} from "@gw/core";
+import { readFolderTree, getLocalResources, runForTenant } from "@gw/core";
 
 interface FolderLike {
   id?: unknown;
@@ -106,10 +101,7 @@ export function registerDoctor(program: Command) {
     .action(async (projectRoot: string | undefined): Promise<void> => {
       const root = projectRoot ?? process.cwd();
       try {
-        const code = await runInStorageContext(
-          { tenantRoot: root, adapter: getStorageAdapter() },
-          () => runDoctor(root),
-        );
+        const code = await runForTenant(root, () => runDoctor(root));
         if (!process.env.GETWRITE_CLI_TESTING) process.exit(code);
       } catch (err) {
         console.error("Doctor command failed:", err);

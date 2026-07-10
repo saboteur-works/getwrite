@@ -1,14 +1,22 @@
 import { indexResource } from "./inverted-index";
 import { readSidecar } from "./sidecar";
 import { listRevisions } from "./revision";
-import { getStorageAdapter, readFile } from "./io";
+import {
+  getStorageAdapter,
+  runForTenant,
+  readFile,
+  type StorageAdapter,
+} from "./io";
 import { loadResourceContent, tiptapToPlainText } from "../tiptap-utils";
 import { startBacklinkWatcher } from "./backlinks-watcher";
 import { computeBacklinks, persistBacklinks } from "./backlinks";
-import { runInStorageContext } from "./storage-context";
 import type { TextResource } from "./types";
 
-type Task = { projectRoot: string; resourceId: string };
+type Task = {
+  projectRoot: string;
+  resourceId: string;
+  adapter: StorageAdapter;
+};
 
 const queue: Task[] = [];
 let isRunning = false;
@@ -22,7 +30,10 @@ let isShutdownHooksInstalled = false;
  * lazily on first enqueueIndex so the runtime backlink index is kept in
  * sync without callers having to manage watcher lifecycle.
  */
-function ensureBacklinkWatcher(projectRoot: string): void {
+function ensureBacklinkWatcher(
+  projectRoot: string,
+  adapter: StorageAdapter,
+): void {
   // The recursive fs.watch backlinks watcher provides no value under the unit
   // test runner, and because indexing is enqueued via a deferred dynamic import
   // it can start a watcher on a temp project dir *after* a test has begun
@@ -32,7 +43,7 @@ function ensureBacklinkWatcher(projectRoot: string): void {
   if (process.env.VITEST || process.env.NODE_ENV === "test") return;
   if (activeBacklinkWatchers.has(projectRoot)) return;
   try {
-    const stop = startBacklinkWatcher(projectRoot);
+    const stop = startBacklinkWatcher(projectRoot, {}, adapter);
     activeBacklinkWatchers.set(projectRoot, stop);
   } catch {
     // Watcher could not start (e.g. resources dir missing on cold start) —
@@ -62,8 +73,8 @@ export function installShutdownHooks(): void {
 
 async function runTask(task: Task) {
   try {
-    await runInStorageContext(
-      { tenantRoot: task.projectRoot, adapter: getStorageAdapter() },
+    await runForTenant(
+      task.projectRoot,
       async () => {
         const side = await readSidecar(task.projectRoot, task.resourceId);
         const now = new Date().toISOString();
@@ -121,6 +132,7 @@ async function runTask(task: Task) {
           console.error("[indexer-queue] backlinks update failed:", err);
         }
       },
+      task.adapter,
     );
   } catch (err) {
     console.error("[indexer-queue] task failed:", err);
@@ -154,9 +166,13 @@ export function enqueueIndex(
     return Promise.resolve();
   }
   installShutdownHooks();
-  ensureBacklinkWatcher(projectRoot);
+  // Capture the adapter active at enqueue time (the request's scope, once
+  // per-tenant adapters exist) so the deferred queue drain and the debounced
+  // backlink watcher use it rather than the module fallback active later.
+  const adapter = getStorageAdapter();
+  ensureBacklinkWatcher(projectRoot, adapter);
   return new Promise((resolve) => {
-    queue.push({ projectRoot, resourceId });
+    queue.push({ projectRoot, resourceId, adapter });
     // Kick the processor asynchronously
     void processQueue();
     // Poll for task completion by waiting until resourceId no longer in queue

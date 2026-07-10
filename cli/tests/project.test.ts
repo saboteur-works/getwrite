@@ -4,8 +4,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 vi.mock("@gw/core", () => {
   return {
     createProjectFromType: vi.fn(),
-    runInStorageContext: vi.fn((_ctx: unknown, fn: () => unknown) => fn()),
-    getStorageAdapter: vi.fn(() => ({})),
+    runForTenant: vi.fn((_root: string, fn: () => unknown) => fn()),
   };
 });
 

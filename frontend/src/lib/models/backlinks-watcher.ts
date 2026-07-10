@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { computeBacklinks, persistBacklinks } from "./backlinks";
-import { getStorageAdapter } from "./io";
-import { runInStorageContext } from "./storage-context";
+import { getStorageAdapter, runForTenant, type StorageAdapter } from "./io";
 
 /**
  * Options for the backlinks watcher.
@@ -32,6 +31,7 @@ export type BacklinkWatcherOptions = {
 export function startBacklinkWatcher(
   projectRoot: string,
   opts: BacklinkWatcherOptions = {},
+  adapter: StorageAdapter = getStorageAdapter(),
 ): () => void {
   const debounceMs = opts.debounceMs ?? 250;
   const isVerbose = opts.verbose ?? false;
@@ -45,14 +45,15 @@ export function startBacklinkWatcher(
     if (timer) clearTimeout(timer);
     timer = setTimeout(async () => {
       try {
-        await runInStorageContext(
-          { tenantRoot: projectRoot, adapter: getStorageAdapter() },
+        await runForTenant(
+          projectRoot,
           async () => {
             if (isVerbose) console.log("backlinks: recomputing...");
             const index = await computeBacklinks(projectRoot);
             await persistBacklinks(projectRoot, index);
             if (isVerbose) console.log("backlinks: persisted");
           },
+          adapter,
         );
       } catch (err) {
         // Keep watcher alive on errors but surface to console when verbose

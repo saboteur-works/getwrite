@@ -22,8 +22,9 @@
  * - Provide a small, explicit contract for operations used by the models.
  */
 import fs from "node:fs/promises";
+import path from "node:path";
 import type { Dirent, Stats } from "node:fs";
-import { getStorageContext } from "./storage-context";
+import { getStorageContext, runInStorageContext } from "./storage-context";
 
 /**
  * Result type for directory listings.
@@ -181,6 +182,39 @@ function currentAdapter(): StorageAdapter {
  */
 export function getStorageAdapter(): StorageAdapter {
   return currentAdapter();
+}
+
+/**
+ * Runs `fn` inside a {@link StorageContext} derived from a single project's
+ * root directory — the imperative sibling of the route-level
+ * `withStorageContext` helper, for non-route entry points (CLI commands,
+ * background workers).
+ *
+ * `tenantRoot` is bound to `path.dirname(projectRoot)` so it matches the value
+ * `resolveProjectsDir()` is contracted to return in a request (the *parent*
+ * directory that contains project folders), rather than the individual project
+ * dir — keeping route and non-route contexts consistent.
+ *
+ * The adapter defaults to whatever is active at the call site, but callers that
+ * schedule deferred work (a queue drain, a debounce timer) should capture the
+ * adapter at enqueue time and pass it explicitly, since by drain/fire time no
+ * ambient context is active and the default would resolve to the module
+ * fallback instead of the enqueuing scope's adapter.
+ *
+ * @param projectRoot - The project directory being operated on.
+ * @param fn - The callback to execute within the derived context.
+ * @param adapter - Adapter to bind; defaults to the currently active adapter.
+ * @returns Whatever `fn` returns (synchronously or as a `Promise`).
+ */
+export function runForTenant<T>(
+  projectRoot: string,
+  fn: () => T,
+  adapter: StorageAdapter = currentAdapter(),
+): T {
+  return runInStorageContext(
+    { tenantRoot: path.dirname(projectRoot), adapter },
+    fn,
+  );
 }
 
 /**
