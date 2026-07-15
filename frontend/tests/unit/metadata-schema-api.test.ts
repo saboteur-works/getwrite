@@ -3,14 +3,19 @@
  *
  * Tests call the underlying `metadata-schema.ts` model functions directly
  * against a real temporary filesystem project — matching the pattern used
- * by `tags-api.test.ts`.
+ * by `tags-api.test.ts`. The route-level `describe` block below additionally
+ * exercises the actual `POST`/`GET` handlers against a `projectId`-scoped
+ * `GETWRITE_PROJECTS_DIR`, per the 29-route tenant enforcement feature
+ * (Task 4).
  */
+// @vitest-environment node
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
+import { generateUUID } from "../../src/lib/models/uuid";
 import {
   getSchema,
   addField,
@@ -360,6 +365,112 @@ describe("camelCase built-in key round-trip", () => {
 // ---------------------------------------------------------------------------
 // update-ref-properties action
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Route-level: POST/GET /api/project/metadata-schema (projectId-based)
+// ---------------------------------------------------------------------------
+
+describe("POST/GET /api/project/metadata-schema (projectId-based)", () => {
+  it("resolves projectId to the on-disk project and returns the updated schema", async () => {
+    const projectsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-mschema-route-"),
+    );
+    const projectId = generateUUID();
+    const projectPath = path.join(projectsDir, projectId);
+    await fs.mkdir(projectPath, { recursive: true });
+    const proj = createProject({ name: "route-test" });
+    const projWithSchema = {
+      ...proj,
+      config: { ...proj.config, metadataSchema: baseSchema() },
+    };
+    await fs.writeFile(
+      path.join(projectPath, PROJECT_FILENAME),
+      JSON.stringify(projWithSchema, null, 2),
+      "utf8",
+    );
+
+    const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    try {
+      const { POST } =
+        await import("../../app/api/project/metadata-schema/route");
+      const res = await POST(
+        new Request("http://localhost/api/project/metadata-schema", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "add-field",
+            projectId,
+            groupId: GROUP_ID,
+            field: { key: "route-field", label: "Route Field", type: "text" },
+          }),
+        }) as never,
+      );
+      const json = (await res.json()) as { schema: MetadataSchema };
+      expect(res.status).toBe(200);
+      expect(json.schema.groups[0].fields.map((f) => f.key)).toContain(
+        "route-field",
+      );
+    } finally {
+      process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+      await fs.rm(projectsDir, { recursive: true, force: true });
+    }
+  });
+
+  it("returns the uniform 400 when POST projectId is not a well-formed UUID", async () => {
+    const projectsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-mschema-route-"),
+    );
+    const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    try {
+      const { POST } =
+        await import("../../app/api/project/metadata-schema/route");
+      const res = await POST(
+        new Request("http://localhost/api/project/metadata-schema", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "add-field",
+            projectId: "../../etc/passwd",
+            groupId: GROUP_ID,
+            field: { key: "x", label: "X", type: "text" },
+          }),
+        }) as never,
+      );
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Invalid projectId");
+    } finally {
+      process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+      await fs.rm(projectsDir, { recursive: true, force: true });
+    }
+  });
+
+  it("returns the uniform 400 when GET projectId is not a well-formed UUID", async () => {
+    const projectsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-mschema-route-"),
+    );
+    const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    try {
+      const { GET } =
+        await import("../../app/api/project/metadata-schema/route");
+      const { NextRequest } = await import("next/server");
+      const res = await GET(
+        new NextRequest(
+          "http://localhost/api/project/metadata-schema?projectId=not-a-uuid&fieldKey=status",
+        ),
+      );
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Invalid projectId");
+    } finally {
+      process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+      await fs.rm(projectsDir, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("updateRefProperties action", () => {
   const REF_FIELD: MetadataField = {

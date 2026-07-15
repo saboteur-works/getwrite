@@ -6,20 +6,28 @@
  * Route:
  * - `POST /api/project/revision-settings` — sets `config.defaultRevisionName`
  *
- * POST body: `{ projectPath: string; defaultRevisionName: string }`
+ * POST body: `{ projectId: string; defaultRevisionName: string }`
  * Success:   `{ defaultRevisionName: string }`
  * Failure:   `{ error: string }`
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import path from "node:path";
 import { updateDefaultRevisionName } from "../../../../src/lib/models/revision-settings";
+import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateRevisionSettingsBody {
-  projectPath: string;
+  projectId: string;
   defaultRevisionName: string;
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+async function handlePost(req: NextRequest): Promise<Response> {
   let body: UpdateRevisionSettingsBody;
   try {
     body = (await req.json()) as UpdateRevisionSettingsBody;
@@ -27,13 +35,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { projectPath, defaultRevisionName } = body;
+  const { projectId, defaultRevisionName } = body;
 
-  if (!projectPath || typeof projectPath !== "string") {
-    return NextResponse.json(
-      { error: "Missing required field: projectPath." },
-      { status: 400 },
-    );
+  let validatedProjectId: string;
+  try {
+    validatedProjectId = validateProjectId(projectId);
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
   }
 
   if (typeof defaultRevisionName !== "string") {
@@ -42,6 +51,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 400 },
     );
   }
+
+  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
 
   try {
     const saved = await updateDefaultRevisionName(
@@ -57,3 +68,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
+
+export const POST = withStorageContext(handlePost);

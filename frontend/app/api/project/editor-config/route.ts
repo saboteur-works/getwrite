@@ -16,28 +16,38 @@ import {
   sanitizeEditorBody,
   type EditorBodyConfig,
 } from "../../../../src/lib/editor-body-settings";
+import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateProjectEditorConfigBody {
-  projectPath: string;
+  projectId: string;
   headings?: EditorHeadingMap;
   body?: EditorBodyConfig;
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+async function handlePost(req: NextRequest): Promise<Response> {
   try {
     const {
-      projectPath,
+      projectId,
       headings,
       body: bodyConfig,
     } = (await req.json()) as UpdateProjectEditorConfigBody;
 
-    if (!projectPath) {
-      return NextResponse.json(
-        { error: "Missing projectPath" },
-        { status: 400 },
-      );
+    let validatedProjectId: string;
+    try {
+      validatedProjectId = validateProjectId(projectId);
+    } catch (err) {
+      if (err instanceof InvalidProjectIdError)
+        return respondInvalidProjectId();
+      throw err;
     }
 
+    const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
     const projectFilePath = path.join(projectPath, "project.json");
     const parsedProject = JSON.parse(
       await fs.readFile(projectFilePath, "utf-8"),
@@ -76,3 +86,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withStorageContext(handlePost);

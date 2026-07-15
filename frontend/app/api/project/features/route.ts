@@ -8,7 +8,7 @@
  * Route:
  * - `POST /api/project/features` — replaces the provided block(s)
  *
- * POST body: `{ projectPath: string; features?: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig }`
+ * POST body: `{ projectId: string; features?: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig }`
  * Success:   `{ features: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig }`
  * Failure:   `{ error: string }`
  *
@@ -17,24 +17,27 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import {
-  updateFeatureConfig,
-  type FeatureConfigResult,
-} from "../../../../src/lib/models/project-features";
+import path from "node:path";
+import { updateFeatureConfig } from "../../../../src/lib/models/project-features";
 import type {
   ProjectFeatureFlags,
   OrganizerCardBodyConfig,
 } from "../../../../src/lib/models/types";
+import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateFeaturesBody {
-  projectPath: string;
+  projectId: string;
   features?: ProjectFeatureFlags;
   organizerCardBody?: OrganizerCardBodyConfig;
 }
 
-export async function POST(
-  req: NextRequest,
-): Promise<NextResponse<FeatureConfigResult | { error: string }>> {
+async function handlePost(req: NextRequest): Promise<Response> {
   let body: UpdateFeaturesBody;
   try {
     body = (await req.json()) as UpdateFeaturesBody;
@@ -42,13 +45,14 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { projectPath, features, organizerCardBody } = body;
+  const { projectId, features, organizerCardBody } = body;
 
-  if (!projectPath || typeof projectPath !== "string") {
-    return NextResponse.json(
-      { error: "Missing required field: projectPath." },
-      { status: 400 },
-    );
+  let validatedProjectId: string;
+  try {
+    validatedProjectId = validateProjectId(projectId);
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
   }
 
   if (features === undefined && organizerCardBody === undefined) {
@@ -57,6 +61,8 @@ export async function POST(
       { status: 400 },
     );
   }
+
+  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
 
   try {
     return NextResponse.json(
@@ -80,3 +86,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withStorageContext(handlePost);

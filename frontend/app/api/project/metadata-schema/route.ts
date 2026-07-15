@@ -16,6 +16,7 @@
  * this guard.
  */
 import { NextRequest, NextResponse } from "next/server";
+import path from "node:path";
 import {
   addField,
   removeField,
@@ -48,6 +49,13 @@ import type {
   MetadataGroup,
   MetadataSchema,
 } from "../../../../src/lib/models/types";
+import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
@@ -57,42 +65,42 @@ const SLUG_RE = /^[a-z0-9-]+$/;
 
 interface AddFieldRequest {
   action: "add-field";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   field: MetadataField;
 }
 
 interface RemoveFieldRequest {
   action: "remove-field";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   fieldKey: string;
 }
 
 interface DeprecateFieldRequest {
   action: "deprecate-field";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   fieldKey: string;
 }
 
 interface ClearFieldRequest {
   action: "clear-field";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   fieldKey: string;
 }
 
 interface ReorderFieldsRequest {
   action: "reorder-fields";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   newKeyOrder: string[];
 }
 
 interface RenameFieldRequest {
   action: "rename-field";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   fieldKey: string;
   newLabel: string;
@@ -100,7 +108,7 @@ interface RenameFieldRequest {
 
 interface UpdateFieldOptionsRequest {
   action: "update-field-options";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   fieldKey: string;
   options: string[];
@@ -108,25 +116,25 @@ interface UpdateFieldOptionsRequest {
 
 interface AddGroupRequest {
   action: "add-group";
-  projectPath: string;
+  projectId: string;
   group: MetadataGroup;
 }
 
 interface RemoveGroupRequest {
   action: "remove-group";
-  projectPath: string;
+  projectId: string;
   groupId: string;
 }
 
 interface ReorderGroupsRequest {
   action: "reorder-groups";
-  projectPath: string;
+  projectId: string;
   newGroupIdOrder: string[];
 }
 
 interface RenameFieldKeyRequest {
   action: "rename-key";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   fieldKey: string;
   newKey: string;
@@ -134,7 +142,7 @@ interface RenameFieldKeyRequest {
 
 interface ChangeFieldTypeRequest {
   action: "change-field-type";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   fieldKey: string;
   newType: MetadataFieldType;
@@ -142,7 +150,7 @@ interface ChangeFieldTypeRequest {
 
 interface UpdateRefPropertiesRequest {
   action: "update-ref-properties";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   fieldKey: string;
   /** `null` clears the property; absent leaves it unchanged. */
@@ -155,7 +163,7 @@ interface UpdateRefPropertiesRequest {
 
 interface ChangeFieldTypeWithMigrationRequest {
   action: "change-field-type-with-migration";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   fieldKey: string;
   newType: MetadataFieldType;
@@ -165,7 +173,7 @@ interface ChangeFieldTypeWithMigrationRequest {
 
 interface UpdateFieldOptionsWithMigrationRequest {
   action: "update-field-options-with-migration";
-  projectPath: string;
+  projectId: string;
   groupId: string;
   fieldKey: string;
   newOptions: string[];
@@ -224,9 +232,7 @@ function invalidFieldKey(key: string): NextResponse<ErrorResponse> {
 // Route handler
 // ---------------------------------------------------------------------------
 
-export async function POST(
-  req: NextRequest,
-): Promise<NextResponse<SchemaResponse | ErrorResponse>> {
+async function handlePost(req: NextRequest): Promise<Response> {
   let body: MetadataSchemaRequestBody;
   try {
     body = (await req.json()) as MetadataSchemaRequestBody;
@@ -237,42 +243,49 @@ export async function POST(
     );
   }
 
+  let validatedProjectId: string;
+  try {
+    validatedProjectId = validateProjectId(body.projectId);
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
+  }
+  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+
   try {
     if (body.action === "add-field") {
       if (!SLUG_RE.test(body.field.key)) return invalidFieldKey(body.field.key);
-      return okSchema(
-        await addField(body.projectPath, body.groupId, body.field),
-      );
+      return okSchema(await addField(projectPath, body.groupId, body.field));
     }
 
     if (body.action === "remove-field") {
       return okSchema(
-        await removeField(body.projectPath, body.groupId, body.fieldKey),
+        await removeField(projectPath, body.groupId, body.fieldKey),
       );
     }
 
     if (body.action === "deprecate-field") {
       return okSchema(
-        await deprecateField(body.projectPath, body.groupId, body.fieldKey),
+        await deprecateField(projectPath, body.groupId, body.fieldKey),
       );
     }
 
     if (body.action === "clear-field") {
       return okSchema(
-        await clearField(body.projectPath, body.groupId, body.fieldKey),
+        await clearField(projectPath, body.groupId, body.fieldKey),
       );
     }
 
     if (body.action === "reorder-fields") {
       return okSchema(
-        await reorderFields(body.projectPath, body.groupId, body.newKeyOrder),
+        await reorderFields(projectPath, body.groupId, body.newKeyOrder),
       );
     }
 
     if (body.action === "rename-field") {
       return okSchema(
         await renameField(
-          body.projectPath,
+          projectPath,
           body.groupId,
           body.fieldKey,
           body.newLabel,
@@ -283,7 +296,7 @@ export async function POST(
     if (body.action === "update-field-options") {
       return okSchema(
         await updateFieldOptions(
-          body.projectPath,
+          projectPath,
           body.groupId,
           body.fieldKey,
           body.options,
@@ -292,24 +305,22 @@ export async function POST(
     }
 
     if (body.action === "add-group") {
-      return okSchema(await addGroup(body.projectPath, body.group));
+      return okSchema(await addGroup(projectPath, body.group));
     }
 
     if (body.action === "remove-group") {
-      return okSchema(await removeGroup(body.projectPath, body.groupId));
+      return okSchema(await removeGroup(projectPath, body.groupId));
     }
 
     if (body.action === "reorder-groups") {
-      return okSchema(
-        await reorderGroups(body.projectPath, body.newGroupIdOrder),
-      );
+      return okSchema(await reorderGroups(projectPath, body.newGroupIdOrder));
     }
 
     if (body.action === "rename-key") {
       if (!SLUG_RE.test(body.newKey)) return invalidFieldKey(body.newKey);
       return okSchema(
         await renameFieldKey(
-          body.projectPath,
+          projectPath,
           body.groupId,
           body.fieldKey,
           body.newKey,
@@ -320,7 +331,7 @@ export async function POST(
     if (body.action === "change-field-type") {
       return okSchema(
         await changeFieldType(
-          body.projectPath,
+          projectPath,
           body.groupId,
           body.fieldKey,
           body.newType,
@@ -331,7 +342,7 @@ export async function POST(
     if (body.action === "change-field-type-with-migration") {
       return okSchema(
         await changeFieldTypeWithMigration(
-          body.projectPath,
+          projectPath,
           body.groupId,
           body.fieldKey,
           body.newType,
@@ -344,7 +355,7 @@ export async function POST(
     if (body.action === "update-field-options-with-migration") {
       return okSchema(
         await updateFieldOptionsWithMigration(
-          body.projectPath,
+          projectPath,
           body.groupId,
           body.fieldKey,
           body.newOptions,
@@ -365,7 +376,7 @@ export async function POST(
       if ("maxSelections" in body) updates.maxSelections = body.maxSelections;
       return okSchema(
         await updateRefProperties(
-          body.projectPath,
+          projectPath,
           body.groupId,
           body.fieldKey,
           updates,
@@ -398,7 +409,7 @@ export async function POST(
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/project/metadata-schema?projectPath=...&fieldKey=...
+// GET /api/project/metadata-schema?projectId=...&fieldKey=...
 // Returns a serialized frequency map of distinct values for a single field.
 // ---------------------------------------------------------------------------
 
@@ -410,17 +421,20 @@ export interface FieldValueEntry {
   sample: unknown;
 }
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
+async function handleGet(request: NextRequest): Promise<Response> {
   const { searchParams } = request.nextUrl;
-  const projectPath = searchParams.get("projectPath");
+  const projectId = searchParams.get("projectId");
   const fieldKey = searchParams.get("fieldKey");
 
-  if (!projectPath) {
-    return NextResponse.json(
-      { error: "projectPath is required" },
-      { status: 400 },
-    );
+  let validatedProjectId: string;
+  try {
+    validatedProjectId = validateProjectId(projectId ?? "");
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
   }
+  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+
   if (!fieldKey) {
     return NextResponse.json(
       { error: "fieldKey is required" },
@@ -453,3 +467,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
   }
 }
+
+export const POST = withStorageContext(handlePost);
+export const GET = withStorageContext(handleGet);
