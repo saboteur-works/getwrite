@@ -7,83 +7,82 @@
  * - `POST /api/project/tags`
  *
  * Expected body (list all project tags):
- * - `{ action: "list", projectPath: string }`
+ * - `{ action: "list", projectId: string }`
  *
  * Expected body (create tag):
- * - `{ action: "create", projectPath: string, name: string, color?: string }`
+ * - `{ action: "create", projectId: string, name: string, color?: string }`
  *
  * Expected body (get tag IDs assigned to a resource):
- * - `{ action: "assignments", projectPath: string, resourceId: string }`
+ * - `{ action: "assignments", projectId: string, resourceId: string }`
  */
 import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { listTags, createTag } from "../../../../src/lib/models/tags";
 import { PROJECT_FILENAME } from "../../../../src/lib/models/project-config";
-import type { Tag, Project } from "../../../../src/lib/models/types";
+import type { Project } from "../../../../src/lib/models/types";
+import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface ListTagsRequest {
   action: "list";
-  projectPath: string;
+  projectId: string;
 }
 
 interface CreateTagRequest {
   action: "create";
-  projectPath: string;
+  projectId: string;
   name: string;
   color?: string;
 }
 
 interface AssignmentsRequest {
   action: "assignments";
-  projectPath: string;
+  projectId: string;
   resourceId: string;
 }
 
 type TagsRequestBody = ListTagsRequest | CreateTagRequest | AssignmentsRequest;
 
-interface ListTagsResponse {
-  tags: Tag[];
-}
-
-interface CreateTagResponse {
-  tag: Tag;
-}
-
-interface AssignmentsResponse {
-  tagIds: string[];
-}
-
-interface ErrorResponse {
-  error: string;
-  details: string;
-}
-
-type TagsResponse =
-  | ListTagsResponse
-  | CreateTagResponse
-  | AssignmentsResponse
-  | ErrorResponse;
-
-export async function POST(
-  req: NextRequest,
-): Promise<NextResponse<TagsResponse>> {
+async function handlePost(req: NextRequest): Promise<Response> {
+  let body: TagsRequestBody;
   try {
-    const body = (await req.json()) as TagsRequestBody;
+    body = (await req.json()) as TagsRequestBody;
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid request", details: "Request body is not valid JSON" },
+      { status: 400 },
+    );
+  }
 
+  let validatedProjectId: string;
+  try {
+    validatedProjectId = validateProjectId(body.projectId);
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
+  }
+  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+
+  try {
     if (body.action === "list") {
-      const tags = await listTags(body.projectPath);
+      const tags = await listTags(projectPath);
       return NextResponse.json({ tags });
     }
 
     if (body.action === "create") {
-      const tag = await createTag(body.projectPath, body.name, body.color);
+      const tag = await createTag(projectPath, body.name, body.color);
       return NextResponse.json({ tag });
     }
 
     if (body.action === "assignments") {
       const raw = await fs.readFile(
-        path.join(body.projectPath, PROJECT_FILENAME),
+        path.join(projectPath, PROJECT_FILENAME),
         "utf8",
       );
       const project = JSON.parse(raw) as Project;
@@ -105,3 +104,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withStorageContext(handlePost);

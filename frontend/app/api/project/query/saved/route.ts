@@ -8,45 +8,52 @@
  *
  * All requests carry an `action` field that selects the operation:
  *
- * - `list`   `{ action: "list",   projectPath }` → `{ queries: SavedQuery[] }`
- * - `read`   `{ action: "read",   projectPath, id }` → `{ query: SavedQuery | null }`
- * - `write`  `{ action: "write",  projectPath, query }` → `{ query: SavedQuery }`
- * - `delete` `{ action: "delete", projectPath, id }` → `{ deleted: boolean }`
+ * - `list`   `{ action: "list",   projectId }` → `{ queries: SavedQuery[] }`
+ * - `read`   `{ action: "read",   projectId, id }` → `{ query: SavedQuery | null }`
+ * - `write`  `{ action: "write",  projectId, query }` → `{ query: SavedQuery }`
+ * - `delete` `{ action: "delete", projectId, id }` → `{ deleted: boolean }`
  *
  * Pattern follows `POST /api/project/metadata-schema`.
  */
 import { NextRequest, NextResponse } from "next/server";
+import path from "node:path";
 import {
   listQueries,
   readQuery,
   writeQuery,
   deleteQuery,
   SavedQuerySchema,
-  type SavedQuery,
 } from "../../../../../src/lib/models/saved-queries";
+import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 // ─── Request shapes ───────────────────────────────────────────────────────────
 
 interface ListRequest {
   action: "list";
-  projectPath: string;
+  projectId: string;
 }
 
 interface ReadRequest {
   action: "read";
-  projectPath: string;
+  projectId: string;
   id: string;
 }
 
 interface WriteRequest {
   action: "write";
-  projectPath: string;
+  projectId: string;
   query: unknown;
 }
 
 interface DeleteRequest {
   action: "delete";
-  projectPath: string;
+  projectId: string;
   id: string;
 }
 
@@ -56,41 +63,9 @@ type SavedQueryRequestBody =
   | WriteRequest
   | DeleteRequest;
 
-// ─── Response shapes ──────────────────────────────────────────────────────────
-
-interface ListResponse {
-  queries: SavedQuery[];
-}
-
-interface ReadResponse {
-  query: SavedQuery | null;
-}
-
-interface WriteResponse {
-  query: SavedQuery;
-}
-
-interface DeleteResponse {
-  deleted: boolean;
-}
-
-interface ErrorResponse {
-  error: string;
-  details: string;
-}
-
-type SavedQueryResponse =
-  | ListResponse
-  | ReadResponse
-  | WriteResponse
-  | DeleteResponse
-  | ErrorResponse;
-
 // ─── Route handler ────────────────────────────────────────────────────────────
 
-export async function POST(
-  req: NextRequest,
-): Promise<NextResponse<SavedQueryResponse>> {
+async function handlePost(req: NextRequest): Promise<Response> {
   let body: SavedQueryRequestBody;
   try {
     body = (await req.json()) as SavedQueryRequestBody;
@@ -101,15 +76,24 @@ export async function POST(
     );
   }
 
+  let validatedProjectId: string;
+  try {
+    validatedProjectId = validateProjectId(body.projectId);
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
+  }
+  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+
   try {
     switch (body.action) {
       case "list": {
-        const queries = await listQueries(body.projectPath);
+        const queries = await listQueries(projectPath);
         return NextResponse.json({ queries });
       }
 
       case "read": {
-        const query = await readQuery(body.projectPath, body.id);
+        const query = await readQuery(projectPath, body.id);
         return NextResponse.json({ query });
       }
 
@@ -124,12 +108,12 @@ export async function POST(
             { status: 400 },
           );
         }
-        await writeQuery(body.projectPath, parseResult.data);
+        await writeQuery(projectPath, parseResult.data);
         return NextResponse.json({ query: parseResult.data });
       }
 
       case "delete": {
-        const didDelete = await deleteQuery(body.projectPath, body.id);
+        const didDelete = await deleteQuery(projectPath, body.id);
         return NextResponse.json({ deleted: didDelete });
       }
 
@@ -150,3 +134,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withStorageContext(handlePost);
