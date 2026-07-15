@@ -28,7 +28,7 @@ import {
   revisionDir,
 } from "../../../../../src/lib/models/revision";
 import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
-import { withStorageContext } from "../../../_lib/with-storage-context";
+import { withStorageContext } from "../../../_tenant/with-storage-context";
 import { getUserPreferencesFromProjectMetadata } from "../../../../../src/lib/user-preferences";
 import { extractSnippet } from "../../../../../src/lib/models/search-snippet";
 import { tiptapToPlainText } from "../../../../../src/lib/tiptap-utils";

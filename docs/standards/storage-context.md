@@ -15,10 +15,13 @@ async call chain. When no context is active, both fall back to today's process-w
 defaults: `defaultProjectsDir()`'s env-var/cwd resolution for the projects directory,
 and the module-level adapter set via `setStorageAdapter()` for the filesystem adapter.
 
-This ambient context is the foundational seam for future per-tenant storage
-isolation. See ADR-017
-(`docs/architecture/ADRs/adr-017-request-scoped-directory-per-tenant-storage.md`) for
-the full rationale and design.
+This ambient context is the seam per-tenant storage isolation is built on. See
+ADR-017
+(`docs/architecture/ADRs/adr-017-request-scoped-directory-per-tenant-storage.md`)
+for the seam's original rationale and design, and ADR-018
+(`docs/architecture/ADRs/adr-018-tenant-resolution-per-user-data-root.md`) for how
+`withStorageContext` now chooses which tenant's `tenantRoot` to bind on each
+request (Section 2).
 
 ---
 
@@ -28,7 +31,7 @@ Any route handler under `frontend/app/api/**/route.ts` that calls
 `resolveProjectsDir()` — directly, or transitively through a model-layer function
 that expects an ambient context — must export its handler wrapped in
 `withStorageContext(...)`, imported from
-`frontend/app/api/_lib/with-storage-context.ts`.
+`frontend/app/api/_tenant/with-storage-context.ts`.
 
 - Do not duplicate an inline `runInStorageContext(...)` call inside the handler body.
 - Do not rely on a `middleware.ts` to establish context — this repo has none, and
@@ -37,7 +40,7 @@ that expects an ambient context — must export its handler wrapped in
 Matches the pattern used in `frontend/app/api/projects/route.ts`:
 
 ```ts
-import { withStorageContext } from "../_lib/with-storage-context";
+import { withStorageContext } from "../_tenant/with-storage-context";
 
 async function getProjects() {
   const projectsDir = resolveProjectsDir();
@@ -47,6 +50,27 @@ async function getProjects() {
 export const GET = withStorageContext(getProjects);
 export const POST = withStorageContext(createProject);
 ```
+
+As of ADR-018, the `tenantRoot` `withStorageContext` binds is not a hardcoded
+`defaultProjectsDir()` call — it is derived per-request by
+`resolveTenant(request)` (`frontend/app/api/_tenant/resolve-tenant.ts`):
+
+- A request with no resolved identity (`userId === null` — the Electron/
+  local-dev case) resolves `tenantRoot` to `defaultProjectsDir()`, byte-for-byte
+  identical to the seam's original behavior.
+- A request with a resolved, validated `userId` resolves `tenantRoot` to
+  `<data-root>/<userId>/` (`GETWRITE_DATA_ROOT` joined with the validated user
+  id), guarded by a path-traversal allowlist and provisioned with an
+  idempotent `mkdir(recursive)` on that user's first request. See ADR-018
+  (`docs/architecture/ADRs/adr-018-tenant-resolution-per-user-data-root.md`)
+  and `frontend/src/lib/models/tenant-path.ts` for the validation/derivation
+  logic.
+
+Identity itself comes from the pluggable `IdentitySource` interface
+(`frontend/app/api/_tenant/identity-source.ts`), selected via
+`getIdentitySource()` — the single swap point for a future real auth
+provider. Route authors calling `withStorageContext` do not need to know any
+of this; it is internal to the wrapper.
 
 ---
 
@@ -104,6 +128,12 @@ For future work: if a code path requires a tenant-scoped context and has no defi
 fallback, it must fail with an explicit, identifiable error rather than silently
 resolving to the process-default projects directory. Do not add a new fallback that
 masks a missing context for such paths.
+
+`resolveTenant` (ADR-018) is a concrete instance of this rule: a non-null
+`userId` that fails the path-traversal allowlist, or a missing/empty
+`GETWRITE_DATA_ROOT`, throws `TenantResolutionError`
+(`frontend/src/lib/models/tenant-path.ts`) rather than falling back to
+`defaultProjectsDir()`.
 
 ---
 
