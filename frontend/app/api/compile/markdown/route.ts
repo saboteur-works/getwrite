@@ -1,4 +1,5 @@
 import { NextResponse, NextRequest } from "next/server";
+import path from "node:path";
 import {
   compileToMarkdown,
   type MarkdownSection,
@@ -9,6 +10,13 @@ import type {
   CompileBody,
   MarkdownConstructWarning,
 } from "../../../../src/lib/export/types";
+import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface CompileMarkdownResponse {
   markdown: string;
@@ -17,15 +25,25 @@ interface CompileMarkdownResponse {
   warnings: MarkdownConstructWarning[];
 }
 
-export async function POST(req: NextRequest) {
+async function handlePost(req: NextRequest) {
   const body = (await req.json()) as CompileBody;
   const {
-    projectPath,
+    projectId,
     resourceIds,
     resources,
     includeHeaders: shouldIncludeHeaders,
     projectName,
   } = body;
+
+  let validatedProjectId: string;
+  try {
+    validatedProjectId = validateProjectId(projectId);
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
+  }
+
+  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
 
   // Markdown needs the TipTap JSON, not the cached plain text.
   const sections = await loadTextSections<MarkdownSection>(
@@ -43,3 +61,5 @@ export async function POST(req: NextRequest) {
   const response: CompileMarkdownResponse = { markdown, filename, warnings };
   return NextResponse.json(response);
 }
+
+export const POST = withStorageContext(handlePost);

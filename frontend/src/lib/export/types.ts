@@ -5,7 +5,7 @@ export interface ResourceMeta {
 }
 
 export interface CompileBody {
-  projectPath: string;
+  projectId: string;
   resourceIds: string[];
   resources: ResourceMeta[];
   includeHeaders: boolean;
