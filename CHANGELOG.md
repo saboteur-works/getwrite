@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.3.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.2.0...getwrite-v1.3.0) (2026-07-15)
+
+
+### Features
+
+* request→tenant resolution (ADR-018, hosted multi-tenancy slice 2) ([b7ddf5b](https://github.com/saboteur-works/getwrite/commit/b7ddf5b3da842c366cf5787298f1519778c1ecd5))
+* **task-1:** add pure tenant-path module with fail-closed userId/data-root guard ([968d487](https://github.com/saboteur-works/getwrite/commit/968d4877e0f6fbf49ca6b4c5e5665461170617b3))
+* **task-2:** add IdentitySource interface and env-gated dev identity source ([5458a6c](https://github.com/saboteur-works/getwrite/commit/5458a6c1055ec16a22a5aabd48b838f9ddb4b2fd))
+* **task-3:** add resolveTenant composition and provisioning ([f4762cd](https://github.com/saboteur-works/getwrite/commit/f4762cd24f7f0c86da874672d278001e35d136b1))
+* **task-4:** wire resolveTenant into withStorageContext ([02db9b9](https://github.com/saboteur-works/getwrite/commit/02db9b911c78911fd6b1e2c0322ee3c1acc9b99c))
+
+
+### Bug Fixes
+
+* address code-review findings on tenant resolution ([7858ffa](https://github.com/saboteur-works/getwrite/commit/7858ffa6183566d6ddf2c85ccc13416f06311bf3))
+
 ## [1.2.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.1.0...getwrite-v1.2.0) (2026-07-10)
 
 
