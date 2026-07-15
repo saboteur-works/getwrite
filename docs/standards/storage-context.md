@@ -31,7 +31,7 @@ Any route handler under `frontend/app/api/**/route.ts` that calls
 `resolveProjectsDir()` — directly, or transitively through a model-layer function
 that expects an ambient context — must export its handler wrapped in
 `withStorageContext(...)`, imported from
-`frontend/app/api/_lib/with-storage-context.ts`.
+`frontend/app/api/_tenant/with-storage-context.ts`.
 
 - Do not duplicate an inline `runInStorageContext(...)` call inside the handler body.
 - Do not rely on a `middleware.ts` to establish context — this repo has none, and
@@ -40,7 +40,7 @@ that expects an ambient context — must export its handler wrapped in
 Matches the pattern used in `frontend/app/api/projects/route.ts`:
 
 ```ts
-import { withStorageContext } from "../_lib/with-storage-context";
+import { withStorageContext } from "../_tenant/with-storage-context";
 
 async function getProjects() {
   const projectsDir = resolveProjectsDir();
@@ -53,7 +53,7 @@ export const POST = withStorageContext(createProject);
 
 As of ADR-018, the `tenantRoot` `withStorageContext` binds is not a hardcoded
 `defaultProjectsDir()` call — it is derived per-request by
-`resolveTenant(request)` (`frontend/app/api/_lib/resolve-tenant.ts`):
+`resolveTenant(request)` (`frontend/app/api/_tenant/resolve-tenant.ts`):
 
 - A request with no resolved identity (`userId === null` — the Electron/
   local-dev case) resolves `tenantRoot` to `defaultProjectsDir()`, byte-for-byte
@@ -67,7 +67,7 @@ As of ADR-018, the `tenantRoot` `withStorageContext` binds is not a hardcoded
   logic.
 
 Identity itself comes from the pluggable `IdentitySource` interface
-(`frontend/app/api/_lib/identity-source.ts`), selected via
+(`frontend/app/api/_tenant/identity-source.ts`), selected via
 `getIdentitySource()` — the single swap point for a future real auth
 provider. Route authors calling `withStorageContext` do not need to know any
 of this; it is internal to the wrapper.

@@ -7,7 +7,7 @@
  * (ADR-018: Tenant Resolution — Per-User Data Root; FR1).
  *
  * `resolveTenant` wires together the three layers this feature introduces:
- * - Identity (`app/api/_lib/identity-source.ts`) — extracts a raw `userId`
+ * - Identity (`app/api/_tenant/identity-source.ts`) — extracts a raw `userId`
  *   claim (or `null`) from the request via the currently configured
  *   `IdentitySource`.
  * - Path/config (`src/lib/models/tenant-path.ts`) — validates that `userId`

@@ -58,7 +58,7 @@ seam a later auth/tenant-mapping spec builds on.
 
 ### 4. Route helper + wrap the 4 tenant-resolving routes
 - Add `withStorageContext(handler)` (in `storage-context.ts` or a small
-  `frontend/app/api/_lib/with-storage-context.ts`). It wraps a Next handler of
+  `frontend/app/api/_tenant/with-storage-context.ts`). It wraps a Next handler of
   any arity: `(...args) => runInStorageContext({ tenantRoot: defaultProjectsDir(),
   adapter: getStorageAdapter() }, () => handler(...args))`. Using the default
   `tenantRoot` keeps behavior identical today; a future auth spec swaps in the
@@ -91,7 +91,7 @@ seam a later auth/tenant-mapping spec builds on.
 ## Critical files
 - **New:** `frontend/src/lib/models/storage-context.ts`,
   `frontend/tests/unit/storage-context.test.ts`, a `docs/standards/` note,
-  (optionally) `frontend/app/api/_lib/with-storage-context.ts`.
+  (optionally) `frontend/app/api/_tenant/with-storage-context.ts`.
 - **Edit:** `frontend/src/lib/models/projects-dir.ts`,
   `frontend/src/lib/models/io.ts`, the 4 route files above,
   `frontend/src/lib/models/indexer-queue.ts`,

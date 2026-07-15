@@ -3,7 +3,7 @@ import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { reindexMissingResources } from "../../../../../src/lib/models/inverted-index";
 import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
-import { withStorageContext } from "../../../_lib/with-storage-context";
+import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface ReindexResponse {
   queued: number;

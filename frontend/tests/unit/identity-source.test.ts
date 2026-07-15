@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   devIdentitySource,
   getIdentitySource,
-} from "../../app/api/_lib/identity-source";
+} from "../../app/api/_tenant/identity-source";
 
 describe("devIdentitySource (pure header read)", () => {
   it("returns the dev header value when present", () => {

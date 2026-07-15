@@ -5,7 +5,7 @@ Branch: `feat/tenant-resolution` (off `main`)
 
 ## Design summary
 
-Today `withStorageContext` (`frontend/app/api/_lib/with-storage-context.ts`)
+Today `withStorageContext` (`frontend/app/api/_tenant/with-storage-context.ts`)
 binds every request to `defaultProjectsDir()`. This feature inserts a
 `resolveTenant(request)` call there. The seam decomposes into three new
 modules plus one edit:
@@ -14,9 +14,9 @@ modules plus one edit:
   `userId` allowlist guard, `GETWRITE_DATA_ROOT` read (fail-closed), and
   `<data-root>/<userId>/` derivation. Holds FR6, FR7, FR12. Fully unit-testable,
   no `Request` dependency.
-- **Identity layer** (`app/api/_lib/identity-source.ts`) — the `IdentitySource`
+- **Identity layer** (`app/api/_tenant/identity-source.ts`) — the `IdentitySource`
   interface + the env-gated interim dev source. Holds FR2, FR3, FR4.
-- **Composition + provisioning** (`app/api/_lib/resolve-tenant.ts`) —
+- **Composition + provisioning** (`app/api/_tenant/resolve-tenant.ts`) —
   `resolveTenant(request)` wires identity → path → provisioning mkdir. Holds
   FR1, FR5, FR8.
 - **Wiring** — edit `with-storage-context.ts` to call `resolveTenant`; the
@@ -50,7 +50,7 @@ New `frontend/src/lib/models/tenant-path.ts`:
   throws (fail-closed), asserted via a scoped env override.
 
 ### Task 2 — IdentitySource interface + env-gated interim source (FR2, FR3, FR4)
-New `frontend/app/api/_lib/identity-source.ts`:
+New `frontend/app/api/_tenant/identity-source.ts`:
 - `export interface IdentitySource { getUserId(request: Request): string | null }`
 - `devIdentitySource` — returns `null` unless `GETWRITE_ENABLE_DEV_IDENTITY`
   is set; when set, reads the userId from a documented dev-only request header
@@ -65,7 +65,7 @@ New `frontend/app/api/_lib/identity-source.ts`:
   set but header absent. Env + `console.warn` mocked/scoped per test.
 
 ### Task 3 — resolveTenant composition + provisioning (FR1, FR5, FR8)
-New `frontend/app/api/_lib/resolve-tenant.ts`:
+New `frontend/app/api/_tenant/resolve-tenant.ts`:
 - `export async function resolveTenant(request: Request):
   Promise<{ userId: string | null; dataRoot: string }>`
   - `const userId = getIdentitySource().getUserId(request)`
@@ -83,7 +83,7 @@ New `frontend/app/api/_lib/resolve-tenant.ts`:
   adapter or a spy.
 
 ### Task 4 — Wire into withStorageContext (FR9, FR10)
-Edit `frontend/app/api/_lib/with-storage-context.ts`:
+Edit `frontend/app/api/_tenant/with-storage-context.ts`:
 - Make the returned wrapper `async`; `const request = args[0] as Request | undefined`;
   `const { dataRoot } = await resolveTenant(request ?? new Request("http://localhost"))`
   (or guard: if no request, treat as null user → `defaultProjectsDir()`), then

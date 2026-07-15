@@ -7,7 +7,7 @@ import fs from "node:fs/promises";
 import { getLocalResources } from "../../../src/lib/models";
 import { readFolderTree } from "../../../src/lib/models/folder-utils";
 import { resolveProjectsDir } from "../../../src/lib/models/projects-dir";
-import { withStorageContext } from "../_lib/with-storage-context";
+import { withStorageContext } from "../_tenant/with-storage-context";
 
 /**
  * Get all projects from the local filesystem. Each project includes its metadata, folders, and resources.

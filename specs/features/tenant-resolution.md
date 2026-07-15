@@ -2,7 +2,7 @@
 
 ## Overview
 
-`withStorageContext` (`frontend/app/api/_lib/with-storage-context.ts`), the
+`withStorageContext` (`frontend/app/api/_tenant/with-storage-context.ts`), the
 seam ADR-017 introduced to bind a per-request `StorageContext`, currently
 binds every request to the same hardcoded `tenantRoot`:
 `defaultProjectsDir()`. The storage layer can hold a tenant root per request,

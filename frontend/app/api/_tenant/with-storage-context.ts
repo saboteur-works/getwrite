@@ -15,7 +15,7 @@
  * {@link withStorageContext} once, at the export site.
  *
  * The `tenantRoot` used here is resolved per-request by
- * `resolveTenant(request)` (`app/api/_lib/resolve-tenant.ts`; ADR-018), not by
+ * `resolveTenant(request)` (`app/api/_tenant/resolve-tenant.ts`; ADR-018), not by
  * calling `resolveProjectsDir()` directly — doing that here would read the
  * very context this helper is responsible for establishing, which doesn't
  * exist yet at this point in the call stack. For an unauthenticated / no-account

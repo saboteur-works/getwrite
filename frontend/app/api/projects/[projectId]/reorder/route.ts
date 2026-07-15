@@ -8,7 +8,7 @@ import {
 } from "../../../../../src/lib/models/sidecar";
 import { withMetaLock } from "../../../../../src/lib/models/meta-locks";
 import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
-import { withStorageContext } from "../../../_lib/with-storage-context";
+import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 async function findProjectRoot(projectsDir: string, projectId: string) {
   try {

@@ -3,7 +3,7 @@ import path from "node:path";
 import {
   resolveTenant,
   __resetProvisionedRootsForTests,
-} from "../../app/api/_lib/resolve-tenant";
+} from "../../app/api/_tenant/resolve-tenant";
 import { defaultProjectsDir } from "../../src/lib/models/projects-dir";
 import {
   setStorageAdapter,
