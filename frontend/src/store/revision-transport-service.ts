@@ -1,4 +1,5 @@
 import type { Revision } from "../lib/models/types";
+import { selectActiveProjectDirectoryId } from "./projectsSlice";
 import type { RootState } from "./store";
 
 /**
@@ -17,35 +18,37 @@ interface RevisionContentResponse {
 }
 
 export interface RevisionRequestContext {
-  projectPath: string;
+  projectId: string;
   resourceId: string;
 }
 
 /**
  * Resolves selected resource/project context needed for revision requests.
+ *
+ * `projectId` is the active project's on-disk directory basename (via
+ * {@link selectActiveProjectDirectoryId}), never `project.id`. A project's
+ * on-disk directory name and its `project.json`'s internal `id` field are
+ * two independently generated UUIDs and are not guaranteed to match — every
+ * tenant-scoped revision route (ADR-017/018) requires the directory
+ * basename.
  */
 export function resolveRevisionRequestContext(
   state: RootState,
   expectedResourceId: string,
 ): RevisionRequestContext | { error: string } {
-  const selectedProjectId = state.projects.selectedProjectId;
   const selectedResourceId = state.resources.selectedResourceId;
-
-  if (!selectedProjectId) {
-    return { error: "No project selected." };
-  }
 
   if (!selectedResourceId || selectedResourceId !== expectedResourceId) {
     return { error: "Selected resource changed before revisions updated." };
   }
 
-  const project = state.projects.projects[selectedProjectId];
+  const projectId = selectActiveProjectDirectoryId(state);
 
-  if (!project?.rootPath) {
+  if (!projectId) {
     return { error: "Selected project is missing a root path." };
   }
 
-  return { projectPath: project.rootPath, resourceId: selectedResourceId };
+  return { projectId, resourceId: selectedResourceId };
 }
 
 function getApiErrorMessage(errorBody: unknown, fallback: string): string {
@@ -71,7 +74,7 @@ export async function fetchRevisionList(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      projectPath: context.projectPath,
+      projectId: context.projectId,
       resourceId: context.resourceId,
     }),
   });
@@ -92,7 +95,7 @@ export async function createRevision(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      projectPath: context.projectPath,
+      projectId: context.projectId,
       isCanonical: false,
       metadata: { name: revisionName },
     }),
@@ -113,7 +116,7 @@ export async function removeRevision(
   const response = await fetch(`/api/resource/revision/${context.resourceId}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ projectPath: context.projectPath, revisionId }),
+    body: JSON.stringify({ projectId: context.projectId, revisionId }),
   });
 
   if (!response.ok) await throwApiError(response, "Failed to delete revision.");
@@ -127,7 +130,7 @@ export async function fetchRevisionContent(
   revisionId: string,
 ): Promise<RevisionContentResponse> {
   const params = new URLSearchParams({
-    projectPath: context.projectPath,
+    projectId: context.projectId,
     revisionId,
   });
 
@@ -150,7 +153,7 @@ export async function persistCanonicalRevision(
   const response = await fetch(`/api/resource/revision/${context.resourceId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ projectPath: context.projectPath, revisionId }),
+    body: JSON.stringify({ projectId: context.projectId, revisionId }),
   });
 
   if (!response.ok)

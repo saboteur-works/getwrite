@@ -17,7 +17,6 @@ import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { generateUUID } from "../../src/lib/models/uuid";
 import {
-  getSchema,
   addField,
   removeField,
   reorderFields,
