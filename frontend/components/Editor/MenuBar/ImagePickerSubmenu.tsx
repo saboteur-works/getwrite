@@ -3,7 +3,7 @@ import { Image as ImageIcon } from "lucide-react";
 import type { Editor } from "@tiptap/core";
 import { useAppSelector } from "../../../src/store/hooks";
 import { selectResources } from "../../../src/store/resourcesSlice";
-import { selectActiveProjectRootPath } from "../../../src/store/projectsSlice";
+import { selectActiveProjectDirectoryId } from "../../../src/store/projectsSlice";
 import type { ImageResource } from "../../../src/lib/models/types";
 import { buildButtonClasses, TOOLBAR_TOOLTIP_ID } from "./editor-toolbar-icons";
 
@@ -22,7 +22,7 @@ export default function ImagePickerSubmenu({
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const allResources = useAppSelector((s) => selectResources(s.resources));
-  const projectPath = useAppSelector(selectActiveProjectRootPath);
+  const projectId = useAppSelector(selectActiveProjectDirectoryId);
 
   const imageResources = allResources.filter(
     (r): r is ImageResource => r.type === "image",
@@ -60,11 +60,19 @@ export default function ImagePickerSubmenu({
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, []);
 
+  /**
+   * Builds the file-serving URL for a resource thumbnail/insert.
+   *
+   * `projectId` must be the project's on-disk directory basename (see
+   * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+   * `StoredProject.id` — `/api/resource/[resource-id]/file` resolves it via
+   * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+   */
   const buildResourceImageUrl = (resourceId: string) =>
-    `/api/resource/${resourceId}/file?projectPath=${encodeURIComponent(projectPath!)}`;
+    `/api/resource/${resourceId}/file?projectId=${encodeURIComponent(projectId!)}`;
 
   const handleInsert = (resource: ImageResource) => {
-    if (!projectPath) return;
+    if (!projectId) return;
     editor
       .chain()
       .focus()
@@ -117,7 +125,7 @@ export default function ImagePickerSubmenu({
                   aria-label={`Insert ${resource.name}`}
                   onClick={() => handleInsert(resource)}
                 >
-                  {resource.file && projectPath ? (
+                  {resource.file && projectId ? (
                     <img
                       src={buildResourceImageUrl(resource.id)}
                       alt={resource.name}
