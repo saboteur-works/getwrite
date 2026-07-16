@@ -152,13 +152,27 @@ export async function patchRevisionContent(
   return { updatedAt: data.updatedAt ?? new Date().toISOString() };
 }
 
+/**
+ * Persists a folder/resource reorder for a project.
+ *
+ * `projectId` (the URL segment) must be the project's on-disk directory
+ * basename — see `selectActiveProjectDirectoryId` in `projectsSlice.ts`.
+ * `projectRoot`, when provided, is also sent in the body: the
+ * `/api/projects/[projectId]/reorder` route predates the ADR-017/018
+ * tenant-route migration and still resolves the project via
+ * `body.projectRoot ?? findProjectRoot(...)` (a legacy fallback that scans
+ * every project directory and matches on project.json's *internal* `id`,
+ * not the directory basename). Sending `projectRoot` directly makes
+ * resolution exact regardless of that legacy fallback's matching semantics.
+ */
 export async function reorderResources(
   projectId: string,
   payload: ReorderPayload,
+  projectRoot?: string,
 ): Promise<void> {
   await fetch(`/api/projects/${projectId}/reorder`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(projectRoot ? { ...payload, projectRoot } : payload),
   });
 }

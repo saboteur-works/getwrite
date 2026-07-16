@@ -23,6 +23,7 @@ import type {
 } from "../../src/lib/models/types";
 import { shallowEqual } from "react-redux";
 import {
+  getProjectDirectoryId,
   removeResource,
   selectActiveProjectMetadataSchema,
   selectActiveProjectStatuses,
@@ -1028,7 +1029,11 @@ export default function AppShell({
                   onConfirmCompile={async (selectedIds, options) => {
                     if (!project?.rootPath) return;
                     const compileBody = {
-                      projectPath: project.rootPath,
+                      // Directory basename, not `project.id` (project.json's
+                      // independently generated internal id) — see
+                      // `selectActiveProjectDirectoryId`'s doc comment in
+                      // `projectsSlice.ts`.
+                      projectId: getProjectDirectoryId(project.rootPath),
                       resourceIds: selectedIds,
                       resources: (resources ?? []).map((r) => ({
                         id: r.id,

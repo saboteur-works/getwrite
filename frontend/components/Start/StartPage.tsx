@@ -29,6 +29,7 @@ import {
   compileText,
   compileMarkdown,
 } from "../../src/lib/api/compile";
+import { getProjectDirectoryId } from "../../src/store/projectsSlice";
 import { formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 import Button from "../common/UI/Button";
 
@@ -318,7 +319,11 @@ export default function StartPage({
           }
 
           const compileBody = {
-            projectPath: entry.project.rootPath,
+            // Directory basename, not `entry.project.id` (project.json's
+            // independently generated internal id) — see
+            // `selectActiveProjectDirectoryId`'s doc comment in
+            // `projectsSlice.ts`.
+            projectId: getProjectDirectoryId(entry.project.rootPath),
             resourceIds: selectedIds,
             resources: compileResources.map((r) => ({
               id: r.id,

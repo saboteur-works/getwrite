@@ -759,6 +759,50 @@ export const selectActiveProjectRootPath = (state: any): string | null => {
 };
 
 /**
+ * Derives the on-disk project *directory basename* (e.g. the trailing path
+ * segment of `rootPath`) from an absolute project root path.
+ *
+ * Implemented as plain string splitting rather than importing Node's `path`
+ * module: this slice is bundled into the client, and `path.basename` isn't
+ * safe to pull into client code. Handles both POSIX (`/`) and Windows
+ * (`\`) separators and trailing slashes.
+ *
+ * @param rootPath - Absolute project root path (e.g. `.../projects/<uuid>`).
+ * @returns The trailing path segment, or `""` if `rootPath` has none.
+ */
+export function getProjectDirectoryId(rootPath: string): string {
+  const trimmed = rootPath.replace(/[\\/]+$/, "");
+  const segments = trimmed.split(/[\\/]/);
+  return segments[segments.length - 1] ?? "";
+}
+
+/**
+ * Selects the *directory basename* of the active project's on-disk root —
+ * i.e. `path.basename(rootPath)` — which is the `projectId` every
+ * tenant-scoped API route (ADR-017/018) expects.
+ *
+ * IMPORTANT — this is deliberately **not** the active project's `id` field
+ * (`StoredProject.id`, mirrored from `project.json`'s internal `id`). A
+ * project's on-disk directory name and its `project.json`'s internal `id`
+ * are two independently generated UUIDs and are not guaranteed to match.
+ * Sending `project.id` where a route expects the directory basename is a
+ * silent failure — wrong-or-missing directory, not an auth error. Every
+ * client call site that needs to send a tenant-scoped `projectId` to one of
+ * the migrated API routes must go through this selector (or
+ * {@link getProjectDirectoryId} directly, for callers with a project record
+ * that isn't the Redux-selected active project) rather than reading
+ * `project.id` or inlining `path.basename(...)`.
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ * @returns The active project's directory basename, or `null` when no
+ *   project is selected or it has no `rootPath`.
+ */
+export const selectActiveProjectDirectoryId = (state: any): string | null => {
+  const rootPath = selectActiveProjectRootPath(state);
+  return rootPath ? getProjectDirectoryId(rootPath) : null;
+};
+
+/**
  * Stable empty feature map returned when a project has no `features` block, so
  * `useSelector(selectActiveProjectFeatures)` keeps a constant reference and
  * doesn't re-render consumers on every unrelated dispatch.
