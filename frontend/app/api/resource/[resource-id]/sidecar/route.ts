@@ -1,20 +1,48 @@
+import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import {
   readSidecar,
   writeSidecar,
 } from "../../../../../src/lib/models/sidecar";
+import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../../_tenant/with-storage-context";
+
+interface SidecarUpdateBody {
+  projectId: string;
+  updatedResource: Record<string, unknown>;
+}
 
 // Updates to resource metadata (notes, status, characters, locations, items, pov)
-export async function POST(
+async function handlePost(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
-) {
+): Promise<Response> {
   const resourceId = (await params)["resource-id"];
-  const body = await req.json();
-  const { projectRoot, updatedResource } = body as {
-    projectRoot: string;
-    updatedResource: Record<string, unknown>;
-  };
+
+  let body: SidecarUpdateBody;
+  try {
+    body = (await req.json()) as SidecarUpdateBody;
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid request", details: "Request body is not valid JSON" },
+      { status: 400 },
+    );
+  }
+
+  let validatedProjectId: string;
+  try {
+    validatedProjectId = validateProjectId(body.projectId);
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
+  }
+  const projectRoot = path.join(resolveProjectsDir(), validatedProjectId);
+  const { updatedResource } = body;
 
   const existing = await readSidecar(projectRoot, resourceId).catch(() => null);
 
@@ -36,3 +64,5 @@ export async function POST(
   await writeSidecar(projectRoot, resourceId, merged);
   return NextResponse.json({ message: "Sidecar updated." });
 }
+
+export const POST = withStorageContext(handlePost);

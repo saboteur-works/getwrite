@@ -7,6 +7,13 @@ import {
   AUDIO_EXTENSION_MIME,
 } from "../../../../../src/lib/models/media-validation";
 import { readSidecar } from "../../../../../src/lib/models/sidecar";
+import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 /** Derives a MIME type from a stored filename, falling back to octet-stream. */
 function mimeForFile(fileName: string): string {
@@ -21,26 +28,28 @@ function mimeForFile(fileName: string): string {
 /**
  * Serves the stored binary for an image or audio resource.
  *
- * GET /api/resource/:resourceId/file?projectPath=<path>
+ * GET /api/resource/:resourceId/file?projectId=<uuid>
  *
  * Returns the raw bytes with the correct Content-Type derived from the
  * extension recorded in the sidecar. Returns 404 when the sidecar has no
  * 'file' entry or the binary does not exist on disk.
  */
-export async function GET(
+async function handleGet(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
-): Promise<NextResponse> {
+): Promise<Response> {
   const resourceId = (await params)["resource-id"];
   const { searchParams } = new URL(req.url);
-  const projectPath = searchParams.get("projectPath");
+  const projectId = searchParams.get("projectId");
 
-  if (!projectPath) {
-    return NextResponse.json(
-      { error: "Missing required query parameter: projectPath" },
-      { status: 400 },
-    );
+  let validatedProjectId: string;
+  try {
+    validatedProjectId = validateProjectId(projectId ?? "");
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
   }
+  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
 
   const sidecar = await readSidecar(projectPath, resourceId);
   const fileName = typeof sidecar?.file === "string" ? sidecar.file : null;
@@ -67,3 +76,5 @@ export async function GET(
     throw err;
   }
 }
+
+export const GET = withStorageContext(handleGet);

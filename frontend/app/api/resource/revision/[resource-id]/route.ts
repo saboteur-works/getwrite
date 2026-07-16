@@ -3,18 +3,18 @@
  *
  * Next.js route handlers for revision lifecycle on a single resource.
  *
- * GET    /api/resource/revision/:resourceId?projectPath=...&revisionId=...
+ * GET    /api/resource/revision/:resourceId?projectId=...&revisionId=...
  *   Returns revision metadata and content for a specific revision.
  *
  * POST   /api/resource/revision/:resourceId
- *   Saves a new revision. Reads current filesystem content when body.content
- *   is omitted.
+ *   Saves a new revision. Body carries a server-validated `projectId`. Reads
+ *   current filesystem content when body.content is omitted.
  *
  * PATCH  /api/resource/revision/:resourceId
- *   Marks an existing revision as canonical.
+ *   Marks an existing revision as canonical. Body carries `projectId`.
  *
  * DELETE /api/resource/revision/:resourceId
- *   Removes a revision directory by revision UUID.
+ *   Removes a revision directory by revision UUID. Body carries `projectId`.
  */
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -32,6 +32,13 @@ import {
 import type { Revision } from "../../../../../src/lib/models/types";
 import { persistResourceContent } from "../../../../../src/lib/tiptap-utils";
 import type { TipTapDocument } from "../../../../../src/lib/models";
+import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface GetRevisionResponse {
   revision: Revision;
@@ -43,7 +50,7 @@ interface GetRevisionResponse {
  * content from the filesystem.
  */
 interface SaveRevisionBody {
-  projectPath: string;
+  projectId: string;
   content?: string;
   author?: string;
   isCanonical?: boolean;
@@ -51,15 +58,31 @@ interface SaveRevisionBody {
 }
 
 interface DeleteRevisionBody {
-  projectPath: string;
+  projectId: string;
   revisionId: string;
 }
 
 interface SetCanonicalRevisionBody {
-  projectPath: string;
+  projectId: string;
   revisionId: string;
   /** Optional revision content to persist in-place for canonical revisions. */
   content?: string;
+}
+
+/**
+ * Resolves a `projectId` (query param or body field) to its on-disk project
+ * directory, or returns the uniform 400 response when it fails validation.
+ */
+function resolveValidatedProjectPath(
+  projectId: string | null | undefined,
+): { projectPath: string } | Response {
+  try {
+    const validatedProjectId = validateProjectId(projectId ?? "");
+    return { projectPath: path.join(resolveProjectsDir(), validatedProjectId) };
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -232,22 +255,18 @@ async function resolveNextVersionNumber(
 // Route handlers
 // ---------------------------------------------------------------------------
 
-export async function GET(
+async function handleGet(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
-) {
+): Promise<Response> {
   const resourceId = (await params)["resource-id"];
   const { searchParams } = new URL(req.url);
 
-  const projectPath = searchParams.get("projectPath");
-  const revisionId = searchParams.get("revisionId");
+  const resolved = resolveValidatedProjectPath(searchParams.get("projectId"));
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
 
-  if (!projectPath) {
-    return NextResponse.json(
-      { error: "Missing required query param: projectPath." },
-      { status: 400 },
-    );
-  }
+  const revisionId = searchParams.get("revisionId");
 
   if (!revisionId) {
     return NextResponse.json(
@@ -274,24 +293,25 @@ export async function GET(
   }
 }
 
-export async function POST(
+async function handlePost(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
-) {
+): Promise<Response> {
   const resourceId = (await params)["resource-id"];
 
   const parsed = await parseJsonBody<SaveRevisionBody>(req);
   if (parsed instanceof NextResponse) return parsed;
   const {
-    projectPath,
+    projectId,
     content: bodyContent,
     author,
     isCanonical,
     metadata,
   } = parsed.body;
 
-  const projectPathError = requireString(projectPath, "projectPath");
-  if (projectPathError) return projectPathError;
+  const resolved = resolveValidatedProjectPath(projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
 
   try {
     const content =
@@ -321,18 +341,19 @@ export async function POST(
   }
 }
 
-export async function DELETE(
+async function handleDelete(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
-) {
+): Promise<Response> {
   const resourceId = (await params)["resource-id"];
 
   const parsed = await parseJsonBody<DeleteRevisionBody>(req);
   if (parsed instanceof NextResponse) return parsed;
-  const { projectPath, revisionId } = parsed.body;
+  const { projectId, revisionId } = parsed.body;
 
-  const projectPathError = requireString(projectPath, "projectPath");
-  if (projectPathError) return projectPathError;
+  const resolved = resolveValidatedProjectPath(projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
 
   const revisionIdError = requireString(revisionId, "revisionId");
   if (revisionIdError) return revisionIdError;
@@ -371,18 +392,19 @@ export async function DELETE(
   }
 }
 
-export async function PATCH(
+async function handlePatch(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
-) {
+): Promise<Response> {
   const resourceId = (await params)["resource-id"];
 
   const parsed = await parseJsonBody<SetCanonicalRevisionBody>(req);
   if (parsed instanceof NextResponse) return parsed;
-  const { projectPath, revisionId, content } = parsed.body;
+  const { projectId, revisionId, content } = parsed.body;
 
-  const projectPathError = requireString(projectPath, "projectPath");
-  if (projectPathError) return projectPathError;
+  const resolved = resolveValidatedProjectPath(projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
 
   const revisionIdError = requireString(revisionId, "revisionId");
   if (revisionIdError) return revisionIdError;
@@ -445,3 +467,8 @@ export async function PATCH(
     return errorResponse(error, "Failed to set canonical revision.", 500);
   }
 }
+
+export const GET = withStorageContext(handleGet);
+export const POST = withStorageContext(handlePost);
+export const DELETE = withStorageContext(handleDelete);
+export const PATCH = withStorageContext(handlePatch);

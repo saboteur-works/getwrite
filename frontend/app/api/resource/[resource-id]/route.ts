@@ -8,6 +8,13 @@ import {
   softDeleteResource,
 } from "../../../../src/lib/models/trash";
 import { getSchema } from "../../../../src/lib/models/metadata-schema";
+import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 const copyResource = async (
   projectRoot: string,
@@ -34,18 +41,38 @@ const copyResource = async (
   return newSidecar;
 };
 
+interface ResourceActionBody {
+  projectId: string;
+  action: "delete" | "copy";
+  newName?: string;
+}
+
 // Updates to resource metadata (notes, status, characters, locations, items, pov)
-export async function POST(
+async function handlePost(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
-) {
+): Promise<Response> {
   const resourceId = (await params)["resource-id"];
-  const body = await req.json();
-  const { projectRoot, action } = body as {
-    projectRoot: string;
-    action: "delete" | "copy";
-    newName?: string;
-  };
+
+  let body: ResourceActionBody;
+  try {
+    body = (await req.json()) as ResourceActionBody;
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid request", details: "Request body is not valid JSON" },
+      { status: 400 },
+    );
+  }
+
+  let validatedProjectId: string;
+  try {
+    validatedProjectId = validateProjectId(body.projectId);
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
+  }
+  const projectRoot = path.join(resolveProjectsDir(), validatedProjectId);
+  const { action } = body;
 
   switch (action) {
     case "delete": {
@@ -88,3 +115,5 @@ export async function POST(
       throw new Error(`Unknown action: ${action}`);
   }
 }
+
+export const POST = withStorageContext(handlePost);

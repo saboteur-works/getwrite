@@ -1,3 +1,4 @@
+import path from "node:path";
 import { NextResponse } from "next/server";
 import {
   createResourceOfType,
@@ -8,13 +9,41 @@ import { loadProjectConfig } from "../../../src/lib/models/project-config";
 import { writeRevision } from "../../../src/lib/models/revision";
 import { resolveInitialRevisionName } from "../../../src/lib/models/resource-revision";
 import type { TextResource } from "../../../src/lib/models/types";
+import { resolveProjectsDir } from "../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../src/lib/models/project-path";
+import { withStorageContext } from "../_tenant/with-storage-context";
 
-export async function POST(req: Request) {
+interface SaveResourceBody {
+  projectId: string;
+  resourceData: CreateResourceOpts;
+}
+
+async function handlePost(req: Request): Promise<Response> {
+  let body: SaveResourceBody;
   try {
-    const { projectPath, resourceData } = (await req.json()) as {
-      projectPath: string;
-      resourceData: CreateResourceOpts;
-    };
+    body = (await req.json()) as SaveResourceBody;
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid request", details: "Request body is not valid JSON" },
+      { status: 400 },
+    );
+  }
+
+  let validatedProjectId: string;
+  try {
+    validatedProjectId = validateProjectId(body.projectId);
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
+  }
+  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+
+  try {
+    const { resourceData } = body;
     const resource = createResourceOfType(resourceData.type, resourceData);
     await writeResourceToFile(projectPath, resource);
 
@@ -38,3 +67,5 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export const POST = withStorageContext(handlePost);

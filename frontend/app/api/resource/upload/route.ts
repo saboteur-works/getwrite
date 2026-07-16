@@ -1,3 +1,4 @@
+import path from "node:path";
 import { NextResponse } from "next/server";
 
 import {
@@ -9,6 +10,13 @@ import {
   extractAudioMetadata,
   extractImageMetadata,
 } from "../../../../src/lib/models/media-metadata";
+import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
+import {
+  InvalidProjectIdError,
+  respondInvalidProjectId,
+  validateProjectId,
+} from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 /** Strips a trailing file extension to derive a display name. */
 function stripExtension(fileName: string): string {
@@ -18,15 +26,15 @@ function stripExtension(fileName: string): string {
 /**
  * Creates an image/audio resource from a multipart upload.
  *
- * Expects `multipart/form-data` with `file` (the binary), `projectPath`, and
+ * Expects `multipart/form-data` with `file` (the binary), `projectId`, and
  * optional `title` and `folderId`. The file is validated, type-specific
  * metadata is extracted, and the resource plus its binary are persisted.
  */
-export async function POST(req: Request): Promise<NextResponse> {
+async function handlePost(req: Request): Promise<Response> {
   try {
     const form = await req.formData();
     const file = form.get("file");
-    const projectPath = form.get("projectPath");
+    const projectId = form.get("projectId");
     const title = form.get("title");
     const folderIdRaw = form.get("folderId");
 
@@ -36,12 +44,18 @@ export async function POST(req: Request): Promise<NextResponse> {
         { status: 400 },
       );
     }
-    if (typeof projectPath !== "string" || projectPath.length === 0) {
-      return NextResponse.json(
-        { error: "A 'projectPath' field is required." },
-        { status: 400 },
+
+    let validatedProjectId: string;
+    try {
+      validatedProjectId = validateProjectId(
+        typeof projectId === "string" ? projectId : "",
       );
+    } catch (err) {
+      if (err instanceof InvalidProjectIdError)
+        return respondInvalidProjectId();
+      throw err;
     }
+    const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
 
     const validation = validateMediaFile({
       mime: file.type || undefined,
@@ -101,3 +115,5 @@ export async function POST(req: Request): Promise<NextResponse> {
     );
   }
 }
+
+export const POST = withStorageContext(handlePost);
