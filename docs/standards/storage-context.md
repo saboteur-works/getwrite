@@ -74,6 +74,55 @@ of this; it is internal to the wrapper.
 
 ---
 
+## 2a. Rule: Project-Scoped Routes Must Derive `projectRoot` From a Validated `projectId`
+
+`withStorageContext` binds a *tenant's* root (`tenantRoot`); it says nothing about
+which *project* within that root a request targets. As of the tenant-route-
+enforcement work, every project-scoped route under `frontend/app/api/**/route.ts`
+resolves its project directory the same way:
+
+```ts
+import { validateProjectId, respondInvalidProjectId, InvalidProjectIdError }
+  from "../../../src/lib/models/project-path";
+
+const validatedProjectId = validateProjectId(projectId); // throws InvalidProjectIdError
+const projectRoot = path.join(resolveProjectsDir(), validatedProjectId);
+```
+
+`validateProjectId` (`frontend/src/lib/models/project-path.ts`) requires the
+client-supplied `projectId` to be a well-formed UUID — the same shape every
+project directory is named on disk — reusing the `UUID` Zod validator from
+`schemas.ts`. Anything else throws `InvalidProjectIdError`, which route handlers
+catch and turn into `respondInvalidProjectId()`, a fixed, uniform
+`400 { "error": "Invalid projectId" }` response that does not vary based on
+whether a same-shaped project actually exists (so it can't be used to probe for
+project existence).
+
+This is a hard cutover: these routes no longer accept a client-supplied absolute
+`projectRoot`/`projectPath` in the request body or query string. `projectId` is
+the only accepted shape. The exceptions — routes that predate this migration and
+were deliberately left out of scope — are:
+`frontend/app/api/projects/route.ts`,
+`frontend/app/api/projects/[projectId]/reorder/route.ts` (still resolves via
+`projectId` but keeps a legacy `projectRoot` body fallback),
+`frontend/app/api/project/[project-id]/reindex/route.ts`, and
+`frontend/app/api/project/[project-id]/search/route.ts`.
+
+**Client-side counterpart.** Do not send `project.id` (the `StoredProject.id`
+field mirrored from `project.json`'s internal `id`) to these routes — it is a
+*different* UUID from the project's on-disk directory name, and sending it is a
+silent failure (wrong-or-missing directory), not an auth error. The one
+sanctioned way to obtain the directory id client-side is the Redux selector
+`selectActiveProjectDirectoryId` (`frontend/src/store/projectsSlice.ts`), which
+computes `path.basename(rootPath)` on the active project's root path (via the
+`getProjectDirectoryId` helper in the same file — implemented as string
+splitting rather than importing `path`, since this slice is bundled into the
+client). Every client call site sending a tenant-scoped `projectId` to one of
+these routes must go through this selector (or `getProjectDirectoryId` directly,
+for a project record that isn't the Redux-selected active project).
+
+---
+
 ## 3. Rule: Out-of-Request Entry Points Must Use `runForTenant`
 
 Code that runs outside an inbound HTTP request — CLI commands under

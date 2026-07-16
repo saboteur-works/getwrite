@@ -139,7 +139,7 @@ interface RevisionsState {
 
 | Thunk                                       | API call                                          |
 | ------------------------------------------- | -------------------------------------------------- |
-| `loadRevisionsForSelectedResource`          | `GET /api/resource/revision/[id]?projectPath=...`  |
+| `loadRevisionsForSelectedResource`          | `GET /api/resource/revision/[id]?projectId=...`    |
 | `saveRevisionForSelectedResource`           | `POST /api/resource/revision/[id]`                 |
 | `deleteRevisionForSelectedResource`         | `DELETE /api/resource/revision/[id]`               |
 | `fetchRevisionContentForSelectedResource`   | `GET /api/resource/revision/[id]?revisionId=...`   |
@@ -187,8 +187,8 @@ Translates raw API revision data into `RevisionEntry` objects:
 - `resolveCurrentRevisionId(entries)` — finds the canonical entry ID
 
 ### `revision-transport-service.ts`
-HTTP-level operations for revisions. Resolves the project context (path) from Redux state and calls the revision API routes:
-- `resolveRevisionRequestContext(state, resourceId)` — extracts `projectPath` and `resourceId`
+HTTP-level operations for revisions. Resolves the project context from Redux state and calls the revision API routes:
+- `resolveRevisionRequestContext(state, resourceId)` — extracts `projectId` (via `selectActiveProjectDirectoryId`, the active project's on-disk directory basename — not `project.id`) and `resourceId`
 - `fetchRevisionList(context)` — `GET /api/resource/revision/[id]`
 - `fetchRevisionContent(context, revisionId)` — `GET /api/resource/revision/[id]?revisionId=...`
 - `createRevision(context, revisionName)` — `POST /api/resource/revision/[id]`
@@ -214,7 +214,7 @@ When the user selects a project:
 ```
 User selects project
   → dispatch setSelectedProjectId(id)
-  → POST /api/project { projectPath }
+  → POST /api/project { projectId }
   → dispatch setResources(resources)
   → dispatch setFolders(folders)
   → resourcesSlice populated
@@ -227,6 +227,6 @@ User selects resource
   → dispatch setSelectedResourceId(resourceId)
   → revisionsSlice resets (extraReducer)
   → dispatch loadRevisionsForSelectedResource({ resourceId })
-  → GET /api/resource/revision/[id]?projectPath=...
+  → GET /api/resource/revision/[id]?projectId=...
   → dispatch fulfilled → revisionsSlice.revisions populated
 ```
