@@ -107,25 +107,41 @@ export async function renameResource(
   return response.ok;
 }
 
+/**
+ * Fetches a resource's content plus its revision list.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+ * `StoredProject.id` — `/api/project-resources` resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ */
 export async function fetchResourceContent(
-  projectPath: string,
+  projectId: string,
   resourceId: string,
 ): Promise<ResourceContentResponse | null> {
   const response = await fetch("/api/project-resources", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ projectPath, resourceId }),
+    body: JSON.stringify({ projectId, resourceId }),
   });
   if (!response.ok) return null;
   return (await response.json()) as ResourceContentResponse;
 }
 
+/**
+ * Fetches a single revision's preview content.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`) — the
+ * `/api/resource/revision/[resource-id]` GET handler resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ */
 export async function fetchRevisionContent(
   resourceId: string,
-  projectPath: string,
+  projectId: string,
   revisionId: string,
 ): Promise<string | null> {
-  const params = new URLSearchParams({ projectPath, revisionId });
+  const params = new URLSearchParams({ projectId, revisionId });
   const response = await fetch(
     `/api/resource/revision/${resourceId}?${params.toString()}`,
   );
@@ -134,16 +150,24 @@ export async function fetchRevisionContent(
   return typeof payload.content === "string" ? payload.content : null;
 }
 
+/**
+ * Persists new content for an existing revision.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`) — the
+ * `/api/resource/revision/[resource-id]` PATCH handler resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ */
 export async function patchRevisionContent(
   resourceId: string,
-  projectPath: string,
+  projectId: string,
   revisionId: string,
   content: string,
 ): Promise<{ updatedAt: string }> {
   const response = await fetch(`/api/resource/revision/${resourceId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ projectPath, revisionId, content }),
+    body: JSON.stringify({ projectId, revisionId, content }),
   });
   if (!response.ok) {
     throw new Error(`Failed to persist revision (${response.status})`);

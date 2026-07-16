@@ -9,7 +9,14 @@ import {
 interface UseRevisionContentOptions {
   initialContent: string;
   selectedResourceId: string | null;
-  projectRootPath: string | null;
+  /**
+   * The active project's on-disk directory basename (see
+   * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), NOT
+   * `StoredProject.id`/`rootPath`. Sent as `projectId` to
+   * `/api/project-resources` and `/api/resource/revision/*`
+   * (ADR-017/018 tenant-route migration).
+   */
+  projectId: string | null;
   currentRevisionId: string | null;
   currentRevisionContent: string | null;
 }
@@ -25,7 +32,7 @@ interface UseRevisionContentResult {
 export function useRevisionContent({
   initialContent,
   selectedResourceId,
-  projectRootPath,
+  projectId,
   currentRevisionId,
   currentRevisionContent,
 }: UseRevisionContentOptions): UseRevisionContentResult {
@@ -60,20 +67,16 @@ export function useRevisionContent({
 
   const loadResourceContent =
     React.useCallback(async (): Promise<ResourceContentResponse | null> => {
-      if (!selectedResourceId || !projectRootPath) return null;
-      return fetchResourceContent(projectRootPath, selectedResourceId);
-    }, [projectRootPath, selectedResourceId]);
+      if (!selectedResourceId || !projectId) return null;
+      return fetchResourceContent(projectId, selectedResourceId);
+    }, [projectId, selectedResourceId]);
 
   const fetchCanonicalRevisionContent = React.useCallback(
     async (revisionId: string): Promise<string | null> => {
-      if (!selectedResourceId || !projectRootPath) return null;
-      return fetchRevisionContent(
-        selectedResourceId,
-        projectRootPath,
-        revisionId,
-      );
+      if (!selectedResourceId || !projectId) return null;
+      return fetchRevisionContent(selectedResourceId, projectId, revisionId);
     },
-    [projectRootPath, selectedResourceId],
+    [projectId, selectedResourceId],
   );
 
   React.useEffect(() => {
@@ -129,7 +132,7 @@ export function useRevisionContent({
       setContent(canonicalContent);
     };
 
-    if (selectedResourceId && projectRootPath) {
+    if (selectedResourceId && projectId) {
       void loadResourceAndCanonicalRevision();
     }
 
@@ -141,7 +144,7 @@ export function useRevisionContent({
     loadResourceContent,
     initialContent,
     parseTipTapRevisionContent,
-    projectRootPath,
+    projectId,
     selectedResourceId,
   ]);
 

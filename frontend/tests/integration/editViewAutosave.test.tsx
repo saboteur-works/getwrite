@@ -153,4 +153,93 @@ describe("EditView autosave integration", () => {
     });
     expect(patchCalls.length).toBeGreaterThanOrEqual(2);
   });
+
+  it("sends the project directory basename as projectId, not StoredProject.id, when autosaving", async () => {
+    const store = makeStore();
+    const resource = createTextResource({
+      name: "Draft",
+      plainText: "Initial text",
+    });
+
+    // `id` (mirrors project.json's internal id) is deliberately different
+    // from the trailing segment of `rootPath` (the on-disk directory
+    // basename) to catch any call site that regresses to sending
+    // `StoredProject.id` instead of the directory basename (see FR12 /
+    // `selectActiveProjectDirectoryId`'s doc comment in `projectsSlice.ts`).
+    const directoryBasename = "on-disk-directory-id";
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = typeof input === "string" ? input : input.toString();
+          if (
+            url.includes(`/api/resource/revision/${resource.id}`) &&
+            init?.method === "PATCH"
+          ) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ updatedAt: new Date().toISOString() }),
+            } as Response;
+          }
+
+          return { ok: false, status: 404, json: async () => ({}) } as Response;
+        },
+      );
+
+    store.dispatch(
+      setProject({
+        id: "project-json-internal-id-should-not-be-sent",
+        name: "Autosave Project",
+        rootPath: `/tmp/${directoryBasename}`,
+        resources: [{ id: resource.id, name: resource.name }],
+      }),
+    );
+    store.dispatch(
+      setSelectedProjectId("project-json-internal-id-should-not-be-sent"),
+    );
+    store.dispatch(setResources([resource]));
+    store.dispatch(setSelectedResourceId(resource.id));
+    seedRevisions(
+      store,
+      resource.id,
+      [createRevisionEntry(resource.id)],
+      "rev-canonical",
+    );
+
+    render(
+      <Provider store={store}>
+        <EditView initialContent="Initial text" />
+      </Provider>,
+    );
+
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("tiptap-mock"), {
+        target: { value: "Updated text" },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(2600);
+      await Promise.resolve();
+    });
+
+    const patchCall = fetchMock.mock.calls.find((call) => {
+      const url = typeof call[0] === "string" ? call[0] : call[0].toString();
+      return (
+        url.includes(`/api/resource/revision/${resource.id}`) &&
+        call[1]?.method === "PATCH"
+      );
+    });
+    expect(patchCall).toBeDefined();
+    const body = JSON.parse(patchCall?.[1]?.body as string) as {
+      projectId?: string;
+      projectPath?: string;
+      projectRoot?: string;
+    };
+    expect(body.projectId).toBe(directoryBasename);
+    expect(body.projectPath).toBeUndefined();
+    expect(body.projectRoot).toBeUndefined();
+  });
 });
