@@ -533,9 +533,13 @@ export default function AppShell({
     const resourceId = renameModal.resourceId;
     const isFolder = (folders ?? []).some((f) => f.id === resourceId);
     try {
+      // `project.rootPath`'s directory basename is the `projectId` every
+      // tenant-scoped resource route (ADR-017/018) expects — see
+      // `selectActiveProjectDirectoryId`'s doc comment in `projectsSlice.ts`
+      // for the FR12 distinction from `project.id`.
       const isOk = await renameResource(
         resourceId,
-        project.rootPath,
+        getProjectDirectoryId(project.rootPath),
         newName,
         isFolder ? "folder" : "resource",
       );

@@ -29,6 +29,7 @@ import {
   removeResource,
   setProjects as setProjectsInStore,
   buildStoredProject,
+  selectActiveProjectDirectoryId,
 } from "../src/store/projectsSlice";
 import AppShell from "../components/Layout/AppShell";
 import StartPage, {
@@ -120,6 +121,17 @@ export default function Home(): JSX.Element {
   const selectedResource = useAppSelector(
     (state) => selectResource(state.resources),
     shallowEqual,
+  );
+
+  /**
+   * The active project's on-disk directory basename — the `projectId` every
+   * tenant-scoped resource route (ADR-017/018) expects. Not the same as
+   * `selectedProject.id` (`project.json`'s internal `id`), which is a
+   * separately generated UUID; see `selectActiveProjectDirectoryId`'s doc
+   * comment in `projectsSlice.ts` for the FR12 distinction.
+   */
+  const activeProjectDirectoryId = useAppSelector(
+    selectActiveProjectDirectoryId,
   );
 
   const dispatch = useAppDispatch();
@@ -275,13 +287,19 @@ export default function Home(): JSX.Element {
       return;
     }
 
-    updateSidecar(
-      resourceId,
-      selectedProject.rootPath,
-      updater(resource),
-    ).catch((err) => {
-      console.error("Error updating resource metadata:", err);
-    });
+    if (activeProjectDirectoryId) {
+      updateSidecar(
+        resourceId,
+        activeProjectDirectoryId,
+        updater(resource),
+      ).catch((err) => {
+        console.error("Error updating resource metadata:", err);
+      });
+    } else {
+      console.error(
+        "updateResource: no active project directory id; sidecar not persisted",
+      );
+    }
 
     dispatch(updateResourceInStore(updater(resource)));
 
@@ -436,6 +454,11 @@ export default function Home(): JSX.Element {
     },
   ) => {
     if (!selectedProject) return;
+    // `activeProjectDirectoryId` is the on-disk directory basename required
+    // by every tenant-scoped resource route (ADR-017/018) — see its doc
+    // comment above for the FR12 distinction from `selectedProject.id`.
+    if (!activeProjectDirectoryId) return;
+    const projectId = activeProjectDirectoryId;
 
     if (action === "create") {
       const title = opts?.title ?? "New Resource";
@@ -468,7 +491,7 @@ export default function Home(): JSX.Element {
         (payload as any).text = { plainText: "", tiptap: undefined };
       }
 
-      const resBody = await createResource(selectedProject.rootPath, payload);
+      const resBody = await createResource(projectId, payload);
       const res: AnyResource = resBody.resource;
       dispatch(addResourceInStore(res));
       if (opts?.type === "folder") {
@@ -513,7 +536,7 @@ export default function Home(): JSX.Element {
       const { resource: newResource } = await copyResource(
         resourceId,
         newName,
-        selectedProject.rootPath,
+        projectId,
       );
 
       dispatch(addResourceInStore(newResource as AnyResource));
@@ -541,7 +564,7 @@ export default function Home(): JSX.Element {
 
     if (action === "delete") {
       if (!resourceId) return;
-      await deleteResource(resourceId, selectedProject.rootPath);
+      await deleteResource(resourceId, projectId);
       setProjects((prev) =>
         prev.map((p) =>
           p.project.id === selectedProject.id
@@ -640,9 +663,9 @@ export default function Home(): JSX.Element {
     file: File,
     opts: { title: string; folderId?: string },
   ): Promise<void> => {
-    if (!selectedProject) return;
+    if (!selectedProject || !activeProjectDirectoryId) return;
     const { resource } = await uploadMediaResource(
-      selectedProject.rootPath,
+      activeProjectDirectoryId,
       file,
       opts,
     );

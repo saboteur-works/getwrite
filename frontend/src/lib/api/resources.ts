@@ -21,26 +21,42 @@ export interface ReorderPayload {
   }>;
 }
 
+/**
+ * Creates a new resource in a project.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+ * `StoredProject.id` — `/api/resource` resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ */
 export async function createResource(
-  projectPath: string,
+  projectId: string,
   resourceData: Record<string, unknown>,
 ): Promise<{ resource: AnyResource }> {
   const response = await fetch("/api/resource", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resourceData, projectPath }),
+    body: JSON.stringify({ resourceData, projectId }),
   });
   return (await response.json()) as { resource: AnyResource };
 }
 
+/**
+ * Uploads a media file (image/audio) as a new resource.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+ * `StoredProject.id` — `/api/resource/upload` resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ */
 export async function uploadMediaResource(
-  projectPath: string,
+  projectId: string,
   file: File,
   opts?: { title?: string; folderId?: string },
 ): Promise<{ resource: AnyResource }> {
   const form = new FormData();
   form.append("file", file);
-  form.append("projectPath", projectPath);
+  form.append("projectId", projectId);
   if (opts?.title) form.append("title", opts.title);
   if (opts?.folderId) form.append("folderId", opts.folderId);
 
@@ -57,52 +73,84 @@ export async function uploadMediaResource(
   return (await response.json()) as { resource: AnyResource };
 }
 
+/**
+ * Copies a resource under a new name within the same project.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+ * `StoredProject.id` — `/api/resource/[resource-id]` resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ */
 export async function copyResource(
   resourceId: string,
   newName: string,
-  projectRoot: string,
+  projectId: string,
 ): Promise<{ resource: AnyResource }> {
   const response = await fetch(`/api/resource/${resourceId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "copy", newName, projectRoot }),
+    body: JSON.stringify({ action: "copy", newName, projectId }),
   });
   return (await response.json()) as { resource: AnyResource };
 }
 
+/**
+ * Deletes (soft-deletes) a resource.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+ * `StoredProject.id` — `/api/resource/[resource-id]` resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ */
 export async function deleteResource(
   resourceId: string,
-  projectRoot: string,
+  projectId: string,
 ): Promise<void> {
   await fetch(`/api/resource/${resourceId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "delete", projectRoot }),
+    body: JSON.stringify({ action: "delete", projectId }),
   });
 }
 
+/**
+ * Persists an updated sidecar (metadata) file for a resource.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+ * `StoredProject.id` — `/api/resource/[resource-id]/sidecar` resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ */
 export async function updateSidecar(
   resourceId: string,
-  projectRoot: string,
+  projectId: string,
   updatedResource: AnyResource,
 ): Promise<void> {
   await fetch(`/api/resource/${resourceId}/sidecar`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ projectRoot, updatedResource }),
+    body: JSON.stringify({ projectId, updatedResource }),
   });
 }
 
+/**
+ * Renames a resource or folder.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+ * `StoredProject.id` — `/api/resource/[resource-id]/rename` resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ */
 export async function renameResource(
   resourceId: string,
-  projectRoot: string,
+  projectId: string,
   newName: string,
   resourceType: "folder" | "resource",
 ): Promise<boolean> {
   const response = await fetch(`/api/resource/${resourceId}/rename`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ projectRoot, newName, resourceType }),
+    body: JSON.stringify({ projectId, newName, resourceType }),
   });
   return response.ok;
 }
