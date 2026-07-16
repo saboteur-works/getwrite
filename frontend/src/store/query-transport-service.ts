@@ -1,14 +1,24 @@
 import type { SavedQuery } from "../lib/models/saved-queries";
 import type { QueryAST } from "../lib/models/query-ast";
+import { selectActiveProjectDirectoryId } from "./projectsSlice";
 import type { RootState } from "./store";
 
 export interface QueryRequestContext {
   projectId: string;
-  projectPath: string;
 }
 
 /**
  * Resolves selected project context needed for query requests.
+ *
+ * `expectedProjectId` is the Redux-internal `selectedProjectId` (mirrored
+ * from `project.json`'s `id` field) — it is used only to guard against a
+ * project switch racing an in-flight request, never sent to the API. The
+ * `projectId` returned in the context is the active project's on-disk
+ * directory basename (via {@link selectActiveProjectDirectoryId}), which is
+ * what every tenant-scoped query route (ADR-017/018) actually expects. Per
+ * FR12, a project's on-disk directory name and its `project.json` `id` are
+ * two independently generated UUIDs — sending the wrong one is a silent
+ * failure, not an auth error.
  */
 export function resolveQueryRequestContext(
   state: RootState,
@@ -24,12 +34,12 @@ export function resolveQueryRequestContext(
     return { error: "Project changed before operation completed." };
   }
 
-  const project = state.projects.projects[selectedProjectId];
-  if (!project?.rootPath) {
+  const projectId = selectActiveProjectDirectoryId(state);
+  if (!projectId) {
     return { error: "Selected project is missing a root path." };
   }
 
-  return { projectId: selectedProjectId, projectPath: project.rootPath };
+  return { projectId };
 }
 
 async function postJson<T>(
@@ -78,7 +88,7 @@ export function fetchSavedQueryList(
 ): Promise<ListQueriesResponse> {
   return postJson(
     "/api/project/query/saved",
-    { action: "list", projectPath: context.projectPath },
+    { action: "list", projectId: context.projectId },
     "Unable to load saved queries.",
   );
 }
@@ -92,7 +102,7 @@ export function persistSavedQuery(
 ): Promise<WriteQueryResponse> {
   return postJson(
     "/api/project/query/saved",
-    { action: "write", projectPath: context.projectPath, query },
+    { action: "write", projectId: context.projectId, query },
     "Failed to save query.",
   );
 }
@@ -106,7 +116,7 @@ export function removeSavedQuery(
 ): Promise<void> {
   return postJson(
     "/api/project/query/saved",
-    { action: "delete", projectPath: context.projectPath, id },
+    { action: "delete", projectId: context.projectId, id },
     "Failed to delete query.",
   );
 }
@@ -120,7 +130,7 @@ export function evaluateQueryAst(
 ): Promise<EvaluateQueryResponse> {
   return postJson(
     "/api/project/query/evaluate",
-    { projectPath: context.projectPath, definition },
+    { projectId: context.projectId, definition },
     "Query evaluation failed.",
   );
 }

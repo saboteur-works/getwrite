@@ -225,7 +225,7 @@ describe("projectsSlice — updateProjectFeatures thunk", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        projectPath: "/tmp/project-1",
+        projectId: "project-1",
         features: { timeline: true },
       }),
     });
@@ -279,10 +279,7 @@ describe("projectsSlice — updateProjectOrganizerCardBody thunk", () => {
     expect(fetchSpy).toHaveBeenCalledWith("/api/project/features", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectPath: "/tmp/project-1",
-        organizerCardBody: body,
-      }),
+      body: JSON.stringify({ projectId: "project-1", organizerCardBody: body }),
     });
 
     expect(selectActiveProjectOrganizerCardBody(store.getState())).toEqual(

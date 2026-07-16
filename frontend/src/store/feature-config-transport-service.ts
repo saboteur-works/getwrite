@@ -30,19 +30,22 @@ function getApiErrorMessage(errorBody: unknown, fallback: string): string {
 /**
  * Posts a partial feature-configuration update for a project.
  *
- * @param projectPath - Absolute project root path.
+ * @param projectId - The project's on-disk directory basename (per FR12,
+ *   this is distinct from `project.json`'s internal `id` field — callers
+ *   must source it via `selectActiveProjectDirectoryId` /
+ *   `getProjectDirectoryId`, never `project.id`).
  * @param update - Blocks to replace (`features` and/or `organizerCardBody`).
  * @returns The persisted feature configuration.
  * @throws {Error} When the route responds with a non-OK status.
  */
 export async function postFeatureConfig(
-  projectPath: string,
+  projectId: string,
   update: FeatureConfigUpdate,
 ): Promise<FeatureConfigResult> {
   const response = await fetch("/api/project/features", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ projectPath, ...update }),
+    body: JSON.stringify({ projectId, ...update }),
   });
 
   if (!response.ok) {

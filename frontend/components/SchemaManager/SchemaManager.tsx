@@ -8,7 +8,7 @@ import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
   selectActiveProjectMetadataSchema,
   selectSelectedProjectId,
-  selectActiveProjectRootPath,
+  selectActiveProjectDirectoryId,
   addMetadataField,
   deprecateMetadataField,
   clearMetadataField,
@@ -117,7 +117,10 @@ export default function SchemaManager({
   const dispatch = useAppDispatch();
   const schema = useAppSelector(selectActiveProjectMetadataSchema);
   const projectId = useAppSelector(selectSelectedProjectId);
-  const projectPath = useAppSelector(selectActiveProjectRootPath);
+  // Directory basename (per FR12, distinct from `projectId`/`project.json`'s
+  // internal `id` above) — the value the metadata-schema field-values GET
+  // route actually expects. See selectActiveProjectDirectoryId's doc comment.
+  const directoryId = useAppSelector(selectActiveProjectDirectoryId);
   const folders = useAppSelector(
     (state) => (state.resources as unknown as { folders: Folder[] }).folders,
   );
@@ -1075,14 +1078,14 @@ export default function SchemaManager({
 
       {/* Type change migration preview */}
       {typeChangeRequest !== null &&
-        projectPath !== null &&
+        directoryId !== null &&
         projectId !== null && (
           <MigrationPreview
             fieldKey={typeChangeRequest.fieldKey}
             fieldLabel={typeChangeRequest.fieldLabel}
             oldType={typeChangeRequest.oldType}
             newType={typeChangeRequest.newType}
-            projectPath={projectPath}
+            directoryId={directoryId}
             projectId={projectId}
             groupId={typeChangeRequest.groupId}
             onCancel={() => setTypeChangeRequest(null)}
@@ -1092,7 +1095,7 @@ export default function SchemaManager({
 
       {/* Options removal migration preview */}
       {optionsRemovalRequest !== null &&
-        projectPath !== null &&
+        directoryId !== null &&
         projectId !== null && (
           <OptionsRemovalPreview
             fieldKey={optionsRemovalRequest.fieldKey}
@@ -1100,7 +1103,7 @@ export default function SchemaManager({
             fieldType={optionsRemovalRequest.fieldType}
             orphanedOptions={optionsRemovalRequest.orphanedOptions}
             newOptions={optionsRemovalRequest.newOptions}
-            projectPath={projectPath}
+            directoryId={directoryId}
             projectId={projectId}
             groupId={optionsRemovalRequest.groupId}
             onCancel={() => setOptionsRemovalRequest(null)}

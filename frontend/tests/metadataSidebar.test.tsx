@@ -673,7 +673,7 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
     expect(addFieldCall).toBeDefined();
     const body = JSON.parse((addFieldCall![1] as RequestInit).body as string);
     expect(body.action).toBe("add-field");
-    expect(body.projectPath).toBe("/projects/proj-add-field");
+    expect(body.projectId).toBe("proj-add-field");
     expect(body.groupId).toBe(DEFAULT_METADATA_SCHEMA.groups[0].id);
     expect(body.field.type).toBe("text");
     expect(body.field.label).toBe("New Field");

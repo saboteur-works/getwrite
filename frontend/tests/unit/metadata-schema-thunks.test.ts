@@ -141,7 +141,7 @@ describe("addMetadataField thunk (Task 6)", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "add-field",
-        projectPath: "/tmp/project-1",
+        projectId: "project-1",
         groupId: "test-group",
         field,
       }),
@@ -229,7 +229,7 @@ describe("removeMetadataField thunk (Task 6)", () => {
       expect.objectContaining({
         body: JSON.stringify({
           action: "remove-field",
-          projectPath: "/tmp/project-1",
+          projectId: "project-1",
           groupId: "test-group",
           fieldKey: "old-field",
         }),
@@ -286,7 +286,7 @@ describe("reorderMetadataFields thunk (Task 6)", () => {
       expect.objectContaining({
         body: JSON.stringify({
           action: "reorder-fields",
-          projectPath: "/tmp/project-1",
+          projectId: "project-1",
           groupId: "test-group",
           newKeyOrder: ["field-b", "field-a"],
         }),
@@ -323,7 +323,7 @@ describe("renameMetadataField thunk (Task 6)", () => {
       expect.objectContaining({
         body: JSON.stringify({
           action: "rename-field",
-          projectPath: "/tmp/project-1",
+          projectId: "project-1",
           groupId: "test-group",
           fieldKey: "my-field",
           newLabel: "Renamed",
@@ -361,7 +361,7 @@ describe("updateMetadataFieldOptions thunk (Task 6)", () => {
       expect.objectContaining({
         body: JSON.stringify({
           action: "update-field-options",
-          projectPath: "/tmp/project-1",
+          projectId: "project-1",
           groupId: "test-group",
           fieldKey: "status",
           options: ["Draft", "Final"],
@@ -400,7 +400,7 @@ describe("addMetadataGroup thunk (Task 6)", () => {
       expect.objectContaining({
         body: JSON.stringify({
           action: "add-group",
-          projectPath: "/tmp/project-1",
+          projectId: "project-1",
           group,
         }),
       }),
@@ -431,7 +431,7 @@ describe("removeMetadataGroup thunk (Task 6)", () => {
       expect.objectContaining({
         body: JSON.stringify({
           action: "remove-group",
-          projectPath: "/tmp/project-1",
+          projectId: "project-1",
           groupId: "old-group",
         }),
       }),
@@ -465,7 +465,7 @@ describe("reorderMetadataGroups thunk (Task 6)", () => {
       expect.objectContaining({
         body: JSON.stringify({
           action: "reorder-groups",
-          projectPath: "/tmp/project-1",
+          projectId: "project-1",
           newGroupIdOrder: ["group-b", "group-a"],
         }),
       }),
@@ -501,7 +501,7 @@ describe("updateMetadataRefProperties thunk (Task 3)", () => {
       expect.objectContaining({
         body: JSON.stringify({
           action: "update-ref-properties",
-          projectPath: "/tmp/project-1",
+          projectId: "project-1",
           groupId: "test-group",
           fieldKey: "characters",
           refFolder: "folder-abc",

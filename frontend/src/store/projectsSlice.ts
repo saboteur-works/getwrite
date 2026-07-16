@@ -418,7 +418,7 @@ function makeFeatureConfigThunk<Args extends { projectId: string }>(
     if ("error" in context) return thunkApi.rejectWithValue(context.error);
     try {
       const result = await postFeatureConfig(
-        context.projectPath,
+        context.projectId,
         buildBody(args),
       );
       return { projectId: args.projectId, result };

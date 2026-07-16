@@ -21,8 +21,13 @@ export interface MigrationPreviewProps {
   fieldLabel: string;
   oldType: MetadataFieldType;
   newType: MetadataFieldType;
-  /** Absolute project root path — used to fetch field values. */
-  projectPath: string;
+  /**
+   * Project's on-disk directory basename — used to fetch field values.
+   * Per FR12, distinct from `projectId` below (which mirrors
+   * `project.json`'s internal `id`); see
+   * `selectActiveProjectDirectoryId`'s doc comment in `projectsSlice.ts`.
+   */
+  directoryId: string;
   projectId: string;
   groupId: string;
   onCancel: () => void;
@@ -82,7 +87,7 @@ export default function MigrationPreview({
   fieldLabel,
   oldType,
   newType,
-  projectPath,
+  directoryId,
   projectId,
   groupId,
   onCancel,
@@ -100,7 +105,7 @@ export default function MigrationPreview({
     let isCancelled = false;
     setIsLoading(true);
     setFetchError(null);
-    fetchFieldValues(projectPath, fieldKey)
+    fetchFieldValues(directoryId, fieldKey)
       .then((entries) => {
         if (isCancelled) return;
         const initialRows: RowState[] = entries.map((e) => ({
@@ -123,7 +128,7 @@ export default function MigrationPreview({
     return () => {
       isCancelled = true;
     };
-  }, [projectPath, fieldKey, newType]);
+  }, [directoryId, fieldKey, newType]);
 
   function setRowAction(canonicalKey: string, action: ActionChoice): void {
     setRows((prev) =>

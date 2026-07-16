@@ -119,7 +119,7 @@ describe("OrganizerCardBodySettings", () => {
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("/api/project/features");
     expect(JSON.parse(init.body as string)).toEqual({
-      projectPath: "/test",
+      projectId: "test",
       organizerCardBody: { source: "field", fieldKey: "synopsis" },
     });
 
@@ -142,7 +142,7 @@ describe("OrganizerCardBodySettings", () => {
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({
-      projectPath: "/test",
+      projectId: "test",
       organizerCardBody: { source: "text-excerpt", excerptLength: 200 },
     });
 
@@ -170,7 +170,7 @@ describe("OrganizerCardBodySettings", () => {
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({
-      projectPath: "/test",
+      projectId: "test",
       organizerCardBody: { source: "text-excerpt", excerptLength: 120 },
     });
   });
@@ -200,7 +200,7 @@ describe("OrganizerCardBodySettings", () => {
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({
-      projectPath: "/test",
+      projectId: "test",
       organizerCardBody: { source: "none" },
     });
   });

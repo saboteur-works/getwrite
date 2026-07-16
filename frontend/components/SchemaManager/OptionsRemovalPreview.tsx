@@ -23,7 +23,13 @@ export interface OptionsRemovalPreviewProps {
   orphanedOptions: string[];
   /** The replacement options list the user typed (before add-to-options). */
   newOptions: string[];
-  projectPath: string;
+  /**
+   * Project's on-disk directory basename — used to fetch field values.
+   * Per FR12, distinct from `projectId` below (which mirrors
+   * `project.json`'s internal `id`); see
+   * `selectActiveProjectDirectoryId`'s doc comment in `projectsSlice.ts`.
+   */
+  directoryId: string;
   projectId: string;
   groupId: string;
   onCancel: () => void;
@@ -73,7 +79,7 @@ export default function OptionsRemovalPreview({
   fieldType,
   orphanedOptions,
   newOptions,
-  projectPath,
+  directoryId,
   projectId,
   groupId,
   onCancel,
@@ -91,7 +97,7 @@ export default function OptionsRemovalPreview({
     let isCancelled = false;
     setLoading(true);
     setFetchError(null);
-    fetchFieldValues(projectPath, fieldKey)
+    fetchFieldValues(directoryId, fieldKey)
       .then((entries) => {
         if (isCancelled) return;
         setRows(
@@ -114,7 +120,7 @@ export default function OptionsRemovalPreview({
     return () => {
       isCancelled = true;
     };
-  }, [projectPath, fieldKey, fieldType, orphanedOptions]);
+  }, [directoryId, fieldKey, fieldType, orphanedOptions]);
 
   function setRowAction(option: string, action: ActionChoice): void {
     setRows((prev) =>
