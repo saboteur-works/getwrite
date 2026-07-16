@@ -744,7 +744,12 @@ export default function AppShell({
     }
 
     try {
-      await saveProjectPreferences(project.rootPath, { colorMode: nextMode });
+      // Directory basename, not `project.id` (project.json's independently
+      // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
+      // comment in `projectsSlice.ts`.
+      await saveProjectPreferences(getProjectDirectoryId(project.rootPath), {
+        colorMode: nextMode,
+      });
     } catch (error) {
       console.error("Failed to persist project user preferences", error);
     }
@@ -817,7 +822,13 @@ export default function AppShell({
       throw new Error("Project path unavailable for heading settings.");
     }
 
-    const body = await saveHeadingSettings(project.rootPath, headings);
+    // Directory basename, not `project.id` (project.json's independently
+    // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
+    // comment in `projectsSlice.ts`.
+    const body = await saveHeadingSettings(
+      getProjectDirectoryId(project.rootPath),
+      headings,
+    );
     dispatch(
       setEditorConfig({
         headings: body.editorConfig?.headings ?? {},
@@ -833,7 +844,13 @@ export default function AppShell({
       throw new Error("Project path unavailable for body settings.");
     }
 
-    const responseBody = await saveBodySettings(project.rootPath, bodyConfig);
+    // Directory basename, not `project.id` (project.json's independently
+    // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
+    // comment in `projectsSlice.ts`.
+    const responseBody = await saveBodySettings(
+      getProjectDirectoryId(project.rootPath),
+      bodyConfig,
+    );
     dispatch(
       setEditorConfig({
         headings: responseBody.editorConfig?.headings ?? {},
@@ -846,7 +863,10 @@ export default function AppShell({
     if (!project?.rootPath) {
       throw new Error("Project path unavailable.");
     }
-    await saveRevisionSettings(project.rootPath, name);
+    // Directory basename, not `project.id` (project.json's independently
+    // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
+    // comment in `projectsSlice.ts`.
+    await saveRevisionSettings(getProjectDirectoryId(project.rootPath), name);
   };
 
   function triggerDownload(blob: Blob, filename: string): void {

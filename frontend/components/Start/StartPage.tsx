@@ -135,7 +135,14 @@ export interface StartPageProps {
   projects?: StartPageProjectEntry[];
   /** Callback fired after project creation succeeds. */
   onCreate?: (projectFiles: StartPageCreateResult) => void;
-  /** Callback fired when user chooses to open a project. */
+  /**
+   * Callback fired when user chooses to open a project.
+   *
+   * `projectId` is the project's on-disk directory basename (see
+   * `selectActiveProjectDirectoryId`'s doc comment in `projectsSlice.ts`),
+   * not `project.id` — `/api/project` resolves it via
+   * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+   */
   onOpen?: (projectId: string) => void;
 }
 
@@ -154,7 +161,7 @@ export interface StartPageProps {
  * <StartPage
  *   projects={projects}
  *   onCreate={(created) => console.log(created.project.id)}
- *   onOpen={(projectRootPath) => openProject(projectRootPath)}
+ *   onOpen={(projectId) => openProject(projectId)}
  * />
  */
 export default function StartPage({
@@ -644,12 +651,22 @@ export default function StartPage({
                 <div className="mt-6 flex items-center justify-between gap-3">
                   <Button
                     variant="secondary"
-                    onClick={() =>
+                    onClick={() => {
+                      // Directory basename, not `project.id` (project.json's
+                      // independently generated internal id) — see
+                      // `selectActiveProjectDirectoryId`'s doc comment in
+                      // `projectsSlice.ts`.
+                      if (!projectEntry.project.rootPath) {
+                        toastService.error(
+                          "Cannot open project",
+                          "Project path not found",
+                        );
+                        return;
+                      }
                       onOpen?.(
-                        projectEntry.project.rootPath ??
-                          projectEntry.project.id,
-                      )
-                    }
+                        getProjectDirectoryId(projectEntry.project.rootPath),
+                      );
+                    }}
                     title="Open Project"
                     aria-label={`Open ${projectName}`}
                   >

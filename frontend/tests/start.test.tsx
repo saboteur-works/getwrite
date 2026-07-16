@@ -70,7 +70,7 @@ test("StartPage renders projects and opens CreateProjectModal", async () => {
   expect(screen.getByText(/Create Project/i)).toBeInTheDocument();
 });
 
-test("StartPage opens projects using the project root path when available", async () => {
+test("StartPage opens projects using the root path's directory basename as projectId", async () => {
   const user = userEvent.setup();
   const now = new Date().toISOString();
   const onOpen = vi.fn();
@@ -103,5 +103,8 @@ test("StartPage opens projects using the project root path when available", asyn
 
   await user.click(screen.getByRole("button", { name: /Open Open Me/i }));
 
-  expect(onOpen).toHaveBeenCalledWith("/tmp/proj_open_1");
+  // `onOpen` receives the directory basename of `rootPath` (the `projectId`
+  // tenant-scoped routes expect), not the absolute `rootPath` — see
+  // `selectActiveProjectDirectoryId`'s doc comment in `projectsSlice.ts`.
+  expect(onOpen).toHaveBeenCalledWith("proj_open_1");
 });

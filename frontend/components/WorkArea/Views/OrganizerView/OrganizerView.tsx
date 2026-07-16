@@ -10,7 +10,7 @@ import {
 import {
   selectActiveProjectStatuses,
   selectActiveProjectOrganizerCardBody,
-  selectActiveProjectRootPath,
+  selectActiveProjectDirectoryId,
   selectNotesEnabled,
 } from "../../../../src/store/projectsSlice";
 import { Eye, EyeClosed } from "lucide-react";
@@ -59,7 +59,10 @@ export default function OrganizerView({
   // Notes flag only drives the back-compat default when no config is set.
   const cardBodyConfig = useAppSelector(selectActiveProjectOrganizerCardBody);
   const isNotesEnabled = useAppSelector(selectNotesEnabled);
-  const rootPath = useAppSelector(selectActiveProjectRootPath);
+  // Directory basename, not `project.id` (project.json's independently
+  // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
+  // comment in `projectsSlice.ts`.
+  const projectId = useAppSelector(selectActiveProjectDirectoryId);
 
   const [isShowingBody, setIsShowingBody] = React.useState(showBody);
   // Text content for `text-excerpt` cards, fetched on demand for the visible
@@ -109,7 +112,7 @@ export default function OrganizerView({
     if (
       !isShowingBody ||
       cardBodySource !== "text-excerpt" ||
-      !rootPath ||
+      !projectId ||
       textIdsKey === ""
     ) {
       setExcerpts({});
@@ -117,7 +120,7 @@ export default function OrganizerView({
     }
     let isCancelled = false;
     void fetchResourceExcerpts(
-      rootPath,
+      projectId,
       textIdsKey.split(","),
       excerptLength ?? DEFAULT_CARD_EXCERPT_LENGTH,
     ).then((result) => {
@@ -126,7 +129,7 @@ export default function OrganizerView({
     return () => {
       isCancelled = true;
     };
-  }, [isShowingBody, cardBodySource, excerptLength, rootPath, textIdsKey]);
+  }, [isShowingBody, cardBodySource, excerptLength, projectId, textIdsKey]);
 
   const handleOpen = (id: string) => dispatch(setSelectedResourceId(id));
 

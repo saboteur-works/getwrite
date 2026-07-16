@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { shallowEqual } from "react-redux";
 import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
+import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import type { Tag } from "../../src/lib/models/types";
 import {
   listTags,
@@ -16,14 +17,14 @@ import Chip from "../common/UI/Chip";
  * Sidebar section that displays all project-level tags as toggleable chips.
  * Assigned tags for the selected resource are shown in the active state.
  *
- * Reads `projectPath` and `resourceId` from Redux — no external props needed.
+ * Reads the active project's directory id and `resourceId` from Redux — no
+ * external props needed.
  */
 export default function TagsSection(): JSX.Element | null {
-  const projectPath = useAppSelector((state) => {
-    const id = state.projects.selectedProjectId;
-    if (!id) return null;
-    return state.projects.projects[id]?.rootPath ?? null;
-  });
+  // Directory basename, not `project.id` (project.json's independently
+  // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
+  // comment in `projectsSlice.ts`.
+  const projectId = useAppSelector(selectActiveProjectDirectoryId);
 
   const resourceId = useAppSelector(
     (state) => selectResource(state.resources)?.id ?? null,
@@ -33,34 +34,34 @@ export default function TagsSection(): JSX.Element | null {
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [assignedTagIds, setAssignedTagIds] = useState<string[]>([]);
 
-  // Load project tag list when projectPath becomes available
+  // Load project tag list when projectId becomes available
   useEffect(() => {
-    if (!projectPath) return;
-    listTags(projectPath)
+    if (!projectId) return;
+    listTags(projectId)
       .then(setAllTags)
       .catch(() => setAllTags([]));
-  }, [projectPath]);
+  }, [projectId]);
 
   // Load assignments for the selected resource whenever it changes
   useEffect(() => {
-    if (!projectPath || !resourceId) {
+    if (!projectId || !resourceId) {
       setAssignedTagIds([]);
       return;
     }
-    listTagAssignments(projectPath, resourceId)
+    listTagAssignments(projectId, resourceId)
       .then(setAssignedTagIds)
       .catch(() => setAssignedTagIds([]));
-  }, [projectPath, resourceId]);
+  }, [projectId, resourceId]);
 
   const handleToggle = async (tagId: string) => {
-    if (!projectPath || !resourceId) return;
+    if (!projectId || !resourceId) return;
     const isAssigned = assignedTagIds.includes(tagId);
     // Optimistic update
     setAssignedTagIds((prev) =>
       isAssigned ? prev.filter((id) => id !== tagId) : [...prev, tagId],
     );
     try {
-      await assignTag(projectPath, resourceId, tagId, !isAssigned);
+      await assignTag(projectId, resourceId, tagId, !isAssigned);
     } catch {
       // Revert optimistic update on failure
       setAssignedTagIds((prev) =>
@@ -69,7 +70,7 @@ export default function TagsSection(): JSX.Element | null {
     }
   };
 
-  if (!projectPath) return null;
+  if (!projectId) return null;
 
   return (
     <div className="mt-0">

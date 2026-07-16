@@ -1,7 +1,13 @@
 import type { MarkdownConstructWarning } from "../export/types";
 
 export interface MarkdownExportBody {
-  projectPath: string;
+  /**
+   * The project's on-disk directory basename (see
+   * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+   * `StoredProject.id` — `/api/export/markdown` resolves it via
+   * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+   */
+  projectId: string;
   resourceIds: string[];
   resources: Array<{ id: string; name: string; type: string }>;
   /** Display name of the resource or folder being exported (used for the filename). */
@@ -15,7 +21,13 @@ export interface MarkdownExportResult {
 }
 
 export interface TextExportBody {
-  projectPath: string;
+  /**
+   * The project's on-disk directory basename (see
+   * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+   * `StoredProject.id` — `/api/export/text` resolves it via
+   * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+   */
+  projectId: string;
   resourceIds: string[];
   resources: Array<{ id: string; name: string; type: string }>;
   /** Display name of the resource or folder being exported (used for the filename). */

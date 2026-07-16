@@ -203,12 +203,12 @@ describe("OrganizerView", () => {
       </Provider>,
     );
 
+    // `fetchResourceExcerpts` is called with the directory basename of
+    // `rootPath` (the `projectId` tenant-scoped routes expect), not the
+    // absolute `rootPath` itself — see `selectActiveProjectDirectoryId`'s
+    // doc comment in `projectsSlice.ts` for the FR12 distinction.
     await waitFor(() =>
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/projects/p1",
-        [resource.id],
-        100,
-      ),
+      expect(mockFetch).toHaveBeenCalledWith("p1", [resource.id], 100),
     );
     expect(await screen.findByText("Fetched from disk.")).toBeInTheDocument();
     // The fetched excerpt is preferred over the resource's stale plainText.

@@ -5,7 +5,7 @@ import StartPage from "../components/Start/StartPage";
 import ResourceTree from "../components/ResourceTree/ResourceTree";
 import { makeStore } from "../src/store/store";
 import { Provider, useSelector } from "react-redux";
-import { setProject } from "../src/store/projectsSlice";
+import { setProject, getProjectDirectoryId } from "../src/store/projectsSlice";
 import { setFolders, setResources } from "../src/store/resourcesSlice";
 import EditView from "../components/WorkArea/EditView";
 import ExportPreviewModal from "../components/common/ExportPreviewModal";
@@ -70,10 +70,14 @@ describe("Core flow: Start → Open Project → Open Resource → Edit", () => {
       ) as string | null;
 
       const handleOpen = (id?: string | null) => {
-        // StartPage passes `project.rootPath` for Open; fall back to first project when undefined.
+        // StartPage passes the directory basename of `project.rootPath` for
+        // Open (see `selectActiveProjectDirectoryId`'s doc comment in
+        // `projectsSlice.ts`); fall back to first project when undefined.
         const p =
           projects.find(
-            (x) => x.project.id === id || x.project.rootPath === id,
+            (x) =>
+              x.project.id === id ||
+              getProjectDirectoryId(x.project.rootPath) === id,
           ) ?? (id == null ? projects[0] : null);
         setCurrentProject(p);
         setCurrentResourceId(null);

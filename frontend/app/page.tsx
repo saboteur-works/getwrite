@@ -213,15 +213,16 @@ export default function Home(): JSX.Element {
   };
 
   /**
-   * Opens an existing project by its root path.
+   * Opens an existing project by its on-disk directory id.
    *
-   * Calls `POST /api/project` with the project's root path, hydrates the
+   * Calls `POST /api/project` with the project's directory id, hydrates the
    * Redux `projects` and `resources` slices with the response, and stores
    * the opened project in local `selectedProject` state so the editor shell
    * becomes visible.
    *
-   * @param id - The root path of the project to open (used as the
-   *   `projectPath` request body field).
+   * @param id - The project's on-disk directory basename (see
+   *   `selectActiveProjectDirectoryId`'s doc comment in `projectsSlice.ts`),
+   *   sent as the `projectId` request body field.
    * @throws {Error} When the HTTP response is not OK.
    */
   const handleOpen = async (id: string) => {
@@ -618,7 +619,7 @@ export default function Home(): JSX.Element {
       // serializes it, returning the file plus any loss warnings.
       if (opts?.format === "md") {
         const { markdown, filename, warnings } = await exportMarkdown({
-          projectPath: selectedProject.rootPath,
+          projectId,
           resourceIds: resolvedIds,
           resources: resourcesMeta,
           exportName,
@@ -644,7 +645,7 @@ export default function Home(): JSX.Element {
       // Using the client-side `plaintext` snapshot here would miss text typed
       // after the project was opened (it is only refreshed on project reload).
       const { text, filename } = await exportText({
-        projectPath: selectedProject.rootPath,
+        projectId,
         resourceIds: resolvedIds,
         resources: resourcesMeta,
         exportName,
