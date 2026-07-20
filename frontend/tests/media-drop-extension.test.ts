@@ -24,17 +24,26 @@ describe("handleMediaDropFiles", () => {
   const onInsert = (resourceId: string, src: string) =>
     inserts.push({ resourceId, src });
 
-  it("uploads a valid image file and calls onInsert with the resource id", async () => {
+  it("uploads a valid image file and inserts a serving URL carrying the tenant-scoped projectId", async () => {
     mockUpload.mockResolvedValue({ resource: { id: "img-001" } });
     const file = makeFile("photo.png", "image/png");
+    const projectId = "aaaaaaaa-1111-4111-8111-111111111111";
 
-    await handleMediaDropFiles([file], "/projects/proj-1", onError, onInsert);
+    await handleMediaDropFiles([file], projectId, onError, onInsert);
 
     expect(mockUpload).toHaveBeenCalledOnce();
-    expect(mockUpload).toHaveBeenCalledWith("/projects/proj-1", file);
+    expect(mockUpload).toHaveBeenCalledWith(projectId, file);
+    // Regression: the /file route hard-requires ?projectId=; a URL without it
+    // 400s and the just-dropped image renders broken.
     expect(inserts).toEqual([
-      { resourceId: "img-001", src: "/api/resource/img-001/file" },
+      {
+        resourceId: "img-001",
+        src: `/api/resource/img-001/file?projectId=${encodeURIComponent(
+          projectId,
+        )}`,
+      },
     ]);
+    expect(inserts[0].src).not.toContain("projectPath=");
     expect(errors).toHaveLength(0);
   });
 

@@ -42,6 +42,7 @@ import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import CustomHeading from "./Editor/Extensions/CustomHeading";
 import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
 import MediaDropExtension from "./Editor/Extensions/MediaDropExtension";
+import GetWriteImage from "./Editor/Extensions/GetWriteImage";
 import { baseSchemaExtensions } from "./Editor/editorExtensions";
 import { useSelector } from "react-redux";
 import { selectResolvedEditorConfig } from "../src/store/editorConfigSlice";
@@ -204,7 +205,13 @@ export default function TipTapEditor({
     {
       shouldRerenderOnTransaction: true,
       extensions: [
-        ...extensions,
+        // Swap the bare GetWriteImage (used by the markdown serializer with no
+        // project context) for one wired to the live directory id, so stored
+        // image srcs are rebuilt from resourceId + projectId on render and a
+        // stale `?projectPath=` URL self-heals. Identity filter avoids a
+        // duplicate "image" node.
+        ...extensions.filter((extension) => extension !== GetWriteImage),
+        GetWriteImage.configure({ getProjectId: () => projectIdRef.current }),
         CustomHeading.configure({
           customStyles: editorProjectConfig.headings || {},
         }),

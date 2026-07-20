@@ -4,6 +4,7 @@ import type { EditorView } from "@tiptap/pm/view";
 import { validateMediaFile } from "../../../src/lib/models/media-validation";
 import { uploadMediaResource } from "../../../src/lib/api/resources";
 import { toastService } from "../../../src/lib/toast-service";
+import { resolveGetWriteImageSrc } from "./GetWriteImage";
 
 export interface MediaDropOptions {
   /**
@@ -62,7 +63,10 @@ export async function handleMediaDropFiles(
     try {
       const result = await uploadMediaResource(projectId, file);
       const resourceId = result.resource.id;
-      onInsert(resourceId, `/api/resource/${resourceId}/file`);
+      onInsert(
+        resourceId,
+        resolveGetWriteImageSrc(resourceId, null, projectId),
+      );
     } catch (e) {
       onError(
         `Failed to upload "${file.name}": ${e instanceof Error ? e.message : String(e)}`,
