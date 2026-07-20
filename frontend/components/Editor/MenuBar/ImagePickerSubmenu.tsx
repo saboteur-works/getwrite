@@ -5,6 +5,7 @@ import { useAppSelector } from "../../../src/store/hooks";
 import { selectResources } from "../../../src/store/resourcesSlice";
 import { selectActiveProjectDirectoryId } from "../../../src/store/projectsSlice";
 import type { ImageResource } from "../../../src/lib/models/types";
+import { resolveGetWriteImageSrc } from "../Extensions/GetWriteImage";
 import { buildButtonClasses, TOOLBAR_TOOLTIP_ID } from "./editor-toolbar-icons";
 
 export interface ImagePickerSubmenuProps {
@@ -60,24 +61,13 @@ export default function ImagePickerSubmenu({
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, []);
 
-  /**
-   * Builds the file-serving URL for a resource thumbnail/insert.
-   *
-   * `projectId` must be the project's on-disk directory basename (see
-   * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
-   * `StoredProject.id` — `/api/resource/[resource-id]/file` resolves it via
-   * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
-   */
-  const buildResourceImageUrl = (resourceId: string) =>
-    `/api/resource/${resourceId}/file?projectId=${encodeURIComponent(projectId!)}`;
-
   const handleInsert = (resource: ImageResource) => {
     if (!projectId) return;
     editor
       .chain()
       .focus()
       .insertGetWriteImage({
-        src: buildResourceImageUrl(resource.id),
+        src: resolveGetWriteImageSrc(resource.id, null, projectId),
         resourceId: resource.id,
       })
       .run();
@@ -127,7 +117,11 @@ export default function ImagePickerSubmenu({
                 >
                   {resource.file && projectId ? (
                     <img
-                      src={buildResourceImageUrl(resource.id)}
+                      src={resolveGetWriteImageSrc(
+                        resource.id,
+                        null,
+                        projectId,
+                      )}
                       alt={resource.name}
                       className="editor-image-picker-thumb"
                     />
