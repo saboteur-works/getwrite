@@ -1,5 +1,4 @@
 import { NextResponse, NextRequest } from "next/server";
-import path from "node:path";
 import {
   compileToMarkdown,
   type MarkdownSection,
@@ -10,12 +9,7 @@ import type {
   ResourceMeta,
   MarkdownConstructWarning,
 } from "../../../../src/lib/export/types";
-import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface ExportMarkdownBody {
@@ -36,15 +30,10 @@ async function handlePost(req: NextRequest) {
   const body = (await req.json()) as ExportMarkdownBody;
   const { projectId, resourceIds, resources, exportName } = body;
 
-  let validatedProjectId: string;
-  try {
-    validatedProjectId = validateProjectId(projectId);
-  } catch (err) {
-    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
-    throw err;
-  }
+  const resolved = resolveProjectPath(projectId);
+  if (resolved instanceof Response) return resolved;
 
-  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+  const { projectPath } = resolved;
 
   // Markdown needs the TipTap JSON, not the cached plain text.
   const sections = await loadTextSections<MarkdownSection>(

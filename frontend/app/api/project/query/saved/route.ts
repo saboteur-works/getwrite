@@ -16,7 +16,6 @@
  * Pattern follows `POST /api/project/metadata-schema`.
  */
 import { NextRequest, NextResponse } from "next/server";
-import path from "node:path";
 import {
   listQueries,
   readQuery,
@@ -24,12 +23,7 @@ import {
   deleteQuery,
   SavedQuerySchema,
 } from "../../../../../src/lib/models/saved-queries";
-import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 // ─── Request shapes ───────────────────────────────────────────────────────────
@@ -76,14 +70,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     );
   }
 
-  let validatedProjectId: string;
-  try {
-    validatedProjectId = validateProjectId(body.projectId);
-  } catch (err) {
-    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
-    throw err;
-  }
-  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+  const resolved = resolveProjectPath(body.projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
 
   try {
     switch (body.action) {

@@ -12,12 +12,7 @@ import {
   type ProjectUserPreferences,
 } from "../../../../src/lib/user-preferences";
 import type { MetadataValue } from "../../../../src/lib/models/types";
-import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateProjectPreferencesBody {
@@ -45,16 +40,10 @@ async function handlePost(req: NextRequest): Promise<Response> {
       );
     }
 
-    let validatedProjectId: string;
-    try {
-      validatedProjectId = validateProjectId(projectId);
-    } catch (err) {
-      if (err instanceof InvalidProjectIdError)
-        return respondInvalidProjectId();
-      throw err;
-    }
+    const resolved = resolveProjectPath(projectId);
+    if (resolved instanceof Response) return resolved;
 
-    const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+    const { projectPath } = resolved;
     const projectFilePath = path.join(projectPath, "project.json");
     const parsedProject = JSON.parse(
       await fs.readFile(projectFilePath, "utf-8"),

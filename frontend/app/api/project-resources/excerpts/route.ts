@@ -13,12 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "node:path";
 import { readResourceExcerpts } from "../../../../src/lib/models/resource-persistence";
-import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface ExcerptsBody {
@@ -38,14 +33,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  let validatedProjectId: string;
-  try {
-    validatedProjectId = validateProjectId(body.projectId);
-  } catch (err) {
-    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
-    throw err;
-  }
-  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+  const resolved = resolveProjectPath(body.projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
 
   const { resourceIds, maxChars } = body;
   if (!Array.isArray(resourceIds)) {

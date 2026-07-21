@@ -16,7 +16,6 @@
  * this guard.
  */
 import { NextRequest, NextResponse } from "next/server";
-import path from "node:path";
 import {
   addField,
   removeField,
@@ -49,12 +48,7 @@ import type {
   MetadataGroup,
   MetadataSchema,
 } from "../../../../src/lib/models/types";
-import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 const SLUG_RE = /^[a-z0-9-]+$/;
@@ -243,14 +237,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     );
   }
 
-  let validatedProjectId: string;
-  try {
-    validatedProjectId = validateProjectId(body.projectId);
-  } catch (err) {
-    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
-    throw err;
-  }
-  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+  const resolved = resolveProjectPath(body.projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
 
   try {
     if (body.action === "add-field") {
@@ -426,14 +415,9 @@ async function handleGet(request: NextRequest): Promise<Response> {
   const projectId = searchParams.get("projectId");
   const fieldKey = searchParams.get("fieldKey");
 
-  let validatedProjectId: string;
-  try {
-    validatedProjectId = validateProjectId(projectId ?? "");
-  } catch (err) {
-    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
-    throw err;
-  }
-  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+  const resolved = resolveProjectPath(projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
 
   if (!fieldKey) {
     return NextResponse.json(

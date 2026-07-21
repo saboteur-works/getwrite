@@ -1,4 +1,3 @@
-import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { readSidecar } from "../../../../../src/lib/models/sidecar";
 import {
@@ -6,12 +5,7 @@ import {
   softDeleteResource,
 } from "../../../../../src/lib/models/trash";
 import { getSchema } from "../../../../../src/lib/models/metadata-schema";
-import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface DeleteResourceBody {
@@ -34,14 +28,9 @@ async function handlePost(
     );
   }
 
-  let validatedProjectId: string;
-  try {
-    validatedProjectId = validateProjectId(body.projectId);
-  } catch (err) {
-    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
-    throw err;
-  }
-  const projectRoot = path.join(resolveProjectsDir(), validatedProjectId);
+  const resolved = resolveProjectPath(body.projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath: projectRoot } = resolved;
 
   const sidecar = await readSidecar(projectRoot, resourceId);
   const deletedName = typeof sidecar?.name === "string" ? sidecar.name : "";

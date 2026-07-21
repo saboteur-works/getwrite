@@ -32,12 +32,7 @@ import {
 import type { Revision } from "../../../../../src/lib/models/types";
 import { persistResourceContent } from "../../../../../src/lib/tiptap-utils";
 import type { TipTapDocument } from "../../../../../src/lib/models";
-import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface GetRevisionResponse {
@@ -67,22 +62,6 @@ interface SetCanonicalRevisionBody {
   revisionId: string;
   /** Optional revision content to persist in-place for canonical revisions. */
   content?: string;
-}
-
-/**
- * Resolves a `projectId` (query param or body field) to its on-disk project
- * directory, or returns the uniform 400 response when it fails validation.
- */
-function resolveValidatedProjectPath(
-  projectId: string | null | undefined,
-): { projectPath: string } | Response {
-  try {
-    const validatedProjectId = validateProjectId(projectId ?? "");
-    return { projectPath: path.join(resolveProjectsDir(), validatedProjectId) };
-  } catch (err) {
-    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
-    throw err;
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -262,7 +241,7 @@ async function handleGet(
   const resourceId = (await params)["resource-id"];
   const { searchParams } = new URL(req.url);
 
-  const resolved = resolveValidatedProjectPath(searchParams.get("projectId"));
+  const resolved = resolveProjectPath(searchParams.get("projectId"));
   if (resolved instanceof Response) return resolved;
   const { projectPath } = resolved;
 
@@ -309,7 +288,7 @@ async function handlePost(
     metadata,
   } = parsed.body;
 
-  const resolved = resolveValidatedProjectPath(projectId);
+  const resolved = resolveProjectPath(projectId);
   if (resolved instanceof Response) return resolved;
   const { projectPath } = resolved;
 
@@ -351,7 +330,7 @@ async function handleDelete(
   if (parsed instanceof NextResponse) return parsed;
   const { projectId, revisionId } = parsed.body;
 
-  const resolved = resolveValidatedProjectPath(projectId);
+  const resolved = resolveProjectPath(projectId);
   if (resolved instanceof Response) return resolved;
   const { projectPath } = resolved;
 
@@ -402,7 +381,7 @@ async function handlePatch(
   if (parsed instanceof NextResponse) return parsed;
   const { projectId, revisionId, content } = parsed.body;
 
-  const resolved = resolveValidatedProjectPath(projectId);
+  const resolved = resolveProjectPath(projectId);
   if (resolved instanceof Response) return resolved;
   const { projectPath } = resolved;
 

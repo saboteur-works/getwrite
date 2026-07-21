@@ -3,9 +3,11 @@
 /**
  * @module project-path
  *
- * Pure guard for validating a client-supplied `projectId` before it is
- * joined against `resolveProjectsDir()` to derive a project's on-disk
- * directory.
+ * Guard for validating a client-supplied `projectId` before it is joined
+ * against `resolveProjectsDir()` to derive a project's on-disk directory.
+ * {@link validateProjectId} / {@link respondInvalidProjectId} are the pure
+ * primitives; {@link resolveProjectPath} composes them with the directory
+ * join into the single entry-point guard every tenant-scoped route uses.
  *
  * This is a distinct boundary from `tenant-path.ts`: `tenant-path.ts`
  * validates a `userId` en route to a *tenant's* isolated data root;
@@ -25,7 +27,9 @@
  * constructed from it. Anything else is rejected outright, with no
  * normalization, trimming, decoding, or partial acceptance.
  */
+import path from "node:path";
 import { UUID } from "./schemas";
+import { resolveProjectsDir } from "./projects-dir";
 
 /**
  * Typed, identifiable error thrown by {@link validateProjectId}. Callers
@@ -78,4 +82,40 @@ export function validateProjectId(projectId: string): string {
  */
 export function respondInvalidProjectId(): Response {
   return Response.json({ error: "Invalid projectId" }, { status: 400 });
+}
+
+/**
+ * Validates a client-supplied `projectId` (from a request body or query
+ * string) and, on success, resolves it to its on-disk project directory
+ * under `resolveProjectsDir()`.
+ *
+ * This is the single guard every tenant-scoped API route uses at its entry
+ * point, replacing the per-route `try { validateProjectId(...) } catch { ...
+ * respondInvalidProjectId() }` + `path.join(resolveProjectsDir(), ...)`
+ * boilerplate. `null`/`undefined` are treated as the empty string, which
+ * {@link validateProjectId} rejects like any other non-UUID input.
+ *
+ * Returns a discriminated result so callers stay branch-and-return simple:
+ *
+ * ```ts
+ * const resolved = resolveProjectPath(body.projectId);
+ * if (resolved instanceof Response) return resolved;
+ * const { projectPath } = resolved;
+ * ```
+ *
+ * @param projectId - The candidate project identifier to validate.
+ * @returns `{ projectPath }` (the resolved on-disk directory) when
+ *   `projectId` is a well-formed UUID, or the uniform 400
+ *   {@link respondInvalidProjectId} response when it is not.
+ */
+export function resolveProjectPath(
+  projectId: string | null | undefined,
+): { projectPath: string } | Response {
+  try {
+    const validatedProjectId = validateProjectId(projectId ?? "");
+    return { projectPath: path.join(resolveProjectsDir(), validatedProjectId) };
+  } catch (err) {
+    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
+    throw err;
+  }
 }

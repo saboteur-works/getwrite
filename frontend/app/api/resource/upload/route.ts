@@ -1,4 +1,3 @@
-import path from "node:path";
 import { NextResponse } from "next/server";
 
 import {
@@ -10,12 +9,7 @@ import {
   extractAudioMetadata,
   extractImageMetadata,
 } from "../../../../src/lib/models/media-metadata";
-import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 /** Strips a trailing file extension to derive a display name. */
@@ -45,17 +39,11 @@ async function handlePost(req: Request): Promise<Response> {
       );
     }
 
-    let validatedProjectId: string;
-    try {
-      validatedProjectId = validateProjectId(
-        typeof projectId === "string" ? projectId : "",
-      );
-    } catch (err) {
-      if (err instanceof InvalidProjectIdError)
-        return respondInvalidProjectId();
-      throw err;
-    }
-    const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+    const resolved = resolveProjectPath(
+      typeof projectId === "string" ? projectId : "",
+    );
+    if (resolved instanceof Response) return resolved;
+    const { projectPath } = resolved;
 
     const validation = validateMediaFile({
       mime: file.type || undefined,

@@ -12,14 +12,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import path from "node:path";
 import { updateDefaultRevisionName } from "../../../../src/lib/models/revision-settings";
-import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateRevisionSettingsBody {
@@ -37,13 +31,8 @@ async function handlePost(req: NextRequest): Promise<Response> {
 
   const { projectId, defaultRevisionName } = body;
 
-  let validatedProjectId: string;
-  try {
-    validatedProjectId = validateProjectId(projectId);
-  } catch (err) {
-    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
-    throw err;
-  }
+  const resolved = resolveProjectPath(projectId);
+  if (resolved instanceof Response) return resolved;
 
   if (typeof defaultRevisionName !== "string") {
     return NextResponse.json(
@@ -52,7 +41,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
     );
   }
 
-  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+  const { projectPath } = resolved;
 
   try {
     const saved = await updateDefaultRevisionName(

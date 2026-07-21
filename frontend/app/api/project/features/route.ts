@@ -17,18 +17,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import path from "node:path";
 import { updateFeatureConfig } from "../../../../src/lib/models/project-features";
 import type {
   ProjectFeatureFlags,
   OrganizerCardBodyConfig,
 } from "../../../../src/lib/models/types";
-import { resolveProjectsDir } from "../../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateFeaturesBody {
@@ -47,13 +41,8 @@ async function handlePost(req: NextRequest): Promise<Response> {
 
   const { projectId, features, organizerCardBody } = body;
 
-  let validatedProjectId: string;
-  try {
-    validatedProjectId = validateProjectId(projectId);
-  } catch (err) {
-    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
-    throw err;
-  }
+  const resolved = resolveProjectPath(projectId);
+  if (resolved instanceof Response) return resolved;
 
   if (features === undefined && organizerCardBody === undefined) {
     return NextResponse.json(
@@ -62,7 +51,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
     );
   }
 
-  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+  const { projectPath } = resolved;
 
   try {
     return NextResponse.json(

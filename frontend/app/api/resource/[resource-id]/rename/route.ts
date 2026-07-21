@@ -19,12 +19,7 @@ import {
 } from "../../../../../src/lib/models/sidecar";
 import { renameFolderById } from "../../../../../src/lib/models/folder-utils";
 import type { MetadataValue } from "../../../../../src/lib/models/types";
-import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface RenameResourceBody {
@@ -50,14 +45,9 @@ async function handlePost(
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  let validatedProjectId: string;
-  try {
-    validatedProjectId = validateProjectId(body.projectId);
-  } catch (err) {
-    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
-    throw err;
-  }
-  const projectRoot = path.join(resolveProjectsDir(), validatedProjectId);
+  const resolved = resolveProjectPath(body.projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath: projectRoot } = resolved;
   const { newName, resourceType } = body;
 
   if (!newName || typeof newName !== "string" || !newName.trim()) {

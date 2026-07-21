@@ -3,12 +3,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { ResourceType, TipTapDocument } from "../../../src/lib/models";
 import { listRevisions } from "../../../src/lib/models/revision";
-import { resolveProjectsDir } from "../../../src/lib/models/projects-dir";
-import {
-  InvalidProjectIdError,
-  respondInvalidProjectId,
-  validateProjectId,
-} from "../../../src/lib/models/project-path";
+import { resolveProjectPath } from "../../../src/lib/models/project-path";
 import { withStorageContext } from "../_tenant/with-storage-context";
 
 async function getProjectResource(
@@ -64,14 +59,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     );
   }
 
-  let validatedProjectId: string;
-  try {
-    validatedProjectId = validateProjectId(body.projectId);
-  } catch (err) {
-    if (err instanceof InvalidProjectIdError) return respondInvalidProjectId();
-    throw err;
-  }
-  const projectPath = path.join(resolveProjectsDir(), validatedProjectId);
+  const resolved = resolveProjectPath(body.projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
   const { resourceId } = body;
 
   const revisions = await listRevisions(projectPath, resourceId);
