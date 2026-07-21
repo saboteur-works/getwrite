@@ -7,7 +7,7 @@
  * - `POST /api/project/query/evaluate`
  *
  * Expected body:
- * - `{ projectPath: string, definition: QueryAST }`
+ * - `{ projectId: string, definition: QueryAST }`
  *
  * Success payload:
  * - `{ ids: string[] }` — UUIDs of resources that satisfy the predicate
@@ -43,21 +43,14 @@ import type {
   Project,
   TextResource,
 } from "../../../../../src/lib/models/types";
+import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 // ─── Request / response shapes ────────────────────────────────────────────────
 
 interface EvaluateRequestBody {
-  projectPath: string;
+  projectId: string;
   definition: unknown;
-}
-
-interface EvaluateSuccessResponse {
-  ids: string[];
-}
-
-interface ErrorResponse {
-  error: string;
-  details: string;
 }
 
 // ─── Core logic (exported for unit testing) ───────────────────────────────────
@@ -205,9 +198,7 @@ export async function executeEvaluate(
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 
-export async function POST(
-  req: NextRequest,
-): Promise<NextResponse<EvaluateSuccessResponse | ErrorResponse>> {
+async function handlePost(req: NextRequest): Promise<Response> {
   let body: EvaluateRequestBody;
   try {
     body = (await req.json()) as EvaluateRequestBody;
@@ -218,15 +209,19 @@ export async function POST(
     );
   }
 
-  if (!body.projectPath || !body.definition) {
+  if (!body.definition) {
     return NextResponse.json(
       {
         error: "Invalid request",
-        details: "Body must include projectPath and definition",
+        details: "Body must include projectId and definition",
       },
       { status: 400 },
     );
   }
+
+  const resolved = resolveProjectPath(body.projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
 
   const parseResult = QueryASTSchema.safeParse(body.definition);
   if (!parseResult.success) {
@@ -238,7 +233,7 @@ export async function POST(
 
   try {
     const ids = await executeEvaluate(
-      body.projectPath,
+      projectPath,
       parseResult.data as QueryAST,
     );
     return NextResponse.json({ ids });
@@ -262,5 +257,7 @@ export async function POST(
     );
   }
 }
+
+export const POST = withStorageContext(handlePost);
 
 export const dynamic = "force-dynamic";

@@ -108,7 +108,7 @@ describe("ProjectFeatureToggles", () => {
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("/api/project/features");
     expect(JSON.parse(init.body as string)).toEqual({
-      projectPath: "/test",
+      projectId: "test",
       features: { timeline: true, synopsis: true },
     });
 
@@ -129,7 +129,7 @@ describe("ProjectFeatureToggles", () => {
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({
-      projectPath: "/test",
+      projectId: "test",
       features: { timeline: false, pov: true },
     });
   });

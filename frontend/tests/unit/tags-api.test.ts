@@ -3,6 +3,12 @@
  *
  * Tests call the underlying `tags.ts` module functions directly against a real
  * temporary filesystem project — the same approach used by `tags.test.ts`.
+ *
+ * A separate block near the end exercises the actual route `POST` handlers
+ * (`/api/project/tags`, `/api/project/tags/assign`, `/api/project/tags/delete`)
+ * against a `projectId`-scoped `GETWRITE_PROJECTS_DIR`, per the 29-route
+ * tenant enforcement feature (see `metadata-schema-api.test.ts` for the
+ * canonical pattern).
  */
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -17,7 +23,8 @@ import {
   unassignTagFromResource,
 } from "../../src/lib/models/tags";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
-import type { Project } from "../../src/lib/models/types";
+import { generateUUID } from "../../src/lib/models/uuid";
+import type { Project, Tag } from "../../src/lib/models/types";
 
 async function makeTmpProject() {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-tags-api-"));
@@ -118,5 +125,185 @@ describe("tags API route — assign action", () => {
     await assignTagToResource(dir, "res-xyz", tag.id);
     await unassignTagFromResource(dir, "res-xyz", tag.id);
     expect(await readAssignments(dir, "res-xyz")).not.toContain(tag.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Route-level: POST /api/project/tags, /tags/assign, /tags/delete
+// (projectId-based)
+// ---------------------------------------------------------------------------
+
+async function makeTmpProjectsDir(): Promise<{
+  projectsDir: string;
+  projectId: string;
+}> {
+  const projectsDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "gw-tags-route-"),
+  );
+  const projectId = generateUUID();
+  const projectPath = path.join(projectsDir, projectId);
+  await fs.mkdir(projectPath, { recursive: true });
+  const proj = createProject({ name: "route-test" });
+  await fs.writeFile(
+    path.join(projectPath, PROJECT_FILENAME),
+    JSON.stringify(proj, null, 2),
+    "utf8",
+  );
+  return { projectsDir, projectId };
+}
+
+async function withProjectsDirEnv<T>(
+  projectsDir: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+  process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+  try {
+    return await fn();
+  } finally {
+    process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+    await fs.rm(projectsDir, { recursive: true, force: true });
+  }
+}
+
+describe("POST /api/project/tags (projectId-based)", () => {
+  it("resolves projectId to the on-disk project and creates/lists tags", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const { POST } = await import("../../app/api/project/tags/route");
+
+      const createRes = await POST(
+        new Request("http://localhost/api/project/tags", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "create",
+            projectId,
+            name: "Route Tag",
+          }),
+        }) as never,
+      );
+      expect(createRes.status).toBe(200);
+      const created = (await createRes.json()) as { tag: Tag };
+      expect(created.tag.name).toBe("Route Tag");
+
+      const listRes = await POST(
+        new Request("http://localhost/api/project/tags", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "list", projectId }),
+        }) as never,
+      );
+      expect(listRes.status).toBe(200);
+      const listed = (await listRes.json()) as { tags: Tag[] };
+      expect(listed.tags.map((t) => t.id)).toContain(created.tag.id);
+    });
+  });
+
+  it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
+    const { projectsDir } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const { POST } = await import("../../app/api/project/tags/route");
+      const res = await POST(
+        new Request("http://localhost/api/project/tags", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "list",
+            projectId: "../../etc/passwd",
+          }),
+        }) as never,
+      );
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Invalid projectId");
+    });
+  });
+});
+
+describe("POST /api/project/tags/assign (projectId-based)", () => {
+  it("resolves projectId to the on-disk project and assigns a tag", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const projectPath = path.join(projectsDir, projectId);
+      const tag = await createTag(projectPath, "Assignable");
+
+      const { POST } = await import("../../app/api/project/tags/assign/route");
+      const res = await POST(
+        new Request("http://localhost/api/project/tags/assign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId,
+            resourceId: "res-route",
+            tagId: tag.id,
+            assign: true,
+          }),
+        }) as never,
+      );
+      expect(res.status).toBe(200);
+      expect(await readAssignments(projectPath, "res-route")).toContain(tag.id);
+    });
+  });
+
+  it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
+    const { projectsDir } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const { POST } = await import("../../app/api/project/tags/assign/route");
+      const res = await POST(
+        new Request("http://localhost/api/project/tags/assign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId: "not-a-uuid",
+            resourceId: "res-route",
+            tagId: "tag-1",
+            assign: true,
+          }),
+        }) as never,
+      );
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Invalid projectId");
+    });
+  });
+});
+
+describe("POST /api/project/tags/delete (projectId-based)", () => {
+  it("resolves projectId to the on-disk project and deletes a tag", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const projectPath = path.join(projectsDir, projectId);
+      const tag = await createTag(projectPath, "Deletable");
+
+      const { POST } = await import("../../app/api/project/tags/delete/route");
+      const res = await POST(
+        new Request("http://localhost/api/project/tags/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, tagId: tag.id }),
+        }) as never,
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { deleted: boolean };
+      expect(body.deleted).toBe(true);
+    });
+  });
+
+  it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
+    const { projectsDir } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const { POST } = await import("../../app/api/project/tags/delete/route");
+      const res = await POST(
+        new Request("http://localhost/api/project/tags/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId: "", tagId: "tag-1" }),
+        }) as never,
+      );
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Invalid projectId");
+    });
   });
 });

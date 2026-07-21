@@ -16,28 +16,27 @@ import {
   sanitizeEditorBody,
   type EditorBodyConfig,
 } from "../../../../src/lib/editor-body-settings";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateProjectEditorConfigBody {
-  projectPath: string;
+  projectId: string;
   headings?: EditorHeadingMap;
   body?: EditorBodyConfig;
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+async function handlePost(req: NextRequest): Promise<Response> {
   try {
     const {
-      projectPath,
+      projectId,
       headings,
       body: bodyConfig,
     } = (await req.json()) as UpdateProjectEditorConfigBody;
 
-    if (!projectPath) {
-      return NextResponse.json(
-        { error: "Missing projectPath" },
-        { status: 400 },
-      );
-    }
+    const resolved = resolveProjectPath(projectId);
+    if (resolved instanceof Response) return resolved;
 
+    const { projectPath } = resolved;
     const projectFilePath = path.join(projectPath, "project.json");
     const parsedProject = JSON.parse(
       await fs.readFile(projectFilePath, "utf-8"),
@@ -76,3 +75,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withStorageContext(handlePost);

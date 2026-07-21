@@ -154,49 +154,86 @@ describe("store/projectsSlice controller guardrails (T008)", () => {
   });
 });
 
-describe("store/project-actions-controller guardrails (T017)", () => {
-  it("calls rename endpoint with stable payload and invokes callback", async () => {
+describe("store/project-actions-controller guardrails (T017 / T9f)", () => {
+  // FR12 fixture: `storeProjectId` mirrors `project.json`'s internal `id`
+  // (used only for local UI callbacks) while `directoryProjectId` is the
+  // on-disk directory basename the hard-cutover routes require. These are
+  // two independently generated UUIDs and must never be conflated.
+  const storeProjectId = "11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const directoryProjectId = "22222222-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
+  it("calls rename endpoint with the directory-basename projectId (not the store id or a projectPath) and invokes callback with the store id", async () => {
     const onRename = vi.fn();
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(null, { status: 200 }));
 
     await projectActionsController.renameProject({
-      projectId: "project-1",
-      projectPath: "/tmp/project-1",
+      storeProjectId,
+      projectId: directoryProjectId,
       newName: "Project Renamed",
       onRename,
     });
 
-    expect(onRename).toHaveBeenCalledWith("project-1", "Project Renamed");
+    expect(onRename).toHaveBeenCalledWith(storeProjectId, "Project Renamed");
     expect(fetchSpy).toHaveBeenCalledWith("/api/project/rename", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        projectPath: "/tmp/project-1",
+        projectId: directoryProjectId,
         newName: "Project Renamed",
       }),
     });
+    const [, init] = fetchSpy.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string) as Record<
+      string,
+      unknown
+    >;
+    expect(body).not.toHaveProperty("projectPath");
+    expect(body).not.toHaveProperty("projectRoot");
   });
 
-  it("calls delete endpoint with stable payload and invokes callback", async () => {
+  it("calls delete endpoint with the directory-basename projectId (not the store id or a projectPath) and invokes callback with the store id", async () => {
     const onDelete = vi.fn();
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(null, { status: 200 }));
 
     await projectActionsController.deleteProject({
-      projectId: "project-1",
-      projectPath: "/tmp/project-1",
+      storeProjectId,
+      projectId: directoryProjectId,
       onDelete,
     });
 
-    expect(onDelete).toHaveBeenCalledWith("project-1");
+    expect(onDelete).toHaveBeenCalledWith(storeProjectId);
     expect(fetchSpy).toHaveBeenCalledWith("/api/project/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectPath: "/tmp/project-1" }),
+      body: JSON.stringify({ projectId: directoryProjectId }),
     });
+    const [, init] = fetchSpy.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string) as Record<
+      string,
+      unknown
+    >;
+    expect(body).not.toHaveProperty("projectPath");
+    expect(body).not.toHaveProperty("projectRoot");
+  });
+
+  it("throws before invoking callback or fetch when the directory-basename projectId is missing", async () => {
+    const onDelete = vi.fn();
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    await expect(
+      projectActionsController.deleteProject({
+        storeProjectId,
+        projectId: undefined,
+        onDelete,
+      }),
+    ).rejects.toThrow(/Project ID is required/);
+
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 

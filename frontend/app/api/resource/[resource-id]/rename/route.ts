@@ -6,7 +6,7 @@
  * Route:
  * - `POST /api/resource/[resource-id]/rename` — rename the resource
  *
- * POST expected body: `{ projectRoot: string; newName: string }`
+ * POST expected body: `{ projectId: string; newName: string }`
  * Success payload: `{ resource: Record<string, MetadataValue> }`
  * Failure payload: `{ error: string }`
  */
@@ -19,9 +19,11 @@ import {
 } from "../../../../../src/lib/models/sidecar";
 import { renameFolderById } from "../../../../../src/lib/models/folder-utils";
 import type { MetadataValue } from "../../../../../src/lib/models/types";
+import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface RenameResourceBody {
-  projectRoot: string;
+  projectId: string;
   newName: string;
   resourceType?: string;
 }
@@ -30,10 +32,10 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-export async function POST(
+async function handlePost(
   req: NextRequest,
   { params }: { params: Promise<{ "resource-id": string }> },
-): Promise<NextResponse> {
+): Promise<Response> {
   const resourceId = (await params)["resource-id"];
 
   let body: RenameResourceBody;
@@ -43,14 +45,10 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { projectRoot, newName, resourceType } = body;
-
-  if (!projectRoot || typeof projectRoot !== "string" || !projectRoot.trim()) {
-    return NextResponse.json(
-      { error: "Missing required field: projectRoot." },
-      { status: 400 },
-    );
-  }
+  const resolved = resolveProjectPath(body.projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath: projectRoot } = resolved;
+  const { newName, resourceType } = body;
 
   if (!newName || typeof newName !== "string" || !newName.trim()) {
     return NextResponse.json(
@@ -109,3 +107,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withStorageContext(handlePost);

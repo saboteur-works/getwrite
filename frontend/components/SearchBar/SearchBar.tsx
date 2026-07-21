@@ -13,6 +13,7 @@ import {
 import {
   selectSelectedProjectId,
   selectActiveProjectStatuses,
+  selectActiveProjectDirectoryId,
 } from "../../src/store/projectsSlice";
 import {
   clearSearch,
@@ -63,11 +64,10 @@ export default function SearchBar({
   const results = useAppSelector(selectSearchResults);
   const statuses = useAppSelector(selectActiveProjectStatuses);
   const folders = useAppSelector((s) => selectFolders(s.resources));
-  const projectPath = useAppSelector((s) => {
-    const id = s.projects.selectedProjectId;
-    if (!id) return null;
-    return s.projects.projects[id]?.rootPath ?? null;
-  });
+  // Directory basename, not `project.id` (project.json's independently
+  // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
+  // comment in `projectsSlice.ts`.
+  const projectId = useAppSelector(selectActiveProjectDirectoryId);
 
   const [query, setQuery] = useState<string>("");
   const [isOpen, setOpen] = useState<boolean>(false);
@@ -97,14 +97,14 @@ export default function SearchBar({
   }, [selectedProjectId]);
 
   useEffect(() => {
-    if (!projectPath) {
+    if (!projectId) {
       setAvailableTags([]);
       return;
     }
-    listTags(projectPath)
+    listTags(projectId)
       .then(setAvailableTags)
       .catch(() => setAvailableTags([]));
-  }, [projectPath]);
+  }, [projectId]);
 
   useEffect(() => {
     if (query.length < 2 || !selectedProjectId) {

@@ -42,10 +42,11 @@ import Math, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import CustomHeading from "./Editor/Extensions/CustomHeading";
 import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
 import MediaDropExtension from "./Editor/Extensions/MediaDropExtension";
+import GetWriteImage from "./Editor/Extensions/GetWriteImage";
 import { baseSchemaExtensions } from "./Editor/editorExtensions";
 import { useSelector } from "react-redux";
 import { selectResolvedEditorConfig } from "../src/store/editorConfigSlice";
-import { selectActiveProjectRootPath } from "../src/store/projectsSlice";
+import { selectActiveProjectDirectoryId } from "../src/store/projectsSlice";
 import { deriveSelectionNodeLabels } from "../src/lib/node-display-selection";
 /**
  * Props accepted by {@link TipTapEditor}.
@@ -121,9 +122,16 @@ export default function TipTapEditor({
   onNodeTypesChange,
 }: TipTapEditorProps) {
   const editorProjectConfig = useSelector(selectResolvedEditorConfig);
-  const activeProjectRootPath = useSelector(selectActiveProjectRootPath);
-  const projectPathRef = useRef<string | null>(null);
-  projectPathRef.current = activeProjectRootPath;
+  // The active project's on-disk directory basename — the `projectId`
+  // every tenant-scoped resource route (ADR-017/018) expects. Threaded
+  // through a ref (rather than a plain variable) so `MediaDropExtension`,
+  // a non-React TipTap extension configured once at editor init, can read
+  // the latest value without the editor being re-created on every project
+  // switch. See `selectActiveProjectDirectoryId`'s doc comment in
+  // `projectsSlice.ts` for the FR12 distinction from `project.id`.
+  const activeProjectDirectoryId = useSelector(selectActiveProjectDirectoryId);
+  const projectIdRef = useRef<string | null>(null);
+  projectIdRef.current = activeProjectDirectoryId;
 
   // Keep the latest callback in a ref so the editor's (init-time) handlers can
   // call it without being re-created when the prop identity changes.
@@ -197,7 +205,13 @@ export default function TipTapEditor({
     {
       shouldRerenderOnTransaction: true,
       extensions: [
-        ...extensions,
+        // Swap the bare GetWriteImage (used by the markdown serializer with no
+        // project context) for one wired to the live directory id, so stored
+        // image srcs are rebuilt from resourceId + projectId on render and a
+        // stale `?projectPath=` URL self-heals. Identity filter avoids a
+        // duplicate "image" node.
+        ...extensions.filter((extension) => extension !== GetWriteImage),
+        GetWriteImage.configure({ getProjectId: () => projectIdRef.current }),
         CustomHeading.configure({
           customStyles: editorProjectConfig.headings || {},
         }),
@@ -205,7 +219,7 @@ export default function TipTapEditor({
           bodyFontSize: editorProjectConfig.body?.fontSize,
         }),
         MediaDropExtension.configure({
-          getProjectPath: () => projectPathRef.current,
+          getProjectId: () => projectIdRef.current,
         }),
         Math.configure({
           blockOptions: {

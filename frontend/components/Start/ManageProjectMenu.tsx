@@ -5,6 +5,7 @@ import RenameProjectModal from "./RenameProjectModal";
 import MenuItemButton from "../common/MenuItemButton";
 import {
   deleteProject as deleteProjectInStore,
+  getProjectDirectoryId,
   renameProject as renameProjectInStore,
   selectProject,
 } from "../../src/store/projectsSlice";
@@ -38,6 +39,15 @@ export default function ManageProjectMenu({
 }: ManageProjectMenuProps): JSX.Element {
   const dispatch = useAppDispatch();
   const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
+  // ManageProjectMenu renders one row per project in a list (see StartPage),
+  // not necessarily the active project — so the tenant-scoped `projectId`
+  // sent to project routes must come from this record's own `rootPath` via
+  // `getProjectDirectoryId`, not `selectActiveProjectDirectoryId` (FR12: the
+  // on-disk directory basename and `project.json`'s internal `id` are
+  // distinct, independently generated UUIDs).
+  const directoryProjectId = projectFromStore?.rootPath
+    ? getProjectDirectoryId(projectFromStore.rootPath)
+    : undefined;
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [name, setName] = useState<string>(projectName);
   const [isRenameOpen, setIsRenameOpen] = useState<boolean>(false);
@@ -55,8 +65,8 @@ export default function ManageProjectMenu({
   const handleDeleteConfirm = (): void => {
     void projectActionsController
       .deleteProject({
-        projectId,
-        projectPath: projectFromStore?.rootPath,
+        storeProjectId: projectId,
+        projectId: directoryProjectId,
         onDelete,
       })
       .catch((err) => {
@@ -130,8 +140,8 @@ export default function ManageProjectMenu({
         onClose={() => setIsRenameOpen(false)}
         onConfirm={async (newName) => {
           await projectActionsController.renameProject({
-            projectId,
-            projectPath: projectFromStore?.rootPath,
+            storeProjectId: projectId,
+            projectId: directoryProjectId,
             newName,
             onRename,
           });

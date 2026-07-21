@@ -12,10 +12,12 @@ import {
   type ProjectUserPreferences,
 } from "../../../../src/lib/user-preferences";
 import type { MetadataValue } from "../../../../src/lib/models/types";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateProjectPreferencesBody {
-  /** Absolute project root path containing `project.json`. */
-  projectPath: string;
+  /** Server-validated project identifier (UUID). */
+  projectId: string;
   /** Partial preference updates to merge into metadata. */
   preferences: Partial<ProjectUserPreferences>;
 }
@@ -26,18 +28,22 @@ interface UpdateProjectPreferencesBody {
  * @param req - Incoming Next.js request.
  * @returns Updated metadata payload or an error response.
  */
-export async function POST(req: NextRequest): Promise<NextResponse> {
+async function handlePost(req: NextRequest): Promise<Response> {
   try {
-    const { projectPath, preferences } =
+    const { projectId, preferences } =
       (await req.json()) as UpdateProjectPreferencesBody;
 
-    if (!projectPath || !preferences) {
+    if (!preferences) {
       return NextResponse.json(
-        { error: "Missing projectPath or preferences" },
+        { error: "Missing projectId or preferences" },
         { status: 400 },
       );
     }
 
+    const resolved = resolveProjectPath(projectId);
+    if (resolved instanceof Response) return resolved;
+
+    const { projectPath } = resolved;
     const projectFilePath = path.join(projectPath, "project.json");
     const parsedProject = JSON.parse(
       await fs.readFile(projectFilePath, "utf-8"),
@@ -69,3 +75,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withStorageContext(handlePost);

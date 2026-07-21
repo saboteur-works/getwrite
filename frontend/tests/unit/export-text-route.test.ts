@@ -3,7 +3,10 @@
  *
  * Calls the POST handler against a temporary project directory containing real
  * content.txt files, asserting the route reads the current saved content from
- * disk (rather than any client-side snapshot).
+ * disk (rather than any client-side snapshot). Requests are scoped by a
+ * server-validated `projectId`, resolved against `GETWRITE_PROJECTS_DIR`
+ * (Task 3 of the 29-route tenant enforcement feature) rather than a
+ * client-supplied `projectPath`.
  *
  * Runs in the node environment so Request/Response come from undici.
  */
@@ -15,6 +18,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { POST } from "../../app/api/export/text/route";
+import { generateUUID } from "../../src/lib/models/uuid";
 
 const tmpDirs: string[] = [];
 
@@ -25,10 +29,24 @@ afterEach(async () => {
   }
 });
 
-async function makeProjectDir(): Promise<string> {
+/** Creates a fresh temporary projects directory (the parent of project-id folders). */
+async function makeProjectsDir(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-txt-export-"));
   tmpDirs.push(dir);
   return dir;
+}
+
+async function withProjectsDir<T>(
+  projectsDir: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+  process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+  try {
+    return await fn();
+  } finally {
+    process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+  }
 }
 
 async function writeResourceText(
@@ -51,17 +69,21 @@ function exportRequest(body: unknown): Request {
 
 describe("POST /api/export/text", () => {
   it("exports the resource's current on-disk content, not a stale snapshot", async () => {
-    const projectPath = await makeProjectDir();
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = path.join(projectsDir, projectId);
     // Simulates content that was just autosaved to disk.
     await writeResourceText(projectPath, "r1", "old line\nbrand new line");
 
-    const res = await POST(
-      exportRequest({
-        projectPath,
-        resourceIds: ["r1"],
-        resources: [{ id: "r1", name: "My Note", type: "text" }],
-        exportName: "My Note",
-      }) as never,
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        exportRequest({
+          projectId,
+          resourceIds: ["r1"],
+          resources: [{ id: "r1", name: "My Note", type: "text" }],
+          exportName: "My Note",
+        }) as never,
+      ),
     );
     const json = await res.json();
 
@@ -72,20 +94,24 @@ describe("POST /api/export/text", () => {
   });
 
   it("includes section headers when exporting multiple resources", async () => {
-    const projectPath = await makeProjectDir();
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = path.join(projectsDir, projectId);
     await writeResourceText(projectPath, "r1", "first body");
     await writeResourceText(projectPath, "r2", "second body");
 
-    const res = await POST(
-      exportRequest({
-        projectPath,
-        resourceIds: ["r1", "r2"],
-        resources: [
-          { id: "r1", name: "Chapter One", type: "text" },
-          { id: "r2", name: "Chapter Two", type: "text" },
-        ],
-        exportName: "Book",
-      }) as never,
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        exportRequest({
+          projectId,
+          resourceIds: ["r1", "r2"],
+          resources: [
+            { id: "r1", name: "Chapter One", type: "text" },
+            { id: "r2", name: "Chapter Two", type: "text" },
+          ],
+          exportName: "Book",
+        }) as never,
+      ),
     );
     const json = await res.json();
 
@@ -96,23 +122,46 @@ describe("POST /api/export/text", () => {
   });
 
   it("ignores non-text resources in the selection", async () => {
-    const projectPath = await makeProjectDir();
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = path.join(projectsDir, projectId);
     await writeResourceText(projectPath, "r1", "keep this");
 
-    const res = await POST(
-      exportRequest({
-        projectPath,
-        resourceIds: ["r1", "img"],
-        resources: [
-          { id: "r1", name: "Text", type: "text" },
-          { id: "img", name: "Picture", type: "image" },
-        ],
-        exportName: "Text",
-      }) as never,
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        exportRequest({
+          projectId,
+          resourceIds: ["r1", "img"],
+          resources: [
+            { id: "r1", name: "Text", type: "text" },
+            { id: "img", name: "Picture", type: "image" },
+          ],
+          exportName: "Text",
+        }) as never,
+      ),
     );
     const json = await res.json();
 
     expect(json.text).toContain("keep this");
     expect(json.filename).toBe("text.txt");
+  });
+
+  it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
+    const projectsDir = await makeProjectsDir();
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        exportRequest({
+          projectId: "../../etc/passwd",
+          resourceIds: [],
+          resources: [],
+          exportName: "Malicious",
+        }) as never,
+      ),
+    );
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("Invalid projectId");
   });
 });

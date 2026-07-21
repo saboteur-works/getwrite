@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import type { Tag } from "../../src/lib/models/types";
 import { listTags, createTag, deleteTag } from "../../src/lib/api/tags";
+import { getProjectDirectoryId } from "../../src/store/projectsSlice";
 import Button from "./UI/Button/Button";
 import Chip from "./UI/Chip";
 import Input from "./UI/Input/Input";
@@ -37,8 +38,13 @@ export default function TagsManagerModal({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
+  // Directory basename, not `project.id` (project.json's independently
+  // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
+  // comment in `projectsSlice.ts`.
+  const projectId = getProjectDirectoryId(projectPath);
+
   const loadTags = () => {
-    listTags(projectPath)
+    listTags(projectId)
       .then(setTags)
       .catch(() => setTags([]));
   };
@@ -63,7 +69,7 @@ export default function TagsManagerModal({
     setIsSubmitting(true);
     try {
       await createTag(
-        projectPath,
+        projectId,
         trimmed,
         shouldUseColor ? newColor : undefined,
       );
@@ -77,7 +83,7 @@ export default function TagsManagerModal({
   };
 
   const handleDelete = async (tagId: string) => {
-    await deleteTag(projectPath, tagId);
+    await deleteTag(projectId, tagId);
     loadTags();
   };
 

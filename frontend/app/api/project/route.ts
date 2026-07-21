@@ -8,7 +8,7 @@
  * - `POST /api/project`
  *
  * Expected body:
- * - `{ projectPath: string }`
+ * - `{ projectId: string }`
  *
  * Success payload:
  * - `{ project, folders, resources }`
@@ -18,17 +18,24 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { loadProjectFromDisk } from "../../../src/lib/models/project-loader";
+import { resolveProjectPath } from "../../../src/lib/models/project-path";
+import { withStorageContext } from "../_tenant/with-storage-context";
 
 /**
  * Loads a project and related entities from the local filesystem.
  *
- * @param req - Next.js request containing `{ projectPath }` JSON body.
+ * @param req - Next.js request containing `{ projectId }` JSON body.
  * @returns JSON response with project data on success, or error payload with
  *   HTTP 500 on failure.
  */
-export async function POST(req: NextRequest): Promise<NextResponse> {
+async function handlePost(req: NextRequest): Promise<Response> {
   try {
-    const { projectPath } = (await req.json()) as { projectPath: string };
+    const { projectId } = (await req.json()) as { projectId: string };
+
+    const resolved = resolveProjectPath(projectId);
+    if (resolved instanceof Response) return resolved;
+
+    const { projectPath } = resolved;
     return NextResponse.json(await loadProjectFromDisk(projectPath));
   } catch (error) {
     return NextResponse.json(
@@ -37,3 +44,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 }
+
+export const POST = withStorageContext(handlePost);

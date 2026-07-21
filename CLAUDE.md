@@ -66,7 +66,7 @@ From the repo root: `pnpm --filter getwrite-frontend exec vitest` runs frontend 
   - `meta/templates/` — resource template scaffolds
   - `revisions/<uuid>/v-<N>/` — versioned snapshots per resource
   - `.trash/{resources,meta}/` — soft-deleted content (see [Glossary: Trash](#glossary))
-- **API routes** (`frontend/app/api/`): Read/write the filesystem directly. Top-level groups: `projects`, `project/*` (id, delete, rename, tags, preferences, editor-config, metadata-schema, revision-settings, query, features), `project-resources`, `project-types`, `resource/*` (id, revision, upload), `compile`, `export`, `version-check` (Electron update check).
+- **API routes** (`frontend/app/api/`): Read/write the filesystem directly. Top-level groups: `projects`, `project/*` (id, delete, rename, tags, preferences, editor-config, metadata-schema, revision-settings, query, features), `project-resources`, `project-types`, `resource/*` (id, revision, upload), `compile`, `export`, `version-check` (Electron update check). Project-scoped routes resolve their project root as `path.join(resolveProjectsDir(), projectId)` from a server-validated `projectId` (`frontend/src/lib/models/project-path.ts`) — they do not accept a client-supplied `projectRoot`/`projectPath`. See `docs/standards/storage-context.md`.
 - **Schemas** (`frontend/src/lib/models/schemas.ts`): Zod validators gate all persisted data crossing the filesystem boundary
 - **File locking**: `frontend/src/lib/models/locks.ts` is a generic per-key async mutex; `meta-locks.ts` serializes metadata-affecting operations keyed by project root
 
@@ -110,7 +110,7 @@ All paths relative to `frontend/src/`. Use these as orientation; open the files 
 **Models (`lib/models/`)** — boundary between filesystem and the rest of the app.
 
 - *Validation & types*: `schemas.ts`, `types.ts`
-- *Projects*: `project.ts` (create/validate/normalize), `project-creator.ts`, `project-loader.ts`, `project-config.ts`, `project-features.ts` (per-project feature flags), `projects-dir.ts`, `project-view.ts`, `project-view-adapter.ts`
+- *Projects*: `project.ts` (create/validate/normalize), `project-creator.ts`, `project-loader.ts`, `project-config.ts`, `project-features.ts` (per-project feature flags), `projects-dir.ts`, `project-path.ts` (`validateProjectId`/`respondInvalidProjectId` — UUID-validated, fail-closed guard API routes use to derive a project's on-disk directory from a client-supplied `projectId`), `project-view.ts`, `project-view-adapter.ts`
 - *Resources & templates*: `resource.ts`, `resource-factory.ts`, `resource-persistence.ts`, `resource-revision.ts` (initial canonical revision), `resource-templates.ts`, `template-service.ts`, `sidecar.ts`, `trash.ts`, `folder-utils.ts`
 - *Media*: `media-metadata.ts` (image/audio metadata at ingest), `media-validation.ts` (type + size-cap checks)
 - *Revisions*: `revision.ts`, `revision-manager.ts`, `revision-settings.ts`, `pruneExecutor.ts`

@@ -3,8 +3,9 @@ import { Image as ImageIcon } from "lucide-react";
 import type { Editor } from "@tiptap/core";
 import { useAppSelector } from "../../../src/store/hooks";
 import { selectResources } from "../../../src/store/resourcesSlice";
-import { selectActiveProjectRootPath } from "../../../src/store/projectsSlice";
+import { selectActiveProjectDirectoryId } from "../../../src/store/projectsSlice";
 import type { ImageResource } from "../../../src/lib/models/types";
+import { resolveGetWriteImageSrc } from "../Extensions/GetWriteImage";
 import { buildButtonClasses, TOOLBAR_TOOLTIP_ID } from "./editor-toolbar-icons";
 
 export interface ImagePickerSubmenuProps {
@@ -22,7 +23,7 @@ export default function ImagePickerSubmenu({
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const allResources = useAppSelector((s) => selectResources(s.resources));
-  const projectPath = useAppSelector(selectActiveProjectRootPath);
+  const projectId = useAppSelector(selectActiveProjectDirectoryId);
 
   const imageResources = allResources.filter(
     (r): r is ImageResource => r.type === "image",
@@ -60,16 +61,13 @@ export default function ImagePickerSubmenu({
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, []);
 
-  const buildResourceImageUrl = (resourceId: string) =>
-    `/api/resource/${resourceId}/file?projectPath=${encodeURIComponent(projectPath!)}`;
-
   const handleInsert = (resource: ImageResource) => {
-    if (!projectPath) return;
+    if (!projectId) return;
     editor
       .chain()
       .focus()
       .insertGetWriteImage({
-        src: buildResourceImageUrl(resource.id),
+        src: resolveGetWriteImageSrc(resource.id, null, projectId),
         resourceId: resource.id,
       })
       .run();
@@ -117,9 +115,13 @@ export default function ImagePickerSubmenu({
                   aria-label={`Insert ${resource.name}`}
                   onClick={() => handleInsert(resource)}
                 >
-                  {resource.file && projectPath ? (
+                  {resource.file && projectId ? (
                     <img
-                      src={buildResourceImageUrl(resource.id)}
+                      src={resolveGetWriteImageSrc(
+                        resource.id,
+                        null,
+                        projectId,
+                      )}
                       alt={resource.name}
                       className="editor-image-picker-thumb"
                     />

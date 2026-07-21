@@ -9,8 +9,10 @@ import {
   updateFolders,
   updateResources,
 } from "../../src/store/resourcesSlice";
+import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import type { ResourceItemData } from "./buildResourceTree";
 import type { AppDispatch } from "../../src/store/store";
+import useAppSelector from "../../src/store/hooks";
 
 interface UseResourceReorderOptions {
   dispatch: AppDispatch;
@@ -37,6 +39,13 @@ export function useResourceReorder({
   transformedResourceData,
   rootItemId,
 }: UseResourceReorderOptions) {
+  // The reorder route's URL segment must be the project's on-disk directory
+  // basename (see `selectActiveProjectDirectoryId`'s doc comment) — never
+  // `currentProject.id`, which mirrors project.json's independently
+  // generated internal `id` and is not guaranteed to match the directory
+  // name.
+  const projectDirectoryId = useAppSelector(selectActiveProjectDirectoryId);
+
   function applyChildrenUpdate(
     item: ItemInstance<ResourceItemData>,
     newChildren: string[],
@@ -90,13 +99,13 @@ export function useResourceReorder({
       dispatch(updateResources(reorderPayload.resourceOrder));
     }
 
-    if (!currentProject) {
+    if (!currentProject || !projectDirectoryId) {
       return;
     }
 
     dispatch(
       persistReorder({
-        projectId: currentProject.id,
+        projectId: projectDirectoryId,
         projectRoot: currentProject.rootPath,
         folderOrder: reorderPayload.folderOrder,
         resourceOrder: reorderPayload.resourceOrder,

@@ -3,11 +3,26 @@
  *
  * Centralized controller for project mutation orchestration used by start-page
  * project management surfaces.
+ *
+ * `/api/project/rename` and `/api/project/delete` are hard-cutover,
+ * tenant-scoped routes (ADR-017/018): they only accept `projectId` — the
+ * target project's on-disk directory basename (`path.basename(rootPath)`,
+ * per `resolveProjectsDir()`) — and reject the legacy `projectPath`/
+ * `projectRoot` fields. Per FR12, that directory basename is a distinct,
+ * independently generated UUID from `project.json`'s internal `id` field,
+ * so callers must source it via `selectActiveProjectDirectoryId` or
+ * `getProjectDirectoryId` (see `projectsSlice.ts`) rather than `project.id`
+ * or an inline `path.basename(...)`.
+ *
+ * `storeProjectId` below is a distinct concept: it's the Redux-store key for
+ * the project (mirrors `project.json`'s internal `id`), used only to
+ * identify the project for local UI callbacks (`onRename`/`onDelete`) and
+ * dispatch. It is never sent over the wire — only `projectId` is.
  */
 
 interface BaseProjectAction {
-  projectId: string;
-  projectPath?: string;
+  storeProjectId: string;
+  projectId?: string;
 }
 
 interface RenameProjectAction extends BaseProjectAction {
@@ -26,12 +41,12 @@ function getApiErrorMessage(errorBody: unknown, fallback: string): string {
     : fallback;
 }
 
-function requireProjectPath(
-  projectPath: string | undefined,
+function requireProjectId(
+  projectId: string | undefined,
   fallback: string,
 ): string {
-  if (typeof projectPath === "string" && projectPath.trim().length > 0) {
-    return projectPath;
+  if (typeof projectId === "string" && projectId.trim().length > 0) {
+    return projectId;
   }
 
   throw new Error(fallback);
@@ -47,22 +62,22 @@ async function parseErrorBody(response: Response): Promise<unknown> {
 
 export const projectActionsController = {
   async renameProject({
+    storeProjectId,
     projectId,
-    projectPath,
     newName,
     onRename,
   }: RenameProjectAction): Promise<void> {
-    const resolvedProjectPath = requireProjectPath(
-      projectPath,
-      "Project path is required to rename project.",
+    const resolvedProjectId = requireProjectId(
+      projectId,
+      "Project ID is required to rename project.",
     );
 
-    onRename?.(projectId, newName);
+    onRename?.(storeProjectId, newName);
 
     const response = await fetch("/api/project/rename", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectPath: resolvedProjectPath, newName }),
+      body: JSON.stringify({ projectId: resolvedProjectId, newName }),
     });
 
     if (!response.ok) {
@@ -74,21 +89,21 @@ export const projectActionsController = {
   },
 
   async deleteProject({
+    storeProjectId,
     projectId,
-    projectPath,
     onDelete,
   }: DeleteProjectAction): Promise<void> {
-    const resolvedProjectPath = requireProjectPath(
-      projectPath,
-      "Project path is required to delete project.",
+    const resolvedProjectId = requireProjectId(
+      projectId,
+      "Project ID is required to delete project.",
     );
 
-    onDelete?.(projectId);
+    onDelete?.(storeProjectId);
 
     const response = await fetch("/api/project/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectPath: resolvedProjectPath }),
+      body: JSON.stringify({ projectId: resolvedProjectId }),
     });
 
     if (!response.ok) {

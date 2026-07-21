@@ -9,29 +9,41 @@ import type {
   OptionsMigrationEntry,
 } from "../lib/models/metadata-schema";
 import type { FieldValueEntry } from "../../app/api/project/metadata-schema/route";
+import { getProjectDirectoryId } from "./projectsSlice";
 
 export interface MetadataSchemaRequestContext {
-  projectPath: string;
   projectId: string;
 }
 
 /**
- * Resolves the project path needed for metadata schema requests.
+ * Resolves the project context needed for metadata schema requests.
+ *
+ * `lookupProjectId` is the Redux-internal `projects.projects` map key
+ * (mirrored from `project.json`'s `id` field) — it is used only to look up
+ * the stored project record, never sent to the API. The `projectId` returned
+ * in the context is that project's on-disk directory basename, derived from
+ * its `rootPath` via {@link getProjectDirectoryId} (the same derivation
+ * `selectActiveProjectDirectoryId` uses for the active project), which is
+ * what every tenant-scoped metadata-schema route (ADR-017/018) actually
+ * expects. Per FR12, a project's on-disk directory name and its
+ * `project.json` `id` are two independently generated UUIDs — sending the
+ * wrong one is a silent failure, not an auth error.
+ *
  * State is typed as `any` to match the pattern in projectsSlice.ts and avoid
  * a circular import from ./store.
  */
 export function resolveMetadataSchemaRequestContext(
   state: any,
-  projectId: string,
+  lookupProjectId: string,
 ): MetadataSchemaRequestContext | { error: string } {
-  const project = state?.projects?.projects?.[projectId];
+  const project = state?.projects?.projects?.[lookupProjectId];
   if (!project) {
     return { error: "Project not found." };
   }
   if (!project.rootPath) {
     return { error: "Selected project is missing a root path." };
   }
-  return { projectPath: project.rootPath, projectId };
+  return { projectId: getProjectDirectoryId(project.rootPath) };
 }
 
 interface SchemaResponse {
@@ -71,10 +83,10 @@ export async function postAddField(
   groupId: string,
   field: MetadataField,
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "add-field",
-    projectPath,
+    projectId,
     groupId,
     field,
   });
@@ -85,10 +97,10 @@ export async function postRemoveField(
   groupId: string,
   fieldKey: string,
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "remove-field",
-    projectPath,
+    projectId,
     groupId,
     fieldKey,
   });
@@ -99,10 +111,10 @@ export async function postDeprecateField(
   groupId: string,
   fieldKey: string,
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "deprecate-field",
-    projectPath,
+    projectId,
     groupId,
     fieldKey,
   });
@@ -113,10 +125,10 @@ export async function postClearField(
   groupId: string,
   fieldKey: string,
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "clear-field",
-    projectPath,
+    projectId,
     groupId,
     fieldKey,
   });
@@ -127,10 +139,10 @@ export async function postReorderFields(
   groupId: string,
   newKeyOrder: string[],
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "reorder-fields",
-    projectPath,
+    projectId,
     groupId,
     newKeyOrder,
   });
@@ -142,10 +154,10 @@ export async function postRenameField(
   fieldKey: string,
   newLabel: string,
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "rename-field",
-    projectPath,
+    projectId,
     groupId,
     fieldKey,
     newLabel,
@@ -158,10 +170,10 @@ export async function postUpdateFieldOptions(
   fieldKey: string,
   options: string[],
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "update-field-options",
-    projectPath,
+    projectId,
     groupId,
     fieldKey,
     options,
@@ -172,18 +184,18 @@ export async function postAddGroup(
   context: MetadataSchemaRequestContext,
   group: MetadataGroup,
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
-  return postToMetadataSchemaRoute({ action: "add-group", projectPath, group });
+  const { projectId } = context;
+  return postToMetadataSchemaRoute({ action: "add-group", projectId, group });
 }
 
 export async function postRemoveGroup(
   context: MetadataSchemaRequestContext,
   groupId: string,
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "remove-group",
-    projectPath,
+    projectId,
     groupId,
   });
 }
@@ -192,10 +204,10 @@ export async function postReorderGroups(
   context: MetadataSchemaRequestContext,
   newGroupIdOrder: string[],
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "reorder-groups",
-    projectPath,
+    projectId,
     newGroupIdOrder,
   });
 }
@@ -206,10 +218,10 @@ export async function postChangeFieldType(
   fieldKey: string,
   newType: MetadataFieldType,
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "change-field-type",
-    projectPath,
+    projectId,
     groupId,
     fieldKey,
     newType,
@@ -222,10 +234,10 @@ export async function postRenameFieldKey(
   fieldKey: string,
   newKey: string,
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "rename-key",
-    projectPath,
+    projectId,
     groupId,
     fieldKey,
     newKey,
@@ -242,10 +254,10 @@ export async function postUpdateRefProperties(
     maxSelections?: number | null;
   },
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "update-ref-properties",
-    projectPath,
+    projectId,
     groupId,
     fieldKey,
     ...updates,
@@ -259,10 +271,10 @@ export async function postUpdateFieldOptionsWithMigration(
   newOptions: string[],
   migrations: Record<string, OptionsMigrationEntry>,
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "update-field-options-with-migration",
-    projectPath,
+    projectId,
     groupId,
     fieldKey,
     newOptions,
@@ -278,10 +290,10 @@ export async function postChangeFieldTypeWithMigration(
   newOptions: string[],
   migrations: Record<string, TypeMigrationEntry>,
 ): Promise<MetadataSchema> {
-  const { projectPath } = context;
+  const { projectId } = context;
   return postToMetadataSchemaRoute({
     action: "change-field-type-with-migration",
-    projectPath,
+    projectId,
     groupId,
     fieldKey,
     newType,
@@ -290,11 +302,19 @@ export async function postChangeFieldTypeWithMigration(
   });
 }
 
+/**
+ * Fetch aggregated field values for a metadata field.
+ *
+ * @param projectId - The project's on-disk directory basename (per FR12,
+ *   distinct from `project.json`'s internal `id` — source via
+ *   `selectActiveProjectDirectoryId` / `getProjectDirectoryId`).
+ * @param fieldKey - The metadata field key to enumerate values for.
+ */
 export async function fetchFieldValues(
-  projectPath: string,
+  projectId: string,
   fieldKey: string,
 ): Promise<FieldValueEntry[]> {
-  const params = new URLSearchParams({ projectPath, fieldKey });
+  const params = new URLSearchParams({ projectId, fieldKey });
   const response = await fetch(
     `/api/project/metadata-schema?${params.toString()}`,
   );

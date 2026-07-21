@@ -15,6 +15,8 @@ import projectsReducer, {
   updateProjectOrganizerCardBody,
   selectActiveProjectFeatures,
   selectActiveProjectOrganizerCardBody,
+  selectActiveProjectDirectoryId,
+  getProjectDirectoryId,
   selectTimelineEnabled,
   selectPovEnabled,
   selectSynopsisEnabled,
@@ -133,6 +135,68 @@ describe("projectsSlice — feature selectors (absent = disabled)", () => {
   });
 });
 
+describe("projectsSlice — selectActiveProjectDirectoryId (FR12 basename-vs-id)", () => {
+  it("returns the rootPath-derived directory basename, NOT project.id, when they differ", () => {
+    // Two independently generated UUIDs: the directory name on disk
+    // (rootPath's trailing segment) and project.json's own internal `id`.
+    // These are never guaranteed to match — this is the exact landmine
+    // FR12 exists to prevent.
+    const directoryUuid = "aaaaaaaa-1111-4111-8111-111111111111";
+    const internalProjectJsonId = "bbbbbbbb-2222-4222-8222-222222222222";
+
+    const store = makeStore();
+    store.dispatch(
+      setProjects([
+        {
+          project: {
+            id: internalProjectJsonId,
+            name: "Mismatched Project",
+            rootPath: `/tmp/projects/${directoryUuid}`,
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+          folders: [],
+          resources: [],
+        },
+      ]),
+    );
+    store.dispatch(setSelectedProjectId(internalProjectJsonId));
+
+    const state = store.getState();
+    expect(selectActiveProjectDirectoryId(state)).toBe(directoryUuid);
+    expect(selectActiveProjectDirectoryId(state)).not.toBe(
+      internalProjectJsonId,
+    );
+  });
+
+  it("returns null when no project is selected", () => {
+    const store = makeStore();
+    expect(selectActiveProjectDirectoryId(store.getState())).toBeNull();
+  });
+
+  it("returns null when the selected project has no rootPath", () => {
+    const store = makeStore();
+    seedProject(store);
+    store.dispatch(setSelectedProjectId("nonexistent-project-id"));
+    expect(selectActiveProjectDirectoryId(store.getState())).toBeNull();
+  });
+});
+
+describe("getProjectDirectoryId (basename extraction helper)", () => {
+  it("extracts the trailing POSIX path segment", () => {
+    expect(getProjectDirectoryId("/a/b/c/project-uuid")).toBe("project-uuid");
+  });
+
+  it("extracts the trailing Windows path segment", () => {
+    expect(getProjectDirectoryId("C:\\projects\\project-uuid")).toBe(
+      "project-uuid",
+    );
+  });
+
+  it("strips a trailing slash before extracting the segment", () => {
+    expect(getProjectDirectoryId("/a/b/project-uuid/")).toBe("project-uuid");
+  });
+});
+
 describe("projectsSlice — updateProjectFeatures thunk", () => {
   it("posts the features to the route and updates the store on success", async () => {
     const store = makeStore();
@@ -161,7 +225,7 @@ describe("projectsSlice — updateProjectFeatures thunk", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        projectPath: "/tmp/project-1",
+        projectId: "project-1",
         features: { timeline: true },
       }),
     });
@@ -215,10 +279,7 @@ describe("projectsSlice — updateProjectOrganizerCardBody thunk", () => {
     expect(fetchSpy).toHaveBeenCalledWith("/api/project/features", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectPath: "/tmp/project-1",
-        organizerCardBody: body,
-      }),
+      body: JSON.stringify({ projectId: "project-1", organizerCardBody: body }),
     });
 
     expect(selectActiveProjectOrganizerCardBody(store.getState())).toEqual(

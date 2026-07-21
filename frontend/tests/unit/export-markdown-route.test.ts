@@ -3,6 +3,9 @@
  *
  * Calls the POST handler against a temporary project directory containing real
  * content.tiptap.json files, asserting the returned Markdown and loss warnings.
+ * Requests are scoped by a server-validated `projectId`, resolved against
+ * `GETWRITE_PROJECTS_DIR` (Task 3 of the 29-route tenant enforcement feature)
+ * rather than a client-supplied `projectPath`.
  *
  * Runs in the node environment so Request/Response come from undici.
  */
@@ -14,6 +17,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { POST } from "../../app/api/export/markdown/route";
+import { generateUUID } from "../../src/lib/models/uuid";
 import type { JSONContent } from "@tiptap/core";
 
 const tmpDirs: string[] = [];
@@ -25,10 +29,24 @@ afterEach(async () => {
   }
 });
 
-async function makeProjectDir(): Promise<string> {
+/** Creates a fresh temporary projects directory (the parent of project-id folders). */
+async function makeProjectsDir(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-md-export-"));
   tmpDirs.push(dir);
   return dir;
+}
+
+async function withProjectsDir<T>(
+  projectsDir: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+  process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+  try {
+    return await fn();
+  } finally {
+    process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+  }
 }
 
 async function writeResource(
@@ -55,7 +73,9 @@ function exportRequest(body: unknown): Request {
 
 describe("POST /api/export/markdown", () => {
   it("exports a text resource as a .md file matching the serializer output", async () => {
-    const projectPath = await makeProjectDir();
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = path.join(projectsDir, projectId);
     const doc: JSONContent = {
       type: "doc",
       content: [
@@ -75,13 +95,15 @@ describe("POST /api/export/markdown", () => {
     };
     await writeResource(projectPath, "r1", doc);
 
-    const res = await POST(
-      exportRequest({
-        projectPath,
-        resourceIds: ["r1"],
-        resources: [{ id: "r1", name: "My Note", type: "text" }],
-        exportName: "My Note",
-      }) as never,
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        exportRequest({
+          projectId,
+          resourceIds: ["r1"],
+          resources: [{ id: "r1", name: "My Note", type: "text" }],
+          exportName: "My Note",
+        }) as never,
+      ),
     );
     const json = await res.json();
 
@@ -94,7 +116,9 @@ describe("POST /api/export/markdown", () => {
   });
 
   it("surfaces a warning when content falls back to inline HTML", async () => {
-    const projectPath = await makeProjectDir();
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = path.join(projectsDir, projectId);
     const doc: JSONContent = {
       type: "doc",
       content: [
@@ -110,13 +134,15 @@ describe("POST /api/export/markdown", () => {
     };
     await writeResource(projectPath, "r1", doc);
 
-    const res = await POST(
-      exportRequest({
-        projectPath,
-        resourceIds: ["r1"],
-        resources: [{ id: "r1", name: "Has Image", type: "text" }],
-        exportName: "Has Image",
-      }) as never,
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        exportRequest({
+          projectId,
+          resourceIds: ["r1"],
+          resources: [{ id: "r1", name: "Has Image", type: "text" }],
+          exportName: "Has Image",
+        }) as never,
+      ),
     );
     const json = await res.json();
 
@@ -127,7 +153,9 @@ describe("POST /api/export/markdown", () => {
   });
 
   it("ignores non-text resources in the selection", async () => {
-    const projectPath = await makeProjectDir();
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = path.join(projectsDir, projectId);
     await writeResource(projectPath, "r1", {
       type: "doc",
       content: [
@@ -135,20 +163,41 @@ describe("POST /api/export/markdown", () => {
       ],
     });
 
-    const res = await POST(
-      exportRequest({
-        projectPath,
-        resourceIds: ["r1", "img"],
-        resources: [
-          { id: "r1", name: "Text", type: "text" },
-          { id: "img", name: "Picture", type: "image" },
-        ],
-        exportName: "Text",
-      }) as never,
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        exportRequest({
+          projectId,
+          resourceIds: ["r1", "img"],
+          resources: [
+            { id: "r1", name: "Text", type: "text" },
+            { id: "img", name: "Picture", type: "image" },
+          ],
+          exportName: "Text",
+        }) as never,
+      ),
     );
     const json = await res.json();
 
     expect(json.markdown).toContain("keep");
     expect(json.filename).toBe("text.md");
+  });
+
+  it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
+    const projectsDir = await makeProjectsDir();
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        exportRequest({
+          projectId: "../../etc/passwd",
+          resourceIds: [],
+          resources: [],
+          exportName: "Malicious",
+        }) as never,
+      ),
+    );
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("Invalid projectId");
   });
 });

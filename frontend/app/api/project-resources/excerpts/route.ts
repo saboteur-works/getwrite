@@ -6,15 +6,18 @@
  * `content.txt`. Scoped + on-demand so it stays off the project load path.
  *
  * Route: `POST /api/project-resources/excerpts`
- * Body:    `{ projectPath: string; resourceIds: string[]; maxChars?: number }`
+ * Body:    `{ projectId: string; resourceIds: string[]; maxChars?: number }`
  * Success: `{ excerpts: Record<string, string> }` (only resources with content)
  * Failure: `{ error: string }`
  */
 import { NextRequest, NextResponse } from "next/server";
+import path from "node:path";
 import { readResourceExcerpts } from "../../../../src/lib/models/resource-persistence";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface ExcerptsBody {
-  projectPath: string;
+  projectId: string;
   resourceIds: string[];
   maxChars?: number;
 }
@@ -22,7 +25,7 @@ interface ExcerptsBody {
 /** Upper bound on resourceIds per request — far above any one folder's children. */
 const MAX_RESOURCE_IDS = 1000;
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+async function handlePost(req: NextRequest): Promise<Response> {
   let body: ExcerptsBody;
   try {
     body = (await req.json()) as ExcerptsBody;
@@ -30,13 +33,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { projectPath, resourceIds, maxChars } = body;
-  if (!projectPath || typeof projectPath !== "string") {
-    return NextResponse.json(
-      { error: "Missing required field: projectPath." },
-      { status: 400 },
-    );
-  }
+  const resolved = resolveProjectPath(body.projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
+
+  const { resourceIds, maxChars } = body;
   if (!Array.isArray(resourceIds)) {
     return NextResponse.json(
       { error: "resourceIds must be an array." },
@@ -59,3 +60,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withStorageContext(handlePost);

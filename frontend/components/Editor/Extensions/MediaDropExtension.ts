@@ -4,10 +4,21 @@ import type { EditorView } from "@tiptap/pm/view";
 import { validateMediaFile } from "../../../src/lib/models/media-validation";
 import { uploadMediaResource } from "../../../src/lib/api/resources";
 import { toastService } from "../../../src/lib/toast-service";
+import { resolveGetWriteImageSrc } from "./GetWriteImage";
 
 export interface MediaDropOptions {
-  /** Returns the active project path, or null when no project is open. */
-  getProjectPath: () => string | null;
+  /**
+   * Returns the active project's on-disk directory basename (the
+   * `projectId` every tenant-scoped resource route, ADR-017/018, expects —
+   * see `selectActiveProjectDirectoryId`'s doc comment in
+   * `projectsSlice.ts`), or null when no project is open.
+   *
+   * This extension is a plain TipTap/ProseMirror class, not a React
+   * component, so it cannot call `useSelector` itself. The caller that
+   * configures this extension (`TipTapEditor`) resolves the directory
+   * basename from Redux state and threads it down through this callback.
+   */
+  getProjectId: () => string | null;
   /** Called with a human-readable message when a file is rejected. */
   onError: (message: string) => void;
 }
@@ -17,11 +28,16 @@ export interface MediaDropOptions {
  * calls `onInsert` with the resulting resource ID and serving URL. Audio files
  * and other unsupported types are reported via `onError`.
  *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+ * `StoredProject.id` — `/api/resource/upload` resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ *
  * Exported separately so it can be unit-tested without a live ProseMirror view.
  */
 export async function handleMediaDropFiles(
   files: File[],
-  projectPath: string,
+  projectId: string,
   onError: (message: string) => void,
   onInsert: (resourceId: string, src: string) => void,
 ): Promise<void> {
@@ -45,9 +61,12 @@ export async function handleMediaDropFiles(
     }
 
     try {
-      const result = await uploadMediaResource(projectPath, file);
+      const result = await uploadMediaResource(projectId, file);
       const resourceId = result.resource.id;
-      onInsert(resourceId, `/api/resource/${resourceId}/file`);
+      onInsert(
+        resourceId,
+        resolveGetWriteImageSrc(resourceId, null, projectId),
+      );
     } catch (e) {
       onError(
         `Failed to upload "${file.name}": ${e instanceof Error ? e.message : String(e)}`,
@@ -84,13 +103,13 @@ const MediaDropExtension = Extension.create<MediaDropOptions>({
 
   addOptions(): MediaDropOptions {
     return {
-      getProjectPath: () => null,
+      getProjectId: () => null,
       onError: (message) => toastService.error("Media upload failed", message),
     };
   },
 
   addProseMirrorPlugins() {
-    const { getProjectPath, onError } = this.options;
+    const { getProjectId, onError } = this.options;
 
     return [
       new Plugin({
@@ -104,8 +123,8 @@ const MediaDropExtension = Extension.create<MediaDropOptions>({
 
             event.preventDefault();
 
-            const projectPath = getProjectPath();
-            if (!projectPath) {
+            const projectId = getProjectId();
+            if (!projectId) {
               onError("Cannot insert image: no project is open.");
               return true;
             }
@@ -114,7 +133,7 @@ const MediaDropExtension = Extension.create<MediaDropOptions>({
 
             handleMediaDropFiles(
               files,
-              projectPath,
+              projectId,
               onError,
               (resourceId, src) => {
                 const imageNodeType = view.state.schema.nodes["image"];

@@ -12,6 +12,7 @@ import useAppSelector from "../../src/store/hooks";
 import {
   selectProject,
   selectSelectedProjectId,
+  selectActiveProjectDirectoryId,
 } from "../../src/store/projectsSlice";
 import {
   type AppearancePreferences,
@@ -58,6 +59,12 @@ export default function UserPreferencesPage({
   const selectedProjectId = useAppSelector(selectSelectedProjectId);
   const selectedProject = useAppSelector((state) =>
     selectedProjectId ? selectProject(state, selectedProjectId) : null,
+  );
+  // Directory basename, not `project.id` (project.json's independently
+  // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
+  // comment in `projectsSlice.ts`.
+  const activeProjectDirectoryId = useAppSelector(
+    selectActiveProjectDirectoryId,
   );
 
   useEffect(() => {
@@ -106,11 +113,11 @@ export default function UserPreferencesPage({
     const nextMode: ColorMode = resolveColorModeFromAppearance(nextAppearance);
     saveGlobalColorMode(nextMode);
 
-    if (!selectedProject?.rootPath) {
+    if (!activeProjectDirectoryId) {
       return;
     }
 
-    await saveProjectPreferences(selectedProject.rootPath, {
+    await saveProjectPreferences(activeProjectDirectoryId, {
       colorMode: nextMode,
     });
   };

@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
-export async function POST(req: NextRequest) {
+async function handlePost(req: NextRequest): Promise<Response> {
   const body = await req.json();
-  const { projectPath } = body as { projectPath: string };
-  await fs.rm(projectPath, { recursive: true, force: true });
+  const { projectId } = body as { projectId: string };
+
+  const resolved = resolveProjectPath(projectId);
+  if (resolved instanceof Response) return resolved;
+
+  const { projectPath: projectRoot } = resolved;
+  await fs.rm(projectRoot, { recursive: true, force: true });
   return NextResponse.json({ success: true });
 }
+
+export const POST = withStorageContext(handlePost);

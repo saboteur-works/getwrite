@@ -9,6 +9,8 @@ import type {
   CompileBody,
   MarkdownConstructWarning,
 } from "../../../../src/lib/export/types";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface CompileMarkdownResponse {
   markdown: string;
@@ -17,15 +19,20 @@ interface CompileMarkdownResponse {
   warnings: MarkdownConstructWarning[];
 }
 
-export async function POST(req: NextRequest) {
+async function handlePost(req: NextRequest) {
   const body = (await req.json()) as CompileBody;
   const {
-    projectPath,
+    projectId,
     resourceIds,
     resources,
     includeHeaders: shouldIncludeHeaders,
     projectName,
   } = body;
+
+  const resolved = resolveProjectPath(projectId);
+  if (resolved instanceof Response) return resolved;
+
+  const { projectPath } = resolved;
 
   // Markdown needs the TipTap JSON, not the cached plain text.
   const sections = await loadTextSections<MarkdownSection>(
@@ -43,3 +50,5 @@ export async function POST(req: NextRequest) {
   const response: CompileMarkdownResponse = { markdown, filename, warnings };
   return NextResponse.json(response);
 }
+
+export const POST = withStorageContext(handlePost);

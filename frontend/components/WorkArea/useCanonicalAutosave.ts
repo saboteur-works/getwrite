@@ -10,7 +10,13 @@ import { updateResource } from "../../src/store/resourcesSlice";
 export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
 interface UseCanonicalAutosaveOptions {
-  projectRootPath: string | null;
+  /**
+   * The active project's on-disk directory basename (see
+   * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), NOT
+   * `StoredProject.id`/`rootPath`. Sent as `projectId` to
+   * `/api/resource/revision/*` (ADR-017/018 tenant-route migration).
+   */
+  projectId: string | null;
   selectedResourceId: string | null;
   currentRevisionId: string | null;
   canonicalRevisionId: string | null;
@@ -26,7 +32,7 @@ interface UseCanonicalAutosaveResult {
 }
 
 export function useCanonicalAutosave({
-  projectRootPath,
+  projectId,
   selectedResourceId,
   currentRevisionId,
   canonicalRevisionId,
@@ -40,7 +46,7 @@ export function useCanonicalAutosave({
   const persistCanonicalRevisionContent = React.useCallback(
     async (doc: TipTapDocument): Promise<{ updatedAt: string } | undefined> => {
       if (
-        !projectRootPath ||
+        !projectId ||
         !selectedResourceId ||
         !currentRevisionId ||
         currentRevisionId !== canonicalRevisionId
@@ -50,17 +56,12 @@ export function useCanonicalAutosave({
 
       return patchRevisionContent(
         selectedResourceId,
-        projectRootPath,
+        projectId,
         currentRevisionId,
         JSON.stringify(doc),
       );
     },
-    [
-      canonicalRevisionId,
-      currentRevisionId,
-      projectRootPath,
-      selectedResourceId,
-    ],
+    [canonicalRevisionId, currentRevisionId, projectId, selectedResourceId],
   );
 
   const saveCanonicalRevisionNow = React.useCallback(

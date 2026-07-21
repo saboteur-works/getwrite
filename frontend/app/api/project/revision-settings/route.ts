@@ -6,20 +6,22 @@
  * Route:
  * - `POST /api/project/revision-settings` — sets `config.defaultRevisionName`
  *
- * POST body: `{ projectPath: string; defaultRevisionName: string }`
+ * POST body: `{ projectId: string; defaultRevisionName: string }`
  * Success:   `{ defaultRevisionName: string }`
  * Failure:   `{ error: string }`
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { updateDefaultRevisionName } from "../../../../src/lib/models/revision-settings";
+import { resolveProjectPath } from "../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateRevisionSettingsBody {
-  projectPath: string;
+  projectId: string;
   defaultRevisionName: string;
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+async function handlePost(req: NextRequest): Promise<Response> {
   let body: UpdateRevisionSettingsBody;
   try {
     body = (await req.json()) as UpdateRevisionSettingsBody;
@@ -27,14 +29,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { projectPath, defaultRevisionName } = body;
+  const { projectId, defaultRevisionName } = body;
 
-  if (!projectPath || typeof projectPath !== "string") {
-    return NextResponse.json(
-      { error: "Missing required field: projectPath." },
-      { status: 400 },
-    );
-  }
+  const resolved = resolveProjectPath(projectId);
+  if (resolved instanceof Response) return resolved;
 
   if (typeof defaultRevisionName !== "string") {
     return NextResponse.json(
@@ -42,6 +40,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 400 },
     );
   }
+
+  const { projectPath } = resolved;
 
   try {
     const saved = await updateDefaultRevisionName(
@@ -57,3 +57,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
+
+export const POST = withStorageContext(handlePost);

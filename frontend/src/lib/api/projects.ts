@@ -29,13 +29,19 @@ export async function listProjects(): Promise<ProjectApiEntry[]> {
   return (await response.json()) as ProjectApiEntry[];
 }
 
-export async function openProject(
-  projectPath: string,
-): Promise<ProjectApiEntry> {
+/**
+ * Opens a project by its on-disk directory id.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+ * `StoredProject.id` — `/api/project` resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ */
+export async function openProject(projectId: string): Promise<ProjectApiEntry> {
   const response = await fetch("/api/project", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ projectPath }),
+    body: JSON.stringify({ projectId }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);

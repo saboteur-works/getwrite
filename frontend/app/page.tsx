@@ -29,6 +29,7 @@ import {
   removeResource,
   setProjects as setProjectsInStore,
   buildStoredProject,
+  selectActiveProjectDirectoryId,
 } from "../src/store/projectsSlice";
 import AppShell from "../components/Layout/AppShell";
 import StartPage, {
@@ -122,6 +123,17 @@ export default function Home(): JSX.Element {
     shallowEqual,
   );
 
+  /**
+   * The active project's on-disk directory basename — the `projectId` every
+   * tenant-scoped resource route (ADR-017/018) expects. Not the same as
+   * `selectedProject.id` (`project.json`'s internal `id`), which is a
+   * separately generated UUID; see `selectActiveProjectDirectoryId`'s doc
+   * comment in `projectsSlice.ts` for the FR12 distinction.
+   */
+  const activeProjectDirectoryId = useAppSelector(
+    selectActiveProjectDirectoryId,
+  );
+
   const dispatch = useAppDispatch();
 
   /**
@@ -201,15 +213,16 @@ export default function Home(): JSX.Element {
   };
 
   /**
-   * Opens an existing project by its root path.
+   * Opens an existing project by its on-disk directory id.
    *
-   * Calls `POST /api/project` with the project's root path, hydrates the
+   * Calls `POST /api/project` with the project's directory id, hydrates the
    * Redux `projects` and `resources` slices with the response, and stores
    * the opened project in local `selectedProject` state so the editor shell
    * becomes visible.
    *
-   * @param id - The root path of the project to open (used as the
-   *   `projectPath` request body field).
+   * @param id - The project's on-disk directory basename (see
+   *   `selectActiveProjectDirectoryId`'s doc comment in `projectsSlice.ts`),
+   *   sent as the `projectId` request body field.
    * @throws {Error} When the HTTP response is not OK.
    */
   const handleOpen = async (id: string) => {
@@ -275,13 +288,19 @@ export default function Home(): JSX.Element {
       return;
     }
 
-    updateSidecar(
-      resourceId,
-      selectedProject.rootPath,
-      updater(resource),
-    ).catch((err) => {
-      console.error("Error updating resource metadata:", err);
-    });
+    if (activeProjectDirectoryId) {
+      updateSidecar(
+        resourceId,
+        activeProjectDirectoryId,
+        updater(resource),
+      ).catch((err) => {
+        console.error("Error updating resource metadata:", err);
+      });
+    } else {
+      console.error(
+        "updateResource: no active project directory id; sidecar not persisted",
+      );
+    }
 
     dispatch(updateResourceInStore(updater(resource)));
 
@@ -436,6 +455,11 @@ export default function Home(): JSX.Element {
     },
   ) => {
     if (!selectedProject) return;
+    // `activeProjectDirectoryId` is the on-disk directory basename required
+    // by every tenant-scoped resource route (ADR-017/018) — see its doc
+    // comment above for the FR12 distinction from `selectedProject.id`.
+    if (!activeProjectDirectoryId) return;
+    const projectId = activeProjectDirectoryId;
 
     if (action === "create") {
       const title = opts?.title ?? "New Resource";
@@ -468,7 +492,7 @@ export default function Home(): JSX.Element {
         (payload as any).text = { plainText: "", tiptap: undefined };
       }
 
-      const resBody = await createResource(selectedProject.rootPath, payload);
+      const resBody = await createResource(projectId, payload);
       const res: AnyResource = resBody.resource;
       dispatch(addResourceInStore(res));
       if (opts?.type === "folder") {
@@ -513,7 +537,7 @@ export default function Home(): JSX.Element {
       const { resource: newResource } = await copyResource(
         resourceId,
         newName,
-        selectedProject.rootPath,
+        projectId,
       );
 
       dispatch(addResourceInStore(newResource as AnyResource));
@@ -541,7 +565,7 @@ export default function Home(): JSX.Element {
 
     if (action === "delete") {
       if (!resourceId) return;
-      await deleteResource(resourceId, selectedProject.rootPath);
+      await deleteResource(resourceId, projectId);
       setProjects((prev) =>
         prev.map((p) =>
           p.project.id === selectedProject.id
@@ -595,7 +619,7 @@ export default function Home(): JSX.Element {
       // serializes it, returning the file plus any loss warnings.
       if (opts?.format === "md") {
         const { markdown, filename, warnings } = await exportMarkdown({
-          projectPath: selectedProject.rootPath,
+          projectId,
           resourceIds: resolvedIds,
           resources: resourcesMeta,
           exportName,
@@ -621,7 +645,7 @@ export default function Home(): JSX.Element {
       // Using the client-side `plaintext` snapshot here would miss text typed
       // after the project was opened (it is only refreshed on project reload).
       const { text, filename } = await exportText({
-        projectPath: selectedProject.rootPath,
+        projectId,
         resourceIds: resolvedIds,
         resources: resourcesMeta,
         exportName,
@@ -640,9 +664,9 @@ export default function Home(): JSX.Element {
     file: File,
     opts: { title: string; folderId?: string },
   ): Promise<void> => {
-    if (!selectedProject) return;
+    if (!selectedProject || !activeProjectDirectoryId) return;
     const { resource } = await uploadMediaResource(
-      selectedProject.rootPath,
+      activeProjectDirectoryId,
       file,
       opts,
     );

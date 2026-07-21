@@ -10,9 +10,16 @@ info:
 
     All request bodies use `Content-Type: application/json` unless otherwise noted.
     Most error responses follow `{ "error": string }` or
-    `{ "error": string, "details": string }`. Several routes take the project's
-    absolute filesystem path (`projectPath` / `projectRoot`) in the body rather
-    than a project ID.
+    `{ "error": string, "details": string }`. Project-scoped routes take a
+    server-validated `projectId` (a UUID matching the project's on-disk directory
+    name — see `frontend/src/lib/models/project-path.ts`) rather than a
+    client-supplied absolute path. They no longer accept `projectPath`/`projectRoot`
+    in the request; an invalid `projectId` (not a well-formed UUID) is rejected with
+    a uniform `400 { "error": "Invalid projectId" }`, independent of whether a
+    same-shaped project actually exists. The four exceptions are `/api/projects`,
+    `/api/projects/{projectId}/reorder` (still accepts a legacy `projectRoot`
+    fallback in the body), `/api/project/{project-id}/reindex`, and
+    `/api/project/{project-id}/search`.
 
 servers:
   - url: http://localhost:3000
@@ -339,10 +346,10 @@ components:
 
     CompileRequest:
       type: object
-      required: [projectPath, resourceIds, resources, includeHeaders, projectName]
+      required: [projectId, resourceIds, resources, includeHeaders, projectName]
       properties:
-        projectPath:
-          type: string
+        projectId:
+          $ref: "#/components/schemas/UUID"
         resourceIds:
           type: array
           description: Resource IDs to include, in output order (only text resources are compiled).
@@ -456,20 +463,20 @@ paths:
     post:
       summary: Load a project from disk
       description: |
-        Loads a project by its absolute filesystem path. Reads `project.json`,
-        folder descriptors, and resource sidecars + plaintext content from
-        `resources/<id>/content.txt`.
+        Loads a project by its server-validated `projectId` (joined against the
+        resolved projects directory to derive the on-disk root). Reads
+        `project.json`, folder descriptors, and resource sidecars + plaintext
+        content from `resources/<id>/content.txt`.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [projectPath]
+              required: [projectId]
               properties:
-                projectPath:
-                  type: string
-                  description: Absolute path to the project root directory
+                projectId:
+                  $ref: "#/components/schemas/UUID"
       responses:
         "200":
           description: Project with folders and resources
@@ -477,6 +484,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProjectWithFoldersAndResources"
+        "400":
+          description: Invalid projectId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "500":
           description: Failed to load project (file not found, parse error, etc.)
           content:
@@ -496,11 +509,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath]
+              required: [projectId]
               properties:
-                projectPath:
-                  type: string
-                  description: Absolute path to the project root to delete
+                projectId:
+                  $ref: "#/components/schemas/UUID"
       responses:
         "200":
           description: Project deleted
@@ -515,17 +527,17 @@ paths:
   /api/project/rename:
     post:
       summary: Rename a project
-      description: Updates the `name` field in `project.json` for the given project path.
+      description: Updates the `name` field in `project.json` for the given projectId.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [projectPath, newName]
+              required: [projectId, newName]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 newName:
                   type: string
       responses:
@@ -554,10 +566,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath, preferences]
+              required: [projectId, preferences]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 preferences:
                   type: object
                   description: Partial ProjectUserPreferences to merge into metadata
@@ -575,7 +587,7 @@ paths:
                     additionalProperties:
                       $ref: "#/components/schemas/MetadataValue"
         "400":
-          description: Missing projectPath or preferences
+          description: Missing/invalid projectId, or missing preferences
           content:
             application/json:
               schema:
@@ -599,10 +611,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath]
+              required: [projectId]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 headings:
                   type: object
                   description: EditorHeadingMap — per-level heading style overrides
@@ -623,7 +635,7 @@ paths:
                     type: object
                     additionalProperties: true
         "400":
-          description: Missing projectPath
+          description: Missing/invalid projectId
           content:
             application/json:
               schema:
@@ -645,10 +657,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath, defaultRevisionName]
+              required: [projectId, defaultRevisionName]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 defaultRevisionName:
                   type: string
       responses:
@@ -662,7 +674,7 @@ paths:
                   defaultRevisionName:
                     type: string
         "400":
-          description: Invalid JSON, missing projectPath/defaultRevisionName, or update failed
+          description: Invalid JSON, missing/invalid projectId, missing defaultRevisionName, or update failed
           content:
             application/json:
               schema:
@@ -690,7 +702,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [action, projectPath]
+              required: [action, projectId]
               properties:
                 action:
                   type: string
@@ -712,8 +724,8 @@ paths:
                       remove-group,
                       reorder-groups,
                     ]
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
               additionalProperties: true
       responses:
         "200":
@@ -744,11 +756,11 @@ paths:
         Returns a frequency map of distinct values for `fieldKey` across all resource
         sidecars in the project. Used by the query builder's value picker.
       parameters:
-        - name: projectPath
+        - name: projectId
           in: query
           required: true
           schema:
-            type: string
+            $ref: "#/components/schemas/UUID"
         - name: fieldKey
           in: query
           required: true
@@ -777,7 +789,7 @@ paths:
                   missingKey:
                     type: string
         "400":
-          description: Missing projectPath or fieldKey
+          description: Missing/invalid projectId, or missing fieldKey
           content:
             application/json:
               schema:
@@ -796,22 +808,22 @@ paths:
       summary: List, create, or query tag assignments
       description: |
         Action-discriminated:
-        - `list` `{ action, projectPath }` → `{ tags }`
-        - `create` `{ action, projectPath, name, color? }` → `{ tag }`
-        - `assignments` `{ action, projectPath, resourceId }` → `{ tagIds }`
+        - `list` `{ action, projectId }` → `{ tags }`
+        - `create` `{ action, projectId, name, color? }` → `{ tag }`
+        - `assignments` `{ action, projectId, resourceId }` → `{ tagIds }`
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [action, projectPath]
+              required: [action, projectId]
               properties:
                 action:
                   type: string
                   enum: [list, create, assignments]
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 name:
                   type: string
                 color:
@@ -864,10 +876,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath, resourceId, tagId, assign]
+              required: [projectId, resourceId, tagId, assign]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 resourceId:
                   type: string
                 tagId:
@@ -897,10 +909,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath, tagId]
+              required: [projectId, tagId]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 tagId:
                   type: string
       responses:
@@ -934,10 +946,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath, definition]
+              required: [projectId, definition]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 definition:
                   $ref: "#/components/schemas/QueryAST"
       responses:
@@ -970,10 +982,10 @@ paths:
       summary: CRUD for saved queries
       description: |
         Action-discriminated:
-        - `list` `{ action, projectPath }` → `{ queries }`
-        - `read` `{ action, projectPath, id }` → `{ query | null }`
-        - `write` `{ action, projectPath, query }` → `{ query }`
-        - `delete` `{ action, projectPath, id }` → `{ deleted }`
+        - `list` `{ action, projectId }` → `{ queries }`
+        - `read` `{ action, projectId, id }` → `{ query | null }`
+        - `write` `{ action, projectId, query }` → `{ query }`
+        - `delete` `{ action, projectId, id }` → `{ deleted }`
 
         Saved queries persist at `meta/queries/<id>.query.json`.
       requestBody:
@@ -982,13 +994,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [action, projectPath]
+              required: [action, projectId]
               properties:
                 action:
                   type: string
                   enum: [list, read, write, delete]
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 id:
                   type: string
                 query:
@@ -1140,10 +1152,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath, resourceId]
+              required: [projectId, resourceId]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 resourceId:
                   type: string
       responses:
@@ -1296,10 +1308,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath, resourceData]
+              required: [projectId, resourceData]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 resourceData:
                   type: object
                   description: CreateResourceOpts — type, name, folderId, text, orderIndex, userMetadata
@@ -1346,10 +1358,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectRoot, action]
+              required: [projectId, action]
               properties:
-                projectRoot:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 action:
                   type: string
                   enum: [delete, copy]
@@ -1433,10 +1445,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectRoot, updatedResource]
+              required: [projectId, updatedResource]
               properties:
-                projectRoot:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 updatedResource:
                   $ref: "#/components/schemas/ResourceSidecar"
       responses:
@@ -1470,10 +1482,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectRoot]
+              required: [projectId]
               properties:
-                projectRoot:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
       responses:
         "200":
           description: Resource deleted
@@ -1505,10 +1517,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectRoot, newName]
+              required: [projectId, newName]
               properties:
-                projectRoot:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 newName:
                   type: string
                 resourceType:
@@ -1527,7 +1539,7 @@ paths:
                     additionalProperties:
                       $ref: "#/components/schemas/MetadataValue"
         "400":
-          description: Invalid JSON or missing projectRoot/newName
+          description: Invalid JSON, missing/invalid projectId, or missing newName
           content:
             application/json:
               schema:
@@ -1559,11 +1571,11 @@ paths:
           required: true
           schema:
             $ref: "#/components/schemas/UUID"
-        - name: projectPath
+        - name: projectId
           in: query
           required: true
           schema:
-            type: string
+            $ref: "#/components/schemas/UUID"
         - name: revisionId
           in: query
           required: true
@@ -1620,10 +1632,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath]
+              required: [projectId]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 content:
                   type: string
                   description: Content to snapshot; omit to use current saved content
@@ -1643,7 +1655,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Revision"
         "400":
-          description: Invalid JSON or missing projectPath
+          description: Invalid JSON or missing/invalid projectId
           content:
             application/json:
               schema:
@@ -1675,10 +1687,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath, revisionId]
+              required: [projectId, revisionId]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 revisionId:
                   $ref: "#/components/schemas/UUID"
                 content:
@@ -1728,10 +1740,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath, revisionId]
+              required: [projectId, revisionId]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 revisionId:
                   $ref: "#/components/schemas/UUID"
       responses:
@@ -1851,10 +1863,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectPath, resourceIds, resources, exportName]
+              required: [projectId, resourceIds, resources, exportName]
               properties:
-                projectPath:
-                  type: string
+                projectId:
+                  $ref: "#/components/schemas/UUID"
                 resourceIds:
                   type: array
                   items:

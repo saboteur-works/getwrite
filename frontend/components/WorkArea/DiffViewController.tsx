@@ -13,6 +13,7 @@ import {
   setCurrentRevisionId,
 } from "../../src/store/revisionsSlice";
 import { selectResource } from "../../src/store/resourcesSlice";
+import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import DiffView from "./DiffView";
 
 /**
@@ -80,10 +81,13 @@ function collectText(node: Record<string, unknown>): string {
 export default function DiffViewController() {
   const dispatch = useAppDispatch();
 
-  const projectRootPath = useAppSelector(
-    (state) =>
-      state.projects.projects[state.projects.selectedProjectId ?? ""]?.rootPath,
-  );
+  // The active project's on-disk directory basename (see
+  // `selectActiveProjectDirectoryId`'s doc comment) — never
+  // `StoredProject.id`, which mirrors project.json's independently generated
+  // internal `id` and is not guaranteed to match the directory name. Used
+  // here purely as a readiness gate for dispatching the revision-loading
+  // thunks below (which resolve tenant context from Redux state themselves).
+  const projectDirectoryId = useAppSelector(selectActiveProjectDirectoryId);
   const selectedResourceId = useAppSelector(
     (state) => selectResource(state.resources)?.id,
     shallowEqual,
@@ -106,8 +110,8 @@ export default function DiffViewController() {
   const pendingFetchPurpose = useRef<"canonical" | "selected" | null>(null);
 
   const canInteract = useMemo(
-    () => !!projectRootPath && !!selectedResourceId,
-    [projectRootPath, selectedResourceId],
+    () => !!projectDirectoryId && !!selectedResourceId,
+    [projectDirectoryId, selectedResourceId],
   );
 
   // Reset all local state when the selected resource changes.
@@ -124,7 +128,7 @@ export default function DiffViewController() {
     void dispatch(
       loadRevisionsForSelectedResource({ resourceId: selectedResourceId }),
     );
-  }, [canInteract, dispatch, projectRootPath, selectedResourceId]);
+  }, [canInteract, dispatch, projectDirectoryId, selectedResourceId]);
 
   // Once revisions are loaded, fetch the canonical revision content. Re-fetch
   // when the canonical revision changes (e.g. the user promoted a new revision

@@ -7,39 +7,43 @@
  * - `POST /api/project/tags/assign`
  *
  * Expected body:
- * - `{ projectPath: string, resourceId: string, tagId: string, assign: boolean }`
+ * - `{ projectId: string, resourceId: string, tagId: string, assign: boolean }`
  */
 import { NextRequest, NextResponse } from "next/server";
 import {
   assignTagToResource,
   unassignTagFromResource,
 } from "../../../../../src/lib/models/tags";
+import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
+import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface AssignTagRequestBody {
-  projectPath: string;
+  projectId: string;
   resourceId: string;
   tagId: string;
   assign: boolean;
 }
 
-interface ErrorResponse {
-  error: string;
-  details: string;
-}
-
-export async function POST(
-  req: NextRequest,
-): Promise<NextResponse<Record<string, never> | ErrorResponse>> {
+async function handlePost(req: NextRequest): Promise<Response> {
+  let body: AssignTagRequestBody;
   try {
-    const body = (await req.json()) as AssignTagRequestBody;
+    body = (await req.json()) as AssignTagRequestBody;
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid request", details: "Request body is not valid JSON" },
+      { status: 400 },
+    );
+  }
+
+  const resolved = resolveProjectPath(body.projectId);
+  if (resolved instanceof Response) return resolved;
+  const { projectPath } = resolved;
+
+  try {
     if (body.assign) {
-      await assignTagToResource(body.projectPath, body.resourceId, body.tagId);
+      await assignTagToResource(projectPath, body.resourceId, body.tagId);
     } else {
-      await unassignTagFromResource(
-        body.projectPath,
-        body.resourceId,
-        body.tagId,
-      );
+      await unassignTagFromResource(projectPath, body.resourceId, body.tagId);
     }
     return NextResponse.json({});
   } catch (error) {
@@ -52,3 +56,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withStorageContext(handlePost);

@@ -4,7 +4,7 @@ import React from "react";
 import ImageViewer from "./ImageViewer";
 import AudioPlayer from "./AudioPlayer";
 import useAppSelector from "../../../src/store/hooks";
-import { selectActiveProjectRootPath } from "../../../src/store/projectsSlice";
+import { selectActiveProjectDirectoryId } from "../../../src/store/projectsSlice";
 import type {
   ImageResource,
   AudioResource,
@@ -17,28 +17,32 @@ export interface MediaViewProps {
 }
 
 /**
- * Builds the file-serving URL for a media resource. The serving route requires
- * the project root as a query parameter, so it must be supplied and encoded.
+ * Builds the file-serving URL for a media resource.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+ * `StoredProject.id` — `/api/resource/[resource-id]/file` resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
  */
-export function mediaFileUrl(resourceId: string, projectPath: string): string {
-  return `/api/resource/${resourceId}/file?projectPath=${encodeURIComponent(
-    projectPath,
+export function mediaFileUrl(resourceId: string, projectId: string): string {
+  return `/api/resource/${resourceId}/file?projectId=${encodeURIComponent(
+    projectId,
   )}`;
 }
 
 /**
  * Container that renders the appropriate viewer for the selected media
  * resource: an {@link ImageViewer} for images, an {@link AudioPlayer} for
- * audio. Resolves the active project root from the store to build the
- * file-serving URL the viewers load from.
+ * audio. Resolves the active project's on-disk directory basename from the
+ * store to build the file-serving URL the viewers load from.
  */
 export default function MediaView({
   resource,
   className = "",
 }: MediaViewProps): JSX.Element {
-  const projectPath = useAppSelector(selectActiveProjectRootPath);
+  const projectId = useAppSelector(selectActiveProjectDirectoryId);
 
-  if (!projectPath) {
+  if (!projectId) {
     return (
       <div className="flex h-full min-h-0 w-full items-center justify-center px-4">
         <p className="text-sm text-gw-secondary">
@@ -48,7 +52,7 @@ export default function MediaView({
     );
   }
 
-  const src = mediaFileUrl(resource.id, projectPath);
+  const src = mediaFileUrl(resource.id, projectId);
 
   if (resource.type === "image") {
     return <ImageViewer src={src} alt={resource.name} className={className} />;

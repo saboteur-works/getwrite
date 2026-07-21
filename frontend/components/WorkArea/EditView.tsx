@@ -9,6 +9,7 @@ import {
   selectCurrentRevisionId,
   selectVisibleRevisions,
 } from "../../src/store/revisionsSlice";
+import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { selectResource } from "../../src/store/resourcesSlice";
 import RevisionControl from "../Editor/RevisionControl/RevisionControl";
 import {
@@ -76,18 +77,17 @@ export default function EditView({
       currentRevisionId !== null && currentRevisionId === canonicalRevisionId,
     [currentRevisionId, canonicalRevisionId],
   );
-  const projectId = useAppSelector(
-    (state) => state.projects.selectedProjectId,
-    shallowEqual,
-  );
-  const project = useAppSelector(
-    (state) => (projectId ? state.projects.projects[projectId] : null),
-    shallowEqual,
-  );
+  // The on-disk project directory basename (see
+  // `selectActiveProjectDirectoryId`'s doc comment) — never the active
+  // project's `StoredProject.id`, which mirrors project.json's independently
+  // generated internal `id` and is not guaranteed to match the directory
+  // name. This is what `useRevisionContent`/`useCanonicalAutosave` send as
+  // `projectId` to the tenant-scoped revision/resource routes.
+  const projectDirectoryId = useAppSelector(selectActiveProjectDirectoryId);
   const { content, tipTapDoc, setContent, setTipTapDoc } = useRevisionContent({
     initialContent,
     selectedResourceId: selectedResource?.id ?? null,
-    projectRootPath: project?.rootPath ?? null,
+    projectId: projectDirectoryId,
     currentRevisionId,
     currentRevisionContent,
   });
@@ -100,7 +100,7 @@ export default function EditView({
     retryFailedSave,
     clearSaveErrors,
   } = useCanonicalAutosave({
-    projectRootPath: project?.rootPath ?? null,
+    projectId: projectDirectoryId,
     selectedResourceId: selectedResource?.id ?? null,
     currentRevisionId,
     canonicalRevisionId,

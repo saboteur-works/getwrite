@@ -83,6 +83,49 @@ afterEach(async () => {
   }
 });
 
+/**
+ * Creates a projects directory containing a single UUID-named project, for
+ * exercising the projectId-based route handlers (which resolve `projectId`
+ * against `GETWRITE_PROJECTS_DIR` rather than accepting a raw path).
+ */
+async function makeTmpProjectsDirProject(): Promise<{
+  projectsDir: string;
+  projectId: string;
+  root: string;
+}> {
+  const projectsDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "gw-query-routes-dir-"),
+  );
+  const projectId = generateUUID();
+  const root = path.join(projectsDir, projectId);
+  await fs.mkdir(root, { recursive: true });
+  const proj = createProject({ name: "query-test" });
+  await fs.writeFile(
+    path.join(root, PROJECT_FILENAME),
+    JSON.stringify(proj, null, 2),
+    "utf8",
+  );
+  return { projectsDir, projectId, root };
+}
+
+/**
+ * Runs `fn` with `GETWRITE_PROJECTS_DIR` pointed at `projectsDir`, restoring
+ * the previous value and removing `projectsDir` afterward.
+ */
+async function withProjectsDirEnv<T>(
+  projectsDir: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+  process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+  try {
+    return await fn();
+  } finally {
+    process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+    await fs.rm(projectsDir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 // ─── evaluate route — executeEvaluate helper ──────────────────────────────────
 
 describe("executeEvaluate — happy path", () => {
@@ -262,7 +305,7 @@ describe("POST /api/project/query/evaluate — validation", () => {
   it("returns 400 when definition is missing", async () => {
     const req = new NextRequest("http://localhost/api/project/query/evaluate", {
       method: "POST",
-      body: JSON.stringify({ projectPath: "/tmp/x" }),
+      body: JSON.stringify({ projectId: generateUUID() }),
       headers: { "content-type": "application/json" },
     });
     const res = await evaluatePOST(req);
@@ -273,7 +316,7 @@ describe("POST /api/project/query/evaluate — validation", () => {
     const req = new NextRequest("http://localhost/api/project/query/evaluate", {
       method: "POST",
       body: JSON.stringify({
-        projectPath: "/tmp/x",
+        projectId: generateUUID(),
         definition: { op: "not-an-op" },
       }),
       headers: { "content-type": "application/json" },
@@ -282,24 +325,44 @@ describe("POST /api/project/query/evaluate — validation", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 200 with ids array for a valid request against a real project", async () => {
-    const root = await makeTmpProject();
-    const idA = await addResource(root, { type: "text", name: "Alpha" });
-    await addResource(root, { type: "image", name: "Beta" });
-
+  it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
     const req = new NextRequest("http://localhost/api/project/query/evaluate", {
       method: "POST",
       body: JSON.stringify({
-        projectPath: root,
+        projectId: "../../etc/passwd",
         definition: { op: "eq", field: "type", value: "text" },
       }),
       headers: { "content-type": "application/json" },
     });
     const res = await evaluatePOST(req);
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { ids: string[] };
-    expect(body.ids).toContain(idA);
-    expect(body.ids).toHaveLength(1);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("Invalid projectId");
+  });
+
+  it("returns 200 with ids array for a valid request against a real project", async () => {
+    const { projectsDir, projectId, root } = await makeTmpProjectsDirProject();
+    const idA = await addResource(root, { type: "text", name: "Alpha" });
+    await addResource(root, { type: "image", name: "Beta" });
+
+    await withProjectsDirEnv(projectsDir, async () => {
+      const req = new NextRequest(
+        "http://localhost/api/project/query/evaluate",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            projectId,
+            definition: { op: "eq", field: "type", value: "text" },
+          }),
+          headers: { "content-type": "application/json" },
+        },
+      );
+      const res = await evaluatePOST(req);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { ids: string[] };
+      expect(body.ids).toContain(idA);
+      expect(body.ids).toHaveLength(1);
+    });
   });
 });
 
@@ -321,122 +384,128 @@ function savedRequest(body: unknown): NextRequest {
 
 describe("POST /api/project/query/saved — list action", () => {
   it("returns an empty array when no queries exist", async () => {
-    const root = await makeTmpProject();
-    const res = await savedPOST(
-      savedRequest({ action: "list", projectPath: root }),
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { queries: SavedQuery[] };
-    expect(body.queries).toEqual([]);
+    const { projectsDir, projectId } = await makeTmpProjectsDirProject();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await savedPOST(savedRequest({ action: "list", projectId }));
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { queries: SavedQuery[] };
+      expect(body.queries).toEqual([]);
+    });
   });
 
   it("returns queries after they have been written", async () => {
-    const root = await makeTmpProject();
-    await savedPOST(
-      savedRequest({ action: "write", projectPath: root, query: SAMPLE_QUERY }),
-    );
-    const res = await savedPOST(
-      savedRequest({ action: "list", projectPath: root }),
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { queries: SavedQuery[] };
-    expect(body.queries).toHaveLength(1);
-    expect(body.queries[0]!.id).toBe(SAMPLE_QUERY.id);
+    const { projectsDir, projectId } = await makeTmpProjectsDirProject();
+    await withProjectsDirEnv(projectsDir, async () => {
+      await savedPOST(
+        savedRequest({ action: "write", projectId, query: SAMPLE_QUERY }),
+      );
+      const res = await savedPOST(savedRequest({ action: "list", projectId }));
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { queries: SavedQuery[] };
+      expect(body.queries).toHaveLength(1);
+      expect(body.queries[0]!.id).toBe(SAMPLE_QUERY.id);
+    });
   });
 });
 
 describe("POST /api/project/query/saved — read action", () => {
   it("returns null when the query does not exist", async () => {
-    const root = await makeTmpProject();
-    const res = await savedPOST(
-      savedRequest({ action: "read", projectPath: root, id: SAMPLE_QUERY.id }),
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { query: SavedQuery | null };
-    expect(body.query).toBeNull();
+    const { projectsDir, projectId } = await makeTmpProjectsDirProject();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await savedPOST(
+        savedRequest({ action: "read", projectId, id: SAMPLE_QUERY.id }),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { query: SavedQuery | null };
+      expect(body.query).toBeNull();
+    });
   });
 
   it("returns the query after it has been written", async () => {
-    const root = await makeTmpProject();
-    await savedPOST(
-      savedRequest({ action: "write", projectPath: root, query: SAMPLE_QUERY }),
-    );
-    const res = await savedPOST(
-      savedRequest({ action: "read", projectPath: root, id: SAMPLE_QUERY.id }),
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { query: SavedQuery };
-    expect(body.query.name).toBe(SAMPLE_QUERY.name);
+    const { projectsDir, projectId } = await makeTmpProjectsDirProject();
+    await withProjectsDirEnv(projectsDir, async () => {
+      await savedPOST(
+        savedRequest({ action: "write", projectId, query: SAMPLE_QUERY }),
+      );
+      const res = await savedPOST(
+        savedRequest({ action: "read", projectId, id: SAMPLE_QUERY.id }),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { query: SavedQuery };
+      expect(body.query.name).toBe(SAMPLE_QUERY.name);
+    });
   });
 });
 
 describe("POST /api/project/query/saved — write action", () => {
   it("persists a valid query and returns it", async () => {
-    const root = await makeTmpProject();
-    const res = await savedPOST(
-      savedRequest({ action: "write", projectPath: root, query: SAMPLE_QUERY }),
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { query: SavedQuery };
-    expect(body.query.id).toBe(SAMPLE_QUERY.id);
-    expect(body.query.name).toBe(SAMPLE_QUERY.name);
+    const { projectsDir, projectId } = await makeTmpProjectsDirProject();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await savedPOST(
+        savedRequest({ action: "write", projectId, query: SAMPLE_QUERY }),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { query: SavedQuery };
+      expect(body.query.id).toBe(SAMPLE_QUERY.id);
+      expect(body.query.name).toBe(SAMPLE_QUERY.name);
+    });
   });
 
   it("returns 400 when the query fails schema validation", async () => {
-    const root = await makeTmpProject();
-    const res = await savedPOST(
-      savedRequest({
-        action: "write",
-        projectPath: root,
-        query: { id: "not-a-uuid", name: "", definition: null },
-      }),
-    );
-    expect(res.status).toBe(400);
+    const { projectsDir, projectId } = await makeTmpProjectsDirProject();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await savedPOST(
+        savedRequest({
+          action: "write",
+          projectId,
+          query: { id: "not-a-uuid", name: "", definition: null },
+        }),
+      );
+      expect(res.status).toBe(400);
+    });
   });
 });
 
 describe("POST /api/project/query/saved — delete action", () => {
   it("returns deleted: false when the query does not exist", async () => {
-    const root = await makeTmpProject();
-    const res = await savedPOST(
-      savedRequest({
-        action: "delete",
-        projectPath: root,
-        id: SAMPLE_QUERY.id,
-      }),
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { deleted: boolean };
-    expect(body.deleted).toBe(false);
+    const { projectsDir, projectId } = await makeTmpProjectsDirProject();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await savedPOST(
+        savedRequest({ action: "delete", projectId, id: SAMPLE_QUERY.id }),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { deleted: boolean };
+      expect(body.deleted).toBe(false);
+    });
   });
 
   it("returns deleted: true after deleting an existing query", async () => {
-    const root = await makeTmpProject();
-    await savedPOST(
-      savedRequest({ action: "write", projectPath: root, query: SAMPLE_QUERY }),
-    );
-    const res = await savedPOST(
-      savedRequest({
-        action: "delete",
-        projectPath: root,
-        id: SAMPLE_QUERY.id,
-      }),
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { deleted: boolean };
-    expect(body.deleted).toBe(true);
+    const { projectsDir, projectId } = await makeTmpProjectsDirProject();
+    await withProjectsDirEnv(projectsDir, async () => {
+      await savedPOST(
+        savedRequest({ action: "write", projectId, query: SAMPLE_QUERY }),
+      );
+      const res = await savedPOST(
+        savedRequest({ action: "delete", projectId, id: SAMPLE_QUERY.id }),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { deleted: boolean };
+      expect(body.deleted).toBe(true);
+    });
   });
 });
 
 describe("POST /api/project/query/saved — invalid requests", () => {
   it("returns 400 for an unknown action", async () => {
-    const root = await makeTmpProject();
-    const res = await savedPOST(
-      savedRequest({ action: "upsert", projectPath: root }),
-    );
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toMatch(/invalid action/i);
+    const { projectsDir, projectId } = await makeTmpProjectsDirProject();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await savedPOST(
+        savedRequest({ action: "upsert", projectId }),
+      );
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toMatch(/invalid action/i);
+    });
   });
 
   it("returns 400 when request body is not valid JSON", async () => {
@@ -447,5 +516,14 @@ describe("POST /api/project/query/saved — invalid requests", () => {
     });
     const res = await savedPOST(req);
     expect(res.status).toBe(400);
+  });
+
+  it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
+    const res = await savedPOST(
+      savedRequest({ action: "list", projectId: "not-a-uuid" }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("Invalid projectId");
   });
 });

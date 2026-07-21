@@ -1,7 +1,13 @@
 import type { MarkdownConstructWarning } from "../export/types";
 
 export interface CompileBody {
-  projectPath: string;
+  /**
+   * Project's on-disk directory basename (see
+   * `selectActiveProjectDirectoryId` in `projectsSlice.ts`) — the
+   * `/api/compile/*` routes require this, not an absolute path and not
+   * `project.id`.
+   */
+  projectId: string;
   resourceIds: string[];
   resources: Array<{ id: string; name: string; type: string }>;
   includeHeaders: boolean;

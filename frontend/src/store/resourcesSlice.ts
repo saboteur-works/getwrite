@@ -26,7 +26,17 @@ export const persistReorder = createAsyncThunk(
     payload: ReorderPayload & { projectId: string; projectRoot: string },
   ) => {
     const { projectRoot, folderOrder, resourceOrder, projectId } = payload;
-    await reorderResources(projectId, { folderOrder, resourceOrder });
+    // `projectId` here is the project's on-disk directory basename (see
+    // `selectActiveProjectDirectoryId`), used for the route's URL segment.
+    // `projectRoot` (absolute path) is also forwarded in the body: the
+    // reorder route predates the tenant-route migration and still supports
+    // a legacy `body.projectRoot` fallback — see `reorderResources`'s doc
+    // comment for why this is still sent.
+    await reorderResources(
+      projectId,
+      { folderOrder, resourceOrder },
+      projectRoot,
+    );
     return { projectRoot, folderOrder, resourceOrder };
   },
 );
