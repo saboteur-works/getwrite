@@ -14,7 +14,12 @@ import {
 } from "../../src/lib/models/resource";
 import { readSidecar } from "../../src/lib/models/sidecar";
 import { readResourceExcerpts } from "../../src/lib/models/resource-persistence";
-import { getStorageAdapter, setStorageAdapter } from "../../src/lib/models/io";
+import {
+  getStorageAdapter,
+  mkdir,
+  setStorageAdapter,
+  writeFile,
+} from "../../src/lib/models/io";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
 import { removeDirRetry } from "./helpers/fs-utils";
 
@@ -372,27 +377,38 @@ describe("readResourceExcerpts", () => {
   });
 });
 
-describe("resource persistence routes through the active storage adapter", () => {
+describe("resource persistence reads route through the active storage adapter", () => {
   const original = getStorageAdapter();
 
   afterEach(() => {
     setStorageAdapter(original);
   });
 
-  it("write → read → excerpt round-trips entirely in memory, never touching disk", async () => {
-    // A fresh in-memory adapter with no backing filesystem: if any step fell
-    // back to node:fs it would hit a nonexistent path and fail, proving the
-    // whole persistence path resolves the ambient adapter.
+  it("getLocalResources + readResourceExcerpts resolve the ambient adapter, never disk", async () => {
+    // A fresh in-memory adapter with no backing filesystem. The fixture is laid
+    // down through the io wrappers (not writeResourceToFile, whose sidecar write
+    // schedules a fire-and-forget indexer task); if either loader fell back to
+    // node:fs it would read an empty real path and the assertions would fail.
     setStorageAdapter(createMemoryAdapter());
     const projectRoot = "/mem-project";
 
     const resource = createTextResource({
       name: "In-Memory Scene",
       plainText: "  the lighthouse keeper watched the storm roll in  ",
-      tiptap: { type: "doc", content: [{ type: "paragraph" }] },
     });
 
-    await writeResourceToFile(projectRoot, resource);
+    await mkdir(path.join(projectRoot, "meta"), { recursive: true });
+    await writeFile(
+      path.join(projectRoot, "meta", `resource-${resource.id}.meta.json`),
+      JSON.stringify(resource),
+    );
+    await mkdir(path.join(projectRoot, "resources", resource.id), {
+      recursive: true,
+    });
+    await writeFile(
+      path.join(projectRoot, "resources", resource.id, "content.txt"),
+      resource.plainText ?? "",
+    );
 
     const loaded = await getLocalResources(projectRoot);
     expect(loaded.map((r) => r.id)).toContain(resource.id);
