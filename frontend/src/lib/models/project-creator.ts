@@ -39,7 +39,7 @@
  *
  * See: `frontend/src/lib/models/schemas.ts`, `resource.ts`, and `sidecar.ts`.
  */
-import fs from "node:fs/promises";
+import { mkdir, writeFile } from "./io";
 import path from "node:path";
 import { createProject } from "./project";
 import { generateUUID } from "./uuid";
@@ -212,7 +212,7 @@ export async function createProjectFromType(options: {
   const specObj = await loadSpec(spec);
 
   // Ensure project root exists
-  await fs.mkdir(projectRoot, { recursive: true });
+  await mkdir(projectRoot, { recursive: true });
   const projectName = name ?? specObj.name;
   // Create Project JSON
   const project = createProject({
@@ -228,11 +228,11 @@ export async function createProjectFromType(options: {
   });
 
   const projectJsonPath = path.join(projectRoot, "project.json");
-  await fs.writeFile(projectJsonPath, JSON.stringify(project, null, 2), "utf8");
+  await writeFile(projectJsonPath, JSON.stringify(project, null, 2), "utf8");
 
   // Create folders (directories) and folder model objects
   const foldersDir = path.join(projectRoot, "folders");
-  await fs.mkdir(foldersDir, { recursive: true });
+  await mkdir(foldersDir, { recursive: true });
   const folders: Folder[] = [];
   // Tracks the relative path from foldersDir to each folder (keyed by folder ID).
   // Needed so subfolders of subfolders resolve the correct on-disk path rather
@@ -243,7 +243,7 @@ export async function createProjectFromType(options: {
     const id = generateUUID();
     const slug = slugify(String(f.name));
     const dir = path.join(foldersDir, slug);
-    await fs.mkdir(dir, { recursive: true });
+    await mkdir(dir, { recursive: true });
     const folderObj: Folder = {
       id,
       slug,
@@ -258,7 +258,7 @@ export async function createProjectFromType(options: {
     folders.push(folderObj);
     folderRelPaths.set(id, slug);
     // write a small folder descriptor file so the structure is discoverable
-    await fs.writeFile(
+    await writeFile(
       path.join(dir, "folder.json"),
       JSON.stringify(folderObj, null, 2),
       "utf8",
@@ -282,7 +282,7 @@ export async function createProjectFromType(options: {
       folderRelPaths.get(parentFolder.id) ?? parentFolder.slug;
     const relPath = `${parentRelPath}/${subSlug}`;
     const subDir = path.join(foldersDir, relPath);
-    await fs.mkdir(subDir, { recursive: true });
+    await mkdir(subDir, { recursive: true });
     const subFolder: Folder = {
       id: subId,
       slug: subSlug,
@@ -296,7 +296,7 @@ export async function createProjectFromType(options: {
     };
     folders.push(subFolder);
     folderRelPaths.set(subId, relPath);
-    await fs.writeFile(
+    await writeFile(
       path.join(subDir, "folder.json"),
       JSON.stringify(subFolder, null, 2),
       "utf8",
@@ -306,7 +306,7 @@ export async function createProjectFromType(options: {
   // Create default resources (placeholders) and sidecars
   const resources: TextResource[] = [];
   const resourcesDir = path.join(projectRoot, "resources");
-  await fs.mkdir(resourcesDir, { recursive: true });
+  await mkdir(resourcesDir, { recursive: true });
 
   for (const [orderIndex, r] of (specObj.defaultResources ?? []).entries()) {
     const folderSlug = r.folder ? slugify(String(r.folder)) : folders[0].slug;

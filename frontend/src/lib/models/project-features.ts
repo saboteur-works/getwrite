@@ -13,7 +13,7 @@
  * keys or sidecar values, so invalidating the query cache would be wasteful —
  * that bump is reserved for the one-time load migration.
  */
-import fs from "node:fs/promises";
+import { readFile, writeFile } from "./io";
 import path from "node:path";
 import { acquireLock } from "./locks";
 import { PROJECT_FILENAME } from "./project-config";
@@ -79,7 +79,7 @@ export async function updateFeatureConfig(
   const release = await acquireLock(projectRoot);
   try {
     const filePath = path.join(projectRoot, PROJECT_FILENAME);
-    const raw = await fs.readFile(filePath, "utf8");
+    const raw = await readFile(filePath, "utf8");
     const project = JSON.parse(raw) as Project;
     const config = project.config ?? { editorConfig: {} };
 
@@ -96,7 +96,7 @@ export async function updateFeatureConfig(
       updatedAt: new Date().toISOString(),
     };
     // NOTE: intentionally no metadataRevision bump — see module docstring.
-    await fs.writeFile(filePath, JSON.stringify(nextProject, null, 2), "utf8");
+    await writeFile(filePath, JSON.stringify(nextProject, null, 2), "utf8");
 
     return {
       features: config.features ?? {},

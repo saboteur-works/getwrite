@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "./io";
 import path from "node:path";
 import type { UUID, MetadataValue } from "./types";
 import { withMetaLock } from "./meta-locks";
@@ -26,7 +26,7 @@ export function sidecarPathForProject(
 async function bumpMetadataRevision(projectRoot: string): Promise<void> {
   const projectPath = path.join(projectRoot, PROJECT_FILENAME);
   try {
-    const raw = await fs.readFile(projectPath, "utf8");
+    const raw = await readFile(projectPath, "utf8");
     const project = JSON.parse(raw) as {
       config?: { metadataRevision?: number; [key: string]: unknown };
       [key: string]: unknown;
@@ -34,7 +34,7 @@ async function bumpMetadataRevision(projectRoot: string): Promise<void> {
     if (!project.config) project.config = {};
     project.config.metadataRevision =
       (project.config.metadataRevision ?? 0) + 1;
-    await fs.writeFile(projectPath, JSON.stringify(project, null, 2), "utf8");
+    await writeFile(projectPath, JSON.stringify(project, null, 2), "utf8");
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
     throw err;
@@ -53,7 +53,7 @@ export async function readSidecar(
 ): Promise<Record<string, MetadataValue> | null> {
   const filePath = sidecarPathForProject(projectRoot, resourceId);
   try {
-    const raw = await fs.readFile(filePath, "utf8");
+    const raw = await readFile(filePath, "utf8");
     return JSON.parse(raw) as Record<string, MetadataValue>;
   } catch (err: unknown) {
     // If the file doesn't exist, return null. Otherwise rethrow.
@@ -78,8 +78,8 @@ export async function writeSidecar(
   const filePath = sidecarPathForProject(projectRoot, resourceId);
   const json = JSON.stringify(metadata, null, 2);
   await withMetaLock(projectRoot, async () => {
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(filePath, json, "utf8");
+    await mkdir(dir, { recursive: true });
+    await writeFile(filePath, json, "utf8");
     await bumpMetadataRevision(projectRoot);
   });
   // Enqueue background indexing after sidecar update. Use dynamic import

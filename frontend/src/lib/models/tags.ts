@@ -10,7 +10,7 @@
  * side-effect free beyond that single file, so callers do not need to
  * maintain in-memory state.
  */
-import fs from "node:fs/promises";
+import { readFile, writeFile } from "./io";
 import path from "node:path";
 import { generateUUID } from "./uuid";
 import type { Project, Tag } from "./types";
@@ -26,7 +26,7 @@ import { PROJECT_FILENAME } from "./project-config";
  */
 async function readProject(projectRoot: string): Promise<Project> {
   const projectPath = path.join(projectRoot, PROJECT_FILENAME);
-  const raw = await fs.readFile(projectPath, "utf8");
+  const raw = await readFile(projectPath, "utf8");
   // JSON.parse returns `any`; we cast to Project here because strict Zod
   // validation is intentionally deferred to higher-level callers.
   return JSON.parse(raw) as Project;
@@ -74,7 +74,7 @@ async function writeProject(
   // Intentionally skip strict schema validation here to allow flexible
   // project.config augmentation (tags, assignments) without causing
   // unexpected Zod errors during incremental writes from helpers.
-  await fs.writeFile(projectPath, JSON.stringify(projectObj, null, 2), "utf8");
+  await writeFile(projectPath, JSON.stringify(projectObj, null, 2), "utf8");
 }
 
 /**

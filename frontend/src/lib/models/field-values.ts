@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+import { readdir } from "./io";
 import path from "node:path";
 import { readSidecar } from "./sidecar";
 import type { MetadataValue } from "./types";
@@ -91,7 +91,7 @@ export async function scanAllFieldValues(
   const metaDir = path.join(projectRoot, "meta");
   let entries: string[];
   try {
-    entries = await fs.readdir(metaDir);
+    entries = await readdir(metaDir);
   } catch {
     return new Map();
   }

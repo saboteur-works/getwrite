@@ -1,11 +1,11 @@
-import fs from "node:fs/promises";
+import { readFile, readdir, stat, writeFile } from "./io";
 import path from "node:path";
 
 /** Returns immediate child directory paths of `dir`, ignoring `.DS_Store`. Returns `[]` if `dir` is missing or unreadable. */
 async function childDirs(dir: string): Promise<string[]> {
   let names: string[];
   try {
-    names = (await fs.readdir(dir)).filter((n) => n !== ".DS_Store");
+    names = (await readdir(dir)).filter((n) => n !== ".DS_Store");
   } catch {
     return [];
   }
@@ -13,7 +13,7 @@ async function childDirs(dir: string): Promise<string[]> {
   for (const name of names) {
     const subDir = path.join(dir, name);
     try {
-      if ((await fs.stat(subDir)).isDirectory()) dirs.push(subDir);
+      if ((await stat(subDir)).isDirectory()) dirs.push(subDir);
     } catch {
       // stat failed (race condition, broken symlink) — skip
     }
@@ -33,7 +33,7 @@ export async function readFolderTree(dir: string): Promise<unknown[]> {
   const result: unknown[] = [];
   for (const subDir of await childDirs(dir)) {
     try {
-      const data = await fs.readFile(path.join(subDir, "folder.json"), "utf-8");
+      const data = await readFile(path.join(subDir, "folder.json"), "utf-8");
       result.push(JSON.parse(data));
     } catch {
       // no folder.json — skip descriptor, still recurse
@@ -56,11 +56,11 @@ export async function renameFolderById(
   for (const subDir of await childDirs(foldersDir)) {
     const folderJsonPath = path.join(subDir, "folder.json");
     try {
-      const raw = await fs.readFile(folderJsonPath, "utf-8");
+      const raw = await readFile(folderJsonPath, "utf-8");
       const data = JSON.parse(raw) as Record<string, unknown>;
       if (data.id === folderId) {
         const updated = { ...data, name: newName };
-        await fs.writeFile(
+        await writeFile(
           folderJsonPath,
           JSON.stringify(updated, null, 2),
           "utf-8",

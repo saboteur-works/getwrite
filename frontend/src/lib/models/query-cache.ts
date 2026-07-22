@@ -14,7 +14,7 @@
  *   evaluateCached — cache-aware async wrapper around an evaluator fn
  *   clearAllCaches — wipe the entire store (for test isolation)
  */
-import fs from "node:fs/promises";
+import { readFile } from "./io";
 import path from "node:path";
 import { PROJECT_FILENAME } from "./project-config";
 
@@ -81,7 +81,7 @@ export function clearAllCaches(): void {
  */
 export async function readRevision(projectRoot: string): Promise<number> {
   try {
-    const raw = await fs.readFile(
+    const raw = await readFile(
       path.join(projectRoot, PROJECT_FILENAME),
       "utf8",
     );

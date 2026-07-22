@@ -14,7 +14,17 @@
  * thrown errors for filesystem failures. When possible callers should run
  * template creation operations in a temporary project root during tests.
  */
-import fs from "node:fs/promises";
+import {
+  appendFile,
+  copyFile,
+  cp,
+  mkdir,
+  readFile,
+  readFileBuffer,
+  readdir,
+  stat,
+  writeFile,
+} from "./io";
 import path from "node:path";
 import { generateUUID } from "./uuid";
 import {
@@ -107,17 +117,17 @@ export async function saveResourceTemplate(
   template: ResourceTemplate,
 ): Promise<void> {
   const dir = TEMPLATES_DIR(projectRoot);
-  await fs.mkdir(dir, { recursive: true });
+  await mkdir(dir, { recursive: true });
   const file = path.join(dir, `${template.id}.json`);
   await withMetaLock(projectRoot, async () => {
     // read previous content if exists for change tracking
     let prevRaw: string | null = null;
     try {
-      prevRaw = await fs.readFile(file, "utf8");
+      prevRaw = await readFile(file, "utf8");
     } catch (_) {
       prevRaw = null;
     }
-    await fs.writeFile(file, JSON.stringify(template, null, 2), "utf8");
+    await writeFile(file, JSON.stringify(template, null, 2), "utf8");
     // record a compact change entry
     try {
       const prev = prevRaw ? JSON.parse(prevRaw) : null;
@@ -141,7 +151,7 @@ export async function loadResourceTemplate(
   templateId: string,
 ): Promise<ResourceTemplate> {
   const file = path.join(TEMPLATES_DIR(projectRoot), `${templateId}.json`);
-  const raw = await fs.readFile(file, "utf8");
+  const raw = await readFile(file, "utf8");
   return JSON.parse(raw) as ResourceTemplate;
 }
 
@@ -159,10 +169,10 @@ export async function listResourceTemplates(
   const dir = TEMPLATES_DIR(projectRoot);
   const out: Array<{ id: string; name: string; type: ResourceType }> = [];
   try {
-    const entries = await fs.readdir(dir);
+    const entries = await readdir(dir);
     for (const e of entries) {
       if (!e.endsWith(".json")) continue;
-      const raw = await fs.readFile(path.join(dir, e), "utf8");
+      const raw = await readFile(path.join(dir, e), "utf8");
       const parsed = JSON.parse(raw) as ResourceTemplate;
       const candidate = { id: parsed.id, name: parsed.name, type: parsed.type };
       const q = query?.toLowerCase();
@@ -266,7 +276,7 @@ export async function createResourceFromTemplate(
   const name = (opts?.name ?? tmpl.name) as string;
   const appliedName = (applyVars(name) as string) ?? name;
 
-  await fs.mkdir(RESOURCES_DIR(projectRoot), { recursive: true });
+  await mkdir(RESOURCES_DIR(projectRoot), { recursive: true });
 
   const plannedWrites: Array<{ path: string; content: string | null }> = [];
 
@@ -296,7 +306,7 @@ export async function createResourceFromTemplate(
       return { plannedWrites, resourcePreview: res };
     }
 
-    await fs.writeFile(filePath, content, "utf8");
+    await writeFile(filePath, content, "utf8");
     await writeSidecar(projectRoot, res.id, JSON.parse(sidecar));
     return res;
   }
@@ -324,7 +334,7 @@ export async function createResourceFromTemplate(
       return { plannedWrites, resourcePreview: res };
     }
 
-    await fs.writeFile(filePath, "", "utf8");
+    await writeFile(filePath, "", "utf8");
     await writeSidecar(projectRoot, res.id, JSON.parse(sidecar));
     return res;
   }
@@ -352,7 +362,7 @@ export async function createResourceFromTemplate(
     return { plannedWrites, resourcePreview: res };
   }
 
-  await fs.writeFile(filePath, "", "utf8");
+  await writeFile(filePath, "", "utf8");
   await writeSidecar(projectRoot, res.id, JSON.parse(sidecar));
   return res;
 }
@@ -384,7 +394,7 @@ export async function duplicateResource(
   const resourcesDir = RESOURCES_DIR(projectRoot);
   let foundName: string | null = null;
   try {
-    const entries = await fs.readdir(resourcesDir);
+    const entries = await readdir(resourcesDir);
     for (const e of entries) {
       if (e.includes(resourceId)) {
         foundName = e;
@@ -408,12 +418,12 @@ export async function duplicateResource(
   if (foundName) {
     const src = path.join(resourcesDir, foundName);
     const dest = path.join(resourcesDir, foundName.replace(resourceId, newId));
-    const st = await fs.stat(src);
+    const st = await stat(src);
     if (st.isDirectory()) {
       // Resource stored as a directory (newer layout); copy recursively
-      await fs.cp(src, dest, { recursive: true });
+      await cp(src, dest, { recursive: true });
     } else {
-      await fs.copyFile(src, dest);
+      await copyFile(src, dest);
     }
   }
 
@@ -444,8 +454,8 @@ export async function exportResourceTemplate(
   const name = `${tpl.id}.json`;
   const data = Buffer.from(JSON.stringify(tpl, null, 2), "utf8");
   const zip = createZipBuffer([{ name, data }]);
-  await fs.mkdir(path.dirname(outPath), { recursive: true });
-  await fs.writeFile(outPath, zip);
+  await mkdir(path.dirname(outPath), { recursive: true });
+  await writeFile(outPath, zip);
 }
 
 /**
@@ -461,20 +471,20 @@ export async function importResourceTemplates(
   projectRoot: string,
   packPath: string,
 ): Promise<string[]> {
-  const buf = await fs.readFile(packPath);
+  const buf = await readFileBuffer(packPath);
   const entries = parseZipBuffer(buf);
   if (!entries || entries.length === 0) {
     throw new Error("Invalid or empty template package");
   }
   const dir = TEMPLATES_DIR(projectRoot);
-  await fs.mkdir(dir, { recursive: true });
+  await mkdir(dir, { recursive: true });
   const imported: string[] = [];
   for (const e of entries) {
     if (!e.name.endsWith(".json")) continue;
     const tpl = JSON.parse(e.data.toString("utf8")) as ResourceTemplate;
     const file = path.join(dir, `${tpl.id}.json`);
     await withMetaLock(projectRoot, async () => {
-      await fs.writeFile(file, JSON.stringify(tpl, null, 2), "utf8");
+      await writeFile(file, JSON.stringify(tpl, null, 2), "utf8");
     });
     imported.push(tpl.id);
   }
@@ -542,7 +552,7 @@ export async function applyMultipleFromTemplate(
   templateId: string,
   inputPath: string,
 ): Promise<string[]> {
-  const raw = await fs.readFile(inputPath, "utf8");
+  const raw = await readFile(inputPath, "utf8");
   let entries: Array<Record<string, string>> = [];
   try {
     const parsed = JSON.parse(raw);
@@ -600,9 +610,9 @@ export async function saveTemplateVersion(
 ): Promise<string> {
   const dir = TEMPLATES_DIR(projectRoot);
   const file = path.join(dir, `${templateId}.json`);
-  const raw = await fs.readFile(file, "utf8");
+  const raw = await readFile(file, "utf8");
   // find existing versions
-  const entries = await fs.readdir(dir);
+  const entries = await readdir(dir);
   const re = new RegExp(`^${templateId}\\.v(\\d+)\\.json$`);
   let max = 0;
   for (const e of entries) {
@@ -612,7 +622,7 @@ export async function saveTemplateVersion(
   const next = max + 1;
   const verFile = path.join(dir, `${templateId}.v${next}.json`);
   await withMetaLock(projectRoot, async () => {
-    await fs.writeFile(verFile, raw, "utf8");
+    await writeFile(verFile, raw, "utf8");
   });
   return verFile;
 }
@@ -630,7 +640,7 @@ export async function listTemplateVersions(
 ): Promise<Array<{ file: string; version: number }>> {
   const dir = TEMPLATES_DIR(projectRoot);
   try {
-    const entries = await fs.readdir(dir);
+    const entries = await readdir(dir);
     const out: Array<{ file: string; version: number }> = [];
     const re = new RegExp(`^${templateId}\\.v(\\d+)\\.json$`);
     for (const e of entries) {
@@ -659,10 +669,10 @@ export async function rollbackTemplateVersion(
 ): Promise<void> {
   const dir = TEMPLATES_DIR(projectRoot);
   const verFile = path.join(dir, `${templateId}.v${version}.json`);
-  const raw = await fs.readFile(verFile, "utf8");
+  const raw = await readFile(verFile, "utf8");
   const mainFile = path.join(dir, `${templateId}.json`);
   await withMetaLock(projectRoot, async () => {
-    await fs.writeFile(mainFile, raw, "utf8");
+    await writeFile(mainFile, raw, "utf8");
   });
 }
 
@@ -683,7 +693,7 @@ export async function recordTemplateChange(
   next: ResourceTemplate,
 ): Promise<void> {
   const dir = TEMPLATES_DIR(projectRoot);
-  await fs.mkdir(dir, { recursive: true });
+  await mkdir(dir, { recursive: true });
   const changesFile = path.join(dir, `${templateId}.changes.jsonl`);
   const ts = new Date().toISOString();
   const changedKeys: string[] = [];
@@ -697,7 +707,7 @@ export async function recordTemplateChange(
     }
   }
   const entry = { ts, action: prev ? "edit" : "create", keys: changedKeys };
-  await fs.appendFile(changesFile, JSON.stringify(entry) + "\n", "utf8");
+  await appendFile(changesFile, JSON.stringify(entry) + "\n");
 }
 
 /**
@@ -717,7 +727,7 @@ export async function getTemplateChanges(
   const dir = TEMPLATES_DIR(projectRoot);
   const changesFile = path.join(dir, `${templateId}.changes.jsonl`);
   try {
-    const raw = await fs.readFile(changesFile, "utf8");
+    const raw = await readFile(changesFile, "utf8");
     const lines = raw.split(/\r?\n/).filter((l) => l.trim());
     const out: Array<{ ts: string; action: string; keys: string[] }> = [];
     for (const l of lines) {
@@ -875,13 +885,13 @@ export async function saveResourceTemplateFromResource(
   // locate the resource file if present
   let plainText: string | undefined = undefined;
   try {
-    const entries = await fs.readdir(RESOURCES_DIR(projectRoot));
+    const entries = await readdir(RESOURCES_DIR(projectRoot));
     for (const e of entries) {
       if (e.includes(resourceId)) {
         const p = path.join(RESOURCES_DIR(projectRoot), e);
         if (type === "text") {
           try {
-            plainText = await fs.readFile(p, "utf8");
+            plainText = await readFile(p, "utf8");
           } catch (_) {
             plainText = undefined;
           }
@@ -979,8 +989,8 @@ export async function previewResourceTemplate(
       ? ((preview as { plainText?: string }).plainText ?? "")
       : "";
   if (opts?.outPath) {
-    await fs.mkdir(path.dirname(opts.outPath), { recursive: true });
-    await fs.writeFile(opts.outPath, plain, "utf8");
+    await mkdir(path.dirname(opts.outPath), { recursive: true });
+    await writeFile(opts.outPath, plain, "utf8");
     return opts.outPath;
   }
   return plain;

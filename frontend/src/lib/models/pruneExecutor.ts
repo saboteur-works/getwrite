@@ -1,4 +1,4 @@
-import fs from "fs";
+import { readdir } from "./io";
 import path from "path";
 import { pruneRevisions } from "./revision";
 
@@ -9,9 +9,7 @@ import { pruneRevisions } from "./revision";
 export async function listResourceIds(projectRoot: string): Promise<string[]> {
   const revisionsRoot = path.join(projectRoot, "revisions");
   try {
-    const children = await fs.promises.readdir(revisionsRoot, {
-      withFileTypes: true,
-    });
+    const children = await readdir(revisionsRoot, { withFileTypes: true });
     return children.filter((d) => d.isDirectory()).map((d) => d.name);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];

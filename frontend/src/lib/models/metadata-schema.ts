@@ -8,7 +8,7 @@
  * Follow the same pattern as `tags.ts`: no optimistic in-memory state, direct
  * filesystem reads/writes, file locking for concurrent-write safety.
  */
-import fs from "node:fs/promises";
+import { readFile, readdir, writeFile } from "./io";
 import path from "node:path";
 import { acquireLock } from "./locks";
 import { PROJECT_FILENAME } from "./project-config";
@@ -44,7 +44,7 @@ const SLUG_RE = /^[a-z0-9-]+$/;
 
 async function readProject(projectRoot: string): Promise<Project> {
   const p = path.join(projectRoot, PROJECT_FILENAME);
-  const raw = await fs.readFile(p, "utf8");
+  const raw = await readFile(p, "utf8");
   return JSON.parse(raw) as Project;
 }
 
@@ -57,7 +57,7 @@ async function writeProject(
     project.config = { editorConfig: {} };
   }
   project.config.metadataRevision = (project.config.metadataRevision ?? 0) + 1;
-  await fs.writeFile(p, JSON.stringify(project, null, 2), "utf8");
+  await writeFile(p, JSON.stringify(project, null, 2), "utf8");
 }
 
 function getOrInitSchema(project: Project): MetadataSchema {
@@ -301,7 +301,7 @@ async function forEachUserMetadata(
   const metaDir = path.join(projectRoot, "meta");
   let entries: string[];
   try {
-    entries = await fs.readdir(metaDir);
+    entries = await readdir(metaDir);
   } catch {
     return;
   }
@@ -335,7 +335,7 @@ async function detectFeatureDataFromSidecars(
   const metaDir = path.join(projectRoot, "meta");
   let entries: string[];
   try {
-    entries = await fs.readdir(metaDir);
+    entries = await readdir(metaDir);
   } catch {
     return detected;
   }

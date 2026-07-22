@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "./io";
 import path from "node:path";
 import { z } from "zod";
 import { QueryASTSchema } from "./query-ast";
@@ -36,7 +36,7 @@ function queryFilePath(projectRoot: string, id: string): string {
 }
 
 async function ensureQueriesDir(projectRoot: string): Promise<void> {
-  await fs.mkdir(queriesDir(projectRoot), { recursive: true });
+  await mkdir(queriesDir(projectRoot), { recursive: true });
 }
 
 function isEnoent(err: unknown): boolean {
@@ -59,7 +59,7 @@ export async function listQueries(projectRoot: string): Promise<SavedQuery[]> {
   const dir = queriesDir(projectRoot);
   let entries: string[];
   try {
-    entries = await fs.readdir(dir);
+    entries = await readdir(dir);
   } catch (err: unknown) {
     if (isEnoent(err)) return [];
     throw err;
@@ -85,7 +85,7 @@ export async function readQuery(
 ): Promise<SavedQuery | null> {
   const filePath = queryFilePath(projectRoot, id);
   try {
-    const raw = await fs.readFile(filePath, "utf8");
+    const raw = await readFile(filePath, "utf8");
     return SavedQuerySchema.parse(JSON.parse(raw));
   } catch (err: unknown) {
     if (isEnoent(err)) return null;
@@ -105,7 +105,7 @@ export async function writeQuery(
   SavedQuerySchema.parse(query);
   await withMetaLock(projectRoot, async () => {
     await ensureQueriesDir(projectRoot);
-    await fs.writeFile(
+    await writeFile(
       queryFilePath(projectRoot, query.id),
       JSON.stringify(query, null, 2),
       "utf8",
@@ -123,7 +123,7 @@ export async function deleteQuery(
 ): Promise<boolean> {
   return withMetaLock(projectRoot, async () => {
     try {
-      await fs.unlink(queryFilePath(projectRoot, id));
+      await rm(queryFilePath(projectRoot, id));
       return true;
     } catch (err: unknown) {
       if (isEnoent(err)) return false;
