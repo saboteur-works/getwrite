@@ -186,19 +186,37 @@ masks a missing context for such paths.
 
 ---
 
-## 5. This Is a Seam, Not Full Isolation
+## 5. The Model Data Path Routes Through the Adapter
 
-Roughly twenty model files under `frontend/src/lib/models/` call
-`node:fs`/`node:fs/promises` directly rather than going through `io.ts`'s
-`StorageAdapter`. These are not covered by `StorageContext` and were deliberately
-not migrated in this slice — a documented, approved scope-down.
+The model layer's **data path** is fully adapter-routed: every file under
+`frontend/src/lib/models/` performs its filesystem I/O through the `io.ts`
+wrappers (`readFile`, `readFileBuffer`, `writeFile`, `mkdir`, `readdir`, `stat`,
+`rm`, `rename`, `copyFile`, `cp`, `appendFile`, `atomicWriteFile`, `exists`),
+which resolve `StorageContext.adapter` per call. As a result, isolation is
+delivered by **both** the resolved `tenantRoot` (path prefix) **and** the
+per-request `adapter` — the seam is now honored end-to-end, so injecting an
+alternate backend (a distinct real-fs adapter per request, S3/R2, etc.) is a
+backend swap that all model code respects with no direct-`fs` bypass.
 
-Tenant isolation today is delivered through `tenantRoot` (the resolved directory
-path): every model file respects it because they all take `projectRoot`/paths as
-explicit parameters. `StorageContext`'s `adapter` field is the seam for a future
-non-filesystem backend (e.g. S3), not yet a completed migration. Do not treat the
-presence of this context as proof that a given model function is adapter-routed —
-check whether it imports from `io.ts` or calls `node:fs`/`node:fs/promises` directly.
+New model code must import filesystem operations from `io.ts`, never
+`node:fs`/`node:fs/promises` (a bare `import type { Dirent } from "node:fs"` is
+fine). If a model function needs an operation the `StorageAdapter` contract does
+not model, extend the contract (interface + real-fs default in `io.ts` +
+`memoryAdapter.ts` + a wrapper export) rather than reaching for `node:fs`.
+
+**Documented exception — the backlinks watcher.** `backlinks-watcher.ts` uses
+`fs.watch` (a long-lived recursive `FSWatcher`) and its `existsSync` setup check
+directly against `node:fs`. The adapter models discrete operations, not
+watchers; the watcher is a local/desktop reindex optimization that is gated off
+under test and is not meaningful for a hosted deployment (where change
+notification is a different mechanism). Its *recompute* path already runs
+through the adapter via `runForTenant`. This is the one intentional direct-`fs`
+site in the model layer.
+
+> Note: full per-tenant *adapter* isolation still assumes each request/task
+> establishes its own `StorageContext` (Sections 2–3). The remaining backend
+> work (a concrete non-filesystem adapter) is deferred; the model layer is ready
+> for it.
 
 ---
 
