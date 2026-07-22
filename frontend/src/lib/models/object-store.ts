@@ -136,6 +136,20 @@ function fileToKey(name: string): string {
 }
 
 /**
+ * Process-local counter making each write's temp filename unique, so two
+ * concurrent `put`s to the same key never share a temp path and race.
+ */
+let tmpSequence = 0;
+
+/**
+ * Matches the temp filenames {@link createFsObjectStore.put} generates —
+ * `<encoded-key>.<pid>.<seq>.tmp` — precisely, so `list` hides in-flight write
+ * temps without also hiding a real object whose key merely ends in `.tmp`
+ * (which encodes to a filename ending in `.tmp` but never in `.<n>.<n>.tmp`).
+ */
+const TEMP_FILE_RE = /\.\d+\.\d+\.tmp$/;
+
+/**
  * Creates a filesystem-backed {@link ObjectStore} that persists each object as
  * a flat, percent-encoded file under `root`.
  *
@@ -166,8 +180,10 @@ export function createFsObjectStore(root: string): ObjectStore {
     put: async (key, data) => {
       await ensureRoot();
       // Write-then-rename so a concurrent reader never sees a partial object.
+      // The temp name carries a per-process sequence so two concurrent puts to
+      // the same key use distinct temp files rather than clobbering each other.
       const finalPath = keyToFile(root, key);
-      const tmpPath = `${finalPath}.${process.pid}.tmp`;
+      const tmpPath = `${finalPath}.${process.pid}.${tmpSequence++}.tmp`;
       await fs.writeFile(tmpPath, data);
       await fs.rename(tmpPath, finalPath);
     },
@@ -183,7 +199,7 @@ export function createFsObjectStore(root: string): ObjectStore {
         throw err;
       }
       return names
-        .filter((n) => !n.endsWith(".tmp"))
+        .filter((n) => !TEMP_FILE_RE.test(n))
         .map(fileToKey)
         .filter((k) => k.startsWith(prefix));
     },
@@ -191,8 +207,11 @@ export function createFsObjectStore(root: string): ObjectStore {
       try {
         await fs.stat(keyToFile(root, key));
         return true;
-      } catch {
-        return false;
+      } catch (err) {
+        // Only absence means "not present"; surface real errors (EACCES,
+        // EMFILE, …) rather than reporting an existing object as missing.
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") return false;
+        throw err;
       }
     },
   };

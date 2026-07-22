@@ -109,6 +109,38 @@ runObjectStoreContract("filesystem", async () => {
   };
 });
 
+describe("createFsObjectStore edge cases", () => {
+  it("list keeps an object whose key ends in .tmp, hiding only in-flight write temps", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "gw-objstore-"));
+    try {
+      const store = createFsObjectStore(root);
+      await store.put("a/notes.tmp", Buffer.from("real object"));
+      // A legitimate ".tmp"-suffixed key must remain visible (matches memory
+      // store); only the internal <key>.<pid>.<seq>.tmp temps are filtered.
+      expect(await store.list("a/")).toEqual(["a/notes.tmp"]);
+      expect((await store.get("a/notes.tmp")).toString()).toBe("real object");
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("concurrent puts to the same key do not race on a shared temp file", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "gw-objstore-"));
+    try {
+      const store = createFsObjectStore(root);
+      // With a per-process temp sequence, neither put throws ENOENT from a
+      // temp clobbered by the other; the survivor is one of the two writes.
+      await Promise.all([
+        store.put("k", Buffer.from("first")),
+        store.put("k", Buffer.from("second")),
+      ]);
+      expect(["first", "second"]).toContain((await store.get("k")).toString());
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("createFsObjectStore persistence", () => {
   it("a second store over the same root sees prior objects (durable)", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "gw-objstore-"));

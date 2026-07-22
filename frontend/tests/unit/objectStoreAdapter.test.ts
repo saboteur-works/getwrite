@@ -130,11 +130,15 @@ describe("objectStoreAdapter — rm / cp / copyFile / append", () => {
     });
   });
 
-  it("rm of a missing path is silent (force-style)", async () => {
+  it("rm of a missing path is silent with force, but throws ENOENT without it", async () => {
     const { adapter } = makeAdapter();
     await expect(
       adapter.rm("/p/never", { recursive: true, force: true }),
     ).resolves.toBeUndefined();
+    // fs parity: deleteQuery relies on the ENOENT throw to report "did not exist".
+    await expect(adapter.rm("/p/never")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 
   it("cp recursively copies a subtree without aliasing the source", async () => {
@@ -160,5 +164,27 @@ describe("objectStoreAdapter — rm / cp / copyFile / append", () => {
     await adapter.appendFile("/p/log.txt", "one");
     await adapter.appendFile("/p/log.txt", "two");
     expect(await adapter.readFile("/p/log.txt")).toBe("onetwo");
+  });
+});
+
+describe("objectStoreAdapter — file-onto-directory guard", () => {
+  it("writeFile onto an existing directory throws EISDIR", async () => {
+    const { adapter } = makeAdapter();
+    await adapter.mkdir("/p/dir", { recursive: true });
+    await expect(adapter.writeFile("/p/dir", "clobber")).rejects.toMatchObject({
+      code: "EISDIR",
+    });
+  });
+
+  it("renaming a file onto an existing directory throws EISDIR", async () => {
+    const { adapter } = makeAdapter();
+    await adapter.writeFile("/p/file.txt", "x");
+    await adapter.mkdir("/p/dir", { recursive: true });
+    await expect(adapter.rename("/p/file.txt", "/p/dir")).rejects.toMatchObject(
+      { code: "EISDIR" },
+    );
+    // The directory and the source file are both left intact.
+    expect((await adapter.stat("/p/dir")).isDirectory()).toBe(true);
+    expect(await adapter.readFile("/p/file.txt")).toBe("x");
   });
 });

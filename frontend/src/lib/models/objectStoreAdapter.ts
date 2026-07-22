@@ -82,6 +82,22 @@ export function objectStoreAdapter(store: ObjectStore): StorageAdapter {
   /** Lists every key under a directory prefix (marker + all descendants). */
   const listUnder = (key: string) => store.list(prefixOf(key));
 
+  /**
+   * Rejects writing a file object onto an existing directory (`EISDIR`),
+   * matching the filesystem — otherwise a bare file key would coexist with the
+   * directory's prefix, leaving `stat`/`readdir` in a contradictory state. The
+   * check is a single marker lookup, so it catches `mkdir`-created directories
+   * (how the model layer creates every directory) without a full prefix scan.
+   */
+  const assertNotDir = async (key: string, displayPath: string) => {
+    if (await store.has(prefixOf(key))) {
+      throw coded(
+        "EISDIR",
+        `illegal operation on a directory, '${displayPath}'`,
+      );
+    }
+  };
+
   return {
     mkdir: async (p) => {
       const key = toKey(p);
@@ -90,7 +106,9 @@ export function objectStoreAdapter(store: ObjectStore): StorageAdapter {
     },
 
     writeFile: async (p, data) => {
-      await store.put(toKey(p), toBuffer(data));
+      const key = toKey(p);
+      await assertNotDir(key, p);
+      await store.put(key, toBuffer(data));
     },
 
     readFile: async (p, encoding) => {
@@ -152,11 +170,15 @@ export function objectStoreAdapter(store: ObjectStore): StorageAdapter {
         await store.delete(key);
         return;
       }
-      // Directory (or missing): drop the marker and every descendant. Missing
-      // is tolerated silently, matching `memoryAdapter` and `force`-style rm.
+      // Directory: drop the marker and every descendant.
       const keys = await listUnder(key);
+      if (keys.length === 0) {
+        // Match fs.rm: a missing path is an error unless `force` is set. Callers
+        // like deleteQuery rely on the ENOENT throw to detect "did not exist".
+        if (opts?.force) return;
+        throw coded("ENOENT", `no such file or directory, '${p}'`);
+      }
       await Promise.all(keys.map((k) => store.delete(k)));
-      void opts;
     },
 
     rename: async (oldPath, newPath) => {
@@ -166,6 +188,7 @@ export function objectStoreAdapter(store: ObjectStore): StorageAdapter {
       // this — the temp object is already fully written, so the destination is
       // never observed partial.
       if (await store.has(srcKey)) {
+        await assertNotDir(dstKey, newPath);
         await store.put(dstKey, await store.get(srcKey));
         await store.delete(srcKey);
         return;
@@ -192,7 +215,9 @@ export function objectStoreAdapter(store: ObjectStore): StorageAdapter {
     },
 
     copyFile: async (src, dst) => {
-      await store.put(toKey(dst), await store.get(toKey(src)));
+      const dstKey = toKey(dst);
+      await assertNotDir(dstKey, dst);
+      await store.put(dstKey, await store.get(toKey(src)));
     },
 
     cp: async (src, dst) => {
