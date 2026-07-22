@@ -6,9 +6,15 @@
  * Project-type templates are JSON files stored under
  * `getwrite-config/templates/project-types` (with a fallback path for runtime
  * contexts where the workspace root is offset).
+ *
+ * These templates are **app-bundled configuration**, identical for every
+ * tenant, not per-tenant data — so they are read from the real filesystem via
+ * `node:fs`, never through the request-scoped storage adapter. Routing them
+ * through the adapter would send template reads to a tenant's object store
+ * (which has no templates) under the object-store backend (ADR-019).
  */
 import path from "node:path";
-import { readdir, readFile } from "./models/io";
+import { readdir, readFile } from "node:fs/promises";
 import { validateProjectType, ProjectTypeSpec } from "./models/schemas";
 
 /**
@@ -57,8 +63,11 @@ const ALT_TEMPLATES_DIR = path.join(
  * @returns Relative path to the selected templates directory.
  */
 async function resolveTemplatesDir(): Promise<string> {
-  // Try the default first, then the alt. Use the same `readdir` helper
-  // to preserve any virtual/fs semantics used in tests.
+  // An explicit override wins (used by tests to point at a temp dir, and
+  // available to deployments that relocate the bundled templates).
+  const override = process.env.GETWRITE_PROJECT_TYPES_DIR;
+  if (override) return override;
+  // Try the default first, then the alt.
   try {
     await readdir(DEFAULT_TEMPLATES_DIR, { withFileTypes: true });
     return DEFAULT_TEMPLATES_DIR;

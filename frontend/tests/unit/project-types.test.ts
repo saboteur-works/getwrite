@@ -1,18 +1,31 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { setStorageAdapter, writeFile, mkdir } from "../../src/lib/models/io";
-import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   listProjectTypes,
   getProjectType,
   clearProjectTypeCache,
 } from "../../src/lib/projectTypes";
 
+// Project-type templates are app-bundled config read from the real filesystem
+// (never the tenant storage adapter), so the loader is pointed at a real temp
+// directory via GETWRITE_PROJECT_TYPES_DIR rather than a virtualized adapter.
 describe("projectTypes loader (T005)", () => {
+  let templatesDir: string;
+  let savedDir: string | undefined;
+
   beforeEach(async () => {
-    setStorageAdapter(createMemoryAdapter());
+    templatesDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-projtypes-"));
+    savedDir = process.env.GETWRITE_PROJECT_TYPES_DIR;
+    process.env.GETWRITE_PROJECT_TYPES_DIR = templatesDir;
     clearProjectTypeCache();
-    // ensure templates dir exists
-    await mkdir("getwrite-config/templates/project-types", { recursive: true });
+  });
+
+  afterEach(async () => {
+    if (savedDir === undefined) delete process.env.GETWRITE_PROJECT_TYPES_DIR;
+    else process.env.GETWRITE_PROJECT_TYPES_DIR = savedDir;
+    await fs.rm(templatesDir, { recursive: true, force: true });
   });
 
   it("loads valid project-type JSON files", async () => {
@@ -21,8 +34,8 @@ describe("projectTypes loader (T005)", () => {
       name: "Novel",
       folders: [{ name: "Workspace" }, { name: "Chapters" }],
     };
-    await writeFile(
-      "getwrite-config/templates/project-types/novel.json",
+    await fs.writeFile(
+      path.join(templatesDir, "novel.json"),
       JSON.stringify(spec),
     );
 
@@ -37,8 +50,8 @@ describe("projectTypes loader (T005)", () => {
 
   it("skips invalid JSON or invalid specs", async () => {
     // invalid JSON
-    await writeFile(
-      "getwrite-config/templates/project-types/bad.json",
+    await fs.writeFile(
+      path.join(templatesDir, "bad.json"),
       "{ not: valid json",
     );
 
@@ -48,15 +61,15 @@ describe("projectTypes loader (T005)", () => {
       name: "Bad",
       folders: [{ name: "Chapters" }],
     };
-    await writeFile(
-      "getwrite-config/templates/project-types/invalid.json",
+    await fs.writeFile(
+      path.join(templatesDir, "invalid.json"),
       JSON.stringify(invalidSpec),
     );
 
     // valid one
     const ok = { id: "short", name: "Short", folders: [{ name: "Workspace" }] };
-    await writeFile(
-      "getwrite-config/templates/project-types/short.json",
+    await fs.writeFile(
+      path.join(templatesDir, "short.json"),
       JSON.stringify(ok),
     );
 
