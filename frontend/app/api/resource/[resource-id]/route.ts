@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs";
 import path from "node:path";
+import { cp, exists } from "../../../../src/lib/models/io";
 import { readSidecar, writeSidecar } from "../../../../src/lib/models/sidecar";
 import { generateUUID } from "../../../../src/lib/models/uuid";
 import {
@@ -20,8 +20,8 @@ const copyResource = async (
   const srcDir = path.join(projectRoot, "resources", sourceId);
   const dstDir = path.join(projectRoot, "resources", newId);
 
-  if (fs.existsSync(srcDir)) {
-    fs.cpSync(srcDir, dstDir, { recursive: true });
+  if (await exists(srcDir)) {
+    await cp(srcDir, dstDir, { recursive: true });
   }
 
   const sourceSidecar = await readSidecar(projectRoot, sourceId);

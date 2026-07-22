@@ -16,9 +16,9 @@
  * - `{ error: string, details: string }` with HTTP 400 for invalid input
  * - `{ error: string, details: string }` with HTTP 500 for filesystem errors
  */
-import fs from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
+import { readFile } from "../../../../../src/lib/models/io";
 import { QueryASTSchema } from "../../../../../src/lib/models/query-ast";
 import type { QueryAST } from "../../../../../src/lib/models/query-ast";
 import {
@@ -99,7 +99,7 @@ function sidecarToResourceBase(
 
 async function loadProjectConfig(projectRoot: string): Promise<ProjectConfig> {
   try {
-    const raw = await fs.readFile(
+    const raw = await readFile(
       path.join(projectRoot, PROJECT_FILENAME),
       "utf8",
     );
@@ -135,7 +135,7 @@ async function deriveTextCounts(
   // sidecar — so derive the counts here rather than trusting the sidecar.
   // Otherwise wordCount / charCount predicates silently match nothing.
   try {
-    const plain = await fs.readFile(
+    const plain = await readFile(
       path.join(projectRoot, "resources", id, "content.txt"),
       "utf8",
     );

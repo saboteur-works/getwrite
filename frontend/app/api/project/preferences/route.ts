@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs/promises";
+import { readFile, writeFile } from "../../../../src/lib/models/io";
 import path from "node:path";
 import {
   mergeUserPreferencesIntoProjectMetadata,
@@ -46,7 +46,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
     const { projectPath } = resolved;
     const projectFilePath = path.join(projectPath, "project.json");
     const parsedProject = JSON.parse(
-      await fs.readFile(projectFilePath, "utf-8"),
+      await readFile(projectFilePath, "utf-8"),
     ) as { metadata?: Record<string, MetadataValue>; updatedAt?: string };
 
     const updatedMetadata = mergeUserPreferencesIntoProjectMetadata(
@@ -54,7 +54,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
       preferences,
     );
 
-    await fs.writeFile(
+    await writeFile(
       projectFilePath,
       JSON.stringify(
         {

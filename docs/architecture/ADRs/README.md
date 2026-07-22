@@ -30,3 +30,4 @@ This directory contains Architectural Decision Records (ADRs) for GetWrite.
 
 17. [Request-Scoped, Directory-Per-Tenant Storage for Hosted GetWrite](./adr-017-request-scoped-directory-per-tenant-storage.md)
 18. [Tenant Resolution — Mapping a Request to a Per-User Data Root](./adr-018-tenant-resolution-per-user-data-root.md)
+19. [Object-Store Backend Adapter — Proving the Seam Against a Non-Filesystem Backend](./adr-019-object-store-backend-adapter.md)

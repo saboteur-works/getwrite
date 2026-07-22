@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+import { readFile, writeFile, readdir } from "../../../../../src/lib/models/io";
 import type { Dirent } from "node:fs";
 import path from "node:path";
 import type { NextRequest } from "next/server";
@@ -12,13 +12,13 @@ import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 async function findProjectRoot(projectsDir: string, projectId: string) {
   try {
-    const names = await fs.readdir(projectsDir, { withFileTypes: true });
+    const names = await readdir(projectsDir, { withFileTypes: true });
     for (const d of names) {
       if (!d.isDirectory()) continue;
       const candidate = path.join(projectsDir, d.name);
       const pj = path.join(candidate, "project.json");
       try {
-        const parsed = JSON.parse(await fs.readFile(pj, "utf8")) as {
+        const parsed = JSON.parse(await readFile(pj, "utf8")) as {
           id?: string;
         };
         if (parsed?.id === projectId) return candidate;
@@ -62,9 +62,9 @@ async function reorder(
   try {
     await withMetaLock(projectRoot, async () => {
       const foldersDir = path.join(projectRoot, "folders");
-      const folderDirs = await fs
-        .readdir(foldersDir, { withFileTypes: true })
-        .catch(() => [] as Dirent[]);
+      const folderDirs = await readdir(foldersDir, {
+        withFileTypes: true,
+      }).catch(() => [] as Dirent[]);
 
       for (const fo of folderOrder) {
         for (const d of folderDirs) {
@@ -72,13 +72,13 @@ async function reorder(
           const folderJson = path.join(foldersDir, d.name, "folder.json");
           try {
             const parsed = JSON.parse(
-              await fs.readFile(folderJson, "utf8"),
+              await readFile(folderJson, "utf8"),
             ) as { id?: string; orderIndex?: number; parentId?: string | null };
             if (parsed && parsed.id === fo.id) {
               parsed.orderIndex = fo.orderIndex;
               parsed.parentId = fo.folderId ?? null;
               // write updated folder.json atomically
-              await fs.writeFile(
+              await writeFile(
                 folderJson,
                 JSON.stringify(parsed, null, 2),
                 "utf8",

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "node:path";
-import fs from "node:fs/promises";
+import { readFile } from "../../../src/lib/models/io";
 import { ResourceType, TipTapDocument } from "../../../src/lib/models";
 import { listRevisions } from "../../../src/lib/models/revision";
 import { resolveProjectPath } from "../../../src/lib/models/project-path";
@@ -18,7 +18,7 @@ async function getProjectResource(
     let tipTapContent: TipTapDocument | null = null;
     try {
       tipTapContent = JSON.parse(
-        await fs.readFile(tiptapPath, "utf-8"),
+        await readFile(tiptapPath, "utf-8"),
       ) as TipTapDocument;
     } catch {
       // no tiptap file
@@ -27,7 +27,7 @@ async function getProjectResource(
     let plaintextContent: string | null = null;
     const plaintextPath = path.join(resourceDir, "content.txt");
     try {
-      plaintextContent = await fs.readFile(plaintextPath, "utf-8");
+      plaintextContent = await readFile(plaintextPath, "utf-8");
     } catch {
       // no plaintext file
     }

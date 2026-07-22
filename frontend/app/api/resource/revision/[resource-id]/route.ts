@@ -17,7 +17,7 @@
  *   Removes a revision directory by revision UUID. Body carries `projectId`.
  */
 import path from "node:path";
-import fs from "node:fs/promises";
+import { readFile, writeFile, rm } from "../../../../../src/lib/models/io";
 import { NextRequest, NextResponse } from "next/server";
 import {
   listRevisions,
@@ -129,7 +129,7 @@ async function readRevisionContent(
     revisionDir(projectPath, resourceId, versionNumber),
     "content.bin",
   );
-  return fs.readFile(contentPath, "utf8");
+  return readFile(contentPath, "utf8");
 }
 
 async function writeRevisionContent(
@@ -142,7 +142,7 @@ async function writeRevisionContent(
     revisionDir(projectPath, resourceId, versionNumber),
     "content.bin",
   );
-  await fs.writeFile(contentPath, content, "utf8");
+  await writeFile(contentPath, content, "utf8");
 }
 
 /**
@@ -199,14 +199,14 @@ async function readCurrentResourceContent(
 
   const tiptapPath = path.join(resourceDir, "content.tiptap.json");
   try {
-    return await fs.readFile(tiptapPath, "utf8");
+    return await readFile(tiptapPath, "utf8");
   } catch {
     // Fall through to plaintext
   }
 
   const plaintextPath = path.join(resourceDir, "content.txt");
   try {
-    return await fs.readFile(plaintextPath, "utf8");
+    return await readFile(plaintextPath, "utf8");
   } catch {
     throw new Error(
       `No readable content file found for resource ${resourceId}.`,
@@ -363,7 +363,7 @@ async function handleDelete(
       resourceId,
       target.versionNumber,
     );
-    await fs.rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true });
 
     return NextResponse.json(target, { status: 200 });
   } catch (error) {

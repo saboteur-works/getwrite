@@ -15,10 +15,10 @@
  * Success payload: `SearchResult[]` ordered by proximity score (multi-term) or term frequency (single-term)
  * Failure payload: `{ error: string }`
  */
-import fs from "node:fs/promises";
 import type { Dirent } from "node:fs";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
+import { readFile, readdir } from "../../../../../src/lib/models/io";
 import { search, tokenize } from "../../../../../src/lib/models/inverted-index";
 import { computeProximityScore } from "../../../../../src/lib/models/search-scoring";
 import { readSidecar } from "../../../../../src/lib/models/sidecar";
@@ -79,7 +79,7 @@ async function findProjectRoot(
 ): Promise<string | null> {
   let entries: Dirent[];
   try {
-    entries = await fs.readdir(projectsDir, { withFileTypes: true });
+    entries = await readdir(projectsDir, { withFileTypes: true });
   } catch {
     return null;
   }
@@ -88,10 +88,7 @@ async function findProjectRoot(
     if (!entry.isDirectory()) continue;
     const candidate = path.join(projectsDir, entry.name);
     try {
-      const raw = await fs.readFile(
-        path.join(candidate, "project.json"),
-        "utf8",
-      );
+      const raw = await readFile(path.join(candidate, "project.json"), "utf8");
       const parsed = JSON.parse(raw) as { id?: string };
       if (parsed?.id === projectId) return candidate;
     } catch {
@@ -116,7 +113,7 @@ async function loadCanonicalText(
 
   let text: string;
   try {
-    text = await fs.readFile(contentPath, "utf8");
+    text = await readFile(contentPath, "utf8");
   } catch {
     return "";
   }
@@ -137,10 +134,7 @@ async function loadTagAssignments(
 ): Promise<Record<string, string[]>> {
   // Load tag assignments from project.json (tags live in project config, not sidecars).
   try {
-    const raw = await fs.readFile(
-      path.join(projectRoot, "project.json"),
-      "utf8",
-    );
+    const raw = await readFile(path.join(projectRoot, "project.json"), "utf8");
     const project = JSON.parse(raw) as Project;
     return project.config?.tagAssignments ?? {};
   } catch {
@@ -294,10 +288,7 @@ async function handleSearch(
 
   let limit = DEFAULT_RESULT_LIMIT;
   try {
-    const raw = await fs.readFile(
-      path.join(projectRoot, "project.json"),
-      "utf8",
-    );
+    const raw = await readFile(path.join(projectRoot, "project.json"), "utf8");
     const project = JSON.parse(raw) as Project;
     const prefs = getUserPreferencesFromProjectMetadata(project.metadata);
     if (prefs.searchResultLimit !== undefined) {

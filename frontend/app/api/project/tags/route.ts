@@ -16,7 +16,7 @@
  * - `{ action: "assignments", projectId: string, resourceId: string }`
  */
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs/promises";
+import { readFile } from "../../../../src/lib/models/io";
 import path from "node:path";
 import { listTags, createTag } from "../../../../src/lib/models/tags";
 import { PROJECT_FILENAME } from "../../../../src/lib/models/project-config";
@@ -71,7 +71,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
     }
 
     if (body.action === "assignments") {
-      const raw = await fs.readFile(
+      const raw = await readFile(
         path.join(projectPath, PROJECT_FILENAME),
         "utf8",
       );

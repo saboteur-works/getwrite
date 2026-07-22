@@ -3,7 +3,7 @@ import path from "node:path";
 import { getProjectType } from "../../../src/lib/projectTypes";
 import { createProjectFromType } from "../../../src/lib/models/project-creator";
 import { generateUUID } from "../../../src/lib/models/uuid";
-import fs from "node:fs/promises";
+import { readFile, readdir } from "../../../src/lib/models/io";
 import { getLocalResources } from "../../../src/lib/models";
 import { readFolderTree } from "../../../src/lib/models/folder-utils";
 import { resolveProjectsDir } from "../../../src/lib/models/projects-dir";
@@ -15,13 +15,13 @@ import { withStorageContext } from "../_tenant/with-storage-context";
 async function getProjects() {
   try {
     const projectsDir = resolveProjectsDir();
-    const projectIds = (await fs.readdir(projectsDir)).filter(
+    const projectIds = (await readdir(projectsDir)).filter(
       (file) => file !== ".DS_Store",
     );
     const projects = await Promise.all(
       projectIds.map(async (id) => {
         const projectPath = path.join(projectsDir, id, "project.json");
-        const projectData = await fs.readFile(projectPath, "utf-8");
+        const projectData = await readFile(projectPath, "utf-8");
         const project = JSON.parse(projectData);
 
         const foldersPath = path.join(projectsDir, id, "folders");

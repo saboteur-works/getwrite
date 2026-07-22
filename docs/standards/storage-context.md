@@ -210,13 +210,49 @@ directly against `node:fs`. The adapter models discrete operations, not
 watchers; the watcher is a local/desktop reindex optimization that is gated off
 under test and is not meaningful for a hosted deployment (where change
 notification is a different mechanism). Its *recompute* path already runs
-through the adapter via `runForTenant`. This is the one intentional direct-`fs`
+through the adapter via `runForTenant`. This is one intentional direct-`fs`
 site in the model layer.
 
-> Note: full per-tenant *adapter* isolation still assumes each request/task
-> establishes its own `StorageContext` (Sections 2–3). The remaining backend
-> work (a concrete non-filesystem adapter) is deferred; the model layer is ready
-> for it.
+**Sanctioned direct-`fs` sites — the storage backends themselves.** `io.ts`
+(the default adapter), `memoryAdapter.ts` (in-memory), and `object-store.ts`'s
+`createFsObjectStore` (the filesystem-backed object store) use `node:fs`
+directly because they *are* storage backends, not model data-path code — the
+same category as the exception above. They are the concrete ends the wrappers
+resolve to, so the "route through the adapter" rule does not apply to them.
+
+### Route handlers route tenant data through the adapter too
+
+The `io.ts` rule extends past `src/lib/models/`: API route handlers under
+`app/api/` that read or write **tenant data** (project files, resource content,
+revisions, folders, sidecars, media) must also go through the `io.ts` wrappers,
+not `node:fs` — otherwise, under a non-filesystem backend, a handler would read
+local disk while writes went to the object store. Every such route is already
+`withStorageContext`-wrapped, so the wrappers resolve the request's adapter.
+
+**App-bundled configuration is the exception.** Files shipped with the app and
+identical for every tenant — project-type templates under `getwrite-config/`
+(`src/lib/projectTypes.ts`), the running version's `package.json`
+(`version-check`) — are **not** tenant data and are read directly from
+`node:fs`. Routing them through the tenant adapter would send those reads to a
+tenant's object store, which has no such files. Keep app-config on `node:fs`;
+keep tenant data on the adapter.
+
+### The object-store backend (ADR-019)
+
+A concrete non-filesystem backend now exists. `objectStoreAdapter.ts` implements
+the `StorageAdapter` contract over a flat `ObjectStore` key/value seam
+(`object-store.ts`), bridging object-store semantics — directory markers,
+prefix-listing `readdir`, `rename` emulation — to the model layer's filesystem
+expectations. It is selected per request by `resolveBackendAdapter()`
+(`app/api/_tenant/storage-backend.ts`, the sibling of `getIdentitySource()`):
+unset → the default filesystem adapter (desktop/local unchanged);
+`GETWRITE_STORAGE_BACKEND=object-store` → the object-store adapter rooted at
+`GETWRITE_OBJECT_STORE_ROOT`. A real S3/R2 client is a later `ObjectStore`
+implementation swapped in behind that selector — a backend change, not a
+rewrite. A shared conformance suite
+(`tests/unit/storage-adapter-conformance.ts`) runs identically against the fs
+adapter and the object store over both stores, proving the seam is transparent
+to the model layer.
 
 ---
 

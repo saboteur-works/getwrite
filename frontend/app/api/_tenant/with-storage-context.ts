@@ -26,8 +26,8 @@
  */
 import { runInStorageContext } from "../../../src/lib/models/storage-context";
 import { defaultProjectsDir } from "../../../src/lib/models/projects-dir";
-import { getStorageAdapter } from "../../../src/lib/models/io";
 import { resolveTenant } from "./resolve-tenant";
+import { resolveBackendAdapter } from "./storage-backend";
 
 /**
  * Wraps a Next.js route handler of any arity (`GET()`, `POST(req)`,
@@ -58,13 +58,19 @@ export function withStorageContext<Args extends unknown[], Return>(
   return async (...args: Args) => {
     const request = args[0];
 
-    const tenantRoot =
-      request instanceof Request
-        ? (await resolveTenant(request)).dataRoot
-        : defaultProjectsDir();
+    // Both halves of the context are resolved per-request: `tenantRoot` (the
+    // path prefix) and `adapter` (the storage backend, ADR-019). For a real
+    // request both come from `resolveTenant`; the non-Request defensive branch
+    // (which Next.js routing should never hit) still honors the backend env.
+    if (request instanceof Request) {
+      const { dataRoot, adapter } = await resolveTenant(request);
+      return await runInStorageContext({ tenantRoot: dataRoot, adapter }, () =>
+        handler(...args),
+      );
+    }
 
     return await runInStorageContext(
-      { tenantRoot, adapter: getStorageAdapter() },
+      { tenantRoot: defaultProjectsDir(), adapter: resolveBackendAdapter() },
       () => handler(...args),
     );
   };
