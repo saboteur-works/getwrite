@@ -197,5 +197,3 @@ export function createFsObjectStore(root: string): ObjectStore {
     },
   };
 }
-
-export default { createMemoryObjectStore, createFsObjectStore };

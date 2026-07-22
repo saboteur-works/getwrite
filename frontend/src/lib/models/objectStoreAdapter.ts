@@ -225,5 +225,3 @@ export function objectStoreAdapter(store: ObjectStore): StorageAdapter {
     // durability flush, and the io.ts wrapper no-ops when it is absent.
   };
 }
-
-export default { objectStoreAdapter };
