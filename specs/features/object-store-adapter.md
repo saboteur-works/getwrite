@@ -88,6 +88,11 @@ different semantics.
 - **FR8** The `object-store.ts` filesystem-backed store legitimately uses
   `node:fs` directly (it is a backend, not model data-path code); the grep guard
   and `storage-context.md` sanction it alongside `io.ts`/`memoryAdapter.ts`.
+- **FR8a** Every `app/api/` route that reads or writes **tenant data** routes
+  through the `io.ts` wrappers (not `node:fs`), so the object-store backend works
+  end-to-end, not only at the model layer. App-bundled configuration
+  (project-type templates in `projectTypes.ts`, `version-check`) is read directly
+  from `node:fs` — it is not tenant data and must not be sent to a tenant's store.
 - **FR9** The full quality gate stays green: `typecheck`, `lint` (0 errors),
   `test:ci`, `knip`, plus a CLI + app smoke, with no new dependency added.
 

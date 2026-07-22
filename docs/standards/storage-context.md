@@ -220,6 +220,23 @@ directly because they *are* storage backends, not model data-path code — the
 same category as the exception above. They are the concrete ends the wrappers
 resolve to, so the "route through the adapter" rule does not apply to them.
 
+### Route handlers route tenant data through the adapter too
+
+The `io.ts` rule extends past `src/lib/models/`: API route handlers under
+`app/api/` that read or write **tenant data** (project files, resource content,
+revisions, folders, sidecars, media) must also go through the `io.ts` wrappers,
+not `node:fs` — otherwise, under a non-filesystem backend, a handler would read
+local disk while writes went to the object store. Every such route is already
+`withStorageContext`-wrapped, so the wrappers resolve the request's adapter.
+
+**App-bundled configuration is the exception.** Files shipped with the app and
+identical for every tenant — project-type templates under `getwrite-config/`
+(`src/lib/projectTypes.ts`), the running version's `package.json`
+(`version-check`) — are **not** tenant data and are read directly from
+`node:fs`. Routing them through the tenant adapter would send those reads to a
+tenant's object store, which has no such files. Keep app-config on `node:fs`;
+keep tenant data on the adapter.
+
 ### The object-store backend (ADR-019)
 
 A concrete non-filesystem backend now exists. `objectStoreAdapter.ts` implements

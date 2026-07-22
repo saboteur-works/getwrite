@@ -69,6 +69,7 @@ On the one POSIX-hard dependency: the object-store adapter **preserves the fail-
 ### Positive
 
 - The adapter seam is proven end-to-end against a backend with genuinely different semantics; a reusable `StorageAdapter` conformance suite runs identically against the fs adapter, the object store over an in-memory store, and the object store over a filesystem store.
+- Building the backend surfaced (and a code review confirmed) that the `app/api/` route layer still performed tenant-data I/O via direct `node:fs`, bypassing the adapter. Every tenant-data route was migrated onto the `io.ts` wrappers, and app-bundled config (project-type templates, `version-check`) was kept on `node:fs` by design — completing the adapter routing the model-layer slice began. A live object-store smoke (project create → list → search) now runs with tenant data written only to the object store, nothing to local disk.
 - A future S3/R2 backend is a small `ObjectStore` implementation swapped in at `resolveBackendAdapter()` — no model-layer or route changes.
 - The object-store backend is genuinely runnable in dev/CI (and a hosted single-volume deployment) with zero new dependencies.
 - Both halves of the storage context — `tenantRoot` and `adapter` — are now resolved per request; tenant provisioning routes through the selected backend.
