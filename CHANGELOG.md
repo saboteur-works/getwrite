@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.4.0...getwrite-v1.5.0) (2026-07-22)
+
+
+### Features
+
+* object-store storage backend (ADR-019) ([#158](https://github.com/saboteur-works/getwrite/issues/158)) ([f553583](https://github.com/saboteur-works/getwrite/commit/f553583c9b71691112fbae0c74b5d6095e444b90))
+
 ## [1.4.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.3.0...getwrite-v1.4.0) (2026-07-22)
 
 
