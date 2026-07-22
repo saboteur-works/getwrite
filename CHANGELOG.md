@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.4.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.3.0...getwrite-v1.4.0) (2026-07-22)
+
+
+### Features
+
+* **io:** extend StorageAdapter with copyFile/cp/appendFile/readFileBuffer ([d2360c1](https://github.com/saboteur-works/getwrite/commit/d2360c11c8ce55523b291482a423ef57ac8fbb1c))
+* **task-1:** add validateProjectId guard and respondInvalidProjectId helper ([1a74254](https://github.com/saboteur-works/getwrite/commit/1a742544aa74856df22a1d3c851dac6a8f1b6dde))
+* **task-2:** migrate compile routes to tenant-scoped projectId ([ca256ed](https://github.com/saboteur-works/getwrite/commit/ca256ed06ca14c9e699a8efcc0ad82ff2c17f93c))
+* **task-3:** migrate export routes to tenant-scoped projectId ([9e088e6](https://github.com/saboteur-works/getwrite/commit/9e088e63b1d5444abfc5ffc35892d05e61736f3e))
+* **task-4:** migrate project-level routes to tenant-scoped projectId ([478913e](https://github.com/saboteur-works/getwrite/commit/478913ef023ceaeac23c6923aeebe1692b7179ce))
+* **task-5:** migrate tags and query routes to tenant-scoped projectId ([182acdd](https://github.com/saboteur-works/getwrite/commit/182acdda23d6eb80d5158cb23fa19ec0a712498b))
+* **task-6:** migrate project-resources routes to tenant-scoped projectId ([db13f8b](https://github.com/saboteur-works/getwrite/commit/db13f8b43aade56b7d524905c15dd5d2118a6995))
+* **task-7:** migrate resource routes to tenant-scoped projectId ([ce1befe](https://github.com/saboteur-works/getwrite/commit/ce1befed4a6827658db9d5c82ded79493a6e67f1))
+* **task-8:** add selectActiveProjectDirectoryId and migrate first client batch ([bbcbbe6](https://github.com/saboteur-works/getwrite/commit/bbcbbe67944ebaec8feabede525723cf33bb658d))
+* **task-9:** migrate WorkArea components to tenant-scoped projectId ([4dfa6f2](https://github.com/saboteur-works/getwrite/commit/4dfa6f26d342c6fce7c1c869a9ae3ed1d1fe9278))
+* tenant route enforcement (server-validated projectId) ([5e3c7bc](https://github.com/saboteur-works/getwrite/commit/5e3c7bc7ee9d0ce2b8a69700cc5e1885e6041d04))
+
+
+### Bug Fixes
+
+* repair media serving URLs under projectId hard cutover ([5919c0c](https://github.com/saboteur-works/getwrite/commit/5919c0caf59b0b25e58a5b0169fbe87f2c27b49f))
+* **task-9b:** migrate revision transport to projectId contract ([079c5b9](https://github.com/saboteur-works/getwrite/commit/079c5b936c36b04bb03e7a280b4da53d51e23eaa))
+* **task-9c:** migrate resource CRUD transport to projectId contract ([1167370](https://github.com/saboteur-works/getwrite/commit/1167370815dcc352842f554aabb327590712e63a))
+* **task-9d:** migrate tags/editor-config/preferences/export/excerpts/ ([3071a0f](https://github.com/saboteur-works/getwrite/commit/3071a0fa6ccdd52b562b1d74f3c945b89d64a63c))
+* **task-9e:** migrate remaining transport services, close FR12 landmine ([e978a64](https://github.com/saboteur-works/getwrite/commit/e978a641f964ded8bc60ea7b94c3b8bcb42d6a93))
+* **task-9f:** migrate project-actions-controller to projectId contract ([37b8e4f](https://github.com/saboteur-works/getwrite/commit/37b8e4f57c5c295f0fc03ae6e97734494b6c690c))
+* **task-9g:** migrate media file URL builders to projectId contract ([2163e79](https://github.com/saboteur-works/getwrite/commit/2163e796b975ff1bca84b1a1a0ce5bf14456194b))
+
 ## [1.3.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.2.0...getwrite-v1.3.0) (2026-07-15)
 
 
