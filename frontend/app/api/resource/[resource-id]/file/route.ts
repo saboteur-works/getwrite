@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -6,6 +5,7 @@ import {
   IMAGE_EXTENSION_MIME,
   AUDIO_EXTENSION_MIME,
 } from "../../../../../src/lib/models/media-validation";
+import { readFileBuffer } from "../../../../../src/lib/models/io";
 import { readSidecar } from "../../../../../src/lib/models/sidecar";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
@@ -54,8 +54,10 @@ async function handleGet(
   const filePath = path.join(projectPath, "resources", resourceId, fileName);
 
   try {
-    const bytes = await fs.readFile(filePath);
-    return new NextResponse(bytes, {
+    const bytes = await readFileBuffer(filePath);
+    // Wrap in a Uint8Array view so the body is a BodyInit regardless of the
+    // Buffer's backing ArrayBuffer generic.
+    return new NextResponse(new Uint8Array(bytes), {
       status: 200,
       headers: { "Content-Type": mimeForFile(fileName) },
     });
