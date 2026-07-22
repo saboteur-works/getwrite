@@ -71,6 +71,14 @@ export type StorageAdapter = {
    */
   readFile(path: string, encoding?: BufferEncoding): Promise<string>;
   /**
+   * Reads a file as raw bytes. Binary-safe: implementations must not decode
+   * the payload to text. Used for binary assets (e.g. template ZIP packs).
+   *
+   * @param path - File path to read.
+   * @returns File contents as a `Buffer`.
+   */
+  readFileBuffer(path: string): Promise<Buffer>;
+  /**
    * Reads directory entries.
    *
    * @param path - Directory path to read.
@@ -109,6 +117,30 @@ export type StorageAdapter = {
    */
   rename(oldPath: string, newPath: string): Promise<void>;
   /**
+   * Copies a single file's bytes to a new path. Binary-safe: implementations
+   * must preserve raw bytes, not round-trip through a text decode.
+   *
+   * @param src - Source file path.
+   * @param dst - Destination file path.
+   */
+  copyFile(src: string, dst: string): Promise<void>;
+  /**
+   * Recursively copies a file or directory tree to a new path. Binary-safe.
+   *
+   * @param src - Source path.
+   * @param dst - Destination path.
+   * @param opts - Optional copy flags.
+   * @param opts.recursive - When `true`, copies directories recursively.
+   */
+  cp(src: string, dst: string, opts?: { recursive?: boolean }): Promise<void>;
+  /**
+   * Appends data to a file, creating it if it does not exist.
+   *
+   * @param path - Target file path.
+   * @param data - Data to append as text or binary.
+   */
+  appendFile(path: string, data: string | Buffer): Promise<void>;
+  /**
    * Flushes file data to disk so it survives sudden shutdown.
    *
    * Real filesystem adapters should open the file, call `fsync`, and close.
@@ -132,10 +164,14 @@ let adapter: StorageAdapter = {
   },
   writeFile: (p, d, o) => fs.writeFile(p, d, o as any),
   readFile: (p, e) => fs.readFile(p, e ?? "utf8") as Promise<string>,
+  readFileBuffer: (p) => fs.readFile(p) as Promise<Buffer>,
   readdir: (p, o) => fs.readdir(p, o as any) as Promise<ReaddirResult>,
   stat: (p) => fs.stat(p) as Promise<Stats>,
   rm: (p, o) => fs.rm(p, o as any),
   rename: (a, b) => fs.rename(a, b),
+  copyFile: (s, d) => fs.copyFile(s, d),
+  cp: (s, d, o) => fs.cp(s, d, o as any),
+  appendFile: (p, d) => fs.appendFile(p, d),
   fsyncFile: async (p) => {
     const handle = await fs.open(p, "r+");
     try {
@@ -249,14 +285,38 @@ export const readFile = (p: string, e?: BufferEncoding) =>
   currentAdapter().readFile(p, e);
 
 /**
+ * Reads a file as raw bytes using the active storage adapter (binary-safe).
+ *
+ * @param p - File path to read.
+ * @returns File contents as a `Buffer`.
+ */
+export const readFileBuffer = (p: string) => currentAdapter().readFileBuffer(p);
+
+/**
  * Reads directory entries using the active storage adapter.
+ *
+ * Overloaded to mirror `fs.readdir`'s precision: names by default, `Dirent[]`
+ * when `withFileTypes` is `true`, so call sites avoid a manual cast.
  *
  * @param p - Directory path.
  * @param o - Optional listing options.
  * @returns Directory entries as `string[]` or `Dirent[]`.
  */
-export const readdir = (p: string, o?: { withFileTypes?: boolean }) =>
-  currentAdapter().readdir(p, o);
+export function readdir(p: string): Promise<string[]>;
+export function readdir(
+  p: string,
+  o: { withFileTypes: true },
+): Promise<Dirent[]>;
+export function readdir(
+  p: string,
+  o?: { withFileTypes?: boolean },
+): Promise<ReaddirResult>;
+export function readdir(
+  p: string,
+  o?: { withFileTypes?: boolean },
+): Promise<ReaddirResult> {
+  return currentAdapter().readdir(p, o);
+}
 
 /**
  * Reads filesystem metadata for a path.
@@ -284,6 +344,57 @@ export const rm = (p: string, o?: { recursive?: boolean; force?: boolean }) =>
  * @returns Resolves when rename completes.
  */
 export const rename = (a: string, b: string) => currentAdapter().rename(a, b);
+
+/**
+ * Copies a single file using the active storage adapter (binary-safe).
+ *
+ * @param s - Source file path.
+ * @param d - Destination file path.
+ * @returns Resolves when the copy completes.
+ */
+export const copyFile = (s: string, d: string) =>
+  currentAdapter().copyFile(s, d);
+
+/**
+ * Recursively copies a file or directory tree using the active storage
+ * adapter (binary-safe).
+ *
+ * @param s - Source path.
+ * @param d - Destination path.
+ * @param o - Optional copy flags.
+ * @returns Resolves when the copy completes.
+ */
+export const cp = (s: string, d: string, o?: { recursive?: boolean }) =>
+  currentAdapter().cp(s, d, o);
+
+/**
+ * Appends data to a file using the active storage adapter, creating it when
+ * absent.
+ *
+ * @param p - Target file path.
+ * @param d - Data to append as text or binary.
+ * @returns Resolves when the append completes.
+ */
+export const appendFile = (p: string, d: string | Buffer) =>
+  currentAdapter().appendFile(p, d);
+
+/**
+ * Reports whether a path exists, using the active storage adapter.
+ *
+ * Composed from {@link stat} so the contract stays async-only: this is the
+ * adapter-backed replacement for a synchronous `fs.existsSync` check.
+ *
+ * @param p - Path to test.
+ * @returns `true` when the path exists, `false` otherwise.
+ */
+export const exists = async (p: string): Promise<boolean> => {
+  try {
+    await currentAdapter().stat(p);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Flushes file data to disk using the active storage adapter. No-op when the

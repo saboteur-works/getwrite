@@ -1,6 +1,5 @@
 import path from "node:path";
-import fs from "node:fs/promises";
-import fsSync from "node:fs";
+import { readFile, readdir } from "./io";
 import type { Project } from "./types";
 import { readSidecar } from "./sidecar";
 import { readFolderTree } from "./folder-utils";
@@ -54,7 +53,7 @@ export async function loadProjectFromDisk(
 
   let metaFilenames: string[];
   try {
-    metaFilenames = await fs.readdir(metaDir);
+    metaFilenames = (await readdir(metaDir)) as string[];
   } catch {
     metaFilenames = [];
   }
@@ -74,9 +73,10 @@ export async function loadProjectFromDisk(
         // a binary original.<ext> with no content.txt, so reading it would throw.
         const plaintext =
           type === "text"
-            ? fsSync.readFileSync(path.join(resourcesDir, id, "content.txt"), {
-                encoding: "utf-8",
-              })
+            ? await readFile(
+                path.join(resourcesDir, id, "content.txt"),
+                "utf-8",
+              )
             : "";
         const wordCount =
           type === "text"

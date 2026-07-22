@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+import { mkdir, readdir, rename, rm } from "./io";
 import path from "node:path";
 import {
   sidecarPathForProject,
@@ -84,7 +84,7 @@ export async function nullifyResourceRefs(
   const metaDir = path.join(projectRoot, "meta");
   let entries: string[];
   try {
-    entries = await fs.readdir(metaDir);
+    entries = await readdir(metaDir);
   } catch (err: unknown) {
     if (isEnoent(err)) return;
     throw err;
@@ -146,15 +146,15 @@ export async function softDeleteResource(
   const { trashRoot, trashResourcesDir, trashMetaDir } =
     trashPaths(projectRoot);
 
-  await fs.mkdir(trashResourcesDir, { recursive: true });
-  await fs.mkdir(trashMetaDir, { recursive: true });
+  await mkdir(trashResourcesDir, { recursive: true });
+  await mkdir(trashMetaDir, { recursive: true });
 
   // Move sidecar if present
   const sidecarSrc = sidecarPathForProject(projectRoot, resourceId);
   const sidecarName = sidecarFilename(resourceId);
   const sidecarDest = path.join(trashMetaDir, sidecarName);
   try {
-    await fs.rename(sidecarSrc, sidecarDest);
+    await rename(sidecarSrc, sidecarDest);
   } catch (err: unknown) {
     // If file does not exist, ignore; otherwise rethrow
     if (!isEnoent(err)) throw err;
@@ -163,12 +163,12 @@ export async function softDeleteResource(
   // Move any resource files matching the resourceId under `resources/`.
   const resourcesDir = path.join(projectRoot, "resources");
   try {
-    const entries = await fs.readdir(resourcesDir);
+    const entries = await readdir(resourcesDir);
     for (const e of entries) {
       if (e.includes(resourceId)) {
         const src = path.join(resourcesDir, e);
         const dest = path.join(trashResourcesDir, `${resourceId}-${e}`);
-        await fs.rename(src, dest);
+        await rename(src, dest);
       }
     }
   } catch (err: unknown) {
@@ -194,8 +194,8 @@ export async function restoreResource(
   const sidecarSrc = path.join(trashMetaDir, sidecarName);
   const sidecarDest = sidecarPathForProject(projectRoot, resourceId);
   try {
-    await fs.mkdir(path.dirname(sidecarDest), { recursive: true });
-    await fs.rename(sidecarSrc, sidecarDest);
+    await mkdir(path.dirname(sidecarDest), { recursive: true });
+    await rename(sidecarSrc, sidecarDest);
   } catch (err: unknown) {
     // sidecar not present in trash
     if (!isEnoent(err)) throw err;
@@ -204,14 +204,14 @@ export async function restoreResource(
   // Restore resource files
   const resourcesDir = path.join(projectRoot, "resources");
   try {
-    const entries = await fs.readdir(trashResourcesDir);
+    const entries = await readdir(trashResourcesDir);
     for (const e of entries) {
       if (e.startsWith(resourceId + "-")) {
         const src = path.join(trashResourcesDir, e);
         const originalName = e.replace(`${resourceId}-`, "");
-        await fs.mkdir(resourcesDir, { recursive: true });
+        await mkdir(resourcesDir, { recursive: true });
         const dest = path.join(resourcesDir, originalName);
-        await fs.rename(src, dest);
+        await rename(src, dest);
         // restore only one file per matching entry
       }
     }
@@ -234,18 +234,18 @@ export async function purgeResource(
   const sidecarName = sidecarFilename(resourceId);
   const sidecarPath = path.join(trashMetaDir, sidecarName);
   try {
-    await fs.rm(sidecarPath, { force: true });
+    await rm(sidecarPath, { force: true });
   } catch {
     // ignore
   }
 
   // Delete resource files from trash
   try {
-    const entries = await fs.readdir(trashResourcesDir);
+    const entries = await readdir(trashResourcesDir);
     for (const e of entries) {
       if (e.startsWith(resourceId + "-")) {
         const p = path.join(trashResourcesDir, e);
-        await fs.rm(p, { force: true });
+        await rm(p, { force: true });
       }
     }
   } catch {

@@ -27,7 +27,7 @@ async function getProjects() {
         const foldersPath = path.join(projectsDir, id, "folders");
         const folders = await readFolderTree(foldersPath);
 
-        const resources = getLocalResources(path.join(projectsDir, id));
+        const resources = await getLocalResources(path.join(projectsDir, id));
         return { project, resources, folders };
       }),
     );

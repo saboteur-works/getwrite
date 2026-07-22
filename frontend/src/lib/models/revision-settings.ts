@@ -3,7 +3,7 @@
  *
  * Persistence helpers for the project-level defaultRevisionName setting.
  */
-import fs from "node:fs/promises";
+import { readFile, writeFile } from "./io";
 import path from "node:path";
 import type { Project } from "./types";
 import { PROJECT_FILENAME } from "./project-config";
@@ -31,7 +31,7 @@ export async function updateDefaultRevisionName(
   }
 
   const filePath = path.join(projectPath, PROJECT_FILENAME);
-  const project = JSON.parse(await fs.readFile(filePath, "utf8")) as Project;
+  const project = JSON.parse(await readFile(filePath, "utf8")) as Project;
 
   const updated: Project = {
     ...project,
@@ -42,6 +42,6 @@ export async function updateDefaultRevisionName(
     updatedAt: new Date().toISOString(),
   };
 
-  await fs.writeFile(filePath, JSON.stringify(updated, null, 2), "utf8");
+  await writeFile(filePath, JSON.stringify(updated, null, 2), "utf8");
   return trimmed;
 }

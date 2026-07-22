@@ -11,7 +11,7 @@
  * Both paths normalize configuration defaults via
  * `normalizeProjectConfig(...)` so callers can rely on a consistent shape.
  */
-import fs from "node:fs/promises";
+import { readFile } from "./io";
 import path from "node:path";
 import { ProjectConfigSchema, ProjectSchema, Infer } from "./schemas";
 import type { ProjectConfig } from "./types";
@@ -44,7 +44,7 @@ export async function loadProject(
   projectRoot: string,
 ): Promise<Infer<typeof ProjectSchema>> {
   const filePath = path.join(projectRoot, PROJECT_FILENAME);
-  const raw = await fs.readFile(filePath, "utf8");
+  const raw = await readFile(filePath, "utf8");
   const parsed = JSON.parse(raw) as unknown;
 
   // Validate the overall project shape first.
@@ -80,7 +80,7 @@ export async function loadProjectConfig(
   projectRoot: string,
 ): Promise<ProjectConfig> {
   const filePath = path.join(projectRoot, PROJECT_FILENAME);
-  const raw = await fs.readFile(filePath, "utf8");
+  const raw = await readFile(filePath, "utf8");
   const parsed = JSON.parse(raw) as { config?: unknown } | undefined;
 
   const cfg = parsed?.config ?? {};

@@ -52,7 +52,11 @@ async function handlePost(req: NextRequest): Promise<Response> {
   }
 
   try {
-    const excerpts = readResourceExcerpts(projectPath, resourceIds, maxChars);
+    const excerpts = await readResourceExcerpts(
+      projectPath,
+      resourceIds,
+      maxChars,
+    );
     return NextResponse.json({ excerpts });
   } catch (error) {
     const message =

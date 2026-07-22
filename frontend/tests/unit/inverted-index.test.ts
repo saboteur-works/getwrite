@@ -158,10 +158,15 @@ describe("inverted index (T025)", () => {
   });
 });
 
-// These tests use real temp dirs (no memory adapter) because reindexMissingResources
-// reads sidecar files via Node's fs, which bypasses the io adapter.
+// reindexMissingResources now reads sidecars through the io adapter, so these
+// tests run against a fresh in-memory adapter like the rest of the file. A real
+// temp dir is still minted per project only to key a unique path.
 describe("reindexMissingResources", () => {
   const tmpDirs: string[] = [];
+
+  beforeEach(() => {
+    setStorageAdapter(createMemoryAdapter());
+  });
 
   afterEach(async () => {
     for (const dir of tmpDirs.splice(0)) {

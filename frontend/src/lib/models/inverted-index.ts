@@ -1,6 +1,5 @@
-import fs from "node:fs/promises";
 import path from "node:path";
-import { mkdir, readFile, atomicWriteFile } from "./io";
+import { atomicWriteFile, mkdir, readFile, readdir } from "./io";
 import { withMetaLock } from "./meta-locks";
 import type { TextResource } from "./types";
 import { tiptapToPlainText, loadResourceContent } from "../tiptap-utils";
@@ -223,7 +222,7 @@ export async function reindexMissingResources(
   const metaDir = path.join(projectRoot, "meta");
   let entries: string[];
   try {
-    entries = await fs.readdir(metaDir);
+    entries = await readdir(metaDir);
   } catch {
     return 0;
   }
