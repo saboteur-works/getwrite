@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   createAudioResource,
@@ -14,18 +14,20 @@ import {
 } from "../../src/lib/models/resource";
 import { readSidecar } from "../../src/lib/models/sidecar";
 import { readResourceExcerpts } from "../../src/lib/models/resource-persistence";
+import { getStorageAdapter, setStorageAdapter } from "../../src/lib/models/io";
+import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 const folderId = "11111111-1111-4111-8111-111111111111";
 
 describe("models/resource persistence regressions (T007)", () => {
-  it("returns an empty collection when no meta directory exists", () => {
+  it("returns an empty collection when no meta directory exists", async () => {
     const missingProjectRoot = path.join(
       os.tmpdir(),
       "getwrite-missing-meta-root",
     );
 
-    expect(getLocalResources(missingProjectRoot)).toEqual([]);
+    expect(await getLocalResources(missingProjectRoot)).toEqual([]);
   });
 
   it("writes text resource content and sidecar userMetadata without changing identity", async () => {
@@ -74,7 +76,7 @@ describe("models/resource persistence regressions (T007)", () => {
         slug: "persisted-scene",
       });
 
-      const localResources = getLocalResources(projectRoot);
+      const localResources = await getLocalResources(projectRoot);
       expect(localResources).toHaveLength(1);
       expect(localResources[0]).toMatchObject({
         id: resource.id,
@@ -114,7 +116,7 @@ describe("models/resource persistence regressions (T007)", () => {
         "utf8",
       );
 
-      const localResources = getLocalResources(projectRoot);
+      const localResources = await getLocalResources(projectRoot);
       expect(localResources).toHaveLength(1);
       expect(localResources[0].id).toBe(resource.id);
     } finally {
@@ -212,7 +214,7 @@ describe("models/resource persistence regressions (T007)", () => {
         exif: { Make: "Canon" },
       });
 
-      const localResources = getLocalResources(projectRoot);
+      const localResources = await getLocalResources(projectRoot);
       expect(localResources).toHaveLength(1);
       expect(localResources[0]).toMatchObject({
         id: resource.id,
@@ -327,7 +329,11 @@ describe("readResourceExcerpts", () => {
       await writeContent(projectRoot, "r2", "   "); // whitespace only → skipped
       // r3 has no content.txt at all → skipped
 
-      const excerpts = readResourceExcerpts(projectRoot, ["r1", "r2", "r3"], 5);
+      const excerpts = await readResourceExcerpts(
+        projectRoot,
+        ["r1", "r2", "r3"],
+        5,
+      );
 
       // Capped to maxChars + 1 so the caller can still add an ellipsis.
       expect(excerpts.r1).toBe("The qu");
@@ -344,7 +350,7 @@ describe("readResourceExcerpts", () => {
     );
     try {
       await writeContent(projectRoot, "r1", "short");
-      const excerpts = readResourceExcerpts(projectRoot, ["r1"], 200);
+      const excerpts = await readResourceExcerpts(projectRoot, ["r1"], 200);
       expect(excerpts.r1).toBe("short");
     } finally {
       await removeDirRetry(projectRoot);
@@ -358,10 +364,41 @@ describe("readResourceExcerpts", () => {
     try {
       await writeContent(projectRoot, "r1", "\n\n\nThe quick brown fox");
       // Leading newlines are stripped, so the cap+1 chars are real content.
-      const excerpts = readResourceExcerpts(projectRoot, ["r1"], 5);
+      const excerpts = await readResourceExcerpts(projectRoot, ["r1"], 5);
       expect(excerpts.r1).toBe("The qu");
     } finally {
       await removeDirRetry(projectRoot);
     }
+  });
+});
+
+describe("resource persistence routes through the active storage adapter", () => {
+  const original = getStorageAdapter();
+
+  afterEach(() => {
+    setStorageAdapter(original);
+  });
+
+  it("write → read → excerpt round-trips entirely in memory, never touching disk", async () => {
+    // A fresh in-memory adapter with no backing filesystem: if any step fell
+    // back to node:fs it would hit a nonexistent path and fail, proving the
+    // whole persistence path resolves the ambient adapter.
+    setStorageAdapter(createMemoryAdapter());
+    const projectRoot = "/mem-project";
+
+    const resource = createTextResource({
+      name: "In-Memory Scene",
+      plainText: "  the lighthouse keeper watched the storm roll in  ",
+      tiptap: { type: "doc", content: [{ type: "paragraph" }] },
+    });
+
+    await writeResourceToFile(projectRoot, resource);
+
+    const loaded = await getLocalResources(projectRoot);
+    expect(loaded.map((r) => r.id)).toContain(resource.id);
+
+    const excerpts = await readResourceExcerpts(projectRoot, [resource.id], 10);
+    // Trimmed to "the lighthouse ...", then capped to cap + 1 (11) chars.
+    expect(excerpts[resource.id]).toBe("the lightho");
   });
 });

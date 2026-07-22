@@ -113,7 +113,7 @@ describe("sidecar order preservation (TDD regression — T007)", () => {
     await writeResourceToFile(tmp, rB);
     await writeResourceToFile(tmp, rC);
 
-    const loaded = getLocalResources(tmp);
+    const loaded = await getLocalResources(tmp);
     const orderMap = new Map(loaded.map((r) => [r.name, r.orderIndex]));
 
     expect(orderMap.get("A")).toBe(2);
@@ -145,7 +145,7 @@ describe("sidecar order preservation (TDD regression — T007)", () => {
     await writeResourceToFile(tmp, rB);
     await writeResourceToFile(tmp, rC);
 
-    const loaded = getLocalResources(tmp).filter(
+    const loaded = (await getLocalResources(tmp)).filter(
       (r) => r.type === "text",
     ) as TextResource[];
 
@@ -190,7 +190,7 @@ describe("sidecar order preservation (TDD regression — T007)", () => {
       userMetadata: { notes: "Chapter notes." },
     });
 
-    const loaded = getLocalResources(tmp).filter(
+    const loaded = (await getLocalResources(tmp)).filter(
       (r) => r.type === "text",
     ) as TextResource[];
     const view = buildProjectView({
@@ -237,7 +237,7 @@ describe("sidecar order preservation (TDD regression — T007)", () => {
       userMetadata: { storyDate: "2024-06-01", storyDuration: 45 },
     });
 
-    const loaded = getLocalResources(tmp).filter(
+    const loaded = (await getLocalResources(tmp)).filter(
       (r) => r.type === "text",
     ) as TextResource[];
     const view = buildProjectView({
@@ -291,7 +291,7 @@ describe("sidecar order preservation (TDD regression — T007)", () => {
       userMetadata: { locations: ["Castle", "Dungeon"], characters: ["Alice"] },
     });
 
-    const loaded = getLocalResources(tmp).filter(
+    const loaded = (await getLocalResources(tmp)).filter(
       (r) => r.type === "text",
     ) as TextResource[];
     const view = buildProjectView({
@@ -350,7 +350,7 @@ describe("sidecar order preservation (TDD regression — T007)", () => {
       });
     }
 
-    const loaded = getLocalResources(tmp).filter(
+    const loaded = (await getLocalResources(tmp)).filter(
       (r) => r.type === "text",
     ) as TextResource[];
     const view = buildProjectView({

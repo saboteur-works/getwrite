@@ -53,7 +53,7 @@ export async function runDoctor(root: string): Promise<number> {
   const problems: string[] = [];
 
   // Resources whose folderId points at a folder that no longer exists.
-  for (const r of getLocalResources(root)) {
+  for (const r of await getLocalResources(root)) {
     const fid = r.folderId;
     if (typeof fid === "string" && fid.length > 0 && !folderIds.has(fid)) {
       problems.push(

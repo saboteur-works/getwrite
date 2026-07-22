@@ -7,9 +7,9 @@
  * - Persisting resource payloads/metadata to local filesystem storage.
  * - Loading resource metadata from local sidecar/meta files.
  */
-import fs from "node:fs";
 import path from "node:path";
 
+import { exists, mkdir, readFile, readdir, writeFile } from "./io";
 import { validateResource } from "./resource-factory";
 import { countWords } from "../word-count";
 import { writeSidecar } from "./sidecar";
@@ -33,9 +33,9 @@ function isFolderResource(resource: AnyResource): resource is Folder {
  * Reads the `id` from a `folder.json` at `dir`, or `null` if the descriptor is
  * absent or unreadable. Used to detect slug collisions before overwriting.
  */
-function readFolderDescriptorId(dir: string): string | null {
+async function readFolderDescriptorId(dir: string): Promise<string | null> {
   try {
-    const raw = fs.readFileSync(path.join(dir, "folder.json"), "utf8");
+    const raw = await readFile(path.join(dir, "folder.json"), "utf8");
     const parsed = JSON.parse(raw) as { id?: unknown };
     return typeof parsed.id === "string" ? parsed.id : null;
   } catch {
@@ -57,18 +57,21 @@ function readFolderDescriptorId(dir: string): string | null {
  *   `folders/<slug>-<full-id>/` in the astronomically unlikely event the
  *   prefixed directory is itself taken by a different folder.
  */
-function resolveFolderDir(projectPath: string, folder: Folder): string {
+async function resolveFolderDir(
+  projectPath: string,
+  folder: Folder,
+): Promise<string> {
   const foldersRoot = path.join(projectPath, "folders");
   const slug = folder.slug ?? folder.id;
 
   const preferred = path.join(foldersRoot, slug);
-  const preferredOwner = readFolderDescriptorId(preferred);
+  const preferredOwner = await readFolderDescriptorId(preferred);
   if (preferredOwner === null || preferredOwner === folder.id) {
     return preferred;
   }
 
   const prefixed = path.join(foldersRoot, `${slug}-${folder.id.slice(0, 8)}`);
-  const prefixedOwner = readFolderDescriptorId(prefixed);
+  const prefixedOwner = await readFolderDescriptorId(prefixed);
   if (prefixedOwner === null || prefixedOwner === folder.id) {
     return prefixed;
   }
@@ -112,11 +115,11 @@ export async function writeResourceToFile(
   options?: WriteResourceOptions,
 ): Promise<AnyResource> {
   if (isFolderResource(resource)) {
-    const dir = resolveFolderDir(projectPath, resource);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    const dir = await resolveFolderDir(projectPath, resource);
+    if (!(await exists(dir))) {
+      await mkdir(dir, { recursive: true });
     }
-    fs.writeFileSync(
+    await writeFile(
       path.join(dir, "folder.json"),
       JSON.stringify(resource, null, 2),
       "utf8",
@@ -127,23 +130,23 @@ export async function writeResourceToFile(
   const base = path.join(projectPath, "resources", resource.id);
 
   if (isTextResource(resource)) {
-    if (!fs.existsSync(base)) {
-      fs.mkdirSync(base, { recursive: true });
+    if (!(await exists(base))) {
+      await mkdir(base, { recursive: true });
     }
 
     const tiptapPath = `${base}/content.tiptap.json`;
     const plainPath = `${base}/content.txt`;
-    fs.writeFileSync(
+    await writeFile(
       tiptapPath,
       JSON.stringify(resource.tiptap ?? {}, null, 2),
       "utf8",
     );
-    fs.writeFileSync(plainPath, resource.plainText ?? "", "utf8");
+    await writeFile(plainPath, resource.plainText ?? "", "utf8");
   }
 
   if (isMediaResource(resource)) {
-    if (!fs.existsSync(base)) {
-      fs.mkdirSync(base, { recursive: true });
+    if (!(await exists(base))) {
+      await mkdir(base, { recursive: true });
     }
 
     if (options?.binary !== undefined) {
@@ -152,7 +155,10 @@ export async function writeResourceToFile(
           `Cannot persist binary for media resource ${resource.id}: missing 'file' name`,
         );
       }
-      fs.writeFileSync(path.join(base, resource.file), options.binary);
+      await writeFile(
+        path.join(base, resource.file),
+        Buffer.from(options.binary),
+      );
     }
   }
 
@@ -192,13 +198,15 @@ export async function writeResourceToFile(
 /**
  * Loads locally stored resources from `<projectPath>/meta/*.json`.
  */
-export const getLocalResources = (projectPath: string): AnyResource[] => {
+export const getLocalResources = async (
+  projectPath: string,
+): Promise<AnyResource[]> => {
   const metaDir = path.join(projectPath, "meta");
-  if (!fs.existsSync(metaDir)) {
+  if (!(await exists(metaDir))) {
     return [];
   }
 
-  const metaFiles = fs.readdirSync(metaDir).sort();
+  const metaFiles = (await readdir(metaDir)).sort();
   const resources: AnyResource[] = [];
   for (const metaFile of metaFiles) {
     // Only resource sidecars match this pattern; skip ancillary meta files
@@ -207,24 +215,26 @@ export const getLocalResources = (projectPath: string): AnyResource[] => {
       continue;
     }
     const metaPath = path.join(metaDir, metaFile);
-    const metaData = JSON.parse(fs.readFileSync(metaPath, "utf-8"));
+    const metaData = JSON.parse(await readFile(metaPath, "utf-8"));
     resources.push(validateResource(metaData));
   }
 
-  return resources.map((r) => {
-    if (r.type !== "text" || (r as TextResource).wordCount !== undefined) {
-      return r;
-    }
-    const contentPath = path.join(
-      projectPath,
-      "resources",
-      r.id,
-      "content.txt",
-    );
-    if (!fs.existsSync(contentPath)) return r;
-    const plain = fs.readFileSync(contentPath, "utf-8");
-    return { ...r, wordCount: countWords(plain) } as TextResource;
-  });
+  return Promise.all(
+    resources.map(async (r) => {
+      if (r.type !== "text" || (r as TextResource).wordCount !== undefined) {
+        return r;
+      }
+      const contentPath = path.join(
+        projectPath,
+        "resources",
+        r.id,
+        "content.txt",
+      );
+      if (!(await exists(contentPath))) return r;
+      const plain = await readFile(contentPath, "utf-8");
+      return { ...r, wordCount: countWords(plain) } as TextResource;
+    }),
+  );
 };
 
 /**
@@ -242,36 +252,31 @@ export const getLocalResources = (projectPath: string): AnyResource[] => {
  * @param maxChars - Maximum excerpt length to read (defaults to 200).
  * @returns A map of resource id → excerpt for the resources that had content.
  */
-export const readResourceExcerpts = (
+export const readResourceExcerpts = async (
   projectPath: string,
   resourceIds: readonly string[],
   maxChars = 200,
-): Record<string, string> => {
+): Promise<Record<string, string>> => {
   const cap = maxChars > 0 ? maxChars : 200;
-  // Read only a bounded prefix — enough bytes to cover `cap + 1` UTF-8 chars
-  // (max 4 bytes/char) — so a multi-MB content.txt is never loaded in full.
-  const maxBytes = (cap + 1) * 4;
   const excerpts: Record<string, string> = {};
   for (const id of resourceIds) {
     const contentPath = path.join(projectPath, "resources", id, "content.txt");
-    let fd: number;
+    let content: string;
     try {
-      fd = fs.openSync(contentPath, "r");
+      // Reads the whole content.txt via the storage adapter rather than a
+      // bounded fd prefix. Excerpt targets are small text resources capped by
+      // `cap`, so loading the file in full is acceptable and keeps the read on
+      // the tenant adapter (no direct fd ops the adapter can't model).
+      content = await readFile(contentPath, "utf-8");
     } catch {
       continue; // no content.txt (folder/media) or unreadable
     }
-    try {
-      const buf = Buffer.alloc(maxBytes);
-      const bytesRead = fs.readSync(fd, buf, 0, maxBytes, 0);
-      // Trim before capping so the `cap + 1` "was-truncated" signal reflects
-      // real content (the caller adds an ellipsis when the excerpt exceeds the
-      // cap); leading whitespace must not eat into that one-char headroom.
-      const text = buf.toString("utf-8", 0, bytesRead).trim();
-      if (text === "") continue;
-      excerpts[id] = text.slice(0, cap + 1);
-    } finally {
-      fs.closeSync(fd);
-    }
+    // Trim before capping so the `cap + 1` "was-truncated" signal reflects real
+    // content (the caller adds an ellipsis when the excerpt exceeds the cap);
+    // leading whitespace must not eat into that one-char headroom.
+    const text = content.trim();
+    if (text === "") continue;
+    excerpts[id] = text.slice(0, cap + 1);
   }
   return excerpts;
 };
