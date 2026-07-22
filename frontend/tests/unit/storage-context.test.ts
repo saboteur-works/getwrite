@@ -14,10 +14,14 @@ function createFakeAdapter(): StorageAdapter {
     mkdir: async () => {},
     writeFile: async () => {},
     readFile: async () => "",
+    readFileBuffer: async () => Buffer.alloc(0),
     readdir: async () => [],
     stat: async () => ({}) as Awaited<ReturnType<StorageAdapter["stat"]>>,
     rm: async () => {},
     rename: async () => {},
+    copyFile: async () => {},
+    cp: async () => {},
+    appendFile: async () => {},
   } as StorageAdapter;
 }
 

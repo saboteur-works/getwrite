@@ -47,6 +47,56 @@ function splitPath(p: string) {
 }
 
 /**
+ * Copies a file node's payload, cloning `Buffer` data so the copy and original
+ * do not alias the same bytes. Strings are immutable and returned as-is.
+ *
+ * @param data - Source payload.
+ * @returns An independent copy of the payload.
+ */
+function cloneData(data: string | Buffer): string | Buffer {
+  return Buffer.isBuffer(data) ? Buffer.from(data) : data;
+}
+
+/**
+ * Deep-clones an in-memory {@link Node} tree so a copied subtree shares no
+ * mutable state with its source.
+ *
+ * @param node - Node to clone.
+ * @returns A structurally independent clone.
+ */
+function cloneNode(node: Node): Node {
+  if (node.type === "file") return { type: "file", data: cloneData(node.data) };
+  const children = new Map<string, Node>();
+  for (const [name, child] of node.children.entries()) {
+    children.set(name, cloneNode(child));
+  }
+  return { type: "dir", children };
+}
+
+/**
+ * Concatenates appended data onto existing file payload, promoting to `Buffer`
+ * when either side is binary so bytes are preserved.
+ *
+ * @param existing - Current file payload.
+ * @param addition - Data being appended.
+ * @returns The combined payload.
+ */
+function concatData(
+  existing: string | Buffer,
+  addition: string | Buffer,
+): string | Buffer {
+  if (Buffer.isBuffer(existing) || Buffer.isBuffer(addition)) {
+    return Buffer.concat([toBuffer(existing), toBuffer(addition)]);
+  }
+  return existing + addition;
+}
+
+/** Coerces a string/Buffer payload to a `Buffer` (utf8 for strings). */
+function toBuffer(data: string | Buffer): Buffer {
+  return Buffer.isBuffer(data) ? data : Buffer.from(data, "utf8");
+}
+
+/**
  * Creates a new in-memory {@link StorageAdapter} instance.
  *
  * Each call returns an isolated filesystem tree rooted at `/`.
@@ -107,6 +157,25 @@ export function createMemoryAdapter(): StorageAdapter {
     return { parent: cur, name };
   }
 
+  /**
+   * Resolves a full path to its {@link Node}, or `undefined` when any segment
+   * is missing or traverses through a file.
+   *
+   * @param p - Path to resolve.
+   * @returns The node at `p`, or `undefined`.
+   */
+  function resolveNode(p: string): Node | undefined {
+    const parts = splitPath(p);
+    let cur: Node = root;
+    for (const part of parts) {
+      if (cur.type !== "dir") return undefined;
+      const child = cur.children.get(part);
+      if (!child) return undefined;
+      cur = child;
+    }
+    return cur;
+  }
+
   return {
     /** @inheritdoc */
     mkdir: async (p: string, _opts?: { recursive?: boolean }) => {
@@ -136,7 +205,15 @@ export function createMemoryAdapter(): StorageAdapter {
       return cur.data.toString();
     },
     /** @inheritdoc */
-    readdir: async (p: string, _opts?: { withFileTypes?: boolean }) => {
+    readFileBuffer: async (p: string) => {
+      const node = resolveNode(p);
+      if (!node) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      if (node.type !== "file")
+        throw Object.assign(new Error("EISDIR"), { code: "EISDIR" });
+      return toBuffer(node.data);
+    },
+    /** @inheritdoc */
+    readdir: async (p: string, opts?: { withFileTypes?: boolean }) => {
       const parts = splitPath(p);
       let cur: Node = root;
       for (const part of parts) {
@@ -148,6 +225,11 @@ export function createMemoryAdapter(): StorageAdapter {
       }
       if (cur.type !== "dir")
         throw Object.assign(new Error("ENOTDIR"), { code: "ENOTDIR" });
+      // Mirror `fs.readdir`: bare names by default, Dirent-like entries only
+      // when `withFileTypes` is requested.
+      if (!opts?.withFileTypes) {
+        return [...cur.children.keys()];
+      }
       const entries: Dirent[] = [] as unknown as Dirent[];
       for (const [name, node] of cur.children.entries()) {
         // Minimal Dirent-like object used by tests and adapters
@@ -194,6 +276,38 @@ export function createMemoryAdapter(): StorageAdapter {
       const { parent: newParent, name: newName } = newRes;
       newParent.children.set(newName, node);
       oldParent.children.delete(oldName);
+    },
+    /** @inheritdoc */
+    copyFile: async (src: string, dst: string) => {
+      const node = resolveNode(src);
+      if (!node || node.type !== "file")
+        throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      const res = resolveParent(dst);
+      if (!res) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      res.parent.children.set(res.name, {
+        type: "file",
+        data: cloneData(node.data),
+      });
+    },
+    /** @inheritdoc */
+    cp: async (src: string, dst: string, _opts?: { recursive?: boolean }) => {
+      const node = resolveNode(src);
+      if (!node) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      mkdirSync(path.posix.dirname(dst));
+      const res = resolveParent(dst);
+      if (!res) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      res.parent.children.set(res.name, cloneNode(node));
+    },
+    /** @inheritdoc */
+    appendFile: async (p: string, data: string | Buffer) => {
+      const res = resolveParent(p);
+      if (!res) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      const existing = res.parent.children.get(res.name);
+      if (existing && existing.type === "file") {
+        existing.data = concatData(existing.data, data);
+      } else {
+        res.parent.children.set(res.name, { type: "file", data });
+      }
     },
     /** @inheritdoc */
     fsyncFile: async () => {

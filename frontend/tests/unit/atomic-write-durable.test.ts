@@ -24,6 +24,11 @@ function makeRecordingAdapter(): RecordingAdapter {
       if (v == null) throw new Error("ENOENT");
       return typeof v === "string" ? v : v.toString("utf8");
     },
+    readFileBuffer: async (p) => {
+      const v = files.get(p);
+      if (v == null) throw new Error("ENOENT");
+      return Buffer.isBuffer(v) ? v : Buffer.from(v, "utf8");
+    },
     readdir: async () => [],
     stat: async () => ({}) as any,
     rm: async (p) => {
@@ -35,6 +40,20 @@ function makeRecordingAdapter(): RecordingAdapter {
       if (v == null) throw new Error("ENOENT");
       files.set(b, v);
       files.delete(a);
+    },
+    copyFile: async (s, d) => {
+      const v = files.get(s);
+      if (v == null) throw new Error("ENOENT");
+      files.set(d, v);
+    },
+    cp: async (s, d) => {
+      const v = files.get(s);
+      if (v == null) throw new Error("ENOENT");
+      files.set(d, v);
+    },
+    appendFile: async (p, d) => {
+      const prev = files.get(p);
+      files.set(p, prev == null ? d : `${prev}${d}`);
     },
     fsyncFile: async (p) => {
       calls.push(`fsyncFile:${p}`);
