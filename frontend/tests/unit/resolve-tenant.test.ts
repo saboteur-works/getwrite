@@ -39,11 +39,17 @@ describe("resolveTenant", () => {
   let originalAdapter: StorageAdapter;
   let fakeAdapter: StorageAdapter & { mkdir: ReturnType<typeof vi.fn> };
 
+  let savedBackend: string | undefined;
+
   beforeEach(() => {
     savedDevIdentity = process.env.GETWRITE_ENABLE_DEV_IDENTITY;
     savedDataRoot = process.env.GETWRITE_DATA_ROOT;
+    savedBackend = process.env.GETWRITE_STORAGE_BACKEND;
     delete process.env.GETWRITE_ENABLE_DEV_IDENTITY;
     delete process.env.GETWRITE_DATA_ROOT;
+    // Default (fs) backend: resolveBackendAdapter falls back to the ambient
+    // adapter, which we override below to the spy so provisioning is observable.
+    delete process.env.GETWRITE_STORAGE_BACKEND;
 
     originalAdapter = getStorageAdapter();
     fakeAdapter = createFakeAdapter();
@@ -67,6 +73,12 @@ describe("resolveTenant", () => {
       process.env.GETWRITE_DATA_ROOT = savedDataRoot;
     }
 
+    if (savedBackend === undefined) {
+      delete process.env.GETWRITE_STORAGE_BACKEND;
+    } else {
+      process.env.GETWRITE_STORAGE_BACKEND = savedBackend;
+    }
+
     setStorageAdapter(originalAdapter);
   });
 
@@ -75,7 +87,11 @@ describe("resolveTenant", () => {
 
     const result = await resolveTenant(request);
 
-    expect(result).toEqual({ userId: null, dataRoot: defaultProjectsDir() });
+    expect(result).toEqual({
+      userId: null,
+      dataRoot: defaultProjectsDir(),
+      adapter: fakeAdapter,
+    });
     expect(fakeAdapter.mkdir).not.toHaveBeenCalled();
   });
 
@@ -90,7 +106,11 @@ describe("resolveTenant", () => {
     const result = await resolveTenant(request);
 
     const expectedDataRoot = path.join("/absolute/data-root", "alice");
-    expect(result).toEqual({ userId: "alice", dataRoot: expectedDataRoot });
+    expect(result).toEqual({
+      userId: "alice",
+      dataRoot: expectedDataRoot,
+      adapter: fakeAdapter,
+    });
     expect(fakeAdapter.mkdir).toHaveBeenCalledWith(expectedDataRoot, {
       recursive: true,
     });

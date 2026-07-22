@@ -21,9 +21,10 @@
  * data live" goes through this function (FR1).
  */
 import { getIdentitySource } from "./identity-source";
+import { resolveBackendAdapter } from "./storage-backend";
 import { dataRootForUser } from "../../../src/lib/models/tenant-path";
 import { defaultProjectsDir } from "../../../src/lib/models/projects-dir";
-import { mkdir } from "../../../src/lib/models/io";
+import type { StorageAdapter } from "../../../src/lib/models/io";
 
 /**
  * Data roots already provisioned in this process lifetime.
@@ -54,6 +55,8 @@ export interface ResolvedTenant {
   userId: string | null;
   /** The filesystem directory this request's storage operations must be scoped to. */
   dataRoot: string;
+  /** The storage backend this request's operations run against (ADR-019). */
+  adapter: StorageAdapter;
 }
 
 /**
@@ -87,16 +90,20 @@ export interface ResolvedTenant {
  *   path-traversal allowlist, or when `GETWRITE_DATA_ROOT` is unset/empty.
  */
 export async function resolveTenant(request: Request): Promise<ResolvedTenant> {
+  const adapter = resolveBackendAdapter();
   const userId = getIdentitySource().getUserId(request);
 
   if (userId === null) {
-    return { userId: null, dataRoot: defaultProjectsDir() };
+    return { userId: null, dataRoot: defaultProjectsDir(), adapter };
   }
 
   const dataRoot = dataRootForUser(userId);
   if (!provisionedRoots.has(dataRoot)) {
-    await mkdir(dataRoot, { recursive: true });
+    // Provision through the *selected* backend, not the ambient default, so a
+    // hosted object-store deployment creates the tenant's directory marker in
+    // the object store rather than on the local filesystem.
+    await adapter.mkdir(dataRoot, { recursive: true });
     provisionedRoots.add(dataRoot);
   }
-  return { userId, dataRoot };
+  return { userId, dataRoot, adapter };
 }
