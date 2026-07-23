@@ -5,6 +5,7 @@ import "server-only";
 import { betterAuth, type Auth } from "better-auth";
 import { Pool } from "pg";
 import { isHostedAuthActive } from "./auth-config";
+import { sendResetPassword, sendVerificationEmail } from "./email";
 
 /**
  * @module auth-server
@@ -54,11 +55,13 @@ import { isHostedAuthActive } from "./auth-config";
  * API matches the spec's intent (and key paths) exactly for every option
  * this task configures.
  *
- * **Email callbacks are stubbed for this task.** `sendResetPassword` and
- * `sendVerificationEmail` are seams Task 2 replaces with a real
- * `nodemailer` SMTP transport (FR14). For now they throw
- * {@link AuthEmailNotConfiguredError} so any code path that reaches them
- * before Task 2 lands fails loudly instead of silently dropping an email.
+ * **Email callbacks are wired to the `nodemailer` SMTP transport (FR14).**
+ * `emailAndPassword.sendResetPassword` and
+ * `emailVerification.sendVerificationEmail` are `./email.ts`'s
+ * `sendResetPassword`/`sendVerificationEmail`, which send real emails over
+ * SMTP (configured via `SMTP_*` env — see `email.ts`'s module doc). Those
+ * functions throw `email.ts`'s `SmtpNotConfiguredError` if required SMTP
+ * config is missing when an email is actually attempted.
  */
 
 /** Raised by {@link getAuthServer} when hosted auth is not active. */
@@ -71,40 +74,6 @@ export class AuthServerNotActiveError extends Error {
     );
     this.name = "AuthServerNotActiveError";
   }
-}
-
-/**
- * Raised by the stubbed `sendResetPassword`/`sendVerificationEmail`
- * callbacks. Task 2 replaces these stubs with a real `nodemailer` SMTP
- * transport (FR14); until then, any code path that actually triggers a
- * password-reset or verification email fails loudly rather than silently
- * dropping the email.
- */
-export class AuthEmailNotConfiguredError extends Error {
-  constructor(kind: "reset-password" | "verification") {
-    super(
-      `better-auth attempted to send a ${kind} email, but the nodemailer ` +
-        "SMTP transport is not yet wired in (seam for Task 2 of the " +
-        "auth-provider plan). See src/lib/auth/auth-server.ts.",
-    );
-    this.name = "AuthEmailNotConfiguredError";
-  }
-}
-
-/**
- * Placeholder `sendResetPassword` callback (FR13/FR14 seam). Task 2 replaces
- * this with a `nodemailer`-backed implementation.
- */
-async function sendResetPasswordPlaceholder(): Promise<void> {
-  throw new AuthEmailNotConfiguredError("reset-password");
-}
-
-/**
- * Placeholder `sendVerificationEmail` callback (FR11/FR14 seam). Task 2
- * replaces this with a `nodemailer`-backed implementation.
- */
-async function sendVerificationEmailPlaceholder(): Promise<void> {
-  throw new AuthEmailNotConfiguredError("verification");
 }
 
 /**
@@ -182,11 +151,9 @@ function buildAuthOptions() {
       enabled: true,
       requireEmailVerification: true,
       disableSignUp: true,
-      sendResetPassword: sendResetPasswordPlaceholder,
+      sendResetPassword,
     },
-    emailVerification: {
-      sendVerificationEmail: sendVerificationEmailPlaceholder,
-    },
+    emailVerification: { sendVerificationEmail },
     advanced: { database: { generateId: "uuid" as const } },
     rateLimit: { storage: "database" as const },
     session: { cookieCache: { enabled: true } },

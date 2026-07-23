@@ -11,18 +11,29 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-const { betterAuthMock, poolMock } = vi.hoisted(() => {
+const {
+  betterAuthMock,
+  poolMock,
+  sendResetPasswordMock,
+  sendVerificationEmailMock,
+} = vi.hoisted(() => {
   const poolMock = vi.fn(function (this: unknown, options: unknown) {
     Object.assign(this as object, { __poolOptions: options });
   });
   return {
     betterAuthMock: vi.fn((options: unknown) => ({ __options: options })),
     poolMock,
+    sendResetPasswordMock: vi.fn(),
+    sendVerificationEmailMock: vi.fn(),
   };
 });
 vi.mock("server-only", () => ({}));
 vi.mock("better-auth", () => ({ betterAuth: betterAuthMock }));
 vi.mock("pg", () => ({ Pool: poolMock }));
+vi.mock("../../src/lib/auth/email", () => ({
+  sendResetPassword: sendResetPasswordMock,
+  sendVerificationEmail: sendVerificationEmailMock,
+}));
 
 import {
   getAuthServer,
@@ -109,6 +120,20 @@ describe("getAuthServer", () => {
       expect(options.rateLimit.storage).toBe("database");
       expect(options.session.cookieCache.enabled).toBe(true);
       expect(options.secret).toBe("test-secret");
+    });
+
+    it("wires the real nodemailer-backed email.ts callbacks (FR14), not a placeholder", () => {
+      getAuthServer();
+      const options = betterAuthMock.mock.calls[0]![0] as {
+        emailAndPassword: { sendResetPassword: unknown };
+        emailVerification: { sendVerificationEmail: unknown };
+      };
+      expect(options.emailAndPassword.sendResetPassword).toBe(
+        sendResetPasswordMock,
+      );
+      expect(options.emailVerification.sendVerificationEmail).toBe(
+        sendVerificationEmailMock,
+      );
     });
 
     it("builds the Pool from DATABASE_URL", () => {
