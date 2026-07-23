@@ -6,6 +6,7 @@ import { betterAuth, type Auth } from "better-auth";
 import { Pool } from "pg";
 import { isHostedAuthActive } from "./auth-config";
 import { sendResetPassword, sendVerificationEmail } from "./email";
+import { isEmailAllowlisted } from "./signup-allowlist";
 
 /**
  * @module auth-server
@@ -62,6 +63,44 @@ import { sendResetPassword, sendVerificationEmail } from "./email";
  * SMTP (configured via `SMTP_*` env — see `email.ts`'s module doc). Those
  * functions throw `email.ts`'s `SmtpNotConfiguredError` if required SMTP
  * config is missing when an email is actually attempted.
+ *
+ * **Signup is gated by an env-configured allowlist, not `disableSignUp`
+ * (FR12).** `emailAndPassword.disableSignUp` is `false` here — Task 1 had
+ * set it `true`, but that option is an unconditional kill switch better-auth
+ * checks (`sign-up.mjs`'s `signUpEmail` handler) before any user-creation
+ * hook runs, for both the HTTP endpoint and any programmatic
+ * `auth.api.signUpEmail(...)` call. It has no per-call override, so it
+ * cannot be "combined with" an invite/allowlist check to selectively admit
+ * specific users — it can only block everyone or no one. The actual gate is
+ * `databaseHooks.user.create.before`: it runs immediately before
+ * better-auth would insert a new user row, and only for genuinely new users
+ * (an existing-email signup attempt never reaches it — see the next
+ * paragraph). Returning `false` from it makes better-auth's
+ * `createWithHooks` return `null`, which the signup endpoint turns into a
+ * generic "failed to create user" `BAD_REQUEST` — not a distinguishable
+ * "you're not invited" error. The gate policy itself
+ * (`./signup-allowlist.ts`'s `isEmailAllowlisted`) is env-configured via
+ * `AUTH_SIGNUP_ALLOWLIST`: unconfigured means open signup (the self-host
+ * default per FR12's "this slice does not mandate a specific policy for
+ * self-host"); configured, it's an allowlist of exact emails and/or
+ * `@domain.com` wildcards. See `signup-allowlist.ts`'s module doc for the
+ * exact format.
+ *
+ * **FR15's signup anti-enumeration requirement is met by existing config,
+ * not new code.** Verified directly against the installed
+ * `sign-up.mjs`: the endpoint computes
+ * `shouldReturnGenericDuplicateResponse = requireEmailVerification ||
+ * autoSignIn === false`, and when that's `true` and the submitted email
+ * already has an account, it does not throw a distinguishing error — it
+ * hashes the submitted password anyway (to equalize timing) and returns a
+ * normal-looking `200` with a synthetic fake user (`token: null`),
+ * structurally indistinguishable from a genuine new-signup response, and
+ * never touches the real account. `emailAndPassword.requireEmailVerification`
+ * is already `true` below (Task 1), so this module makes no further changes
+ * for FR15 — the existing config combination already satisfies it. (The
+ * `databaseHooks.user.create.before` gate above never even sees an
+ * existing-email attempt, since better-auth's duplicate-email branch short-
+ * circuits before user creation is attempted.)
  */
 
 /** Raised by {@link getAuthServer} when hosted auth is not active. */
@@ -150,10 +189,21 @@ function buildAuthOptions() {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
-      disableSignUp: true,
+      disableSignUp: false,
       sendResetPassword,
     },
     emailVerification: { sendVerificationEmail },
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (user: { email: string }) => {
+            if (!isEmailAllowlisted(user.email)) {
+              return false;
+            }
+          },
+        },
+      },
+    },
     advanced: { database: { generateId: "uuid" as const } },
     rateLimit: { storage: "database" as const },
     session: { cookieCache: { enabled: true } },

@@ -155,5 +155,114 @@ describe("getAuthServer", () => {
       const options = betterAuthMock.mock.calls[0]![0] as { baseURL: string };
       expect(options.baseURL).toBe("https://getwrite.example.com");
     });
+
+    it("sets disableSignUp: false and requireEmailVerification: true (FR12/FR15)", () => {
+      getAuthServer();
+      const options = betterAuthMock.mock.calls[0]![0] as {
+        emailAndPassword: {
+          disableSignUp: unknown;
+          requireEmailVerification: unknown;
+        };
+      };
+      // disableSignUp must stay false: it's an unconditional kill switch
+      // that runs before any databaseHooks — true here would make the
+      // gate below unreachable (see the module doc's Finding 1 rationale).
+      expect(options.emailAndPassword.disableSignUp).toBe(false);
+      // requireEmailVerification stays true: this is what makes
+      // better-auth's own signup endpoint return a generic synthetic
+      // success response (rather than a distinguishing error) for an
+      // existing-email signup attempt — satisfying FR15 for signup without
+      // any additional custom handling. See auth-server.ts's module doc.
+      expect(options.emailAndPassword.requireEmailVerification).toBe(true);
+    });
+
+    it("wires databaseHooks.user.create.before as the signup allowlist gate", () => {
+      getAuthServer();
+      const options = betterAuthMock.mock.calls[0]![0] as {
+        databaseHooks: { user: { create: { before: unknown } } };
+      };
+      expect(typeof options.databaseHooks.user.create.before).toBe("function");
+    });
+
+    describe("databaseHooks.user.create.before (signup allowlist gate)", () => {
+      let savedAllowlist: string | undefined;
+
+      beforeEach(() => {
+        savedAllowlist = process.env.AUTH_SIGNUP_ALLOWLIST;
+        delete process.env.AUTH_SIGNUP_ALLOWLIST;
+      });
+
+      afterEach(() => {
+        if (savedAllowlist === undefined) {
+          delete process.env.AUTH_SIGNUP_ALLOWLIST;
+        } else {
+          process.env.AUTH_SIGNUP_ALLOWLIST = savedAllowlist;
+        }
+      });
+
+      function getBeforeHook(): (user: {
+        email: string;
+      }) => Promise<boolean | void> {
+        // Reset the memoized instance so a per-test env change (e.g. a
+        // different AUTH_SIGNUP_ALLOWLIST value) is observed on this call
+        // rather than returning a stale, already-memoized instance.
+        __resetAuthServerForTests();
+        getAuthServer();
+        const lastCallIndex = betterAuthMock.mock.calls.length - 1;
+        const options = betterAuthMock.mock.calls[lastCallIndex]![0] as {
+          databaseHooks: {
+            user: {
+              create: {
+                before: (user: { email: string }) => Promise<boolean | void>;
+              };
+            };
+          };
+        };
+        return options.databaseHooks.user.create.before;
+      }
+
+      it("allows any email when no allowlist is configured (open signup default)", async () => {
+        const before = getBeforeHook();
+        await expect(
+          before({ email: "anyone@example.com" }),
+        ).resolves.toBeUndefined();
+      });
+
+      it("allows an exact-match email and rejects a non-matching one", async () => {
+        process.env.AUTH_SIGNUP_ALLOWLIST = "founder@getwrite.dev";
+        const before = getBeforeHook();
+        await expect(
+          before({ email: "founder@getwrite.dev" }),
+        ).resolves.toBeUndefined();
+        await expect(before({ email: "stranger@example.com" })).resolves.toBe(
+          false,
+        );
+      });
+
+      it("allows any email at an allowlisted domain wildcard and rejects others", async () => {
+        process.env.AUTH_SIGNUP_ALLOWLIST = "@saboteur.dev";
+        const before = getBeforeHook();
+        await expect(
+          before({ email: "anyone@saboteur.dev" }),
+        ).resolves.toBeUndefined();
+        await expect(before({ email: "anyone@other.dev" })).resolves.toBe(
+          false,
+        );
+      });
+
+      it("matches case-insensitively in both directions", async () => {
+        process.env.AUTH_SIGNUP_ALLOWLIST = "Founder@GetWrite.dev";
+        const before = getBeforeHook();
+        await expect(
+          before({ email: "founder@getwrite.dev" }),
+        ).resolves.toBeUndefined();
+
+        process.env.AUTH_SIGNUP_ALLOWLIST = "@Saboteur.dev";
+        const before2 = getBeforeHook();
+        await expect(
+          before2({ email: "SOMEONE@saboteur.dev" }),
+        ).resolves.toBeUndefined();
+      });
+    });
   });
 });
