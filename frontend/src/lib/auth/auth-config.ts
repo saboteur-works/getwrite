@@ -16,7 +16,7 @@ import "server-only";
  * account, no login screen, and critically, **no Postgres connection ever
  * attempted** (FR5, FR10). `isHostedAuthActive()` is the one place every
  * other auth-aware module — `auth-server.ts`'s lazy `betterAuth(...)`
- * builder, the future better-auth `IdentitySource` (Task 3), the
+ * builder, `identity-source.ts`'s `betterAuthIdentitySource` (Task 3), the
  * `withStorageContext` 401 gate (Task 4), and the page-route redirect
  * (Task 4/6) — asks before doing anything hosted-auth-specific. Centralizing
  * the check here means the activation condition only has to be correct in
@@ -43,12 +43,13 @@ import "server-only";
  * function is cheap enough to call on every request.)
  *
  * **Server-only.** This module is never reachable from a client bundle
- * (`import "server-only"` above enforces that at build time — see FR5) and
- * has no client-facing counterpart in this task. A later task may expose a
- * narrow, purpose-built client signal (e.g. a boot-time flag baked into the
- * bundle) so the UI can decide whether to render a login affordance — that
- * is explicitly out of scope here; this module answers "is hosted auth
- * active on the server", nothing else.
+ * (`import "server-only"` above enforces that at build time — see FR5).
+ * `GET /api/auth-status` (Task 6, `app/api/auth-status/route.ts`) is the
+ * narrow, purpose-built client-facing counterpart that calls this function
+ * server-side and returns just the boolean, so the UI can decide whether to
+ * render a login affordance without this module itself ever reaching a
+ * client bundle; this module answers "is hosted auth active on the server",
+ * nothing else.
  */
 
 /**

@@ -25,8 +25,8 @@ import { isEmailAllowlisted } from "./signup-allowlist";
  * **Lazy, gated construction is the FR5/FR10 guarantee made mechanical.**
  * {@link getAuthServer} throws {@link AuthServerNotActiveError} — without
  * constructing a `Pool` or calling `betterAuth(...)` at all — when
- * {@link isHostedAuthActive} is `false`. Callers (the future better-auth
- * `IdentitySource`, the `/api/auth/[...all]` route handler) are responsible
+ * {@link isHostedAuthActive} is `false`. Callers (`identity-source.ts`'s
+ * `betterAuthIdentitySource`, the `/api/auth/[...all]` route handler) are responsible
  * for checking `isHostedAuthActive()` themselves before calling this
  * function; this function's own guard exists as defense in depth, not as
  * the primary gate — it is what makes "no Postgres connection is ever
@@ -48,9 +48,9 @@ import { isEmailAllowlisted } from "./signup-allowlist";
  *   "secondary-storage"`; `"database"` is used per FR16.
  * - `session.cookieCache`: confirmed shape — `{ enabled, maxAge, strategy,
  *   refreshCache }`. This module enables it with better-auth's documented
- *   default `maxAge` (5 minutes) so the future `IdentitySource` session read
- *   (Task 3) does not require a Postgres round-trip on every request, per
- *   FR17.
+ *   default `maxAge` (5 minutes) so `betterAuthIdentitySource`'s session read
+ *   (`identity-source.ts`, Task 3) does not require a Postgres round-trip on
+ *   every request, per FR17.
  *
  * No divergence from the spec's snippet was found: the installed v1.6.24
  * API matches the spec's intent (and key paths) exactly for every option
@@ -117,9 +117,9 @@ export class AuthServerNotActiveError extends Error {
 
 /**
  * The type of the object `betterAuth(...)` returns for this module's exact
- * options shape. Exported so downstream modules (the future
- * `IdentitySource`, the route handler) can type a reference to the server
- * instance without re-deriving it from `betterAuth` themselves.
+ * options shape. Exported so downstream modules (`identity-source.ts`'s
+ * `betterAuthIdentitySource`, the route handler) can type a reference to the
+ * server instance without re-deriving it from `betterAuth` themselves.
  *
  * Deliberately typed against `ReturnType<typeof buildAuthOptions>` rather
  * than the bare `Auth<BetterAuthOptions>` default: `betterAuth`'s return

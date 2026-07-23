@@ -9,7 +9,26 @@ PostgreSQL). See `specs/features/auth-provider.md` for the full spec and
   `BETTER_AUTH_SECRET` both set).
 - `auth-server.ts` — `getAuthServer()`, the lazily-built, memoized
   `betterAuth(...)` instance. Never constructs a `pg.Pool` or calls
-  `betterAuth(...)` when hosted auth is inactive.
+  `betterAuth(...)` when hosted auth is inactive. Signup is gated by a
+  `databaseHooks.user.create.before` hook (see `signup-allowlist.ts` below),
+  not `emailAndPassword.disableSignUp` — that option turned out to be an
+  unconditional kill switch with no per-call override, so it is configured
+  `false`. See this file's module doc and [ADR-020](../../../../docs/architecture/ADRs/adr-020-hybrid-auth-postgres-better-auth.md)
+  for the full story.
+- `email.ts` — the `nodemailer` SMTP transport wired into
+  `emailAndPassword.sendResetPassword` / `emailVerification.sendVerificationEmail`.
+  Reads `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM`.
+- `signup-allowlist.ts` — `isEmailAllowlisted()`, the policy consulted by
+  `auth-server.ts`'s signup-gating hook. Driven by `AUTH_SIGNUP_ALLOWLIST`
+  (exact emails and/or `@domain` wildcards); unset means open signup.
+- `session-guard.ts` — `shouldRedirectToLogin()`, the pure decision core
+  behind `app/(app)/layout.tsx`'s server-side redirect-to-`/login` gate.
+- `verify-email-core.ts` — server-side token consumption for `/verify-email`
+  (`getAuthServer().api.verifyEmail`).
+- `auth-client.ts` / `use-auth-session.ts` — the client-safe counterparts
+  (no `server-only`): a thin `better-auth/react` wrapper and
+  `useAuthSession()`, the combined hosted-active + authenticated signal UI
+  components read (backed by `GET /api/auth-status`).
 
 ## Schema / migrations (FR3)
 
