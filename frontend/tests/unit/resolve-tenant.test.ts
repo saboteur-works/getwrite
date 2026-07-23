@@ -1,9 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import path from "node:path";
+
+// resolve-tenant.ts -> identity-source.ts transitively imports
+// auth-config.ts/auth-server.ts, both of which are `import "server-only"` —
+// mocked here for the same reason as in auth-config.test.ts/
+// auth-server.test.ts: this suite runs in the jsdom test environment, not a
+// real RSC boundary.
+vi.mock("server-only", () => ({}));
+
 import {
   resolveTenant,
   __resetProvisionedRootsForTests,
 } from "../../app/api/_tenant/resolve-tenant";
+import * as identitySourceModule from "../../app/api/_tenant/identity-source";
 import { defaultProjectsDir } from "../../src/lib/models/projects-dir";
 import {
   setStorageAdapter,
@@ -143,5 +152,34 @@ describe("resolveTenant", () => {
     expect(fakeAdapter.mkdir).not.toHaveBeenCalled();
 
     warnSpy.mockRestore();
+  });
+
+  it("awaits an async IdentitySource.getUserId before resolving the tenant (FR8)", async () => {
+    process.env.GETWRITE_DATA_ROOT = "/absolute/data-root";
+    const identitySpy = vi
+      .spyOn(identitySourceModule, "getIdentitySource")
+      .mockReturnValue({
+        // Resolves after a microtask tick, mirroring a real session-store
+        // read (betterAuthIdentitySource) rather than a synchronous value.
+        getUserId: async () => {
+          await Promise.resolve();
+          return "carol";
+        },
+      });
+    const request = new Request("http://localhost");
+
+    const result = await resolveTenant(request);
+
+    const expectedDataRoot = path.join("/absolute/data-root", "carol");
+    expect(result).toEqual({
+      userId: "carol",
+      dataRoot: expectedDataRoot,
+      adapter: fakeAdapter,
+    });
+    expect(fakeAdapter.mkdir).toHaveBeenCalledWith(expectedDataRoot, {
+      recursive: true,
+    });
+
+    identitySpy.mockRestore();
   });
 });

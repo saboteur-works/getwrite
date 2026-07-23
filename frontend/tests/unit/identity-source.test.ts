@@ -1,8 +1,37 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+const { isHostedAuthActiveMock, getAuthServerMock, getSessionMock } =
+  vi.hoisted(() => ({
+    isHostedAuthActiveMock: vi.fn(),
+    getAuthServerMock: vi.fn(),
+    getSessionMock: vi.fn(),
+  }));
+
+vi.mock("../../src/lib/auth/auth-config", () => ({
+  isHostedAuthActive: isHostedAuthActiveMock,
+}));
+
+vi.mock("../../src/lib/auth/auth-server", () => ({
+  getAuthServer: getAuthServerMock,
+}));
+
 import {
   devIdentitySource,
+  betterAuthIdentitySource,
   getIdentitySource,
 } from "../../app/api/_tenant/identity-source";
+
+beforeEach(() => {
+  // Default every test to the pre-Slice-6 world (hosted auth inactive)
+  // unless a test explicitly opts into the hosted-auth-active branch, so the
+  // existing dev/null-source regression tests below observe unchanged
+  // behavior without setting any new env/mock themselves.
+  isHostedAuthActiveMock.mockReset().mockReturnValue(false);
+  getAuthServerMock
+    .mockReset()
+    .mockReturnValue({ api: { getSession: getSessionMock } });
+  getSessionMock.mockReset();
+});
 
 describe("devIdentitySource (pure header read)", () => {
   it("returns the dev header value when present", () => {
@@ -115,5 +144,78 @@ describe("getIdentitySource", () => {
 
     expect(warnSpy).toHaveBeenCalledTimes(2);
     warnSpy.mockRestore();
+  });
+});
+
+describe("betterAuthIdentitySource", () => {
+  it("resolves to the session's mapped userId when a valid session exists", async () => {
+    getSessionMock.mockResolvedValue({
+      session: { id: "sess-1", userId: "0f9a1b2c-...-uuid" },
+      user: { id: "0f9a1b2c-...-uuid", email: "alice@example.com" },
+    });
+    const request = new Request("http://localhost");
+
+    await expect(betterAuthIdentitySource.getUserId(request)).resolves.toBe(
+      "0f9a1b2c-...-uuid",
+    );
+    expect(getSessionMock).toHaveBeenCalledWith({ headers: request.headers });
+  });
+
+  it("resolves to null when getSession resolves to null (no valid session)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const request = new Request("http://localhost");
+
+    await expect(
+      betterAuthIdentitySource.getUserId(request),
+    ).resolves.toBeNull();
+  });
+
+  it("propagates a thrown error from getSession rather than swallowing it to null", async () => {
+    const dbError = new Error("connection to postgres failed");
+    getSessionMock.mockRejectedValue(dbError);
+    const request = new Request("http://localhost");
+
+    await expect(betterAuthIdentitySource.getUserId(request)).rejects.toBe(
+      dbError,
+    );
+  });
+});
+
+describe("getIdentitySource precedence (Slice 6, FR7)", () => {
+  it("returns betterAuthIdentitySource when hosted auth is active", () => {
+    isHostedAuthActiveMock.mockReturnValue(true);
+
+    expect(getIdentitySource()).toBe(betterAuthIdentitySource);
+  });
+
+  it("returns betterAuthIdentitySource when hosted auth is active, even if GETWRITE_ENABLE_DEV_IDENTITY is also set (security-boundary precedence)", () => {
+    isHostedAuthActiveMock.mockReturnValue(true);
+    process.env.GETWRITE_ENABLE_DEV_IDENTITY = "1";
+
+    expect(getIdentitySource()).toBe(betterAuthIdentitySource);
+
+    delete process.env.GETWRITE_ENABLE_DEV_IDENTITY;
+  });
+
+  it("returns devIdentitySource when hosted auth is inactive and the dev flag is set (regression)", () => {
+    isHostedAuthActiveMock.mockReturnValue(false);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    process.env.GETWRITE_ENABLE_DEV_IDENTITY = "1";
+
+    expect(getIdentitySource()).toBe(devIdentitySource);
+
+    delete process.env.GETWRITE_ENABLE_DEV_IDENTITY;
+    warnSpy.mockRestore();
+  });
+
+  it("returns the null source when hosted auth is inactive and the dev flag is unset (regression)", () => {
+    isHostedAuthActiveMock.mockReturnValue(false);
+    delete process.env.GETWRITE_ENABLE_DEV_IDENTITY;
+
+    const source = getIdentitySource();
+
+    expect(source).not.toBe(devIdentitySource);
+    expect(source).not.toBe(betterAuthIdentitySource);
+    expect(source.getUserId(new Request("http://localhost"))).toBeNull();
   });
 });
