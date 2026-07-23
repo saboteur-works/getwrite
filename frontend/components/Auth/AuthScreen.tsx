@@ -74,18 +74,18 @@ type Mode = "login" | "signup" | "forgot-password";
  * (`auth-client.ts`) remain assignable, so the production defaults below still
  * type-check.
  */
-export type SignInEmailAction = (params: {
+type SignInEmailAction = (params: {
   email: string;
   password: string;
 }) => Promise<{ data?: unknown; error?: { code?: string } | null }>;
 
-export type SignUpEmailAction = (params: {
+type SignUpEmailAction = (params: {
   name: string;
   email: string;
   password: string;
 }) => Promise<{ data?: unknown; error?: unknown }>;
 
-export type RequestPasswordResetAction = (params: {
+type RequestPasswordResetAction = (params: {
   email: string;
   redirectTo?: string;
 }) => Promise<unknown>;

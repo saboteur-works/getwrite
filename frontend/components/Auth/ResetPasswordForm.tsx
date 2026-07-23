@@ -32,7 +32,7 @@ import { resetPassword as defaultResetPassword } from "../../src/lib/auth/auth-c
  * (`auth-client.ts`) stays assignable, so the default below still type-checks,
  * while tests and stories can inject a stub with no coercion.
  */
-export type ResetPasswordEmailAction = (params: {
+type ResetPasswordEmailAction = (params: {
   newPassword: string;
   token: string;
 }) => Promise<{ data?: unknown; error?: unknown }>;
