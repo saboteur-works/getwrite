@@ -85,6 +85,11 @@ import Button from "../common/UI/Button/Button";
 import { type ExportFormat } from "../common/ExportPreviewModal";
 import UpdateNotice from "./UpdateNotice";
 import { APP_VERSION } from "../../src/lib/app-version";
+import { useAuthSession } from "../../src/lib/auth/use-auth-session";
+import {
+  signOut as authSignOut,
+  revokeSessions as authRevokeSessions,
+} from "../../src/lib/auth/auth-client";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
   selectResource,
@@ -233,6 +238,7 @@ export default function AppShell({
   onMediaCreateConfirmed,
   project,
 }: AppShellProps): JSX.Element {
+  const { isAuthenticated } = useAuthSession();
   const [view, setView] = useState<ViewName>("edit");
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState<boolean>(false);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState<boolean>(false);
@@ -791,7 +797,40 @@ export default function AppShell({
         setIsProjectMenuOpen(false);
         setCompileModal({ open: true });
         break;
+      case "logout":
+        setIsSettingsMenuOpen(false);
+        void handleLogout();
+        break;
+      case "logout-everywhere":
+        setIsSettingsMenuOpen(false);
+        void handleLogoutEverywhere();
+        break;
     }
+  };
+
+  /**
+   * Single-session logout (FR17/FR22). Invalidates the server-side session
+   * via better-auth's `signOut()` (not just the client-side cookie — see
+   * `auth-client.ts`'s module doc), then redirects to `/login`. `/login` is
+   * always the right destination here: this menu item is only reachable
+   * when `isAuthenticated` is already `true` (hosted auth active + a real
+   * session), so hosted auth cannot have "become inactive" between the
+   * click and the redirect in practice.
+   */
+  const handleLogout = async (): Promise<void> => {
+    await authSignOut();
+    window.location.assign("/login");
+  };
+
+  /**
+   * "Log out everywhere" (FR17/FR22) — revokes every session for the
+   * current user via better-auth's `revokeSessions()`, then redirects to
+   * `/login`. See {@link handleLogout} for why `/login` is always the
+   * correct redirect target from this authenticated-only menu item.
+   */
+  const handleLogoutEverywhere = async (): Promise<void> => {
+    await authRevokeSessions();
+    window.location.assign("/login");
   };
 
   const handleCloseProject = (): void => {
@@ -898,6 +937,7 @@ export default function AppShell({
         onToggleProjectMenuOpen={() => setIsProjectMenuOpen((prev) => !prev)}
         onAction={handleSettingsMenuAction}
         appVersion={APP_VERSION}
+        isAuthenticated={isAuthenticated}
       />
 
       <ShellLayoutController>
