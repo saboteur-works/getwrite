@@ -60,12 +60,42 @@ import {
 
 type Mode = "login" | "signup" | "forgot-password";
 
+/**
+ * The minimal contracts `AuthScreen` needs from its injected auth actions:
+ * each is callable with the relevant fields and resolves to a result whose
+ * (optional) `error` this component reads.
+ *
+ * These are intentionally narrower than better-auth's own client-action types
+ * (`typeof signIn.email` et al.), which are generic over fetch options and a
+ * conditional `throw` return — a shape no plain async stub can satisfy without
+ * an `any` cast. Narrowing to exactly what's consumed makes the injectable-
+ * action design (FR21) work as intended: tests and Storybook stories can pass
+ * ordinary stubs with no coercion, while the real client actions
+ * (`auth-client.ts`) remain assignable, so the production defaults below still
+ * type-check.
+ */
+export type SignInEmailAction = (params: {
+  email: string;
+  password: string;
+}) => Promise<{ data?: unknown; error?: { code?: string } | null }>;
+
+export type SignUpEmailAction = (params: {
+  name: string;
+  email: string;
+  password: string;
+}) => Promise<{ data?: unknown; error?: unknown }>;
+
+export type RequestPasswordResetAction = (params: {
+  email: string;
+  redirectTo?: string;
+}) => Promise<unknown>;
+
 export interface AuthScreenProps {
   /** Called after a successful login. Defaults to a full-page redirect to `/`. */
   onAuthenticated?: () => void;
-  signInEmail?: typeof defaultSignIn.email;
-  signUpEmail?: typeof defaultSignUp.email;
-  requestPasswordResetEmail?: typeof defaultRequestPasswordReset;
+  signInEmail?: SignInEmailAction;
+  signUpEmail?: SignUpEmailAction;
+  requestPasswordResetEmail?: RequestPasswordResetAction;
 }
 
 const GENERIC_LOGIN_ERROR = "Invalid email or password.";

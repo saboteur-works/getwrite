@@ -163,15 +163,23 @@ function passesCsrfCheck(request: Request): boolean {
  * null-user behavior.
  *
  * Preserves the handler's exact call signature and return type so Next.js's
- * route-handler type inference continues to accept the wrapped export.
+ * route-handler type inference continues to accept the wrapped export. The
+ * handler's `Return` is constrained to `Response` (every route handler yields
+ * one), which lets the auth short-circuits below return their `Response`
+ * without a cast; the wrapper's return type widens to `Return | Response` to
+ * cover those two early exits, both of which Next.js accepts.
  *
  * @param handler - The route handler to wrap.
  * @returns A handler with an identical signature that runs `handler` inside
- * a freshly established storage context.
+ * a freshly established storage context, or short-circuits to a 401/403
+ * `Response` when the auth gates reject the request.
  */
-export function withStorageContext<Args extends unknown[], Return>(
+export function withStorageContext<
+  Args extends unknown[],
+  Return extends Response,
+>(
   handler: (...args: Args) => Return | Promise<Return>,
-): (...args: Args) => Promise<Return> {
+): (...args: Args) => Promise<Return | Response> {
   return async (...args: Args) => {
     const request = args[0];
 
@@ -190,14 +198,14 @@ export function withStorageContext<Args extends unknown[], Return>(
         if (userId === null) {
           // No handler call, no storage context: nothing downstream is safe
           // to run without an identity (FR9).
-          return unauthorizedResponse() as unknown as Return;
+          return unauthorizedResponse();
         }
 
         if (
           STATE_CHANGING_METHODS.has(request.method) &&
           !passesCsrfCheck(request)
         ) {
-          return forbiddenCsrfResponse() as unknown as Return;
+          return forbiddenCsrfResponse();
         }
       }
 

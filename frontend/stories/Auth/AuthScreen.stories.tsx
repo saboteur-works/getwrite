@@ -8,25 +8,23 @@ import AuthScreen from "../../components/Auth/AuthScreen";
  * `AuthScreen`'s own "injected props default to the real client" design:
  * these stories simply supply different stub implementations via args.
  */
-const resolveSuccess = async () => ({ data: {}, error: null }) as any;
-const resolveUnverified = async () =>
-  ({
-    data: null,
-    error: {
-      status: 403,
-      code: "EMAIL_NOT_VERIFIED",
-      message: "Email not verified",
-    },
-  }) as any;
-const resolveGenericFailure = async () =>
-  ({
-    data: null,
-    error: {
-      status: 401,
-      code: "INVALID_EMAIL_OR_PASSWORD",
-      message: "Invalid email or password",
-    },
-  }) as any;
+const resolveSuccess = async () => ({ data: {}, error: null });
+const resolveUnverified = async () => ({
+  data: null,
+  error: {
+    status: 403,
+    code: "EMAIL_NOT_VERIFIED",
+    message: "Email not verified",
+  },
+});
+const resolveGenericFailure = async () => ({
+  data: null,
+  error: {
+    status: 401,
+    code: "INVALID_EMAIL_OR_PASSWORD",
+    message: "Invalid email or password",
+  },
+});
 
 const meta: Meta<typeof AuthScreen> = {
   title: "Auth/AuthScreen",

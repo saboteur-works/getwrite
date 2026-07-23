@@ -22,10 +22,25 @@ import { resetPassword as defaultResetPassword } from "../../src/lib/auth/auth-c
  * stories can pass a stub without mocking `better-auth/react`.
  */
 
+/**
+ * The minimal contract this form needs from the injected reset action:
+ * callable with `{ newPassword, token }`, resolving to a result whose
+ * (optional) `error` gates the failure message. Intentionally narrower than
+ * better-auth's own `typeof resetPassword` — that action type is generic over
+ * fetch options and a conditional `throw` return, which no plain async stub
+ * can satisfy without an `any` cast. The real client action
+ * (`auth-client.ts`) stays assignable, so the default below still type-checks,
+ * while tests and stories can inject a stub with no coercion.
+ */
+export type ResetPasswordEmailAction = (params: {
+  newPassword: string;
+  token: string;
+}) => Promise<{ data?: unknown; error?: unknown }>;
+
 export interface ResetPasswordFormProps {
   /** The single-use token from the `/reset-password/:token` URL. */
   token: string;
-  resetPasswordEmail?: typeof defaultResetPassword;
+  resetPasswordEmail?: ResetPasswordEmailAction;
 }
 
 const RESET_FAILURE_MESSAGE =

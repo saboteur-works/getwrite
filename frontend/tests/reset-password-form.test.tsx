@@ -16,11 +16,8 @@ describe("ResetPasswordForm", () => {
 
   it("submits the new password with the token and shows success", async () => {
     const resetPasswordEmail = vi
-      .fn()
-      .mockResolvedValue({
-        data: { status: true },
-        error: null,
-      }) as unknown as ResetPasswordEmailFn;
+      .fn<ResetPasswordEmailFn>()
+      .mockResolvedValue({ data: { status: true }, error: null });
     render(
       <ResetPasswordForm
         token="tok-123"
@@ -45,11 +42,11 @@ describe("ResetPasswordForm", () => {
 
   it("shows a failure message for an invalid or expired token", async () => {
     const resetPasswordEmail = vi
-      .fn()
+      .fn<ResetPasswordEmailFn>()
       .mockResolvedValue({
         data: null,
         error: { status: 400, code: "INVALID_TOKEN", message: "Invalid token" },
-      }) as unknown as ResetPasswordEmailFn;
+      });
     render(
       <ResetPasswordForm
         token="expired-tok"
