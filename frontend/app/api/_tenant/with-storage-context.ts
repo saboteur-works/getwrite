@@ -1,4 +1,4 @@
-// Last Updated: 2026-07-10
+// Last Updated: 2026-07-22
 
 /**
  * @module with-storage-context
@@ -23,11 +23,128 @@
  * to `defaultProjectsDir()`, preserving byte-identical legacy behavior. For a
  * signed-in request, it resolves to that user's validated, provisioned
  * per-tenant data root instead.
+ *
+ * **401 enforcement (Slice 6, FR9/FR10).** When
+ * {@link isHostedAuthActive} is `true` and `resolveTenant` resolves
+ * `userId: null` (no valid session), this wrapper returns an HTTP 401
+ * directly — the handler is never called, and no `runInStorageContext` scope
+ * is ever entered for that request, since there is nothing safe to run
+ * without an identity. Auth API routes themselves (signup, login, session,
+ * verification, password reset) do not go through this wrapper, so they
+ * remain reachable without a session, per FR9. **This check is a strict
+ * no-op when hosted auth is inactive** (desktop/local — FR10): the
+ * `isHostedAuthActive()` call gates the entire branch, so the pre-existing
+ * null-user local-first path below is untouched, byte-for-byte, when it is
+ * `false`.
+ *
+ * **CSRF enforcement (Slice 6, FR18).** Once a tenant route is reachable via
+ * a session cookie, it becomes a CSRF target. For state-changing methods
+ * (`POST`/`PUT`/`PATCH`/`DELETE`) on a request evaluated while hosted auth is
+ * active, {@link passesCsrfCheck} verifies the request's `Origin` header
+ * (falling back to `Referer`) names the same host as `BETTER_AUTH_URL`
+ * before the handler runs; a mismatch (or the total absence of both headers)
+ * returns HTTP 403. Like the 401 check above, this only ever runs when
+ * hosted auth is active — in local/desktop mode there is no session cookie
+ * for a forged cross-site request to ride on, so the check is skipped
+ * entirely rather than evaluated-and-passed, preserving the same
+ * byte-for-byte local-path invariant.
  */
 import { runInStorageContext } from "../../../src/lib/models/storage-context";
 import { defaultProjectsDir } from "../../../src/lib/models/projects-dir";
 import { resolveTenant } from "./resolve-tenant";
 import { resolveBackendAdapter } from "./storage-backend";
+import { isHostedAuthActive } from "../../../src/lib/auth/auth-config";
+
+/** HTTP methods this wrapper treats as state-changing for the CSRF check (FR18). */
+const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/**
+ * Builds the uniform 401 response returned when hosted auth is active and a
+ * request carries no valid session (FR9). The body is fixed and generic —
+ * it must not vary based on the request, so it cannot be used to probe
+ * anything about the target route.
+ */
+function unauthorizedResponse(): Response {
+  return Response.json({ error: "Unauthorized" }, { status: 401 });
+}
+
+/**
+ * Builds the uniform 403 response returned when a state-changing request
+ * fails the CSRF `Origin`/`Referer` check (FR18). Deliberately a distinct
+ * status from {@link unauthorizedResponse}: this is a CSRF rejection (the
+ * caller may well have a valid session), not "no session".
+ */
+function forbiddenCsrfResponse(): Response {
+  return Response.json(
+    { error: "Cross-site request rejected" },
+    { status: 403 },
+  );
+}
+
+/**
+ * Resolves the host `Origin`/`Referer` must match for a state-changing
+ * tenant request to pass the CSRF check (FR18): `BETTER_AUTH_URL`'s scheme
+ * + hostname.
+ *
+ * **Port is deliberately not compared.** `BETTER_AUTH_URL` is the app's own
+ * canonical base URL, but a hosted deployment is commonly reached through a
+ * reverse proxy or load balancer that terminates TLS on a different
+ * public-facing port than the one the Next.js process is configured with
+ * internally — comparing ports here would risk false-rejecting legitimate
+ * same-site requests in that (common) topology. Scheme + hostname is the
+ * practical "same site" boundary this check enforces; if a deployment needs
+ * port-level strictness, CSRF tokens (noted in FR18 as the stronger
+ * alternative) are the better tool, not a stricter version of this check.
+ *
+ * Falls back to `http://localhost:3000` when `BETTER_AUTH_URL` is unset,
+ * mirroring `auth-server.ts`'s `resolveBaseUrl()` local-dev convenience —
+ * duplicated here (rather than imported) to keep this low-level wrapper
+ * free of a dependency on `auth-server.ts`'s internals.
+ */
+function resolveAllowedOrigin(): string {
+  const configured = process.env.BETTER_AUTH_URL;
+  const base =
+    configured && configured.trim().length > 0
+      ? configured
+      : "http://localhost:3000";
+  const url = new URL(base);
+  return `${url.protocol}//${url.hostname}`;
+}
+
+/** Extracts the scheme+hostname from a header value, or `null` if it isn't a parseable URL. */
+function extractOrigin(headerValue: string | null): string | null {
+  if (!headerValue) return null;
+  try {
+    const url = new URL(headerValue);
+    return `${url.protocol}//${url.hostname}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Evaluates the CSRF `Origin`/`Referer` check for a state-changing tenant
+ * request (FR18).
+ *
+ * Prefers `Origin`; falls back to `Referer` when `Origin` is absent, a
+ * documented and common CSRF-check pattern (better-auth's own internal
+ * origin-check middleware follows the same fallback). **Fail-closed:** if
+ * neither header is present at all, this returns `false` — a same-origin
+ * browser `fetch`/`XHR` always sends `Origin` for a state-changing request,
+ * and a same-site form POST sends `Origin` in modern browsers (Chrome 76+),
+ * so a state-changing request with neither header is treated as suspicious
+ * rather than given the benefit of the doubt. This is a deliberately strict
+ * default; if it proves too strict for some legitimate same-origin request
+ * pattern this app actually makes, that would be a call worth revisiting
+ * with real traffic data, not something to silently relax here.
+ */
+function passesCsrfCheck(request: Request): boolean {
+  const allowed = resolveAllowedOrigin();
+  const candidate =
+    extractOrigin(request.headers.get("origin")) ??
+    extractOrigin(request.headers.get("referer"));
+  return candidate !== null && candidate === allowed;
+}
 
 /**
  * Wraps a Next.js route handler of any arity (`GET()`, `POST(req)`,
@@ -63,7 +180,27 @@ export function withStorageContext<Args extends unknown[], Return>(
     // request both come from `resolveTenant`; the non-Request defensive branch
     // (which Next.js routing should never hit) still honors the backend env.
     if (request instanceof Request) {
-      const { dataRoot, adapter } = await resolveTenant(request);
+      const { userId, dataRoot, adapter } = await resolveTenant(request);
+
+      // Both gates below are entirely skipped when hosted auth is inactive
+      // (FR10) — the `isHostedAuthActive()` check wraps both, so the
+      // pre-existing local-first path (resolve → run in context → handler)
+      // is unchanged, byte-for-byte, in that case.
+      if (isHostedAuthActive()) {
+        if (userId === null) {
+          // No handler call, no storage context: nothing downstream is safe
+          // to run without an identity (FR9).
+          return unauthorizedResponse() as unknown as Return;
+        }
+
+        if (
+          STATE_CHANGING_METHODS.has(request.method) &&
+          !passesCsrfCheck(request)
+        ) {
+          return forbiddenCsrfResponse() as unknown as Return;
+        }
+      }
+
       return await runInStorageContext({ tenantRoot: dataRoot, adapter }, () =>
         handler(...args),
       );

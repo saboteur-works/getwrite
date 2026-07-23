@@ -21,7 +21,7 @@
  */
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import useAppSelector, { useAppDispatch } from "../src/store/hooks";
+import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
   setProject,
   setSelectedProjectId,
@@ -30,23 +30,23 @@ import {
   setProjects as setProjectsInStore,
   buildStoredProject,
   selectActiveProjectDirectoryId,
-} from "../src/store/projectsSlice";
-import AppShell from "../components/Layout/AppShell";
+} from "../../src/store/projectsSlice";
+import AppShell from "../../components/Layout/AppShell";
 import StartPage, {
   type StartPageProjectEntry,
   type StartPageCreateResult,
-} from "../components/Start/StartPage";
-import type { Folder, AnyResource, TextResource } from "../src/lib/models";
-import type { MetadataValue, ResourceRef } from "../src/lib/models/types";
-import { buildProjectView } from "../src/lib/models/project-view";
-import { listProjects, openProject } from "../src/lib/api/projects";
+} from "../../components/Start/StartPage";
+import type { Folder, AnyResource, TextResource } from "../../src/lib/models";
+import type { MetadataValue, ResourceRef } from "../../src/lib/models/types";
+import { buildProjectView } from "../../src/lib/models/project-view";
+import { listProjects, openProject } from "../../src/lib/api/projects";
 import {
   createResource,
   copyResource,
   deleteResource,
   updateSidecar,
   uploadMediaResource,
-} from "../src/lib/api/resources";
+} from "../../src/lib/api/resources";
 import {
   setResources,
   setSelectedResourceId as setResourceId,
@@ -55,11 +55,11 @@ import {
   removeResource as removeResourceFromStore,
   setFolders,
   selectResource,
-} from "../src/store/resourcesSlice";
+} from "../../src/store/resourcesSlice";
 import { shallowEqual } from "react-redux";
-import { toastService } from "../src/lib/toast-service";
-import { setEditorConfig } from "../src/store/editorConfigSlice";
-import { exportMarkdown, exportText } from "../src/lib/api/export";
+import { toastService } from "../../src/lib/toast-service";
+import { setEditorConfig } from "../../src/store/editorConfigSlice";
+import { exportMarkdown, exportText } from "../../src/lib/api/export";
 
 /**
  * Flat representation of a project that has been opened in the current session.
