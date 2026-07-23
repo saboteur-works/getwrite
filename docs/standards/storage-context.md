@@ -68,8 +68,14 @@ As of ADR-018, the `tenantRoot` `withStorageContext` binds is not a hardcoded
 
 Identity itself comes from the pluggable `IdentitySource` interface
 (`frontend/app/api/_tenant/identity-source.ts`), selected via
-`getIdentitySource()` — the single swap point for a future real auth
-provider. Route authors calling `withStorageContext` do not need to know any
+`getIdentitySource()` — the single swap point for the auth provider. As of
+Slice 6 (`specs/features/auth-provider.md`, [ADR-020](../architecture/ADRs/adr-020-hybrid-auth-postgres-better-auth.md)),
+`betterAuthIdentitySource` is the real, production implementation, selected
+whenever `isHostedAuthActive()` (`DATABASE_URL` + `BETTER_AUTH_SECRET` both
+set). `devIdentitySource` and `nullIdentitySource` remain in place for local
+dev and desktop/Electron respectively — hosted-auth-active always takes
+precedence over the dev source, even if `GETWRITE_ENABLE_DEV_IDENTITY` is
+also set. Route authors calling `withStorageContext` do not need to know any
 of this; it is internal to the wrapper.
 
 ---
