@@ -66,7 +66,7 @@ From the repo root: `pnpm --filter getwrite-frontend exec vitest` runs frontend 
   - `meta/templates/` — resource template scaffolds
   - `revisions/<uuid>/v-<N>/` — versioned snapshots per resource
   - `.trash/{resources,meta}/` — soft-deleted content (see [Glossary: Trash](#glossary))
-- **API routes** (`frontend/app/api/`): Read/write the filesystem directly. Top-level groups: `projects`, `project/*` (id, delete, rename, tags, preferences, editor-config, metadata-schema, revision-settings, query, features), `project-resources`, `project-types`, `resource/*` (id, revision, upload), `compile`, `export`, `version-check` (Electron update check). Project-scoped routes resolve their project root as `path.join(resolveProjectsDir(), projectId)` from a server-validated `projectId` (`frontend/src/lib/models/project-path.ts`) — they do not accept a client-supplied `projectRoot`/`projectPath`. See `docs/standards/storage-context.md`.
+- **API routes** (`frontend/app/api/`): Read/write the filesystem directly. Top-level groups: `projects`, `project/*` (id, delete, rename, tags, preferences, editor-config, metadata-schema, revision-settings, query, features), `project-resources`, `project-types`, `resource/*` (id, revision, upload), `compile`, `export`, `version-check` (Electron update check), `auth/[...all]` (better-auth catch-all — sign-up/in/out, session, verification, password reset; hosted-auth-only, 404s when inactive), `auth-status` (client-facing `isHostedAuthActive()` signal, presentational only). Project-scoped routes resolve their project root as `path.join(resolveProjectsDir(), projectId)` from a server-validated `projectId` (`frontend/src/lib/models/project-path.ts`) — they do not accept a client-supplied `projectRoot`/`projectPath`. See `docs/standards/storage-context.md`.
 - **Schemas** (`frontend/src/lib/models/schemas.ts`): Zod validators gate all persisted data crossing the filesystem boundary
 - **File locking**: `frontend/src/lib/models/locks.ts` is a generic per-key async mutex; `meta-locks.ts` serializes metadata-affecting operations keyed by project root
 
@@ -90,6 +90,7 @@ frontend/
   app/                   # Next.js App Router (pages + API routes)
   components/            # Feature-organized React components
     Layout/              # AppShell + shell controllers
+    Auth/                # Login/signup/verify/reset UI (hosted auth only)
     Editor/              # TipTap rich text editor (+ TipTapEditor.tsx entry)
     ResourceTree/        # Tree, context menu, create/rename modals, SmartFolders
     WorkArea/            # EditView / DataView / DiffView + Views/{Organizer,Timeline}
@@ -121,10 +122,12 @@ All paths relative to `frontend/src/`. Use these as orientation; open the files 
 - *Update check*: `update-check.ts` (compares running version to latest GitHub release)
 - *Concurrency*: `locks.ts`, `meta-locks.ts`
 
+**Auth (`lib/auth/`)** — server-only hosted-authentication path (better-auth + PostgreSQL; opt-in, hosted-only; see [ADR-020](docs/architecture/ADRs/adr-020-hybrid-auth-postgres-better-auth.md)). `auth-config.ts` (`isHostedAuthActive()` — single source of truth for whether `DATABASE_URL` + `BETTER_AUTH_SECRET` are both set), `auth-server.ts` (lazily-built, memoized `betterAuth(...)` instance), `email.ts` (`nodemailer` SMTP transport wired into verification/reset callbacks), `signup-allowlist.ts` (`AUTH_SIGNUP_ALLOWLIST` gate consulted by a `databaseHooks.user.create.before` hook, not `disableSignUp`), `session-guard.ts` (`shouldRedirectToLogin` — the decision core behind the `(app)` route-group layout's page redirect), `verify-email-core.ts` (server-side `/verify-email` token consumption). `auth-client.ts` (client-side `better-auth/react` wrapper) and `use-auth-session.ts` (`useAuthSession()` — the combined hosted-active + authenticated signal UI components read) are the client-safe counterparts in the same directory. Desktop/local never configures the hosted-auth env, so none of this runs and no Postgres connection is ever attempted (`GETWRITE_ENABLE_DEV_IDENTITY` remains the mechanism for exercising tenant resolution locally without hosted auth — see the Store's `auth-status-transport-service` note and `docs/standards/storage-context.md`).
+
 **Store (`store/`)** — Redux Toolkit. Pattern per feature: `<feature>Slice.ts` + `*-transport-service.ts` (HTTP) + `*-guards.ts` (invariants).
 
 - *Slices*: `projectsSlice`, `resourcesSlice`, `revisionsSlice`, `editorConfigSlice`, `querySlice`, `searchSlice`
-- *Transports*: `revision-transport-service`, `query-transport-service`, `search-transport-service`, `metadata-schema-transport-service`, `feature-config-transport-service` (per-project feature flags), `update-check-transport-service` (Electron update notice)
+- *Transports*: `revision-transport-service`, `query-transport-service`, `search-transport-service`, `metadata-schema-transport-service`, `feature-config-transport-service` (per-project feature flags), `update-check-transport-service` (Electron update notice), `auth-status-transport-service` (fetches `GET /api/auth-status`; fail-safe `{ hostedAuthActive: false }` on any error)
 - *Guards & normalizers*: `revision-canonical-guards` (single-canonical invariant), `queries-guards`, `revision-normalization`
 - *Controllers*: `project-actions-controller` (multi-step project ops)
 - *Plumbing*: `store.ts`, `ClientProvider.tsx`, `hooks.ts` (typed `useAppDispatch`/`useAppSelector`)
@@ -164,6 +167,7 @@ Domain terms that recur across code, skills, and specs:
 - **Stub resource** — A resource the UI flags as "Needs content" (zero word count). Rendered with `isStub` in lists like `StubResourcesSection`.
 - **Backlinks** — Reverse links between resources, computed by `backlinks.ts` and persisted to `meta/index/`.
 - **Trash** — Soft-delete area at `projects/<projectId>/.trash/` with `resources/` and `meta/` subtrees. `softDeleteResource` moves a resource's content directory and sidecar there, preserving IDs.
+- **Hosted auth** — GetWrite's opt-in, hosted-only identity layer (better-auth + PostgreSQL, `lib/auth/`; see [ADR-020](docs/architecture/ADRs/adr-020-hybrid-auth-postgres-better-auth.md)). Active only when `DATABASE_URL` and `BETTER_AUTH_SECRET` are both set (`isHostedAuthActive()`); plugs into the `IdentitySource` seam (`betterAuthIdentitySource`) that resolves a request's `userId` for tenant storage isolation. Desktop/local never configures it and stays account-free and database-free.
 
 ## Standards & Authority Hierarchy
 

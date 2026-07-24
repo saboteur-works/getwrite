@@ -8,6 +8,8 @@ import {
   SlidersHorizontal,
   HelpCircle,
   LogOut,
+  DoorOpen,
+  ShieldOff,
   BookOpen,
   Archive,
   FileSliders,
@@ -23,7 +25,9 @@ export type SettingsMenuAction =
   | "toggle-color-mode"
   | "help"
   | "close-project"
-  | "compile";
+  | "compile"
+  | "logout"
+  | "logout-everywhere";
 
 export interface ShellSettingsMenuProps {
   projectName?: string;
@@ -38,6 +42,16 @@ export interface ShellSettingsMenuProps {
   onAction: (action: SettingsMenuAction) => void;
   /** Running app version shown in the menu footer. Footer is hidden when empty. */
   appVersion?: string;
+  /**
+   * Whether the current caller has an authenticated hosted-auth session
+   * (Slice 6, FR22). Logout and "log out everywhere" are rendered only
+   * when `true`; they are never shown when hosted auth is inactive
+   * (desktop/local) or when there is no session, since both cases resolve
+   * this to `false` upstream — see `use-auth-session.ts`'s
+   * `useAuthSession()`, the source `AppShell` derives this prop from.
+   * Defaults to `false`.
+   */
+  isAuthenticated?: boolean;
 }
 
 /** Menu items that only appear when a project is open, in display order. */
@@ -65,6 +79,7 @@ export default function ShellSettingsMenu({
   onToggleProjectMenuOpen,
   onAction,
   appVersion,
+  isAuthenticated = false,
 }: ShellSettingsMenuProps): JSX.Element {
   const { containerRef: settingsMenuRef } = useDismissableMenu({
     isOpen,
@@ -197,6 +212,23 @@ export default function ShellSettingsMenu({
                   label="Close Project"
                   onClick={() => onAction("close-project")}
                 />
+              ) : null}
+              {isAuthenticated ? (
+                <>
+                  <hr className="appshell-topbar-dropdown-separator" />
+                  <MenuItemButton
+                    className="appshell-topbar-dropdown-item"
+                    icon={<DoorOpen size={14} aria-hidden="true" />}
+                    label="Log out"
+                    onClick={() => onAction("logout")}
+                  />
+                  <MenuItemButton
+                    className="appshell-topbar-dropdown-item"
+                    icon={<ShieldOff size={14} aria-hidden="true" />}
+                    label="Log out everywhere"
+                    onClick={() => onAction("logout-everywhere")}
+                  />
+                </>
               ) : null}
               {appVersion ? (
                 <>

@@ -1,4 +1,4 @@
-// Last Updated: 2026-07-10
+// Last Updated: 2026-07-22
 
 /**
  * @module resolve-tenant
@@ -91,7 +91,7 @@ export interface ResolvedTenant {
  */
 export async function resolveTenant(request: Request): Promise<ResolvedTenant> {
   const adapter = resolveBackendAdapter();
-  const userId = getIdentitySource().getUserId(request);
+  const userId = await getIdentitySource().getUserId(request);
 
   if (userId === null) {
     return { userId: null, dataRoot: defaultProjectsDir(), adapter };

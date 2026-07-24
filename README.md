@@ -89,6 +89,20 @@ are unset.
 | `GETWRITE_ENABLE_DEV_IDENTITY` | Hosted/dev only. Opt-in flag that activates the **interim** development identity source, which reads a `userId` from the `x-getwrite-dev-user` request header. Inert (no identity asserted) unless set. This is a scaffold for exercising the tenant-resolution path — **not production authentication** — and logs a loud warning when active. |
 | `GETWRITE_CLI_TESTING` | Set to `1` to suppress `process.exit` when invoking `getwrite-cli` commands from tests. |
 
+### Hosted authentication (optional)
+
+GetWrite's identity layer is a hybrid: tenant *content* (projects, resources, revisions) always stays on the filesystem/object store, exactly as it does for local/desktop use; *accounts* — credentials, sessions, email verification, password reset — are handled by [better-auth](https://www.better-auth.com/) backed by PostgreSQL, entirely opt-in. See [ADR-020](docs/architecture/ADRs/adr-020-hybrid-auth-postgres-better-auth.md) for the full rationale.
+
+Omitting `DATABASE_URL`/`BETTER_AUTH_SECRET` keeps the instance in **account-free local-first mode**: no Postgres connection is attempted, no login screen is shown, and every route behaves exactly as it does today. Set both to enable hosted auth, both for Saboteur's primary hosted instance and for third-party self-hosters who want multi-user accounts.
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Postgres connection string. Hard prerequisite for hosted auth, alongside `BETTER_AUTH_SECRET` — without both, `isHostedAuthActive()` is `false` and no Postgres connection is attempted. Also backs better-auth's rate-limit storage (`rateLimit.storage: "database"`); no separate config is needed for rate-limiting beyond this variable. |
+| `BETTER_AUTH_SECRET` | Secret better-auth uses to sign sessions/tokens. Required alongside `DATABASE_URL` to activate hosted auth. A plain shared environment variable, injected identically into every instance of the hosted service; rotation is a coordinated redeploy with the new value, not a runtime feature. |
+| `BETTER_AUTH_URL` | better-auth's `baseURL` — this deployment's own canonical URL. Falls back to `http://localhost:3000` for local development, but real deployments (hosted and self-host) must set it explicitly. Also the source of the allowed `Origin`/`Referer` for the CSRF check on state-changing tenant routes. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | `nodemailer` SMTP transport config for the email-verification and password-reset emails. Any SMTP-compatible provider works. `SMTP_PORT: 465` implies implicit TLS (`secure: true`); other ports use STARTTLS. |
+| `AUTH_SIGNUP_ALLOWLIST` | Optional. Gates who may sign up: a comma- and/or newline-separated list of exact emails and/or `@domain.com` wildcards, matched case-insensitively. Unset means open signup. Saboteur's primary hosted instance sets this; self-hosters may leave it open or configure their own policy. |
+
 ## Project structure (high level)
 
 - `frontend/` — Next.js frontend, components, tests, and runtime models
