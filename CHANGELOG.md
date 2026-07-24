@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.6.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.5.0...getwrite-v1.6.0) (2026-07-24)
+
+
+### Features
+
+* real authentication provider (better-auth + PostgreSQL) — Slice 6 ([855f57b](https://github.com/saboteur-works/getwrite/commit/855f57b64695f4498b583936f21e1fe0bc1f2dba))
+* **task-1:** add better-auth/Postgres deps and server-only auth config seam ([4577052](https://github.com/saboteur-works/getwrite/commit/45770522b06f1f3cd97dd2e97c29f06f66596ef7))
+* **task-2:** mount better-auth route handler and wire nodemailer SMTP transport ([c7aa0f4](https://github.com/saboteur-works/getwrite/commit/c7aa0f411a2933e87b1dd6045baf838dfc02b8fd))
+* **task-3:** add better-auth identity source and async getUserId seam ([f8ef962](https://github.com/saboteur-works/getwrite/commit/f8ef9628507baec3d81f9fe49373687f8d1694c7))
+* **task-4:** enforce 401/CSRF on tenant routes and add page-route login gate ([1141964](https://github.com/saboteur-works/getwrite/commit/1141964f58c6fbc5487cc4731ce320ca2260e222))
+* **task-5:** gate hosted signup behind an env-configured email allowlist ([75fc13a](https://github.com/saboteur-works/getwrite/commit/75fc13a72e778a2a62d5bcf815b258dc20c6974a))
+* **task-6:** add login/signup/verify/reset UI and logout affordances ([e1062cd](https://github.com/saboteur-works/getwrite/commit/e1062cd7e3c81a4991bd106325d952daec6fecba))
+
 ## [1.5.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.4.0...getwrite-v1.5.0) (2026-07-22)
 
 
