@@ -276,25 +276,53 @@ async function main() {
   );
 
   // ------------------------------------------------------------ signup gating
-  phase("Signup gating (FR12, FR15)");
+  // L1 (FR26): a non-allowlisted signup must be INDISTINGUISHABLE from an
+  // allowlisted one — same 200 { token, user } shape — while silently creating
+  // no account. Compare its response to a genuine allowlisted signup, then prove
+  // no account was actually made (login yields "no such account", not the
+  // "unverified" an allowlisted-but-unverified signup would give).
+  phase("Signup gating + anti-enumeration (FR12, FR15, L1)");
+  const blockedEmail = `${RUN}-blocked@blocked.test`;
   const blocked = await call("/api/auth/sign-up/email", {
     method: "POST",
-    body: {
-      name: "Blocked",
-      email: `${RUN}-blocked@blocked.test`,
-      password: PASSWORD,
-    },
+    body: { name: "Blocked", email: blockedEmail, password: PASSWORD },
+    ip: "203.0.113.99",
+  });
+  const allowedProbeEmail = `${RUN}-probe@${ALLOWED_DOMAIN}`;
+  const allowedProbe = await call("/api/auth/sign-up/email", {
+    method: "POST",
+    body: { name: "Probe", email: allowedProbeEmail, password: PASSWORD },
+    ip: "203.0.113.97",
+  });
+  const shape = (r) =>
+    r.status === 200 && r.json && typeof r.json === "object"
+      ? JSON.stringify({
+          token: r.json.token ?? null,
+          userKeys: Object.keys(r.json.user ?? {}).sort(),
+        })
+      : `status:${r.status}`;
+  check(
+    "non-allowlisted signup is indistinguishable from an allowlisted one (L1)",
+    blocked.status === 200 && shape(blocked) === shape(allowedProbe),
+    `blocked=${shape(blocked)} allowed=${shape(allowedProbe)}`,
+  );
+  check(
+    "response never discloses the allowlist",
+    !/allow|invite|permitted|not.*create/i.test(blocked.text),
+    `body leaked gating detail: ${blocked.text.slice(0, 160)}`,
+  );
+  // Prove no account was created for the blocked email: login must fail as
+  // "no account" (401), not as "unverified" (403 EMAIL_NOT_VERIFIED).
+  await sleep(1_000);
+  const blockedLogin = await call("/api/auth/sign-in/email", {
+    method: "POST",
+    body: { email: blockedEmail, password: PASSWORD },
     ip: "203.0.113.99",
   });
   check(
-    "non-allowlisted signup rejected",
-    blocked.status >= 400,
-    `expected >=400, got ${blocked.status} ${blocked.text.slice(0, 160)}`,
-  );
-  check(
-    "rejection does not disclose the allowlist",
-    !/allow|invite|permitted/i.test(blocked.text),
-    `body leaked gating detail: ${blocked.text.slice(0, 160)}`,
+    "no account was actually created for the non-allowlisted email (L1)",
+    blockedLogin.status === 401,
+    `expected 401 (no account), got ${blockedLogin.status} ${blockedLogin.text.slice(0, 160)}`,
   );
 
   // ------------------------------------------------------------- user A flow
@@ -489,6 +517,21 @@ async function main() {
     `expected 403, got ${noOrigin.status} ${noOrigin.text.slice(0, 160)}`,
   );
 
+  // L2 (FR26): a same-host, different-port Origin is a distinct browser origin
+  // and must be rejected — the CSRF check compares host including port.
+  const portOrigin = await call("/api/projects", {
+    method: "POST",
+    body: { name: "Different port", projectType: "blank" },
+    session: a.session,
+    ip: a.ip,
+    origin: `${new URL(APP_URL).protocol}//${new URL(APP_URL).hostname}:65000`,
+  });
+  check(
+    "same-host different-port Origin is rejected (CSRF, port-sensitive) (L2)",
+    portOrigin.status === 403,
+    `expected 403, got ${portOrigin.status} ${portOrigin.text.slice(0, 160)}`,
+  );
+
   const pageAnon = await call("/", { redirect: "manual" });
   const location = pageAnon.response.headers.get("location") ?? "";
   check(
@@ -594,20 +637,6 @@ async function main() {
       "getIPFromHeader trusts a forwarded header only when it holds a single " +
       "value or advanced.ipAddress.trustedProxies is configured; otherwise the " +
       "client IP is null and every caller shares one 'no-trusted-ip' bucket.",
-  );
-
-  const portOrigin = await call("/api/projects", {
-    method: "POST",
-    body: { name: "Different port", projectType: "blank" },
-    session: b.session,
-    ip: b.ip,
-    origin: `${new URL(APP_URL).protocol}//${new URL(APP_URL).hostname}:65000`,
-  });
-  note(
-    `same host, different port as Origin -> status ${portOrigin.status}. ` +
-      "resolveAllowedOrigin() compares protocol+hostname only, so the port is " +
-      "not part of the CSRF comparison even though browsers treat it as a " +
-      "distinct origin.",
   );
 
   // ---------------------------------------------------------------- summary

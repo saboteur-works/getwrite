@@ -164,6 +164,7 @@ let cachedAuthServer: AuthServerInstance | null = null;
 export function __resetAuthServerForTests(): void {
   cachedAuthServer = null;
   hasWarnedMissingIpTrust = false;
+  hasWarnedInsecureBaseUrl = false;
 }
 
 /**
@@ -225,6 +226,34 @@ function warnMissingIpTrust(): void {
 }
 
 /**
+ * Warns when hosted auth is active but `BETTER_AUTH_URL` is not https (FR26
+ * review, finding M2). better-auth derives the session cookie's `Secure` flag
+ * from this protocol, so an http base URL ships session cookies without
+ * `Secure` — sendable over plaintext and interceptable. The warning is
+ * non-fatal because local hosted-auth testing legitimately runs on
+ * http://localhost; a real deployment must set an https `BETTER_AUTH_URL`.
+ */
+let hasWarnedInsecureBaseUrl = false;
+function warnIfInsecureBaseUrl(baseUrl: string): void {
+  if (hasWarnedInsecureBaseUrl) return;
+  let protocol = "";
+  try {
+    protocol = new URL(baseUrl).protocol;
+  } catch {
+    protocol = "";
+  }
+  if (protocol === "https:") return;
+  hasWarnedInsecureBaseUrl = true;
+  console.warn(
+    `[getwrite] Hosted auth is active but BETTER_AUTH_URL (${baseUrl}) is not ` +
+      "https. better-auth derives the session cookie's Secure flag from this " +
+      "URL, so sessions will be issued without Secure and can be sent over " +
+      "plaintext HTTP. Set an https BETTER_AUTH_URL in any real deployment " +
+      "(a non-https localhost value is fine for local testing only).",
+  );
+}
+
+/**
  * Resolves `BETTER_AUTH_URL`, better-auth's `baseURL` option.
  *
  * Unlike `isHostedAuthActive()`'s hard-required env vars, `BETTER_AUTH_URL`
@@ -265,12 +294,23 @@ function buildAuthOptions() {
     warnMissingIpTrust();
   }
 
+  const baseURL = resolveBaseUrl();
+  warnIfInsecureBaseUrl(baseURL);
+
   return {
     database: new Pool({ connectionString: databaseUrl }),
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
       disableSignUp: false,
+      // FR26 review L3: pin an explicit password-length policy rather than
+      // relying on better-auth's 8-char default. 12 is a modest modern minimum;
+      // the max is a sanity cap (a hasher can be DoS'd by an unbounded input).
+      // Breach screening (e.g. the haveibeenpwned plugin) is deliberately NOT
+      // added here — it introduces an external network dependency on every
+      // signup/reset and needs a package-selection sign-off (docs/standards).
+      minPasswordLength: 12,
+      maxPasswordLength: 128,
       sendResetPassword,
     },
     emailVerification: { sendVerificationEmail },
@@ -299,7 +339,7 @@ function buildAuthOptions() {
       },
     },
     secret,
-    baseURL: resolveBaseUrl(),
+    baseURL,
   };
 }
 

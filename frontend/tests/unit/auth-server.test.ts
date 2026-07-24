@@ -154,6 +154,8 @@ describe("getAuthServer", () => {
 
     it("configures advanced.ipAddress.trustedProxies from AUTH_TRUSTED_PROXIES and does not warn (FR16/H2)", () => {
       process.env.AUTH_TRUSTED_PROXIES = "10.0.0.1, 192.168.0.0/16";
+      // https base URL so the M2 insecure-cookie warning doesn't fire either.
+      process.env.BETTER_AUTH_URL = "https://getwrite.example.com";
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       try {
         getAuthServer();
@@ -178,6 +180,7 @@ describe("getAuthServer", () => {
 
     it("configures advanced.ipAddress.ipAddressHeaders from AUTH_IP_ADDRESS_HEADERS (FR16/H2)", () => {
       process.env.AUTH_IP_ADDRESS_HEADERS = "cf-connecting-ip";
+      process.env.BETTER_AUTH_URL = "https://getwrite.example.com";
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       try {
         getAuthServer();
@@ -187,6 +190,48 @@ describe("getAuthServer", () => {
         expect(options.advanced.ipAddress?.ipAddressHeaders).toEqual([
           "cf-connecting-ip",
         ]);
+        expect(warn).not.toHaveBeenCalled();
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it("pins an explicit password-length policy (FR26/L3)", () => {
+      getAuthServer();
+      const options = betterAuthMock.mock.calls[0]![0] as {
+        emailAndPassword: {
+          minPasswordLength?: number;
+          maxPasswordLength?: number;
+        };
+      };
+      expect(options.emailAndPassword.minPasswordLength).toBeGreaterThanOrEqual(
+        12,
+      );
+      expect(options.emailAndPassword.maxPasswordLength).toBeGreaterThan(
+        options.emailAndPassword.minPasswordLength ?? 0,
+      );
+    });
+
+    it("warns when BETTER_AUTH_URL is not https (FR26/M2)", () => {
+      process.env.BETTER_AUTH_URL = "http://getwrite.example.com";
+      process.env.AUTH_TRUSTED_PROXIES = "10.0.0.1"; // silence the H2 warning
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        getAuthServer();
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining("is not https"),
+        );
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it("does not warn about the base URL when BETTER_AUTH_URL is https (FR26/M2)", () => {
+      process.env.BETTER_AUTH_URL = "https://getwrite.example.com";
+      process.env.AUTH_TRUSTED_PROXIES = "10.0.0.1";
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        getAuthServer();
         expect(warn).not.toHaveBeenCalled();
       } finally {
         warn.mockRestore();
