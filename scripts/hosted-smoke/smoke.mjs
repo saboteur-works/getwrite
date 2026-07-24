@@ -81,7 +81,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * bucket, and credential calls are paced within a user.
  */
 function ipFor(label) {
-  return label === "a" ? "203.0.113.10" : "203.0.113.20";
+  const octet = 10 + (label.charCodeAt(0) - "a".charCodeAt(0)) * 10;
+  return `203.0.113.${octet}`;
 }
 
 class Session {
@@ -158,14 +159,21 @@ async function clearMail() {
   await fetch(`${MAILPIT_URL}/api/v1/messages`, { method: "DELETE" });
 }
 
-/** Polls Mailpit for a message to `to`, returning its plain-text body. */
-async function waitForMail(to, timeoutMs = 20_000) {
+/**
+ * Polls Mailpit for a message to `to`, returning its plain-text body. When
+ * `subjectIncludes` is given, only a message whose subject contains it matches —
+ * needed to pick the reset email out of an inbox that also holds the earlier
+ * verification email.
+ */
+async function waitForMail(to, { subjectIncludes, timeoutMs = 20_000 } = {}) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const found = await mailpit(
       `/api/v1/search?query=${encodeURIComponent(`to:${to}`)}`,
     );
-    const message = found?.messages?.[0];
+    const message = (found?.messages ?? []).find(
+      (m) => !subjectIncludes || m.Subject?.toLowerCase().includes(subjectIncludes.toLowerCase()),
+    );
     if (message) {
       const full = await mailpit(`/api/v1/message/${message.ID}`);
       return { subject: message.Subject, text: full.Text ?? "", raw: full };
@@ -205,7 +213,7 @@ async function onboard(label, email) {
     `status ${signup.status} ${signup.text.slice(0, 160)}`,
   );
 
-  const mail = await waitForMail(email);
+  const mail = await waitForMail(email, { subjectIncludes: "verify" });
   check(
     `${label}: verification email delivered over SMTP`,
     /verify/i.test(mail.subject),
@@ -305,6 +313,83 @@ async function main() {
     "duplicate signup returns a generic success, not a distinguishable error",
     duplicate.status === 200,
     `status ${duplicate.status} ${duplicate.text.slice(0, 160)}`,
+  );
+
+  // --------------------------------------------------- password reset (FR13/H1)
+  // Full click-through, on a dedicated user so it doesn't disturb A/B. This is
+  // the regression guard for FR26 finding H1: the reset link used to 302 to
+  // /reset-password?token=… which 404'd because the app only had a [token]
+  // path-segment route. The flow must now: request → email link → follow
+  // (302 to the query-param page) → page renders 200 → set a new password →
+  // log in with it.
+  phase("Password reset flow (FR13, H1 regression guard)");
+  const emailC = `${RUN}-carol@${ALLOWED_DOMAIN}`;
+  const c = await onboard("c", emailC);
+  await sleep(1_000);
+  const resetRequest = await call("/api/auth/request-password-reset", {
+    method: "POST",
+    body: { email: emailC, redirectTo: "/reset-password" },
+    ip: c.ip,
+  });
+  check(
+    "c: password-reset request accepted",
+    resetRequest.status === 200,
+    `status ${resetRequest.status} ${resetRequest.text.slice(0, 160)}`,
+  );
+
+  const resetMail = await waitForMail(emailC, { subjectIncludes: "reset" });
+  const resetLink = firstUrl(resetMail.text);
+  check("c: reset email contains a link", Boolean(resetLink), resetMail.text.slice(0, 200));
+
+  // Follow better-auth's validation endpoint; it 302s to the callback page with
+  // the validated token as a query param.
+  const followed = await fetch(resetLink, { redirect: "manual" });
+  const resetLocation = followed.headers.get("location") ?? "";
+  check(
+    "c: reset link redirects to the app reset page with a token",
+    (followed.status === 302 || followed.status === 307) &&
+      resetLocation.includes("/reset-password") &&
+      resetLocation.includes("token="),
+    `status ${followed.status} location=${resetLocation || "(none)"}`,
+  );
+
+  // The H1 assertion: this page must render, not 404.
+  const resetPage = await call(
+    resetLocation.startsWith("http")
+      ? resetLocation.slice(APP_URL.length)
+      : resetLocation,
+  );
+  check(
+    "c: reset page renders (H1: was a 404 before the fix)",
+    resetPage.status === 200,
+    `expected 200, got ${resetPage.status}`,
+  );
+
+  const resetToken = new URL(resetLocation, APP_URL).searchParams.get("token");
+  const NEW_PASSWORD = "smoke-Reset1!";
+  const doReset = await call("/api/auth/reset-password", {
+    method: "POST",
+    body: { newPassword: NEW_PASSWORD, token: resetToken },
+    ip: c.ip,
+  });
+  check(
+    "c: new password accepted via the reset token",
+    doReset.status === 200,
+    `status ${doReset.status} ${doReset.text.slice(0, 160)}`,
+  );
+
+  await sleep(1_000);
+  const cReloginNew = new Session("c-new");
+  const loginNew = await call("/api/auth/sign-in/email", {
+    method: "POST",
+    body: { email: emailC, password: NEW_PASSWORD },
+    session: cReloginNew,
+    ip: c.ip,
+  });
+  check(
+    "c: can log in with the new password",
+    loginNew.status === 200 && cReloginNew.authenticated,
+    `status ${loginNew.status}`,
   );
 
   // -------------------------------------------------------- tenant isolation
@@ -454,23 +539,26 @@ async function main() {
     `expected 401, got ${afterRevokeNoCache.status} ${afterRevokeNoCache.text.slice(0, 160)}`,
   );
 
-  // FINDING (FR17 gap, decision-pending). With the full cookie jar — exactly what
-  // a real browser or a stolen device sends — the revoked session KEEPS working,
-  // because session.cookieCache (auth-server.ts) serves a signed session snapshot
-  // for its maxAge (better-auth default: 5 min) without ever consulting the DB.
-  // "Log out everywhere" therefore does not take effect for up to 5 minutes on any
-  // session with a warm cache — including the attacker device the action targets.
-  // This check is expected to FAIL until that config is decided (see README §Findings
-  // and the FR26 security review); when the window is closed it becomes a hard gate.
-  const afterRevokeFullJar = await call("/api/projects", {
-    session: a.session,
-    ip: a.ip,
-  });
+  // Hard gate (FR17/M1). With the full cookie jar — what a real browser or a
+  // stolen device sends — the signed session_data cache lets the revoked session
+  // survive until the cache expires. M1's fix pins session.cookieCache.maxAge
+  // short (auth-server.ts, 10s) so that window is bounded, not the 5-minute
+  // default. Wait past that window WITHOUT touching a.session in the meantime (a
+  // cache-served read can refresh the cookie), then assert the revoked session is
+  // dead. Poll a little past the expected maxAge to stay robust to timing.
+  let fullJarStatus = 0;
+  const revokeDeadlineMs = Date.now() + 25_000;
+  await sleep(11_000); // just past the 10s cookie-cache maxAge
+  while (Date.now() < revokeDeadlineMs) {
+    const r = await call("/api/projects", { session: a.session, ip: a.ip });
+    fullJarStatus = r.status;
+    if (fullJarStatus === 401) break;
+    await sleep(1_000);
+  }
   check(
-    "FR17: revoked session cannot reach tenant data even with a warm cookie cache",
-    afterRevokeFullJar.status === 401,
-    `KNOWN FINDING: got ${afterRevokeFullJar.status} — cookieCache serves the ` +
-      `revoked session until it expires. See README §Findings.`,
+    "FR17: revoked session becomes unreachable once the cookie-cache window elapses (M1)",
+    fullJarStatus === 401,
+    `still ${fullJarStatus} ~25s after revoke — cookieCache.maxAge may be too long`,
   );
 
   // ------------------------------------------------------------ rate limiting

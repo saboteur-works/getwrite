@@ -85,40 +85,32 @@ docker compose -f scripts/hosted-smoke/compose.yml down
 Mailpit's web UI at <http://localhost:58025> shows every captured message if you
 want to eyeball the verification/reset mail.
 
-The smoke exits `0` only when every hard check passes. The one check currently
-expected to fail is the FR17 cookie-cache finding below; treat a **new** failure
-elsewhere as a real regression.
+The smoke exits `0` only when every hard check passes. All checks are hard gates,
+including the FR17 revocation check — a failure anywhere is a real regression.
 
 ## Findings
 
-### FR17 — "log out everywhere" is delayed by the session cookie cache
+### FR17 — "log out everywhere" revocation latency — RESOLVED (M1)
 
-**Status: open, decision-pending. Hand to the FR26 security review.**
+**Status: fixed.** `auth-server.ts` now pins `session.cookieCache.maxAge` to 10
+seconds (`SESSION_COOKIE_CACHE_MAX_AGE_SECONDS`) instead of better-auth's 5-minute
+default.
 
-`revokeSessions()` deletes the user's session rows in Postgres, and the smoke
-confirms that a session token with the cache cookie stripped is immediately dead
-(401). But `auth-server.ts` sets `session.cookieCache: { enabled: true }`, which
-makes better-auth serve a **signed session snapshot from the `better-auth.session_data`
-cookie for its `maxAge` (default 5 minutes) without consulting the database**.
-`betterAuthIdentitySource` calls `getSession()` on every tenant request, so any
-session with a warm cache cookie — including the **other** device "log out
-everywhere" is meant to kill — keeps full authenticated access to tenant data for
-up to 5 minutes after revocation.
+Background: `revokeSessions()` deletes the user's session rows in Postgres, and
+the smoke confirms a session token with the cache cookie stripped is immediately
+dead (401). But better-auth serves a **signed session snapshot from the
+`better-auth.session_data` cookie for its `maxAge`** without consulting the
+database, and `betterAuthIdentitySource` calls `getSession()` on every tenant
+request — so with the 5-minute default, any session with a warm cache cookie
+(including the device "log out everywhere" is meant to kill) kept full access for
+up to 5 minutes after revocation. The cache exists to avoid a per-request Postgres
+round-trip (FR17), so the fix shortens the window rather than removing the cache:
+10 seconds keeps the DB saving for bursts of activity while bounding revocation
+latency to ~10s. The smoke's revocation check now waits past that window and hard-
+asserts the revoked session is unreachable.
 
-The cache was enabled citing FR17 (avoid a per-request Postgres round-trip), yet
-it undermines FR17's revocation guarantee. Options, for the reviewer to weigh:
-
-1. **Shorten `cookieCache.maxAge`** to a few seconds — bounds the residual-access
-   window while keeping most of the per-request DB savings. Likely the best
-   balance; recommended default.
-2. **Disable `cookieCache`** — every tenant request does a DB session lookup;
-   revocation is immediate, at a per-request Postgres cost.
-3. **Accept the window** and document it as a known revocation latency — only
-   defensible if the threat model tolerates a multi-minute window on "log out
-   everywhere," which for a stolen-session action it usually does not.
-
-Whichever is chosen, flip the smoke's final revocation check to a hard gate once
-the window is closed.
+(If a deployment wants instant revocation instead, disable `cookieCache` entirely,
+accepting a DB session read on every tenant request.)
 
 ## Files
 
