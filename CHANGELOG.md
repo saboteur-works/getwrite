@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1](https://github.com/saboteur-works/getwrite/compare/getwrite-v2.0.0...getwrite-v2.0.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* **ci:** drop the Intel mac runner that never ran ([acd74bd](https://github.com/saboteur-works/getwrite/commit/acd74bd0eabf5416c6272bbd571d745ed63d2583))
+* **ci:** drop the Intel mac runner that never ran ([0658785](https://github.com/saboteur-works/getwrite/commit/0658785cfe3155a6ec155357b87cfdb09015950b))
+
 ## [2.0.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v1.8.0...getwrite-v2.0.0) (2026-08-07)
 
 
