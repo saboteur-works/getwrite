@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.1](https://github.com/saboteur-works/getwrite/compare/getwrite-v2.1.0...getwrite-v2.1.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **qa:** address code-review findings on the QA harness ([7aae908](https://github.com/saboteur-works/getwrite/commit/7aae90821ef871cf6a1ac83a46ff3bfb95f24329))
+* **qa:** agentic QA harness follow-ups ([5f22315](https://github.com/saboteur-works/getwrite/commit/5f223151d9991c90c75b7f774505be7e25fd9d5f))
+* **qa:** give each run its own server log, and document the sandbox trap ([87c3ebd](https://github.com/saboteur-works/getwrite/commit/87c3ebd3c6e9f18cca813caac8ce2b6050c0d366))
+* **qa:** isolate QA runs from shared build state and fix defects it surfaced ([2e86e41](https://github.com/saboteur-works/getwrite/commit/2e86e41f5e8495351a7b11ddd83f203a558f52f9))
+* **qa:** preserve tsconfig edits the restore overwrites, and test the log-delete branch ([b07de9e](https://github.com/saboteur-works/getwrite/commit/b07de9e19a25a3c1d4ba62488d12aaba64d3e7b5))
+* **qa:** reap the dev server's whole process group on stop ([306f8b5](https://github.com/saboteur-works/getwrite/commit/306f8b552a990e9d66308cee360fdd73b30ad795))
+
 ## [2.1.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v2.0.0...getwrite-v2.1.0) (2026-08-18)
 
 
