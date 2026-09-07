@@ -9,7 +9,7 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** none
 **Estimate:** 2
 **Notes:** This is FR-6's model-layer half. Do not have this function read per-entity via `getEntityMentionedIn` in a loop — that is exactly the N+1 pattern FR-6 rules out, and it also does per-resource content loads this count does not need.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Add a project-scoped HTTP route exposing mention counts
 **What:** Adds `GET /api/project/[project-id]/entity-mention-counts`, modelled directly on `frontend/app/api/project/[project-id]/entity-alias-table/route.ts`'s structure (resolve/validate `project-id` via `resolveProjectPath`, wrap in `withStorageContext`, delegate entirely to Task 1's `getProjectMentionCounts`, no business logic in the route itself).
@@ -18,7 +18,7 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** 1
 **Estimate:** 2
 **Notes:** This route exists only for the web/desktop transport (Task 3); the native transport (Task 4) calls `getProjectMentionCounts` in-process and never hits this route — same split as the entity-alias-table route/native-backend pair.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Add the client transport module for mention counts
 **What:** Adds `frontend/src/lib/api/entity-mention-counts.ts`, modelled directly on `frontend/src/lib/api/entity-alias-table.ts`: an `EntityMentionCountsTransport` interface with a single `getEntityMentionCounts(projectId): Promise<Record<string, number>>` method, an `httpEntityMentionCountsTransport` implementation that fetches the Task 2 route and degrades to `{}` on any failure (network error, non-2xx, malformed body), and `resolveEntityMentionCountsTransport` built on `createTransport`, with the native branch's dynamic-import specifier reserved as a literal string (`../../store/transport/native-entity-mention-counts-backend`) for Task 4's `next.config.mjs` substitution.
@@ -27,7 +27,7 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** 2
 **Estimate:** 2
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Add native transport parity for mention counts
 **What:** Adds `frontend/src/store/transport/native-entity-mention-counts-backend.ts` (in-process, calling Task 1's `getProjectMentionCounts` via `resolveProjectRoot`, mirroring `native-entity-alias-table-backend.ts`'s structure, storage-context binding via `createNativeRunner`, and degrade-to-`{}` parity with the HTTP transport) and its `.web-stub.ts` counterpart (mirroring `native-entity-alias-table-backend.web-stub.ts`'s throw-if-reached contract), and registers the substitution in `frontend/next.config.mjs`'s `turbopack.resolveAlias` for the exact literal specifier Task 3 reserved. **This is the exact failure mode called out in this feature's implementation-surface notes — a missing web-stub or missing `resolveAlias` entry ships `node:*` code into the web bundle — so this task's "Done when" explicitly checks for it.**
@@ -36,7 +36,7 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** 3
 **Estimate:** 3
 **Notes:** This is FR-6's native-parity clause and half of FR-13. A web-only mention-counts endpoint would be a regression per the spec.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Wire the sixth "Entity Roster" view into the switcher and shell
 **What:** Adds `"entityRoster"` to `ViewName` (`frontend/src/lib/models/types.ts:207`) and a corresponding sixth entry to `VIEW_OPTIONS` in `ViewSwitcher.tsx` (label "Entities", an icon distinct from the existing five — e.g. `lucide-react`'s `Users`), adds a case to `AppShell.tsx`'s `switch (view)` dispatch (~1372-1414) rendering a new, initially minimal `EntityRosterView` component under `frontend/components/WorkArea/Views/EntityRosterView/` (structural precedent: `OrganizerView`'s directory shape — a project-wide view with no resource-tree-selection dependency, same as `OrganizerView`/`TimelineView`), and extends AppShell's `disabledViews`/`disabledReasons` computation (~1218-1244) to push `"entityRoster"` onto `disabled` and supply a `disabledReasons.entityRoster` hover string whenever `selectEntitiesEnabled` is false — following the exact `timeline`/`isTimelineViewEnabled` pattern already there. The roster view has no resource-type dependency (unlike `edit`/`diff`), so it is never disabled for resource-type reasons, only for the `entities` flag.
@@ -45,7 +45,7 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** none
 **Estimate:** 3
 **Notes:** This is FR-1 and FR-2's entire scope. `EntityRosterView` is a structural placeholder at this point (e.g. renders nothing or a loading stub) — Task 6 gives it its data and Task 7 its row markup. Safe to build in parallel with Tasks 1-4 (no file overlap).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Assemble the roster's entity list — names, aliases, kind, mention counts, ordering, warnings, empty state
 **What:** Builds `EntityRosterView`'s data-assembly logic: reads the cached alias table from `entityAliasTableSlice` (no new fetch, per FR-3/FR-7), dispatches Task 3's `getEntityMentionCounts` on mount/project change (the one bounded round trip FR-6 requires) and defaults any entity absent from the returned map to `0`, sorts the combined list alphabetically by entity name case-insensitively with no user-facing sort/filter control (FR-4), and derives per-entity warning state by checking each of the entity's terms against `entity-alias-table.ts`'s `claimedBy` map (ambiguous) and each declared alias against `entity-alias-warnings.ts`'s `getAliasWarning` (noise-prone) — collapsing both into the single shared "needs attention" boolean state per FR-9, with the underlying which-condition(s)-apply text kept alongside for Task 7's accessible-name composition (FR-8). Renders the FR-11 non-error empty state (explaining no entities have been declared yet) when the project's `entities` flag is on but the alias table has zero entities, instead of an empty table with only headers.
@@ -54,7 +54,7 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** 3, 5
 **Estimate:** 5
 **Notes:** This task owns FR-3's "no grouping/sorting/filtering by kind" constraint too — the `entityKind` label is per-row data only (handed to Task 7), never used to section or reorder the list here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Build the entity row — accessible name, warning disclosure, non-red styling
 **What:** Adds the row markup Task 6's list renders, reusing `frontend/components/WorkArea/ResourceListItem.tsx:45-56`'s `<li>` wrapping a full-width native `<button type="button">` pattern (already consumed by `StubResourcesSection.tsx`/`DataView.tsx`) rather than a `role="row"` grid. Each row shows the entity's name, its declared aliases, an `entityKind` label, and the mention count with FR-5's zero-mention distinction. Where Task 6 flags "needs attention", the row folds FR-8's disclosure text (naming which of "ambiguous claim" / "noise-prone alias" / both applies) directly into the button's accessible name — via visually-hidden text or a composed `aria-label`, not a `title` on a non-focusable element — with no nested interactive control inside the button. The warning indicator's styling uses a non-`red`/non-`#D44040` token, consistent with entity highlighting's FR-7 precedent and CLAUDE.md's reserved-red convention.
@@ -63,7 +63,7 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** 6
 **Estimate:** 3
 **Notes:** This is FR-8/FR-9/FR-12 together, per this task list's flagged risk: a `title` on a `<span>` does not satisfy FR-12, and this task's first done-when criterion exists specifically to catch that regression.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Wire row activation to the entity's alias editor
 **What:** Wires Task 7's row button's click/Enter/Space activation (native `<button>` gives both for free) to `setSelectedResourceId` (`resourcesSlice.ts`) for the entity's `entityId`, then switches the work area's `view` back to `"edit"` so the existing `EntitySection` alias editor (reached via the resource's sidebar, unchanged) is what the writer lands on — reusing the existing `updateSidecar` write path unchanged, per FR-10. The roster itself continues to expose no control that edits name/`entityKind`/aliases.
@@ -72,7 +72,7 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** 5, 7
 **Estimate:** 2
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Storybook stories and a11y pass for the roster view and row
 **What:** Adds `EntityRosterView.stories.tsx` and `EntityRosterRow.stories.tsx` (or a single combined stories file, implementor's choice) exercising: a populated roster with a mix of zero-mention, nonzero-mention, ambiguous, and noise-warning entities; and the FR-11 empty state. Matches the Storybook conventions `EntityCompileResourceList.stories.tsx` established for a recent sibling feature (per `docs/standards/storybook-implementation.md`).
@@ -81,7 +81,7 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** 6, 7
 **Estimate:** 2
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Integration test — roster fidelity against a real fixture project
 **What:** Adds an integration test against a fixture project with: an entity with several detected mentions, an entity with zero mentions anywhere in the project, two entities sharing an ambiguous alias (`claimedBy`), an entity with a `getAliasWarning`-flagged short/common-word alias, and entities with names differing only in case (to exercise FR-4's case-insensitive sort). Confirms the rendered roster's per-entity mention counts match `getProjectMentionCounts`'s output for the same fixture (FR-6), the zero-mention entity is distinguishable per FR-5, both warning conditions surface correctly per FR-7/FR-8/FR-9, and the list order is alphabetical per FR-4 regardless of the alias table's/mention index's own iteration order.
