@@ -12,6 +12,7 @@ import {
 import { getEntityMentionCounts } from "../../../../src/lib/api/entity-mention-counts";
 import { getAliasWarning } from "../../../../src/lib/models/entity-alias-warnings";
 import type { EntityAliasEntry } from "../../../../src/lib/models/entity-alias-table";
+import EntityRosterRowComponent from "./EntityRosterRow";
 
 export interface EntityRosterViewProps {
   /** Optional className for the outer container. */
@@ -136,31 +137,13 @@ export default function EntityRosterView({
       ) : (
         <ul data-testid="entity-roster-list">
           {rows.map((row) => (
-            <li key={row.entry.entityId} data-testid="entity-roster-row">
-              <span data-testid="entity-roster-row-name">{row.entry.name}</span>
-              <span data-testid="entity-roster-row-kind">
-                {row.entry.entityKind}
-              </span>
-              <span data-testid="entity-roster-row-aliases">
-                {row.entry.aliases.join(", ")}
-              </span>
-              <span
-                data-testid="entity-roster-row-mention-count"
-                data-zero-mentions={row.mentionCount === 0}
-              >
-                {row.mentionCount === 0
-                  ? "No mentions yet"
-                  : `${row.mentionCount} mention${row.mentionCount === 1 ? "" : "s"}`}
-              </span>
-              <span
-                data-testid="entity-roster-row-needs-attention"
-                data-needs-attention={row.needsAttention}
-                data-ambiguous={row.ambiguous}
-                data-noise-prone={row.noiseProne}
-              >
-                {row.needsAttention ? "Needs attention" : ""}
-              </span>
-            </li>
+            <EntityRosterRowComponent
+              key={row.entry.entityId}
+              row={row}
+              onActivate={() => {
+                // No-op for now — Task 8 wires real navigation.
+              }}
+            />
           ))}
         </ul>
       )}
