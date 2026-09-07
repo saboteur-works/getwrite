@@ -108,7 +108,35 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** 9, 10, 11
 **Estimate:** 1
 **Notes:** This is the manual-exercise task the automated suite cannot fully substitute for — live visual appearance of the warning treatment and true device-level offline behavior need a human pass before sign-off, mirroring `specs/features/entity-scoped-compile/tasks.md`'s Task 8 and `specs/features/entity-highlighting/tasks.md`'s Task 16.
-**Done:** [ ]
+
+**Verification record (Stage 6.5, pipeline lead, against The SF Sideshow, web/dev):**
+Ground truth was read from disk first (6 declared entities; mention index counts
+28/12/32/0/18/3) and the UI checked against it, rather than the UI being read on
+its own terms.
+
+CONFIRMED — (1) the "Entities" tab appears sixth alongside Edit/Organizer/Data/
+Diff/Timeline and is selectable. (3) all 6 entities list alphabetically with
+name, `entityKind` and aliases. (4) the zero-mention entity renders "No mentions
+yet", distinct at a glance from a count. (6) keyboard activation (focus + Enter)
+navigates to the entity's resource and switches to the edit view with
+`EntitySection` reachable; rows are native `<button type="button">` whose
+accessible name carries the full row content, with zero nested interactive
+elements.
+
+NOT CONFIRMED, and not to be read as passing — (2) the flag-off disabled tab and
+hover reason (covered by component tests, not exercised by hand). (5) the
+"needs attention" treatment and its accessible name: this project contains no
+ambiguous alias, and its short aliases do not trip the heuristics — "Case" is
+absent from the 20-word common list and "Ada" is exactly 3 characters against a
+`< 3` threshold — so the warning path could not fire here and the reserved-red
+check was not made. (7) the FR-11 empty state, which needs a project with
+`entities` on and none declared. (8) device-level offline behaviour; no Android
+device this session.
+
+A defect was found during this pass and fixed separately: the roster was
+unreachable with no resource selected. See the fix commit.
+
+**Done:** [ ] (4 of 8 criteria confirmed; see record above)
 
 ## Summary
 - Total tasks: 12
