@@ -17,6 +17,15 @@ import EntityRosterRowComponent from "./EntityRosterRow";
 export interface EntityRosterViewProps {
   /** Optional className for the outer container. */
   className?: string;
+  /**
+   * Invoked with an entity's `entityId` when its roster row is activated
+   * (pointer click, or Enter/Space via the row's native `<button>`) — FR-10.
+   * The caller (`AppShell.tsx`) owns both the Redux dispatch of
+   * `setSelectedResourceId` and the work-area view switch back to `"edit"`,
+   * mirroring the existing `DataView`'s `onResourceClick` pattern in that
+   * file. This view never writes to the sidecar itself.
+   */
+  onEntityActivated?: (entityId: string) => void;
 }
 
 /** Normalizes a term the same way `entity-alias-table.ts` does (lowercase,
@@ -79,6 +88,7 @@ function isNoiseProne(entry: EntityAliasEntry): boolean {
  */
 export default function EntityRosterView({
   className = "",
+  onEntityActivated,
 }: EntityRosterViewProps): JSX.Element {
   const aliasTable = useAppSelector(
     (s): EntityAliasTableState["table"] => selectEntityAliasTable(s),
@@ -140,9 +150,7 @@ export default function EntityRosterView({
             <EntityRosterRowComponent
               key={row.entry.entityId}
               row={row}
-              onActivate={() => {
-                // No-op for now — Task 8 wires real navigation.
-              }}
+              onActivate={() => onEntityActivated?.(row.entry.entityId)}
             />
           ))}
         </ul>

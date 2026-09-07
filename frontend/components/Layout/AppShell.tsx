@@ -1428,7 +1428,12 @@ export default function AppShell({
                                 // EntityRosterView even if the view state
                                 // somehow lands here.
                                 return isEntitiesEnabled ? (
-                                  <EntityRosterView />
+                                  <EntityRosterView
+                                    onEntityActivated={(entityId) => {
+                                      dispatch(setSelectedResourceId(entityId));
+                                      setView("edit");
+                                    }}
+                                  />
                                 ) : null;
                               default:
                                 return (

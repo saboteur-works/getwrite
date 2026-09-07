@@ -9,6 +9,7 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import EntityRosterView from "../../components/WorkArea/Views/EntityRosterView/EntityRosterView";
 import { makeStore } from "../../src/store/store";
@@ -25,9 +26,13 @@ vi.mock("../../src/lib/api/entity-alias-table", () => ({
 vi.mock("../../src/lib/api/entity-mention-counts", () => ({
   getEntityMentionCounts: vi.fn(),
 }));
+vi.mock("../../src/lib/api/resources", () => ({ updateSidecar: vi.fn() }));
 
 import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
 import { getEntityMentionCounts } from "../../src/lib/api/entity-mention-counts";
+import { updateSidecar } from "../../src/lib/api/resources";
+
+const mockedUpdateSidecar = vi.mocked(updateSidecar);
 
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
 const mockedGetEntityMentionCounts = vi.mocked(getEntityMentionCounts);
@@ -277,5 +282,115 @@ describe("EntityRosterView", () => {
       screen.getByText(/no entities have been declared yet/i),
     ).toBeTruthy();
     expect(screen.queryByTestId("entity-roster-list")).toBeNull();
+  });
+
+  describe("row activation (FR-10, Task 8)", () => {
+    const table: EntityAliasTable = {
+      entities: {
+        "e-anna": {
+          entityId: "e-anna",
+          entityKind: "character",
+          name: "Anna",
+          aliases: [],
+          terms: ["Anna"],
+        },
+      },
+      claimedBy: {},
+    };
+
+    async function renderWithRow(onEntityActivated: (id: string) => void) {
+      mockedGetEntityMentionCounts.mockResolvedValue({});
+      const store = await setupStore(table);
+
+      render(
+        <Provider store={store}>
+          <EntityRosterView onEntityActivated={onEntityActivated} />
+        </Provider>,
+      );
+
+      return screen.findByRole("button", { name: /Anna/ });
+    }
+
+    it("invokes onEntityActivated with the row's entityId on click", async () => {
+      const onEntityActivated = vi.fn();
+      const button = await renderWithRow(onEntityActivated);
+
+      button.click();
+
+      expect(onEntityActivated).toHaveBeenCalledTimes(1);
+      expect(onEntityActivated).toHaveBeenCalledWith("e-anna");
+    });
+
+    it("invokes onEntityActivated on Enter when the row's button has focus", async () => {
+      const user = userEvent.setup();
+      const onEntityActivated = vi.fn();
+      const button = await renderWithRow(onEntityActivated);
+
+      button.focus();
+      expect(document.activeElement).toBe(button);
+      // userEvent simulates real browser keyboard-activation semantics for a
+      // native <button> (unlike a bare dispatched KeyboardEvent, which jsdom
+      // does not translate into a click) — this is what actually proves
+      // Enter activates the row, not merely that a click handler exists.
+      await user.keyboard("{Enter}");
+
+      expect(onEntityActivated).toHaveBeenCalledTimes(1);
+      expect(onEntityActivated).toHaveBeenCalledWith("e-anna");
+    });
+
+    it("invokes onEntityActivated on Space when the row's button has focus", async () => {
+      const user = userEvent.setup();
+      const onEntityActivated = vi.fn();
+      const button = await renderWithRow(onEntityActivated);
+
+      button.focus();
+      expect(document.activeElement).toBe(button);
+      await user.keyboard(" ");
+
+      expect(onEntityActivated).toHaveBeenCalledTimes(1);
+      expect(onEntityActivated).toHaveBeenCalledWith("e-anna");
+    });
+
+    it("does not throw and is a no-op when onEntityActivated is not provided", async () => {
+      mockedGetEntityMentionCounts.mockResolvedValue({});
+      const store = await setupStore(table);
+
+      render(
+        <Provider store={store}>
+          <EntityRosterView />
+        </Provider>,
+      );
+
+      const button = await screen.findByRole("button", { name: /Anna/ });
+      expect(() => button.click()).not.toThrow();
+    });
+
+    it("never calls updateSidecar or any sidecar-write path when a row is activated", async () => {
+      const onEntityActivated = vi.fn();
+      const button = await renderWithRow(onEntityActivated);
+
+      button.click();
+
+      expect(mockedUpdateSidecar).not.toHaveBeenCalled();
+    });
+
+    it("renders no control other than the row's activation button (no inline name/kind/alias editor)", async () => {
+      mockedGetEntityMentionCounts.mockResolvedValue({});
+      const store = await setupStore(table);
+
+      render(
+        <Provider store={store}>
+          <EntityRosterView onEntityActivated={vi.fn()} />
+        </Provider>,
+      );
+
+      await screen.findByRole("button", { name: /Anna/ });
+      // The roster's only interactive controls are the row-activation
+      // buttons — no text inputs / selects for editing name, entityKind, or
+      // aliases in place.
+      expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+      expect(screen.queryAllByRole("combobox")).toHaveLength(0);
+      expect(screen.queryAllByRole("button").length).toBe(1);
+    });
   });
 });
