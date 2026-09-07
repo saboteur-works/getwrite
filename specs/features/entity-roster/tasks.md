@@ -90,7 +90,7 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** 6, 7, 8
 **Estimate:** 3
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Verify native (Android) parity for the entity roster
 **What:** Confirms the entity roster has no native-specific gap beyond what Task 4 already covers for mention counts: `EntityRosterView.tsx`/`EntityRosterRow.tsx` import nothing platform-specific (grep-verified: no `node:*` import, no direct `fetch`/HTTP call bypassing `lib/api/entity-mention-counts.ts`/`lib/api/entity-alias-table.ts`, no `runtime === "native"` branch), and the feature relies exclusively on the already-native-parity alias-table transport (`native-entity-alias-table-backend.ts`) and Task 4's mention-counts native backend.
@@ -99,7 +99,7 @@ Source spec: `specs/features/entity-roster.md`. Granularity: story points (1/2/3
 **Depends on:** 4, 8
 **Estimate:** 2
 **Notes:** This is FR-13's coverage. If a gap is found, file it back against Task 4, 5, or 8 rather than patching ad hoc here, matching the equivalent verification task's convention in `specs/features/entity-scoped-compile/tasks.md` (Task 7) and `specs/features/entity-highlighting/tasks.md` (Task 15).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Manual verification pass in the running app
 **What:** Exercises the complete feature by hand in the running desktop/web app (and, if a device is available, Android) to confirm behavior the automated suite cannot fully assert: visual appearance of the zero-mention and warning states, real navigation behavior, and true offline operation.
