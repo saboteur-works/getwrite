@@ -29,6 +29,7 @@ import {
   selectActiveProjectMetadataSchema,
   selectActiveProjectStatuses,
   selectTimelineViewEnabled,
+  selectEntitiesEnabled,
 } from "../../src/store/projectsSlice";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import ResourceTree from "../ResourceTree/ResourceTree";
@@ -58,6 +59,7 @@ import DiffViewController from "../WorkArea/DiffViewController";
 import OrganizerView from "../WorkArea/Views/OrganizerView/OrganizerView";
 import DataView from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/Views/TimelineView";
+import EntityRosterView from "../WorkArea/Views/EntityRosterView/EntityRosterView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import {
@@ -275,6 +277,7 @@ export default function AppShell({
   const isQueryEvaluating = useAppSelector(selectIsEvaluating);
   const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
   const isTimelineViewEnabled = useAppSelector(selectTimelineViewEnabled);
+  const isEntitiesEnabled = useAppSelector(selectEntitiesEnabled);
 
   // Compile and export write plaintext wherever they land, so the preview
   // modals warn first when the source is encrypted (FR27).
@@ -1236,11 +1239,19 @@ export default function AppShell({
                             if (!isTimelineViewEnabled) {
                               disabled.push("timeline");
                             }
+                            // The Entities tab is gated behind the entities
+                            // feature flag; the roster has no resource-type
+                            // dependency, so it is otherwise always eligible.
+                            if (!isEntitiesEnabled) {
+                              disabled.push("entityRoster");
+                            }
                             return Array.from(new Set(disabled));
                           })()}
                           disabledReasons={{
                             timeline:
                               "The Timeline view is off. Turn it on in User Preferences → Timeline view.",
+                            entityRoster:
+                              "Entities are off. Turn them on in User Preferences → Entities.",
                           }}
                         />
                         <div className="w-full min-w-0 sm:w-80 sm:flex-none">
@@ -1263,8 +1274,19 @@ export default function AppShell({
                           : "overflow-y-auto"
                       }`}
                     >
-                      {/* If a resource is selected, or the data view is active, render the chosen view; otherwise render empty state or children. */}
-                      {(selectedResource && combined) || view === "data"
+                      {/* If a resource is selected, or a project-wide view is
+                          active, render the chosen view; otherwise render empty
+                          state or children.
+
+                          `data` and `entityRoster` are project-wide: they read
+                          across every resource and have nothing to show for a
+                          single selection, so gating them on `selectedResource`
+                          would leave them permanently unreachable from a freshly
+                          opened project. FR-38 states the roster has no
+                          resource dependency. */}
+                      {(selectedResource && combined) ||
+                      view === "data" ||
+                      view === "entityRoster"
                         ? (() => {
                             if (view === "data") {
                               const queryResources = activeSmartFolderId
@@ -1355,6 +1377,27 @@ export default function AppShell({
                                   />
                                 </>
                               );
+                            }
+
+                            // Handled before the `!selectedResource` guard
+                            // below, alongside the `data` view above, because
+                            // the roster is project-wide: it reads across every
+                            // entity in the project and has nothing to do with
+                            // the current selection. Leaving it in the `switch`
+                            // made it unreachable from a freshly opened
+                            // project — the shell rendered "Resource not found."
+                            // instead. The `isEntitiesEnabled` check is a
+                            // defensive guard; the tab is already disabled when
+                            // the feature is off.
+                            if (view === "entityRoster") {
+                              return isEntitiesEnabled ? (
+                                <EntityRosterView
+                                  onEntityActivated={(entityId) => {
+                                    dispatch(setSelectedResourceId(entityId));
+                                    setView("edit");
+                                  }}
+                                />
+                              ) : null;
                             }
 
                             if (!selectedResource)

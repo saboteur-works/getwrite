@@ -235,6 +235,33 @@ async function buildMentionedRow(
 }
 
 /**
+ * Returns the total mention count for every entity that has at least one
+ * mention recorded anywhere in the project's mention index (FR-6 of
+ * `specs/features/entity-roster.md`).
+ *
+ * Loads the mention index once and inverts it via {@link invertMentionIndex}
+ * — no per-entity re-read of the index and no `getEntityMentionedIn` call in
+ * a loop, which would both re-read the (already-loaded) index and perform
+ * unnecessary per-resource content loads for a purely numeric count.
+ *
+ * An entity with zero mentions is omitted from the returned map entirely —
+ * defaulting an absent entity to `0` is the roster layer's job, not this
+ * function's. Returns `{}` when the project has no mention index yet.
+ */
+export async function getProjectMentionCounts(
+  projectRoot: string,
+): Promise<Record<string, number>> {
+  const index = await loadMentionIndex(projectRoot);
+  const byEntity = invertMentionIndex(index);
+
+  const counts: Record<string, number> = {};
+  for (const [entityId, records] of Object.entries(byEntity)) {
+    counts[entityId] = records.length;
+  }
+  return counts;
+}
+
+/**
  * Returns every resource associated with `entityId`, merging two sources
  * (FR-10, FR-12):
  *
@@ -301,5 +328,9 @@ export async function getEntityMentionedIn(
   return Array.from(results.values());
 }
 
-const mentionsCore = { getResourceMentions, getEntityMentionedIn };
+const mentionsCore = {
+  getResourceMentions,
+  getEntityMentionedIn,
+  getProjectMentionCounts,
+};
 export default mentionsCore;

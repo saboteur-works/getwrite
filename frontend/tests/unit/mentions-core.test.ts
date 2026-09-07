@@ -16,6 +16,7 @@ import { writeSidecar } from "../../src/lib/models/sidecar";
 import {
   getResourceMentions,
   getEntityMentionedIn,
+  getProjectMentionCounts,
 } from "../../src/lib/models/mentions-core";
 import { removeDirRetry } from "./helpers/fs-utils";
 
@@ -218,5 +219,37 @@ describe("getEntityMentionedIn (FR-10)", () => {
 
     const mentionedIn = await getEntityMentionedIn(projectRoot, ariaId);
     expect(mentionedIn).toEqual([]);
+  });
+});
+
+describe("getProjectMentionCounts (FR-6, entity-roster)", () => {
+  it("returns each mentioned entity's total occurrence count, omitting entities with no records", async () => {
+    const projectRoot = await makeTmpProjectRoot();
+    const ariaId = "entity-aria";
+    const unmentionedId = "entity-unmentioned";
+    const sceneOneId = "scene-1";
+    const sceneTwoId = "scene-2";
+
+    await persistMentionIndex(projectRoot, {
+      [sceneOneId]: [
+        { entityId: ariaId, resourceId: sceneOneId, count: 1, offsets: [0] },
+        { entityId: ariaId, resourceId: sceneOneId, count: 1, offsets: [10] },
+      ],
+      [sceneTwoId]: [
+        { entityId: ariaId, resourceId: sceneTwoId, count: 1, offsets: [5] },
+      ],
+    });
+
+    const counts = await getProjectMentionCounts(projectRoot);
+
+    expect(counts[ariaId]).toBe(3);
+    expect(counts).not.toHaveProperty(unmentionedId);
+    expect(Object.keys(counts)).toEqual([ariaId]);
+  });
+
+  it("returns an empty object when the project has no mention index on disk", async () => {
+    const projectRoot = await makeTmpProjectRoot();
+    const counts = await getProjectMentionCounts(projectRoot);
+    expect(counts).toEqual({});
   });
 });

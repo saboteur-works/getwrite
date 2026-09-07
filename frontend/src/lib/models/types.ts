@@ -204,7 +204,13 @@ export type ResourceType = "text" | "image" | "audio" | "folder";
  * UI view names used by the WorkArea view switcher and related components.
  * Added to canonical models to provide a single source-of-truth for small UI unions.
  */
-export type ViewName = "edit" | "organizer" | "data" | "diff" | "timeline";
+export type ViewName =
+  | "edit"
+  | "organizer"
+  | "data"
+  | "diff"
+  | "timeline"
+  | "entityRoster";
 
 /** Input types for metadata collection. */
 export type MetadataInputType = "text" | "multiselect" | "autocomplete";

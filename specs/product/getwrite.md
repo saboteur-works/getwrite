@@ -212,9 +212,10 @@ lost work.
   project and filter results by folder, Status, and Tags. [US-7]
 - FR-12: The product MUST maintain a backlinks index between resources that
   reference one another. [US-7]
-- FR-13: The work area MUST provide five views — Edit, Organizer, Data,
-  Diff, and Timeline — each rendering the selected resource or folder per
-  its type (text/image/audio/mixed). Timeline is gated behind a per-project
+- FR-13: The work area MUST provide six views — Edit, Organizer, Data,
+  Diff, Timeline, and the entity roster (FR-38) — each rendering the
+  selected resource, folder, or project-wide data per its type
+  (text/image/audio/mixed) or scope. Timeline is gated behind a per-project
   `timelineView` feature flag and is disabled unless that flag is on;
   enabling it force-enables the timeline date fields, an invariant enforced
   at the feature-config write seam so the view can never be on without the
@@ -348,6 +349,37 @@ lost work.
   MUST remain export-only and MUST NOT mutate revisions, entity
   declarations, or the mention index, consistent with the existing compile
   constraint. [US-2][US-3]
+- FR-38: The product MUST provide a project-level entity roster listing
+  every declared entity — reusing the alias table `entity-alias-table.ts`'s
+  `buildEntityAliasTable` already builds (name, `entityKind`, aliases) — so
+  that a writer can see their project's declared entities as a set rather
+  than one resource's sidebar at a time, and identify at a glance an entity
+  that was declared and never mentioned anywhere. Per-entity mention counts
+  MUST be derived from the existing mention index (`mention-index.ts`,
+  surfaced through `mentions-core.ts`'s merged mentioned-in set — the same
+  set FR-37 compiles) rather than newly computed or separately persisted.
+  The roster MUST also surface, per entity, the ambiguous-alias and
+  common-word warnings that `entity-alias-table.ts`'s `claimedBy` map and
+  `entity-alias-warnings.ts`'s `getAliasWarning` already compute but which
+  the entity-highlighting feature (FR-36) deliberately confines to the
+  inline highlight itself — the roster is the summary surface for exactly
+  that information. The roster is a new, sixth top-level work-area view
+  (FR-13), alongside Edit, Organizer, Data, Diff, and Timeline, rather than
+  a sidebar panel, modal, or dedicated route — it presents project-wide,
+  cross-resource data, which is what Organizer and Data already do, and
+  that placement is the most discoverable. The roster is read-only:
+  activating a roster row MUST navigate to that entity's resource and open
+  the existing `EntitySection` alias editor already used to edit entity
+  declarations, reusing the existing `updateSidecar` write path unchanged.
+  The roster rides the existing per-project `entities` feature flag (FR-35)
+  and MUST NOT introduce a flag of its own. The roster MUST remain fully
+  offline and deterministic, consistent with the local-first architecture
+  and the native Android build; it MUST NOT introduce any new
+  entity-declaration mechanism (it reuses FR-35's sidecar `entityKind` and
+  `aliases` unchanged) — including no inline editing path for entity
+  declarations from within the roster itself — MUST NOT discover or infer
+  an entity the writer never declared, and MUST NOT perform
+  pronoun/coreference resolution or any model-backed inference. [US-3]
 
 ### Later Requirements
 
@@ -376,7 +408,6 @@ lost work.
   metadata-source folders — joining the two currently-separate filter
   surfaces. Full-text search has no predicate over those fields today, and
   the saved-query builder has no full-text-over-content predicate. [US-7]
-
 ## Constraints
 
 - Folder names carry no application semantics: any folder layout is valid,
