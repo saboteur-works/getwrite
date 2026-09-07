@@ -1,5 +1,12 @@
 import React from "react";
-import { Pencil, LayoutList, BarChart3, GitCompare, Clock } from "lucide-react";
+import {
+  Pencil,
+  LayoutList,
+  BarChart3,
+  GitCompare,
+  Clock,
+  Users,
+} from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "../common/UI/Tabs/Tabs";
 import { hoverTipProps, HoverTipSurface } from "../common/UI/HoverTip";
 import { ViewName } from "../../src/lib/models/types";
@@ -41,6 +48,7 @@ const VIEW_OPTIONS: ViewOption[] = [
   { key: "data", label: "Data", icon: BarChart3 },
   { key: "diff", label: "Diff", icon: GitCompare },
   { key: "timeline", label: "Timeline", icon: Clock },
+  { key: "entityRoster", label: "Entities", icon: Users },
 ];
 
 export default function ViewSwitcher({

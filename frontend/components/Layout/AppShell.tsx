@@ -29,6 +29,7 @@ import {
   selectActiveProjectMetadataSchema,
   selectActiveProjectStatuses,
   selectTimelineViewEnabled,
+  selectEntitiesEnabled,
 } from "../../src/store/projectsSlice";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import ResourceTree from "../ResourceTree/ResourceTree";
@@ -58,6 +59,7 @@ import DiffViewController from "../WorkArea/DiffViewController";
 import OrganizerView from "../WorkArea/Views/OrganizerView/OrganizerView";
 import DataView from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/Views/TimelineView";
+import EntityRosterView from "../WorkArea/Views/EntityRosterView/EntityRosterView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import {
@@ -275,6 +277,7 @@ export default function AppShell({
   const isQueryEvaluating = useAppSelector(selectIsEvaluating);
   const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
   const isTimelineViewEnabled = useAppSelector(selectTimelineViewEnabled);
+  const isEntitiesEnabled = useAppSelector(selectEntitiesEnabled);
 
   // Compile and export write plaintext wherever they land, so the preview
   // modals warn first when the source is encrypted (FR27).
@@ -1236,11 +1239,19 @@ export default function AppShell({
                             if (!isTimelineViewEnabled) {
                               disabled.push("timeline");
                             }
+                            // The Entities tab is gated behind the entities
+                            // feature flag; the roster has no resource-type
+                            // dependency, so it is otherwise always eligible.
+                            if (!isEntitiesEnabled) {
+                              disabled.push("entityRoster");
+                            }
                             return Array.from(new Set(disabled));
                           })()}
                           disabledReasons={{
                             timeline:
                               "The Timeline view is off. Turn it on in User Preferences → Timeline view.",
+                            entityRoster:
+                              "Entities are off. Turn them on in User Preferences → Entities.",
                           }}
                         />
                         <div className="w-full min-w-0 sm:w-80 sm:flex-none">
@@ -1410,6 +1421,14 @@ export default function AppShell({
                                 // if the view state somehow lands here.
                                 return isTimelineViewEnabled ? (
                                   <TimelineView />
+                                ) : null;
+                              case "entityRoster":
+                                // Defensive guard: the tab is disabled when the
+                                // entities feature is off, but never mount
+                                // EntityRosterView even if the view state
+                                // somehow lands here.
+                                return isEntitiesEnabled ? (
+                                  <EntityRosterView />
                                 ) : null;
                               default:
                                 return (

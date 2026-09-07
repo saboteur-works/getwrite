@@ -32,7 +32,7 @@ describe("a11y: WorkArea view switcher keyboard navigation (T036)", () => {
 
     function Harness(): JSX.Element {
       const [view, setView] = React.useState<
-        "edit" | "organizer" | "data" | "diff" | "timeline"
+        "edit" | "organizer" | "data" | "diff" | "timeline" | "entityRoster"
       >("edit");
 
       return <ViewSwitcher view={view} onChange={setView} />;
@@ -51,8 +51,8 @@ describe("a11y: WorkArea view switcher keyboard navigation (T036)", () => {
     );
 
     await user.keyboard("{End}");
-    expect(screen.getByRole("tab", { name: /Timeline/i })).toHaveFocus();
-    expect(screen.getByRole("tab", { name: /Timeline/i })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: /Entities/i })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: /Entities/i })).toHaveAttribute(
       "aria-selected",
       "true",
     );

@@ -17,6 +17,11 @@ describe("ViewSwitcher", () => {
     const dataBtn = screen.getByRole("tab", { name: /Data/i });
     fireEvent.click(dataBtn);
     expect(onChange).toHaveBeenCalledWith("data");
+
+    const entitiesTab = screen.getByRole("tab", { name: /Entities/i });
+    expect(entitiesTab).toBeTruthy();
+    fireEvent.click(entitiesTab);
+    expect(onChange).toHaveBeenCalledWith("entityRoster");
   });
 
   it("wraps a disabled view with a tooltip anchor carrying its reason", () => {
