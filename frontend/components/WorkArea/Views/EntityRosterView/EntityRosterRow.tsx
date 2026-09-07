@@ -99,6 +99,16 @@ export default function EntityRosterRow({
                 ? {
                     backgroundColor:
                       "var(--color-gw-entity-highlight-attention)",
+                    // The shared `.workarea-list-item-meta` text color
+                    // (`--color-gw-secondary`) doesn't clear WCAG AA
+                    // contrast against this indicator's tinted background
+                    // (measured ~2.9:1 via axe's color-contrast rule,
+                    // against a 4.5:1 minimum). Override to the
+                    // theme-aware `--color-gw-primary` token (near-black
+                    // in light mode, near-white in dark mode) for this
+                    // indicator only, rather than changing the shared
+                    // class every other roster-row field still uses.
+                    color: "var(--color-gw-primary)",
                   }
                 : undefined
             }
