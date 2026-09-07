@@ -629,6 +629,60 @@ rendering mode, where this feature is an on-demand, export-only action.) The
 ordering bridge between the retrieval half (`mentions-core.ts`, existing) and
 the render half (`compile-core.ts`, existing) is the genuinely new work.
 
+### Feature 36: Project-level entity roster — Not started
+**Value:** A writer with dozens of declared entities today can only see them
+one resource's sidebar at a time; a project-wide roster lets them see every
+declared entity as a set, spot one that was declared and never mentioned
+anywhere, and jump straight to its alias editor — the same at-a-glance
+review Organizer and Data already give for resources, but for entities.
+**Vertical slice:** A new, sixth top-level work-area view (alongside Edit,
+Organizer, Data, Diff, Timeline), rendering the entity list the alias table
+`entity-alias-table.ts`'s `buildEntityAliasTable` already builds (name,
+`entityKind`, aliases), with per-entity mention counts and mentioned/never-
+mentioned status derived from the existing mention index via
+`mentions-core.ts`'s merged mentioned-in set, and per-entity ambiguous-alias
+and common-word warnings surfaced from `claimedBy` and
+`entity-alias-warnings.ts`'s `getAliasWarning` — all data already computed
+and already reaching the client through the existing `entityAliasTableSlice`
+cache. The roster is read-only: activating a row navigates to that entity's
+resource and opens the existing `EntitySection` alias editor, reusing the
+existing `updateSidecar` write path unchanged; there is no inline editing of
+declarations from within the roster. Adding the sixth view touches the
+closed, hardcoded five-entry `ViewName` type and `VIEW_OPTIONS` list in
+`frontend/components/WorkArea/ViewSwitcher.tsx` (no per-view extension seam
+exists today) plus whatever in `frontend/components/Layout/AppShell.tsx`
+dispatches on `ViewName` to render the selected view.
+**Requirements covered:** FR-38
+**User stories:** US-3
+**Depends on:** Feature 33
+**Branch suggestion:** feat/entity-roster
+**Notes:** Not started. FR-38 covers this feature, added to the parent
+product spec's Next Requirements. Four scope decisions are settled at the
+product-spec gate and are not reopened here: the roster is a new top-level
+work-area view rather than a sidebar panel, modal, or dedicated route; it is
+read-only, with no inline-editing path of its own; it rides the existing
+`entities` feature flag rather than introducing one (the entity-scoped-compile
+precedent, Feature 35, not the entity-highlighting precedent, Feature 34,
+which took its own flag because it is a persistent, always-on rendering
+mode rather than an on-demand view); and per-entity mention counts are
+derived from the existing mention index, with no new persisted data.
+`frontend/src/lib/models/schemas.ts:194-209` declares `entities` and
+`entityHighlighting` as two independent optional booleans with no
+schema-level dependency mechanism — feature-flag "rides on" relationships in
+this codebase are enforced by convention (as in `ProjectFeatureToggles.tsx`),
+not by the schema, which is part of why riding the existing flag is the
+cheaper path here rather than a new one. Retrieval-side ADR-021 native
+parity already exists for the two data sources this feature needs
+(`store/transport/native-entity-alias-table-backend.ts` and
+`native-mentions-backend.ts`, both already used by Feature 34 and Feature
+35 respectively). The new sixth-view plumbing itself
+(`ViewName`/`ViewSwitcher`/`AppShell` dispatch) needs no ADR-021-specific
+handling: the switcher and dispatch contain no runtime branching on any
+native signal, work-area views are not routes so the native static-export
+build script needs no change to accommodate a sixth one, and — per the
+retrieval-side point above — both data sources the roster depends on
+already have shipped native backends.
+
 ---
 
 ## Coverage check
@@ -671,11 +725,12 @@ the render half (`compile-core.ts`, existing) is the genuinely new work.
   - FR-35: Feature 33
   - FR-36: Feature 34
   - FR-37: Feature 35
+  - FR-38: Feature 36
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 35
+- Total features: 36
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -690,11 +745,12 @@ the render half (`compile-core.ts`, existing) is the genuinely new work.
   since shipped. 34 (entity highlighting) depends on 33 and is therefore
   independently startable now. 35 (entity-scoped compile) depends on the
   now-shipped 33 and the already-shipped 12, and is therefore independently
-  startable now.
+  startable now. 36 (entity roster) depends only on the now-shipped 33 and
+  is therefore independently startable now.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35
-  (30 is the only feature left with an unmet hard dependency — on 28 — since
-  34's and 35's dependencies, 33 and 12, have both shipped)
+  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
+  36 (30 is the only feature left with an unmet hard dependency — on 28 —
+  since 34's, 35's, and 36's dependencies, 33 and 12, have both shipped)
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
   design decision before implementation tasks can be written. Feature 28 is
@@ -712,11 +768,15 @@ the render half (`compile-core.ts`, existing) is the genuinely new work.
   its task breakdown must measure rather than assume. Feature 35's ordering
   bridge (merged mention/backlink set → tree-position order) is new code with
   no existing analogue to reuse wholesale, unlike Feature 12's compile, which
-  only needed the render half.
+  only needed the render half. Feature 36 is the first feature to add a
+  sixth entry to the closed, hardcoded five-view `ViewName` type and
+  `VIEW_OPTIONS` list (`ViewSwitcher.tsx`) and whatever dispatches on
+  `ViewName` in `AppShell.tsx` — unlike Features 34 and 35, which extended
+  existing sidebar/panel surfaces, this is new structural surface area with
+  no existing sixth-view precedent to follow, which its task breakdown
+  should account for.
 
 ## Open Questions
-
-None.
 
 (OQ-1, on licensing/distribution posture, is tracked in the parent
 product spec and does not affect this feature partition. Two previously
