@@ -242,7 +242,10 @@ describe("getProjectMentionCounts (FR-6, entity-roster)", () => {
 
     const counts = await getProjectMentionCounts(projectRoot);
 
-    expect(counts[ariaId]).toBe(3);
+    // Three occurrences spread over two distinct resources — scene-1 holds
+    // two records for Aria, so a resource count taken as `records.length`
+    // would say three documents where there are two.
+    expect(counts[ariaId]).toEqual({ mentions: 3, resources: 2 });
     expect(counts).not.toHaveProperty(unmentionedId);
     expect(Object.keys(counts)).toEqual([ariaId]);
   });

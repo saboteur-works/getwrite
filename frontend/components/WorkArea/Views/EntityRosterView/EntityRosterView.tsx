@@ -9,7 +9,10 @@ import {
   selectActiveProjectDirectoryId,
   selectIsFeatureEnabled,
 } from "../../../../src/store/projectsSlice";
-import { getEntityMentionCounts } from "../../../../src/lib/api/entity-mention-counts";
+import {
+  getEntityMentionCounts,
+  type EntityMentionCounts,
+} from "../../../../src/lib/api/entity-mention-counts";
 import { getAliasWarning } from "../../../../src/lib/models/entity-alias-warnings";
 import type { EntityAliasEntry } from "../../../../src/lib/models/entity-alias-table";
 import EntityRosterRowComponent from "./EntityRosterRow";
@@ -43,7 +46,9 @@ function normalizeTerm(term: string): string {
  */
 export interface EntityRosterRow {
   entry: EntityAliasEntry;
-  mentionCount: number;
+  /** Prose occurrences across the project, and how many resources they span.
+   * Both are shown: either alone misleads (see {@link EntityMentionCounts}). */
+  counts: EntityMentionCounts;
   /** Whether any of the entity's terms (name or aliases) are claimed by more
    * than one entity, per the alias table's `claimedBy` map (FR-7). */
   ambiguous: boolean;
@@ -102,7 +107,7 @@ export default function EntityRosterView({
   const projectId = useAppSelector((s) => selectActiveProjectDirectoryId(s));
 
   const [mentionCounts, setMentionCounts] = React.useState<
-    Record<string, number>
+    Record<string, EntityMentionCounts>
   >({});
 
   React.useEffect(() => {
@@ -125,7 +130,7 @@ export default function EntityRosterView({
       const isNoiseProneEntity = isNoiseProne(entry);
       return {
         entry,
-        mentionCount: mentionCounts[entry.entityId] ?? 0,
+        counts: mentionCounts[entry.entityId] ?? { mentions: 0, resources: 0 },
         ambiguous: isAmbiguousEntity,
         noiseProne: isNoiseProneEntity,
         needsAttention: isAmbiguousEntity || isNoiseProneEntity,

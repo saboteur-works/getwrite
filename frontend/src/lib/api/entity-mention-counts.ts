@@ -9,6 +9,9 @@
  * degrades on read failure.
  */
 import { createTransport } from "../../store/transport/create-transport";
+import type { EntityMentionCounts } from "../models/mentions-core";
+
+export type { EntityMentionCounts };
 
 // ---------------------------------------------------------------------------
 // Transport collapse (ADR-021)
@@ -39,11 +42,13 @@ export interface EntityMentionCountsTransport {
    * Fetches the project's per-entity mention counts. Degrades gracefully:
    * any failure yields `{}` rather than throwing.
    */
-  getEntityMentionCounts(projectId: string): Promise<Record<string, number>>;
+  getEntityMentionCounts(
+    projectId: string,
+  ): Promise<Record<string, EntityMentionCounts>>;
 }
 
 /** The empty counts map returned on any read failure. */
-const EMPTY_MENTION_COUNTS: Record<string, number> = {};
+const EMPTY_MENTION_COUNTS: Record<string, EntityMentionCounts> = {};
 
 /**
  * HTTP transport — the hosted/desktop path. The method body below is the
@@ -57,7 +62,7 @@ export const httpEntityMentionCountsTransport: EntityMentionCountsTransport = {
         `/api/project/${encodeURIComponent(projectId)}/entity-mention-counts`,
       );
       if (!response.ok) return EMPTY_MENTION_COUNTS;
-      return (await response.json()) as Record<string, number>;
+      return (await response.json()) as Record<string, EntityMentionCounts>;
     } catch {
       return EMPTY_MENTION_COUNTS;
     }
@@ -88,7 +93,7 @@ export const resolveEntityMentionCountsTransport: () => Promise<EntityMentionCou
  */
 export async function getEntityMentionCounts(
   projectId: string,
-): Promise<Record<string, number>> {
+): Promise<Record<string, EntityMentionCounts>> {
   const transport = await resolveEntityMentionCountsTransport();
   return transport.getEntityMentionCounts(projectId);
 }

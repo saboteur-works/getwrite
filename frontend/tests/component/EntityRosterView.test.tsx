@@ -97,7 +97,10 @@ describe("EntityRosterView", () => {
       },
       claimedBy: {},
     };
-    mockedGetEntityMentionCounts.mockResolvedValue({ "e-zed": 2, "e-mike": 5 });
+    mockedGetEntityMentionCounts.mockResolvedValue({
+      "e-zed": { mentions: 2, resources: 1 },
+      "e-mike": { mentions: 5, resources: 2 },
+    });
 
     const store = await setupStore(table);
 
@@ -148,8 +151,8 @@ describe("EntityRosterView", () => {
     };
     // "e-absent" is intentionally omitted; "e-zero" is explicit 0.
     mockedGetEntityMentionCounts.mockResolvedValue({
-      "e-zero": 0,
-      "e-nonzero": 3,
+      "e-zero": { mentions: 0, resources: 0 },
+      "e-nonzero": { mentions: 3, resources: 1 },
     });
 
     const store = await setupStore(table);

@@ -74,7 +74,10 @@ describe("native entity-mention-counts transport — in-process backend reuses t
     });
 
     const counts = await transport.getEntityMentionCounts(projectId);
-    expect(counts).toEqual({ [ariaId]: 2, [brannId]: 1 });
+    expect(counts).toEqual({
+      [ariaId]: { mentions: 3, resources: 2 },
+      [brannId]: { mentions: 1, resources: 1 },
+    });
 
     fetchMock.restore();
   });
