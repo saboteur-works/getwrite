@@ -354,7 +354,7 @@ lost work.
   `buildEntityAliasTable` already builds (name, `entityKind`, aliases) — so
   that a writer can see their project's declared entities as a set rather
   than one resource's sidebar at a time, and identify at a glance an entity
-  that was declared and never mentioned anywhere. Per-entity mention counts
+  that was declared and never mentioned anywhere. Per-entity counts — both prose occurrences and the number of resources they span, since either alone misleads —
   MUST be derived from the existing mention index (`mention-index.ts`,
   surfaced through `mentions-core.ts`'s merged mentioned-in set — the same
   set FR-37 compiles) rather than newly computed or separately persisted.

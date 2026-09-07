@@ -1,5 +1,6 @@
 import React from "react";
 import type { EntityRosterRow as EntityRosterRowData } from "./EntityRosterView";
+import type { EntityMentionCounts } from "../../../../src/lib/api/entity-mention-counts";
 
 export interface EntityRosterRowProps {
   row: EntityRosterRowData;
@@ -11,13 +12,25 @@ export interface EntityRosterRowProps {
 /**
  * Builds the FR-5 mention-count display text: a distinguishing "No mentions
  * yet" label for a zero count (explicit or absent from the counts map),
- * otherwise "N mention(s)". Mirrors the convention `EntityRosterView`
- * established before this row was extracted.
+ * otherwise "N mentions in M documents".
+ *
+ * Both numbers are shown because either alone misleads. This row previously
+ * read "32 mentions" for an entity mentioned 593 times across 32 resources —
+ * the count was the resource total wearing the word "mentions", which is not
+ * what the glossary means by a Mention (a prose occurrence carrying a
+ * character offset). Spread and intensity are separate facts about an entity
+ * and a writer wants both: 593-across-32 and 32-across-32 describe very
+ * different characters.
+ *
+ * The single-document case reads "N mentions in 1 document" rather than being
+ * special-cased away, so the two numbers stay in a consistent position for a
+ * reader scanning a column of rows.
  */
-function formatMentionCountText(mentionCount: number): string {
-  return mentionCount === 0
-    ? "No mentions yet"
-    : `${mentionCount} mention${mentionCount === 1 ? "" : "s"}`;
+function formatMentionCountText(counts: EntityMentionCounts): string {
+  if (counts.mentions === 0) return "No mentions yet";
+  const mentions = `${counts.mentions} mention${counts.mentions === 1 ? "" : "s"}`;
+  const documents = `${counts.resources} document${counts.resources === 1 ? "" : "s"}`;
+  return `${mentions} in ${documents}`;
 }
 
 /**
@@ -84,9 +97,9 @@ export default function EntityRosterRow({
           <span
             className="workarea-list-item-meta"
             data-testid="entity-roster-row-mention-count"
-            data-zero-mentions={row.mentionCount === 0}
+            data-zero-mentions={row.counts.mentions === 0}
           >
-            {formatMentionCountText(row.mentionCount)}
+            {formatMentionCountText(row.counts)}
           </span>
           <span
             className="workarea-list-item-meta"

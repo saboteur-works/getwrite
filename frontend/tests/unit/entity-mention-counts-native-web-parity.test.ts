@@ -129,7 +129,10 @@ describe("entity mention counts — native/web parity (FR-6)", () => {
     // Both fixtures use the same entity ids, so the counts maps must match
     // exactly, not just structurally.
     expect(nativeCounts).toEqual(httpCounts);
-    expect(nativeCounts).toEqual({ [ariaId]: 2, [brannId]: 1 });
+    expect(nativeCounts).toEqual({
+      [ariaId]: { mentions: 3, resources: 2 },
+      [brannId]: { mentions: 1, resources: 1 },
+    });
   });
 
   it("returns the identical empty counts map {} on both transports for a project with no mention index", async () => {

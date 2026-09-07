@@ -21,7 +21,7 @@ function makeRow(
       aliases: ["Annie"],
       terms: ["Anna", "Annie"],
     },
-    mentionCount: 0,
+    counts: { mentions: 0, resources: 0 },
     ambiguous: false,
     noiseProne: false,
     needsAttention: false,
@@ -109,7 +109,7 @@ describe("EntityRosterRow", () => {
   });
 
   it("renders the entity's name, aliases, kind, and the FR-5 mention-count convention", () => {
-    const row = makeRow({ mentionCount: 3 });
+    const row = makeRow({ counts: { mentions: 7, resources: 3 } });
     render(<EntityRosterRow row={row} onActivate={vi.fn()} />);
 
     expect(screen.getByTestId("entity-roster-row-name").textContent).toBe(
@@ -123,11 +123,11 @@ describe("EntityRosterRow", () => {
     );
     expect(
       screen.getByTestId("entity-roster-row-mention-count").textContent,
-    ).toBe("3 mentions");
+    ).toBe("7 mentions in 3 documents");
   });
 
   it("shows the FR-5 zero-mention distinction text, not a bare '0'", () => {
-    const row = makeRow({ mentionCount: 0 });
+    const row = makeRow({ counts: { mentions: 0, resources: 0 } });
     render(<EntityRosterRow row={row} onActivate={vi.fn()} />);
 
     const countEl = screen.getByTestId("entity-roster-row-mention-count");

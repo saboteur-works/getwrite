@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 
 import { GET } from "../../app/api/project/[project-id]/entity-mention-counts/route";
+import type { EntityMentionCounts } from "../../src/lib/models/mentions-core";
 import { persistMentionIndex } from "../../src/lib/models/mention-index";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
@@ -97,8 +98,14 @@ describe("GET /api/project/[project-id]/entity-mention-counts", () => {
       });
 
       expect(res.status).toBe(200);
-      const json = (await res.json()) as Record<string, number>;
-      expect(json).toEqual({ [ariaId]: 2, [brannId]: 1 });
+      const json = (await res.json()) as Record<string, EntityMentionCounts>;
+      // Aria: 3 occurrences (2 in resource-1, 1 in resource-2) across 2
+      // documents. The two numbers differ, so a route that returned one
+      // where the other is meant cannot pass by coincidence.
+      expect(json).toEqual({
+        [ariaId]: { mentions: 3, resources: 2 },
+        [brannId]: { mentions: 1, resources: 1 },
+      });
     });
   });
 

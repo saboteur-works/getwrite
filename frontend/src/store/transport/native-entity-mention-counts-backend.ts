@@ -51,10 +51,13 @@
 import { createNativeRunner, type NativeBackendDeps } from "./native-runner";
 import { resolveProjectRoot } from "../../lib/models/project-root-resolver";
 import { getProjectMentionCounts } from "../../lib/models/mentions-core";
-import type { EntityMentionCountsTransport } from "../../lib/api/entity-mention-counts";
+import type {
+  EntityMentionCounts,
+  EntityMentionCountsTransport,
+} from "../../lib/api/entity-mention-counts";
 
 /** The empty counts map returned on any read failure. */
-const EMPTY_MENTION_COUNTS: Record<string, number> = {};
+const EMPTY_MENTION_COUNTS: Record<string, EntityMentionCounts> = {};
 
 /**
  * Builds the in-process entity-mention-counts transport for a native build.

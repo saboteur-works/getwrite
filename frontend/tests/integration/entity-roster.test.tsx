@@ -41,7 +41,10 @@ import {
   buildEntityAliasTable,
   type EntityAliasTable,
 } from "../../src/lib/models/entity-alias-table";
-import { getProjectMentionCounts } from "../../src/lib/models/mentions-core";
+import {
+  getProjectMentionCounts,
+  type EntityMentionCounts,
+} from "../../src/lib/models/mentions-core";
 
 vi.mock("../../src/lib/api/entity-alias-table", () => ({
   getEntityAliasTable: vi.fn(),
@@ -137,8 +140,14 @@ async function buildFixture(
     });
   }
 
+  // `chapterOne` names Aria twice on purpose, so the fixture's mention total
+  // (4) and its resource total (3) differ. When every resource mentioned an
+  // entity exactly once the two were equal, and a roster that counted
+  // resources while labelling them "mentions" produced the right number for
+  // the wrong reason — which is how that defect reached `main`. Keep these
+  // two numbers distinct.
   const proseTexts: Record<string, string> = {
-    chapterOne: "Aria's blade gleamed in the moonlight.",
+    chapterOne: "Aria's blade gleamed in the moonlight. Aria did not lower it.",
     chapterTwo: "Aria walked into the fog without looking back.",
     chapterThree: "In the market square, Aria haggled over silver coins.",
   };
@@ -160,7 +169,7 @@ async function buildFixture(
 async function renderRoster(
   projectId: string,
   table: EntityAliasTable,
-  counts: Record<string, number>,
+  counts: Record<string, EntityMentionCounts>,
 ): Promise<void> {
   mockedGetEntityAliasTable.mockResolvedValue(table);
   mockedGetEntityMentionCounts.mockResolvedValue(counts);
@@ -265,7 +274,9 @@ describe("entity roster — fixture integration (FR-4, FR-5, FR-6, FR-7, FR-8, F
     );
     expect(ariaEntry).toBeDefined();
     expect(ghostEntry).toBeDefined();
-    expect(counts[ariaEntry!.entityId]).toBe(3);
+    // Aria is named 4 times across 3 resources — the two totals differ, so a
+    // roster that confuses them cannot pass by coincidence.
+    expect(counts[ariaEntry!.entityId]).toEqual({ mentions: 4, resources: 3 });
     expect(counts[ghostEntry!.entityId]).toBeUndefined();
 
     await renderRoster("entity-roster-fixture-a", table, counts);
@@ -284,9 +295,9 @@ describe("entity roster — fixture integration (FR-4, FR-5, FR-6, FR-7, FR-8, F
 
     // FR-6: the rendered per-entity mention count matches
     // getProjectMentionCounts's own output for the same fixture.
-    expect(byName["Aria"].mentionCountText).toBe("3 mentions");
+    expect(byName["Aria"].mentionCountText).toBe("4 mentions in 3 documents");
     expect(byName["Aria"].zeroMentions).toBe("false");
-    expect(counts[ariaEntry!.entityId]).toBe(3);
+    expect(counts[ariaEntry!.entityId]).toEqual({ mentions: 4, resources: 3 });
 
     // FR-5: the zero-mention entity is distinguishable, not "0".
     expect(byName["Ghost"].mentionCountText).toBe("No mentions yet");
@@ -354,9 +365,9 @@ describe("entity roster — fixture integration (FR-4, FR-5, FR-6, FR-7, FR-8, F
       (e) => e.name === "Aria",
     );
     expect(ariaEntry).toBeDefined();
-    expect(counts[ariaEntry!.entityId]).toBe(3);
+    expect(counts[ariaEntry!.entityId]).toEqual({ mentions: 4, resources: 3 });
 
     const byName = readRenderedRowsByName();
-    expect(byName["Aria"].mentionCountText).toBe("3 mentions");
+    expect(byName["Aria"].mentionCountText).toBe("4 mentions in 3 documents");
   });
 });

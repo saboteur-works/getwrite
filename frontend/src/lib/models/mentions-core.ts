@@ -235,8 +235,29 @@ async function buildMentionedRow(
 }
 
 /**
- * Returns the total mention count for every entity that has at least one
- * mention recorded anywhere in the project's mention index (FR-6 of
+ * How often an entity is mentioned, and how widely those mentions are spread.
+ *
+ * These are two different facts and the roster shows both, because either one
+ * alone misleads. `mentions` counts prose occurrences — the sense the
+ * glossary gives the term: "a prose occurrence of an entity's name or one of
+ * its aliases ... recorded with its character offset". `resources` counts the
+ * documents those occurrences are distributed across.
+ *
+ * A protagonist named 593 times across 32 scenes and a walk-on named twice in
+ * those same 32 scenes are indistinguishable on `resources` alone; two
+ * entities with equal totals, one concentrated in a single chapter and one
+ * threaded through the whole book, are indistinguishable on `mentions` alone.
+ */
+export type EntityMentionCounts = {
+  /** Prose occurrences across the project — the sum of each record's `count`. */
+  mentions: number;
+  /** Distinct resources containing at least one of those occurrences. */
+  resources: number;
+};
+
+/**
+ * Returns the mention and resource counts for every entity that has at least
+ * one mention recorded anywhere in the project's mention index (FR-6 of
  * `specs/features/entity-roster.md`).
  *
  * Loads the mention index once and inverts it via {@link invertMentionIndex}
@@ -244,19 +265,32 @@ async function buildMentionedRow(
  * a loop, which would both re-read the (already-loaded) index and perform
  * unnecessary per-resource content loads for a purely numeric count.
  *
+ * `mentions` sums each record's `count`, which `mention-index.ts` guarantees
+ * equals `offsets.length`. An earlier version of this function returned
+ * `records.length` for a field the roster labelled "mentions", so an entity
+ * mentioned 593 times across 32 resources was reported as 32 — the doc
+ * comment claimed a total while the code counted documents.
+ *
  * An entity with zero mentions is omitted from the returned map entirely —
- * defaulting an absent entity to `0` is the roster layer's job, not this
+ * defaulting an absent entity to zero is the roster layer's job, not this
  * function's. Returns `{}` when the project has no mention index yet.
  */
 export async function getProjectMentionCounts(
   projectRoot: string,
-): Promise<Record<string, number>> {
+): Promise<Record<string, EntityMentionCounts>> {
   const index = await loadMentionIndex(projectRoot);
   const byEntity = invertMentionIndex(index);
 
-  const counts: Record<string, number> = {};
+  const counts: Record<string, EntityMentionCounts> = {};
   for (const [entityId, records] of Object.entries(byEntity)) {
-    counts[entityId] = records.length;
+    counts[entityId] = {
+      mentions: records.reduce((total, record) => total + record.count, 0),
+      // Distinct `resourceId`s, not `records.length`. The index normally holds
+      // one record per (resource, entity) pair, which makes the two identical
+      // — but nothing in `MentionIndex`'s type enforces that, and counting
+      // records would silently report a document twice if it ever held two.
+      resources: new Set(records.map((record) => record.resourceId)).size,
+    };
   }
   return counts;
 }
