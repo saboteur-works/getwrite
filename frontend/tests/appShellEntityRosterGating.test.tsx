@@ -22,10 +22,19 @@ import type { ProjectFeatureFlags } from "../src/lib/models/types";
 const PROJECT_ID = "proj_entity_roster_gating";
 
 /**
- * Seed an in-memory store with a single selected text resource and render the
- * full AppShell with the given project feature flags.
+ * Seed an in-memory store with a single text resource and render the full
+ * AppShell with the given project feature flags.
+ *
+ * `selectResource` controls whether that resource is the selected one. It
+ * defaults to true because most cases here are about the tab's flag gating,
+ * but passing false is the case that matters for a project-wide view: the
+ * roster reads across every resource, so it must render with nothing selected
+ * at all — the state a freshly opened project is in.
  */
-function renderShell(features: ProjectFeatureFlags) {
+function renderShell(
+  features: ProjectFeatureFlags,
+  { selectResource = true }: { selectResource?: boolean } = {},
+) {
   const resource = createTextResource({ name: "Scene A", plainText: "" });
   const project = {
     id: PROJECT_ID,
@@ -48,7 +57,9 @@ function renderShell(features: ProjectFeatureFlags) {
   );
   store.dispatch(setSelectedProjectId(PROJECT_ID));
   store.dispatch(setResources([resource]));
-  store.dispatch(setSelectedResourceId(resource.id));
+  if (selectResource) {
+    store.dispatch(setSelectedResourceId(resource.id));
+  }
 
   render(
     <Provider store={store}>
@@ -108,5 +119,26 @@ describe("AppShell — Entity Roster view gating (Task 5)", () => {
     const entitiesTab = screen.getByRole("tab", { name: /Entities/i });
     expect(entitiesTab).toBeDisabled();
     expect(screen.queryByTestId("entity-roster-view")).not.toBeInTheDocument();
+  });
+
+  // Regression: AppShell gated its whole view switch on a resource being
+  // selected, exempting only `view === "data"`. The roster's `case` was
+  // therefore unreachable from a freshly opened project — selecting the
+  // Entities tab left the "Select a file from the resource tree" empty state
+  // on screen. Measured in the running app against a real project before this
+  // test existed; every other test here selects a resource first, which is
+  // exactly why the suite stayed green while the feature was unreachable.
+  it("mounts the roster with no resource selected, since it is project-wide", () => {
+    renderShell({ entities: true }, { selectResource: false });
+
+    const entitiesTab = screen.getByRole("tab", { name: /Entities/i });
+    expect(entitiesTab).not.toBeDisabled();
+
+    fireEvent.click(entitiesTab);
+
+    expect(screen.getByTestId("entity-roster-view")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Select a file from the resource tree/i),
+    ).not.toBeInTheDocument();
   });
 });

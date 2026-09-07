@@ -1274,8 +1274,19 @@ export default function AppShell({
                           : "overflow-y-auto"
                       }`}
                     >
-                      {/* If a resource is selected, or the data view is active, render the chosen view; otherwise render empty state or children. */}
-                      {(selectedResource && combined) || view === "data"
+                      {/* If a resource is selected, or a project-wide view is
+                          active, render the chosen view; otherwise render empty
+                          state or children.
+
+                          `data` and `entityRoster` are project-wide: they read
+                          across every resource and have nothing to show for a
+                          single selection, so gating them on `selectedResource`
+                          would leave them permanently unreachable from a freshly
+                          opened project. FR-38 states the roster has no
+                          resource dependency. */}
+                      {(selectedResource && combined) ||
+                      view === "data" ||
+                      view === "entityRoster"
                         ? (() => {
                             if (view === "data") {
                               const queryResources = activeSmartFolderId
@@ -1368,6 +1379,27 @@ export default function AppShell({
                               );
                             }
 
+                            // Handled before the `!selectedResource` guard
+                            // below, alongside the `data` view above, because
+                            // the roster is project-wide: it reads across every
+                            // entity in the project and has nothing to do with
+                            // the current selection. Leaving it in the `switch`
+                            // made it unreachable from a freshly opened
+                            // project — the shell rendered "Resource not found."
+                            // instead. The `isEntitiesEnabled` check is a
+                            // defensive guard; the tab is already disabled when
+                            // the feature is off.
+                            if (view === "entityRoster") {
+                              return isEntitiesEnabled ? (
+                                <EntityRosterView
+                                  onEntityActivated={(entityId) => {
+                                    dispatch(setSelectedResourceId(entityId));
+                                    setView("edit");
+                                  }}
+                                />
+                              ) : null;
+                            }
+
                             if (!selectedResource)
                               return (
                                 <div>
@@ -1421,19 +1453,6 @@ export default function AppShell({
                                 // if the view state somehow lands here.
                                 return isTimelineViewEnabled ? (
                                   <TimelineView />
-                                ) : null;
-                              case "entityRoster":
-                                // Defensive guard: the tab is disabled when the
-                                // entities feature is off, but never mount
-                                // EntityRosterView even if the view state
-                                // somehow lands here.
-                                return isEntitiesEnabled ? (
-                                  <EntityRosterView
-                                    onEntityActivated={(entityId) => {
-                                      dispatch(setSelectedResourceId(entityId));
-                                      setView("edit");
-                                    }}
-                                  />
                                 ) : null;
                               default:
                                 return (
