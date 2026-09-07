@@ -100,6 +100,12 @@ The Timeline places dated scenes along a story-time axis, so you can see the ord
 
 → [Timeline View](views/timeline.md)
 
+### Entities view
+
+The Entities view lists every entity you've declared across the project — name, kind, aliases, mention count, and a flag for aliases that need attention (claimed by more than one entity, or risky short/common words) — in one place. Click a row to jump to that entity's document.
+
+→ [Entities View](views/entity-roster.md)
+
 ## Protect and finish your work
 
 ### Revisions

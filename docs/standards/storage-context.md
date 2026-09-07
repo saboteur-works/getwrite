@@ -28,7 +28,9 @@ installed once at startup by `native-bootstrap.ts`. Web and desktop never call
 (`frontend/src/store/transport/native-*-backend.ts` — revision, query,
 metadata-schema, feature-config, search from Phase 1, plus project,
 project-actions, resource, resource-excerpts, tags, preferences,
-editor-config, project-types, compile, and export from Phase 2) all read
+editor-config, project-types, compile, and export from Phase 2 — plus
+mentions, entity-alias-table, and entity-mention-counts, added after Phase 2
+for entity-layer/entity-roster parity) all read
 through this same app-lifetime default context rather than establishing
 their own scope per call; there is no per-operation `runInStorageContext`
 rebind on the native path in production. Each backend accepts an injectable
