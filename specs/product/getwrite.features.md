@@ -742,6 +742,135 @@ build script needs no change to accommodate a sixth one, and — per the
 retrieval-side point above — both data sources the roster depends on
 already have shipped native backends.
 
+### Feature 37: Derived co-occurrence relationship data — Not started
+**Value:** A novelist looking at one entity's own view sees which other
+declared entities usually appear alongside it — "who does this character
+share a scene with most" — without opening a graph canvas, authoring
+anything, or waiting on Feature 38's typed-relationship schema.
+**Vertical slice:** A pure derivation function over the existing mention
+index — for every pair of entities that share at least one resource (per
+`invertMentionIndex`, `frontend/src/lib/models/mention-index.ts:16-28`), the
+resource(s) they co-occur in and a count — exposed as a project-scoped read
+(HTTP route + ADR-021 native backend, following the
+`native-entity-mention-counts-backend.ts` pattern) with no new persisted
+data and no new write path; plus a minimal display of that derivation added
+to `EntityMentionsSection.tsx` (the entity's own sidebar view), listing the
+other entities that co-occur, derived purely from the mention index
+(detected mentions only, not the merged mentions-plus-backlinks resource set
+`getEntityMentionedIn` returns for display), each with a shared-resource
+count (e.g. "Also appears with: Priya (3), Marcus (1)").
+**Requirements covered:** None of its own — an enabling slice of the graph
+requirement, which the graph-rendering feature covers in full below. See
+this feature list's Open Questions for what the schema permits here and how
+this differs from this document's earlier questions about the entity-layer
+and entity-highlighting features.
+**User stories:** US-17
+**Depends on:** Feature 33
+**Branch suggestion:** feat/entity-cooccurrence-edges
+**Notes:** Not started. A display surface was added at the Gate 2 review
+because the first draft of this entry shipped no usable slice — its Value
+field admitted the entry was "retrieval-layer groundwork," which is the
+warning sign this document's own instructions call out: a seam that yields a
+feature shipping nothing usable is evidence the seam is wrong. Rather than
+fold this back into Feature 38 or Feature 39, the fix was to give it its own
+minimal, genuinely usable surface, the same way Feature 38 earns its
+independence with a minimal authoring control rather than a bare schema.
+`EntityMentionsSection.tsx` (`frontend/components/Sidebar/`) was chosen over
+`EntityRosterRow.tsx` (`frontend/components/WorkArea/Views/EntityRosterView/`)
+because it is already the entity's own per-entity view, already fetches the
+exact merged resource-id set (`rows` from `getEntityMentionedIn`) this
+feature's co-occurrence display needs with no extra per-entity fetch;
+adding it to every roster row instead would mean computing and rendering a
+co-occurrence summary for every declared entity on every roster load, a
+materially heavier read than one entity's own view needs and a UI density
+problem the roster's existing compact row layout (name, kind, aliases,
+mention count, attention flag) does not have room for. This is a small list,
+not a canvas — it does not overlap with Feature 39's graph rendering, which
+remains the only surface that draws entities as nodes and relationships as
+edges; this feature only ever lists text. Mirrors the evidence in the parent
+spec's OQ-2 resolution: `MentionRecord` already carries `entityId` +
+`resourceId` + `offsets`, so "which entity pairs share a resource" is a
+derivation over data already on disk, not new state.
+
+### Feature 38: Authored typed entity relationships — Not started
+**Value:** A novelist records a relationship between two entities they
+already know — "ally of," "parent of," and so on — as a durable, structured
+fact instead of leaving it to be reconstructed from prose or a co-occurrence
+count that can't distinguish "these two characters are related" from "these
+two characters happened to share a scene."
+**Vertical slice:** A new persisted schema for a directed, typed edge between
+two entity ids (source entity, target entity, relationship type, freeform
+label or fixed vocabulary — open, see this feature list's Open Questions),
+stored alongside `meta/index/mentions.json` / `meta/backlinks.json` per the
+parent spec's OQ-2 evidence; create/edit/delete operations with file
+locking consistent with the rest of the metadata layer; and defined behavior
+for an edge naming an entity that is later deleted (open, see this feature
+list's Open Questions). Ships with a minimal authoring surface (e.g. an
+add-relationship control reachable from the entity's own sidebar section)
+sufficient to create, see, and remove an edge, so this feature is itself a
+usable vertical slice independent of Feature 39's graph rendering.
+**Requirements covered:** None of its own — an enabling slice of the graph
+requirement, which the graph-rendering feature covers in full below; see
+this feature list's Open Questions for what the schema permits here and how
+this differs from this document's earlier questions about the entity-layer
+and entity-highlighting features.
+**User stories:** US-17
+**Depends on:** Feature 33
+**Branch suggestion:** feat/entity-authored-relationships
+**Notes:** Not started. Scoped apart from Feature 37 because the two edge
+sources have unrelated costs and lifecycles: this feature carries a new
+schema, a write path, an authoring UI, and an edge-deletion-on-entity-deletion
+policy that Feature 37 needs none of. Scoped apart from Feature 39 (the graph
+view) because an edge is data a writer can create and remove through a plain
+list-style surface without any graph rendering existing yet — a novelist
+naming "Ally of" between two characters is useful the moment it's saved and
+displayed anywhere, not only once a node-and-edge canvas exists to draw it
+on. The relationship-type vocabulary (open vs. fixed set) and the
+entity-deletion edge lifecycle are both unresolved — see this feature list's
+Open Questions and the parent spec's OQ-3.
+
+### Feature 39: Project-level entity relationship graph view — Not started
+**Value:** A novelist sees how their declared entities connect to one
+another — not just where each individually appears — surfacing a question
+neither the flat entity roster (Feature 36) nor a single entity's own thread
+(Feature 35) can answer.
+**Vertical slice:** A new, seventh top-level work-area view (alongside Edit,
+Organizer, Data, Diff, Timeline, and Feature 36's Entities roster), touching
+the same closed `ViewName`/`VIEW_OPTIONS`/`AppShell` dispatch surface Feature
+36 opened up; a node-and-edge graph rendering surface (nodes = declared
+entities from the existing alias table, `entity-alias-table.ts`) with pan/
+zoom/selection interaction; edges drawn from both Feature 37's derived
+co-occurrence data and Feature 38's authored typed edges, visually
+distinguished from one another wherever both appear on the same pair of
+nodes (per FR-39's explicit requirement, mirroring the existing detected-
+mention-vs-authored-link distinction `mentions-core.ts` already enforces for
+display); and activating a node navigating to that entity's resource,
+following the read-only, activate-to-navigate convention Feature 36
+established for the roster. Read-only: no edge authoring happens on this
+canvas — that is Feature 38's surface.
+**Requirements covered:** FR-39
+**User stories:** US-17
+**Depends on:** Feature 37, Feature 38
+**Branch suggestion:** feat/entity-relationship-graph
+**Notes:** Not started. Depends on both prior features because a graph with
+only one edge source drawn would not satisfy FR-39's explicit requirement
+that both edge kinds appear, distinguished. Rides the existing `entities`
+feature flag rather than introducing one, per FR-39's own text and the
+Feature 35/36 precedent (an on-demand/persistent-view feature reusing an
+existing flag, as opposed to Feature 34's own flag for a persistent
+always-on decoration mode — this is a view like Feature 36, not a decoration
+mode like Feature 34). Per Feature 36's precedent, the new seventh-view
+plumbing itself needs no ADR-021-specific handling — work-area views are not
+routes, so native's static-export build script needs no change — but this
+feature's own data sources (Feature 37's co-occurrence read and Feature 38's
+authored-edge CRUD) each need their own native transport backend before
+native parity is complete, unlike Feature 36, which could lean entirely on
+backends two earlier features had already shipped. Graph layout algorithm,
+library choice, and behavior at scale (a project with hundreds of entities
+and edges) are unaddressed here and belong in this feature's own task
+breakdown, in the same spirit as Feature 36's virtualization benchmark being
+deferred to a task rather than decided by assertion.
+
 ---
 
 ## Coverage check
@@ -785,19 +914,27 @@ already have shipped native backends.
   - FR-36: Feature 34
   - FR-37: Feature 35
   - FR-38: Feature 36
+  - FR-39: Feature 39 (Features 37 and 38 are enabling slices of the same
+    requirement with no FR of their own — see this feature list's Open
+    Questions)
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 36
+- Total features: 39
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
   features independently). The entity chain 33 → 34 → 35 → 36 has since
   shipped in full: the entity layer, editor highlighting, entity-scoped
-  compile, and the project-level roster. Of the remaining work: 24
-  (Organizer filters), 25 (signed installers), 26 (Trash UI), and 27 (search
-  across revisions) are independently startable now. 28 (hosted multi-device
+  compile, and the project-level roster. FR-39 extends that chain as three
+  new features off the already-shipped Feature 33: 37 (derived co-occurrence
+  data) and 38 (authored typed relationships) can be built in either order or
+  in parallel, since neither depends on the other; 39 (the graph view) needs
+  both, since it must render and visually distinguish edges from both
+  sources at once. Of the remaining pre-existing work: 24 (Organizer
+  filters), 25 (signed installers), 26 (Trash UI), and 27 (search across
+  revisions) are independently startable now. 28 (hosted multi-device
   access) must land before 30 (its conflict-resolution model, which depends
   on it). 29 (durable search backend) is contingent on demonstrated need
   rather than sequenced by dependency. 31 (Scrivener/Word importer) only
@@ -805,9 +942,10 @@ already have shipped native backends.
   predicates) depends on the already-shipped Features 8 and 9.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-  36 (30 is the only feature left with an unmet hard dependency — on 28)
-- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32. Everything else in this list
-  has shipped.
+  36, 37, 38 (30 and 39 are the only features left with an unmet hard
+  dependency — 30 on 28, 39 on both 37 and 38)
+- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 37, 38, 39. Everything else
+  in this list has shipped.
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
   design decision before implementation tasks can be written. Feature 28 is
@@ -832,7 +970,15 @@ already have shipped native backends.
   test selected a resource first and one because the fixtures made the right
   and wrong answer numerically identical, and both were found by exercising
   the running app. Feature 34's unbenchmarked per-keystroke alias-scan cost
-  was never measured and remains unmeasured.
+  was never measured and remains unmeasured. Feature 38 is undesigned in the
+  same sense Feature 30 is: its Vertical slice names a relationship-type
+  schema and an edge-deletion-on-entity-deletion policy that are not yet
+  decided (parent spec OQ-3), so its task breakdown will need those design
+  decisions made first. Feature 39 carries the same open-ended scale
+  question Feature 36 resolved by measurement (virtualization) but for graph
+  layout instead of a list — this breakdown does not assume any particular
+  answer and expects that feature's task list to measure rather than assert
+  it, following Feature 36's precedent.
 
 ## Open Questions
 
@@ -843,3 +989,77 @@ product spec: Feature 33 having no rung-2 functional requirement was
 resolved when FR-35 was added, and Feature 34 having no requirement of its
 own — it previously only extended FR-35's surface — was resolved when FR-36
 was added; see each feature's Requirements covered field.)
+
+FR-39 split (this document's own scoping call — Gate 2 review, 2026-09-07):
+
+- **Resolved: schema mechanics for Features 37/38 carrying no requirement of
+  their own.** `sab.features/1` permits a feature to cover no requirement.
+  `sab.features.v1.schema:17` declares `Requirements covered` as
+  `required | ids`, but the validator (`check-outputs.js`) checks only that
+  the field is present and non-empty text (`check-outputs.js:589-591`); no
+  rule requires that text to contain an `FR-N` token. The `partition` check
+  (`check-outputs.js:855-874`) only rejects two features claiming the same
+  requirement, and `crossCheck` (`check-outputs.js:880-919`) only requires
+  that the union across all features covers every requirement in the parent
+  spec. A zero-requirement feature satisfies both checks. This is a
+  permission the schema grants, not a gap the validator fails to catch, and
+  it is why Features 37 and 38 can each carry "None of its own" without the
+  document failing validation. This section previously justified the same
+  fact by citing a false precedent — that Feature 33 once carried no
+  requirement of its own until the parent spec was amended to add FR-35.
+  Verified against git: commit `7eb0e0fa` (2026-08-25) added FR-35 to
+  `specs/product/getwrite.md` and Feature 33's row to this document with
+  `Requirements covered: FR-35` in the same commit; Feature 33 never existed
+  here with an empty or "None" requirements field. That claim has been
+  removed. What this document's opening note to this section accurately
+  records is a different shape: two prior open questions about Features 33
+  and 34 initially lacking their own rung-2 requirement, both closed by
+  adding the requirement in the same pass as the feature row — not a feature
+  standing indefinitely with no requirement, which is what Features 37 and
+  38 now do by design.
+- **Resolved: three-way split stands, and every one of the three is now an
+  independently shippable slice.** The split remains Feature 37 (derived
+  co-occurrence data), Feature 38 (authored typed relationships), and
+  Feature 39 (the graph rendering view) — not the two-way split the parent
+  spec's OQ-3 raised as the obvious candidate, and not folded further. The
+  rendering surface stays its own feature because a writer cannot use either
+  data source without something to look at, and because the FR-39 mandate to
+  visually distinguish the two edge kinds is a rendering concern that only
+  makes sense once both data sources exist. At Gate 2 review, Feature 37 as
+  first drafted failed this document's own bar for a seam — its Value field
+  admitted it shipped nothing a writer could use unassisted, which this
+  document's instructions treat as evidence the seam is wrong. The fix was
+  not to fold Feature 37 back into 38 or 39, but to give it its own minimal
+  display: a small "who does this entity usually appear alongside" list
+  added to `EntityMentionsSection.tsx`, the entity's own sidebar view (see
+  Feature 37's Notes for why that surface was chosen over a per-row roster
+  addition). With that change, all three features now ship something a
+  writer can use on their own — Feature 37's co-occurrence list, Feature
+  38's minimal add/remove relationship control, and Feature 39's graph
+  canvas — and Feature 39's graph rendering remains distinct from Feature
+  37's list rather than duplicating it: one draws entities as nodes and
+  relationships as edges, the other is plain text in a sidebar.
+- Feature 38's relationship-type vocabulary is unresolved: open freeform
+  text, a fixed enumerated set, or a per-project user-extensible list (the
+  same shape decision Feature 18 already made for custom metadata fields,
+  which could be a precedent) is not decided anywhere in this document or
+  the parent spec.
+- Feature 38's edge-deletion-on-entity-deletion lifecycle is unresolved —
+  this is the parent spec's OQ-3 question, unanswered here and carried
+  forward rather than resolved, per this skill's instruction not to resolve
+  open questions. Candidate behaviors (cascade-delete the edge, orphan it
+  with a dangling reference shown as "Deleted" the way Feature 22's broken
+  reference preview already does, or block the entity deletion while edges
+  reference it) are not evaluated here.
+- Whether Feature 38 ships any authoring surface beyond a minimal add/
+  remove control, or a fuller relationship-management UI, is left to that
+  feature's own task breakdown; this document only commits to the minimum
+  needed for the feature to be independently shippable.
+- New question raised by giving Feature 37 a display: `EntityMentionsSection.tsx`
+  currently fetches only the selected entity's own merged mention/link set
+  (`getEntityMentionedIn`) — it does not currently look up which *other*
+  entities are mentioned in those same resources. Whether the co-occurrence
+  read this feature adds is a new endpoint of its own, or an extension of an
+  existing one (e.g. widening `getProjectMentionCounts`'s read or adding a
+  sibling function in `mentions-core.ts`), is left to that feature's task
+  breakdown rather than decided here.

@@ -120,6 +120,10 @@ lost work.
 - US-4: As a novelist migrating from Scrivener or Word, I want to import my
   existing project into GetWrite so that I don't have to manually
   re-create its structure. [Later]
+- US-17: As a novelist, I want to see how my declared entities relate to one
+  another — not just where each one individually appears — so that I can
+  spot connections a flat per-entity roster or a single entity's mention list
+  doesn't surface. [Next]
 
 **Plain-file-ownership writers**
 - US-5: As a plain-file writer, I want to have every resource stored as an
@@ -372,6 +376,32 @@ lost work.
 
 ### Next Requirements
 
+- FR-39: The product SHOULD provide a project-level entity relationship
+  graph — a view presenting declared entities as nodes and their
+  relationships to one another as edges — so that a writer can see how
+  entities connect, a question neither the entity roster (FR-38, a flat
+  per-entity list) nor entity-scoped compile (FR-37, one entity's own thread)
+  answers. The graph MUST be read-only and MUST introduce no new
+  entity-declaration mechanism: it reuses FR-35's sidecar `entityKind` and
+  `aliases` unchanged. It rides the existing per-project `entities` feature
+  flag and MUST NOT introduce a flag of its own. Consistent with FR-35
+  through FR-38, the graph MUST NOT discover or infer an entity the writer
+  never declared and MUST NOT perform pronoun/coreference resolution or any
+  model-backed inference. The graph's edges MUST come from both of the two
+  sources named when this capability was deferred (see the resolved OQ-2
+  below): derived co-occurrence edges (two entities mentioned in the same
+  resource, computed from the existing mention index, with no new persisted
+  data of their own) and explicit, writer-authored typed relationship edges
+  (e.g. "ally of", "parent of" — new authored, persisted data requiring a new
+  schema). The graph MUST visually distinguish a co-occurrence edge from an
+  authored typed edge wherever both appear, so a reader can always tell
+  whether a given edge is something the system observed or something the
+  writer asserted — a concrete instance of the existing product-wide rule
+  that a detected mention (found, never authored) and an authored link
+  (asserted, never detected; `mentions-core.ts`'s merge-only-for-display
+  discipline) are never conflated. This is a large, two-part requirement —
+  see Open Questions for whether it should split into more than one feature
+  before task breakdown. [US-17]
 - FR-28: Users MUST be able to browse, restore, and permanently purge
   soft-deleted resources through a dedicated Trash UI (the underlying
   restore/purge model already exists). [US-11]
@@ -476,6 +506,50 @@ scaffolding rather than a deliberate licensing decision — the other three
 workspace packages (`frontend`, `electron`, `cli`) declare no `license`
 field at all, which is inconsistent with a real, intentional choice having
 been made.
+
+**OQ-2 (resolved): Should the entity relationship graph's (FR-39) edges come
+from derived co-occurrence, explicit writer-authored typed links, or both —
+and if authored links are in scope, what relationship-type schema?**
+**Resolution:** Both. FR-39 carries derived co-occurrence edges and
+explicit, writer-authored typed relationship edges together, and the two
+MUST be visually distinguishable wherever both appear on the graph. The
+relationship-type schema itself (its shape, and where it persists) is not
+decided here and remains open — see OQ-3.
+**Evidence:** Co-occurrence requires no new persisted data: `MentionIndex`
+is keyed by `resourceId`, each `MentionRecord` carries `entityId` +
+`resourceId` + `offsets`, and `invertMentionIndex` already produces the
+entity-keyed view (`frontend/src/lib/models/mention-index.ts:16-28,67-79`)
+— "which entity pairs share a resource" is a pure derivation over data
+already on disk. Authored typed links do not fit `EntitySidecarFieldsSchema`
+(`frontend/src/lib/models/schemas.ts:333-336`), which is `entityKind` +
+`aliases` — one entity's own declaration, not a directed typed edge between
+two entities — so they need a new top-level persisted structure alongside
+`meta/index/mentions.json` / `meta/backlinks.json`. Neither
+`specs/features/entity-layer.md:193-194` nor
+`specs/features/entity-roster.md:135-136` scoped this in; this product spec
+is the first rung to settle it.
+**Impact:** FR-39.
+
+**OQ-3: FR-39 bundles two materially different halves under one
+requirement — should it split into more than one shippable feature, and if
+the authored-typed-link half ships, what happens to an entity's authored
+edges when that entity is deleted?**
+**Impact:** The co-occurrence half is a read-only view over data that
+already exists (the mention index) and adds nothing new to persist. The
+authored-typed-link half brings a new schema, a new authoring surface, and
+a new edge lifecycle — including what happens to an edge that names an
+entity later deleted — none of which the co-occurrence half needs. Bundling
+both into a single FR risks either half blocking the other's delivery.
+Genuinely unresolved: no relationship-type schema, no authoring surface, and
+no edge-deletion-on-entity-deletion behavior has been decided anywhere in
+this spec or the two feature specs that deferred this capability.
+**Owner:** Product owner / feature-breakdown rung.
+**Evidence:** `specs/features/entity-layer.md:193-194` and
+`specs/features/entity-roster.md:135-136` each deferred the graph as a
+single undifferentiated capability; OQ-2's resolution is the first point at
+which the two halves' different costs and lifecycles become visible, and
+the feature-list rung is where a product spec's requirements are split into
+independently shippable features.
 
 ## Out of Scope (Deferred)
 
