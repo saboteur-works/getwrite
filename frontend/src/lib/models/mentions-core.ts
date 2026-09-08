@@ -362,9 +362,112 @@ export async function getEntityMentionedIn(
   return Array.from(results.values());
 }
 
+/**
+ * One other entity a given entity co-occurs with (shares at least one
+ * resource with, by detected mention), and how much
+ * (`specs/features/entity-cooccurrence.md` FR-1).
+ */
+export type EntityCooccurrenceEntry = {
+  entityId: string;
+  count: number;
+  resourceIds: string[];
+};
+
+/**
+ * Returns, for every declared entity that shares at least one resource with
+ * another declared entity's detected mention, the set of entities it
+ * co-occurs with (`specs/features/entity-cooccurrence.md` FR-1).
+ *
+ * This is a sibling of {@link getProjectMentionCounts}, not an extension of
+ * it or of {@link getEntityMentionedIn}: `getProjectMentionCounts` returns
+ * per-entity totals, not pairs, and `getEntityMentionedIn` is scoped to one
+ * entity and does per-resource content loads, name resolution, and snippet
+ * work a bare pairwise count does not need.
+ *
+ * Loads the mention index once via {@link loadMentionIndex} and groups its
+ * `MentionRecord`s by their own `resourceId` key — the index is already
+ * keyed by `resourceId` (see `mention-index.ts`), so no second read or
+ * inversion is needed. Within each resource, every two distinct entities
+ * mentioned there are paired; `count` is the number of resources a pair
+ * shares and `resourceIds` lists them. Pairs are unordered and non-reflexive
+ * (FR-3): an entity is never paired with itself, and if A co-occurs with B,
+ * B's entry array includes A with the identical count and resource set.
+ *
+ * This function reads only `MentionRecord`s from the mention index. It never
+ * loads or merges `backlinks.json` and never calls
+ * {@link getEntityMentionedIn} — an explicit link with no corresponding
+ * detected mention MUST NOT be counted toward co-occurrence (FR-2).
+ * Co-occurrence is same-resource only; `MentionRecord.offsets` is not
+ * consulted (OQ-1, resolved).
+ *
+ * An entity that shares no resource with any other declared entity's mention
+ * is omitted from the returned map entirely — no zero-entry key (FR-4).
+ * Returns `{}` when the project has no mention index yet.
+ */
+export async function getEntityCooccurrence(
+  projectRoot: string,
+): Promise<Record<string, EntityCooccurrenceEntry[]>> {
+  const index = await loadMentionIndex(projectRoot);
+
+  // pairs[a][b] -> Set of resourceIds shared by a and b (a < b in insertion
+  // order, so each unordered pair is tracked exactly once before being
+  // mirrored into the final per-entity result below).
+  const pairs = new Map<string, Map<string, Set<string>>>();
+
+  const addPair = (a: string, b: string, resourceId: string): void => {
+    let bucket = pairs.get(a);
+    if (!bucket) {
+      bucket = new Map<string, Set<string>>();
+      pairs.set(a, bucket);
+    }
+    let resourceIds = bucket.get(b);
+    if (!resourceIds) {
+      resourceIds = new Set<string>();
+      bucket.set(b, resourceIds);
+    }
+    resourceIds.add(resourceId);
+  };
+
+  for (const [resourceId, records] of Object.entries(index)) {
+    const entityIds = Array.from(
+      new Set(records.map((record) => record.entityId)),
+    );
+    for (let i = 0; i < entityIds.length; i++) {
+      for (let j = i + 1; j < entityIds.length; j++) {
+        const a = entityIds[i];
+        const b = entityIds[j];
+        if (a === undefined || b === undefined) continue;
+        addPair(a, b, resourceId);
+      }
+    }
+  }
+
+  const result: Record<string, EntityCooccurrenceEntry[]> = {};
+  const appendEntry = (
+    entityId: string,
+    otherId: string,
+    resourceIds: string[],
+  ): void => {
+    const entries = result[entityId] ?? [];
+    entries.push({ entityId: otherId, count: resourceIds.length, resourceIds });
+    result[entityId] = entries;
+  };
+
+  for (const [a, bucket] of pairs) {
+    for (const [b, resourceIdSet] of bucket) {
+      const resourceIds = Array.from(resourceIdSet);
+      appendEntry(a, b, resourceIds);
+      appendEntry(b, a, resourceIds);
+    }
+  }
+
+  return result;
+}
+
 const mentionsCore = {
   getResourceMentions,
   getEntityMentionedIn,
   getProjectMentionCounts,
+  getEntityCooccurrence,
 };
 export default mentionsCore;
