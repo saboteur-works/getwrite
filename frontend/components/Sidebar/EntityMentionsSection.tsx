@@ -15,6 +15,8 @@ import {
 } from "../../src/store/projectsSlice";
 import { getEntityMentionedIn } from "../../src/lib/api/mentions";
 import type { EntityMentionedIn } from "../../src/lib/models/mentions-core";
+import { getEntityCooccurrence } from "../../src/lib/api/entity-cooccurrence";
+import type { EntityCooccurrenceEntry } from "../../src/lib/api/entity-cooccurrence";
 import { selectEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import type { EntityAliasTable } from "../../src/lib/models/entity-alias-table";
 import { orderResourceIdsByTreePosition } from "../common/compileSelection";
@@ -98,6 +100,59 @@ export function resolveCooccurringEntityName(
   return aliasTable.entities[entityId]?.name ?? entityId;
 }
 
+/**
+ * Task 6 addition (`specs/features/entity-cooccurrence.md`, FR-6/FR-7/FR-8/
+ * FR-9) — renders the selected entity's "Also appears with" list.
+ *
+ * Deliberately reads `cooccurrence[selectedEntityId]` (a project-wide map
+ * fetched separately via {@link getEntityCooccurrence}, restricted here to
+ * the selected entity's own id) rather than anything derived from `rows`'
+ * merged `isLinked`/`isMentioned` resource set: per FR-2, co-occurrence is
+ * counted only from detected mentions sharing a resource, and MUST NOT be
+ * conflated with the Mention+Backlink merge `rows` represents.
+ *
+ * Ordered by count descending, ties broken alphabetically (case-insensitive)
+ * by resolved name — the same tie-break `EntityRosterView.tsx` uses for its
+ * own name sort. Renders nothing at all — no heading, line, or empty-state
+ * text — when the entity has no co-occurrence entries (FR-7), matching this
+ * component's documented no-static-empty-state convention. Plain text, not
+ * the "Linked"/"Mentioned" badge markup (FR-8): a co-occurrence entry is an
+ * observation of shared prose proximity, not an authored relationship.
+ */
+function CooccurrenceList({
+  entries,
+  aliasTable,
+}: {
+  entries: EntityCooccurrenceEntry[];
+  aliasTable: EntityAliasTable;
+}): JSX.Element | null {
+  if (entries.length === 0) return null;
+
+  const named = entries.map((entry) => ({
+    entityId: entry.entityId,
+    count: entry.count,
+    name: resolveCooccurringEntityName(aliasTable, entry.entityId),
+  }));
+
+  named.sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+  });
+
+  return (
+    <div className="text-gw-nano text-gw-secondary">
+      <span>Also appears with: </span>
+      <ul className="inline" aria-label="entity-cooccurrence-list">
+        {named.map((entry, index) => (
+          <li key={entry.entityId} className="inline">
+            {entry.name} ({entry.count}){index < named.length - 1 ? ", " : ""}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function EntityMentionsSection(): JSX.Element | null {
   const projectId = useAppSelector(selectActiveProjectDirectoryId);
   const resource = useAppSelector((state) => selectResource(state.resources));
@@ -122,6 +177,10 @@ export default function EntityMentionsSection(): JSX.Element | null {
   const [rows, setRows] = useState<EntityMentionedIn[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCompileModalOpen, setIsCompileModalOpen] = useState(false);
+  const [cooccurrenceEntries, setCooccurrenceEntries] = useState<
+    EntityCooccurrenceEntry[]
+  >([]);
+  const aliasTable = useEntityAliasTable();
 
   const resourceId = resource?.id;
   const entityKind = resource?.entityKind;
@@ -139,6 +198,26 @@ export default function EntityMentionsSection(): JSX.Element | null {
       if (isCancelled) return;
       setRows(result);
       setIsLoading(false);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [projectId, resourceId, entityKind]);
+
+  // Task 6 (FR-6): fetched separately from `rows` above, and NEVER derived
+  // from `rows`' merged `isLinked`/`isMentioned` resource set — see the
+  // `CooccurrenceList` doc comment for why (FR-2).
+  useEffect(() => {
+    if (!projectId || !resourceId || !entityKind) {
+      setCooccurrenceEntries([]);
+      return;
+    }
+
+    let isCancelled = false;
+    void getEntityCooccurrence(projectId).then((cooccurrence) => {
+      if (isCancelled) return;
+      setCooccurrenceEntries(cooccurrence[resourceId] ?? []);
     });
 
     return () => {
@@ -248,6 +327,8 @@ export default function EntityMentionsSection(): JSX.Element | null {
           ))}
         </ul>
       )}
+
+      <CooccurrenceList entries={cooccurrenceEntries} aliasTable={aliasTable} />
 
       <div className="flex flex-col gap-1">
         <Button

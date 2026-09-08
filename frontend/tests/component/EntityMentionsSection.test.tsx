@@ -1,6 +1,12 @@
 import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 import EntityMentionsSection, {
   useEntityAliasTable,
@@ -20,6 +26,7 @@ import {
 import { createTextResource } from "../../src/lib/models/resource";
 import type { AnyResource, Folder } from "../../src/lib/models/types";
 import type { EntityMentionedIn } from "../../src/lib/models/mentions-core";
+import type { EntityCooccurrenceEntry } from "../../src/lib/api/entity-cooccurrence";
 import type { EntityAliasTable } from "../../src/lib/models/entity-alias-table";
 import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import { runCompileAndDownload } from "../../src/lib/compile/run-compile-and-download";
@@ -61,6 +68,27 @@ function mockMentionedIn(mentionedIn: EntityMentionedIn[]) {
     const url = input.toString();
     if (url.includes("/mentioned-in")) {
       return { ok: true, json: async () => ({ mentionedIn }) } as Response;
+    }
+    return { ok: true, json: async () => ({}) } as Response;
+  });
+}
+
+/**
+ * Task 6 — mocks both the existing `/mentioned-in` fetch and the new
+ * `/entity-cooccurrence` fetch behind a single `fetch` spy, matching how
+ * `EntityMentionsSection.tsx` fetches them from two independent effects.
+ */
+function mockMentionedInAndCooccurrence(
+  mentionedIn: EntityMentionedIn[],
+  cooccurrence: Record<string, EntityCooccurrenceEntry[]> = {},
+) {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = input.toString();
+    if (url.includes("/mentioned-in")) {
+      return { ok: true, json: async () => ({ mentionedIn }) } as Response;
+    }
+    if (url.includes("/entity-cooccurrence")) {
+      return { ok: true, json: async () => cooccurrence } as Response;
     }
     return { ok: true, json: async () => ({}) } as Response;
   });
@@ -499,13 +527,19 @@ describe("EntityMentionsSection", () => {
   });
 
   it("shows a distinct loading state before mentions resolve", async () => {
-    let resolveFetch: (value: Response) => void = () => {};
-    vi.spyOn(globalThis, "fetch").mockImplementation(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveFetch = resolve;
-        }),
-    );
+    // Task 6 added a second, independent `fetch` (co-occurrence) alongside
+    // the existing mentioned-in fetch, so resolvers are tracked per URL
+    // rather than assuming a single in-flight `fetch` call.
+    let resolveMentionedIn: (value: Response) => void = () => {};
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = input.toString();
+      if (url.includes("/mentioned-in")) {
+        return new Promise<Response>((resolve) => {
+          resolveMentionedIn = resolve;
+        });
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
 
     const store = setupStore("entity-aria");
 
@@ -517,7 +551,7 @@ describe("EntityMentionsSection", () => {
 
     expect(await screen.findByRole("status")).toBeInTheDocument();
 
-    resolveFetch({
+    resolveMentionedIn({
       ok: true,
       json: async () => ({ mentionedIn: [] }),
     } as Response);
@@ -636,5 +670,212 @@ describe("EntityMentionsSection alias-table name resolution (Task 5)", () => {
     expect(
       screen.queryByLabelText("entity-cooccurrence-list"),
     ).not.toBeInTheDocument();
+  });
+});
+
+// Task 6 (`specs/features/entity-cooccurrence.md`) — the "Also appears with"
+// list for the selected entity.
+describe("EntityMentionsSection co-occurrence list (Task 6)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const COOCCURRENCE_ALIAS_TABLE: EntityAliasTable = {
+    entities: {
+      "entity-priya": {
+        entityId: "entity-priya",
+        entityKind: "character",
+        name: "Priya",
+        aliases: [],
+        terms: ["Priya"],
+      },
+      "entity-bob": {
+        entityId: "entity-bob",
+        entityKind: "character",
+        name: "bob",
+        aliases: [],
+        terms: ["bob"],
+      },
+      "entity-marcus": {
+        entityId: "entity-marcus",
+        entityKind: "character",
+        name: "Marcus",
+        aliases: [],
+        terms: ["Marcus"],
+      },
+    },
+    claimedBy: {},
+  };
+
+  async function setupStoreWithAliasTable(
+    resourceId: string,
+    aliasTable: EntityAliasTable = COOCCURRENCE_ALIAS_TABLE,
+  ) {
+    mockedGetEntityAliasTable.mockResolvedValue(aliasTable);
+    const store = setupStore(resourceId);
+    await store.dispatch(fetchEntityAliasTable("proj-test-1"));
+    return store;
+  }
+
+  it("orders entries by count descending with a case-insensitive alphabetical tie-break (FR-6)", async () => {
+    mockMentionedInAndCooccurrence([], {
+      "entity-aria": [
+        { entityId: "entity-priya", count: 3, resourceIds: ["r1", "r2", "r3"] },
+        { entityId: "entity-marcus", count: 1, resourceIds: ["r1"] },
+        { entityId: "entity-bob", count: 3, resourceIds: ["r1", "r2", "r3"] },
+      ],
+    });
+    const store = await setupStoreWithAliasTable("entity-aria");
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsSection />
+      </Provider>,
+    );
+
+    const list = await screen.findByLabelText("entity-cooccurrence-list");
+    const items = within(list).getAllByRole("listitem");
+    // Tie between "Priya" (3) and "bob" (3) is broken case-insensitively:
+    // "bob" sorts before "Priya" alphabetically ignoring case.
+    expect(items.map((item: HTMLElement) => item.textContent)).toEqual([
+      "bob (3), ",
+      "Priya (3), ",
+      "Marcus (1)",
+    ]);
+  });
+
+  it("renders no heading, line, or empty-state text when the selected entity has no co-occurrence entry (FR-7)", async () => {
+    mockMentionedInAndCooccurrence(
+      [
+        {
+          resourceId: "scene-1",
+          name: "Chapter One",
+          snippets: [],
+          isLinked: true,
+          isMentioned: false,
+          ambiguousWith: [],
+        },
+      ],
+      {
+        // A different entity has co-occurrence data, but the selected
+        // entity ("entity-aria") does not.
+        "entity-other": [
+          { entityId: "entity-priya", count: 2, resourceIds: ["r1", "r2"] },
+        ],
+      },
+    );
+    const store = await setupStoreWithAliasTable("entity-aria");
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsSection />
+      </Provider>,
+    );
+
+    expect(await screen.findByText("Chapter One")).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("entity-cooccurrence-list"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Also appears with/)).not.toBeInTheDocument();
+  });
+
+  it("restricts the list to the selected entity's own co-occurrence entry, never the merged rows resource set (FR-2)", async () => {
+    // `rows` (via getEntityMentionedIn) names resources, e.g. "scene-1",
+    // while the co-occurrence map is keyed by *entity* ids. Even with rows
+    // present, the co-occurrence list must come only from the map's entry
+    // for the selected entity id, not from anything in `rows`.
+    mockMentionedInAndCooccurrence(
+      [
+        {
+          resourceId: "scene-1",
+          name: "Chapter One",
+          snippets: ["Aria and Priya spoke."],
+          isLinked: false,
+          isMentioned: true,
+          ambiguousWith: [[]],
+        },
+      ],
+      {
+        "entity-aria": [
+          { entityId: "entity-priya", count: 1, resourceIds: ["scene-1"] },
+        ],
+      },
+    );
+    const store = await setupStoreWithAliasTable("entity-aria");
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsSection />
+      </Provider>,
+    );
+
+    const list = await screen.findByLabelText("entity-cooccurrence-list");
+    expect(list).toHaveTextContent("Priya (1)");
+    // The mentions list's own resource-named row is untouched and distinct.
+    expect(screen.getByText("Chapter One")).toBeInTheDocument();
+  });
+
+  it("exposes the list under an aria-label distinct from, and independently queryable from, entity-mentions-list (FR-9)", async () => {
+    mockMentionedInAndCooccurrence(
+      [
+        {
+          resourceId: "scene-1",
+          name: "Chapter One",
+          snippets: [],
+          isLinked: true,
+          isMentioned: false,
+          ambiguousWith: [],
+        },
+      ],
+      {
+        "entity-aria": [
+          { entityId: "entity-priya", count: 1, resourceIds: ["scene-1"] },
+        ],
+      },
+    );
+    const store = await setupStoreWithAliasTable("entity-aria");
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsSection />
+      </Provider>,
+    );
+
+    const mentionsList = await screen.findByLabelText("entity-mentions-list");
+    const cooccurrenceList = await screen.findByLabelText(
+      "entity-cooccurrence-list",
+    );
+    expect(mentionsList).toBeInTheDocument();
+    expect(cooccurrenceList).toBeInTheDocument();
+    expect(cooccurrenceList).not.toBe(mentionsList);
+  });
+
+  it("does not render any entry with the Linked/Mentioned badge markup (FR-8)", async () => {
+    mockMentionedInAndCooccurrence([], {
+      "entity-aria": [
+        { entityId: "entity-priya", count: 2, resourceIds: ["r1", "r2"] },
+      ],
+    });
+    const store = await setupStoreWithAliasTable("entity-aria");
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsSection />
+      </Provider>,
+    );
+
+    const list = await screen.findByLabelText("entity-cooccurrence-list");
+    expect(
+      screen.queryByLabelText("Priya-linked-badge"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Priya-mentioned-badge"),
+    ).not.toBeInTheDocument();
+    within(list)
+      .getAllByRole("listitem")
+      .forEach((item: HTMLElement) => {
+        expect(item.className).not.toMatch(/border/);
+        expect(item.getAttribute("aria-label")).toBeNull();
+      });
   });
 });
