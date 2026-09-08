@@ -109,6 +109,8 @@ Keyed by `resourceId` so a resource's own mentions are a direct lookup; `invertM
 
 - `getResourceMentions(projectRoot, resourceId)` — which entities a resource mentions.
 - `getEntityMentionedIn(projectRoot, entityId)` — which resources mention an entity, one snippet per occurrence, merged with the entity's explicit `linkedFrom` backlinks (a resource that is both linked and mentioned appears once with both flags set) and annotated with ambiguity when another entity's alias claims the same occurrence.
+- `getProjectMentionCounts(projectRoot)` — per entity, its prose-occurrence total and the number of distinct resources those occurrences span (for the entity roster).
+- `getEntityCooccurrence(projectRoot)` — for every declared entity, every other declared entity it shares at least one resource with by detected mention, with the shared-resource count and ids. Computed only from `MentionRecord`s grouped by `resourceId`; never reads `backlinks.json` and never merged with `getEntityMentionedIn`'s output, so an explicit link with no corresponding mention does not count. Same-resource is the whole unit — a mention's offset is not consulted. Pairs are unordered and non-reflexive; an entity with no shared resource is omitted entirely.
 
 **Wiring**: `indexer-queue.ts` detects mentions on the normal per-resource save path, plus a targeted rescan of every resource whenever an entity's `name`/`aliases`/`entityKind` changes (so other resources are re-matched against the updated terms). `getwrite-cli reindex` rebuilds the mention index from scratch alongside the inverted index and backlinks.
 

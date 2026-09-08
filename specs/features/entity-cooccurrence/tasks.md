@@ -89,6 +89,39 @@ Source spec: `specs/features/entity-cooccurrence.md`. Granularity: story points 
 **Done when:** each of the following is confirmed by hand and recorded in the task's completion note, with disk/index ground truth read first and the UI checked against it (not the reverse): (1) selecting a declared entity that shares a resource with at least one other declared entity shows an "Also appears with" line naming the other entit(ies) and correct counts, matching the mention index on disk, per FR-1/FR-6; (2) the ordering is count-descending with alphabetical tie-break, verified against at least one fixture with a genuine count tie, per FR-6; (3) selecting a declared entity that shares no resource with any other declared entity — reachable **even when this is the very first entity selected, with no other resource selected beforehand**, to specifically catch the reachability-without-prior-selection defect class the roster's own manual pass found — shows no "Also appears with" list, heading, or empty-state text at all, per FR-7; (4) the co-occurrence entries are visually plain text, never styled or labeled as the existing "Linked"/"Mentioned" badges, per FR-8; (5) the list is reachable via keyboard/screen-reader navigation as an accessible list distinct from the existing mentions list, checked with the browser's accessibility inspector or a screen reader, per FR-9; (6) an entity that is only explicitly linked (not mentioned) to a resource where another entity is mentioned does NOT appear in that other entity's "Also appears with" list, per FR-2 — this needs a fixture project built specifically for this case, since it is a negative assertion an incidental project is unlikely to exercise; (7) if a device is available, the "Also appears with" list loads correctly, with counts matching disk ground truth, with the device's network disabled, per FR-10.
 **Depends on:** 7, 8, 9
 **Estimate:** 1
+**Verification record (2026-09-08):** Performed against a disposable QA
+workspace (`getwrite-cli qa start`) holding one fixture project of 76
+resources with 6 declared entities and 93 indexed mentions, copied from a real
+project. Ground truth was computed from `meta/index/mentions.json` on disk
+before the UI was opened, yielding 9 co-occurrence pairs.
+
+Six of the seven criteria are confirmed; criterion (7) was not performed.
+
+- (1) Confirmed. Devin Striker showed "Casey Thorne (25), Keller (16), Cecilia
+  Gonzalez (12), Sheryl Bowers (3)", matching the on-disk pairs exactly.
+- (2) Confirmed against a genuine tie. Cecilia Gonzalez showed "Devin Striker
+  (12), Casey Thorne (8), Keller (8)" — the two entries tied at 8 ordered
+  alphabetically.
+- (3) Confirmed. "Episode 8 - Scene 3", a declared entity appearing in no
+  co-occurrence pair, rendered no list, heading, or empty-state text. The
+  reachability half was also satisfied: the first criterion was observed on
+  the very first resource selected after opening the project, with no prior
+  selection.
+- (4) Confirmed visually. The co-occurrence line renders as plain dimmed text
+  directly below the bordered "LINKED"/"MENTIONED" badge pills, not as a badge.
+- (5) Confirmed via the accessibility tree: `list "entity-cooccurrence-list"`
+  is present and distinct from both `entity-mentions-list` and
+  `entities-mentioned-list`, and its entries are non-interactive `listitem`s.
+- (6) Confirmed, and the fixture discriminated the two answers numerically.
+  Cecilia Gonzalez is link-only (an authored backlink, no detected mention) in
+  three resources that do mention Casey Thorne, Devin Striker and Keller. Had
+  the co-occurrence been computed over the merged mentions-plus-backlinks set,
+  her counts would have read Devin 15, Keller 11, Casey 10. The UI showed
+  12/8/8 — the mentions-only numbers — so the link-only resources contributed
+  nothing, per FR-2.
+- (7) NOT performed. No Android device was connected during this session.
+  Filed as POS `task_c43899d2`.
+
 **Notes:** This is the manual-exercise task the automated suite cannot fully substitute for. Criterion (3)'s explicit "no resource selected first" phrasing exists because the entity roster's own manual pass found a reachability defect (the roster was unreachable with no resource selected) that no automated test caught, precisely because every automated test selected a resource before asserting anything — this criterion is written to actively hunt for that same class of defect here, not to assume it is absent.
 **Done:** [ ]
 
