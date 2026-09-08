@@ -44,6 +44,34 @@ export type EntityRelationshipEdge = z.infer<
 
 const EntityRelationshipsFileSchema = z.array(EntityRelationshipEdgeSchema);
 
+/**
+ * Typed, identifiable error thrown by {@link createEntityRelationship} when
+ * `sourceEntityId === targetEntityId` (FR-4). Callers — notably the HTTP
+ * route — distinguish this validation-style throw from an unexpected error
+ * via `instanceof`, mirroring the codebase's existing convention for
+ * model-layer validation throws (e.g. `MissingProjectFieldsError`,
+ * `InvalidProjectIdCoreError`).
+ */
+export class SameEntityRelationshipError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SameEntityRelationshipError";
+  }
+}
+
+/**
+ * Typed, identifiable error thrown by {@link createEntityRelationship} when
+ * `relationshipType` is not among the project's current
+ * `config.relationshipTypes` (FR-15). See {@link SameEntityRelationshipError}
+ * for why this is a distinct class rather than a generic `Error`.
+ */
+export class InvalidRelationshipTypeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidRelationshipTypeError";
+  }
+}
+
 function relationshipsFilePath(projectRoot: string): string {
   return path.join(projectRoot, META_DIR, RELATIONSHIPS_FILE);
 }
@@ -126,7 +154,7 @@ export async function createEntityRelationship(
   relationshipType: string,
 ): Promise<EntityRelationshipEdge> {
   if (sourceEntityId === targetEntityId) {
-    throw new Error(
+    throw new SameEntityRelationshipError(
       "createEntityRelationship: sourceEntityId and targetEntityId must be distinct",
     );
   }
@@ -134,7 +162,7 @@ export async function createEntityRelationship(
   const config = await loadProjectConfig(projectRoot);
   const allowedTypes = config.relationshipTypes ?? [];
   if (!allowedTypes.includes(relationshipType)) {
-    throw new Error(
+    throw new InvalidRelationshipTypeError(
       `createEntityRelationship: relationshipType "${relationshipType}" is not in the project's relationshipTypes list`,
     );
   }
