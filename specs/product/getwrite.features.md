@@ -709,8 +709,11 @@ no-virtualization decision now rests on measurement. Three of the four open
 manual criteria — the flag-off disabled tab and its hover reason, the
 "needs attention" treatment with its accessible-name disclosure and
 non-red colour, and the FR-11 empty state — were confirmed against
-purpose-built fixture projects; only device-level Android offline behaviour
-remains unverified, for want of a device.
+purpose-built fixture projects. The fourth, device-level Android offline
+behaviour, was confirmed the same day on a physical Pixel 7 Pro in airplane
+mode: the roster and every mention count loaded from the app-private store
+with no network reachable, matching disk ground truth exactly. All eight
+manual criteria are confirmed.
 
 FR-38 covers this feature, added to the parent
 product spec's Next Requirements. Four scope decisions are settled at the

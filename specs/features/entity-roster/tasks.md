@@ -174,15 +174,45 @@ Re-confirmed incidentally against ground truth: (3)/(4) all five entities list
 alphabetically with name, kind, aliases and counts matching disk exactly, and
 the zero-mention entity reads "No mentions yet".
 
-STILL NOT CONFIRMED — (8) device-level offline behaviour; no Android device
-this session. This criterion alone remains open.
+**Verification record, third pass (2026-09-07, POS `task_95904780`, on a
+physical Pixel 7 Pro, fully offline):**
+Criterion (8) needed a device, and one became available the same session.
+
+Procedure: `frontend`'s `pnpm build:native` (the previous `frontend/out` export
+predated the roster and did not contain it), `npx cap sync android`,
+`./gradlew assembleDebug` with the Android Studio JBR as `JAVA_HOME`, and
+`adb install -r`. The `roster-warnings` fixture above was pushed as a tar and
+extracted into the app-private projects root
+(`Directory.Data`/`projects/<uuid>`) via `run-as`, with its `rootPath` rewritten
+to the device-relative `/projects/<uuid>`. The device was then put in airplane
+mode — confirmed by `settings get global airplane_mode_on` returning `1` and
+`ping` reporting "Network is unreachable" — and the app cold-started with
+`am force-stop` followed by a launcher intent.
+
+CONFIRMED — (8) fully offline, the roster loads and every number matches the
+disk ground truth read before the run: Corvina 5/3, Ferran 3/2, Mayfield 4/3,
+Maylin 4/2, and Quillon "No mentions yet". Ordering, kinds and aliases are
+correct, and the three "needs attention" entities carry the same purple
+treatment as on web. This exercises the mention-counts native backend
+(`native-entity-mention-counts-backend.ts`) and the alias-table one, not an
+HTTP round-trip: the native build ships no `app/api/**` at all, and airplane
+mode removes any possibility of a network read.
+
+Also observed on device, though it belongs to criterion (6) rather than (8):
+tapping a roster row selected that entity's resource and switched to the edit
+view, as on web.
+
+Fixture and device state were restored afterwards — the fixture project and the
+pushed tar deleted, airplane mode off, Wi-Fi and mobile data re-enabled and
+connectivity re-checked.
+
+All eight criteria are now confirmed.
 
 Cosmetic observation, not a defect against FR-11: the empty state renders flush
 to the top-left of the work area with no padding, unlike the roster list, which
 sits in a padded card.
 
-**Done:** [x] (7 of 8 criteria confirmed across two passes; (8), Android
-offline, still requires a device)
+**Done:** [x] (all 8 criteria confirmed across three passes)
 
 ## Summary
 - Total tasks: 12
