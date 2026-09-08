@@ -184,7 +184,8 @@ describe("entity-scoped compile — merged-set fidelity, ordering, and no-write 
     const beforeSnapshot = await snapshotGuardedPaths(PROJECT_ROOT);
 
     // Re-run the exact read paths the wiring uses (mirroring
-    // `EntityMentionsSection.tsx`'s effect + memoized derivations).
+    // `EntityMentionsContext.tsx`'s fetch and `EntityCompileSection.tsx`'s
+    // memoized derivations).
     await getEntityMentionedIn(PROJECT_ROOT, fixture1.entity.id);
     orderResourceIdsByTreePosition(fixture1.allResources, mergedResourceIds1);
 

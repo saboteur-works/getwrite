@@ -24,6 +24,8 @@ import TagsSection from "./TagsSection";
 import EntitySection from "./EntitySection";
 import EntitiesMentionedSection from "./EntitiesMentionedSection";
 import EntityMentionsSection from "./EntityMentionsSection";
+import EntityCompileSection from "./EntityCompileSection";
+import EntityMentionsProvider from "./EntityMentionsContext";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
@@ -529,7 +531,7 @@ export default function MetadataSidebar({
               <TagsSection />
             </CollapsibleSection>
             {isEntitiesEnabled && (
-              <>
+              <EntityMentionsProvider>
                 <CollapsibleSection title="Entity" variant="sidebar">
                   <EntitySection />
                 </CollapsibleSection>
@@ -542,7 +544,11 @@ export default function MetadataSidebar({
                 <CollapsibleSection title="Entity Mentions" variant="sidebar">
                   <EntityMentionsSection />
                 </CollapsibleSection>
-              </>
+                {/* Deliberately outside the collapsible above: collapsing the
+                    mentions list must not hide the compile action. Both read
+                    the same fetch via EntityMentionsProvider. */}
+                <EntityCompileSection />
+              </EntityMentionsProvider>
             )}
           </div>
           <div className="shrink-0 mt-2">
