@@ -295,29 +295,6 @@ lost work.
   MUST also let a saved query or smart folder filter resources by entity
   mention. The product MUST NOT infer an entity the writer never declared,
   and MUST NOT perform pronoun or coreference resolution. [US-3]
-
-### In Progress Requirements
-
-- FR-26: Organizer view MUST support filtering cards by Status, by word
-  count, and by the resource-reference fields a project defines (the
-  characters and locations folders the fiction templates provide being the
-  common case); no card filtering of any kind exists today. Organizer's only
-  in-view control is a show/hide-bodies toggle — though what a card body
-  renders (nothing, a text excerpt of configurable length, or any metadata
-  field) is a separate per-project setting that already ships. [US-7]
-- FR-27: Desktop builds MUST be signed and installable without an OS
-  security warning on macOS and Windows. [US-8]
-
-### Next Requirements
-
-- FR-28: Users MUST be able to browse, restore, and permanently purge
-  soft-deleted resources through a dedicated Trash UI (the underlying
-  restore/purge model already exists). [US-11]
-- FR-29: Search MUST become able to find matches across all retained
-  revisions of a resource, not only its canonical revision (today only the
-  canonical revision is indexed and searched — see Constraints); when a
-  user opens the diff view from such a result, the diff MUST consistently
-  select the most recent matching revision. [US-7]
 - FR-36: Users MUST be able to toggle a working mode that visually marks every
   declared entity's name and aliases inline in the editor, so that the
   entities present in a passage are apparent at a glance without opening a
@@ -380,6 +357,29 @@ lost work.
   declarations from within the roster itself — MUST NOT discover or infer
   an entity the writer never declared, and MUST NOT perform
   pronoun/coreference resolution or any model-backed inference. [US-3]
+
+### In Progress Requirements
+
+- FR-26: Organizer view MUST support filtering cards by Status, by word
+  count, and by the resource-reference fields a project defines (the
+  characters and locations folders the fiction templates provide being the
+  common case); no card filtering of any kind exists today. Organizer's only
+  in-view control is a show/hide-bodies toggle — though what a card body
+  renders (nothing, a text excerpt of configurable length, or any metadata
+  field) is a separate per-project setting that already ships. [US-7]
+- FR-27: Desktop builds MUST be signed and installable without an OS
+  security warning on macOS and Windows. [US-8]
+
+### Next Requirements
+
+- FR-28: Users MUST be able to browse, restore, and permanently purge
+  soft-deleted resources through a dedicated Trash UI (the underlying
+  restore/purge model already exists). [US-11]
+- FR-29: Search MUST become able to find matches across all retained
+  revisions of a resource, not only its canonical revision (today only the
+  canonical revision is indexed and searched — see Constraints); when a
+  user opens the diff view from such a result, the diff MUST consistently
+  select the most recent matching revision. [US-7]
 
 ### Later Requirements
 

@@ -542,7 +542,7 @@ level of the sidecar, so `resource-ref` / `multi-resource-ref` fields under
 `userMetadata` never produced a backlink. Specified in
 `specs/features/entity-linking.md` and landed under `[task_08553ca3]`.
 
-### Feature 34: Entity highlighting in the editor — Not started
+### Feature 34: Entity highlighting in the editor — Shipped
 **Value:** A writer toggles a working mode that visually marks every declared
 entity's name and aliases inline as they read a scene, so the entities in a
 passage are apparent at a glance instead of requiring a trip to a sidebar
@@ -559,7 +559,10 @@ persisted toggle in per-project editor config.
 **User stories:** US-3
 **Depends on:** Feature 33
 **Branch suggestion:** feat/entity-highlighting
-**Notes:** Not started. Tracked as POS `task_4b2ec55f`, blocked by
+**Notes:** Shipped. Landed on `main` on 2026-09-03 as 18 commits tagged
+`[task_4b2ec55f]`, from `7ca594c1` (spec + FR-36) to `942a0ec8`; the branch
+was rebased rather than merged, so there is no merge commit — the same
+pattern as Feature 33. Tracked as POS `task_4b2ec55f`, was blocked by
 `task_ddb55116`; findings in `note_3059fe58`. FR-36 covers this feature: the
 parent product spec was amended to add a requirement for the toggleable
 inline editor highlight, reusing the entity declarations FR-35 established
@@ -585,7 +588,7 @@ a declaration-time warning cannot convey. Styling constraint: the brand
 reserves red for
 position/canonical indicators, so the highlight must use another token.
 
-### Feature 35: Entity-scoped compile — Not started
+### Feature 35: Entity-scoped compile — Shipped
 **Value:** A novelist tracking a character or thread across a large project
 compiles every resource associated with that entity into one continuous
 document — the same consistency-check read-through Feature 12's whole-project
@@ -611,7 +614,20 @@ declaration, or mention-index write.
 **User stories:** US-2, US-3
 **Depends on:** Feature 33, Feature 12
 **Branch suggestion:** feat/entity-scoped-compile
-**Notes:** Not started. FR-37 covers this feature, added to the parent
+**Notes:** Shipped. 11 commits tagged `[task_79e35996]`, from `549c2c50`
+to `c6df104b`, merged as PR #183 on 2026-09-06.
+
+Its route to `main` is worth recording, because the merge status alone was
+misleading. #183 targeted `fix/android-compile-download`, and that base had
+itself merged to `main` (PR #184, `92f7df40`) 90 seconds earlier — so #183's
+commits landed on a branch nothing was downstream of, and none of this
+feature reached `main` on 2026-09-06 despite both PRs reporting `MERGED`.
+The gap was found on 2026-09-07 while checking FR numbering for Feature 36
+and closed by PR #185 (`4fcd1fa7`), which re-merged the same commits onto
+`main`. Verified after the fact with `git merge-base --is-ancestor` rather
+than trusting the merge.
+
+FR-37 covers this feature, added to the parent
 product spec's Next Requirements. Four scope decisions are settled at the
 product-spec gate and are not reopened here: the resource set is the merged
 mentions-plus-backlinks set (not mentions alone), ordering is resource-tree
@@ -629,7 +645,7 @@ rendering mode, where this feature is an on-demand, export-only action.) The
 ordering bridge between the retrieval half (`mentions-core.ts`, existing) and
 the render half (`compile-core.ts`, existing) is the genuinely new work.
 
-### Feature 36: Project-level entity roster — Not started
+### Feature 36: Project-level entity roster — Shipped
 **Value:** A writer with dozens of declared entities today can only see them
 one resource's sidebar at a time; a project-wide roster lets them see every
 declared entity as a set, spot one that was declared and never mentioned
@@ -656,7 +672,36 @@ dispatches on `ViewName` to render the selected view.
 **User stories:** US-3
 **Depends on:** Feature 33
 **Branch suggestion:** feat/entity-roster
-**Notes:** Not started. FR-38 covers this feature, added to the parent
+**Notes:** Shipped. 18 commits tagged `[task_facfacac]`, from `3520b634`
+(FR-38 + this entry) to `becfbeee`, merged as PR #186 (`e86adf34`) on
+2026-09-07.
+
+Two defects were found after the automated suite was green, both by
+exercising the feature in the running app rather than by testing:
+
+- The roster was unreachable with no resource selected. `AppShell` gated its
+  view switch on a selected resource and then, inside that branch, returned
+  early for `!selectedResource` before reaching `switch (view)`; only `data`
+  escaped both, being handled in an earlier block. Fixed in the same PR by
+  hoisting the roster's case alongside `data`. Every existing test selected a
+  resource first, so 3237 passing tests could not see it. Timeline has the
+  same defect and is filed separately as POS `task_a7d8581a` /
+  `note_0e12b051`.
+- The roster counted resources while labelling them "mentions" — an entity
+  mentioned 593 times across 32 resources displayed "32 mentions". The cause
+  was in the requirement, not the code: FR-6 of the feature spec prescribed
+  `byEntity[entityId]?.length ?? 0` verbatim. Fixed by PR #187 (`cbacc237`),
+  which shows both numbers, counts distinct `resourceId`s for the resource
+  half, and corrects FR-5/FR-6 and FR-38. The fixtures had mentioned each
+  entity once per resource, making the right and wrong answers numerically
+  identical.
+
+Deferred with tasks filed rather than dropped: the virtualization benchmark
+(`task_733deea7`), which the spec records as a decision made in the absence
+of measurement rather than a performance claim, and four of the eight manual
+verification criteria (`task_ecb1e204`).
+
+FR-38 covers this feature, added to the parent
 product spec's Next Requirements. Four scope decisions are settled at the
 product-spec gate and are not reopened here: the roster is a new top-level
 work-area view rather than a sidebar panel, modal, or dedicated route; it is
@@ -734,23 +779,21 @@ already have shipped native backends.
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
-  features independently). Of the remaining work: 24 (Organizer filters), 25
-  (signed installers), 26 (Trash UI), and 27 (search across revisions) are
-  independently startable now. 28 (hosted multi-device access) must land
-  before 30 (its conflict-resolution model, which depends on it). 29
-  (durable search backend) is contingent on demonstrated need rather than
-  sequenced by dependency. 31 (Scrivener/Word importer) only depends on the
-  already-shipped Feature 2. 32 (joining search and query predicates)
-  depends on the already-shipped Features 8 and 9. 33 (entity layer) has
-  since shipped. 34 (entity highlighting) depends on 33 and is therefore
-  independently startable now. 35 (entity-scoped compile) depends on the
-  now-shipped 33 and the already-shipped 12, and is therefore independently
-  startable now. 36 (entity roster) depends only on the now-shipped 33 and
-  is therefore independently startable now.
+  features independently). The entity chain 33 → 34 → 35 → 36 has since
+  shipped in full: the entity layer, editor highlighting, entity-scoped
+  compile, and the project-level roster. Of the remaining work: 24
+  (Organizer filters), 25 (signed installers), 26 (Trash UI), and 27 (search
+  across revisions) are independently startable now. 28 (hosted multi-device
+  access) must land before 30 (its conflict-resolution model, which depends
+  on it). 29 (durable search backend) is contingent on demonstrated need
+  rather than sequenced by dependency. 31 (Scrivener/Word importer) only
+  depends on the already-shipped Feature 2. 32 (joining search and query
+  predicates) depends on the already-shipped Features 8 and 9.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-  36 (30 is the only feature left with an unmet hard dependency — on 28 —
-  since 34's, 35's, and 36's dependencies, 33 and 12, have both shipped)
+  36 (30 is the only feature left with an unmet hard dependency — on 28)
+- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32. Everything else in this list
+  has shipped.
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
   design decision before implementation tasks can be written. Feature 28 is
@@ -763,18 +806,19 @@ already have shipped native backends.
   previously separate concerns (revision-aware indexing and diff-open
   revision selection) per the parent spec's FR-29 correction; its task
   breakdown should confirm the merge doesn't hide two different sizes of
-  work. Feature 34 carries an unbenchmarked per-keystroke cost (N aliases
-  scanned per transaction, where a novel project may declare hundreds) that
-  its task breakdown must measure rather than assume. Feature 35's ordering
-  bridge (merged mention/backlink set → tree-position order) is new code with
-  no existing analogue to reuse wholesale, unlike Feature 12's compile, which
-  only needed the render half. Feature 36 is the first feature to add a
-  sixth entry to the closed, hardcoded five-view `ViewName` type and
-  `VIEW_OPTIONS` list (`ViewSwitcher.tsx`) and whatever dispatches on
-  `ViewName` in `AppShell.tsx` — unlike Features 34 and 35, which extended
-  existing sidebar/panel surfaces, this is new structural surface area with
-  no existing sixth-view precedent to follow, which its task breakdown
-  should account for.
+  work. The risks previously logged here for Features 34, 35 and 36 are
+  retained as shipped-work lessons rather than forecasts. Feature 36's — that
+  it was the first feature to touch the closed, hardcoded five-view
+  `ViewName`/`VIEW_OPTIONS`/`AppShell` dispatch surface — was borne out: the
+  roster shipped unreachable unless a resource was selected, because a second
+  `!selectedResource` guard inside that dispatch was not accounted for. There
+  is now a sixth-view precedent for the next one to follow. Feature 36 also
+  demonstrated a failure mode worth carrying into future breakdowns: two
+  defects reached `main` past a fully green suite, one because every existing
+  test selected a resource first and one because the fixtures made the right
+  and wrong answer numerically identical, and both were found by exercising
+  the running app. Feature 34's unbenchmarked per-keystroke alias-scan cost
+  was never measured and remains unmeasured.
 
 ## Open Questions
 
