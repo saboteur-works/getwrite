@@ -166,3 +166,25 @@ describe("ProjectConfigSchema — organizer card body", () => {
     ).toThrow();
   });
 });
+
+describe("ProjectConfigSchema — relationshipTypes", () => {
+  it("accepts an optional relationshipTypes string array", () => {
+    const result = ProjectConfigSchema.parse({
+      relationshipTypes: ["ally of", "rival of"],
+    });
+    expect(result.relationshipTypes).toEqual(["ally of", "rival of"]);
+  });
+
+  it("allows relationshipTypes to be omitted", () => {
+    expect(() => ProjectConfigSchema.parse({})).not.toThrow();
+  });
+
+  it("rejects a non-string-array relationshipTypes value", () => {
+    expect(() =>
+      ProjectConfigSchema.parse({ relationshipTypes: [1, 2, 3] }),
+    ).toThrow();
+    expect(() =>
+      ProjectConfigSchema.parse({ relationshipTypes: "ally of" }),
+    ).toThrow();
+  });
+});

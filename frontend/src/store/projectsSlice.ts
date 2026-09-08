@@ -89,6 +89,8 @@ export interface StoredProject {
   metadata?: Record<string, MetadataValue>;
   /** Ordered list of status values configured for this project. */
   statuses?: string[];
+  /** Ordered list of relationship-type values configured for this project. */
+  relationshipTypes?: string[];
   /** Active metadata field schema. Defaults to DEFAULT_METADATA_SCHEMA when not persisted on disk. */
   metadataSchema?: MetadataSchema;
   /** Per-feature opt-in flags. Absent (or an absent flag) means the feature is disabled. */
@@ -133,6 +135,7 @@ export function buildStoredProject(
     })),
     metadata: project.metadata,
     statuses: project.config?.statuses ?? [],
+    relationshipTypes: project.config?.relationshipTypes ?? [],
     metadataSchema: project.config?.metadataSchema,
     features: project.config?.features,
     organizerCardBody: project.config?.organizerCardBody,
@@ -778,6 +781,19 @@ export const selectSelectedProjectId = (state: any): string | null => {
 export const selectActiveProjectStatuses = (state: any): string[] => {
   const id = state?.projects?.selectedProjectId;
   return state?.projects?.projects?.[id]?.statuses ?? [];
+};
+
+/**
+ * Selects the ordered relationship-types array for the currently active
+ * project.
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ * @returns Array of relationship-type strings configured for the active
+ *   project, or `[]`.
+ */
+export const selectActiveProjectRelationshipTypes = (state: any): string[] => {
+  const id = state?.projects?.selectedProjectId;
+  return state?.projects?.projects?.[id]?.relationshipTypes ?? [];
 };
 
 /**

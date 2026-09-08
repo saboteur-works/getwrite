@@ -236,6 +236,7 @@ export const ProjectConfigSchema = z.object({
   maxRevisions: z.number().int().nonnegative().optional(),
   wordCountGoal: z.number().int().nonnegative().optional(),
   statuses: z.array(z.string()).optional(),
+  relationshipTypes: z.array(z.string()).optional(),
   autoPrune: z.boolean().optional(),
   tags: z
     .array(
@@ -510,6 +511,7 @@ export const ProjectTypeSchema = z
     defaultFolders: z.array(ProjectTypeDefaultFolderSchema).optional(),
     editorConfig: EditorConfigSchema.optional(),
     statuses: z.array(z.string()).optional(),
+    relationshipTypes: z.array(z.string()).optional(),
     wordCountGoal: z.number().int().nonnegative().optional(),
   })
   .strict();

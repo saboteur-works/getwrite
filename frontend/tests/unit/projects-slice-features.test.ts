@@ -23,6 +23,7 @@ import projectsReducer, {
   selectNotesEnabled,
   selectEntitiesEnabled,
   selectEntityHighlightingEnabled,
+  selectActiveProjectRelationshipTypes,
   buildStoredProject,
 } from "../../src/store/projectsSlice";
 import type { Project } from "../../src/lib/models/types";
@@ -154,6 +155,34 @@ describe("projectsSlice — feature selectors (absent = disabled)", () => {
     expect(selectTimelineEnabled(state)).toBe(false);
     expect(selectActiveProjectFeatures(state)).toEqual({});
     expect(selectActiveProjectOrganizerCardBody(state)).toBeNull();
+  });
+});
+
+describe("projectsSlice — selectActiveProjectRelationshipTypes", () => {
+  it("returns the configured relationship-type list for the active project", () => {
+    const store = makeStore();
+    seedProject(store, {
+      editorConfig: {},
+      relationshipTypes: ["ally of", "rival of"],
+    });
+    const state = store.getState();
+    expect(selectActiveProjectRelationshipTypes(state)).toEqual([
+      "ally of",
+      "rival of",
+    ]);
+  });
+
+  it("returns [] when the project has no relationshipTypes configured", () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {} });
+    const state = store.getState();
+    expect(selectActiveProjectRelationshipTypes(state)).toEqual([]);
+  });
+
+  it("returns [] when no project is selected", () => {
+    const store = makeStore();
+    const state = store.getState();
+    expect(selectActiveProjectRelationshipTypes(state)).toEqual([]);
   });
 });
 
@@ -354,6 +383,18 @@ describe("buildStoredProject", () => {
     );
     expect(stored.statuses).toEqual(["draft", "done"]);
     expect(stored.metadataSchema).toEqual({ groups: [] });
+  });
+
+  it("carries relationshipTypes", () => {
+    const stored = buildStoredProject(
+      makeProject({
+        editorConfig: {},
+        relationshipTypes: ["ally of", "rival of"],
+      }),
+      [],
+      [],
+    );
+    expect(stored.relationshipTypes).toEqual(["ally of", "rival of"]);
   });
 
   it("leaves features/organizerCardBody undefined for a project with no config", () => {

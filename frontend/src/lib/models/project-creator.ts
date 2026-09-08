@@ -141,6 +141,8 @@ export interface ProjectTypeSpec {
   };
   /** Default project-scoped status values to seed on creation. */
   statuses?: string[];
+  /** Default project-scoped relationship-type values to seed on creation. */
+  relationshipTypes?: string[];
   /** Target word count for the project. */
   wordCountGoal?: number;
 }
@@ -226,6 +228,7 @@ export async function createProjectFromType(options: {
     config: {
       editorConfig: specObj.editorConfig ?? {},
       statuses: specObj.statuses,
+      relationshipTypes: specObj.relationshipTypes,
       wordCountGoal: specObj.wordCountGoal,
     },
   });

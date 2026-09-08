@@ -12,6 +12,7 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
     maxRevisions: config?.maxRevisions ?? 50,
     wordCountGoal: config?.wordCountGoal,
     statuses: config?.statuses ?? [],
+    relationshipTypes: config?.relationshipTypes ?? [],
     autoPrune: config?.autoPrune ?? true,
     editorConfig: config?.editorConfig ?? {},
     defaultRevisionName: config?.defaultRevisionName,
