@@ -1,33 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
-  selectFoldersAndResources,
   selectResource,
-  selectResources,
   setSelectedResourceId,
 } from "../../src/store/resourcesSlice";
-import {
-  selectActiveProjectDirectoryId,
-  selectProject,
-  selectSelectedProjectId,
-} from "../../src/store/projectsSlice";
-import { getEntityMentionedIn } from "../../src/lib/api/mentions";
-import type { EntityMentionedIn } from "../../src/lib/models/mentions-core";
+import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
+import { useEntityMentions } from "./EntityMentionsContext";
 import { getEntityCooccurrence } from "../../src/lib/api/entity-cooccurrence";
 import type { EntityCooccurrenceEntry } from "../../src/lib/api/entity-cooccurrence";
 import { selectEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import type { EntityAliasTable } from "../../src/lib/models/entity-alias-table";
-import { orderResourceIdsByTreePosition } from "../common/compileSelection";
-import CompilePreviewModal, {
-  type EntityCompileEntry,
-  type CompileOptions,
-} from "../common/CompilePreviewModal";
-import { runCompileAndDownload } from "../../src/lib/compile/run-compile-and-download";
-import type { CompileBody } from "../../src/lib/api/compile";
-import { toastService } from "../../src/lib/toast-service";
-import Button from "../common/UI/Button/Button";
 
 /**
  * Read-only sidebar section for an entity's own view: every resource
@@ -55,22 +39,12 @@ import Button from "../common/UI/Button/Button";
  * "nothing here" state, and navigation via
  * `dispatch(setSelectedResourceId(resourceId))` rather than a route.
  *
- * **Task 5 addition — entity-scoped compile trigger (FR-1/FR-2/FR-3/FR-6/
- * FR-7/FR-9 of `specs/features/entity-scoped-compile.md`).** Once `rows` has
- * loaded, this component also offers a "Compile this entity's resources"
- * button that opens the entity-mode `CompilePreviewModal` pre-populated with
- * every row from the merged `rows` set (both `isLinked` and `isMentioned`
- * resources, exactly as returned — no additional filtering, per FR-2),
- * ordered by `orderResourceIdsByTreePosition` against the project's folders
- * *and* resources (FR-3 — the folders are required for the tree walk; see
- * the `projectTreeItems` selector below). Confirming the modal calls
- * `runCompileAndDownload`
- * with a `CompileBody` built the same way `AppShell.tsx` already builds one
- * for the whole-project compile flow. This is a read-only feature end to
- * end (FR-8): it only reads `rows` (already fetched via
- * `getEntityMentionedIn`) and the project's resource list, and invokes the
- * existing compile client functions — it never writes to a revision,
- * sidecar, or the mention index.
+ * The entity-scoped compile trigger used to live here too. It now renders
+ * from `EntityCompileSection.tsx`, so that collapsing the "Entity Mentions"
+ * section in `MetadataSidebar.tsx` no longer hides the compile action along
+ * with this list. Both read the same rows through
+ * `EntityMentionsContext.tsx`, which owns the `getEntityMentionedIn` fetch
+ * this component previously made for itself.
  */
 
 /**
@@ -156,27 +130,12 @@ function CooccurrenceList({
 export default function EntityMentionsSection(): JSX.Element | null {
   const projectId = useAppSelector(selectActiveProjectDirectoryId);
   const resource = useAppSelector((state) => selectResource(state.resources));
-  const projectResources = useAppSelector((state) =>
-    selectResources(state.resources),
-  );
-  // FR-3 needs the *folders* as well as the resources: `buildResourceTree`
-  // resolves each resource's `folderId` against folder entries in the same
-  // array, and silently re-parents to root anything whose parent is absent.
-  // Passing resources alone therefore flattens the tree and degrades the
-  // depth-first walk into a global `orderIndex` sort. `AppShell.tsx` builds
-  // its compile tree from `[...resources, ...folders]` for the same reason.
-  const projectTreeItems = useAppSelector((state) =>
-    selectFoldersAndResources(state.resources),
-  );
-  const selectedProjectId = useAppSelector(selectSelectedProjectId);
-  const project = useAppSelector((state) =>
-    selectedProjectId ? selectProject(state, selectedProjectId) : null,
-  );
   const dispatch = useAppDispatch();
 
-  const [rows, setRows] = useState<EntityMentionedIn[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCompileModalOpen, setIsCompileModalOpen] = useState(false);
+  // `rows` and `isLoading` come from the shared fetch in
+  // `EntityMentionsContext.tsx`, which `EntityCompileSection` reads too —
+  // see that module's doc comment for why the fetch was lifted out of here.
+  const { rows, isLoading } = useEntityMentions();
   const [cooccurrenceEntries, setCooccurrenceEntries] = useState<
     EntityCooccurrenceEntry[]
   >([]);
@@ -184,26 +143,6 @@ export default function EntityMentionsSection(): JSX.Element | null {
 
   const resourceId = resource?.id;
   const entityKind = resource?.entityKind;
-
-  useEffect(() => {
-    if (!projectId || !resourceId || !entityKind) {
-      setRows([]);
-      setIsLoading(false);
-      return;
-    }
-
-    let isCancelled = false;
-    setIsLoading(true);
-    void getEntityMentionedIn(projectId, resourceId).then((result) => {
-      if (isCancelled) return;
-      setRows(result);
-      setIsLoading(false);
-    });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [projectId, resourceId, entityKind]);
 
   // Task 6 (FR-6): fetched separately from `rows` above, and NEVER derived
   // from `rows`' merged `isLinked`/`isMentioned` resource set — see the
@@ -225,35 +164,6 @@ export default function EntityMentionsSection(): JSX.Element | null {
     };
   }, [projectId, resourceId, entityKind]);
 
-  // FR-2: the merged resource set is every row this component already
-  // fetched, both `isLinked` and `isMentioned`, exactly as returned — no
-  // additional filtering here.
-  const mergedResourceIds = useMemo(
-    () => rows.map((row) => row.resourceId),
-    [rows],
-  );
-
-  // FR-3: ordered against the project's full resource tree. Ids not present
-  // in the tree (e.g. a stale backlink to a deleted resource) are dropped by
-  // `orderResourceIdsByTreePosition` itself.
-  const orderedResourceIds = useMemo(
-    () => orderResourceIdsByTreePosition(projectTreeItems, mergedResourceIds),
-    [projectTreeItems, mergedResourceIds],
-  );
-
-  const compileEntries: EntityCompileEntry[] = useMemo(
-    () =>
-      orderedResourceIds.map((id) => {
-        const full = projectResources.find((r) => r.id === id);
-        return {
-          resourceId: id,
-          name: full?.name ?? id,
-          resourceType: full?.type ?? "text",
-        };
-      }),
-    [orderedResourceIds, projectResources],
-  );
-
   if (!projectId || !resourceId || !entityKind) return null;
 
   if (isLoading) {
@@ -263,8 +173,6 @@ export default function EntityMentionsSection(): JSX.Element | null {
       </p>
     );
   }
-
-  const hasCompilableResources = orderedResourceIds.length > 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -329,61 +237,6 @@ export default function EntityMentionsSection(): JSX.Element | null {
       )}
 
       <CooccurrenceList entries={cooccurrenceEntries} aliasTable={aliasTable} />
-
-      <div className="flex flex-col gap-1">
-        <Button
-          type="button"
-          variant="secondary"
-          size="xs"
-          onClick={() => setIsCompileModalOpen(true)}
-          disabled={!hasCompilableResources}
-          aria-disabled={!hasCompilableResources}
-        >
-          Compile this entity&apos;s resources
-        </Button>
-        {!hasCompilableResources && (
-          <p className="text-gw-nano text-gw-secondary">
-            No associated resources to compile.
-          </p>
-        )}
-      </div>
-
-      {projectId && (
-        <CompilePreviewModal
-          isOpen={isCompileModalOpen}
-          projectId={projectId}
-          resources={projectResources}
-          onClose={() => setIsCompileModalOpen(false)}
-          entityMode={{ entries: compileEntries, orderedResourceIds }}
-          onConfirmCompile={async (
-            selectedIds: string[],
-            options: CompileOptions,
-          ) => {
-            const compileBody: CompileBody = {
-              projectId,
-              resourceIds: selectedIds,
-              resources: projectResources.map((r) => ({
-                id: r.id,
-                name: r.name,
-                type: r.type,
-              })),
-              includeHeaders: options.includeHeaders,
-              projectName: project?.name ?? "project",
-            };
-            try {
-              await runCompileAndDownload(compileBody, {
-                format: options.format,
-                compilationName: options.compilationName,
-              });
-            } catch (err) {
-              toastService.error(
-                "Compile failed",
-                err instanceof Error ? err.message : String(err),
-              );
-            }
-          }}
-        />
-      )}
     </div>
   );
 }

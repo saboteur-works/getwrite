@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import EntityMentionsSection from "../../components/Sidebar/EntityMentionsSection";
+import EntityMentionsProvider from "../../components/Sidebar/EntityMentionsContext";
 import projectsReducer from "../../src/store/projectsSlice";
 import resourcesReducer from "../../src/store/resourcesSlice";
 import revisionsReducer from "../../src/store/revisionsSlice";
@@ -183,7 +184,9 @@ export const MultipleCooccurringEntities: Story = {
   beforeEach: () => mockMentionsFetch(tieBreakCooccurrence),
   render: () => (
     <Provider store={buildStore(tieBreakAliasTable)}>
-      <EntityMentionsSection />
+      <EntityMentionsProvider>
+        <EntityMentionsSection />
+      </EntityMentionsProvider>
     </Provider>
   ),
 };
@@ -193,7 +196,9 @@ export const SingleCooccurringEntity: Story = {
   beforeEach: () => mockMentionsFetch(singleCooccurrence),
   render: () => (
     <Provider store={buildStore(singleAliasTable)}>
-      <EntityMentionsSection />
+      <EntityMentionsProvider>
+        <EntityMentionsSection />
+      </EntityMentionsProvider>
     </Provider>
   ),
 };
@@ -206,7 +211,9 @@ export const NoCooccurringEntities: Story = {
   beforeEach: () => mockMentionsFetch({}),
   render: () => (
     <Provider store={buildStore({ entities: {}, claimedBy: {} })}>
-      <EntityMentionsSection />
+      <EntityMentionsProvider>
+        <EntityMentionsSection />
+      </EntityMentionsProvider>
     </Provider>
   ),
 };

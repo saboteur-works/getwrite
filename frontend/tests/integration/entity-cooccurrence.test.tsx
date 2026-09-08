@@ -38,6 +38,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import EntityMentionsSection from "../../components/Sidebar/EntityMentionsSection";
+import EntityMentionsProvider from "../../components/Sidebar/EntityMentionsContext";
 import { makeStore } from "../../src/store/store";
 import {
   setProject,
@@ -234,7 +235,9 @@ async function renderForEntity(selectedEntityId: string): Promise<void> {
 
   render(
     <Provider store={store}>
-      <EntityMentionsSection />
+      <EntityMentionsProvider>
+        <EntityMentionsSection />
+      </EntityMentionsProvider>
     </Provider>,
   );
 
