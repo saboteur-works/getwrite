@@ -217,6 +217,12 @@ const nextConfig = {
           // — same rule as above.
           "../../store/transport/native-entity-mention-counts-backend":
             "./src/store/transport/native-entity-mention-counts-backend.web-stub",
+          // entity-cooccurrence Task 4: lib/api/entity-cooccurrence.ts also
+          // lives in src/lib/api/, so its dynamic import's literal specifier
+          // is "../../store/transport/native-entity-cooccurrence-backend" —
+          // same rule as above.
+          "../../store/transport/native-entity-cooccurrence-backend":
+            "./src/store/transport/native-entity-cooccurrence-backend.web-stub",
         },
   },
 };
