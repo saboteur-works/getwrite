@@ -30,11 +30,13 @@ vi.mock("../../src/lib/api/entity-alias-table", () => ({
 import {
   listEntityRelationships,
   createEntityRelationship,
+  removeEntityRelationship,
 } from "../../src/lib/api/entity-relationships";
 import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
 
 const mockedList = vi.mocked(listEntityRelationships);
 const mockedCreate = vi.mocked(createEntityRelationship);
+const mockedRemove = vi.mocked(removeEntityRelationship);
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
 
 const PROJECT_ID = "proj-relationships-1";
@@ -107,6 +109,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   mockedList.mockReset();
   mockedCreate.mockReset();
+  mockedRemove.mockReset();
   mockedGetEntityAliasTable.mockReset();
 });
 
@@ -249,5 +252,155 @@ describe("EntityRelationshipsSection", () => {
     expect(importLines.length).toBeGreaterThan(0);
     expect(importLines).not.toMatch(/EntityMentionsContext/);
     expect(importLines).not.toMatch(/useEntityMentions/);
+  });
+
+  it("renders each edge's other-entity name and relationship type, distinguishing a source-role edge from a target-role edge", async () => {
+    mockedList.mockResolvedValue([
+      {
+        id: "edge-source",
+        sourceEntityId: "entity-aria",
+        targetEntityId: "entity-priya",
+        relationshipType: "ally of",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        id: "edge-target",
+        sourceEntityId: "entity-marcus",
+        targetEntityId: "entity-aria",
+        relationshipType: "rival of",
+        createdAt: "2026-01-02T00:00:00.000Z",
+      },
+    ]);
+    const store = await setupStore();
+
+    render(
+      <Provider store={store}>
+        <EntityRelationshipsSection />
+      </Provider>,
+    );
+
+    await waitFor(() => expect(mockedList).toHaveBeenCalledTimes(1));
+
+    const list = await screen.findByLabelText("entity-relationship-list");
+    const rows: HTMLLIElement[] = Array.from(list.querySelectorAll("li"));
+    expect(rows).toHaveLength(2);
+
+    const sourceRow = Array.from(rows).find(
+      (row) => row.getAttribute("data-edge-role") === "source",
+    );
+    const targetRow = Array.from(rows).find(
+      (row) => row.getAttribute("data-edge-role") === "target",
+    );
+
+    expect(sourceRow).toBeDefined();
+    expect(targetRow).toBeDefined();
+    expect(sourceRow?.textContent).toMatch(/Priya/);
+    expect(sourceRow?.textContent).toMatch(/ally of/);
+    expect(targetRow?.textContent).toMatch(/Marcus/);
+    expect(targetRow?.textContent).toMatch(/rival of/);
+
+    // FR-3: the direction indicator must actually distinguish the two roles,
+    // not just be present on both.
+    expect(sourceRow?.getAttribute("data-edge-role")).not.toEqual(
+      targetRow?.getAttribute("data-edge-role"),
+    );
+  });
+
+  it("renders a placeholder when the edge names an entity id absent from the alias table (FR-11), without dropping the row or crashing the section", async () => {
+    mockedList.mockResolvedValue([
+      {
+        id: "edge-dangling",
+        sourceEntityId: "entity-aria",
+        targetEntityId: "entity-deleted",
+        relationshipType: "ally of",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+    const store = await setupStore();
+
+    render(
+      <Provider store={store}>
+        <EntityRelationshipsSection />
+      </Provider>,
+    );
+
+    await waitFor(() => expect(mockedList).toHaveBeenCalledTimes(1));
+
+    const list = await screen.findByLabelText("entity-relationship-list");
+    expect(list.querySelectorAll("li")).toHaveLength(1);
+    expect(list.textContent).toMatch(/Unknown entity/i);
+
+    // The rest of the section (the create control) still rendered.
+    expect(
+      screen.getByLabelText("entity-relationship-target-select"),
+    ).toBeInTheDocument();
+  });
+
+  it("calls remove with the row's edge id on click, and the list no longer shows that row after a successful re-fetch (FR-6)", async () => {
+    mockedList
+      .mockResolvedValueOnce([
+        {
+          id: "edge-1",
+          sourceEntityId: "entity-aria",
+          targetEntityId: "entity-priya",
+          relationshipType: "ally of",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    mockedRemove.mockResolvedValue(true);
+    const store = await setupStore();
+
+    render(
+      <Provider store={store}>
+        <EntityRelationshipsSection />
+      </Provider>,
+    );
+
+    await waitFor(() => expect(mockedList).toHaveBeenCalledTimes(1));
+
+    const removeButton = await screen.findByLabelText(
+      "Remove relationship with Priya",
+    );
+    removeButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    await waitFor(() =>
+      expect(mockedRemove).toHaveBeenCalledWith(PROJECT_ID, "edge-1"),
+    );
+    await waitFor(() => expect(mockedList).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText("entity-relationship-list"),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("does not render any edit-in-place control (an editable type field or endpoint picker) on an existing row (OQ-3)", async () => {
+    mockedList.mockResolvedValue([
+      {
+        id: "edge-1",
+        sourceEntityId: "entity-aria",
+        targetEntityId: "entity-priya",
+        relationshipType: "ally of",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+    const store = await setupStore();
+
+    render(
+      <Provider store={store}>
+        <EntityRelationshipsSection />
+      </Provider>,
+    );
+
+    const list = await screen.findByLabelText("entity-relationship-list");
+    // No <select> or editable <input>/<textarea> inside an existing row —
+    // the only interactive control on a row is the "Remove" button.
+    expect(list.querySelectorAll("select")).toHaveLength(0);
+    expect(list.querySelectorAll("input, textarea")).toHaveLength(0);
+    const rowButtons: (string | null)[] = Array.from(
+      list.querySelectorAll("button") as NodeListOf<HTMLButtonElement>,
+    ).map((btn) => btn.getAttribute("aria-label"));
+    expect(rowButtons).toEqual(["Remove relationship with Priya"]);
   });
 });

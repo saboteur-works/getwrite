@@ -11,6 +11,7 @@ import { selectEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import {
   createEntityRelationship,
   listEntityRelationships,
+  removeEntityRelationship,
 } from "../../src/lib/api/entity-relationships";
 import type { EntityRelationshipEdge } from "../../src/lib/api/entity-relationships";
 import LabeledField from "./controls/LabeledField";
@@ -33,10 +34,15 @@ import Button from "../common/UI/Button/Button";
  * create/remove, mirroring `EntitySection.tsx`'s own self-contained
  * fetch/state lifecycle for its alias control.
  *
- * Renders only the FR-2 create control in this task (Task 6). Task 7 will
- * extend this same file to render the fetched edge list itself, with
- * removal and the FR-11 dangling-edge placeholder — the `edges`/`isLoading`
- * state and the `refetch` callback below are already shaped for that.
+ * Renders the FR-2 create control (Task 6) and, as of Task 7, the fetched
+ * edge list itself: every edge naming the selected entity as either source
+ * or target, the other entity's resolved name, a source/target direction
+ * indicator (FR-3), a "Remove" control (FR-6) calling
+ * {@link removeEntityRelationship} and re-fetching on success, and the
+ * FR-11 dangling-edge placeholder when the other entity id is no longer in
+ * the alias table (mirroring `mentions-core.ts`'s `resolveName`
+ * fallback-to-raw-id floor). No edit-in-place of an existing row's type or
+ * endpoints (OQ-3).
  *
  * Reachable only when rendered from the same sidebar location
  * `EntitySection.tsx` is already gated on the `entities` feature flag
@@ -57,6 +63,7 @@ export default function EntityRelationshipsSection(): JSX.Element | null {
   const [relationshipType, setRelationshipType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [removingEdgeId, setRemovingEdgeId] = useState<string | null>(null);
 
   const entityId = resource?.id;
 
@@ -131,6 +138,13 @@ export default function EntityRelationshipsSection(): JSX.Element | null {
       .finally(() => setIsSubmitting(false));
   };
 
+  const handleRemove = (edgeId: string): void => {
+    setRemovingEdgeId(edgeId);
+    void removeEntityRelationship(projectId, edgeId)
+      .then(() => refetch())
+      .finally(() => setRemovingEdgeId(null));
+  };
+
   return (
     <div className="flex flex-col gap-3" data-edge-count={edges.length}>
       <LabeledField label="Related entity">
@@ -199,8 +213,50 @@ export default function EntityRelationshipsSection(): JSX.Element | null {
         </p>
       )}
 
-      {/* Task 7 extends this component with the fetched `edges` list
-          (removal + the FR-11 dangling-edge placeholder). */}
+      {!isLoading && edges.length > 0 && (
+        <ul
+          aria-label="entity-relationship-list"
+          className="flex flex-col gap-2"
+        >
+          {edges.map((edge) => {
+            const isSource = edge.sourceEntityId === entityId;
+            const otherEntityId = isSource
+              ? edge.targetEntityId
+              : edge.sourceEntityId;
+            const otherEntity = aliasTable.entities[otherEntityId];
+            // FR-11: an entity soft-deleted after the edge was created is no
+            // longer in the alias table. Render a placeholder in place of
+            // its name rather than hiding, filtering, or crashing —
+            // mirroring `mentions-core.ts`'s `resolveName` fallback-to-
+            // raw-id floor.
+            const otherEntityName = otherEntity?.name ?? "Unknown entity";
+            const directionLabel = isSource
+              ? "is a source of"
+              : "is a target of";
+
+            return (
+              <li
+                key={edge.id}
+                className="flex items-center justify-between gap-2 text-sm text-gw-primary"
+                data-edge-role={isSource ? "source" : "target"}
+              >
+                <span>
+                  {directionLabel} <strong>{otherEntityName}</strong> &mdash;{" "}
+                  {edge.relationshipType}
+                </span>
+                <Button
+                  variant="secondary"
+                  onClick={() => handleRemove(edge.id)}
+                  disabled={removingEdgeId === edge.id}
+                  aria-label={`Remove relationship with ${otherEntityName}`}
+                >
+                  Remove
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
