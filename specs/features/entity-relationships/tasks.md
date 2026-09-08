@@ -9,7 +9,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** none
 **Estimate:** 2
 **Notes:** This is FR-13/FR-14's entire scope, resolving OQ-1's persisted shape. No relationship-type list *editing* UI is in scope (OQ-3 non-goal) — this task only makes the list persistable, seedable, and readable.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Add the `entity-relationships.ts` model — persisted edges, locked writes, idempotent create
 **What:** Adds `frontend/src/lib/models/entity-relationships.ts`, the feature's core write path and its own top-level persisted structure — `meta/relationships.json` — distinct from `meta/backlinks.json` and `meta/index/mentions.json` (FR-1), following `mention-index.ts`'s load/persist-whole-file shape rather than `saved-queries.ts`'s one-file-per-record shape, since the spec calls for a single identifiable structure, not a directory of records. Declares an `EntityRelationshipEdgeSchema` (Zod: `id` (UUID), `sourceEntityId`, `targetEntityId`, `relationshipType`, `createdAt` (ISO timestamp)) validated at both load and write time, consistent with `docs/standards/security.md`'s boundary-validation floor. Exposes: `loadEntityRelationships(projectRoot)` (returns `[]` on missing/malformed file, never throws on ENOENT); `createEntityRelationship(projectRoot, sourceEntityId, targetEntityId, relationshipType)` — rejects (throws) when `sourceEntityId === targetEntityId` (FR-4) or when `relationshipType` is not in the project's current `config.relationshipTypes` (FR-15); and `removeEntityRelationship(projectRoot, edgeId)` — removes exactly the edge with that id (FR-12), a no-op returning `false` if no such edge exists. **The entire read-modify-write sequence of both mutating functions — including the FR-17 idempotency check (an existing edge matching the same `(sourceEntityId, targetEntityId, relationshipType)` triple makes `createEntityRelationship` a no-op that returns the existing edge rather than appending, following `assignTagToResource`'s `includes`-before-push pattern, `tags.ts:182-196`) — runs inside a single `withMetaLock(projectRoot, ...)` call, not read-outside/write-inside**, so two concurrent creates of the same triple cannot both pass the idempotency check before either write lands (the failure mode a lock acquired only around the write, after an unlocked read, would still permit).
@@ -18,7 +18,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 1
 **Estimate:** 5
 **Notes:** This is FR-1, FR-3, FR-4, FR-7, FR-12, FR-15, and FR-17's entire model-layer scope — the feature's first write path in the entity layer, so this task carries the concurrency proof the rest of the feature builds on. FR-16 (no cleanup on entity delete) requires no code here or anywhere else — it is the *absence* of a hook into `deleteResourceCore`, verified by Task 9's integration test rather than by any change in this task.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Add project-scoped HTTP routes for listing, creating, and removing edges
 **What:** Adds three routes modelled on the codebase's existing GET-list / POST-mutate split: `GET /api/project/[project-id]/entity-relationships` (list every persisted edge for the project, modelled on `entity-cooccurrence/route.ts`'s structure — resolve/validate `project-id`, wrap in `withStorageContext`, delegate to Task 2's `loadEntityRelationships`, no business logic in the route); `POST /api/project/[project-id]/entity-relationships` (create an edge, body `{ sourceEntityId, targetEntityId, relationshipType }`, modelled on `resource/[resource-id]/sidecar/route.ts`'s POST-with-JSON-body shape, delegating to `createEntityRelationship` and mapping its `sourceEntityId === targetEntityId` / invalid-`relationshipType` throws to a 400 rather than a 500); `POST /api/project/[project-id]/entity-relationships/remove` (remove an edge, body `{ edgeId }`, modelled on `project/tags/delete/route.ts`'s separate-sub-route shape, delegating to `removeEntityRelationship`).
@@ -27,7 +27,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** These routes exist only for the web/desktop transport (Task 4); the native transport (Task 5) calls Task 2's functions in-process and never hits them — same split as every other ADR-021 entity-layer route/native-backend pair.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Add the client transport module for entity relationships
 **What:** Adds `frontend/src/lib/api/entity-relationships.ts`: an `EntityRelationshipsTransport` interface with `list(projectId): Promise<EntityRelationshipEdge[]>` (degrades to `[]` on any failure — network error, non-2xx, malformed body), `create(projectId, sourceEntityId, targetEntityId, relationshipType): Promise<EntityRelationshipEdge | null>` (resolves `null` on failure rather than throwing, mirroring the fire-and-forget-with-signal shape `updateSidecar` and `assignTagToResource`'s callers already tolerate), and `remove(projectId, edgeId): Promise<boolean>`; an `httpEntityRelationshipsTransport` implementation hitting Task 3's routes; and `resolveEntityRelationshipsTransport` built on `createTransport`, with the native branch's dynamic-import specifier reserved as a literal string (`../../store/transport/native-entity-relationships-backend`) for Task 5's `next.config.mjs` substitution.
@@ -36,7 +36,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 3
 **Estimate:** 2
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Add native transport parity for entity relationships
 **What:** Adds `frontend/src/store/transport/native-entity-relationships-backend.ts` (in-process, calling Task 2's `loadEntityRelationships`/`createEntityRelationship`/`removeEntityRelationship` via `resolveProjectRoot`, mirroring `native-tags-backend.ts`'s structure — storage-context binding via `createNativeRunner`, and the same degrade-on-failure parity with the HTTP transport Task 4 established) and its `.web-stub.ts` counterpart (mirroring `native-tags-backend.web-stub.ts`'s throw-if-reached contract), and registers the substitution in `frontend/next.config.mjs`'s `turbopack.resolveAlias` for the exact literal specifier Task 4 reserved, following the existing block's own comment convention. **This is the exact failure mode this codebase has hit before — a missing web-stub or missing `resolveAlias` entry ships `node:*` code into the web bundle — so this task's "Done when" explicitly checks for it.**
@@ -45,7 +45,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 4
 **Estimate:** 3
 **Notes:** This is FR-8's native-parity clause in full. A web-only or native-silently-diverging create/remove path would be a regression per the spec.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Add the `EntityRelationshipsSection.tsx` sidebar section — fetch, wiring, and the create control
 **What:** Adds a new, self-contained sidebar component `frontend/components/Sidebar/EntityRelationshipsSection.tsx` — rendered alongside `EntitySection.tsx` in the entity sidebar, not folded into it, since it is a distinct persisted structure with its own write path, and not joined onto `EntityMentionsContext`'s shared provider, since that provider exists specifically to share one read-only `getEntityMentionedIn` fetch between two consumers (`EntityMentionsSection`/`EntityCompileSection`) and was never built to carry a create/remove mutation surface or a different data shape; this section performs its own independent fetch of Task 4's `list(projectId)` on mount and after every create/remove, the same lifecycle `EntitySection.tsx`'s alias control already uses for its own state. Renders the FR-2 create control: a target-entity `<select>` populated from `entityAliasTableSlice`'s cached `EntityAliasTable.entities`, excluding the currently-selected entity itself (an unfiltered list of every *other* declared entity, per OQ-3 — no search/filter box), and a relationship-type `<select>` populated from Task 1's `selectActiveProjectRelationshipTypes` (an empty list disables the control with a short explanatory message, since FR-15 permits no freeform fallback), plus an "Add" button calling Task 4's `create`, mirroring `EntitySection.tsx`'s `handleAddAlias` structure. Enforces FR-4 client-side too (the current entity is excluded from the target `<select>`'s own options, so a same-entity edge cannot be selected in the first place) as a defense-in-depth complement to Task 2's server-side rejection, not a replacement for it.
@@ -54,7 +54,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 4
 **Estimate:** 5
 **Notes:** This is FR-2, FR-4 (client-side half), and FR-10's authoring-surface scope (reachable only when `entities` is on — this section is rendered from the same sidebar location `EntitySection.tsx` already gates on that flag, so no new flag check is invented here). List/remove rendering is Task 7, not this task.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Render the relationship list with removal and the FR-11 dangling-edge placeholder
 **What:** Extends `EntityRelationshipsSection.tsx` to render every edge the selected entity participates in as either source or target (FR-5), each row naming the *other* entity (resolved via `EntityAliasTable.entities[otherEntityId].name`, same lookup pattern Task 5/6 of `entity-cooccurrence/tasks.md` established) and the relationship type, with a direction indicator distinguishing "is a source of" from "is a target of" so FR-3's directedness is visible, not just persisted. When the other entity id is absent from the alias table (FR-11 — an entity soft-deleted after the edge was created), the row renders a placeholder in place of the name (e.g. "Unknown entity") rather than being hidden, filtered, or crashing the section, mirroring `mentions-core.ts`'s `resolveName` fallback-to-raw-id floor. Each row has a "Remove" control calling Task 4's `remove(projectId, edgeId)` and re-fetching the list on success (FR-6), mirroring `handleRemoveAlias`'s structure — no edit-in-place of an existing row's type or endpoints (OQ-3).
@@ -63,7 +63,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 6
 **Estimate:** 3
 **Notes:** This is FR-5, FR-6, and FR-11's entire UI-layer scope, and settles OQ-2/OQ-5's read-time consequence at the one place a human sees it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Storybook story and accessibility pass for `EntityRelationshipsSection`
 **What:** Adds `EntityRelationshipsSection.stories.tsx` (first stories file for this component) covering: an entity with no relationships yet (empty state plus a usable create control); an entity with several relationships in both directions (source and target rows both present, visibly distinguished); a project with an empty `relationshipTypes` list (create control disabled with its explanatory message); and an entity with a dangling edge naming a deleted entity (FR-11 placeholder row). Matches `docs/standards/storybook-implementation.md` and this codebase's sibling stories (e.g. `EntityMentionsSection.stories.tsx`), mocking Task 4's transport and the Redux-provided alias table/relationship-types selector rather than hitting real transports.
@@ -72,7 +72,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 7
 **Estimate:** 2
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Integration test — write/read fidelity, idempotency, and the dangling-edge placeholder against a real fixture project
 **What:** Adds an integration test against a fixture project exercising the full vertical slice end to end: (a) creating an edge via Task 3's HTTP route persists it to `meta/relationships.json` in the shape Task 2 defines, and a subsequent list read returns it; (b) creating the identical `(source, target, type)` triple a second time leaves exactly one persisted edge (FR-17), asserted by reading the file directly, not only the API response; (c) removing an edge by id removes only that edge from the file, leaving a second edge between the same two entities of a different type untouched (FR-12); (d) soft-deleting the source or target entity of an existing edge (via the existing `deleteResourceCore`/soft-delete path) leaves `meta/relationships.json` byte-for-byte unchanged (FR-16), and a subsequent read of that entity's relationships renders the FR-11 placeholder for the deleted side rather than dropping the edge.
@@ -81,7 +81,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 2, 3, 7
 **Estimate:** 3
 **Notes:** This is the one test in the suite that proves FR-16's "touches no edge" claim against a real soft-delete call rather than by inspection of `deleteResourceCore`'s source alone, and the one that proves FR-17's idempotency at the persisted-file level rather than only at the in-process function level Task 2 already covers.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Verify native (Android) parity for entity relationships
 **What:** Confirms the relationships feature has no native-specific gap beyond what Task 5 already covers: `EntityRelationshipsSection.tsx` imports nothing platform-specific (grep-verified: no `node:*` import, no direct `fetch`/HTTP call bypassing `lib/api/entity-relationships.ts`, no `runtime === "native"` branch), and the feature relies exclusively on Task 5's native backend and the already-native-parity alias-table/relationship-types selectors.
@@ -90,7 +90,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 5, 7
 **Estimate:** 2
 **Notes:** This is FR-8's remaining coverage beyond Task 5's own build-output check. If a gap is found, file it back against Task 5 or 6/7 rather than patching ad hoc here, matching `specs/features/entity-cooccurrence/tasks.md`'s Task 9 convention.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Manual verification pass in the running app
 **What:** Exercises the complete feature by hand in the running desktop/web app (and, if a device is available, Android) to confirm behavior the automated suite cannot fully assert: visual appearance of the create/list/remove controls, the FR-11 placeholder produced by a real entity deletion performed *after* an edge already exists, and FR-17 idempotency performed twice through the actual UI control rather than the API directly.
