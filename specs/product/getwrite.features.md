@@ -699,7 +699,21 @@ exercising the feature in the running app rather than by testing:
 Deferred with tasks filed rather than dropped: the virtualization benchmark
 (`task_733deea7`), which the spec records as a decision made in the absence
 of measurement rather than a performance claim, and four of the eight manual
-verification criteria (`task_ecb1e204`).
+verification criteria (`task_ecb1e204`). Both were cleared on 2026-09-07.
+The benchmark measured scroll cost as flat and independent of list length
+(8.3 ms median frame interval at 100, 500 and 1,000 entities alike, no frame
+over 20 ms) and mount cost as linear at ~0.43 ms per entity in a development
+build; the numbers are in
+`specs/features/entity-roster/virtualization-benchmark-notes.md` and the
+no-virtualization decision now rests on measurement. Three of the four open
+manual criteria — the flag-off disabled tab and its hover reason, the
+"needs attention" treatment with its accessible-name disclosure and
+non-red colour, and the FR-11 empty state — were confirmed against
+purpose-built fixture projects. The fourth, device-level Android offline
+behaviour, was confirmed the same day on a physical Pixel 7 Pro in airplane
+mode: the roster and every mention count loaded from the app-private store
+with no network reachable, matching disk ground truth exactly. All eight
+manual criteria are confirmed.
 
 FR-38 covers this feature, added to the parent
 product spec's Next Requirements. Four scope decisions are settled at the

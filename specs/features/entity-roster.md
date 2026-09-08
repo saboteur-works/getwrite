@@ -120,15 +120,17 @@ virtualization/paging and grouping/filtering questions are also recorded in
 - Any new feature flag; the roster rides the existing `entities` flag (FR-2).
 - Any new persisted index or data — mention counts and warnings are computed
   the roster reads already exist (FR-6, FR-7, FR-14).
-- Virtualization or pagination. This is a deliberate decision made in the
-  absence of measurement, not a performance claim: no measurement of roster
-  render cost at hundreds of entities has been made, `frontend/package.json`
-  carries no virtualization library, and no existing surface in this
-  codebase renders at that scale or has been benchmarked, so there is no
-  data point to extrapolate from. The benchmark that would settle this —
-  render `EntityAliasTable`-shaped synthetic data at 100, 500, and 1,000
-  entities through the roster's list markup and measure initial render time
-  and scroll-interaction responsiveness — is deferred to a follow-up gated on
-  real usage.
+- Virtualization or pagination. This was originally a decision made in the
+  absence of measurement rather than a performance claim; the deferred
+  benchmark has since been run (2026-09-07, POS `task_733deea7`), and the
+  numbers are recorded in
+  `specs/features/entity-roster/virtualization-benchmark-notes.md`. Measured
+  at 100/500/1,000 entities: scroll cost is flat and independent of list
+  length (8.3 ms median frame interval at every size, no frame over 20 ms in
+  180), and the only cost that grows is the one-time mount, linear at
+  ~0.43 ms per entity in a development build (433 ms at 1,000). The decision
+  stands on measurement now, not on its absence. The harness is
+  `frontend/tests/entityRosterRenderBenchmark.test.tsx` (React/jsdom half)
+  plus the browser procedure the notes describe.
 - A relationship graph, co-occurrence view, or any cross-entity analysis
   beyond the flat per-entity list this feature specifies.

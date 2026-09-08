@@ -136,7 +136,83 @@ device this session.
 A defect was found during this pass and fixed separately: the roster was
 unreachable with no resource selected. See the fix commit.
 
-**Done:** [ ] (4 of 8 criteria confirmed; see record above)
+**Verification record, second pass (2026-09-07, POS `task_ecb1e204`, against
+purpose-built fixtures, web/dev):**
+The first pass could not exercise criteria (2), (5) and (7) because The SF
+Sideshow contains no project shaped to trigger them. This pass built three
+disposable fixture projects in a `getwrite-cli qa start` workspace (never the
+repo's real `projects/`), read their ground truth off disk first, and checked
+the UI against it.
+
+- `roster-warnings` — 5 declared entities. Two ("Maylin Ostrander",
+  "Mayfield Hall") both claim the alias "May", which is ambiguous *and* on the
+  common-word list; one ("Ferran Ashcroft") has the 2-character alias "Fe",
+  which is noise-prone but not ambiguous; one is clean; one is declared and
+  mentioned nowhere. Disk ground truth after `getwrite-cli reindex`:
+  Corvina 5/3, Ferran 3/2, Mayfield 4/3, Maylin 4/2, Quillon 0/0
+  (mentions/documents).
+- `roster-empty` — `entities` on, two resources, nothing declared.
+- `roster-flag-off` — `entities` off, one entity declared.
+
+CONFIRMED — (2) with `entities` off, the Entities tab renders disabled
+(`disabled` and `aria-disabled="true"`, opacity 0.4, `cursor: not-allowed`) and
+hovering it shows "Entities are off. Turn them on in User Preferences →
+Entities."; the roster is unreachable because the tab cannot be activated.
+(5) all three "needs attention" entities show the treatment and the two clean
+ones do not; each accessible name discloses which condition(s) apply —
+"Needs attention: noise-prone alias." for Ferran, "Needs attention: ambiguous
+claim and noise-prone alias." for Mayfield and Maylin; the indicator's measured
+background is `rgba(140, 112, 168, 0.36)`, the purple
+`--color-gw-entity-highlight-attention` token, not the reserved red
+(`#D44040`) — and the token is that same purple at both theme definitions
+(`styles/getwrite-utilities.css`: 0.28 light, 0.36 dark), so neither theme uses
+red. (7) with `entities` on and nothing declared, the roster renders the FR-11
+sentence "No entities have been declared yet. Give a resource an entity kind to
+have it appear here." rather than a bare table.
+
+Re-confirmed incidentally against ground truth: (3)/(4) all five entities list
+alphabetically with name, kind, aliases and counts matching disk exactly, and
+the zero-mention entity reads "No mentions yet".
+
+**Verification record, third pass (2026-09-07, POS `task_95904780`, on a
+physical Pixel 7 Pro, fully offline):**
+Criterion (8) needed a device, and one became available the same session.
+
+Procedure: `frontend`'s `pnpm build:native` (the previous `frontend/out` export
+predated the roster and did not contain it), `npx cap sync android`,
+`./gradlew assembleDebug` with the Android Studio JBR as `JAVA_HOME`, and
+`adb install -r`. The `roster-warnings` fixture above was pushed as a tar and
+extracted into the app-private projects root
+(`Directory.Data`/`projects/<uuid>`) via `run-as`, with its `rootPath` rewritten
+to the device-relative `/projects/<uuid>`. The device was then put in airplane
+mode — confirmed by `settings get global airplane_mode_on` returning `1` and
+`ping` reporting "Network is unreachable" — and the app cold-started with
+`am force-stop` followed by a launcher intent.
+
+CONFIRMED — (8) fully offline, the roster loads and every number matches the
+disk ground truth read before the run: Corvina 5/3, Ferran 3/2, Mayfield 4/3,
+Maylin 4/2, and Quillon "No mentions yet". Ordering, kinds and aliases are
+correct, and the three "needs attention" entities carry the same purple
+treatment as on web. This exercises the mention-counts native backend
+(`native-entity-mention-counts-backend.ts`) and the alias-table one, not an
+HTTP round-trip: the native build ships no `app/api/**` at all, and airplane
+mode removes any possibility of a network read.
+
+Also observed on device, though it belongs to criterion (6) rather than (8):
+tapping a roster row selected that entity's resource and switched to the edit
+view, as on web.
+
+Fixture and device state were restored afterwards — the fixture project and the
+pushed tar deleted, airplane mode off, Wi-Fi and mobile data re-enabled and
+connectivity re-checked.
+
+All eight criteria are now confirmed.
+
+Cosmetic observation, not a defect against FR-11: the empty state renders flush
+to the top-left of the work area with no padding, unlike the roster list, which
+sits in a padded card.
+
+**Done:** [x] (all 8 criteria confirmed across three passes)
 
 ## Summary
 - Total tasks: 12
