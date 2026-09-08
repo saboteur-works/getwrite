@@ -2,7 +2,10 @@ import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { Provider } from "react-redux";
-import EntityMentionsSection from "../../components/Sidebar/EntityMentionsSection";
+import EntityMentionsSection, {
+  useEntityAliasTable,
+  resolveCooccurringEntityName,
+} from "../../components/Sidebar/EntityMentionsSection";
 import { makeStore } from "../../src/store/store";
 import {
   setProject,
@@ -17,13 +20,21 @@ import {
 import { createTextResource } from "../../src/lib/models/resource";
 import type { AnyResource, Folder } from "../../src/lib/models/types";
 import type { EntityMentionedIn } from "../../src/lib/models/mentions-core";
+import type { EntityAliasTable } from "../../src/lib/models/entity-alias-table";
+import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import { runCompileAndDownload } from "../../src/lib/compile/run-compile-and-download";
 
 vi.mock("../../src/lib/compile/run-compile-and-download", () => ({
   runCompileAndDownload: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock("../../src/lib/api/entity-alias-table", () => ({
+  getEntityAliasTable: vi.fn(),
+}));
+
+import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
 
 const runCompileAndDownloadMock = vi.mocked(runCompileAndDownload);
+const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
 
 const PROJECT_PATH = "/tmp/test-project";
 
@@ -514,5 +525,116 @@ describe("EntityMentionsSection", () => {
     await waitFor(() => {
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
+  });
+});
+
+// Task 5 (`specs/features/entity-cooccurrence.md`) — alias-table name
+// resolution wiring `EntityMentionsSection.tsx` exposes for Task 6 to
+// consume. These tests exercise the resolution helper/selector-usage in
+// isolation, per the task's own instructions: there is no "Also appears
+// with" list to assert on yet (that is Task 6), so these tests do not touch
+// EntityMentionsSection's rendered output at all.
+describe("EntityMentionsSection alias-table name resolution (Task 5)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const ALIAS_PROJECT_ID = "proj-cooccurrence-alias";
+
+  function AliasTableProbe(): React.JSX.Element {
+    const aliasTable = useEntityAliasTable();
+    return (
+      <span data-testid="resolved-name">
+        {resolveCooccurringEntityName(aliasTable, "entity-priya")}
+      </span>
+    );
+  }
+
+  it("resolves a co-occurring entity's display name from the Redux-cached alias table via useEntityAliasTable/useAppSelector(selectEntityAliasTable), with no new fetch or dispatch beyond the existing fetchEntityAliasTable lifecycle", async () => {
+    const table: EntityAliasTable = {
+      entities: {
+        "entity-priya": {
+          entityId: "entity-priya",
+          entityKind: "character",
+          name: "Priya",
+          aliases: [],
+          terms: ["Priya"],
+        },
+      },
+      claimedBy: {},
+    };
+    mockedGetEntityAliasTable.mockResolvedValue(table);
+
+    const store = makeStore();
+    store.dispatch(
+      setProject({
+        id: ALIAS_PROJECT_ID,
+        name: "Alias Project",
+        rootPath: `/tmp/${ALIAS_PROJECT_ID}`,
+      }),
+    );
+    store.dispatch(setSelectedProjectId(ALIAS_PROJECT_ID));
+
+    // The existing, already-wired refetch lifecycle (project load) —
+    // exercised directly here rather than via a full project-load flow,
+    // since that lifecycle is not this task's concern. This is the only
+    // dispatch this test makes beyond store setup.
+    await store.dispatch(fetchEntityAliasTable(ALIAS_PROJECT_ID));
+    expect(mockedGetEntityAliasTable).toHaveBeenCalledTimes(1);
+
+    render(
+      <Provider store={store}>
+        <AliasTableProbe />
+      </Provider>,
+    );
+
+    // Rendering the probe (which reads the cache via `useEntityAliasTable`)
+    // triggers no additional call to the alias-table transport.
+    expect(mockedGetEntityAliasTable).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("resolved-name")).toHaveTextContent("Priya");
+  });
+
+  it("falls back to the raw entity id, rather than throwing or rendering blank, for an id absent from the alias table", () => {
+    const table: EntityAliasTable = { entities: {}, claimedBy: {} };
+
+    expect(resolveCooccurringEntityName(table, "entity-stale-ref")).toBe(
+      "entity-stale-ref",
+    );
+
+    render(
+      <span data-testid="resolved-name">
+        {resolveCooccurringEntityName(table, "entity-stale-ref")}
+      </span>,
+    );
+    expect(screen.getByTestId("resolved-name")).toHaveTextContent(
+      "entity-stale-ref",
+    );
+  });
+
+  it("does not regress EntityMentionsSection's existing render while the resolution helper is available for reuse", async () => {
+    mockMentionedIn([
+      {
+        resourceId: "scene-1",
+        name: "Chapter One",
+        snippets: [],
+        isLinked: true,
+        isMentioned: false,
+        ambiguousWith: [],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsSection />
+      </Provider>,
+    );
+
+    expect(await screen.findByText("Chapter One")).toBeInTheDocument();
+    // No "Also appears with" list exists yet (Task 6's scope) — confirming
+    // this component's render is unchanged by Task 5's wiring.
+    expect(
+      screen.queryByLabelText("entity-cooccurrence-list"),
+    ).not.toBeInTheDocument();
   });
 });

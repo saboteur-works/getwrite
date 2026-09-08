@@ -15,6 +15,8 @@ import {
 } from "../../src/store/projectsSlice";
 import { getEntityMentionedIn } from "../../src/lib/api/mentions";
 import type { EntityMentionedIn } from "../../src/lib/models/mentions-core";
+import { selectEntityAliasTable } from "../../src/store/entityAliasTableSlice";
+import type { EntityAliasTable } from "../../src/lib/models/entity-alias-table";
 import { orderResourceIdsByTreePosition } from "../common/compileSelection";
 import CompilePreviewModal, {
   type EntityCompileEntry,
@@ -68,6 +70,34 @@ import Button from "../common/UI/Button/Button";
  * existing compile client functions — it never writes to a revision,
  * sidecar, or the mention index.
  */
+
+/**
+ * Task 5 addition (`specs/features/entity-cooccurrence.md`) — confirms the
+ * project-wide `EntityAliasTable` cache `entityAliasTableSlice` already
+ * populates (refetched on project load, resource load, and a resolved
+ * sidecar save — see that module's doc comment) is reachable from this
+ * component via `useAppSelector(selectEntityAliasTable)`. Reads the existing
+ * cache only: no new fetch, no new dispatch. Task 6 will call this alongside
+ * `resolveCooccurringEntityName` below to render the "Also appears with"
+ * list; nothing in this component's own render output changes yet.
+ */
+export function useEntityAliasTable(): EntityAliasTable {
+  return useAppSelector(selectEntityAliasTable);
+}
+
+/**
+ * Resolves a co-occurring entity's display name from `aliasTable`. Falls
+ * back to the raw `entityId` — rather than throwing or rendering blank —
+ * when the id is absent from the table, e.g. a stale reference to a deleted
+ * or renamed entity (Task 5 done-when).
+ */
+export function resolveCooccurringEntityName(
+  aliasTable: EntityAliasTable,
+  entityId: string,
+): string {
+  return aliasTable.entities[entityId]?.name ?? entityId;
+}
+
 export default function EntityMentionsSection(): JSX.Element | null {
   const projectId = useAppSelector(selectActiveProjectDirectoryId);
   const resource = useAppSelector((state) => selectResource(state.resources));
