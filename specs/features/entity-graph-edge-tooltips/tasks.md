@@ -49,7 +49,7 @@ Both paths build a `nameById: Map<string, string>` from `positionedNodes` (each 
 **Depends on:** 1, 2, 4
 **Estimate:** 5
 **Notes:** The mechanism is selected by Task 2's spike verdict, not chosen here — implement the PASS branch or the FAIL branch, never both, and never guess which if Task 2 has not reached a verdict. An inconclusive or not-yet-run spike is a blocker to report up, not something to pick past arbitrarily.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Storybook stories for the edge tooltip
 **What:** Extends `EntityGraphCanvas.stories.tsx` with a story exercising the tooltip on both edge kinds — a co-occurrence edge's hover state showing its shared-resource count text, an authored edge's hover state showing its direction-and-type text — using whichever mechanism Task 5 actually shipped. Matches `docs/standards/storybook-implementation.md`'s conventions and this component's existing story structure rather than introducing a new file.
