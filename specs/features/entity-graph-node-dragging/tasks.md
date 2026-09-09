@@ -9,7 +9,7 @@ Source spec: `specs/features/entity-graph-node-dragging.md`. Granularity: story 
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Deliberately inert — nothing observable changes yet. This keeps Tasks 2 and 3 (the highest-risk work, per the spec) from having to also invent the state shape under pressure.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Wire node drag mechanics — reposition the dragged node only
 **What:** Adds a mouse-down handler to each node's `<g>` (in addition to its existing `onClick`/`onKeyDown`) that records the gesture's start client coordinates and the node's current resolved position (override if one exists, else `computeGraphLayout`'s `x`/`y`) into a ref — mirroring the existing `dragOriginRef`/`handleBackgroundMouseDown` pattern this file already uses for canvas panning, not a new event-handling approach. Extends the existing window-level `mousemove`/`mouseup` effect (the same one that already drives background panning) to also, while a node drag is in progress, convert the client-pixel delta since gesture start into a viewBox-unit delta using the exact same conversion the wheel handler already derives in this file — `svgRef.current.getBoundingClientRect()`, falling back to a 1:1 ratio when the element is zero-sized (jsdom), and dividing by the current `scale` — then writes the node's new resolved position into `nodePositionOverrides` (FR-1, FR-7). Renders each node's `<g transform="translate(...)">` from its resolved position (override if present, else the layout's own `x`/`y`) rather than directly from `computeGraphLayout`'s output, satisfying FR-2. No other node's position, and no `computeGraphLayout` input or output, changes during this gesture (FR-4) — dragging one node writes exactly one entry in the override map.
