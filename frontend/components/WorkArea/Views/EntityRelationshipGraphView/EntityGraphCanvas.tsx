@@ -179,6 +179,32 @@ function edgeKey(edge: EntityGraphEdge): string {
 }
 
 /**
+ * Resolves a single entity's rendered position at render time
+ * (entity-graph-node-dragging, FR-3): its live drag override if one exists,
+ * else `computeGraphLayout`'s own settled `x`/`y` for that entity, unchanged.
+ * This is the exact same override-or-layout precedence a node's own `<g>`
+ * transform already applies (see the nodes render loop below) — this helper
+ * lets an edge endpoint apply the identical rule without duplicating it.
+ *
+ * A no-override call is a pure pass-through of `layoutNode`'s coordinates:
+ * it introduces no new computation in that case, which is what keeps a
+ * dragless render's edge endpoints identical to `computeGraphLayout`'s own
+ * fixed output.
+ */
+function resolveEntityPosition(
+  entityId: string,
+  layoutNode: { x: number; y: number } | undefined,
+  overrides: Map<string, { x: number; y: number }>,
+  fallbackX: number,
+  fallbackY: number,
+): { x: number; y: number } {
+  const override = overrides.get(entityId);
+  if (override) return override;
+  if (layoutNode) return { x: layoutNode.x, y: layoutNode.y };
+  return { x: fallbackX, y: fallbackY };
+}
+
+/**
  * Composes an edge's tooltip/accessible-list disclosure text (FR-1/FR-2) by
  * delegating to Task 1's shared, framework-free description functions —
  * `nameById` is always the first argument, per the spec's explicit
@@ -425,6 +451,19 @@ export default function EntityGraphCanvas({
     const map = new Map<string, string>();
     for (const node of positionedNodes) {
       map.set(node.entityId, node.name);
+    }
+    return map;
+  }, [positionedNodes]);
+
+  // Entity id -> `computeGraphLayout`'s own settled x/y (entity-graph-node-
+  // dragging, FR-3). This is memoized off `positionedNodes` only — never off
+  // `nodePositionOverrides` — since it exists purely to give
+  // `resolveEntityPosition` the unchanged layout fallback; overrides are
+  // applied by that function at render time, not baked into this map.
+  const layoutPositionById = React.useMemo(() => {
+    const map = new Map<string, { x: number; y: number }>();
+    for (const node of positionedNodes) {
+      map.set(node.entityId, { x: node.x, y: node.y });
     }
     return map;
   }, [positionedNodes]);
@@ -853,15 +892,39 @@ export default function EntityGraphCanvas({
                 edge.kind === "authored"
                   ? AUTHORED_EDGE_STROKE_WIDTH
                   : cooccurrenceStrokeWidth(edge.sharedResourceCount);
+              // Resolve each endpoint from the live position override for
+              // that entity, if one exists, else `computeGraphLayout`'s own
+              // fixed x1/y1/x2/y2 (entity-graph-node-dragging, FR-3). This
+              // happens fresh on every render, reading current
+              // `nodePositionOverrides` state directly — it is not memoized
+              // alongside `positionedEdges`, so a drag in progress on either
+              // endpoint's entity is reflected immediately without waiting
+              // on `computeGraphLayout` to rerun (which it never does for a
+              // drag; FR-2).
+              const [sourceEntityId, targetEntityId] = edgeEndpoints(edge);
+              const source = resolveEntityPosition(
+                sourceEntityId,
+                layoutPositionById.get(sourceEntityId),
+                nodePositionOverrides,
+                positioned.x1,
+                positioned.y1,
+              );
+              const target = resolveEntityPosition(
+                targetEntityId,
+                layoutPositionById.get(targetEntityId),
+                nodePositionOverrides,
+                positioned.x2,
+                positioned.y2,
+              );
               return (
                 <React.Fragment key={positioned.key}>
                   <line
                     data-testid="entity-graph-edge"
                     data-edge-kind={positioned.edge.kind}
-                    x1={positioned.x1}
-                    y1={positioned.y1}
-                    x2={positioned.x2}
-                    y2={positioned.y2}
+                    x1={source.x}
+                    y1={source.y}
+                    x2={target.x}
+                    y2={target.y}
                     strokeWidth={strokeWidth}
                     strokeDasharray={
                       isAuthored ? undefined : COOCCURRENCE_DASH_ARRAY
@@ -880,10 +943,10 @@ export default function EntityGraphCanvas({
                   <line
                     data-testid="entity-graph-edge-hit-target"
                     data-edge-kind={positioned.edge.kind}
-                    x1={positioned.x1}
-                    y1={positioned.y1}
-                    x2={positioned.x2}
-                    y2={positioned.y2}
+                    x1={source.x}
+                    y1={source.y}
+                    x2={target.x}
+                    y2={target.y}
                     strokeWidth={EDGE_HIT_TARGET_STROKE_WIDTH}
                     stroke="transparent"
                     onMouseEnter={(event) =>

@@ -9,7 +9,9 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import * as d3Force from "d3-force";
-import EntityGraphCanvas from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityGraphCanvas";
+import EntityGraphCanvas, {
+  computeGraphLayout,
+} from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityGraphCanvas";
 
 // `d3-force` is an ES module whose named exports vitest cannot `vi.spyOn`
 // directly ("Module namespace is not configurable in ESM"). Wrapping
@@ -575,6 +577,121 @@ describe("EntityGraphCanvas", () => {
       expect(tickSpy).not.toHaveBeenCalled();
       expect(restartSpy).not.toHaveBeenCalled();
       expect(alphaTargetSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("edge endpoint resolution follows a dragged node (Task 4, entity-graph-node-dragging)", () => {
+    /**
+     * Finds the edge `<line>` (visible or hit-target, selected by
+     * `testId`) whose `data-edge-kind` and other-endpoint name identify it
+     * as the fixture's cooccurrence edge (`e-1` <-> `e-2`).
+     */
+    function getCooccurrenceLine(testId: string): HTMLElement {
+      const lines = screen.getAllByTestId(testId);
+      const found = lines.find(
+        (el: HTMLElement) =>
+          el.getAttribute("data-edge-kind") === "cooccurrence",
+      );
+      if (!found)
+        throw new Error(`No ${testId} found for the cooccurrence edge`);
+      return found;
+    }
+
+    it("moves the dragged node's endpoint on both the visible edge and its hit-target sibling, while the other endpoint stays put", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      // The fixture's cooccurrence edge connects e-1 (entityIdA) and e-2
+      // (entityIdB); dragging the first rendered node (e-1, per NODES'
+      // fixture order) moves that edge's x1/y1 (its e-1 endpoint) while its
+      // x2/y2 (e-2, untouched) must stay exactly as computeGraphLayout set
+      // them.
+      const visibleBefore = getCooccurrenceLine("entity-graph-edge");
+      const hitTargetBefore = getCooccurrenceLine(
+        "entity-graph-edge-hit-target",
+      );
+      const originalX1 = visibleBefore.getAttribute("x1");
+      const originalY1 = visibleBefore.getAttribute("y1");
+      const originalX2 = visibleBefore.getAttribute("x2");
+      const originalY2 = visibleBefore.getAttribute("y2");
+      // Pre-drag baseline: the invariant already held before this test's
+      // drag even begins.
+      expect(hitTargetBefore.getAttribute("x1")).toBe(originalX1);
+      expect(hitTargetBefore.getAttribute("y1")).toBe(originalY1);
+
+      const [draggedNode] = screen.getAllByTestId("entity-graph-node");
+      expect(draggedNode.getAttribute("data-entity-id")).toBe("e-1");
+
+      const dx = DRAG_CLICK_THRESHOLD_PX + 20;
+      const dy = DRAG_CLICK_THRESHOLD_PX + 12;
+      fireEvent.mouseDown(draggedNode, { clientX: 100, clientY: 100 });
+      fireEvent.mouseMove(window, { clientX: 100 + dx, clientY: 100 + dy });
+
+      const draggedTransform = parseNodeTransform(draggedNode);
+
+      const visibleAfter = getCooccurrenceLine("entity-graph-edge");
+      const hitTargetAfter = getCooccurrenceLine(
+        "entity-graph-edge-hit-target",
+      );
+
+      // The e-1 endpoint (x1/y1) now matches the dragged node's own
+      // resolved position, on both the visible line and its hit-target
+      // sibling — the invariant Task 4/5 of entity-graph-edge-tooltips
+      // established (both lines always share endpoints).
+      expect(Number(visibleAfter.getAttribute("x1"))).toBeCloseTo(
+        draggedTransform.x,
+      );
+      expect(Number(visibleAfter.getAttribute("y1"))).toBeCloseTo(
+        draggedTransform.y,
+      );
+      expect(visibleAfter.getAttribute("x1")).toBe(
+        hitTargetAfter.getAttribute("x1"),
+      );
+      expect(visibleAfter.getAttribute("y1")).toBe(
+        hitTargetAfter.getAttribute("y1"),
+      );
+
+      // The other endpoint (e-2, x2/y2) is unaffected by e-1's drag.
+      expect(visibleAfter.getAttribute("x2")).toBe(originalX2);
+      expect(visibleAfter.getAttribute("y2")).toBe(originalY2);
+      expect(hitTargetAfter.getAttribute("x2")).toBe(originalX2);
+      expect(hitTargetAfter.getAttribute("y2")).toBe(originalY2);
+
+      // Sanity: the drag actually moved something (x1/y1 changed from
+      // their pre-drag values).
+      expect(visibleAfter.getAttribute("x1")).not.toBe(originalX1);
+      expect(visibleAfter.getAttribute("y1")).not.toBe(originalY1);
+
+      fireEvent.mouseUp(window);
+    });
+
+    it("leaves computeGraphLayout's own return value for the edge identical before and after a drag, called independently of the rendered component", () => {
+      // Establishes the baseline: computeGraphLayout is a pure function of
+      // its inputs, called directly here with no rendered component
+      // involved at all.
+      const before = computeGraphLayout(NODES, EDGES);
+      const cooccurrenceBefore = before.positionedEdges.find(
+        (edge) => edge.edge.kind === "cooccurrence",
+      );
+      expect(cooccurrenceBefore).toBeDefined();
+
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+      const [draggedNode] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.mouseDown(draggedNode, { clientX: 0, clientY: 0 });
+      fireEvent.mouseMove(window, { clientX: 40, clientY: 25 });
+      fireEvent.mouseUp(window);
+
+      // Calling the pure function again, with the identical inputs, after a
+      // drag has happened on a rendered instance elsewhere: this is the
+      // concrete evidence that the drag never touched computeGraphLayout's
+      // own output — it is not a stateful cache the drag could have
+      // mutated.
+      const after = computeGraphLayout(NODES, EDGES);
+      const cooccurrenceAfter = after.positionedEdges.find(
+        (edge) => edge.edge.kind === "cooccurrence",
+      );
+      expect(cooccurrenceAfter).toBeDefined();
+
+      expect(cooccurrenceAfter).toEqual(cooccurrenceBefore);
     });
   });
 
