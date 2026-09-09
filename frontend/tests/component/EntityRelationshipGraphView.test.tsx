@@ -29,15 +29,26 @@ vi.mock("../../src/lib/api/entity-cooccurrence", () => ({
 }));
 vi.mock("../../src/lib/api/entity-relationships", () => ({
   listEntityRelationships: vi.fn(),
+  createEntityRelationship: vi.fn(),
+  removeEntityRelationship: vi.fn(),
 }));
+vi.mock("../../src/lib/api/resources", () => ({ updateSidecar: vi.fn() }));
 
 import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
 import { getEntityCooccurrence } from "../../src/lib/api/entity-cooccurrence";
-import { listEntityRelationships } from "../../src/lib/api/entity-relationships";
+import {
+  listEntityRelationships,
+  createEntityRelationship,
+  removeEntityRelationship,
+} from "../../src/lib/api/entity-relationships";
+import { updateSidecar } from "../../src/lib/api/resources";
 
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
 const mockedGetEntityCooccurrence = vi.mocked(getEntityCooccurrence);
 const mockedListEntityRelationships = vi.mocked(listEntityRelationships);
+const mockedCreateEntityRelationship = vi.mocked(createEntityRelationship);
+const mockedRemoveEntityRelationship = vi.mocked(removeEntityRelationship);
+const mockedUpdateSidecar = vi.mocked(updateSidecar);
 
 const PROJECT_ID = "proj-entity-graph";
 
@@ -127,19 +138,19 @@ describe("EntityRelationshipGraphView", () => {
       expect(mockedListEntityRelationships).toHaveBeenCalledWith(PROJECT_ID),
     );
 
-    const dataEl = await screen.findByTestId("entity-relationship-graph-data");
-    const data = JSON.parse(dataEl.textContent ?? "{}") as {
-      nodeCount: number;
-      nodes: { entityId: string }[];
-    };
+    await screen.findByTestId("entity-graph-canvas");
+    const nodeElements = screen.getAllByTestId("entity-graph-node");
+    expect(nodeElements).toHaveLength(4);
+    expect(
+      nodeElements
+        .map((el: HTMLElement) => el.getAttribute("data-entity-id"))
+        .sort(),
+    ).toEqual(["e-anna", "e-bob", "e-carl", "e-isolated"]);
 
-    expect(data.nodeCount).toBe(4);
-    expect(data.nodes.map((n) => n.entityId).sort()).toEqual([
-      "e-anna",
-      "e-bob",
-      "e-carl",
-      "e-isolated",
-    ]);
+    // The accessible list (FR-11) renders the same node set, side by side
+    // with the canvas.
+    const listItems = screen.getAllByTestId("entity-graph-node-item");
+    expect(listItems).toHaveLength(4);
   });
 
   it("keeps a co-occurrence edge and an authored edge for the same pair as two separate records (FR-4/FR-5)", async () => {
@@ -194,36 +205,34 @@ describe("EntityRelationshipGraphView", () => {
       expect(mockedListEntityRelationships).toHaveBeenCalled(),
     );
 
-    const dataEl = await screen.findByTestId("entity-relationship-graph-data");
-    const data = JSON.parse(dataEl.textContent ?? "{}") as {
-      edgeCount: number;
-      edges: Array<Record<string, unknown>>;
-    };
+    await screen.findByTestId("entity-graph-canvas");
 
     // Exactly one cooccurrence edge (deduped from the mirrored map) and one
     // authored edge for the same pair — never merged into one record.
-    expect(data.edgeCount).toBe(2);
-
-    const cooccurrenceEdges = data.edges.filter(
-      (e) => e.kind === "cooccurrence",
+    const edgeElements = screen.getAllByTestId("entity-graph-edge");
+    expect(edgeElements).toHaveLength(2);
+    const cooccurrenceEdges = edgeElements.filter(
+      (el: HTMLElement) => el.getAttribute("data-edge-kind") === "cooccurrence",
     );
-    const authoredEdges = data.edges.filter((e) => e.kind === "authored");
+    const authoredEdges = edgeElements.filter(
+      (el: HTMLElement) => el.getAttribute("data-edge-kind") === "authored",
+    );
     expect(cooccurrenceEdges).toHaveLength(1);
     expect(authoredEdges).toHaveLength(1);
 
-    // The co-occurrence edge retains its shared-resource count, and neither
-    // kind infers data the reads did not return.
-    expect(cooccurrenceEdges[0].sharedResourceCount).toBe(3);
-    expect(cooccurrenceEdges[0]).not.toHaveProperty("relationshipType");
-
-    // The authored edge retains its direction and type verbatim.
-    expect(authoredEdges[0]).toMatchObject({
-      id: "rel-1",
-      sourceEntityId: "e-anna",
-      targetEntityId: "e-bob",
-      relationshipType: "ally",
-    });
-    expect(authoredEdges[0]).not.toHaveProperty("sharedResourceCount");
+    // The accessible list (FR-11) discloses the same two edges as text.
+    const listEdgeItems = screen.getAllByTestId("entity-graph-edge-item");
+    expect(listEdgeItems).toHaveLength(2);
+    expect(
+      listEdgeItems.some((el: HTMLElement) =>
+        /share 3 resources/i.test(el.textContent ?? ""),
+      ),
+    ).toBe(true);
+    expect(
+      listEdgeItems.some((el: HTMLElement) =>
+        /\(ally\)/i.test(el.textContent ?? ""),
+      ),
+    ).toBe(true);
   });
 
   it("renders the FR-14 empty state when entities is on but no entity is declared", async () => {
@@ -243,6 +252,86 @@ describe("EntityRelationshipGraphView", () => {
     expect(
       screen.getByText(/no entities have been declared yet/i),
     ).toBeTruthy();
-    expect(screen.queryByTestId("entity-relationship-graph-data")).toBeNull();
+    expect(screen.queryByTestId("entity-graph-canvas")).toBeNull();
+    expect(screen.queryByTestId("entity-graph-accessible-list")).toBeNull();
+  });
+
+  describe("node activation (Task 7, FR-9)", () => {
+    const table: EntityAliasTable = {
+      entities: {
+        "e-anna": {
+          entityId: "e-anna",
+          entityKind: "character",
+          name: "Anna",
+          aliases: [],
+          terms: ["Anna"],
+        },
+      },
+      claimedBy: {},
+    };
+
+    async function renderWithActivation(
+      onEntityActivated: (id: string) => void,
+    ) {
+      mockedGetEntityCooccurrence.mockResolvedValue({});
+      mockedListEntityRelationships.mockResolvedValue([]);
+      const store = await setupStore(table);
+
+      render(
+        <Provider store={store}>
+          <EntityRelationshipGraphView onEntityActivated={onEntityActivated} />
+        </Provider>,
+      );
+
+      return screen.findByTestId("entity-graph-node");
+    }
+
+    it("calls onEntityActivated with the entityId when a canvas node is clicked", async () => {
+      const onEntityActivated = vi.fn();
+      const node = await renderWithActivation(onEntityActivated);
+
+      node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+      expect(onEntityActivated).toHaveBeenCalledWith("e-anna");
+    });
+
+    it("calls onEntityActivated with the entityId when the accessible list's node button is clicked", async () => {
+      const onEntityActivated = vi.fn();
+      await renderWithActivation(onEntityActivated);
+
+      const listItem = await screen.findByTestId("entity-graph-node-item");
+      const button = listItem.querySelector("button") as HTMLButtonElement;
+      button.click();
+
+      expect(onEntityActivated).toHaveBeenCalledWith("e-anna");
+    });
+
+    it("wires the identical onEntityActivated callback into both the canvas and the accessible list", async () => {
+      const onEntityActivated = vi.fn();
+      const node = await renderWithActivation(onEntityActivated);
+
+      node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      const listItem = await screen.findByTestId("entity-graph-node-item");
+      const button = listItem.querySelector("button") as HTMLButtonElement;
+      button.click();
+
+      expect(onEntityActivated).toHaveBeenCalledTimes(2);
+      expect(onEntityActivated).toHaveBeenNthCalledWith(1, "e-anna");
+      expect(onEntityActivated).toHaveBeenNthCalledWith(2, "e-anna");
+    });
+
+    it("never calls updateSidecar, createEntityRelationship, or removeEntityRelationship on node interaction (FR-9)", async () => {
+      const onEntityActivated = vi.fn();
+      const node = await renderWithActivation(onEntityActivated);
+
+      node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      const listItem = await screen.findByTestId("entity-graph-node-item");
+      const button = listItem.querySelector("button") as HTMLButtonElement;
+      button.click();
+
+      expect(mockedUpdateSidecar).not.toHaveBeenCalled();
+      expect(mockedCreateEntityRelationship).not.toHaveBeenCalled();
+      expect(mockedRemoveEntityRelationship).not.toHaveBeenCalled();
+    });
   });
 });

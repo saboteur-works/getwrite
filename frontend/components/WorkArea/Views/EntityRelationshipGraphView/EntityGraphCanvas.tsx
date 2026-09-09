@@ -66,6 +66,14 @@ export interface EntityGraphCanvasProps {
   height?: number;
   /** Optional className for the outer `<svg>`. */
   className?: string;
+  /**
+   * Invoked when a node is activated — pointer click, or Enter/Space while
+   * that node's `<g>` has keyboard focus (FR-9). Called with that node's
+   * `entityId`. Activation and selection coexist: the same gesture both
+   * toggles the node's selection ring and fires this callback, mirroring how
+   * a roster row's click both is the row and its only interaction.
+   */
+  onNodeActivated?: (entityId: string) => void;
 }
 
 /**
@@ -283,9 +291,16 @@ export function computeGraphLayout(
  * markup needed to change — only wrapping. Clicking a node toggles that
  * node's id as the sole `selectedNodeId`, rendered as an extra highlight
  * ring (a second `<circle>`) on that node only, using the existing
- * `--color-gw-primary` token — never the reserved red token. No keyboard-driven
- * graph traversal is added here (out of scope per OQ-4); node activation via
- * keyboard (FR-9) remains a separate, later concern.
+ * `--color-gw-primary` token — never the reserved red token.
+ *
+ * Node activation (Task 7, FR-9): the node's own click handler both toggles
+ * selection and calls `onNodeActivated` — the two are not separate gestures.
+ * Since an SVG `<g>` is not natively focusable or keyboard-operable, each
+ * node `<g>` also gets `tabIndex={0}`, `role="button"`, and an `onKeyDown`
+ * handler that treats Enter and Space identically to a click, calling the
+ * same `handleNodeActivate` function (no divergent keyboard-only path). No
+ * other keyboard-driven graph traversal (e.g. arrow-key movement between
+ * nodes) is added here — out of scope per OQ-4.
  */
 export default function EntityGraphCanvas({
   nodes,
@@ -293,6 +308,7 @@ export default function EntityGraphCanvas({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   className = "",
+  onNodeActivated,
 }: EntityGraphCanvasProps): JSX.Element {
   const { positionedNodes, positionedEdges } = React.useMemo(
     () => computeGraphLayout(nodes, edges, width, height),
@@ -373,9 +389,28 @@ export default function EntityGraphCanvas({
     return () => el.removeEventListener("wheel", handleWheel);
   }, []);
 
-  const handleNodeClick = React.useCallback((entityId: string) => {
-    setSelectedNodeId((current) => (current === entityId ? null : entityId));
-  }, []);
+  // The single activation path for a node — toggles the selection ring and
+  // fires `onNodeActivated` (Task 7, FR-9). Both a pointer click and a
+  // keyboard Enter/Space on the node's `<g>` call this exact function, so
+  // there is no divergent second implementation of "what activation means."
+  const handleNodeActivate = React.useCallback(
+    (entityId: string) => {
+      setSelectedNodeId((current) => (current === entityId ? null : entityId));
+      onNodeActivated?.(entityId);
+    },
+    [onNodeActivated],
+  );
+
+  const handleNodeKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<SVGGElement>, entityId: string) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      // Prevent the browser's default Space-triggered page scroll, matching
+      // a native <button>'s own keydown handling for the same key.
+      event.preventDefault();
+      handleNodeActivate(entityId);
+    },
+    [handleNodeActivate],
+  );
 
   return (
     <svg
@@ -463,7 +498,11 @@ export default function EntityGraphCanvas({
                 data-entity-id={node.entityId}
                 data-selected={isSelected ? "true" : "false"}
                 transform={`translate(${node.x}, ${node.y})`}
-                onClick={() => handleNodeClick(node.entityId)}
+                onClick={() => handleNodeActivate(node.entityId)}
+                onKeyDown={(event) => handleNodeKeyDown(event, node.entityId)}
+                tabIndex={0}
+                role="button"
+                aria-label={node.name}
                 style={{ cursor: "pointer" }}
               >
                 {isSelected ? (

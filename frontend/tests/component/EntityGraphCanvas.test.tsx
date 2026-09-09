@@ -352,4 +352,88 @@ describe("EntityGraphCanvas", () => {
     fireEvent.click(first);
     expect(first.getAttribute("data-selected")).toBe("false");
   });
+
+  describe("node activation (Task 7, FR-9)", () => {
+    it("calls onNodeActivated with the clicked node's entityId, alongside toggling selection", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.click(first);
+
+      expect(onNodeActivated).toHaveBeenCalledTimes(1);
+      expect(onNodeActivated).toHaveBeenCalledWith("e-1");
+      expect(first.getAttribute("data-selected")).toBe("true");
+    });
+
+    it("calls onNodeActivated on Enter when the node's <g> has keyboard focus", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      expect(first.getAttribute("tabindex")).toBe("0");
+      expect(first.getAttribute("role")).toBe("button");
+
+      fireEvent.keyDown(first, { key: "Enter" });
+
+      expect(onNodeActivated).toHaveBeenCalledTimes(1);
+      expect(onNodeActivated).toHaveBeenCalledWith("e-1");
+      expect(first.getAttribute("data-selected")).toBe("true");
+    });
+
+    it("calls onNodeActivated on Space when the node's <g> has keyboard focus", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+
+      fireEvent.keyDown(first, { key: " " });
+
+      expect(onNodeActivated).toHaveBeenCalledTimes(1);
+      expect(onNodeActivated).toHaveBeenCalledWith("e-1");
+      expect(first.getAttribute("data-selected")).toBe("true");
+    });
+
+    it("does not call onNodeActivated for an unrelated key", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.keyDown(first, { key: "Tab" });
+
+      expect(onNodeActivated).not.toHaveBeenCalled();
+    });
+
+    it("does not throw and still toggles selection when onNodeActivated is not provided", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      expect(() => fireEvent.click(first)).not.toThrow();
+      expect(first.getAttribute("data-selected")).toBe("true");
+    });
+  });
 });

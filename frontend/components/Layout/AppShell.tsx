@@ -1426,7 +1426,12 @@ export default function AppShell({
                             // disabled when the feature is off.
                             if (view === "entityGraph") {
                               return isEntitiesEnabled ? (
-                                <EntityRelationshipGraphView />
+                                <EntityRelationshipGraphView
+                                  onEntityActivated={(entityId) => {
+                                    dispatch(setSelectedResourceId(entityId));
+                                    setView("edit");
+                                  }}
+                                />
                               ) : null;
                             }
 
