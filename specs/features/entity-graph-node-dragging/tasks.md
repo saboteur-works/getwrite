@@ -45,7 +45,7 @@ Source spec: `specs/features/entity-graph-node-dragging.md`. Granularity: story 
 **Depends on:** 4
 **Estimate:** 2
 **Notes:** Lightweight by design, matching the sibling edge-tooltips list's own Task 7 precedent — Tasks 2 and 4 already assert most of this in passing; this task is the explicit cross-check tying those assertions back to FR-4/FR-8/FR-9/FR-10 by name before sign-off, and extends two tests that would otherwise still only be exercising the pre-drag code path.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Storybook story for node dragging
 **What:** Extends `EntityGraphCanvas.stories.tsx` with a story demonstrating the drag gesture, matching `docs/standards/storybook-implementation.md`'s conventions and this component's existing story structure (following the same pattern the edge-tooltips feature's own Task 6 used) rather than introducing a new stories file.
@@ -54,7 +54,7 @@ Source spec: `specs/features/entity-graph-node-dragging.md`. Granularity: story 
 **Depends on:** 4
 **Estimate:** 2
 **Notes:** Deliberately depends only on Task 4 (both drag mechanics and edge-following need to exist to demonstrate the full gesture) rather than on Task 5, since Task 5 adds no new rendering behavior for a story to exercise.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Manual verification pass, including tuning the click/drag threshold
 **What:** Exercises the shipped drag gesture by hand in the running desktop/web app, confirming behavior the automated suite cannot fully assert by feel — most importantly, tuning `DRAG_CLICK_THRESHOLD_PX` against real trackpad/mouse usage, since its initial value (Task 1) is explicitly recorded as unverified rather than correct.
