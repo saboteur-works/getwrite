@@ -27,7 +27,11 @@ its own kind of fact — not folded into any of the three.
 ## Goals
 
 - A novelist can assert a directed, typed relationship between two declared
-  entities (e.g. "Priya — ally of -> Marcus") as durable, authored data.
+  entities (e.g. "Priya — ally of -> Marcus") as durable, authored data, in
+  every project — including one that has never persisted a
+  relationship-type list, via a built-in default vocabulary — and can extend
+  that vocabulary with their own project-specific types through a settings
+  editor.
 - A novelist can see every relationship an entity participates in, from that
   entity's own sidebar view, and remove one they no longer want recorded.
 - An authored edge is persisted in a structure distinct from the mention
@@ -53,10 +57,10 @@ its own kind of fact — not folded into any of the three.
   model-backed inference anywhere in the entity layer.
 - No new per-project feature flag; this feature rides the existing
   `entities` flag unchanged.
-- No management UI for the relationship-type list itself (adding, removing,
-  or reordering type values, FR-13/FR-15) beyond the persisted shape and the
-  edge-creation control's use of it — the list-editing surface is left to
-  this feature's own task breakdown (OQ-3).
+- No management UI beyond a straightforward add/remove/reorder list editor
+  for the relationship-type list itself (FR-19) — no per-type icon or color
+  customization, no import/export of a type list between projects, and no
+  bulk relationship-type rename-with-migration of existing edges.
 - No cleanup path for an edge naming a permanently deleted entity beyond
   FR-16's read-time placeholder — a project can accumulate edges naming
   entities that no longer exist, and this feature adds no sweep to remove
@@ -106,13 +110,17 @@ FR-12: Each persisted edge's stable id (FR-1) MUST be sufficient to remove exact
 
 FR-13: The set of valid relationship-type values MUST be a per-project, user-extensible list, persisted in the project's own config, structurally modeled on the existing `statuses` list — a plain `z.array(z.string()).optional()` already declared at three levels in `frontend/src/lib/models/schemas.ts` (per-project config at line 238, a per-resource assigned value at line 351, and a per-project-type default seed list at line 512) — rather than a bare freeform string like `entityKind` (`schemas.ts:333-336`, which would leave no canonical set of type names for a future renderer to reason about) and rather than Feature 18's full field-definition machinery (`metadata-schema.ts`, `default-metadata-schema.ts`, `components/SchemaManager/`), which is built for arbitrary typed custom fields and is disproportionate to a single list of relationship-type names. This gives a project a stable vocabulary, so one type name means one thing throughout the project, and gives a future renderer (the graph-rendering feature) a canonical set of names to reason about rather than an open-ended set of ad hoc strings. [US-1]
 
-FR-14: A project type MAY seed a project's initial relationship-type list with default values, mirroring how a project type may already seed the `statuses` list (`schemas.ts:512`). [US-1]
+FR-14: A project type MAY seed a project's initial relationship-type list with default values, mirroring how a project type may already seed the `statuses` list (`schemas.ts:512`). As of this amendment, no built-in project type under `getwrite-config/templates/project-types/` seeds `relationshipTypes` — this requirement's seeding path remains supported by the schema but is currently unused; FR-18's runtime default is what actually populates the list in every existing and newly created project today. This requirement does not require any project-type JSON to be changed. [US-1]
 
-FR-15: An edge's relationship-type value (FR-1) MUST be one of the values in the project's relationship-type list (FR-13) at the time the edge is created; the creation control (FR-2) MUST NOT accept an arbitrary freeform value. Management of the list itself (adding, removing, or reordering relationship-type values) is a requirement-level detail left to this feature's own task breakdown, at the same level FR-2 already commits to for the edge-creation control — this requirement does not design that list-editing UI. [US-1]
+FR-15: An edge's relationship-type value (FR-1) MUST be one of the values in the project's *effective* relationship-type list at the time the edge is created — the persisted `config.relationshipTypes` list (FR-13) when one exists, or the FR-18 default list when none is persisted — and the creation control (FR-2) MUST NOT accept an arbitrary freeform value. The model-layer validation that enforces this and the read-side selector that populates the creation control's dropdown MUST agree on what counts as the effective list: a type the selector offers a user MUST NOT be a type the write path then rejects, and vice versa. Management of the list itself (adding, removing, and reordering relationship-type values) is specified separately in FR-19. [US-1]
 
 FR-16: Deleting (soft-deleting) an entity MUST NOT remove, modify, or otherwise clean up any edge naming that entity as source or target. This matches the codebase's existing, verified behavior for the two other top-level indexes an entity delete already leaves untouched: `deleteResourceCore` (`resource-crud-core.ts:282-313`) calls `nullifyResourceRefs` then `softDeleteResource` and nothing else — no indexer task is enqueued, and neither `meta/backlinks.json` nor `meta/index/mentions.json` is touched. Backlinks and mention-index maintenance run only from `indexer-queue.ts`'s `runTask` (`indexer-queue.ts:180-231`), which fires on resource *save*, not delete, and from the `reindex` CLI's from-scratch rebuild. A relationships file left equally untouched on delete is therefore consistent with, not an exception to, how this codebase already handles delete today. One consequence of this choice is a benefit found by inspection rather than intended as a design goal: because an edge is never removed when its entity is soft-deleted, restoring that entity via `restoreResource` restores its relationships for free, without any per-feature restore logic of its own — unlike backlinks and mentions, which stay stale after a restore until the next save-triggered indexer run or a full `reindex`. A second consequence, stated plainly rather than left implicit: this choice has no cleanup path, so a project can accumulate edges naming entities that no longer exist and are never coming back (purged, not merely trashed). Should that prove to be a real problem, the `reindex` CLI is the obvious place to add a sweep, since it already performs a from-scratch rebuild of the other two top-level indexes; no such sweep is committed to by this requirement. [US-1][US-2]
 
 FR-17: Creating an edge (FR-2) for a (source, target, relationship-type) triple that already exists as a persisted edge MUST be a no-op rather than create a second, duplicate record — the write path MUST check for an existing match before appending, following `assignTagToResource`'s existing idempotent-assignment pattern (`tags.ts:182-196`, which checks `includes` before pushing), since an edge is structurally closer to a tag assignment (a bounded set membership fact) than to the freeform alias string `EntitySection.tsx`'s `handleAddAlias` appends unconditionally. FR-12's stable-id requirement is unaffected: ids remain the mechanism for removing a specific edge: idempotency is a write-time rule, not a change to how edges are stored or identified. [US-1]
+
+FR-18: The product MUST supply a built-in default relationship-type vocabulary — ally of, rival of, parent of, child of, sibling of, mentor of, member of — used as a project's effective relationship-type list whenever that project has no persisted `config.relationshipTypes`, mirroring the established `DEFAULT_METADATA_SCHEMA` runtime-fallback pattern: injected only "when a project has no persisted `config.metadataSchema`" (`default-metadata-schema.ts`'s own doc comment; the analogous fallback assignment is `metadata-schema.ts:69`, `project.config.metadataSchema = structuredClone(DEFAULT_METADATA_SCHEMA)`). This is a runtime fallback computed at read time, not seed data written into any project file: it makes edge creation usable in every existing project immediately, with no migration and no per-project write required. Each default type MUST read naturally in the directed "A — <type> — B" order the sidebar renders (FR-3), since edges are directed. [US-1]
+
+FR-19: A user MUST be able to view, add, remove, and reorder their own project's relationship-type list from a project-settings editor in `frontend/components/preferences/`, alongside the existing `ProjectFeatureToggles.tsx` and `OrganizerCardBodySettings.tsx` project-config editors, which are this feature's sibling precedents for a settings-surface editor of a `project.json` config block. Persisting a change MUST reuse the existing `POST /api/project/features` route and its `updateFeatureConfig` model function (`frontend/src/lib/models/project-features.ts`) — which already accept and wholesale-replace two distinct config blocks, `config.features` and `config.organizerCardBody`, per that route's own doc comment ("replaces the provided block(s)") — extended with a third optional `relationshipTypes?: string[]` block, rather than adding a new route or model function. Because `feature-config-transport-service` is already one of the seven `createTransport`-collapsed services (ADR-021 Phase 1), this editor's ADR-021 native parity is inherited automatically: no new native backend and no new `next.config.mjs` alias entry are required. [US-1]
 
 ## Open questions
 
@@ -205,9 +213,9 @@ FR-17: Creating an edge (FR-2) for a (source, target, relationship-type) triple 
   graph-rendering feature (product spec FR-39), which draws both this
   feature's edges and Feature 37's derived co-occurrence edges together,
   visually distinguished.
-- A management UI for the relationship-type list itself — adding, removing,
-  or reordering type values beyond what FR-13/FR-14/FR-15 specify at the
-  persistence level (OQ-1).
+- Per-type icon or color customization, import/export of a relationship-type
+  list between projects, and bulk relationship-type rename-with-migration of
+  existing edges — the list editor itself (FR-19) is in scope.
 - Any sweep or cleanup of edges naming a permanently deleted entity; FR-16
   leaves them in place indefinitely, degrading gracefully at read time
   rather than being removed (OQ-2).
