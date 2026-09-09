@@ -146,6 +146,19 @@ describe("EntityGraphCanvas", () => {
     const { rerender } = render(
       <EntityGraphCanvas nodes={NODES} edges={EDGES} />,
     );
+
+    // Run a full node drag gesture — mousedown on a node, mousemove past
+    // DRAG_CLICK_THRESHOLD_PX, mouseup — before asserting (entity-graph-node-
+    // dragging, FR-8): a dragged position is exactly the new persisted-
+    // looking data this test must confirm never reaches localStorage.
+    const [target] = screen.getAllByTestId("entity-graph-node");
+    fireEvent.mouseDown(target, { clientX: 0, clientY: 0 });
+    fireEvent.mouseMove(window, {
+      clientX: DRAG_CLICK_THRESHOLD_PX + 20,
+      clientY: DRAG_CLICK_THRESHOLD_PX + 12,
+    });
+    fireEvent.mouseUp(window);
+
     // Re-render with the identical input data, exactly the case FR-13 rules
     // out ever persisting or resuming from.
     rerender(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
@@ -163,6 +176,19 @@ describe("EntityGraphCanvas", () => {
       const { rerender } = render(
         <EntityGraphCanvas nodes={NODES} edges={EDGES} />,
       );
+
+      // Run a full node drag gesture before asserting (entity-graph-node-
+      // dragging, FR-8/FR-10's transport half) — a drag is the one new
+      // gesture this feature adds, so it is the one that most plausibly
+      // could have introduced a fetch call if it had persisted anything.
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.mouseDown(target, { clientX: 0, clientY: 0 });
+      fireEvent.mouseMove(window, {
+        clientX: DRAG_CLICK_THRESHOLD_PX + 20,
+        clientY: DRAG_CLICK_THRESHOLD_PX + 12,
+      });
+      fireEvent.mouseUp(window);
+
       rerender(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
 
       expect(fetchSpy).not.toHaveBeenCalled();
@@ -869,6 +895,84 @@ describe("EntityGraphCanvas", () => {
       fireEvent.mouseUp(window);
       fireEvent.click(targetAtZoomedScale);
       expect(onNodeActivatedAtZoomedScale).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("no data coupling from a drag (Task 5, entity-graph-node-dragging)", () => {
+    it("does not change positionedNodes'/positionedEdges' length or any node's entityKind/name-shaped data — only x/y position data moves", () => {
+      // Baseline from the pure layout function itself, called independently
+      // of the rendered component — the same precedent Task 4's own
+      // "identical before and after a drag" test uses.
+      const before = computeGraphLayout(NODES, EDGES);
+      expect(before.positionedNodes).toHaveLength(NODES.length);
+      expect(before.positionedEdges).toHaveLength(EDGES.length);
+
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const nodeElementsBefore = screen.getAllByTestId("entity-graph-node");
+      const edgeElementsBefore = screen.getAllByTestId("entity-graph-edge");
+      const identityBefore = nodeElementsBefore.map((el: HTMLElement) => ({
+        entityId: el.getAttribute("data-entity-id"),
+        // `aria-label` is set from the node's `name` (see the render loop),
+        // so it stands in for that non-position field here — there is no
+        // separate data-* attribute for name, entityKind, or aliases,
+        // because the canvas never renders those directly.
+        name: el.getAttribute("aria-label"),
+      }));
+
+      const [draggedNode] = nodeElementsBefore;
+      const dx = DRAG_CLICK_THRESHOLD_PX + 20;
+      const dy = DRAG_CLICK_THRESHOLD_PX + 12;
+      fireEvent.mouseDown(draggedNode, { clientX: 0, clientY: 0 });
+      fireEvent.mouseMove(window, { clientX: dx, clientY: dy });
+      fireEvent.mouseUp(window);
+
+      const nodeElementsAfter = screen.getAllByTestId("entity-graph-node");
+      const edgeElementsAfter = screen.getAllByTestId("entity-graph-edge");
+
+      // Length is unchanged for both nodes and edges — a drag adds or
+      // removes nothing.
+      expect(nodeElementsAfter).toHaveLength(nodeElementsBefore.length);
+      expect(edgeElementsAfter).toHaveLength(edgeElementsBefore.length);
+
+      // Every node's identity (entityId) and non-position data (name, via
+      // aria-label) is unchanged, in the same order, even though the
+      // dragged node's own transform (x/y) has moved.
+      const identityAfter = nodeElementsAfter.map((el: HTMLElement) => ({
+        entityId: el.getAttribute("data-entity-id"),
+        name: el.getAttribute("aria-label"),
+      }));
+      expect(identityAfter).toEqual(identityBefore);
+
+      // Confirm the dragged node's position DID move — otherwise the
+      // "only x/y moves" claim above would be vacuous.
+      const draggedTransformAfter = parseNodeTransform(draggedNode);
+      const draggedTransformBefore = {
+        x: before.positionedNodes[0].x,
+        y: before.positionedNodes[0].y,
+      };
+      expect(draggedTransformAfter.x).not.toBeCloseTo(draggedTransformBefore.x);
+
+      // The pure layout function itself, called again with the identical
+      // inputs after the rendered drag, still returns the same length and
+      // the same entityKind/name for every node — the drag mutated no
+      // shared state `computeGraphLayout` could have read back.
+      const after = computeGraphLayout(NODES, EDGES);
+      expect(after.positionedNodes).toHaveLength(before.positionedNodes.length);
+      expect(after.positionedEdges).toHaveLength(before.positionedEdges.length);
+      expect(
+        after.positionedNodes.map((n) => ({
+          entityId: n.entityId,
+          name: n.name,
+          entityKind: n.entityKind,
+        })),
+      ).toEqual(
+        before.positionedNodes.map((n) => ({
+          entityId: n.entityId,
+          name: n.name,
+          entityKind: n.entityKind,
+        })),
+      );
     });
   });
 
