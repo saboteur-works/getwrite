@@ -36,7 +36,7 @@ Source spec: `specs/features/entity-graph-edge-tooltips.md`. Granularity: story 
 **Depends on:** 3
 **Estimate:** 3
 **Notes:** This task's hit-target lines exist before any tooltip is wired to them — Task 5 attaches the tooltip anchor attributes next. Deliberately does not depend on Task 2, since FR-3 says the hit-target is needed "regardless of which tooltip rendering mechanism is ultimately chosen."
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Wire hover and tap tooltip using Task 2's selected mechanism
 **What:** Wires each edge's hit-target line (Task 4) to a tooltip using whichever mechanism Task 2's spike verdict selects — implement exactly one of the two paths below, chosen by that verdict, not both:
