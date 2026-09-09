@@ -27,7 +27,7 @@ Source spec: `specs/features/entity-graph-node-dragging.md`. Granularity: story 
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** This is the spec's own highest-risk item — a missed case here means finishing a drag navigates the writer out of the graph. Do not conflate "distance travelled in viewBox units" with "distance travelled in client pixels" anywhere in this task's comparison; Task 2's delta (viewBox units, scale-divided) and this task's threshold check (raw client pixels) are two separate numbers computed from the same raw mouse coordinates, not one reused for both purposes.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Resolve edge endpoints from live position overrides at render time
 **What:** Changes how each edge's rendered `x1`/`y1`/`x2`/`y2` are derived: rather than reading `positionedEdges`' baked-in coordinates directly (as today), the render loop resolves each endpoint from `edgeEndpoints(positioned.edge)`'s two entity ids through the same override-or-layout resolution Task 2 built for nodes — an endpoint whose entity has a live override renders at that override's position; an endpoint whose entity has none continues to render at `computeGraphLayout`'s original, unchanged coordinate (FR-3). **This changes a shape the existing test suite asserts on directly**: any existing test that reads a `PositionedEdge`'s `x1`/`y1`/`x2`/`y2` off `computeGraphLayout`'s return value and expects that same value to appear in the rendered `<line>` (e.g. "shares its visible sibling line's x1/y1/x2/y2 endpoints") must be reviewed and, where it now diverges only because a render-time resolution step was inserted with no override present (so values are unchanged in practice), left passing as-is — this task's tests exist specifically to catch the one case that does change: a dragged node's attached edges must show updated endpoints in the rendered `<line>`, while `computeGraphLayout`'s own return value for that same edge stays exactly what it was before the drag (proving the resolution happens at render time, not by mutating layout output).
@@ -36,7 +36,7 @@ Source spec: `specs/features/entity-graph-node-dragging.md`. Granularity: story 
 **Depends on:** 1, 2
 **Estimate:** 3
 **Notes:** Sequenced after Task 2 (which resolves node positions) rather than in parallel with it, since this task's resolution helper reuses the same override-or-layout lookup Task 2 introduces for a node — building it twice independently would risk the two falling out of sync on what "resolved position" means for a given entity.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Verify no simulation coupling, no persistence, no new flag, no entity-data access
 **What:** A verification task (no new production behavior expected beyond what Tasks 1-4 already built) confirming the remaining constraints the spec states but that Tasks 1-4's own tests do not each individually re-assert: that a drag never restarts or re-ticks the `d3-force` simulation beyond Task 2's own spy-based test, that no drag path writes to `localStorage`, a sidecar, project config, or any API (FR-8), that no new per-project feature flag is checked anywhere in the touched code (FR-9, still gated solely on the existing `entities` flag one level up in `AppShell.tsx`), and that no drag path reads or calls into `lib/api/entity-cooccurrence.ts`, `lib/api/entity-relationships.ts`, `entityAliasTableSlice`, or any other entity-data source (FR-10).
