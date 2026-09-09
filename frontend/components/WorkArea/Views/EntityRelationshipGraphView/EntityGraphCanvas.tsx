@@ -12,6 +12,11 @@ import type {
   EntityGraphEdge,
   EntityGraphNode,
 } from "./EntityRelationshipGraphView";
+import {
+  describeAuthoredEdge,
+  describeCooccurrenceEdge,
+} from "./edgeDescriptions";
+import "./entityGraphTooltipOverlay.css";
 
 const DEFAULT_WIDTH = 800;
 const DEFAULT_HEIGHT = 560;
@@ -99,6 +104,17 @@ const COOCCURRENCE_STROKE_WIDTH_SCALE = 1.4;
 /** Dash pattern applied to every co-occurrence edge's line (FR-6). */
 const COOCCURRENCE_DASH_ARRAY = "5 4";
 
+/**
+ * Stroke width of the invisible hit-target line rendered behind every edge
+ * (Task 4 of entity-graph-edge-tooltips). Both an authored edge's fixed
+ * 1.5px stroke and a co-occurrence edge's log-scaled stroke are too thin to
+ * reliably hover (FR-3); this fixed width is Spike B's measured value — see
+ * `specs/features/entity-graph-edge-tooltips/spike-b-hit-target-width.md` for
+ * the derivation. It is used for every edge regardless of kind, independent
+ * of that edge's own visible stroke width.
+ */
+const EDGE_HIT_TARGET_STROKE_WIDTH = 12;
+
 /** Minimum zoom scale (Task 6): the canvas never shrinks past a quarter size. */
 const MIN_SCALE = 0.25;
 
@@ -149,6 +165,52 @@ function edgeKey(edge: EntityGraphEdge): string {
   return edge.kind === "authored"
     ? `authored:${edge.id}`
     : `cooccurrence:${edge.entityIdA}:${edge.entityIdB}`;
+}
+
+/**
+ * Composes an edge's tooltip/accessible-list disclosure text (FR-1/FR-2) by
+ * delegating to Task 1's shared, framework-free description functions —
+ * `nameById` is always the first argument, per the spec's explicit
+ * requirement, so this is the one place either function is called from this
+ * component and both call sites read every other value (relationship type,
+ * shared-resource count, entity ids) from the same `edge` object the canvas
+ * already holds for rendering (FR-6: no new fetch).
+ */
+function describeEdge(
+  edge: EntityGraphEdge,
+  nameById: Map<string, string>,
+): string {
+  return edge.kind === "authored"
+    ? describeAuthoredEdge(
+        nameById,
+        edge.sourceEntityId,
+        edge.targetEntityId,
+        edge.relationshipType,
+      )
+    : describeCooccurrenceEdge(
+        nameById,
+        edge.entityIdA,
+        edge.entityIdB,
+        edge.sharedResourceCount,
+      );
+}
+
+/**
+ * How a currently-shown edge tooltip was triggered — a hover-sourced tooltip
+ * dismisses on `onMouseLeave`; a tap-sourced one dismisses only on a second
+ * tap of the same hit-target or a tap elsewhere (FR-5). Tracking the source
+ * is what lets those two dismiss rules coexist without one gesture
+ * accidentally clearing a tooltip the other gesture opened.
+ */
+type TooltipSource = "hover" | "tap";
+
+/** The edge tooltip currently shown, and where to position its popover. */
+interface ActiveEdgeTooltip {
+  key: string;
+  edge: EntityGraphEdge;
+  source: TooltipSource;
+  clientX: number;
+  clientY: number;
 }
 
 /**
@@ -304,6 +366,33 @@ export function computeGraphLayout(
  * same `handleNodeActivate` function (no divergent keyboard-only path). No
  * other keyboard-driven graph traversal (e.g. arrow-key movement between
  * nodes) is added here — out of scope per OQ-4.
+ *
+ * Edge tooltip (Task 5, entity-graph-edge-tooltips, FAIL-path fallback):
+ * Task 2's spike concluded `react-tooltip`'s combined `float`/`openOnClick`
+ * mechanism FAILs (touch tap-to-dismiss did not work, and combining the two
+ * bare booleans on one anchor silently disabled hover), so this component
+ * builds a bespoke, manually positioned popover following the
+ * `RefHoverPreview.tsx` pattern instead of extending `HoverTip.tsx`. Each
+ * edge's Task 4 hit-target line gets `onMouseEnter`/`onMouseMove`/
+ * `onMouseLeave` (hover, desktop) and `onClick` (tap, touch — a tap fires a
+ * `click` event same as a mouse click, and an edge has no other click
+ * behavior to collide with, per the spec's OQ-3). A single `activeTooltip`
+ * state value tracks which edge's tooltip is shown, its trigger source, and
+ * the last known pointer position; a hover-sourced tooltip dismisses on
+ * `onMouseLeave`, while a tap-sourced one dismisses only on a second tap of
+ * the same hit-target (handled by the `onClick` toggle) or a tap elsewhere
+ * (handled by the document-level click listener below) — never on
+ * `onMouseLeave`, since touch input does not fire that event. The popover
+ * itself renders outside the `<svg>`, position-fixed at the tracked pointer
+ * coordinates (`entityGraphTooltipOverlay.css`). A node never gains any of
+ * this wiring (FR-8), and no hit-target line gains `tabIndex` or a
+ * focus-triggered tooltip (FR-9) — the accessible list remains the sole
+ * keyboard/screen-reader surface for this same text. Every tooltip's text is
+ * produced by `describeEdge`, which delegates to Task 1's shared
+ * `describeCooccurrenceEdge`/`describeAuthoredEdge` — the same functions
+ * `EntityGraphAccessibleList.tsx` calls for the identical edge — passing a
+ * `nameById` map built from `positionedNodes` as their first argument, so no
+ * new fetch or persisted data is introduced (FR-6).
  */
 export default function EntityGraphCanvas({
   nodes,
@@ -317,6 +406,20 @@ export default function EntityGraphCanvas({
     () => computeGraphLayout(nodes, edges, width, height),
     [nodes, edges, width, height],
   );
+
+  // Entity id -> display name, built from the same positioned nodes the
+  // canvas already renders (Task 5) — the sole lookup `describeEdge` needs,
+  // passed as the first argument to both shared description functions.
+  const nameById = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const node of positionedNodes) {
+      map.set(node.entityId, node.name);
+    }
+    return map;
+  }, [positionedNodes]);
+
+  const [activeTooltip, setActiveTooltip] =
+    React.useState<ActiveEdgeTooltip | null>(null);
 
   // A stable-but-unique id for this canvas instance's arrowhead marker, so
   // multiple `EntityGraphCanvas` instances rendered on the same page never
@@ -455,29 +558,124 @@ export default function EntityGraphCanvas({
     [handleNodeActivate],
   );
 
+  // Hover-in on an edge's hit-target (desktop pointer devices, FR-1): opens
+  // that edge's tooltip, marked "hover"-sourced so only `onMouseLeave`
+  // dismisses it.
+  const handleEdgeMouseEnter = React.useCallback(
+    (event: React.MouseEvent<SVGLineElement>, positioned: PositionedEdge) => {
+      setActiveTooltip({
+        key: positioned.key,
+        edge: positioned.edge,
+        source: "hover",
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
+    },
+    [],
+  );
+
+  // Tracks the live pointer position while a hover-sourced tooltip for this
+  // same edge is already open, so the popover follows the cursor rather than
+  // staying pinned to where the hover began.
+  const handleEdgeMouseMove = React.useCallback(
+    (event: React.MouseEvent<SVGLineElement>, positioned: PositionedEdge) => {
+      setActiveTooltip((current) => {
+        if (
+          !current ||
+          current.key !== positioned.key ||
+          current.source !== "hover"
+        ) {
+          return current;
+        }
+        return { ...current, clientX: event.clientX, clientY: event.clientY };
+      });
+    },
+    [],
+  );
+
+  // Hover-out (FR-1): only dismisses a hover-sourced tooltip for this exact
+  // edge — touch input never fires this event, so it never interferes with
+  // a tap-sourced tooltip's own dismiss rules (FR-5).
+  const handleEdgeMouseLeave = React.useCallback(
+    (positioned: PositionedEdge) => {
+      setActiveTooltip((current) =>
+        current?.key === positioned.key && current.source === "hover"
+          ? null
+          : current,
+      );
+    },
+    [],
+  );
+
+  // Tap (touch, FR-5): a tap fires as a `click` event same as a mouse click,
+  // and an edge has no other click behavior to collide with (unlike a node,
+  // which activates on click — this wiring never touches a node). A tap on
+  // the same hit-target that already shows its own tap-sourced tooltip
+  // dismisses it; any other tap (including on a different edge) opens that
+  // edge's tooltip instead.
+  const handleEdgeClick = React.useCallback(
+    (event: React.MouseEvent<SVGLineElement>, positioned: PositionedEdge) => {
+      setActiveTooltip((current) => {
+        if (current?.key === positioned.key && current.source === "tap") {
+          return null;
+        }
+        return {
+          key: positioned.key,
+          edge: positioned.edge,
+          source: "tap",
+          clientX: event.clientX,
+          clientY: event.clientY,
+        };
+      });
+    },
+    [],
+  );
+
+  // Tap elsewhere (FR-5): dismisses a tap-sourced tooltip on any click whose
+  // target is not itself an edge hit-target line — a click ON a hit-target
+  // is already handled by `handleEdgeClick`'s own toggle above, so this
+  // listener leaves that case alone (its own `current` check below would
+  // otherwise re-close a tooltip `handleEdgeClick` just reopened for a
+  // different edge, on the very same click).
+  React.useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent): void => {
+      const target = event.target as Element | null;
+      const clickedHitTarget = target?.closest(
+        '[data-testid="entity-graph-edge-hit-target"]',
+      );
+      if (clickedHitTarget) return;
+      setActiveTooltip((current) =>
+        current?.source === "tap" ? null : current,
+      );
+    };
+    document.addEventListener("click", handleDocumentClick);
+    return () => document.removeEventListener("click", handleDocumentClick);
+  }, []);
+
   return (
-    <svg
-      ref={svgRef}
-      role="img"
-      aria-label="Entity relationship graph canvas"
-      className={className}
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      data-testid="entity-graph-canvas"
-      style={{ backgroundColor: "var(--color-gw-chrome)" }}
-    >
-      <rect
-        x={0}
-        y={0}
+    <>
+      <svg
+        ref={svgRef}
+        role="img"
+        aria-label="Entity relationship graph canvas"
+        className={className}
         width={width}
         height={height}
-        fill="transparent"
-        data-testid="entity-graph-canvas-background"
-        onMouseDown={handleBackgroundMouseDown}
-      />
-      <defs>
-        {/*
+        viewBox={`0 0 ${width} ${height}`}
+        data-testid="entity-graph-canvas"
+        style={{ backgroundColor: "var(--color-gw-chrome)" }}
+      >
+        <rect
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          fill="transparent"
+          data-testid="entity-graph-canvas-background"
+          onMouseDown={handleBackgroundMouseDown}
+        />
+        <defs>
+          {/*
           Arrowhead for authored edges only (FR-7): `orient="auto"` rotates
           the marker to follow the `<line>`'s own direction from its start
           (x1/y1, the source) to its end (x2/y2, the target), so the
@@ -485,99 +683,142 @@ export default function EntityGraphCanvas({
           screen position. A co-occurrence edge never references this marker,
           leaving it undirected per Feature 37's own unordered-pair guarantee.
         */}
-        <marker
-          id={arrowheadId}
-          viewBox="0 0 10 10"
-          refX="9"
-          refY="5"
-          markerWidth="7"
-          markerHeight="7"
-          orient="auto"
+          <marker
+            id={arrowheadId}
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto"
+          >
+            <path
+              d="M0,0 L10,5 L0,10 Z"
+              style={{ fill: "var(--color-gw-secondary)" }}
+            />
+          </marker>
+        </defs>
+        <g
+          data-testid="entity-graph-viewport"
+          transform={`translate(${pan.x}, ${pan.y}) scale(${scale})`}
         >
-          <path
-            d="M0,0 L10,5 L0,10 Z"
-            style={{ fill: "var(--color-gw-secondary)" }}
-          />
-        </marker>
-      </defs>
-      <g
-        data-testid="entity-graph-viewport"
-        transform={`translate(${pan.x}, ${pan.y}) scale(${scale})`}
-      >
-        <g data-testid="entity-graph-edges">
-          {positionedEdges.map((positioned) => {
-            const { edge } = positioned;
-            const isAuthored = edge.kind === "authored";
-            const strokeWidth =
-              edge.kind === "authored"
-                ? AUTHORED_EDGE_STROKE_WIDTH
-                : cooccurrenceStrokeWidth(edge.sharedResourceCount);
-            return (
-              <line
-                key={positioned.key}
-                data-testid="entity-graph-edge"
-                data-edge-kind={positioned.edge.kind}
-                x1={positioned.x1}
-                y1={positioned.y1}
-                x2={positioned.x2}
-                y2={positioned.y2}
-                strokeWidth={strokeWidth}
-                strokeDasharray={
-                  isAuthored ? undefined : COOCCURRENCE_DASH_ARRAY
-                }
-                markerEnd={isAuthored ? `url(#${arrowheadId})` : undefined}
-                style={{ stroke: "var(--color-gw-secondary)" }}
-              />
-            );
-          })}
-        </g>
-        <g data-testid="entity-graph-nodes">
-          {positionedNodes.map((node) => {
-            const isSelected = node.entityId === selectedNodeId;
-            return (
-              <g
-                key={node.entityId}
-                data-testid="entity-graph-node"
-                data-entity-id={node.entityId}
-                data-selected={isSelected ? "true" : "false"}
-                transform={`translate(${node.x}, ${node.y})`}
-                onClick={() => handleNodeActivate(node.entityId)}
-                onKeyDown={(event) => handleNodeKeyDown(event, node.entityId)}
-                tabIndex={0}
-                role="button"
-                aria-label={node.name}
-                style={{ cursor: "pointer" }}
-              >
-                {isSelected ? (
-                  <circle
-                    r={NODE_RADIUS + 4}
-                    fill="none"
-                    strokeWidth={2}
-                    data-testid="entity-graph-node-selection-ring"
-                    style={{ stroke: "var(--color-gw-primary)" }}
+          <g data-testid="entity-graph-edges">
+            {positionedEdges.map((positioned) => {
+              const { edge } = positioned;
+              const isAuthored = edge.kind === "authored";
+              const strokeWidth =
+                edge.kind === "authored"
+                  ? AUTHORED_EDGE_STROKE_WIDTH
+                  : cooccurrenceStrokeWidth(edge.sharedResourceCount);
+              return (
+                <React.Fragment key={positioned.key}>
+                  <line
+                    data-testid="entity-graph-edge"
+                    data-edge-kind={positioned.edge.kind}
+                    x1={positioned.x1}
+                    y1={positioned.y1}
+                    x2={positioned.x2}
+                    y2={positioned.y2}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={
+                      isAuthored ? undefined : COOCCURRENCE_DASH_ARRAY
+                    }
+                    markerEnd={isAuthored ? `url(#${arrowheadId})` : undefined}
+                    style={{ stroke: "var(--color-gw-secondary)" }}
                   />
-                ) : null}
-                <circle
-                  r={NODE_RADIUS}
-                  strokeWidth={1.5}
-                  style={{
-                    fill: "var(--color-gw-chrome2)",
-                    stroke: "var(--color-gw-border-md)",
-                  }}
-                />
-                <text
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize={11}
-                  style={{ fill: "var(--color-gw-primary)" }}
+                  {/*
+                  Invisible wide hit-target line (Task 4): same endpoints as
+                  the visible edge line above, but a fixed, much wider
+                  `strokeWidth` and a fully transparent stroke, so it exists
+                  purely to make the edge reliably hoverable/tappable without
+                  changing anything a sighted user sees. Tooltip wiring on
+                  top of this element is Task 5's job, not this one's.
+                */}
+                  <line
+                    data-testid="entity-graph-edge-hit-target"
+                    data-edge-kind={positioned.edge.kind}
+                    x1={positioned.x1}
+                    y1={positioned.y1}
+                    x2={positioned.x2}
+                    y2={positioned.y2}
+                    strokeWidth={EDGE_HIT_TARGET_STROKE_WIDTH}
+                    stroke="transparent"
+                    onMouseEnter={(event) =>
+                      handleEdgeMouseEnter(event, positioned)
+                    }
+                    onMouseMove={(event) =>
+                      handleEdgeMouseMove(event, positioned)
+                    }
+                    onMouseLeave={() => handleEdgeMouseLeave(positioned)}
+                    onClick={(event) => handleEdgeClick(event, positioned)}
+                    style={{ cursor: "pointer" }}
+                  />
+                </React.Fragment>
+              );
+            })}
+          </g>
+          <g data-testid="entity-graph-nodes">
+            {positionedNodes.map((node) => {
+              const isSelected = node.entityId === selectedNodeId;
+              return (
+                <g
+                  key={node.entityId}
+                  data-testid="entity-graph-node"
+                  data-entity-id={node.entityId}
+                  data-selected={isSelected ? "true" : "false"}
+                  transform={`translate(${node.x}, ${node.y})`}
+                  onClick={() => handleNodeActivate(node.entityId)}
+                  onKeyDown={(event) => handleNodeKeyDown(event, node.entityId)}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={node.name}
+                  style={{ cursor: "pointer" }}
                 >
-                  {node.name}
-                </text>
-              </g>
-            );
-          })}
+                  {isSelected ? (
+                    <circle
+                      r={NODE_RADIUS + 4}
+                      fill="none"
+                      strokeWidth={2}
+                      data-testid="entity-graph-node-selection-ring"
+                      style={{ stroke: "var(--color-gw-primary)" }}
+                    />
+                  ) : null}
+                  <circle
+                    r={NODE_RADIUS}
+                    strokeWidth={1.5}
+                    style={{
+                      fill: "var(--color-gw-chrome2)",
+                      stroke: "var(--color-gw-border-md)",
+                    }}
+                  />
+                  <text
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontSize={11}
+                    style={{ fill: "var(--color-gw-primary)" }}
+                  >
+                    {node.name}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
         </g>
-      </g>
-    </svg>
+      </svg>
+      {activeTooltip && (
+        <div
+          className="entity-graph-edge-tooltip"
+          data-testid="entity-graph-edge-tooltip"
+          role="tooltip"
+          style={{
+            position: "fixed",
+            left: activeTooltip.clientX,
+            top: activeTooltip.clientY,
+          }}
+        >
+          {describeEdge(activeTooltip.edge, nameById)}
+        </div>
+      )}
+    </>
   );
 }

@@ -16,6 +16,7 @@ A pair of entities can have both kinds of line at once — sharing a document do
 - **Pan** by clicking and dragging an empty area of the canvas.
 - **Zoom** with the scroll wheel.
 - **Click a node** (or press Enter/Space when it's focused) to jump straight to that entity's document in the editor, the same as clicking a row in the [Entities view](entity-roster.md).
+- **Hover or tap a connection** to see a tooltip spelling out what it represents — the same text as its entry in the accessible list below (for example "Amara and Kestrel share 3 resources", or "Amara → Kestrel (mentor of)"). Connections aren't keyboard-focusable and show no tooltip on focus; the accessible list is the keyboard and screen-reader way to get the same information.
 
 Node positions are recalculated fresh every time you open the view — nothing about where a node sits on the canvas is saved.
 

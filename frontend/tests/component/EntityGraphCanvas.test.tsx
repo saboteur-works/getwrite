@@ -13,6 +13,11 @@ import type {
   EntityGraphEdge,
   EntityGraphNode,
 } from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
+import * as edgeDescriptions from "../../components/WorkArea/Views/EntityRelationshipGraphView/edgeDescriptions";
+import {
+  describeAuthoredEdge,
+  describeCooccurrenceEdge,
+} from "../../components/WorkArea/Views/EntityRelationshipGraphView/edgeDescriptions";
 
 const NODES: EntityGraphNode[] = [
   { entityId: "e-1", name: "Anna", entityKind: "character" },
@@ -418,6 +423,58 @@ describe("EntityGraphCanvas", () => {
     expect(first.getAttribute("data-selected")).toBe("false");
   });
 
+  describe("edge hit-target line (Task 4, entity-graph-edge-tooltips)", () => {
+    it("renders exactly one hit-target line per fixture edge, for every edge kind", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const hitTargets = screen.getAllByTestId("entity-graph-edge-hit-target");
+      expect(hitTargets).toHaveLength(EDGES.length);
+      expect(
+        hitTargets
+          .map((el: HTMLElement) => el.getAttribute("data-edge-kind"))
+          .sort(),
+      ).toEqual(EDGES.map((edge) => edge.kind).sort());
+    });
+
+    it("shares its visible sibling line's x1/y1/x2/y2 endpoints", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const visibleEdges = screen.getAllByTestId("entity-graph-edge");
+      const hitTargets = screen.getAllByTestId("entity-graph-edge-hit-target");
+      expect(hitTargets).toHaveLength(visibleEdges.length);
+
+      for (let i = 0; i < visibleEdges.length; i += 1) {
+        const visible = visibleEdges[i];
+        const hitTarget = hitTargets[i];
+        expect(hitTarget.getAttribute("x1")).toBe(visible.getAttribute("x1"));
+        expect(hitTarget.getAttribute("y1")).toBe(visible.getAttribute("y1"));
+        expect(hitTarget.getAttribute("x2")).toBe(visible.getAttribute("x2"));
+        expect(hitTarget.getAttribute("y2")).toBe(visible.getAttribute("y2"));
+        expect(hitTarget.getAttribute("data-edge-kind")).toBe(
+          visible.getAttribute("data-edge-kind"),
+        );
+      }
+    });
+
+    it("uses the Spike B-measured 12px stroke width, regardless of the visible edge's own width", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const hitTargets = screen.getAllByTestId("entity-graph-edge-hit-target");
+      for (const hitTarget of hitTargets) {
+        expect(hitTarget.getAttribute("stroke-width")).toBe("12");
+      }
+    });
+
+    it("carries no visible stroke color, introducing no rendering change to sighted users", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const hitTargets = screen.getAllByTestId("entity-graph-edge-hit-target");
+      for (const hitTarget of hitTargets) {
+        expect(hitTarget.getAttribute("stroke")).toBe("transparent");
+      }
+    });
+  });
+
   describe("node activation (Task 7, FR-9)", () => {
     it("calls onNodeActivated with the clicked node's entityId, alongside toggling selection", () => {
       const onNodeActivated = vi.fn();
@@ -499,6 +556,207 @@ describe("EntityGraphCanvas", () => {
       const [first] = screen.getAllByTestId("entity-graph-node");
       expect(() => fireEvent.click(first)).not.toThrow();
       expect(first.getAttribute("data-selected")).toBe("true");
+    });
+  });
+
+  describe("edge tooltip (Task 5, entity-graph-edge-tooltips, FAIL-path overlay)", () => {
+    /** Same lookup the canvas itself builds from `positionedNodes`. */
+    const nameById = new Map(NODES.map((node) => [node.entityId, node.name]));
+    const cooccurrenceEdge = EDGES.find(
+      (edge): edge is EntityGraphEdge & { kind: "cooccurrence" } =>
+        edge.kind === "cooccurrence",
+    )!;
+    const authoredEdge = EDGES.find(
+      (edge): edge is EntityGraphEdge & { kind: "authored" } =>
+        edge.kind === "authored",
+    )!;
+
+    function getHitTargetFor(kind: "cooccurrence" | "authored"): HTMLElement {
+      const hitTargets = screen.getAllByTestId("entity-graph-edge-hit-target");
+      const found = hitTargets.find(
+        (el: HTMLElement) => el.getAttribute("data-edge-kind") === kind,
+      );
+      if (!found) throw new Error(`No hit-target found for kind "${kind}"`);
+      return found;
+    }
+
+    it("shows a popover with the shared description text on hovering a co-occurrence edge's hit-target", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+
+      const hitTarget = getHitTargetFor("cooccurrence");
+      fireEvent.mouseEnter(hitTarget, { clientX: 10, clientY: 20 });
+
+      const tooltip = screen.getByTestId("entity-graph-edge-tooltip");
+      // The identical string `EntityGraphAccessibleList.tsx` renders for the
+      // same fixture edge (FR-2) — asserted by calling the shared module
+      // directly, never a hardcoded duplicate string.
+      expect(tooltip.textContent).toBe(
+        describeCooccurrenceEdge(
+          nameById,
+          cooccurrenceEdge.entityIdA,
+          cooccurrenceEdge.entityIdB,
+          cooccurrenceEdge.sharedResourceCount,
+        ),
+      );
+    });
+
+    it("shows a popover with the shared description text on hovering an authored edge's hit-target", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const hitTarget = getHitTargetFor("authored");
+      fireEvent.mouseEnter(hitTarget, { clientX: 10, clientY: 20 });
+
+      const tooltip = screen.getByTestId("entity-graph-edge-tooltip");
+      expect(tooltip.textContent).toBe(
+        describeAuthoredEdge(
+          nameById,
+          authoredEdge.sourceEntityId,
+          authoredEdge.targetEntityId,
+          authoredEdge.relationshipType,
+        ),
+      );
+    });
+
+    it("dismisses the hover-shown tooltip on mouse leave", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const hitTarget = getHitTargetFor("cooccurrence");
+      fireEvent.mouseEnter(hitTarget, { clientX: 10, clientY: 20 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip")).toBeVisible();
+
+      fireEvent.mouseLeave(hitTarget);
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the tooltip on a simulated tap, dismisses it on a second tap of the same hit-target, and dismisses it on a tap elsewhere", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const hitTarget = getHitTargetFor("cooccurrence");
+
+      // A tap fires as a click event, same as a mouse click on touch input.
+      fireEvent.click(hitTarget, { clientX: 30, clientY: 40 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip")).toBeVisible();
+
+      // A second tap on the same hit-target dismisses it.
+      fireEvent.click(hitTarget, { clientX: 30, clientY: 40 });
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+
+      // Re-open it, then dismiss via a tap elsewhere (the canvas background).
+      fireEvent.click(hitTarget, { clientX: 30, clientY: 40 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip")).toBeVisible();
+
+      const background = screen.getByTestId("entity-graph-canvas-background");
+      fireEvent.click(background);
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows a tapped tooltip for a second edge without immediately dismissing it (FR-5)", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const cooccurrenceHitTarget = getHitTargetFor("cooccurrence");
+      const authoredHitTarget = getHitTargetFor("authored");
+
+      fireEvent.click(cooccurrenceHitTarget, { clientX: 1, clientY: 1 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip").textContent).toBe(
+        describeCooccurrenceEdge(
+          nameById,
+          cooccurrenceEdge.entityIdA,
+          cooccurrenceEdge.entityIdB,
+          cooccurrenceEdge.sharedResourceCount,
+        ),
+      );
+
+      fireEvent.click(authoredHitTarget, { clientX: 2, clientY: 2 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip").textContent).toBe(
+        describeAuthoredEdge(
+          nameById,
+          authoredEdge.sourceEntityId,
+          authoredEdge.targetEntityId,
+          authoredEdge.relationshipType,
+        ),
+      );
+    });
+
+    it("never shows a tooltip when hovering a node (FR-8)", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const [firstNode] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.mouseEnter(firstNode, { clientX: 5, clientY: 5 });
+
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not make an edge hit-target keyboard-focusable (FR-9)", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const hitTarget = getHitTargetFor("cooccurrence");
+      expect(hitTarget).not.toHaveAttribute("tabindex");
+      expect(hitTarget).not.toHaveAttribute("role", "button");
+    });
+
+    it("constructs a nameById map from positionedNodes and passes it as the first argument to both shared description functions", () => {
+      const cooccurrenceSpy = vi.spyOn(
+        edgeDescriptions,
+        "describeCooccurrenceEdge",
+      );
+      const authoredSpy = vi.spyOn(edgeDescriptions, "describeAuthoredEdge");
+
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      fireEvent.mouseEnter(getHitTargetFor("cooccurrence"), {
+        clientX: 1,
+        clientY: 1,
+      });
+      expect(cooccurrenceSpy).toHaveBeenCalledTimes(1);
+      const [cooccurrenceFirstArg] = cooccurrenceSpy.mock.calls[0];
+      expect(cooccurrenceFirstArg).toBeInstanceOf(Map);
+      expect((cooccurrenceFirstArg as Map<string, string>).get("e-1")).toBe(
+        "Anna",
+      );
+
+      fireEvent.mouseEnter(getHitTargetFor("authored"), {
+        clientX: 1,
+        clientY: 1,
+      });
+      expect(authoredSpy).toHaveBeenCalledTimes(1);
+      const [authoredFirstArg] = authoredSpy.mock.calls[0];
+      expect(authoredFirstArg).toBeInstanceOf(Map);
+      expect((authoredFirstArg as Map<string, string>).get("e-3")).toBe(
+        "Castle Greywatch",
+      );
+    });
+
+    it("introduces no new fetch call when hovering or tapping an edge's tooltip (FR-6)", () => {
+      const fetchSpy = vi.fn();
+      const originalFetch = global.fetch;
+      global.fetch = fetchSpy as unknown as typeof fetch;
+
+      try {
+        render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+        const hitTarget = getHitTargetFor("cooccurrence");
+        fireEvent.mouseEnter(hitTarget, { clientX: 1, clientY: 1 });
+        fireEvent.mouseMove(hitTarget, { clientX: 2, clientY: 2 });
+        fireEvent.mouseLeave(hitTarget);
+        fireEvent.click(hitTarget, { clientX: 1, clientY: 1 });
+        fireEvent.click(hitTarget, { clientX: 1, clientY: 1 });
+
+        expect(fetchSpy).not.toHaveBeenCalled();
+      } finally {
+        global.fetch = originalFetch;
+      }
     });
   });
 });

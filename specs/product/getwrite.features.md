@@ -871,6 +871,47 @@ and edges) are unaddressed here and belong in this feature's own task
 breakdown, in the same spirit as Feature 36's virtualization benchmark being
 deferred to a task rather than decided by assertion.
 
+### Feature 40: Entity graph edge tooltips — Not started
+**Value:** A novelist looking at Feature 39's graph can tell what a given
+edge actually represents — a co-occurrence count or an authored relationship
+type — without leaving the canvas for the accessible list, which today is
+the only place that spells an edge out in words.
+**Vertical slice:** A hover tooltip on each edge in `EntityGraphCanvas.tsx`
+surfacing the same text the synchronized accessible list already renders for
+that edge — `describeCooccurrenceEdge`'s "A and B share N resources" for a
+co-occurrence edge, `describeAuthoredEdge`'s "A → B (type)" for an authored
+edge (both currently defined only in `EntityGraphAccessibleList.tsx`) —
+extracted into a shared module so the tooltip and the accessible list read
+from one description function rather than two that could drift apart. Each
+edge `<line>` already carries the `relationshipType` (authored) or
+`sharedResourceCount` (co-occurrence) the tooltip needs off
+`positioned.edge` with no new fetch, transport, core-lift, or persisted
+data. Edges render at a fixed 1.5px stroke (authored) or a log-scaled width
+(co-occurrence, `cooccurrenceStrokeWidth`) — too thin to reliably hover — so
+this feature also adds a wider, transparent hit-target line per edge
+regardless of which tooltip rendering approach is chosen (see this feature
+list's Open Questions).
+**Requirements covered:** None of its own — a refinement within the graph
+requirement, which already requires the two edge kinds be visually
+distinguished and that the graph introduce no new persisted data. This
+feature narrows that existing distinguishing requirement to the
+pointer-hover case, the same way the graph's other enabling slices each
+cover none of their own requirement — see this feature list's Open
+Questions.
+**User stories:** US-17
+**Depends on:** Feature 39
+**Branch suggestion:** feat/entity-graph-edge-tooltips
+**Notes:** Not started. Read-only and presentational only: no edge
+authoring (that stays on Feature 38's `EntityRelationshipsSection.tsx`
+sidebar surface), no new feature flag (rides the existing `entities` flag
+Feature 39 already rides), no new persisted data. Distinct from Feature 39's
+own scope in degree, not kind — Feature 39 shipped the graph and its
+synchronized accessible-list description text; this feature surfaces that
+same description on hover on the canvas itself, which Feature 39's own
+shipped spec did not include (its Out of scope section does not name
+tooltips, so this is a new increment on top of a shipped feature, not a
+resumption of something already deferred there).
+
 ---
 
 ## Coverage check
@@ -921,7 +962,7 @@ deferred to a task rather than decided by assertion.
 
 ## Summary
 
-- Total features: 39
+- Total features: 40
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -932,7 +973,8 @@ deferred to a task rather than decided by assertion.
   data) and 38 (authored typed relationships) can be built in either order or
   in parallel, since neither depends on the other; 39 (the graph view) needs
   both, since it must render and visually distinguish edges from both
-  sources at once. Of the remaining pre-existing work: 24 (Organizer
+  sources at once. 40 (edge tooltips) depends on 39, since it hovers over
+  edges 39 draws, and adds nothing else. Of the remaining pre-existing work: 24 (Organizer
   filters), 25 (signed installers), 26 (Trash UI), and 27 (search across
   revisions) are independently startable now. 28 (hosted multi-device
   access) must land before 30 (its conflict-resolution model, which depends
@@ -942,10 +984,10 @@ deferred to a task rather than decided by assertion.
   predicates) depends on the already-shipped Features 8 and 9.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-  36, 37, 38 (30 and 39 are the only features left with an unmet hard
-  dependency — 30 on 28, 39 on both 37 and 38)
-- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 37, 38, 39. Everything else
-  in this list has shipped.
+  36, 37, 38 (30, 39, and 40 are the only features left with an unmet hard
+  dependency — 30 on 28, 39 on both 37 and 38, 40 on 39)
+- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 37, 38, 39, 40. Everything
+  else in this list has shipped.
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
   design decision before implementation tasks can be written. Feature 28 is
@@ -1063,3 +1105,14 @@ FR-39 split (this document's own scoping call — Gate 2 review, 2026-09-07):
   existing one (e.g. widening `getProjectMentionCounts`'s read or adding a
   sibling function in `mentions-core.ts`), is left to that feature's task
   breakdown rather than decided here.
+- Feature 40's tooltip rendering mechanism — an SVG `<title>`/native browser
+  tooltip on the edge element, a custom positioned HTML overlay, or
+  something else — is not decided here and is left to that feature's task
+  breakdown.
+- Feature 40 is scoped to pointer hover; whether the same tooltip should
+  also appear on keyboard focus of an edge is unresolved, and is entangled
+  with the fact that edges are not currently focusable elements at all
+  (Feature 39 shipped without inserting them into taborder, in favour of the
+  synchronized accessible list — see that feature's Out of scope section).
+- Whether hovering a node (as opposed to an edge) should show anything is
+  unresolved; this feature's Vertical slice covers only edges.
