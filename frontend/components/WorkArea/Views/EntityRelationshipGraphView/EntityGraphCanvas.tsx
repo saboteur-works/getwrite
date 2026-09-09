@@ -133,6 +133,17 @@ function clampScale(value: number): number {
 }
 
 /**
+ * Maximum pointer movement, in client pixels, a node's mousedown-to-mouseup
+ * gesture may travel and still be treated as a click (rather than a drag) of
+ * that node (entity-graph-node-dragging, FR-2/FR-7, OQ-1). This is a starting
+ * value only — UNVERIFIED — chosen as a typical click/drag threshold, not
+ * measured against this component's own pointer handling. It is expected to
+ * be tuned during this feature's manual verification task; nothing here
+ * should be taken as evidence that 4px is the correct threshold for this UI.
+ */
+const DRAG_CLICK_THRESHOLD_PX = 4;
+
+/**
  * Computes a co-occurrence edge's `strokeWidth` from its `sharedResourceCount`
  * (FR-12). Monotonically increasing in `count` — a higher count never
  * produces an equal-or-thinner line than a lower one — via a log scale so the
@@ -432,6 +443,19 @@ export default function EntityGraphCanvas({
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(
     null,
   );
+
+  // Live, drag-authored node position overrides, keyed by `entityId`
+  // (entity-graph-node-dragging, FR-2/FR-7, OQ-2). Mirrors the
+  // `selectedNodeId`/`pan`/`scale` precedent exactly: plain component state,
+  // held outside `computeGraphLayout`'s `useMemo` and its dependency array,
+  // so a drag's override is never reset by that memo recomputing when
+  // `nodes`/`edges`/`width`/`height` change. No purge, reset, or reverse
+  // lookup is provided, again matching that precedent — this state is
+  // intentionally not wired into rendering or event handling yet (deferred to
+  // a later task in this feature).
+  const [nodePositionOverrides] = React.useState<
+    Map<string, { x: number; y: number }>
+  >(() => new Map());
 
   // Drag state lives in a ref, not React state, since a mousemove needs to
   // read it on every pointer move without forcing a re-render per pixel; the
