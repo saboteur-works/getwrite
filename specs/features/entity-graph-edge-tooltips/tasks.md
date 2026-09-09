@@ -76,7 +76,7 @@ Both paths build a `nameById: Map<string, string>` from `positionedNodes` (each 
 **Depends on:** 6, 7
 **Estimate:** 2
 **Notes:** Mirrors the parent feature's own Task 12 manual-verification convention (`specs/features/entity-relationship-graph/tasks.md`). Item (6) may be marked "not verified — no device available" if genuinely unavailable, matching that same task list's own precedent for an unavailable device check, but the touch-emulation check in item (3) is not optional, since FR-5 is this feature's own new requirement.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 8
