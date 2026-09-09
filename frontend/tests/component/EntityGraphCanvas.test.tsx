@@ -418,6 +418,58 @@ describe("EntityGraphCanvas", () => {
     expect(first.getAttribute("data-selected")).toBe("false");
   });
 
+  describe("edge hit-target line (Task 4, entity-graph-edge-tooltips)", () => {
+    it("renders exactly one hit-target line per fixture edge, for every edge kind", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const hitTargets = screen.getAllByTestId("entity-graph-edge-hit-target");
+      expect(hitTargets).toHaveLength(EDGES.length);
+      expect(
+        hitTargets
+          .map((el: HTMLElement) => el.getAttribute("data-edge-kind"))
+          .sort(),
+      ).toEqual(EDGES.map((edge) => edge.kind).sort());
+    });
+
+    it("shares its visible sibling line's x1/y1/x2/y2 endpoints", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const visibleEdges = screen.getAllByTestId("entity-graph-edge");
+      const hitTargets = screen.getAllByTestId("entity-graph-edge-hit-target");
+      expect(hitTargets).toHaveLength(visibleEdges.length);
+
+      for (let i = 0; i < visibleEdges.length; i += 1) {
+        const visible = visibleEdges[i];
+        const hitTarget = hitTargets[i];
+        expect(hitTarget.getAttribute("x1")).toBe(visible.getAttribute("x1"));
+        expect(hitTarget.getAttribute("y1")).toBe(visible.getAttribute("y1"));
+        expect(hitTarget.getAttribute("x2")).toBe(visible.getAttribute("x2"));
+        expect(hitTarget.getAttribute("y2")).toBe(visible.getAttribute("y2"));
+        expect(hitTarget.getAttribute("data-edge-kind")).toBe(
+          visible.getAttribute("data-edge-kind"),
+        );
+      }
+    });
+
+    it("uses the Spike B-measured 12px stroke width, regardless of the visible edge's own width", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const hitTargets = screen.getAllByTestId("entity-graph-edge-hit-target");
+      for (const hitTarget of hitTargets) {
+        expect(hitTarget.getAttribute("stroke-width")).toBe("12");
+      }
+    });
+
+    it("carries no visible stroke color, introducing no rendering change to sighted users", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const hitTargets = screen.getAllByTestId("entity-graph-edge-hit-target");
+      for (const hitTarget of hitTargets) {
+        expect(hitTarget.getAttribute("stroke")).toBe("transparent");
+      }
+    });
+  });
+
   describe("node activation (Task 7, FR-9)", () => {
     it("calls onNodeActivated with the clicked node's entityId, alongside toggling selection", () => {
       const onNodeActivated = vi.fn();

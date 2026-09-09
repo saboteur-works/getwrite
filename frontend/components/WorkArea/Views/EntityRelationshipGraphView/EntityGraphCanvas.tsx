@@ -99,6 +99,17 @@ const COOCCURRENCE_STROKE_WIDTH_SCALE = 1.4;
 /** Dash pattern applied to every co-occurrence edge's line (FR-6). */
 const COOCCURRENCE_DASH_ARRAY = "5 4";
 
+/**
+ * Stroke width of the invisible hit-target line rendered behind every edge
+ * (Task 4 of entity-graph-edge-tooltips). Both an authored edge's fixed
+ * 1.5px stroke and a co-occurrence edge's log-scaled stroke are too thin to
+ * reliably hover (FR-3); this fixed width is Spike B's measured value — see
+ * `specs/features/entity-graph-edge-tooltips/spike-b-hit-target-width.md` for
+ * the derivation. It is used for every edge regardless of kind, independent
+ * of that edge's own visible stroke width.
+ */
+const EDGE_HIT_TARGET_STROKE_WIDTH = 12;
+
 /** Minimum zoom scale (Task 6): the canvas never shrinks past a quarter size. */
 const MIN_SCALE = 0.25;
 
@@ -513,21 +524,40 @@ export default function EntityGraphCanvas({
                 ? AUTHORED_EDGE_STROKE_WIDTH
                 : cooccurrenceStrokeWidth(edge.sharedResourceCount);
             return (
-              <line
-                key={positioned.key}
-                data-testid="entity-graph-edge"
-                data-edge-kind={positioned.edge.kind}
-                x1={positioned.x1}
-                y1={positioned.y1}
-                x2={positioned.x2}
-                y2={positioned.y2}
-                strokeWidth={strokeWidth}
-                strokeDasharray={
-                  isAuthored ? undefined : COOCCURRENCE_DASH_ARRAY
-                }
-                markerEnd={isAuthored ? `url(#${arrowheadId})` : undefined}
-                style={{ stroke: "var(--color-gw-secondary)" }}
-              />
+              <React.Fragment key={positioned.key}>
+                <line
+                  data-testid="entity-graph-edge"
+                  data-edge-kind={positioned.edge.kind}
+                  x1={positioned.x1}
+                  y1={positioned.y1}
+                  x2={positioned.x2}
+                  y2={positioned.y2}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={
+                    isAuthored ? undefined : COOCCURRENCE_DASH_ARRAY
+                  }
+                  markerEnd={isAuthored ? `url(#${arrowheadId})` : undefined}
+                  style={{ stroke: "var(--color-gw-secondary)" }}
+                />
+                {/*
+                  Invisible wide hit-target line (Task 4): same endpoints as
+                  the visible edge line above, but a fixed, much wider
+                  `strokeWidth` and a fully transparent stroke, so it exists
+                  purely to make the edge reliably hoverable/tappable without
+                  changing anything a sighted user sees. Tooltip wiring on
+                  top of this element is Task 5's job, not this one's.
+                */}
+                <line
+                  data-testid="entity-graph-edge-hit-target"
+                  data-edge-kind={positioned.edge.kind}
+                  x1={positioned.x1}
+                  y1={positioned.y1}
+                  x2={positioned.x2}
+                  y2={positioned.y2}
+                  strokeWidth={EDGE_HIT_TARGET_STROKE_WIDTH}
+                  stroke="transparent"
+                />
+              </React.Fragment>
             );
           })}
         </g>
