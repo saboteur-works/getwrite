@@ -58,7 +58,7 @@ Both paths build a `nameById: Map<string, string>` from `positionedNodes` (each 
 **Depends on:** 5
 **Estimate:** 2
 **Notes:** Written against whichever branch Task 5 shipped; do not attempt to cover both mechanisms in one story.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Verify no new fetch, transport, or feature flag
 **What:** A verification task (no source changes expected) confirming FR-6 and FR-7 hold after Tasks 4-5 land: grep-verifies that no new `fetch`/transport call, core-lift, or persisted-data write was introduced by this feature's files, and that no new feature-flag check beyond the existing `entities` flag was added anywhere in the touched components.
@@ -67,7 +67,7 @@ Both paths build a `nameById: Map<string, string>` from `positionedNodes` (each 
 **Depends on:** 5
 **Estimate:** 1
 **Notes:** Lightweight by design — Task 5 already asserts "no new fetch" in its own tests; this task is the explicit cross-check tying that assertion back to FR-6/FR-7 by name before sign-off.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Manual verification pass, including a touch check
 **What:** Exercises the shipped tooltip by hand in the running desktop/web app and, if a device is available, on native Android (the graph view is reachable there per Feature 39 and `frontend/scripts/build-native-static.mjs:71-74`), confirming hover and tap behavior the automated suite cannot fully assert visually.
