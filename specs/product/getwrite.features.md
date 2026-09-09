@@ -742,7 +742,7 @@ build script needs no change to accommodate a sixth one, and — per the
 retrieval-side point above — both data sources the roster depends on
 already have shipped native backends.
 
-### Feature 37: Derived co-occurrence relationship data — Not started
+### Feature 37: Derived co-occurrence relationship data — Shipped
 **Value:** A novelist looking at one entity's own view sees which other
 declared entities usually appear alongside it — "who does this character
 share a scene with most" — without opening a graph canvas, authoring
@@ -767,7 +767,7 @@ and entity-highlighting features.
 **User stories:** US-17
 **Depends on:** Feature 33
 **Branch suggestion:** feat/entity-cooccurrence-edges
-**Notes:** Not started. A display surface was added at the Gate 2 review
+**Notes:** Shipped. A display surface was added at the Gate 2 review
 because the first draft of this entry shipped no usable slice — its Value
 field admitted the entry was "retrieval-layer groundwork," which is the
 warning sign this document's own instructions call out: a seam that yields a
@@ -792,7 +792,7 @@ spec's OQ-2 resolution: `MentionRecord` already carries `entityId` +
 `resourceId` + `offsets`, so "which entity pairs share a resource" is a
 derivation over data already on disk, not new state.
 
-### Feature 38: Authored typed entity relationships — Not started
+### Feature 38: Authored typed entity relationships — Shipped
 **Value:** A novelist records a relationship between two entities they
 already know — "ally of," "parent of," and so on — as a durable, structured
 fact instead of leaving it to be reconstructed from prose or a co-occurrence
@@ -817,7 +817,7 @@ and entity-highlighting features.
 **User stories:** US-17
 **Depends on:** Feature 33
 **Branch suggestion:** feat/entity-authored-relationships
-**Notes:** Not started. Scoped apart from Feature 37 because the two edge
+**Notes:** Shipped. Scoped apart from Feature 37 because the two edge
 sources have unrelated costs and lifecycles: this feature carries a new
 schema, a write path, an authoring UI, and an edge-deletion-on-entity-deletion
 policy that Feature 37 needs none of. Scoped apart from Feature 39 (the graph
@@ -829,7 +829,7 @@ on. The relationship-type vocabulary (open vs. fixed set) and the
 entity-deletion edge lifecycle are both unresolved — see this feature list's
 Open Questions and the parent spec's OQ-3.
 
-### Feature 39: Project-level entity relationship graph view — Not started
+### Feature 39: Project-level entity relationship graph view — Shipped
 **Value:** A novelist sees how their declared entities connect to one
 another — not just where each individually appears — surfacing a question
 neither the flat entity roster (Feature 36) nor a single entity's own thread
@@ -852,7 +852,7 @@ canvas — that is Feature 38's surface.
 **User stories:** US-17
 **Depends on:** Feature 37, Feature 38
 **Branch suggestion:** feat/entity-relationship-graph
-**Notes:** Not started. Depends on both prior features because a graph with
+**Notes:** Shipped. Depends on both prior features because a graph with
 only one edge source drawn would not satisfy FR-39's explicit requirement
 that both edge kinds appear, distinguished. Rides the existing `entities`
 feature flag rather than introducing one, per FR-39's own text and the
@@ -871,7 +871,7 @@ and edges) are unaddressed here and belong in this feature's own task
 breakdown, in the same spirit as Feature 36's virtualization benchmark being
 deferred to a task rather than decided by assertion.
 
-### Feature 40: Entity graph edge tooltips — Not started
+### Feature 40: Entity graph edge tooltips — Shipped
 **Value:** A novelist looking at Feature 39's graph can tell what a given
 edge actually represents — a co-occurrence count or an authored relationship
 type — without leaving the canvas for the accessible list, which today is
@@ -901,7 +901,7 @@ Questions.
 **User stories:** US-17
 **Depends on:** Feature 39
 **Branch suggestion:** feat/entity-graph-edge-tooltips
-**Notes:** Not started. Read-only and presentational only: no edge
+**Notes:** Shipped. Read-only and presentational only: no edge
 authoring (that stays on Feature 38's `EntityRelationshipsSection.tsx`
 sidebar surface), no new feature flag (rides the existing `entities` flag
 Feature 39 already rides), no new persisted data. Distinct from Feature 39's
@@ -911,6 +911,45 @@ same description on hover on the canvas itself, which Feature 39's own
 shipped spec did not include (its Out of scope section does not name
 tooltips, so this is a new increment on top of a shipped feature, not a
 resumption of something already deferred there).
+
+### Feature 41: Entity graph node dragging — Not started
+**Value:** A novelist looking at Feature 39's graph can pull a node into a
+clearer spot — away from an overlapping neighbour, or toward the part of the
+canvas they're focused on — instead of being stuck with whatever position
+`computeGraphLayout` happened to compute on load.
+**Vertical slice:** A pointer-drag gesture on a node in `EntityGraphCanvas.tsx`
+that repositions only that node, reading and writing a live position map at
+render time rather than `computeGraphLayout`'s fixed-300-tick output, which
+keeps its existing pure-function, stopped-simulation contract unchanged; edge
+endpoints for any edge touching the dragged node must resolve from that live
+position map at render time instead of from `PositionedEdge`'s `x1/y1/x2/y2`,
+which are only ever set once at layout time. The gesture must distinguish a
+drag from the existing `onClick` handler, which both toggles node selection
+and calls `onNodeActivated` to navigate away to that entity's resource — a
+drag that ends on the node must not also fire that navigation. Drag coordinate
+math (client-pixel to viewBox conversion, including the zero-sized-element
+case jsdom produces) follows the same conversion the existing wheel/zoom
+handler in the same file already derives.
+**Requirements covered:** FR-40
+**User stories:** US-17
+**Depends on:** Feature 39
+**Branch suggestion:** feat/entity-graph-node-dragging
+**Notes:** Not started. Three product-rung decisions are settled and not
+reopened here: reposition is static — only the dragged node moves, no live
+force simulation runs during or after a drag, and `computeGraphLayout` keeps
+its pure, deterministic, fixed-tick contract, accepting that edges stretch
+rather than the layout relaxing; dragged positions are ephemeral and are
+never persisted, consistent with FR-13's existing ephemeral-position
+constraint; and there is no keyboard-operable equivalent at this ship, a
+deliberate exclusion, not an oversight. View-layer only: no entity data,
+co-occurrence value, or authored relationship is read or written by a drag.
+No new feature flag — rides the existing `entities` flag Feature 39 already
+rides. No new dependency — `d3-force` is already installed and this feature
+needs nothing further from it, since the simulation itself is not what
+drives the drag. Distinguishing a drag from the existing click-to-select/
+click-to-navigate gesture is a real implementation cost this entry does not
+minimize away — see this feature list's Open Questions for the pixel-movement
+threshold that decision needs.
 
 ---
 
@@ -958,11 +997,12 @@ resumption of something already deferred there).
   - FR-39: Feature 39 (Features 37 and 38 are enabling slices of the same
     requirement with no FR of their own — see this feature list's Open
     Questions)
+  - FR-40: Feature 41
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 40
+- Total features: 41
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -974,7 +1014,10 @@ resumption of something already deferred there).
   in parallel, since neither depends on the other; 39 (the graph view) needs
   both, since it must render and visually distinguish edges from both
   sources at once. 40 (edge tooltips) depends on 39, since it hovers over
-  edges 39 draws, and adds nothing else. Of the remaining pre-existing work: 24 (Organizer
+  edges 39 draws, and adds nothing else. 41 (node dragging) also depends on
+  39, since it repositions nodes 39 draws, and can be built in either order
+  relative to 40 — the two are independent refinements on top of the same
+  parent feature. Of the remaining pre-existing work: 24 (Organizer
   filters), 25 (signed installers), 26 (Trash UI), and 27 (search across
   revisions) are independently startable now. 28 (hosted multi-device
   access) must land before 30 (its conflict-resolution model, which depends
@@ -984,10 +1027,10 @@ resumption of something already deferred there).
   predicates) depends on the already-shipped Features 8 and 9.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-  36, 37, 38 (30, 39, and 40 are the only features left with an unmet hard
-  dependency — 30 on 28, 39 on both 37 and 38, 40 on 39)
-- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 37, 38, 39, 40. Everything
-  else in this list has shipped.
+  36, 37, 38, 39, 40, 41 (30 is the only feature left with an unmet hard
+  dependency — on 28)
+- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 41.
+  Everything else in this list has shipped.
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
   design decision before implementation tasks can be written. Feature 28 is
@@ -1116,3 +1159,12 @@ FR-39 split (this document's own scoping call — Gate 2 review, 2026-09-07):
   synchronized accessible list — see that feature's Out of scope section).
 - Whether hovering a node (as opposed to an edge) should show anything is
   unresolved; this feature's Vertical slice covers only edges.
+- Feature 41's pixel-movement threshold separating a click (toggle selection
+  and navigate) from a drag (reposition only) is not decided here and is
+  left to that feature's task breakdown.
+- Whether a node Feature 41 has dragged should stay pinned at its dragged
+  position if the component re-renders with changed node/edge data — for
+  example, an entity is added or an edge changes while a drag override is
+  held — is unresolved.
+- Whether Feature 41's drag should be constrained to the canvas's visible
+  bounds, or allowed to move a node off-canvas, is unresolved.
