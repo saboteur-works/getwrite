@@ -3,8 +3,9 @@
  *
  * Persistence helper for the per-project feature configuration stored in
  * `project.json` — the `config.features` opt-in flags (Timeline, POV, Synopsis,
- * Notes, Entities) and `config.organizerCardBody` (what Organizer cards render
- * as their body).
+ * Notes, Entities), `config.organizerCardBody` (what Organizer cards render
+ * as their body), and `config.relationshipTypes` (the project's
+ * entity-relationship-type vocabulary, FR-19).
  *
  * Unlike the lock-free `editor-config` / `preferences` read-modify-writes, this
  * helper acquires the per-project lock so toggle writes cannot race the
@@ -13,6 +14,7 @@
  * keys or sidecar values, so invalidating the query cache would be wasteful —
  * that bump is reserved for the one-time load migration.
  */
+import { z } from "zod";
 import { readFile, writeFile } from "./io";
 import path from "node:path";
 import { acquireLock } from "./locks";
@@ -27,24 +29,30 @@ import type {
   OrganizerCardBodyConfig,
 } from "./types";
 
+const RelationshipTypesSchema = z.array(z.string());
+
 /** Partial update for the project feature configuration. */
 export interface FeatureConfigUpdate {
   /** Replacement feature-toggle map. Omit to leave the existing flags untouched. */
   features?: ProjectFeatureFlags;
   /** Replacement Organizer card-body config. Omit to leave the existing config untouched. */
   organizerCardBody?: OrganizerCardBodyConfig;
+  /** Replacement relationship-type vocabulary. Omit to leave the existing list untouched. */
+  relationshipTypes?: string[];
 }
 
 /** The persisted feature configuration after an update. */
 export interface FeatureConfigResult {
   features: ProjectFeatureFlags;
   organizerCardBody?: OrganizerCardBodyConfig;
+  relationshipTypes?: string[];
 }
 
 /**
  * Validates and persists a partial feature-configuration update to
- * `project.json`. Each provided block (`features` / `organizerCardBody`)
- * replaces the existing block wholesale; an omitted block is left unchanged.
+ * `project.json`. Each provided block (`features` / `organizerCardBody` /
+ * `relationshipTypes`) replaces the existing block wholesale; an omitted
+ * block is left unchanged.
  *
  * The read-modify-write runs under the project lock and updates `updatedAt`. It
  * never bumps `metadataRevision`.
@@ -75,6 +83,10 @@ export async function updateFeatureConfig(
     update.organizerCardBody !== undefined
       ? OrganizerCardBodyConfigSchema.parse(update.organizerCardBody)
       : undefined;
+  const nextRelationshipTypes =
+    update.relationshipTypes !== undefined
+      ? RelationshipTypesSchema.parse(update.relationshipTypes)
+      : undefined;
 
   const release = await acquireLock(projectRoot);
   try {
@@ -89,6 +101,9 @@ export async function updateFeatureConfig(
     if (nextCardBody !== undefined) {
       config.organizerCardBody = nextCardBody;
     }
+    if (nextRelationshipTypes !== undefined) {
+      config.relationshipTypes = nextRelationshipTypes;
+    }
 
     const nextProject: Project = {
       ...project,
@@ -101,6 +116,7 @@ export async function updateFeatureConfig(
     return {
       features: config.features ?? {},
       organizerCardBody: config.organizerCardBody,
+      relationshipTypes: config.relationshipTypes,
     };
   } finally {
     release();

@@ -483,6 +483,13 @@ export const updateProjectOrganizerCardBody = makeFeatureConfigThunk<{
   organizerCardBody,
 }));
 
+export const updateProjectRelationshipTypes = makeFeatureConfigThunk<{
+  projectId: string;
+  relationshipTypes: string[];
+}>("projects/updateProjectRelationshipTypes", ({ relationshipTypes }) => ({
+  relationshipTypes,
+}));
+
 /**
  * Initial state for the `projects` slice.
  */
@@ -686,11 +693,12 @@ const projectsSlice = createSlice({
     }
 
     // Feature-config thunks share fulfilled handling: mirror the persisted
-    // config (both blocks) back into the stored project. A `null`
+    // config (all three blocks) back into the stored project. A `null`
     // organizerCardBody from the route normalizes to `undefined` (= none).
     const featureConfigThunks = [
       updateProjectFeatures,
       updateProjectOrganizerCardBody,
+      updateProjectRelationshipTypes,
     ] as const;
 
     for (const thunk of featureConfigThunks) {
@@ -702,6 +710,7 @@ const projectsSlice = createSlice({
           ...project,
           features: result.features,
           organizerCardBody: result.organizerCardBody ?? undefined,
+          relationshipTypes: result.relationshipTypes ?? undefined,
         };
         return state;
       });

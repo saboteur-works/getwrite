@@ -3,13 +3,15 @@
  *
  * API endpoint for updating the per-project feature configuration persisted in
  * `project.json`: the `config.features` opt-in flags (Timeline, POV, Synopsis,
- * Notes) and `config.organizerCardBody` (Organizer card-body source).
+ * Notes), `config.organizerCardBody` (Organizer card-body source), and
+ * `config.relationshipTypes` (the project's entity-relationship-type
+ * vocabulary, FR-19).
  *
  * Route:
  * - `POST /api/project/features` — replaces the provided block(s)
  *
- * POST body: `{ projectId: string; features?: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig }`
- * Success:   `{ features: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig }`
+ * POST body: `{ projectId: string; features?: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig; relationshipTypes?: string[] }`
+ * Success:   `{ features: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig; relationshipTypes?: string[] }`
  * Failure:   `{ error: string }`
  *
  * The underlying helper acquires the project lock and does NOT bump
@@ -29,6 +31,7 @@ interface UpdateFeaturesBody {
   projectId: string;
   features?: ProjectFeatureFlags;
   organizerCardBody?: OrganizerCardBodyConfig;
+  relationshipTypes?: string[];
 }
 
 async function handlePost(req: NextRequest): Promise<Response> {
@@ -39,14 +42,21 @@ async function handlePost(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { projectId, features, organizerCardBody } = body;
+  const { projectId, features, organizerCardBody, relationshipTypes } = body;
 
   const resolved = resolveProjectPath(projectId);
   if (resolved instanceof Response) return resolved;
 
-  if (features === undefined && organizerCardBody === undefined) {
+  if (
+    features === undefined &&
+    organizerCardBody === undefined &&
+    relationshipTypes === undefined
+  ) {
     return NextResponse.json(
-      { error: "Provide at least one of: features, organizerCardBody." },
+      {
+        error:
+          "Provide at least one of: features, organizerCardBody, relationshipTypes.",
+      },
       { status: 400 },
     );
   }
@@ -55,7 +65,11 @@ async function handlePost(req: NextRequest): Promise<Response> {
 
   try {
     return NextResponse.json(
-      await updateFeatureConfig(projectPath, { features, organizerCardBody }),
+      await updateFeatureConfig(projectPath, {
+        features,
+        organizerCardBody,
+        relationshipTypes,
+      }),
     );
   } catch (error) {
     // Zod validation failures and malformed input map to 400; everything else

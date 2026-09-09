@@ -18,6 +18,7 @@ import projectsReducer, {
   setSelectedProjectId,
   updateProjectFeatures,
   updateProjectOrganizerCardBody,
+  updateProjectRelationshipTypes,
   selectActiveProjectFeatures,
   selectActiveProjectOrganizerCardBody,
   selectActiveProjectDirectoryId,
@@ -419,6 +420,63 @@ describe("projectsSlice — updateProjectOrganizerCardBody thunk", () => {
     expect(selectActiveProjectOrganizerCardBody(store.getState())).toEqual(
       body,
     );
+  });
+});
+
+describe("projectsSlice — updateProjectRelationshipTypes thunk (FR-19)", () => {
+  it("posts the relationship-type list and updates the store on success", async () => {
+    const store = makeStore();
+    seedProject(store);
+
+    const relationshipTypes = ["ally of", "rival of"];
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ features: {}, relationshipTypes }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    await store.dispatch(
+      updateProjectRelationshipTypes({
+        projectId: "project-1",
+        relationshipTypes,
+      }),
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/project/features", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: "project-1", relationshipTypes }),
+    });
+
+    expect(selectActiveProjectRelationshipTypes(store.getState())).toEqual(
+      relationshipTypes,
+    );
+  });
+
+  it("rejects when the route returns an error and leaves relationshipTypes untouched", async () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, relationshipTypes: ["ally of"] });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "boom" }), { status: 500 }),
+    );
+
+    const result = await store.dispatch(
+      updateProjectRelationshipTypes({
+        projectId: "project-1",
+        relationshipTypes: ["mentor of"],
+      }),
+    );
+
+    expect(result.type).toBe(
+      "projects/updateProjectRelationshipTypes/rejected",
+    );
+    expect(selectActiveProjectRelationshipTypes(store.getState())).toEqual([
+      "ally of",
+    ]);
   });
 });
 

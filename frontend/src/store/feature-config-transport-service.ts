@@ -2,7 +2,7 @@
  * @module feature-config-transport-service
  *
  * Transport for the per-project feature configuration (the `config.features`
- * opt-in flags and `config.organizerCardBody`).
+ * opt-in flags, `config.organizerCardBody`, and `config.relationshipTypes`).
  *
  * ADR-021 Phase 1 (Task 5) transport collapse, mirroring
  * `metadata-schema-transport-service.ts`: one `FeatureConfigTransport`
@@ -28,12 +28,14 @@ import { createTransport } from "./transport/create-transport";
 export interface FeatureConfigUpdate {
   features?: ProjectFeatureFlags;
   organizerCardBody?: OrganizerCardBodyConfig;
+  relationshipTypes?: string[];
 }
 
 /** The persisted feature configuration returned by the route. */
 export interface FeatureConfigResult {
   features: ProjectFeatureFlags;
   organizerCardBody?: OrganizerCardBodyConfig | null;
+  relationshipTypes?: string[];
 }
 
 function getApiErrorMessage(errorBody: unknown, fallback: string): string {
@@ -50,7 +52,7 @@ export interface FeatureConfigTransport {
    *   this is distinct from `project.json`'s internal `id` field — callers
    *   must source it via `selectActiveProjectDirectoryId` /
    *   `getProjectDirectoryId`, never `project.id`).
-   * @param update - Blocks to replace (`features` and/or `organizerCardBody`).
+   * @param update - Blocks to replace (`features`, `organizerCardBody`, and/or `relationshipTypes`).
    * @returns The persisted feature configuration.
    */
   updateFeatureConfig(
@@ -107,7 +109,7 @@ const resolveFeatureConfigTransport: () => Promise<FeatureConfigTransport> =
  *   this is distinct from `project.json`'s internal `id` field — callers
  *   must source it via `selectActiveProjectDirectoryId` /
  *   `getProjectDirectoryId`, never `project.id`).
- * @param update - Blocks to replace (`features` and/or `organizerCardBody`).
+ * @param update - Blocks to replace (`features`, `organizerCardBody`, and/or `relationshipTypes`).
  * @returns The persisted feature configuration.
  * @throws {Error} When the route (or, on native, the underlying core)
  *   rejects the update.
