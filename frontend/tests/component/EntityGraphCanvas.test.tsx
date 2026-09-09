@@ -325,6 +325,71 @@ describe("EntityGraphCanvas", () => {
     expect(afterManyZoomOut.scale).toBeGreaterThanOrEqual(0.25);
   });
 
+  it("anchors a wheel zoom on the pointer, keeping the graph point under the cursor fixed", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const svg = screen.getByTestId("entity-graph-canvas");
+    const viewport = screen.getByTestId("entity-graph-viewport");
+
+    // The viewBox point the cursor sits over. jsdom reports a zero-sized
+    // bounding rect, which the handler treats as an unlaid-out element and
+    // falls back to using the client offset directly — so these are also the
+    // viewBox coordinates here.
+    const pointerX = 200;
+    const pointerY = 100;
+
+    const before = parseViewportTransform(viewport);
+    // The graph-space point currently rendered under the cursor, from the
+    // `p = pan + g * scale` mapping the viewport transform applies.
+    const graphPointBefore = {
+      x: (pointerX - before.x) / before.scale,
+      y: (pointerY - before.y) / before.scale,
+    };
+
+    fireEvent.wheel(svg, {
+      deltaY: -100,
+      clientX: pointerX,
+      clientY: pointerY,
+    });
+
+    const after = parseViewportTransform(viewport);
+    expect(after.scale).toBeGreaterThan(before.scale);
+
+    const graphPointAfter = {
+      x: (pointerX - after.x) / after.scale,
+      y: (pointerY - after.y) / after.scale,
+    };
+
+    // The whole point of anchoring: the same graph coordinate is still under
+    // the cursor. Zooming about the canvas origin instead would leave `pan`
+    // untouched and slide this point away by the zoom factor.
+    expect(graphPointAfter.x).toBeCloseTo(graphPointBefore.x, 6);
+    expect(graphPointAfter.y).toBeCloseTo(graphPointBefore.y, 6);
+    expect(after.x).not.toBe(before.x);
+  });
+
+  it("does not pan when a wheel event cannot change the scale, at a clamp bound", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const svg = screen.getByTestId("entity-graph-canvas");
+    const viewport = screen.getByTestId("entity-graph-viewport");
+
+    // Drive the scale hard against MAX_SCALE first.
+    for (let i = 0; i < 100; i += 1) {
+      fireEvent.wheel(svg, { deltaY: -100, clientX: 200, clientY: 100 });
+    }
+    const atMax = parseViewportTransform(viewport);
+
+    // A further zoom-in tick at the bound changes nothing, including pan —
+    // otherwise the graph would drift sideways with no zoom to justify it.
+    fireEvent.wheel(svg, { deltaY: -100, clientX: 200, clientY: 100 });
+    const afterExtraTick = parseViewportTransform(viewport);
+
+    expect(afterExtraTick.scale).toBe(atMax.scale);
+    expect(afterExtraTick.x).toBe(atMax.x);
+    expect(afterExtraTick.y).toBe(atMax.y);
+  });
+
   it("toggles a selected-state visual attribute on exactly the clicked node, not on others", () => {
     render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
 

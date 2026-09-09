@@ -285,7 +285,10 @@ export function computeGraphLayout(
  * Pan/zoom/selection (Task 6, FR-8): a click-and-drag on empty canvas space
  * (the background `<rect>`, never a node) translates a `pan` offset tracked
  * in state; a wheel event over the canvas scales a `scale` value clamped to
- * `[MIN_SCALE, MAX_SCALE]`. Both are applied via a single wrapping
+ * `[MIN_SCALE, MAX_SCALE]`, anchored on the pointer so the graph point under
+ * the cursor stays under the cursor rather than the canvas origin drifting
+ * away from it (see the wheel handler for the derivation). Both are applied
+ * via a single wrapping
  * `<g transform="translate(...) scale(...)">` around the existing edges and
  * nodes groups, so neither Task 4's layout math nor Task 5's edge-kind
  * markup needed to change — only wrapping. Clicking a node toggles that
@@ -373,6 +376,15 @@ export default function EntityGraphCanvas({
     };
   }, []);
 
+  // The wheel handler needs both the current `scale` and the current `pan` to
+  // anchor a zoom, but it is registered once (see the `[]` effect below) and
+  // would otherwise close over their first values. Mirroring them into refs
+  // keeps the listener registration stable while still reading live values.
+  const scaleRef = React.useRef(scale);
+  scaleRef.current = scale;
+  const panRef = React.useRef(pan);
+  panRef.current = pan;
+
   // A non-passive native `wheel` listener, following this codebase's own
   // `Timeline.tsx` precedent for wheel-driven zoom: React's synthetic
   // `onWheel` is attached passively by default, which would silently drop
@@ -382,12 +394,43 @@ export default function EntityGraphCanvas({
     if (!el) return;
     const handleWheel = (event: WheelEvent): void => {
       event.preventDefault();
+      const previousScale = scaleRef.current;
       const factor = event.deltaY < 0 ? ZOOM_STEP_FACTOR : 1 / ZOOM_STEP_FACTOR;
-      setScale((previous) => clampScale(previous * factor));
+      const nextScale = clampScale(previousScale * factor);
+      // Already at a `clampScale` bound: scale cannot change, so neither may
+      // `pan` — otherwise wheeling at the zoom limit would drift the graph
+      // sideways with no visible zoom to justify it.
+      if (nextScale === previousScale) return;
+
+      // The zoom anchor: the graph point under the cursor must stay under the
+      // cursor. With the `translate(pan) scale(scale)` transform applied in
+      // that order, a viewBox point `p` maps from graph point `g` as
+      // `p = pan + g * scale`, so holding `g` fixed across a scale change
+      // gives `nextPan = p - (p - pan) * (nextScale / previousScale)`.
+      //
+      // `p` must be in viewBox units, not client pixels. The two coincide
+      // only while the SVG renders at exactly its `width`/`height`; a CSS
+      // rule that stretches it would otherwise skew the anchor, so the
+      // client offset is scaled by the rendered-to-viewBox ratio. When the
+      // element is unlaid-out (zero-sized, as in jsdom) the ratio is
+      // meaningless, so the raw offset is used.
+      const rect = el.getBoundingClientRect();
+      const toViewBoxX = rect.width > 0 ? width / rect.width : 1;
+      const toViewBoxY = rect.height > 0 ? height / rect.height : 1;
+      const pointerX = (event.clientX - rect.left) * toViewBoxX;
+      const pointerY = (event.clientY - rect.top) * toViewBoxY;
+
+      const ratio = nextScale / previousScale;
+      const previousPan = panRef.current;
+      setScale(nextScale);
+      setPan({
+        x: pointerX - (pointerX - previousPan.x) * ratio,
+        y: pointerY - (pointerY - previousPan.y) * ratio,
+      });
     };
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
-  }, []);
+  }, [width, height]);
 
   // The single activation path for a node — toggles the selection ring and
   // fires `onNodeActivated` (Task 7, FR-9). Both a pointer click and a
