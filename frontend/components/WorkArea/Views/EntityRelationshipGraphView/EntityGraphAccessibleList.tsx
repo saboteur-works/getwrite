@@ -46,6 +46,20 @@ function sortNodesByName(nodes: EntityGraphNode[]): EntityGraphNode[] {
  * from the same node and edge data, so the two stay in step. It takes that
  * data as props and holds no fetching or selection state of its own, which is
  * also what lets its tests drive it directly from fixtures.
+ *
+ * The list is visually hidden (`sr-only`), not removed: it is FR-10's
+ * designated accessibility mechanism — "MUST be satisfied by the synchronized
+ * accessible list specified in FR-11" — so it has to stay in the
+ * accessibility tree and keyboard tab order while the canvas beside it
+ * carries the visual reading. `sr-only` clips it; `hidden` or `display: none`
+ * would look like the same change and silently delete the graph's only
+ * screen-reader surface.
+ *
+ * It shipped unstyled and therefore visible, which rendered every node name
+ * and edge description as raw text under the canvas. FR-11's wording ("render,
+ * alongside the canvas, a synchronized semantic list") does not say whether
+ * the list should be seen; `sr-only` is the resolution of that ambiguity, and
+ * follows the same convention `EntityRosterRow.tsx:133` uses.
  */
 export default function EntityGraphAccessibleList({
   nodes,
@@ -63,7 +77,7 @@ export default function EntityGraphAccessibleList({
   const sortedNodes = React.useMemo(() => sortNodesByName(nodes), [nodes]);
 
   return (
-    <div data-testid="entity-graph-accessible-list">
+    <div className="sr-only" data-testid="entity-graph-accessible-list">
       <ul aria-label="Entity nodes" data-testid="entity-graph-node-list">
         {sortedNodes.map((node) => (
           <li key={node.entityId} data-testid="entity-graph-node-item">

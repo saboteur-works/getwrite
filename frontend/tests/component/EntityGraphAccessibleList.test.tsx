@@ -141,4 +141,27 @@ describe("EntityGraphAccessibleList", () => {
     const list = screen.getByTestId("entity-graph-edge-list");
     expect(list.textContent).toContain("Unknown entity");
   });
+
+  it("is visually hidden without leaving the accessibility tree", () => {
+    render(
+      <EntityGraphAccessibleList
+        nodes={nodes}
+        edges={[cooccurrenceEdge, authoredEdge]}
+      />,
+    );
+
+    // Visually hidden: the canvas beside this list carries the visual
+    // reading, and this list shipped unstyled, painting every node name and
+    // edge description as raw text under the graph.
+    const container = screen.getByTestId("entity-graph-accessible-list");
+    expect(container.className.split(/\s+/)).toContain("sr-only");
+
+    // ...but still exposed. `sr-only` clips; `hidden`/`display: none` would
+    // look like the same change while deleting the graph's only
+    // screen-reader surface (FR-10 designates this list as the mechanism).
+    expect(container).not.toHaveAttribute("hidden");
+    expect(screen.getByRole("list", { name: "Entity nodes" })).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Entity edges" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Anna" })).toBeTruthy();
+  });
 });

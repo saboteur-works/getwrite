@@ -113,7 +113,7 @@ FR-9: Activating an entity's node (by pointer click, and by keyboard when the no
 
 FR-10: The view MUST meet the project's WCAG 2.1 AA target (`docs/standards/accessibility.md`), including that every node and every edge's existence and kind (co-occurrence vs. authored, and an authored edge's direction, type, and — for a co-occurrence edge — its shared-resource count) MUST be reachable and legible without relying on pointer-driven spatial reading of the canvas alone — a freely-positioned node-and-edge layout is not, by itself, navigable by tab order or a screen reader's normal reading order. This MUST be satisfied by the synchronized accessible list specified in FR-11, not by keyboard-driven traversal of the canvas itself, which is rejected as this feature's primary accessibility mechanism (see Open Questions, OQ-4, for why). [US-1][US-2][US-3]
 
-FR-11: The graph view MUST render, alongside the canvas, a synchronized semantic list giving every node and every edge a reachable accessible role and name — a `<ul>` of `<li>`-wrapped native `<button type="button">` per entity node, mirroring the existing pattern `EntityRosterRow.tsx:70-136` already uses for the roster, plus an equivalent semantic list of edges. Non-colour disclosure of an edge's kind (co-occurrence vs. authored, an authored edge's type and direction, and a co-occurrence edge's shared-resource count per FR-12) MUST be folded into that list's text or accessible names — using visually-hidden (`sr-only`) text where needed, following the same convention `EntityRosterRow.tsx:132-134` already uses for the roster's own warning disclosure — rather than exposed only as a visual-only cue on the canvas. [US-1][US-2][US-3]
+FR-11: The graph view MUST render, alongside the canvas, a synchronized semantic list giving every node and every edge a reachable accessible role and name — a `<ul>` of `<li>`-wrapped native `<button type="button">` per entity node, mirroring the existing pattern `EntityRosterRow.tsx:70-136` already uses for the roster, plus an equivalent semantic list of edges. Non-colour disclosure of an edge's kind (co-occurrence vs. authored, an authored edge's type and direction, and a co-occurrence edge's shared-resource count per FR-12) MUST be folded into that list's text or accessible names — using visually-hidden (`sr-only`) text where needed, following the same convention `EntityRosterRow.tsx:132-134` already uses for the roster's own warning disclosure — rather than exposed only as a visual-only cue on the canvas. The list as a whole MUST be visually hidden via `sr-only` (clipped, not removed) while remaining present in the accessibility tree and in keyboard tab order — the canvas beside it carries the visual reading, and the list is not a second visible rendering of the same content (see Open Questions, OQ-8). This MUST use the `sr-only` clipping technique specifically, not `hidden` or `display: none`: because FR-10 designates this list as the graph's accessibility mechanism, a visibility technique that also removes an element from the accessibility tree — as `hidden`/`display: none` would — reads as the same fix but silently deletes the graph's only screen-reader surface. [US-1][US-2][US-3]
 
 FR-12: A co-occurrence edge's shared-resource count MUST be shown, since it is substantive content — an edge between two entities sharing many resources reads differently from one sharing a single resource. It MUST be encoded on the canvas as edge thickness (a non-colour encoding, consistent with `docs/standards/accessibility.md` §4 and the reserved-red rule) and MUST additionally be given as literal text within FR-11's accessible list, since thickness alone is not perceivable through a screen reader. Thickness MUST be reserved for the co-occurrence count only and MUST NOT be reused as a channel for distinguishing co-occurrence edges from authored edges (FR-5/FR-6), which remain carried by separate non-colour cues. [US-2]
 
@@ -257,6 +257,31 @@ FR-16: The view's own seventh-view plumbing (`ViewName`/`VIEW_OPTIONS`/`AppShell
   is meaningful. The canvas itself has no alphabetical axis under a
   computed layout (OQ-1/OQ-2), so no ordering claim is made about node
   placement on the canvas. — Impact: FR-11.
+
+- OQ-8 (resolved 2026-09-09, post-ship amendment): the FR-11 accessible list
+  is visually hidden as a whole. FR-11 as originally written required the
+  synchronized list's *content* (roles, names, non-colour disclosure) but
+  never stated whether the list itself should be visible or hidden — it
+  mentioned `sr-only` only in the narrower clause covering an edge's
+  non-colour disclosure. The shipped implementation
+  (`EntityGraphAccessibleList.tsx`) read the ambiguity as "visible" and
+  rendered the list with no styling, painting every entity name and every
+  edge description as raw text under the canvas; a user reported this as a
+  rendering bug. The decision, made after ship: the list is visually hidden
+  via `sr-only` in full, while remaining in the accessibility tree and
+  keyboard tab order — the canvas carries the visual reading, and the list
+  exists solely as the FR-10 accessibility mechanism, not as a second visible
+  rendering. `sr-only` (clipped) rather than `hidden`/`display: none` is
+  required for this specifically because of that FR-10 role: a technique
+  that also removes the element from the accessibility tree would look like
+  the same fix while silently deleting the graph's only screen-reader
+  surface. The fix is implemented on `fix/graph-accessible-list-sr-only`
+  (`861b027f`): `className="sr-only"` on the list container in
+  `EntityGraphAccessibleList.tsx`, with a regression test asserting both that
+  the class is present and that the list's roles remain queryable. It has
+  been verified in the running app that the visible text is gone and tab
+  order is unchanged; no screen-reader software has been run against it. —
+  Impact: FR-11.
 
 ## Out of scope (deferred)
 
