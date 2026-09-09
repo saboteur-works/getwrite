@@ -1,0 +1,25 @@
+/*
+ * Styling for the bespoke entity-graph edge tooltip overlay (Task 5,
+ * entity-graph-edge-tooltips, FAIL path). Mirrors `value-picker.css`'s
+ * `.ref-hover-preview__popover` — same brand tokens, same box-shadow/border
+ * treatment — since `RefHoverPreview.tsx` is the pattern this overlay
+ * follows. Scoped under its own `entity-graph-edge-tooltip` prefix rather
+ * than reusing `ref-hover-preview`'s class names, since this popover is
+ * positioned by tracking the live pointer position (via inline
+ * `left`/`top`) rather than anchored above a wrapping element.
+ */
+
+.entity-graph-edge-tooltip {
+  transform: translate(10px, -100%);
+  background: var(--color-gw-chrome2);
+  border: 0.5px solid var(--color-gw-border-md);
+  padding: 6px 9px;
+  z-index: 300;
+  white-space: nowrap;
+  border-radius: 2px;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-gw-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
