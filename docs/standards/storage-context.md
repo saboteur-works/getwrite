@@ -29,8 +29,9 @@ installed once at startup by `native-bootstrap.ts`. Web and desktop never call
 metadata-schema, feature-config, search from Phase 1, plus project,
 project-actions, resource, resource-excerpts, tags, preferences,
 editor-config, project-types, compile, and export from Phase 2 — plus
-mentions, entity-alias-table, entity-mention-counts, and entity-cooccurrence,
-added after Phase 2 for entity-layer/entity-roster/entity-cooccurrence parity) all read
+mentions, entity-alias-table, entity-mention-counts, entity-cooccurrence, and
+entity-relationships, added after Phase 2 for entity-layer/entity-roster/
+entity-cooccurrence/entity-relationships parity) all read
 through this same app-lifetime default context rather than establishing
 their own scope per call; there is no per-operation `runInStorageContext`
 rebind on the native path in production. Each backend accepts an injectable
