@@ -99,7 +99,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** This is the task that makes the feature reachable at all: `config.relationshipTypes` is empty for every project today, no built-in project type seeds it, and no UI exists to set it, so before this task the FR-2 creation control has nothing valid to offer and the write path rejects everything it might anyway. The selector/model-agreement assertion above is the specific defect this change could otherwise introduce, named explicitly rather than left to be discovered later.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Extend the feature-config route, model, and thunk to persist a project's relationship-type list (FR-19)
 **What:** Extends the existing `POST /api/project/features` route (`frontend/app/api/project/features/route.ts`) to accept an optional third body field, `relationshipTypes?: string[]`, alongside the existing `features` and `organizerCardBody`; extends `FeatureConfigUpdate`/`FeatureConfigResult` and `updateFeatureConfig` (`frontend/src/lib/models/project-features.ts`) to validate (`z.array(z.string())`) and wholesale-replace `config.relationshipTypes` when the field is provided, following the identical pattern already used for `organizerCardBody`; and adds `updateProjectRelationshipTypes`, a two-line thunk built from the existing `makeFeatureConfigThunk` factory (`projectsSlice.ts:441`), mirroring `updateProjectOrganizerCardBody` (`projectsSlice.ts:472`) exactly. No new route, no new model function, and no new transport module are added — this task only widens the three that already exist.
@@ -108,7 +108,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 11
 **Estimate:** 3
 **Notes:** Because `feature-config-transport-service` is already one of the seven `createTransport`-collapsed services (ADR-021 Phase 1), this task requires no new native backend and no `next.config.mjs` change — ADR-021 native parity is inherited from the existing transport, not built here, unlike every prior write path this feature added (Tasks 3-5). This task's own "Done when" therefore contains no native-specific verification.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Add the relationship-type settings editor component (FR-19)
 **What:** Adds a new project-settings editor component, `frontend/components/preferences/RelationshipTypesSettings.tsx`, alongside the existing `ProjectFeatureToggles.tsx` and `OrganizerCardBodySettings.tsx` project-config editors in that same directory — the sibling precedents for a settings-surface editor of a `project.json` config block. Lets a user view the project's current *effective* relationship-type list (via Task 11's `selectActiveProjectRelationshipTypes`, so the editor and the FR-2 create control (Task 6) always read the identical list), add a new type (a text input plus "Add" control, rejecting a duplicate or blank entry client-side), remove an existing type, and reorder the list (e.g. up/down controls per row — drag-and-drop is not required). Saving dispatches Task 12's `updateProjectRelationshipTypes` thunk with the full, reordered array, replacing `config.relationshipTypes` wholesale per that route's existing whole-block-replace contract. Rendered wherever `ProjectFeatureToggles.tsx`/`OrganizerCardBodySettings.tsx` are already rendered in the settings surface, gated on nothing beyond the existing `entities` flag — no new flag is introduced, consistent with FR-10 and this feature's non-goals.
@@ -117,7 +117,7 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Depends on:** 12
 **Estimate:** 5
 **Notes:** This is FR-19's entire UI-layer scope, and closes the "no way past the message" gap this amendment exists to fix: before Tasks 11 and 13, an empty effective relationship-type list left the FR-2 create control (Task 6) permanently disabled with no in-app path to populate it — Task 11 supplies the default vocabulary, this task supplies the user-extension path ("sworn enemy of" being exactly the kind of type no default list can anticipate).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Manual verification pass in the running app
 **What:** Exercises the complete feature by hand in the running desktop/web app (and, if a device is available, Android) to confirm behavior the automated suite cannot fully assert: visual appearance of the create/list/remove/settings controls, the FR-11 placeholder produced by a real entity deletion performed *after* an edge already exists, FR-17 idempotency performed twice through the actual UI control rather than the API directly, and — the specific case that was previously broken — the feature working end to end in a project that has never had `relationshipTypes` persisted.
