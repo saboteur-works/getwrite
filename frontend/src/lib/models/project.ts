@@ -12,6 +12,14 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
     maxRevisions: config?.maxRevisions ?? 50,
     wordCountGoal: config?.wordCountGoal,
     statuses: config?.statuses ?? [],
+    // Left undefined (not defaulted to []) when absent, unlike `statuses`:
+    // FR-18's DEFAULT_RELATIONSHIP_TYPES fallback is applied at read time by
+    // `createEntityRelationship` and `selectActiveProjectRelationshipTypes`,
+    // which must be able to distinguish "never persisted" (undefined, falls
+    // back to the default vocabulary) from "explicitly emptied" ([], FR-15)
+    // — the same undefined-preserving treatment `metadataSchema` already
+    // gets in this function for the same reason.
+    relationshipTypes: config?.relationshipTypes,
     autoPrune: config?.autoPrune ?? true,
     editorConfig: config?.editorConfig ?? {},
     defaultRevisionName: config?.defaultRevisionName,

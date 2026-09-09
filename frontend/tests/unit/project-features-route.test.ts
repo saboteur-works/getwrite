@@ -91,6 +91,59 @@ describe("POST /api/project/features", () => {
     expect(json.features.pov).toBe(true);
   });
 
+  it("persists relationshipTypes when only that field is provided in the body (FR-19)", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    await writeProject(projectsDir, projectId);
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        featuresRequest({
+          projectId,
+          relationshipTypes: ["ally of", "rival of"],
+        }) as never,
+      ),
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.relationshipTypes).toEqual(["ally of", "rival of"]);
+  });
+
+  it("accepts a request supplying only relationshipTypes — the at-least-one guard is widened, not rejected (FR-19)", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    await writeProject(projectsDir, projectId);
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        featuresRequest({
+          projectId,
+          relationshipTypes: ["mentor of"],
+        }) as never,
+      ),
+    );
+
+    expect(res.status).not.toBe(400);
+    expect(res.status).toBe(200);
+  });
+
+  it("still returns 400 when none of features/organizerCardBody/relationshipTypes is provided", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    await writeProject(projectsDir, projectId);
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(featuresRequest({ projectId }) as never),
+    );
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe(
+      "Provide at least one of: features, organizerCardBody, relationshipTypes.",
+    );
+  });
+
   it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
     const projectsDir = await makeProjectsDir();
 

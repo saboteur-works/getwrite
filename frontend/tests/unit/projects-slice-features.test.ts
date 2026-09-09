@@ -7,12 +7,18 @@
  * `updateProjectOrganizerCardBody` thunks (transport call + store update).
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { configureStore } from "@reduxjs/toolkit";
+import { DEFAULT_RELATIONSHIP_TYPES } from "../../src/lib/models/default-relationship-types";
+import { createEntityRelationship } from "../../src/lib/models/entity-relationships";
 import projectsReducer, {
   setProjects,
   setSelectedProjectId,
   updateProjectFeatures,
   updateProjectOrganizerCardBody,
+  updateProjectRelationshipTypes,
   selectActiveProjectFeatures,
   selectActiveProjectOrganizerCardBody,
   selectActiveProjectDirectoryId,
@@ -23,6 +29,7 @@ import projectsReducer, {
   selectNotesEnabled,
   selectEntitiesEnabled,
   selectEntityHighlightingEnabled,
+  selectActiveProjectRelationshipTypes,
   buildStoredProject,
 } from "../../src/store/projectsSlice";
 import type { Project } from "../../src/lib/models/types";
@@ -154,6 +161,112 @@ describe("projectsSlice — feature selectors (absent = disabled)", () => {
     expect(selectTimelineEnabled(state)).toBe(false);
     expect(selectActiveProjectFeatures(state)).toEqual({});
     expect(selectActiveProjectOrganizerCardBody(state)).toBeNull();
+  });
+});
+
+describe("projectsSlice — selectActiveProjectRelationshipTypes", () => {
+  it("returns the configured relationship-type list verbatim for the active project", () => {
+    const store = makeStore();
+    seedProject(store, {
+      editorConfig: {},
+      relationshipTypes: ["ally of", "rival of"],
+    });
+    const state = store.getState();
+    expect(selectActiveProjectRelationshipTypes(state)).toEqual([
+      "ally of",
+      "rival of",
+    ]);
+  });
+
+  it("returns DEFAULT_RELATIONSHIP_TYPES when the project has no persisted relationshipTypes (FR-18)", () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {} });
+    const state = store.getState();
+    expect(selectActiveProjectRelationshipTypes(state)).toEqual(
+      DEFAULT_RELATIONSHIP_TYPES,
+    );
+  });
+
+  it("returns the persisted list verbatim — [] — when the project has explicitly emptied relationshipTypes, rather than falling back to defaults (FR-15)", () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, relationshipTypes: [] });
+    const state = store.getState();
+    expect(selectActiveProjectRelationshipTypes(state)).toEqual([]);
+  });
+
+  it("returns DEFAULT_RELATIONSHIP_TYPES when no project is selected", () => {
+    const store = makeStore();
+    const state = store.getState();
+    expect(selectActiveProjectRelationshipTypes(state)).toEqual(
+      DEFAULT_RELATIONSHIP_TYPES,
+    );
+  });
+
+  it("agrees with the model layer's accepted set (FR-15): no persisted list", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-relationship-types-agree-"),
+    );
+    await fs.writeFile(
+      path.join(tmp, "project.json"),
+      JSON.stringify({ config: {} }, null, 2),
+      "utf8",
+    );
+
+    const store = makeStore();
+    seedProject(store, { editorConfig: {} });
+    const selectorTypes = selectActiveProjectRelationshipTypes(
+      store.getState(),
+    );
+    expect(selectorTypes).toEqual(DEFAULT_RELATIONSHIP_TYPES);
+
+    for (const type of selectorTypes) {
+      const edge = await createEntityRelationship(
+        tmp,
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+        type,
+      );
+      expect(edge.relationshipType).toBe(type);
+    }
+    await expect(
+      createEntityRelationship(
+        tmp,
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+        "not-a-real-type",
+      ),
+    ).rejects.toThrow();
+
+    await fs.rm(tmp, { recursive: true, force: true });
+  });
+
+  it("agrees with the model layer's accepted set (FR-15): persisted empty list", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-relationship-types-agree-empty-"),
+    );
+    await fs.writeFile(
+      path.join(tmp, "project.json"),
+      JSON.stringify({ config: { relationshipTypes: [] } }, null, 2),
+      "utf8",
+    );
+
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, relationshipTypes: [] });
+    const selectorTypes = selectActiveProjectRelationshipTypes(
+      store.getState(),
+    );
+    expect(selectorTypes).toEqual([]);
+
+    await expect(
+      createEntityRelationship(
+        tmp,
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+        DEFAULT_RELATIONSHIP_TYPES[0],
+      ),
+    ).rejects.toThrow();
+
+    await fs.rm(tmp, { recursive: true, force: true });
   });
 });
 
@@ -310,6 +423,63 @@ describe("projectsSlice — updateProjectOrganizerCardBody thunk", () => {
   });
 });
 
+describe("projectsSlice — updateProjectRelationshipTypes thunk (FR-19)", () => {
+  it("posts the relationship-type list and updates the store on success", async () => {
+    const store = makeStore();
+    seedProject(store);
+
+    const relationshipTypes = ["ally of", "rival of"];
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ features: {}, relationshipTypes }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    await store.dispatch(
+      updateProjectRelationshipTypes({
+        projectId: "project-1",
+        relationshipTypes,
+      }),
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/project/features", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: "project-1", relationshipTypes }),
+    });
+
+    expect(selectActiveProjectRelationshipTypes(store.getState())).toEqual(
+      relationshipTypes,
+    );
+  });
+
+  it("rejects when the route returns an error and leaves relationshipTypes untouched", async () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, relationshipTypes: ["ally of"] });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "boom" }), { status: 500 }),
+    );
+
+    const result = await store.dispatch(
+      updateProjectRelationshipTypes({
+        projectId: "project-1",
+        relationshipTypes: ["mentor of"],
+      }),
+    );
+
+    expect(result.type).toBe(
+      "projects/updateProjectRelationshipTypes/rejected",
+    );
+    expect(selectActiveProjectRelationshipTypes(store.getState())).toEqual([
+      "ally of",
+    ]);
+  });
+});
+
 describe("buildStoredProject", () => {
   function makeProject(config?: Project["config"]): Project {
     return {
@@ -354,6 +524,18 @@ describe("buildStoredProject", () => {
     );
     expect(stored.statuses).toEqual(["draft", "done"]);
     expect(stored.metadataSchema).toEqual({ groups: [] });
+  });
+
+  it("carries relationshipTypes", () => {
+    const stored = buildStoredProject(
+      makeProject({
+        editorConfig: {},
+        relationshipTypes: ["ally of", "rival of"],
+      }),
+      [],
+      [],
+    );
+    expect(stored.relationshipTypes).toEqual(["ally of", "rival of"]);
   });
 
   it("leaves features/organizerCardBody undefined for a project with no config", () => {

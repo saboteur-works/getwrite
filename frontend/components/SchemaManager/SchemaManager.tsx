@@ -30,6 +30,7 @@ import { slugifyName, deriveLabel } from "../../src/lib/models/field-dedup";
 import ConfirmDialog from "../common/ConfirmDialog";
 import EditContextMenu from "../common/UI/ContextMenu/EditContextMenu";
 import ProjectFeatureToggles from "../preferences/ProjectFeatureToggles";
+import RelationshipTypesSettings from "../preferences/RelationshipTypesSettings";
 import ProjectEncryptionPanel from "../preferences/ProjectEncryptionPanel";
 
 const SLUG_RE = /^[a-z0-9-]+$/;
@@ -511,6 +512,9 @@ export default function SchemaManager({
 
         {/* ── Built-in feature toggles (co-located with the fields they govern) ── */}
         <ProjectFeatureToggles />
+
+        {/* ── Relationship-type vocabulary for entity relationships (FR-19) ── */}
+        <RelationshipTypesSettings />
 
         {/* ── Encryption: the one route into encrypting this project (FR2) ── */}
         <ProjectEncryptionPanel />

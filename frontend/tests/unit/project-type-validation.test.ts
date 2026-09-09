@@ -82,6 +82,42 @@ describe("project-type validation (T016)", () => {
     expect(res.success).toBe(false);
     expect(JSON.stringify(res.errors)).toContain("extra");
   });
+
+  it("accepts an optional relationshipTypes string array", () => {
+    const spec = {
+      id: "with-relationship-types",
+      name: "With Relationship Types",
+      folders: [{ name: "Workspace" }],
+      relationshipTypes: ["ally of", "rival of"],
+    };
+    const res = validateProjectType(spec);
+    expect(res.success).toBe(true);
+    if (res.success && "value" in res && res.value)
+      expect(res.value.relationshipTypes).toEqual(["ally of", "rival of"]);
+  });
+
+  it("accepts a spec with no relationshipTypes at all", () => {
+    const spec = {
+      id: "no-relationship-types",
+      name: "No Relationship Types",
+      folders: [{ name: "Workspace" }],
+    };
+    const res = validateProjectType(spec);
+    expect(res.success).toBe(true);
+    if (res.success && "value" in res && res.value)
+      expect(res.value.relationshipTypes).toBeUndefined();
+  });
+
+  it("rejects a non-string-array relationshipTypes value", () => {
+    const spec = {
+      id: "bad-relationship-types",
+      name: "Bad Relationship Types",
+      folders: [{ name: "Workspace" }],
+      relationshipTypes: [1, 2, 3],
+    };
+    const res = validateProjectType(spec);
+    expect(res.success).toBe(false);
+  });
 });
 
 /**

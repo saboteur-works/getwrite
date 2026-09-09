@@ -95,6 +95,8 @@ export interface ProjectConfig {
   wordCountGoal?: number;
   /** Custom status values available to the project (e.g., ["Draft","Complete"]). */
   statuses?: string[];
+  /** Custom relationship-type values available to the project (e.g., ["ally of","rival of"]). */
+  relationshipTypes?: string[];
   /**
    * When true, automatically prune oldest non-canonical revisions when limit is exceeded.
    * When false, the UI should prompt the user (interactive) or abort in headless contexts.

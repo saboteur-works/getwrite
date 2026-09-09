@@ -22,6 +22,7 @@ import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
 import TagsSection from "./TagsSection";
 import EntitySection from "./EntitySection";
+import EntityRelationshipsSection from "./EntityRelationshipsSection";
 import EntitiesMentionedSection from "./EntitiesMentionedSection";
 import EntityMentionsSection from "./EntityMentionsSection";
 import EntityCompileSection from "./EntityCompileSection";
@@ -534,6 +535,9 @@ export default function MetadataSidebar({
               <EntityMentionsProvider>
                 <CollapsibleSection title="Entity" variant="sidebar">
                   <EntitySection />
+                </CollapsibleSection>
+                <CollapsibleSection title="Relationships" variant="sidebar">
+                  <EntityRelationshipsSection />
                 </CollapsibleSection>
                 <CollapsibleSection
                   title="Entities Mentioned"

@@ -14,6 +14,7 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Project } from "../lib/models";
 import { DEFAULT_METADATA_SCHEMA } from "../lib/models/default-metadata-schema";
+import { DEFAULT_RELATIONSHIP_TYPES } from "../lib/models/default-relationship-types";
 import type {
   MetadataField,
   MetadataFieldType,
@@ -89,6 +90,8 @@ export interface StoredProject {
   metadata?: Record<string, MetadataValue>;
   /** Ordered list of status values configured for this project. */
   statuses?: string[];
+  /** Ordered list of relationship-type values configured for this project. */
+  relationshipTypes?: string[];
   /** Active metadata field schema. Defaults to DEFAULT_METADATA_SCHEMA when not persisted on disk. */
   metadataSchema?: MetadataSchema;
   /** Per-feature opt-in flags. Absent (or an absent flag) means the feature is disabled. */
@@ -133,6 +136,13 @@ export function buildStoredProject(
     })),
     metadata: project.metadata,
     statuses: project.config?.statuses ?? [],
+    // Left as-is (not defaulted to []) when absent, unlike `statuses`: see
+    // the matching comment on `normalizeProjectConfig`
+    // (`lib/models/project.ts`) — `selectActiveProjectRelationshipTypes`
+    // needs to see `undefined` to apply the FR-18 default vocabulary rather
+    // than an already-collapsed `[]` that would be indistinguishable from an
+    // explicitly emptied list (FR-15).
+    relationshipTypes: project.config?.relationshipTypes,
     metadataSchema: project.config?.metadataSchema,
     features: project.config?.features,
     organizerCardBody: project.config?.organizerCardBody,
@@ -473,6 +483,13 @@ export const updateProjectOrganizerCardBody = makeFeatureConfigThunk<{
   organizerCardBody,
 }));
 
+export const updateProjectRelationshipTypes = makeFeatureConfigThunk<{
+  projectId: string;
+  relationshipTypes: string[];
+}>("projects/updateProjectRelationshipTypes", ({ relationshipTypes }) => ({
+  relationshipTypes,
+}));
+
 /**
  * Initial state for the `projects` slice.
  */
@@ -676,11 +693,12 @@ const projectsSlice = createSlice({
     }
 
     // Feature-config thunks share fulfilled handling: mirror the persisted
-    // config (both blocks) back into the stored project. A `null`
+    // config (all three blocks) back into the stored project. A `null`
     // organizerCardBody from the route normalizes to `undefined` (= none).
     const featureConfigThunks = [
       updateProjectFeatures,
       updateProjectOrganizerCardBody,
+      updateProjectRelationshipTypes,
     ] as const;
 
     for (const thunk of featureConfigThunks) {
@@ -692,6 +710,7 @@ const projectsSlice = createSlice({
           ...project,
           features: result.features,
           organizerCardBody: result.organizerCardBody ?? undefined,
+          relationshipTypes: result.relationshipTypes ?? undefined,
         };
         return state;
       });
@@ -778,6 +797,27 @@ export const selectSelectedProjectId = (state: any): string | null => {
 export const selectActiveProjectStatuses = (state: any): string[] => {
   const id = state?.projects?.selectedProjectId;
   return state?.projects?.projects?.[id]?.statuses ?? [];
+};
+
+/**
+ * Selects the ordered relationship-types array for the currently active
+ * project.
+ *
+ * Falls back to DEFAULT_RELATIONSHIP_TYPES when the active project has no
+ * persisted `relationshipTypes` list (FR-18), so this selector and the
+ * model-layer write path (`entity-relationships.ts`'s
+ * `createEntityRelationship`) agree on the same effective list (FR-15).
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ * @returns Array of relationship-type strings configured for the active
+ *   project, or `DEFAULT_RELATIONSHIP_TYPES` when none is persisted.
+ */
+export const selectActiveProjectRelationshipTypes = (state: any): string[] => {
+  const id = state?.projects?.selectedProjectId;
+  return (
+    state?.projects?.projects?.[id]?.relationshipTypes ??
+    DEFAULT_RELATIONSHIP_TYPES
+  );
 };
 
 /**

@@ -9,6 +9,61 @@ import { removeDirRetry } from "./helpers/fs-utils";
 import { listRevisions } from "../../src/lib/models/revision";
 
 describe("models/project-creator", () => {
+  it("seeds config.relationshipTypes from the project-type spec (FR-14)", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-relationship-types-"),
+    );
+    try {
+      const spec = {
+        id: "test-relationship-types",
+        name: "Relationship Types Test",
+        folders: [{ name: "Workspace" }],
+        relationshipTypes: ["ally of", "rival of"],
+      };
+      const { project } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "Relationship Types Project" },
+      );
+
+      expect(project.config?.relationshipTypes).toEqual([
+        "ally of",
+        "rival of",
+      ]);
+
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
+  it("leaves config.relationshipTypes undefined when the spec declares none, so FR-18's default vocabulary fallback applies", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-relationship-types-none-"),
+    );
+    try {
+      const spec = {
+        id: "test-no-relationship-types",
+        name: "No Relationship Types Test",
+        folders: [{ name: "Workspace" }],
+      };
+      const { project } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "No Relationship Types Project" },
+      );
+
+      // Not defaulted to [] here (unlike `statuses`): `relationshipTypes`
+      // must stay undefined so `createEntityRelationship` and
+      // `selectActiveProjectRelationshipTypes` can tell "never persisted"
+      // apart from "explicitly emptied" and fall back to
+      // DEFAULT_RELATIONSHIP_TYPES (FR-15, FR-18).
+      expect(project.config?.relationshipTypes).toBeUndefined();
+
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
   it("propagates metadataSource and special from defaultFolders to persisted folder.json", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-sf-meta-"));
     try {

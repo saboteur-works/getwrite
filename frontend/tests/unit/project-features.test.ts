@@ -181,6 +181,94 @@ describe("updateFeatureConfig (Task 4)", () => {
     }
   });
 
+  it("persists config.relationshipTypes to project.json (FR-19)", async () => {
+    const dir = await makeTmpProject();
+    try {
+      await updateFeatureConfig(dir, {
+        relationshipTypes: ["ally of", "rival of"],
+      });
+      const saved = await readProject(dir);
+      expect(saved.config?.relationshipTypes).toEqual(["ally of", "rival of"]);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("leaves features and organizerCardBody untouched when only relationshipTypes is provided (FR-19)", async () => {
+    const dir = await makeTmpProject({
+      editorConfig: {},
+      features: { timeline: true },
+      organizerCardBody: { source: "field", fieldKey: "synopsis" },
+    });
+    try {
+      await updateFeatureConfig(dir, { relationshipTypes: ["mentor of"] });
+      const saved = await readProject(dir);
+      expect(saved.config?.features).toEqual({ timeline: true });
+      expect(saved.config?.organizerCardBody).toEqual({
+        source: "field",
+        fieldKey: "synopsis",
+      });
+      expect(saved.config?.relationshipTypes).toEqual(["mentor of"]);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("leaves relationshipTypes untouched when only features is provided (FR-19)", async () => {
+    const dir = await makeTmpProject({
+      editorConfig: {},
+      relationshipTypes: ["ally of"],
+    });
+    try {
+      await updateFeatureConfig(dir, { features: { pov: true } });
+      const saved = await readProject(dir);
+      expect(saved.config?.relationshipTypes).toEqual(["ally of"]);
+      expect(saved.config?.features).toEqual({ pov: true });
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("replaces the relationshipTypes block wholesale on each call, including with an explicit empty list (FR-19)", async () => {
+    const dir = await makeTmpProject({
+      editorConfig: {},
+      relationshipTypes: ["ally of", "rival of"],
+    });
+    try {
+      await updateFeatureConfig(dir, { relationshipTypes: [] });
+      const saved = await readProject(dir);
+      expect(saved.config?.relationshipTypes).toEqual([]);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("rejects malformed relationshipTypes (FR-19)", async () => {
+    const dir = await makeTmpProject();
+    try {
+      await expect(
+        updateFeatureConfig(dir, {
+          // @ts-expect-error intentionally malformed
+          relationshipTypes: [1, 2],
+        }),
+      ).rejects.toThrow();
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("returns the persisted relationshipTypes (FR-19)", async () => {
+    const dir = await makeTmpProject();
+    try {
+      const result = await updateFeatureConfig(dir, {
+        relationshipTypes: ["ally of"],
+      });
+      expect(result.relationshipTypes).toEqual(["ally of"]);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
   it("rejects an unknown organizer card-body source", async () => {
     const dir = await makeTmpProject();
     try {
