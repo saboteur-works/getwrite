@@ -7,6 +7,7 @@ import {
   createEntityRelationship,
   removeEntityRelationship,
 } from "../../src/lib/models/entity-relationships";
+import { DEFAULT_RELATIONSHIP_TYPES } from "../../src/lib/models/default-relationship-types";
 
 const SOURCE_ID = "11111111-1111-4111-8111-111111111111";
 const TARGET_ID = "22222222-2222-4222-8222-222222222222";
@@ -23,6 +24,16 @@ async function writeProjectConfig(
   await fs.writeFile(
     path.join(projectRoot, "project.json"),
     JSON.stringify({ config: { relationshipTypes } }, null, 2),
+    "utf8",
+  );
+}
+
+async function writeProjectConfigWithNoRelationshipTypes(
+  projectRoot: string,
+): Promise<void> {
+  await fs.writeFile(
+    path.join(projectRoot, "project.json"),
+    JSON.stringify({ config: {} }, null, 2),
     "utf8",
   );
 }
@@ -92,6 +103,48 @@ describe("createEntityRelationship", () => {
     await writeProjectConfig(tmp, ["ally"]);
     await expect(
       createEntityRelationship(tmp, SOURCE_ID, TARGET_ID, "nemesis"),
+    ).rejects.toThrow();
+    const loaded = await loadEntityRelationships(tmp);
+    expect(loaded).toEqual([]);
+    await removeDirRetry(tmp);
+  });
+
+  it("succeeds for a relationshipType drawn from DEFAULT_RELATIONSHIP_TYPES when the project has no persisted config.relationshipTypes (FR-18)", async () => {
+    const tmp = await makeTmp();
+    await writeProjectConfigWithNoRelationshipTypes(tmp);
+    const created = await createEntityRelationship(
+      tmp,
+      SOURCE_ID,
+      TARGET_ID,
+      DEFAULT_RELATIONSHIP_TYPES[0],
+    );
+    expect(created.relationshipType).toBe(DEFAULT_RELATIONSHIP_TYPES[0]);
+    const loaded = await loadEntityRelationships(tmp);
+    expect(loaded).toHaveLength(1);
+    await removeDirRetry(tmp);
+  });
+
+  it("throws for a type not in DEFAULT_RELATIONSHIP_TYPES when the project has no persisted config.relationshipTypes (FR-18)", async () => {
+    const tmp = await makeTmp();
+    await writeProjectConfigWithNoRelationshipTypes(tmp);
+    await expect(
+      createEntityRelationship(tmp, SOURCE_ID, TARGET_ID, "nemesis of"),
+    ).rejects.toThrow();
+    const loaded = await loadEntityRelationships(tmp);
+    expect(loaded).toEqual([]);
+    await removeDirRetry(tmp);
+  });
+
+  it("rejects every relationshipType, including default ones, when config.relationshipTypes is explicitly persisted as [] (FR-15)", async () => {
+    const tmp = await makeTmp();
+    await writeProjectConfig(tmp, []);
+    await expect(
+      createEntityRelationship(
+        tmp,
+        SOURCE_ID,
+        TARGET_ID,
+        DEFAULT_RELATIONSHIP_TYPES[0],
+      ),
     ).rejects.toThrow();
     const loaded = await loadEntityRelationships(tmp);
     expect(loaded).toEqual([]);

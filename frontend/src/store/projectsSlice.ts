@@ -14,6 +14,7 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Project } from "../lib/models";
 import { DEFAULT_METADATA_SCHEMA } from "../lib/models/default-metadata-schema";
+import { DEFAULT_RELATIONSHIP_TYPES } from "../lib/models/default-relationship-types";
 import type {
   MetadataField,
   MetadataFieldType,
@@ -135,7 +136,13 @@ export function buildStoredProject(
     })),
     metadata: project.metadata,
     statuses: project.config?.statuses ?? [],
-    relationshipTypes: project.config?.relationshipTypes ?? [],
+    // Left as-is (not defaulted to []) when absent, unlike `statuses`: see
+    // the matching comment on `normalizeProjectConfig`
+    // (`lib/models/project.ts`) — `selectActiveProjectRelationshipTypes`
+    // needs to see `undefined` to apply the FR-18 default vocabulary rather
+    // than an already-collapsed `[]` that would be indistinguishable from an
+    // explicitly emptied list (FR-15).
+    relationshipTypes: project.config?.relationshipTypes,
     metadataSchema: project.config?.metadataSchema,
     features: project.config?.features,
     organizerCardBody: project.config?.organizerCardBody,
@@ -787,13 +794,21 @@ export const selectActiveProjectStatuses = (state: any): string[] => {
  * Selects the ordered relationship-types array for the currently active
  * project.
  *
+ * Falls back to DEFAULT_RELATIONSHIP_TYPES when the active project has no
+ * persisted `relationshipTypes` list (FR-18), so this selector and the
+ * model-layer write path (`entity-relationships.ts`'s
+ * `createEntityRelationship`) agree on the same effective list (FR-15).
+ *
  * @param state - Redux root state (typed as `any` to avoid circular imports).
  * @returns Array of relationship-type strings configured for the active
- *   project, or `[]`.
+ *   project, or `DEFAULT_RELATIONSHIP_TYPES` when none is persisted.
  */
 export const selectActiveProjectRelationshipTypes = (state: any): string[] => {
   const id = state?.projects?.selectedProjectId;
-  return state?.projects?.projects?.[id]?.relationshipTypes ?? [];
+  return (
+    state?.projects?.projects?.[id]?.relationshipTypes ??
+    DEFAULT_RELATIONSHIP_TYPES
+  );
 };
 
 /**

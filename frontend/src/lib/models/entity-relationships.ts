@@ -20,6 +20,7 @@
  */
 import path from "node:path";
 import { z } from "zod";
+import { DEFAULT_RELATIONSHIP_TYPES } from "./default-relationship-types";
 import { atomicWriteFile, mkdir, readFile } from "./io";
 import { withMetaLock } from "./meta-locks";
 import { loadProjectConfig } from "./project-config";
@@ -160,7 +161,7 @@ export async function createEntityRelationship(
   }
 
   const config = await loadProjectConfig(projectRoot);
-  const allowedTypes = config.relationshipTypes ?? [];
+  const allowedTypes = config.relationshipTypes ?? DEFAULT_RELATIONSHIP_TYPES;
   if (!allowedTypes.includes(relationshipType)) {
     throw new InvalidRelationshipTypeError(
       `createEntityRelationship: relationshipType "${relationshipType}" is not in the project's relationshipTypes list`,

@@ -7,7 +7,12 @@
  * `updateProjectOrganizerCardBody` thunks (transport call + store update).
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { configureStore } from "@reduxjs/toolkit";
+import { DEFAULT_RELATIONSHIP_TYPES } from "../../src/lib/models/default-relationship-types";
+import { createEntityRelationship } from "../../src/lib/models/entity-relationships";
 import projectsReducer, {
   setProjects,
   setSelectedProjectId,
@@ -159,7 +164,7 @@ describe("projectsSlice — feature selectors (absent = disabled)", () => {
 });
 
 describe("projectsSlice — selectActiveProjectRelationshipTypes", () => {
-  it("returns the configured relationship-type list for the active project", () => {
+  it("returns the configured relationship-type list verbatim for the active project", () => {
     const store = makeStore();
     seedProject(store, {
       editorConfig: {},
@@ -172,17 +177,95 @@ describe("projectsSlice — selectActiveProjectRelationshipTypes", () => {
     ]);
   });
 
-  it("returns [] when the project has no relationshipTypes configured", () => {
+  it("returns DEFAULT_RELATIONSHIP_TYPES when the project has no persisted relationshipTypes (FR-18)", () => {
     const store = makeStore();
     seedProject(store, { editorConfig: {} });
+    const state = store.getState();
+    expect(selectActiveProjectRelationshipTypes(state)).toEqual(
+      DEFAULT_RELATIONSHIP_TYPES,
+    );
+  });
+
+  it("returns the persisted list verbatim — [] — when the project has explicitly emptied relationshipTypes, rather than falling back to defaults (FR-15)", () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, relationshipTypes: [] });
     const state = store.getState();
     expect(selectActiveProjectRelationshipTypes(state)).toEqual([]);
   });
 
-  it("returns [] when no project is selected", () => {
+  it("returns DEFAULT_RELATIONSHIP_TYPES when no project is selected", () => {
     const store = makeStore();
     const state = store.getState();
-    expect(selectActiveProjectRelationshipTypes(state)).toEqual([]);
+    expect(selectActiveProjectRelationshipTypes(state)).toEqual(
+      DEFAULT_RELATIONSHIP_TYPES,
+    );
+  });
+
+  it("agrees with the model layer's accepted set (FR-15): no persisted list", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-relationship-types-agree-"),
+    );
+    await fs.writeFile(
+      path.join(tmp, "project.json"),
+      JSON.stringify({ config: {} }, null, 2),
+      "utf8",
+    );
+
+    const store = makeStore();
+    seedProject(store, { editorConfig: {} });
+    const selectorTypes = selectActiveProjectRelationshipTypes(
+      store.getState(),
+    );
+    expect(selectorTypes).toEqual(DEFAULT_RELATIONSHIP_TYPES);
+
+    for (const type of selectorTypes) {
+      const edge = await createEntityRelationship(
+        tmp,
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+        type,
+      );
+      expect(edge.relationshipType).toBe(type);
+    }
+    await expect(
+      createEntityRelationship(
+        tmp,
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+        "not-a-real-type",
+      ),
+    ).rejects.toThrow();
+
+    await fs.rm(tmp, { recursive: true, force: true });
+  });
+
+  it("agrees with the model layer's accepted set (FR-15): persisted empty list", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-relationship-types-agree-empty-"),
+    );
+    await fs.writeFile(
+      path.join(tmp, "project.json"),
+      JSON.stringify({ config: { relationshipTypes: [] } }, null, 2),
+      "utf8",
+    );
+
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, relationshipTypes: [] });
+    const selectorTypes = selectActiveProjectRelationshipTypes(
+      store.getState(),
+    );
+    expect(selectorTypes).toEqual([]);
+
+    await expect(
+      createEntityRelationship(
+        tmp,
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+        DEFAULT_RELATIONSHIP_TYPES[0],
+      ),
+    ).rejects.toThrow();
+
+    await fs.rm(tmp, { recursive: true, force: true });
   });
 });
 

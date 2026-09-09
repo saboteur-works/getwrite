@@ -36,7 +36,7 @@ describe("models/project-creator", () => {
     }
   });
 
-  it("leaves config.relationshipTypes as [] when the spec declares none", async () => {
+  it("leaves config.relationshipTypes undefined when the spec declares none, so FR-18's default vocabulary fallback applies", async () => {
     const tmp = await fs.mkdtemp(
       path.join(os.tmpdir(), "getwrite-relationship-types-none-"),
     );
@@ -51,7 +51,12 @@ describe("models/project-creator", () => {
         { projectRoot: tmp, name: "No Relationship Types Project" },
       );
 
-      expect(project.config?.relationshipTypes).toEqual([]);
+      // Not defaulted to [] here (unlike `statuses`): `relationshipTypes`
+      // must stay undefined so `createEntityRelationship` and
+      // `selectActiveProjectRelationshipTypes` can tell "never persisted"
+      // apart from "explicitly emptied" and fall back to
+      // DEFAULT_RELATIONSHIP_TYPES (FR-15, FR-18).
+      expect(project.config?.relationshipTypes).toBeUndefined();
 
       await flushIndexer();
     } finally {
