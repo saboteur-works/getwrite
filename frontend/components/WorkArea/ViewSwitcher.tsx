@@ -6,6 +6,7 @@ import {
   GitCompare,
   Clock,
   Users,
+  Network,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "../common/UI/Tabs/Tabs";
 import { hoverTipProps, HoverTipSurface } from "../common/UI/HoverTip";
@@ -49,6 +50,7 @@ const VIEW_OPTIONS: ViewOption[] = [
   { key: "diff", label: "Diff", icon: GitCompare },
   { key: "timeline", label: "Timeline", icon: Clock },
   { key: "entityRoster", label: "Entities", icon: Users },
+  { key: "entityGraph", label: "Graph", icon: Network },
 ];
 
 export default function ViewSwitcher({
