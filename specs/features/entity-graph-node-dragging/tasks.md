@@ -18,7 +18,7 @@ Source spec: `specs/features/entity-graph-node-dragging.md`. Granularity: story 
 **Depends on:** 1
 **Estimate:** 5
 **Notes:** This task only makes the node follow the pointer. It deliberately does not yet stop the eventual `onClick`/`onNodeActivated` from also firing on release — that discrimination is Task 3, kept separate because the spec calls it the highest-risk item and it deserves its own focused tests rather than being buried inside this task's.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Click-vs-drag discrimination — suppress selection/navigation once the threshold is crossed
 **What:** Tracks, in the same ref-based gesture state Task 2 introduced, whether the current gesture's client-pixel movement has exceeded `DRAG_CLICK_THRESHOLD_PX` at any point before release (compared in client pixels, before any viewBox-unit conversion, per FR-7 — a raw `Math.hypot`/max-axis distance between the mouse-down client coordinates and the current client coordinates, never the already-scaled viewBox delta Task 2 computes for repositioning). If the threshold was never exceeded by the time `mouseup` fires, the gesture is left to behave exactly as today's plain click does — `handleNodeActivate` runs unmodified, toggling `selectedNodeId` and calling `onNodeActivated` (FR-5). If the threshold was exceeded at any point, the node's own `onClick` (which fires after `mouseup` for a native browser click) must be suppressed for that one gesture: neither `selectedNodeId` nor `onNodeActivated` may fire, regardless of where the pointer was released — on the dragged node, another node, or empty canvas (FR-6).
