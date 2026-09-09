@@ -9,7 +9,7 @@ Source spec: `specs/features/entity-graph-edge-tooltips.md`. Granularity: story 
 **Depends on:** none
 **Estimate:** 2
 **Notes:** This is the one task in this list that does not depend on either spike's outcome — sequence it first so both spikes and the canvas work can build on the same shared source of truth for tooltip text.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Spike — tooltip positioning and touch dismiss against a hit-target line
 **What:** A time-boxed spike (not production code) that prototypes `react-tooltip`'s `float` mode anchored to a temporary wide `<line>` hit-target on `EntityGraphCanvas.tsx`, and its `openOnClick` option for tap-to-show/tap-to-dismiss, then records a pass/fail decision with evidence (OQ-1, OQ-3). This is the ONE spike covering both FR-4's positioning question and FR-5's touch question, per the spec's explicit instruction that they are the same wiring.
@@ -18,7 +18,7 @@ Source spec: `specs/features/entity-graph-edge-tooltips.md`. Granularity: story 
 **Depends on:** none
 **Estimate:** 3
 **Notes:** This is OQ-1 and OQ-3's spike. Task 5 below implements whichever of the two mutually exclusive branches this task's verdict selects, per the spec's requirement that the fallback be a real branch rather than an afterthought. Safe to run concurrently with Task 1 and Task 3 (no file overlap, no data dependency).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Spike — measure hit-target stroke width
 **What:** A measurement task (not production code) that runs `computeGraphLayout` at three fixture densities — sparse (~5 nodes/5 edges), medium (~15 nodes/20 edges), and an adversarial case with several nodes sharing multiple co-occurrence and authored edges on the same pairs — computes the minimum distance between any two distinct edges' line segments at each settled layout, and derives a single fixed hit-target width comfortably under half the smallest measured gap across all three (OQ-2).
@@ -27,7 +27,7 @@ Source spec: `specs/features/entity-graph-edge-tooltips.md`. Granularity: story 
 **Depends on:** none
 **Estimate:** 2
 **Notes:** This is OQ-2's spike. Safe to run concurrently with Task 1 and Task 2. Task 4 is blocked on this task's output number, not on its method — once the number lands, Task 4 can proceed regardless of how Task 2 resolves.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Add the transparent wide hit-target line per edge
 **What:** Adds a second, transparent `<line>` per edge in `EntityGraphCanvas.tsx` — same endpoints as the existing visible edge line, `stroke="transparent"`, `strokeWidth` set to Task 3's measured fixed width — rendered for every edge regardless of kind, satisfying FR-3 independently of which tooltip mechanism Task 2's spike ultimately selects.
