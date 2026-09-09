@@ -125,8 +125,47 @@ Source spec: `specs/features/entity-relationships.md`. Granularity: story points
 **Done when:** each of the following is confirmed by hand and recorded in the task's completion note, with disk ground truth (`meta/relationships.json` and/or `project.json`'s `config.relationshipTypes`) read first and the UI checked against it (not the reverse): (0) in a project whose `project.json` has never had a `config.relationshipTypes` key at all — verified by inspecting the file before starting — the entity sidebar's create control (Task 6) is enabled and lists the seven `DEFAULT_RELATIONSHIP_TYPES` values, the settings editor (Task 13) shows the same seven values, and creating an edge with one of them succeeds and persists to `meta/relationships.json`, confirming this is no longer the broken, unreachable state the amendment was written to fix, per FR-15/FR-18; (1) creating an edge between two declared entities through the sidebar control persists it, and the target entity's own sidebar view shows the reverse-direction row with the same type, matching the file on disk, per FR-2/FR-3/FR-5; (2) clicking "Add" a second time with the identical source, target, and type produces no second row and no second entry in `meta/relationships.json` — confirmed by reading the file before and after the second click, per FR-17; (3) removing an edge from either entity's view removes it from `meta/relationships.json` entirely and from both entities' displayed lists, per FR-6/FR-12; (4) creating an edge, then soft-deleting the *target* entity (not the source) through the normal delete flow, then reopening the *source* entity's sidebar view shows the edge with a placeholder in place of the deleted entity's name rather than the edge disappearing — checked against `meta/relationships.json` still containing the edge unchanged, per FR-11/FR-16; (5) attempting to select the same entity as both source and target is impossible through the control (the target `<select>` never offers the current entity), per FR-4; (6) using the settings editor (Task 13) to add a new custom type (e.g. "sworn enemy of"), saving, then confirming that type immediately appears in the entity sidebar's create control and can be used to create an edge, per FR-19; (7) using the settings editor to remove every type, confirming the create control becomes disabled with its explanatory message rather than silently failing or accepting a freeform value — and confirming `project.json` now holds an explicit `config.relationshipTypes: []` rather than reverting to the defaults, per FR-15/FR-18's "absent vs. explicitly empty" distinction; (8) if a device is available, creating and removing an edge, and using the settings editor, all work with the device's network disabled, per FR-8/FR-19.
 **Depends on:** 8, 9, 10, 13
 **Estimate:** 1
+**Verification record (2026-09-09):** Performed against a disposable workspace
+holding a 76-resource fixture with 6 declared entities and 93 indexed mentions,
+copied from a real project. Ground truth was read from disk before and after each
+UI action. **Every criterion passed.**
+
+- **(0) The previously-broken case.** The fixture's `project.json` had no
+  `config.relationshipTypes` key and no `meta/relationships.json`. The sidebar's
+  type dropdown offered all seven `DEFAULT_RELATIONSHIP_TYPES`, and an edge
+  created from it persisted — with `config.relationshipTypes` still absent
+  afterwards, proving the default resolved identically in the selector and in
+  `createEntityRelationship`'s validation. This is the FR-15 agreement the
+  amendment named as its own risk, observed end to end rather than inferred.
+- **Create.** `meta/relationships.json` was written with all five FR-1 fields.
+- **FR-3/FR-5 direction, both sides.** The source entity rendered "is a source of
+  **Keller** — rival of"; Keller rendered "is a target of **Devin Striker** —
+  rival of". One edge, two views — no second edge was persisted, which is OQ-5's
+  no-auto-inverse holding in practice.
+- **FR-4 self-edge.** The target picker listed 5 of the 6 declared entities,
+  excluding the selected entity itself.
+- **FR-17 idempotency through the control.** A second Add with the identical
+  triple left exactly one edge, with the same id.
+- **FR-19 editor.** The settings editor listed all seven defaults with per-row
+  reorder and remove (first row's up and last row's down correctly disabled),
+  and adding "sworn enemy of" persisted the full list to `project.json` and made
+  the new type appear in the sidebar dropdown without a reload.
+- **FR-16 + FR-11 dangling edge.** With an edge in place, the target entity's
+  sidecar and content were moved to `.trash/` the way `softDeleteResource` moves
+  them. The edge survived untouched on disk (FR-16), and the source's view
+  rendered "is a source of **Unknown entity** — rival of" with a working Remove
+  button — not hidden, not filtered, no crash, rest of the sidebar intact (FR-11).
+- **FR-6 removal.** Removing that dangling edge left `[]` — no trace.
+
+Two things were **not** verified: Android device behaviour (no device connected),
+and the Storybook `addon-a11y` pass, because `pnpm build-storybook` fails on
+`main` and on this branch alike on an unrelated `node:async_hooks` import (POS
+`task_417d4451`). Accessible naming was observed directly in the rendered
+accessibility tree — every control carried an `aria-label`, and the lists were
+exposed as real lists.
+
 **Notes:** Criterion (4) is written the way it is — target deleted, then the *source*'s view reopened — specifically because it is the one path Task 9's integration test proves at the file level but a human has not yet watched render correctly in the actual sidebar; this task exists to close that gap, not repeat Task 9. Criterion (0) is the exact case that prompted this amendment — the feature was verified working in isolation but unreachable in every real project, and this is the criterion that proves that specific defect is fixed, not merely that the feature works in a project someone has already hand-configured. No task in this list measures or asserts a performance characteristic of any read or write path — none was measured, so none is claimed.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 14
