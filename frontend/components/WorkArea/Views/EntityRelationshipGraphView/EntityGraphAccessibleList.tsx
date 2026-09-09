@@ -85,9 +85,10 @@ function sortNodesByName(nodes: EntityGraphNode[]): EntityGraphNode[] {
  * direction/type, and — for a co-occurrence edge — its shared-resource
  * count (FR-12) as literal text.
  *
- * This component is standalone (Task 8): it is not yet wired into
- * `EntityRelationshipGraphView.tsx`, which still renders its placeholder
- * JSON dump. It is built and tested here in isolation via fixture props.
+ * Rendered by `EntityRelationshipGraphView.tsx` alongside `EntityGraphCanvas`,
+ * from the same node and edge data, so the two stay in step. It takes that
+ * data as props and holds no fetching or selection state of its own, which is
+ * also what lets its tests drive it directly from fixtures.
  */
 export default function EntityGraphAccessibleList({
   nodes,

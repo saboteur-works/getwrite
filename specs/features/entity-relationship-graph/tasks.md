@@ -107,8 +107,50 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Done when:** each of the following is confirmed by hand and recorded in the task's completion note, with disk/index ground truth (the alias table plus both edge reads) read first and the UI checked against it: (1) the "Graph" tab appears alongside Edit, Organizer, Data, Diff, Timeline, and Entities and is selectable, per FR-1; (2) with the project's `entities` flag off, the tab is visibly disabled with a hover explanation, and no graph is reachable, per FR-2; (3) **with no resource selected at all** — opening the project fresh and going straight to the Graph tab without selecting anything first — the view renders the graph rather than "Resource not found.", specifically exercising the `AppShell` pre-guard-placement defect class FR-1 calls out (PR #186's fix for the roster, and the still-open Timeline instance, `task_a7d8581a`); (4) every declared entity appears as a node, including one with no edges, per FR-3; (5) a co-occurrence edge and an authored-relationship edge on the same pair render as two visually distinct lines, and — **checked specifically without relying on colour** (e.g. by viewing a greyscale/desaturated screenshot, or by checking the rendered `stroke-dasharray`/marker attributes directly) — the two edge kinds remain distinguishable anywhere they appear on the graph, per FR-5/FR-6, and neither uses the reserved red token; (6) an authored edge shows a directional cue matching its authored source→target, and a co-occurrence edge shows none, per FR-7; (7) a co-occurrence edge's line thickness visibly differs between a low-count and a high-count pair, per FR-12, and the same count appears as literal text in the accessible list; (8) pan (drag) and zoom (scroll) both work on the canvas; (9) clicking (and, separately, keyboard-activating) a node navigates to that entity's resource and opens the edit view, per FR-9, and this is checked to be the exact same behavior whether triggered from the canvas node or from the FR-11 accessible list's corresponding button; (10) the FR-11 accessible list is checked with the browser's accessibility inspector or a screen reader to confirm every node and edge is reachable with a legible name, including a co-occurrence edge's count and an authored edge's direction/type, per FR-10/FR-11; (11) a project with `entities` on but zero declared entities shows the FR-14 empty state; (12) if a device is available, the graph (including both edge sources) loads correctly with the device's network disabled, per FR-16.
 **Depends on:** 10, 11
 **Estimate:** 2
+**Verification record (2026-09-09):** Performed against a disposable
+workspace holding a 76-resource fixture with 6 declared entities, 93 indexed
+mentions, and two authored edges deliberately placed on pairs that also
+co-occur, so the both-kinds-on-one-pair case was actually exercised. Served via
+`next start` rather than `next dev` — a production build does no file watching,
+which sidesteps the Watchpack `EMFILE` exhaustion that blocked two earlier
+attempts on this machine. Worth remembering for future manual passes.
+
+- **Reachability with no resource selected — passed.** On a freshly opened
+  project, with nothing selected, Edit / Organizer / Diff / **Timeline** were
+  disabled while Data, Entities and **Graph** were enabled. The new view avoids
+  the `AppShell` pre-guard defect PR #186 fixed for the roster, and Timeline
+  sitting disabled beside it confirms `task_a7d8581a` is still live.
+- **Both edge kinds distinguished without colour — passed, decisively.**
+  Reading the rendered SVG: 9 dashed edges with no arrowhead (co-occurrence)
+  and 2 solid edges with a `marker-end` arrowhead (authored). Both kinds use
+  `stroke="currentColor"`, so the distinction carries **no colour information
+  at all** — it survives greyscale and colour-blindness. Nine distinct stroke
+  widths (3.7–8.1) confirm the FR-12 weight encoding is live.
+- **FR-11 accessible list — passed.** `list "Entity nodes"` and `list "Entity
+  edges"` render alongside the canvas. Edge kind is distinguished *in text*,
+  not only visually: co-occurrence reads "Casey Thorne and Devin Striker share
+  25 resources" (undirected, count as literal text), authored reads "Devin
+  Striker → Casey Thorne (ally of)" (directed, typed). Pluralisation is correct
+  — "share 1 resource".
+- **Data fidelity — passed.** All nine co-occurrence counts (25, 16, 12, 11, 8,
+  8, 3, 2, 1) match the ground truth computed from `meta/index/mentions.json`
+  during the Feature 37 verification exactly.
+- **FR-5 non-conflation — passed.** Devin Striker ↔ Casey Thorne carries both a
+  co-occurrence edge (25) and an authored edge (ally of); they appear as two
+  separate entries, not merged into one.
+- **FR-9 activate-to-navigate — passed**, exercised from the accessible list
+  rather than the canvas, which also proves that list is genuinely interactive
+  for nodes. Activating "Casey Thorne" selected her resource and switched to
+  the Edit view.
+
+Not verified: pan/zoom and canvas selection by hand (covered by Task 6's
+tests but not exercised); Android device behaviour; and the Storybook
+`addon-a11y` sweep, which remains unavailable while `pnpm build-storybook`
+fails on `main` (`task_417d4451`). Accessible naming was instead read directly
+out of the rendered accessibility tree.
+
 **Notes:** This is the manual-exercise task the automated suite cannot fully substitute for — live visual distinguishability of the two edge kinds and true device-level offline behavior need a human pass before sign-off, mirroring `specs/features/entity-roster/tasks.md`'s Task 12 and `specs/features/entity-cooccurrence/tasks.md`'s Task 10. Criterion (3) exists because this exact defect class has recurred once already (fixed for the roster, still open for Timeline) and is the single most likely regression for this feature's own seventh-view wiring.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 12

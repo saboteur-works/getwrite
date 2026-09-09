@@ -19,10 +19,15 @@
  * web/desktop test suite (measured directly: `vitest` fails to load
  * `entity-cooccurrence.ts` with "Failed to resolve import" until this file
  * exists, matching `native-entity-mention-counts-backend.ts`'s own doc
- * comment about the same constraint). A later task remains responsible for
- * the `next.config.mjs` `turbopack.resolveAlias` substitution and the formal
- * native/web parity test
- * (`entity-cooccurrence-transport.test.ts` only covers the HTTP path).
+ * comment about the same constraint). The `next.config.mjs`
+ * `turbopack.resolveAlias` substitution (aliasing this module to its
+ * `.web-stub` on the web/desktop build) and the formal native/web parity
+ * test now both exist:
+ * `entity-cooccurrence-native-web-parity.test.ts` covers native/HTTP
+ * behavioral parity, and
+ * `native-entity-cooccurrence-backend-web-exclusion.test.ts` covers the
+ * web-bundle exclusion (`entity-cooccurrence-transport.test.ts` covers only
+ * the HTTP path).
  *
  * This module is imported *only* on the native path (see
  * `lib/api/entity-cooccurrence.ts`'s dynamic import), because it pulls in

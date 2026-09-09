@@ -21,10 +21,15 @@
  * with "Failed to resolve import" / `TS2307` until this file exists — the
  * identical constraint already documented in
  * `native-entity-cooccurrence-backend.ts`'s own doc comment, itself created
- * ahead of its own schedule for the same reason). A later task remains
- * responsible for the `next.config.mjs` `turbopack.resolveAlias`
- * substitution and the formal native/web parity test
- * (`entity-relationships-transport.test.ts` only covers the HTTP path).
+ * ahead of its own schedule for the same reason). The `next.config.mjs`
+ * `turbopack.resolveAlias` substitution (aliasing this module to its
+ * `.web-stub` on the web/desktop build) and the formal native/web parity
+ * test now both exist:
+ * `entity-relationships-native-web-parity.test.ts` covers native/HTTP
+ * behavioral parity, and
+ * `native-entity-relationships-backend-web-exclusion.test.ts` covers the
+ * web-bundle exclusion (`entity-relationships-transport.test.ts` covers only
+ * the HTTP path).
  *
  * This module is imported *only* on the native path (see
  * `lib/api/entity-relationships.ts`'s dynamic import), because it pulls in

@@ -106,6 +106,12 @@ The Entities view lists every entity you've declared across the project — name
 
 → [Entities View](views/entity-roster.md)
 
+### Relationship Graph view
+
+The Relationship Graph draws every declared entity as a node, connected by two kinds of edges: dashed lines showing entities that turn up in the same document together (thicker when they share more documents), and solid arrows showing relationships you've deliberately authored (like "mentor of" or "rival of"). Click a node to jump straight to that entity's document. It's a quick way to see how your cast or setting connects at a glance.
+
+→ [Relationship Graph View](views/entity-relationship-graph.md)
+
 ## Protect and finish your work
 
 ### Revisions
