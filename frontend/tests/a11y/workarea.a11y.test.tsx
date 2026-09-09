@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import ViewSwitcher from "../../components/WorkArea/ViewSwitcher";
+import type { ViewName } from "../../src/lib/models/types";
 
 describe("a11y: WorkArea view switcher keyboard navigation (T036)", () => {
   it("exposes tab semantics and skips disabled views on click activation", async () => {
@@ -31,9 +32,7 @@ describe("a11y: WorkArea view switcher keyboard navigation (T036)", () => {
     const user = userEvent.setup();
 
     function Harness(): JSX.Element {
-      const [view, setView] = React.useState<
-        "edit" | "organizer" | "data" | "diff" | "timeline" | "entityRoster"
-      >("edit");
+      const [view, setView] = React.useState<ViewName>("edit");
 
       return <ViewSwitcher view={view} onChange={setView} />;
     }
@@ -51,8 +50,8 @@ describe("a11y: WorkArea view switcher keyboard navigation (T036)", () => {
     );
 
     await user.keyboard("{End}");
-    expect(screen.getByRole("tab", { name: /Entities/i })).toHaveFocus();
-    expect(screen.getByRole("tab", { name: /Entities/i })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: /Graph/i })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: /Graph/i })).toHaveAttribute(
       "aria-selected",
       "true",
     );

@@ -60,6 +60,7 @@ import OrganizerView from "../WorkArea/Views/OrganizerView/OrganizerView";
 import DataView from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/Views/TimelineView";
 import EntityRosterView from "../WorkArea/Views/EntityRosterView/EntityRosterView";
+import EntityRelationshipGraphView from "../WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import {
@@ -1245,12 +1246,21 @@ export default function AppShell({
                             if (!isEntitiesEnabled) {
                               disabled.push("entityRoster");
                             }
+                            // The Graph tab shares the entities feature flag
+                            // with the roster — it is a project-wide view over
+                            // the same declared entities, with no resource-type
+                            // dependency of its own.
+                            if (!isEntitiesEnabled) {
+                              disabled.push("entityGraph");
+                            }
                             return Array.from(new Set(disabled));
                           })()}
                           disabledReasons={{
                             timeline:
                               "The Timeline view is off. Turn it on in User Preferences → Timeline view.",
                             entityRoster:
+                              "Entities are off. Turn them on in User Preferences → Entities.",
+                            entityGraph:
                               "Entities are off. Turn them on in User Preferences → Entities.",
                           }}
                         />
@@ -1278,15 +1288,17 @@ export default function AppShell({
                           active, render the chosen view; otherwise render empty
                           state or children.
 
-                          `data` and `entityRoster` are project-wide: they read
-                          across every resource and have nothing to show for a
-                          single selection, so gating them on `selectedResource`
-                          would leave them permanently unreachable from a freshly
-                          opened project. FR-38 states the roster has no
-                          resource dependency. */}
+                          `data`, `entityRoster`, and `entityGraph` are
+                          project-wide: they read across every resource (or
+                          every declared entity) and have nothing to show for
+                          a single selection, so gating them on
+                          `selectedResource` would leave them permanently
+                          unreachable from a freshly opened project. FR-38
+                          states the roster has no resource dependency. */}
                       {(selectedResource && combined) ||
                       view === "data" ||
-                      view === "entityRoster"
+                      view === "entityRoster" ||
+                      view === "entityGraph"
                         ? (() => {
                             if (view === "data") {
                               const queryResources = activeSmartFolderId
@@ -1392,6 +1404,29 @@ export default function AppShell({
                             if (view === "entityRoster") {
                               return isEntitiesEnabled ? (
                                 <EntityRosterView
+                                  onEntityActivated={(entityId) => {
+                                    dispatch(setSelectedResourceId(entityId));
+                                    setView("edit");
+                                  }}
+                                />
+                              ) : null;
+                            }
+
+                            // Same reachability concern as the roster above:
+                            // the graph is project-wide (it reads every
+                            // declared entity and their relationships, not
+                            // the current selection), so it is handled here,
+                            // before the `!selectedResource` guard, rather
+                            // than inside the post-guard `switch` below. The
+                            // Timeline view was placed in that `switch` and is
+                            // still unreachable from a freshly opened project
+                            // as a result (POS task_a7d8581a) — do not repeat
+                            // that mistake here. The `isEntitiesEnabled` check
+                            // is a defensive guard; the tab is already
+                            // disabled when the feature is off.
+                            if (view === "entityGraph") {
+                              return isEntitiesEnabled ? (
+                                <EntityRelationshipGraphView
                                   onEntityActivated={(entityId) => {
                                     dispatch(setSelectedResourceId(entityId));
                                     setView("edit");
