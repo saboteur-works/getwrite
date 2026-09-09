@@ -469,13 +469,31 @@ export default function EntityGraphCanvas({
   // are mutually exclusive (a mousedown lands on either the background
   // `<rect>` or a node's `<g>`, never both) but keeping their state distinct
   // avoids one handler needing to know about the other's shape.
+  //
+  // `exceededThreshold` (entity-graph-node-dragging, FR-6/FR-7) tracks
+  // whether this gesture's RAW CLIENT-PIXEL movement — never the
+  // viewBox-unit, scale-divided delta computed below for repositioning — has
+  // crossed `DRAG_CLICK_THRESHOLD_PX` at any point since mousedown. It only
+  // ever flips false -> true during a gesture (never resets mid-gesture),
+  // and is read once, at `mouseup`, to decide whether the upcoming native
+  // `click` event should be allowed to activate the node.
   const nodeDragRef = React.useRef<{
     entityId: string;
     startClientX: number;
     startClientY: number;
     startX: number;
     startY: number;
+    exceededThreshold: boolean;
   } | null>(null);
+
+  // Whether the gesture that most recently ended crossed the click/drag
+  // threshold, kept in a ref distinct from `nodeDragRef` because it must
+  // survive past `mouseup` (which clears `nodeDragRef.current`) into the
+  // browser's native `click` event that fires immediately afterward on the
+  // same element (entity-graph-node-dragging, FR-6). `handleNodeActivate`
+  // consults and immediately resets this flag, so it never leaks into a
+  // later, unrelated gesture.
+  const justDraggedPastThresholdRef = React.useRef(false);
 
   const handleBackgroundMouseDown = React.useCallback(
     (event: React.MouseEvent<SVGRectElement>) => {
@@ -508,6 +526,7 @@ export default function EntityGraphCanvas({
         startClientY: event.clientY,
         startX: override?.x ?? layoutX,
         startY: override?.y ?? layoutY,
+        exceededThreshold: false,
       };
     },
     [nodePositionOverrides],
@@ -534,6 +553,21 @@ export default function EntityGraphCanvas({
     const handleMouseMove = (event: MouseEvent): void => {
       const nodeDrag = nodeDragRef.current;
       if (nodeDrag) {
+        // Click/drag discrimination (entity-graph-node-dragging, FR-6/FR-7):
+        // a RAW client-pixel distance from the gesture's start point,
+        // compared directly against `DRAG_CLICK_THRESHOLD_PX` with NO
+        // viewBox conversion and NO division by `scale` — a deliberately
+        // separate number from the reposition delta computed below, which
+        // *is* converted and scale-divided. Once true, this never resets
+        // until the next mousedown starts a fresh gesture.
+        if (!nodeDrag.exceededThreshold) {
+          const rawDeltaX = event.clientX - nodeDrag.startClientX;
+          const rawDeltaY = event.clientY - nodeDrag.startClientY;
+          if (Math.hypot(rawDeltaX, rawDeltaY) > DRAG_CLICK_THRESHOLD_PX) {
+            nodeDrag.exceededThreshold = true;
+          }
+        }
+
         // Same client-pixel -> viewBox-unit conversion the wheel handler
         // derives: `getBoundingClientRect()`, falling back to a 1:1 ratio
         // when the element is zero-sized (jsdom), then accounting for the
@@ -567,6 +601,15 @@ export default function EntityGraphCanvas({
       });
     };
     const handleMouseUp = (): void => {
+      // Stash the outcome before clearing `nodeDragRef` (entity-graph-node-
+      // dragging, FR-6): `mouseup` fires before the browser's native `click`
+      // event on the same element, so `handleNodeActivate` needs a way to
+      // see "this release just finished a drag" after `nodeDragRef.current`
+      // has already gone back to null.
+      const nodeDrag = nodeDragRef.current;
+      if (nodeDrag) {
+        justDraggedPastThresholdRef.current = nodeDrag.exceededThreshold;
+      }
       dragOriginRef.current = null;
       nodeDragRef.current = null;
     };
@@ -631,6 +674,16 @@ export default function EntityGraphCanvas({
   // there is no divergent second implementation of "what activation means."
   const handleNodeActivate = React.useCallback(
     (entityId: string) => {
+      // Suppress the click/keyboard activation this gesture would otherwise
+      // fire if it was just classified as a drag past the threshold
+      // (entity-graph-node-dragging, FR-6). The flag is consumed (reset)
+      // immediately so it cannot leak into a later, unrelated activation —
+      // e.g. a subsequent plain click or Enter/Space on this or another
+      // node.
+      if (justDraggedPastThresholdRef.current) {
+        justDraggedPastThresholdRef.current = false;
+        return;
+      }
       setSelectedNodeId((current) => (current === entityId ? null : entityId));
       onNodeActivated?.(entityId);
     },

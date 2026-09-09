@@ -578,6 +578,183 @@ describe("EntityGraphCanvas", () => {
     });
   });
 
+  describe("click-vs-drag discrimination (Task 3, entity-graph-node-dragging)", () => {
+    it("still activates the node — toggling selection and calling onNodeActivated — for a gesture that stays under the threshold", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      expect(target.getAttribute("data-selected")).toBe("false");
+
+      // Raw client-pixel distance: hypot(1, 1) ≈ 1.41, comfortably under the
+      // 4px threshold.
+      fireEvent.mouseDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.mouseMove(window, { clientX: 101, clientY: 101 });
+      fireEvent.mouseUp(window);
+      fireEvent.click(target);
+
+      expect(onNodeActivated).toHaveBeenCalledTimes(1);
+      expect(onNodeActivated).toHaveBeenCalledWith("e-1");
+      expect(target.getAttribute("data-selected")).toBe("true");
+    });
+
+    it("does NOT activate the node — no onNodeActivated, no selection toggle — once the gesture crosses the threshold and releases back on the same node", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      expect(target.getAttribute("data-selected")).toBe("false");
+
+      // Raw client-pixel distance: hypot(10, 6) ≈ 11.66, past the 4px
+      // threshold.
+      fireEvent.mouseDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.mouseMove(window, { clientX: 110, clientY: 106 });
+      fireEvent.mouseUp(window);
+      fireEvent.click(target);
+
+      expect(onNodeActivated).not.toHaveBeenCalled();
+      expect(target.getAttribute("data-selected")).toBe("false");
+    });
+
+    it("does NOT activate a different node the drag was released over, once the gesture crossed the threshold", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+
+      const [dragged, other] = screen.getAllByTestId("entity-graph-node");
+
+      fireEvent.mouseDown(dragged, { clientX: 100, clientY: 100 });
+      fireEvent.mouseMove(window, { clientX: 110, clientY: 106 });
+      fireEvent.mouseUp(other);
+      // Mirrors a native browser click firing on whichever element the
+      // pointer was released over.
+      fireEvent.click(other);
+
+      expect(onNodeActivated).not.toHaveBeenCalled();
+      expect(dragged.getAttribute("data-selected")).toBe("false");
+      expect(other.getAttribute("data-selected")).toBe("false");
+    });
+
+    it("does NOT activate anything when the drag is released over the empty background, once the gesture crossed the threshold", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+
+      const [dragged] = screen.getAllByTestId("entity-graph-node");
+      const background = screen.getByTestId("entity-graph-canvas-background");
+
+      fireEvent.mouseDown(dragged, { clientX: 100, clientY: 100 });
+      fireEvent.mouseMove(window, { clientX: 110, clientY: 106 });
+      fireEvent.mouseUp(background);
+      // A click landing on the background never reaches a node's onClick at
+      // all — this asserts the drag left no activation pending regardless.
+      fireEvent.click(background);
+      fireEvent.click(dragged);
+
+      expect(onNodeActivated).not.toHaveBeenCalled();
+      expect(dragged.getAttribute("data-selected")).toBe("false");
+    });
+
+    it("does not leave a suppressed activation dangling — a later plain click on the same node still activates it", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+
+      // First gesture: a drag past the threshold, suppressed.
+      fireEvent.mouseDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.mouseMove(window, { clientX: 110, clientY: 106 });
+      fireEvent.mouseUp(window);
+      fireEvent.click(target);
+      expect(onNodeActivated).not.toHaveBeenCalled();
+
+      // Second, unrelated gesture: a plain click, which must activate
+      // normally — the suppression flag must not leak across gestures.
+      fireEvent.click(target);
+      expect(onNodeActivated).toHaveBeenCalledTimes(1);
+      expect(onNodeActivated).toHaveBeenCalledWith("e-1");
+      expect(target.getAttribute("data-selected")).toBe("true");
+    });
+
+    it("classifies the identical raw client-pixel movement the same way at scale 1 and at a non-default scale (FR-7)", () => {
+      const dx = DRAG_CLICK_THRESHOLD_PX + 10;
+      const dy = DRAG_CLICK_THRESHOLD_PX + 6;
+
+      // At default scale (1): the movement is over-threshold in client
+      // pixels, so it must be classified as a drag (no activation).
+      const onNodeActivatedAtDefaultScale = vi.fn();
+      const { unmount } = render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivatedAtDefaultScale}
+        />,
+      );
+      const [targetAtDefaultScale] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.mouseDown(targetAtDefaultScale, { clientX: 100, clientY: 100 });
+      fireEvent.mouseMove(window, { clientX: 100 + dx, clientY: 100 + dy });
+      fireEvent.mouseUp(window);
+      fireEvent.click(targetAtDefaultScale);
+      expect(onNodeActivatedAtDefaultScale).not.toHaveBeenCalled();
+      unmount();
+
+      // At a non-default scale, zoomed in: were the threshold wrongly
+      // compared in viewBox units (dividing by `scale` first, as Task 2's
+      // reposition delta does), this identical raw client-pixel movement
+      // would shrink below the threshold and misclassify as a click. FR-7
+      // requires the comparison to stay in raw client pixels regardless of
+      // `scale`, so this must still be classified as a drag too.
+      const onNodeActivatedAtZoomedScale = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivatedAtZoomedScale}
+        />,
+      );
+      const svg = screen.getByTestId("entity-graph-canvas");
+      const viewport = screen.getByTestId("entity-graph-viewport");
+      fireEvent.wheel(svg, { deltaY: -100 });
+      const { scale } = parseViewportTransform(viewport);
+      expect(scale).toBeGreaterThan(1);
+
+      const [targetAtZoomedScale] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.mouseDown(targetAtZoomedScale, { clientX: 100, clientY: 100 });
+      fireEvent.mouseMove(window, { clientX: 100 + dx, clientY: 100 + dy });
+      fireEvent.mouseUp(window);
+      fireEvent.click(targetAtZoomedScale);
+      expect(onNodeActivatedAtZoomedScale).not.toHaveBeenCalled();
+    });
+  });
+
   describe("edge hit-target line (Task 4, entity-graph-edge-tooltips)", () => {
     it("renders exactly one hit-target line per fixture edge, for every edge kind", () => {
       render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
