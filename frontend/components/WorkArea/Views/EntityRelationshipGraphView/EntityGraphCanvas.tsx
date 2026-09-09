@@ -449,11 +449,8 @@ export default function EntityGraphCanvas({
   // `selectedNodeId`/`pan`/`scale` precedent exactly: plain component state,
   // held outside `computeGraphLayout`'s `useMemo` and its dependency array,
   // so a drag's override is never reset by that memo recomputing when
-  // `nodes`/`edges`/`width`/`height` change. No purge, reset, or reverse
-  // lookup is provided, again matching that precedent — this state is
-  // intentionally not wired into rendering or event handling yet (deferred to
-  // a later task in this feature).
-  const [nodePositionOverrides] = React.useState<
+  // `nodes`/`edges`/`width`/`height` change.
+  const [nodePositionOverrides, setNodePositionOverrides] = React.useState<
     Map<string, { x: number; y: number }>
   >(() => new Map());
 
@@ -465,6 +462,19 @@ export default function EntityGraphCanvas({
     startClientY: number;
     startPanX: number;
     startPanY: number;
+  } | null>(null);
+
+  // A node drag in progress, tracked separately from `dragOriginRef` (which
+  // drives background panning) rather than overloading it — the two gestures
+  // are mutually exclusive (a mousedown lands on either the background
+  // `<rect>` or a node's `<g>`, never both) but keeping their state distinct
+  // avoids one handler needing to know about the other's shape.
+  const nodeDragRef = React.useRef<{
+    entityId: string;
+    startClientX: number;
+    startClientY: number;
+    startX: number;
+    startY: number;
   } | null>(null);
 
   const handleBackgroundMouseDown = React.useCallback(
@@ -479,12 +489,76 @@ export default function EntityGraphCanvas({
     [pan.x, pan.y],
   );
 
+  // Records a node drag gesture's start: the pointer's client coordinates and
+  // the node's current RESOLVED position — its live override if one exists,
+  // else `computeGraphLayout`'s own settled `x`/`y` — so the drag continues
+  // from wherever the node actually is, not from a stale simulation position
+  // (entity-graph-node-dragging, FR-1).
+  const handleNodeMouseDown = React.useCallback(
+    (
+      event: React.MouseEvent<SVGGElement>,
+      entityId: string,
+      layoutX: number,
+      layoutY: number,
+    ) => {
+      const override = nodePositionOverrides.get(entityId);
+      nodeDragRef.current = {
+        entityId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startX: override?.x ?? layoutX,
+        startY: override?.y ?? layoutY,
+      };
+    },
+    [nodePositionOverrides],
+  );
+
+  // The wheel handler needs both the current `scale` and the current `pan` to
+  // anchor a zoom, but it is registered once (see the `[]` effect below) and
+  // would otherwise close over their first values. Mirroring them into refs
+  // keeps the listener registration stable while still reading live values.
+  // The node-drag continuation below needs the same live `scale` reference.
+  const scaleRef = React.useRef(scale);
+  scaleRef.current = scale;
+  const panRef = React.useRef(pan);
+  panRef.current = pan;
+
   // Drag continuation and release are tracked on `window`, not the `<rect>`
-  // itself, so a drag already in progress keeps updating even once the
-  // pointer moves outside the SVG's own bounds — the same reason a native
-  // drag gesture is normally wired at the document level.
+  // (or a node's `<g>`) itself, so a drag already in progress keeps updating
+  // even once the pointer moves outside the SVG's own bounds — the same
+  // reason a native drag gesture is normally wired at the document level.
+  // A node drag and a background pan drag are mutually exclusive per gesture
+  // (`dragOriginRef` and `nodeDragRef` are never both set at once), so the
+  // node-drag branch below returns before falling through to pan handling.
   React.useEffect(() => {
     const handleMouseMove = (event: MouseEvent): void => {
+      const nodeDrag = nodeDragRef.current;
+      if (nodeDrag) {
+        // Same client-pixel -> viewBox-unit conversion the wheel handler
+        // derives: `getBoundingClientRect()`, falling back to a 1:1 ratio
+        // when the element is zero-sized (jsdom), then accounting for the
+        // canvas's current `scale` (entity-graph-node-dragging, FR-7).
+        const el = svgRef.current;
+        const rect = el?.getBoundingClientRect() ?? null;
+        const toViewBoxX = rect && rect.width > 0 ? width / rect.width : 1;
+        const toViewBoxY = rect && rect.height > 0 ? height / rect.height : 1;
+        const currentScale = scaleRef.current;
+        const deltaX =
+          ((event.clientX - nodeDrag.startClientX) * toViewBoxX) / currentScale;
+        const deltaY =
+          ((event.clientY - nodeDrag.startClientY) * toViewBoxY) / currentScale;
+        const nextPosition = {
+          x: nodeDrag.startX + deltaX,
+          y: nodeDrag.startY + deltaY,
+        };
+        setNodePositionOverrides((prev) => {
+          const next = new Map(prev);
+          next.set(nodeDrag.entityId, nextPosition);
+          return next;
+        });
+        return;
+      }
+
       const origin = dragOriginRef.current;
       if (!origin) return;
       setPan({
@@ -494,6 +568,7 @@ export default function EntityGraphCanvas({
     };
     const handleMouseUp = (): void => {
       dragOriginRef.current = null;
+      nodeDragRef.current = null;
     };
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
@@ -501,16 +576,7 @@ export default function EntityGraphCanvas({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, []);
-
-  // The wheel handler needs both the current `scale` and the current `pan` to
-  // anchor a zoom, but it is registered once (see the `[]` effect below) and
-  // would otherwise close over their first values. Mirroring them into refs
-  // keeps the listener registration stable while still reading live values.
-  const scaleRef = React.useRef(scale);
-  scaleRef.current = scale;
-  const panRef = React.useRef(pan);
-  panRef.current = pan;
+  }, [width, height]);
 
   // A non-passive native `wheel` listener, following this codebase's own
   // `Timeline.tsx` precedent for wheel-driven zoom: React's synthetic
@@ -784,13 +850,22 @@ export default function EntityGraphCanvas({
           <g data-testid="entity-graph-nodes">
             {positionedNodes.map((node) => {
               const isSelected = node.entityId === selectedNodeId;
+              // Resolved position (entity-graph-node-dragging, FR-2): a live
+              // drag override for this node if one exists, else
+              // `computeGraphLayout`'s own settled `x`/`y`.
+              const override = nodePositionOverrides.get(node.entityId);
+              const resolvedX = override?.x ?? node.x;
+              const resolvedY = override?.y ?? node.y;
               return (
                 <g
                   key={node.entityId}
                   data-testid="entity-graph-node"
                   data-entity-id={node.entityId}
                   data-selected={isSelected ? "true" : "false"}
-                  transform={`translate(${node.x}, ${node.y})`}
+                  transform={`translate(${resolvedX}, ${resolvedY})`}
+                  onMouseDown={(event) =>
+                    handleNodeMouseDown(event, node.entityId, node.x, node.y)
+                  }
                   onClick={() => handleNodeActivate(node.entityId)}
                   onKeyDown={(event) => handleNodeKeyDown(event, node.entityId)}
                   tabIndex={0}

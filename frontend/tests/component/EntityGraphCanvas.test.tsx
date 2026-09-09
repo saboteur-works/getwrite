@@ -8,7 +8,18 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import * as d3Force from "d3-force";
 import EntityGraphCanvas from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityGraphCanvas";
+
+// `d3-force` is an ES module whose named exports vitest cannot `vi.spyOn`
+// directly ("Module namespace is not configurable in ESM"). Wrapping
+// `forceSimulation` in a `vi.fn` that still delegates to the real
+// implementation preserves every other test's real, deterministic layout
+// while letting the node-dragging test below assert on call counts.
+vi.mock("d3-force", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("d3-force")>();
+  return { ...actual, forceSimulation: vi.fn(actual.forceSimulation) };
+});
 import type {
   EntityGraphEdge,
   EntityGraphNode,
@@ -67,6 +78,28 @@ function parseViewportTransform(el: Element): {
   }
   return { x: Number(match[1]), y: Number(match[2]), scale: Number(match[3]) };
 }
+
+/**
+ * Parses a node `<g>`'s `transform="translate(x, y)"` attribute into its
+ * numeric components (entity-graph-node-dragging, Task 2).
+ */
+function parseNodeTransform(el: Element): { x: number; y: number } {
+  const transform = el.getAttribute("transform") ?? "";
+  const match = transform.match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+  if (!match) {
+    throw new Error(`Could not parse node transform: "${transform}"`);
+  }
+  return { x: Number(match[1]), y: Number(match[2]) };
+}
+
+/**
+ * Mirrors the source file's own `DRAG_CLICK_THRESHOLD_PX` (currently `4`,
+ * marked UNVERIFIED in `EntityGraphCanvas.tsx` — not exported, so this is a
+ * local literal used only to exercise a mousemove that plausibly crosses it;
+ * this task does not implement or assert any threshold-based suppression,
+ * per its own scope (Task 3's job).
+ */
+const DRAG_CLICK_THRESHOLD_PX = 4;
 
 describe("EntityGraphCanvas", () => {
   it("renders one visual node element per fixture node and one visual edge element per fixture edge", () => {
@@ -421,6 +454,128 @@ describe("EntityGraphCanvas", () => {
     // Clicking the same node again toggles the selection back off.
     fireEvent.click(first);
     expect(first.getAttribute("data-selected")).toBe("false");
+  });
+
+  describe("node dragging (Task 2, entity-graph-node-dragging)", () => {
+    it("repositions the dragged node by the pointer's client-pixel delta at default scale", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const [target, other] = screen.getAllByTestId("entity-graph-node");
+      const initialTarget = parseNodeTransform(target);
+      const initialOther = parseNodeTransform(other);
+
+      const dx = DRAG_CLICK_THRESHOLD_PX + 10;
+      const dy = DRAG_CLICK_THRESHOLD_PX + 6;
+
+      fireEvent.mouseDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.mouseMove(window, { clientX: 100 + dx, clientY: 100 + dy });
+
+      const afterMove = parseNodeTransform(target);
+      // At default scale (1) and jsdom's zero-sized bounding rect (1:1
+      // fallback ratio), the viewBox-unit delta equals the raw client-pixel
+      // delta.
+      expect(afterMove.x - initialTarget.x).toBeCloseTo(dx);
+      expect(afterMove.y - initialTarget.y).toBeCloseTo(dy);
+
+      const otherAfterMove = parseNodeTransform(other);
+      expect(otherAfterMove.x).toBeCloseTo(initialOther.x);
+      expect(otherAfterMove.y).toBeCloseTo(initialOther.y);
+
+      fireEvent.mouseUp(window);
+    });
+
+    it("leaves every other node's rendered transform unchanged by the same gesture", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const nodeElements = screen.getAllByTestId("entity-graph-node");
+      const [target, ...others] = nodeElements;
+      const othersInitial = others.map((el: HTMLElement) =>
+        parseNodeTransform(el),
+      );
+
+      fireEvent.mouseDown(target, { clientX: 0, clientY: 0 });
+      fireEvent.mouseMove(window, { clientX: 50, clientY: 40 });
+
+      others.forEach((el: HTMLElement, index: number) => {
+        const after = parseNodeTransform(el);
+        expect(after.x).toBeCloseTo(othersInitial[index].x);
+        expect(after.y).toBeCloseTo(othersInitial[index].y);
+      });
+
+      fireEvent.mouseUp(window);
+    });
+
+    it("scales the reposition by the canvas's current zoom, not just the raw pixel delta", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const svg = screen.getByTestId("entity-graph-canvas");
+      const viewport = screen.getByTestId("entity-graph-viewport");
+
+      // Zoom in first so `scale` is non-default.
+      fireEvent.wheel(svg, { deltaY: -100 });
+      const { scale } = parseViewportTransform(viewport);
+      expect(scale).toBeGreaterThan(1);
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      const initialTarget = parseNodeTransform(target);
+
+      const dx = 30;
+      const dy = 18;
+      fireEvent.mouseDown(target, { clientX: 50, clientY: 50 });
+      fireEvent.mouseMove(window, { clientX: 50 + dx, clientY: 50 + dy });
+
+      const afterMove = parseNodeTransform(target);
+      expect(afterMove.x - initialTarget.x).toBeCloseTo(dx / scale);
+      expect(afterMove.y - initialTarget.y).toBeCloseTo(dy / scale);
+
+      fireEvent.mouseUp(window);
+    });
+
+    it("leaves the moved node's new position in place after mouseup, with no snap-back", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      const initialTarget = parseNodeTransform(target);
+
+      fireEvent.mouseDown(target, { clientX: 10, clientY: 10 });
+      fireEvent.mouseMove(window, { clientX: 45, clientY: 33 });
+      const afterMove = parseNodeTransform(target);
+
+      fireEvent.mouseUp(window);
+      const afterRelease = parseNodeTransform(target);
+
+      expect(afterRelease.x).toBeCloseTo(afterMove.x);
+      expect(afterRelease.y).toBeCloseTo(afterMove.y);
+      expect(afterRelease.x).not.toBeCloseTo(initialTarget.x);
+    });
+
+    it("does not drive d3-force in any way during a node drag gesture", () => {
+      const forceSimulationSpy = vi.mocked(d3Force.forceSimulation);
+      forceSimulationSpy.mockClear();
+
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      // `computeGraphLayout` has already run once, synchronously, during the
+      // initial render above — this is the "whatever was already called once
+      // at mount" the assertion below excludes.
+      expect(forceSimulationSpy).toHaveBeenCalledTimes(1);
+      const simulationInstance = forceSimulationSpy.mock.results[0]
+        .value as ReturnType<typeof d3Force.forceSimulation>;
+
+      const tickSpy = vi.spyOn(simulationInstance, "tick");
+      const restartSpy = vi.spyOn(simulationInstance, "restart");
+      const alphaTargetSpy = vi.spyOn(simulationInstance, "alphaTarget");
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.mouseDown(target, { clientX: 0, clientY: 0 });
+      fireEvent.mouseMove(window, { clientX: 25, clientY: 15 });
+      fireEvent.mouseUp(window);
+
+      expect(forceSimulationSpy).toHaveBeenCalledTimes(1);
+      expect(tickSpy).not.toHaveBeenCalled();
+      expect(restartSpy).not.toHaveBeenCalled();
+      expect(alphaTargetSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe("edge hit-target line (Task 4, entity-graph-edge-tooltips)", () => {
