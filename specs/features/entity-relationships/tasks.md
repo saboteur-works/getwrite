@@ -157,10 +157,31 @@ UI action. **Every criterion passed.**
   button — not hidden, not filtered, no crash, rest of the sidebar intact (FR-11).
 - **FR-6 removal.** Removing that dangling edge left `[]` — no trace.
 
-Two things were **not** verified: Android device behaviour (no device connected),
-and the Storybook `addon-a11y` pass, because `pnpm build-storybook` fails on
-`main` and on this branch alike on an unrelated `node:async_hooks` import (POS
-`task_417d4451`). Accessible naming was observed directly in the rendered
+**Android device verification (2026-09-09, same pass):** Confirmed on a
+physical Pixel 7 Pro (`29121FDH300EP7`, cheetah), **fully offline**. Airplane
+mode was enabled and verified *before* launch — `airplane_mode_on = 1`, Wi-Fi
+disabled, 100% packet loss to 8.8.8.8 — rather than asserted afterwards. A
+purpose-built fixture was pushed into the app-private store with
+`config.relationshipTypes` **absent**, reproducing criterion (0) on device.
+
+- The type dropdown offered all seven `DEFAULT_RELATIONSHIP_TYPES`, so FR-18's
+  fallback resolves through the native transport exactly as it does on web.
+- The target picker listed the other two entities and excluded the selected
+  one (FR-4).
+- Creating "Keller — rival of — Casey Thorne" wrote `meta/relationships.json`
+  with all five FR-1 fields, read back off the device with `run-as`, while
+  still offline.
+- The sidebar rendered "is a source of **Casey Thorne** — rival of" with a
+  working Remove control.
+
+Since no network was reachable at any point, this also demonstrates the
+ADR-021 in-process transport: the write completed with no HTTP round trip
+available to fall back on. The fixture was removed and connectivity restored
+afterwards.
+
+One thing was **not** verified: the Storybook `addon-a11y` pass, because
+`pnpm build-storybook` fails on `main` and on this branch alike on an
+unrelated `node:async_hooks` import (POS `task_417d4451`). Accessible naming was observed directly in the rendered
 accessibility tree — every control carried an `aria-label`, and the lists were
 exposed as real lists.
 
