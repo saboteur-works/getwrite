@@ -91,6 +91,23 @@ const COOCCURRENCE_STROKE_WIDTH_SCALE = 1.4;
 /** Dash pattern applied to every co-occurrence edge's line (FR-6). */
 const COOCCURRENCE_DASH_ARRAY = "5 4";
 
+/** Minimum zoom scale (Task 6): the canvas never shrinks past a quarter size. */
+const MIN_SCALE = 0.25;
+
+/** Maximum zoom scale (Task 6): the canvas never grows past 4x. */
+const MAX_SCALE = 4;
+
+/**
+ * Multiplicative step applied per wheel tick (Task 6). A multiplicative
+ * (rather than additive) step keeps zoom feeling proportional at both ends
+ * of the `MIN_SCALE`/`MAX_SCALE` range.
+ */
+const ZOOM_STEP_FACTOR = 1.1;
+
+function clampScale(value: number): number {
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
+}
+
 /**
  * Computes a co-occurrence edge's `strokeWidth` from its `sharedResourceCount`
  * (FR-12). Monotonically increasing in `count` — a higher count never
@@ -256,6 +273,19 @@ export function computeGraphLayout(
  * picks up whichever mode is active in its ancestor tree. `--color-gw-red`
  * (`#D44040`, reserved for position/canonical-state indicators) is not used
  * anywhere in this file.
+ *
+ * Pan/zoom/selection (Task 6, FR-8): a click-and-drag on empty canvas space
+ * (the background `<rect>`, never a node) translates a `pan` offset tracked
+ * in state; a wheel event over the canvas scales a `scale` value clamped to
+ * `[MIN_SCALE, MAX_SCALE]`. Both are applied via a single wrapping
+ * `<g transform="translate(...) scale(...)">` around the existing edges and
+ * nodes groups, so neither Task 4's layout math nor Task 5's edge-kind
+ * markup needed to change — only wrapping. Clicking a node toggles that
+ * node's id as the sole `selectedNodeId`, rendered as an extra highlight
+ * ring (a second `<circle>`) on that node only, using the existing
+ * `--color-gw-primary` token — never the reserved red token. No keyboard-driven
+ * graph traversal is added here (out of scope per OQ-4); node activation via
+ * keyboard (FR-9) remains a separate, later concern.
  */
 export default function EntityGraphCanvas({
   nodes,
@@ -274,8 +304,82 @@ export default function EntityGraphCanvas({
   // collide on `<marker id>` (SVG ids are document-global).
   const arrowheadId = `entity-graph-arrowhead-${React.useId()}`;
 
+  const svgRef = React.useRef<SVGSVGElement>(null);
+  const [pan, setPan] = React.useState({ x: 0, y: 0 });
+  const [scale, setScale] = React.useState(1);
+  const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(
+    null,
+  );
+
+  // Drag state lives in a ref, not React state, since a mousemove needs to
+  // read it on every pointer move without forcing a re-render per pixel; the
+  // only state updates that matter for rendering are the `pan` writes below.
+  const dragOriginRef = React.useRef<{
+    startClientX: number;
+    startClientY: number;
+    startPanX: number;
+    startPanY: number;
+  } | null>(null);
+
+  const handleBackgroundMouseDown = React.useCallback(
+    (event: React.MouseEvent<SVGRectElement>) => {
+      dragOriginRef.current = {
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startPanX: pan.x,
+        startPanY: pan.y,
+      };
+    },
+    [pan.x, pan.y],
+  );
+
+  // Drag continuation and release are tracked on `window`, not the `<rect>`
+  // itself, so a drag already in progress keeps updating even once the
+  // pointer moves outside the SVG's own bounds — the same reason a native
+  // drag gesture is normally wired at the document level.
+  React.useEffect(() => {
+    const handleMouseMove = (event: MouseEvent): void => {
+      const origin = dragOriginRef.current;
+      if (!origin) return;
+      setPan({
+        x: origin.startPanX + (event.clientX - origin.startClientX),
+        y: origin.startPanY + (event.clientY - origin.startClientY),
+      });
+    };
+    const handleMouseUp = (): void => {
+      dragOriginRef.current = null;
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  // A non-passive native `wheel` listener, following this codebase's own
+  // `Timeline.tsx` precedent for wheel-driven zoom: React's synthetic
+  // `onWheel` is attached passively by default, which would silently drop
+  // `preventDefault()` and let the page scroll along with the zoom.
+  React.useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const handleWheel = (event: WheelEvent): void => {
+      event.preventDefault();
+      const factor = event.deltaY < 0 ? ZOOM_STEP_FACTOR : 1 / ZOOM_STEP_FACTOR;
+      setScale((previous) => clampScale(previous * factor));
+    };
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, []);
+
+  const handleNodeClick = React.useCallback((entityId: string) => {
+    setSelectedNodeId((current) => (current === entityId ? null : entityId));
+  }, []);
+
   return (
     <svg
+      ref={svgRef}
       role="img"
       aria-label="Entity relationship graph canvas"
       className={className}
@@ -285,6 +389,15 @@ export default function EntityGraphCanvas({
       data-testid="entity-graph-canvas"
       style={{ backgroundColor: "var(--color-gw-chrome)" }}
     >
+      <rect
+        x={0}
+        y={0}
+        width={width}
+        height={height}
+        fill="transparent"
+        data-testid="entity-graph-canvas-background"
+        onMouseDown={handleBackgroundMouseDown}
+      />
       <defs>
         {/*
           Arrowhead for authored edges only (FR-7): `orient="auto"` rotates
@@ -309,57 +422,79 @@ export default function EntityGraphCanvas({
           />
         </marker>
       </defs>
-      <g data-testid="entity-graph-edges">
-        {positionedEdges.map((positioned) => {
-          const { edge } = positioned;
-          const isAuthored = edge.kind === "authored";
-          const strokeWidth =
-            edge.kind === "authored"
-              ? AUTHORED_EDGE_STROKE_WIDTH
-              : cooccurrenceStrokeWidth(edge.sharedResourceCount);
-          return (
-            <line
-              key={positioned.key}
-              data-testid="entity-graph-edge"
-              data-edge-kind={positioned.edge.kind}
-              x1={positioned.x1}
-              y1={positioned.y1}
-              x2={positioned.x2}
-              y2={positioned.y2}
-              strokeWidth={strokeWidth}
-              strokeDasharray={isAuthored ? undefined : COOCCURRENCE_DASH_ARRAY}
-              markerEnd={isAuthored ? `url(#${arrowheadId})` : undefined}
-              style={{ stroke: "var(--color-gw-secondary)" }}
-            />
-          );
-        })}
-      </g>
-      <g data-testid="entity-graph-nodes">
-        {positionedNodes.map((node) => (
-          <g
-            key={node.entityId}
-            data-testid="entity-graph-node"
-            data-entity-id={node.entityId}
-            transform={`translate(${node.x}, ${node.y})`}
-          >
-            <circle
-              r={NODE_RADIUS}
-              strokeWidth={1.5}
-              style={{
-                fill: "var(--color-gw-chrome2)",
-                stroke: "var(--color-gw-border-md)",
-              }}
-            />
-            <text
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize={11}
-              style={{ fill: "var(--color-gw-primary)" }}
-            >
-              {node.name}
-            </text>
-          </g>
-        ))}
+      <g
+        data-testid="entity-graph-viewport"
+        transform={`translate(${pan.x}, ${pan.y}) scale(${scale})`}
+      >
+        <g data-testid="entity-graph-edges">
+          {positionedEdges.map((positioned) => {
+            const { edge } = positioned;
+            const isAuthored = edge.kind === "authored";
+            const strokeWidth =
+              edge.kind === "authored"
+                ? AUTHORED_EDGE_STROKE_WIDTH
+                : cooccurrenceStrokeWidth(edge.sharedResourceCount);
+            return (
+              <line
+                key={positioned.key}
+                data-testid="entity-graph-edge"
+                data-edge-kind={positioned.edge.kind}
+                x1={positioned.x1}
+                y1={positioned.y1}
+                x2={positioned.x2}
+                y2={positioned.y2}
+                strokeWidth={strokeWidth}
+                strokeDasharray={
+                  isAuthored ? undefined : COOCCURRENCE_DASH_ARRAY
+                }
+                markerEnd={isAuthored ? `url(#${arrowheadId})` : undefined}
+                style={{ stroke: "var(--color-gw-secondary)" }}
+              />
+            );
+          })}
+        </g>
+        <g data-testid="entity-graph-nodes">
+          {positionedNodes.map((node) => {
+            const isSelected = node.entityId === selectedNodeId;
+            return (
+              <g
+                key={node.entityId}
+                data-testid="entity-graph-node"
+                data-entity-id={node.entityId}
+                data-selected={isSelected ? "true" : "false"}
+                transform={`translate(${node.x}, ${node.y})`}
+                onClick={() => handleNodeClick(node.entityId)}
+                style={{ cursor: "pointer" }}
+              >
+                {isSelected ? (
+                  <circle
+                    r={NODE_RADIUS + 4}
+                    fill="none"
+                    strokeWidth={2}
+                    data-testid="entity-graph-node-selection-ring"
+                    style={{ stroke: "var(--color-gw-primary)" }}
+                  />
+                ) : null}
+                <circle
+                  r={NODE_RADIUS}
+                  strokeWidth={1.5}
+                  style={{
+                    fill: "var(--color-gw-chrome2)",
+                    stroke: "var(--color-gw-border-md)",
+                  }}
+                />
+                <text
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize={11}
+                  style={{ fill: "var(--color-gw-primary)" }}
+                >
+                  {node.name}
+                </text>
+              </g>
+            );
+          })}
+        </g>
       </g>
     </svg>
   );

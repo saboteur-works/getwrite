@@ -7,7 +7,7 @@
  */
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import EntityGraphCanvas from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityGraphCanvas";
 import type {
   EntityGraphEdge,
@@ -42,6 +42,26 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
+
+/**
+ * Parses the wrapping viewport `<g>`'s `transform="translate(x, y) scale(s)"`
+ * attribute (Task 6) into its numeric components, so pan/zoom assertions can
+ * compare values rather than raw strings.
+ */
+function parseViewportTransform(el: Element): {
+  x: number;
+  y: number;
+  scale: number;
+} {
+  const transform = el.getAttribute("transform") ?? "";
+  const match = transform.match(
+    /translate\(([-\d.]+),\s*([-\d.]+)\)\s*scale\(([-\d.]+)\)/,
+  );
+  if (!match) {
+    throw new Error(`Could not parse viewport transform: "${transform}"`);
+  }
+  return { x: Number(match[1]), y: Number(match[2]), scale: Number(match[3]) };
+}
 
 describe("EntityGraphCanvas", () => {
   it("renders one visual node element per fixture node and one visual edge element per fixture edge", () => {
@@ -238,5 +258,98 @@ describe("EntityGraphCanvas", () => {
       el.getAttribute("stroke-width"),
     );
     expect(widths[0]).toBe(widths[1]);
+  });
+
+  it("translates the rendered viewport when a drag gesture runs on empty canvas space", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const background = screen.getByTestId("entity-graph-canvas-background");
+    const viewport = screen.getByTestId("entity-graph-viewport");
+    const initial = parseViewportTransform(viewport);
+
+    fireEvent.mouseDown(background, { clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(window, { clientX: 140, clientY: 130 });
+    fireEvent.mouseUp(window);
+
+    const afterDrag = parseViewportTransform(viewport);
+    expect(afterDrag.x).not.toBe(initial.x);
+    expect(afterDrag.y).not.toBe(initial.y);
+    expect(afterDrag.x - initial.x).toBeCloseTo(40);
+    expect(afterDrag.y - initial.y).toBeCloseTo(30);
+  });
+
+  it("stops updating the viewport once the drag gesture has ended", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const background = screen.getByTestId("entity-graph-canvas-background");
+    const viewport = screen.getByTestId("entity-graph-viewport");
+
+    fireEvent.mouseDown(background, { clientX: 0, clientY: 0 });
+    fireEvent.mouseMove(window, { clientX: 20, clientY: 20 });
+    fireEvent.mouseUp(window);
+    const afterFirstDrag = parseViewportTransform(viewport);
+
+    // A mousemove with no preceding mousedown (drag already released) must
+    // not move the viewport any further.
+    fireEvent.mouseMove(window, { clientX: 200, clientY: 200 });
+    const afterStrayMove = parseViewportTransform(viewport);
+
+    expect(afterStrayMove.x).toBe(afterFirstDrag.x);
+    expect(afterStrayMove.y).toBe(afterFirstDrag.y);
+  });
+
+  it("changes the rendered zoom scale on a wheel event, clamped within configured bounds", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const svg = screen.getByTestId("entity-graph-canvas");
+    const viewport = screen.getByTestId("entity-graph-viewport");
+    const initial = parseViewportTransform(viewport);
+    expect(initial.scale).toBe(1);
+
+    fireEvent.wheel(svg, { deltaY: -100 });
+    const afterOneZoomIn = parseViewportTransform(viewport);
+    expect(afterOneZoomIn.scale).toBeGreaterThan(initial.scale);
+
+    // Many zoom-in ticks in a row must not exceed the configured max.
+    for (let i = 0; i < 100; i += 1) {
+      fireEvent.wheel(svg, { deltaY: -100 });
+    }
+    const afterManyZoomIn = parseViewportTransform(viewport);
+    expect(afterManyZoomIn.scale).toBeLessThanOrEqual(4);
+
+    // Many zoom-out ticks in a row must not go below the configured min.
+    for (let i = 0; i < 200; i += 1) {
+      fireEvent.wheel(svg, { deltaY: 100 });
+    }
+    const afterManyZoomOut = parseViewportTransform(viewport);
+    expect(afterManyZoomOut.scale).toBeGreaterThanOrEqual(0.25);
+  });
+
+  it("toggles a selected-state visual attribute on exactly the clicked node, not on others", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const nodeElements = screen.getAllByTestId("entity-graph-node");
+    expect(nodeElements.length).toBeGreaterThanOrEqual(3);
+
+    const [first, second, third] = nodeElements;
+    expect(first.getAttribute("data-selected")).toBe("false");
+    expect(second.getAttribute("data-selected")).toBe("false");
+    expect(third.getAttribute("data-selected")).toBe("false");
+
+    fireEvent.click(first);
+
+    expect(first.getAttribute("data-selected")).toBe("true");
+    expect(second.getAttribute("data-selected")).toBe("false");
+    expect(third.getAttribute("data-selected")).toBe("false");
+    expect(
+      first.querySelector('[data-testid="entity-graph-node-selection-ring"]'),
+    ).not.toBeNull();
+    expect(
+      second.querySelector('[data-testid="entity-graph-node-selection-ring"]'),
+    ).toBeNull();
+
+    // Clicking the same node again toggles the selection back off.
+    fireEvent.click(first);
+    expect(first.getAttribute("data-selected")).toBe("false");
   });
 });
