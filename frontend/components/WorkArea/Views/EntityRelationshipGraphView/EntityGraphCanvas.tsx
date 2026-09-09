@@ -69,6 +69,42 @@ export interface EntityGraphCanvasProps {
 }
 
 /**
+ * Fixed stroke width for an authored edge (FR-12: thickness is reserved for
+ * the co-occurrence count only, so an authored edge never varies its width).
+ */
+const AUTHORED_EDGE_STROKE_WIDTH = 1.5;
+
+/**
+ * Minimum stroke width for a co-occurrence edge, used even at a
+ * `sharedResourceCount` of zero or one so the line never disappears.
+ */
+const COOCCURRENCE_MIN_STROKE_WIDTH = 1.5;
+
+/**
+ * Scale factor applied to the log of `sharedResourceCount` to spread the
+ * range of rendered widths without letting a very high count blow out the
+ * canvas. A log scale (rather than linear) keeps the growth monotonic while
+ * flattening out for large counts (FR-12).
+ */
+const COOCCURRENCE_STROKE_WIDTH_SCALE = 1.4;
+
+/** Dash pattern applied to every co-occurrence edge's line (FR-6). */
+const COOCCURRENCE_DASH_ARRAY = "5 4";
+
+/**
+ * Computes a co-occurrence edge's `strokeWidth` from its `sharedResourceCount`
+ * (FR-12). Monotonically increasing in `count` — a higher count never
+ * produces an equal-or-thinner line than a lower one — via a log scale so the
+ * line stays legible across a wide range of counts.
+ */
+function cooccurrenceStrokeWidth(count: number): number {
+  return (
+    COOCCURRENCE_MIN_STROKE_WIDTH +
+    Math.log2(Math.max(count, 0) + 1) * COOCCURRENCE_STROKE_WIDTH_SCALE
+  );
+}
+
+/**
  * Returns the two entity ids an edge connects, regardless of edge kind — a
  * co-occurrence edge's unordered pair or an authored edge's directed pair.
  */
@@ -200,11 +236,17 @@ export function computeGraphLayout(
  * persistence call anywhere in this component for position data, layout
  * data, or anything else.
  *
- * Edge-kind visual distinction (dashed vs. solid, arrowheads, thickness) is
- * deliberately out of scope here — every edge renders as a plain, uniform
- * line for now (Task 5's scope) — and pan, zoom, and click-selection are not
- * wired yet (Task 6's scope). This task's positioning and hit-testing are
- * limited to placing nodes/edges at their settled coordinates.
+ * Edge-kind visual distinction (FR-5/FR-6/FR-7/FR-12, Task 5): a
+ * co-occurrence edge renders dashed and undirected, with `strokeWidth`
+ * scaling monotonically with its `sharedResourceCount` via
+ * `cooccurrenceStrokeWidth`; an authored edge renders solid, at a fixed
+ * `strokeWidth`, with a `marker-end` arrowhead (defined once in this
+ * component's `<defs>`) whose orientation follows the line's own
+ * source→target direction. Colour is never used to distinguish the two kinds
+ * — both share the same `--color-gw-secondary` stroke token, never
+ * `--color-gw-red`/`#D44040`. Pan, zoom, and click-selection are not wired
+ * yet (Task 6's scope, landing on this same file next) — this task's
+ * changes are confined to the edges `<g>` and the new `<defs>`/`<marker>`.
  *
  * Theming uses this repo's `--color-gw-*` CSS custom properties (brand
  * tokens), the same tokens `EntityRosterRow.tsx` uses inline for its own
@@ -227,6 +269,11 @@ export default function EntityGraphCanvas({
     [nodes, edges, width, height],
   );
 
+  // A stable-but-unique id for this canvas instance's arrowhead marker, so
+  // multiple `EntityGraphCanvas` instances rendered on the same page never
+  // collide on `<marker id>` (SVG ids are document-global).
+  const arrowheadId = `entity-graph-arrowhead-${React.useId()}`;
+
   return (
     <svg
       role="img"
@@ -238,20 +285,54 @@ export default function EntityGraphCanvas({
       data-testid="entity-graph-canvas"
       style={{ backgroundColor: "var(--color-gw-chrome)" }}
     >
-      <g data-testid="entity-graph-edges">
-        {positionedEdges.map((positioned) => (
-          <line
-            key={positioned.key}
-            data-testid="entity-graph-edge"
-            data-edge-kind={positioned.edge.kind}
-            x1={positioned.x1}
-            y1={positioned.y1}
-            x2={positioned.x2}
-            y2={positioned.y2}
-            strokeWidth={1.5}
-            style={{ stroke: "var(--color-gw-secondary)" }}
+      <defs>
+        {/*
+          Arrowhead for authored edges only (FR-7): `orient="auto"` rotates
+          the marker to follow the `<line>`'s own direction from its start
+          (x1/y1, the source) to its end (x2/y2, the target), so the
+          arrowhead's point always faces the target regardless of the pair's
+          screen position. A co-occurrence edge never references this marker,
+          leaving it undirected per Feature 37's own unordered-pair guarantee.
+        */}
+        <marker
+          id={arrowheadId}
+          viewBox="0 0 10 10"
+          refX="9"
+          refY="5"
+          markerWidth="7"
+          markerHeight="7"
+          orient="auto"
+        >
+          <path
+            d="M0,0 L10,5 L0,10 Z"
+            style={{ fill: "var(--color-gw-secondary)" }}
           />
-        ))}
+        </marker>
+      </defs>
+      <g data-testid="entity-graph-edges">
+        {positionedEdges.map((positioned) => {
+          const { edge } = positioned;
+          const isAuthored = edge.kind === "authored";
+          const strokeWidth =
+            edge.kind === "authored"
+              ? AUTHORED_EDGE_STROKE_WIDTH
+              : cooccurrenceStrokeWidth(edge.sharedResourceCount);
+          return (
+            <line
+              key={positioned.key}
+              data-testid="entity-graph-edge"
+              data-edge-kind={positioned.edge.kind}
+              x1={positioned.x1}
+              y1={positioned.y1}
+              x2={positioned.x2}
+              y2={positioned.y2}
+              strokeWidth={strokeWidth}
+              strokeDasharray={isAuthored ? undefined : COOCCURRENCE_DASH_ARRAY}
+              markerEnd={isAuthored ? `url(#${arrowheadId})` : undefined}
+              style={{ stroke: "var(--color-gw-secondary)" }}
+            />
+          );
+        })}
       </g>
       <g data-testid="entity-graph-nodes">
         {positionedNodes.map((node) => (

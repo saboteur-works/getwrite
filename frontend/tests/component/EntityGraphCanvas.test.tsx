@@ -132,4 +132,111 @@ describe("EntityGraphCanvas", () => {
       expect(stroke.toLowerCase()).not.toBe(RESERVED_RED_HEX);
     }
   });
+
+  it("distinguishes a co-occurrence edge from an authored edge by a non-colour cue (dash pattern)", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const edgeElements = screen.getAllByTestId("entity-graph-edge");
+    const cooccurrenceEdge = edgeElements.find(
+      (el: HTMLElement) => el.getAttribute("data-edge-kind") === "cooccurrence",
+    );
+    const authoredEdge = edgeElements.find(
+      (el: HTMLElement) => el.getAttribute("data-edge-kind") === "authored",
+    );
+    expect(cooccurrenceEdge).toBeDefined();
+    expect(authoredEdge).toBeDefined();
+
+    const cooccurrenceDash = cooccurrenceEdge!.getAttribute("stroke-dasharray");
+    const authoredDash = authoredEdge!.getAttribute("stroke-dasharray");
+    expect(cooccurrenceDash).not.toBeNull();
+    expect(cooccurrenceDash).not.toBe(authoredDash);
+  });
+
+  it("gives an authored edge a direction-conveying arrowhead marker and a co-occurrence edge none", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const edgeElements = screen.getAllByTestId("entity-graph-edge");
+    const cooccurrenceEdge = edgeElements.find(
+      (el: HTMLElement) => el.getAttribute("data-edge-kind") === "cooccurrence",
+    );
+    const authoredEdge = edgeElements.find(
+      (el: HTMLElement) => el.getAttribute("data-edge-kind") === "authored",
+    );
+    expect(cooccurrenceEdge).toBeDefined();
+    expect(authoredEdge).toBeDefined();
+
+    const authoredMarkerEnd = authoredEdge!.getAttribute("marker-end");
+    expect(authoredMarkerEnd).toBeTruthy();
+    expect(authoredMarkerEnd).toMatch(/^url\(#.+\)$/);
+
+    // The referenced marker exists and rotates with the line's own
+    // direction, which — since the authored edge's x1/y1 (its source, `e-2`)
+    // and x2/y2 (its target, `e-3`) are already resolved to those entities'
+    // own settled positions — is what conveys the authored edge's
+    // sourceEntityId->targetEntityId direction.
+    const markerId = authoredMarkerEnd!.slice(5, -1);
+    const markerEl = document.getElementById(markerId);
+    expect(markerEl).not.toBeNull();
+    expect(markerEl?.tagName.toLowerCase()).toBe("marker");
+    expect(markerEl?.getAttribute("orient")).toBe("auto");
+
+    expect(cooccurrenceEdge!.getAttribute("marker-end")).toBeNull();
+  });
+
+  it("scales a co-occurrence edge's stroke width monotonically with its shared-resource count", () => {
+    const twoCooccurrenceEdges: EntityGraphEdge[] = [
+      {
+        kind: "cooccurrence",
+        entityIdA: "e-1",
+        entityIdB: "e-2",
+        sharedResourceCount: 1,
+      },
+      {
+        kind: "cooccurrence",
+        entityIdA: "e-1",
+        entityIdB: "e-3",
+        sharedResourceCount: 5,
+      },
+    ];
+
+    render(<EntityGraphCanvas nodes={NODES} edges={twoCooccurrenceEdges} />);
+
+    const edgeElements = screen.getAllByTestId("entity-graph-edge");
+    expect(edgeElements).toHaveLength(2);
+
+    const widths = edgeElements.map((el: HTMLElement) =>
+      Number(el.getAttribute("stroke-width")),
+    );
+    const [countOneWidth, countFiveWidth] = widths;
+    expect(Number.isNaN(countOneWidth)).toBe(false);
+    expect(Number.isNaN(countFiveWidth)).toBe(false);
+    expect(countFiveWidth).toBeGreaterThan(countOneWidth);
+  });
+
+  it("keeps an authored edge's stroke width fixed, not varying with anything", () => {
+    const authoredEdges: EntityGraphEdge[] = [
+      {
+        kind: "authored",
+        id: "rel-a",
+        sourceEntityId: "e-1",
+        targetEntityId: "e-2",
+        relationshipType: "allies with",
+      },
+      {
+        kind: "authored",
+        id: "rel-b",
+        sourceEntityId: "e-2",
+        targetEntityId: "e-3",
+        relationshipType: "lives in",
+      },
+    ];
+
+    render(<EntityGraphCanvas nodes={NODES} edges={authoredEdges} />);
+
+    const edgeElements = screen.getAllByTestId("entity-graph-edge");
+    const widths = edgeElements.map((el: HTMLElement) =>
+      el.getAttribute("stroke-width"),
+    );
+    expect(widths[0]).toBe(widths[1]);
+  });
 });
