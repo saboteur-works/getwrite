@@ -83,3 +83,41 @@ an acceptable trade-off (the tooltip text names both entities, so the covered
 node is still identifiable), or specific to this fixture's layout is not
 established here. Hovering a larger sample of edges across several graph
 densities and recording the overlap rate would settle it.
+
+## Tooltip placement (FR-10), 2026-09-10
+
+**Method.** A browser (Playwright, Chromium) against the dev server with a
+disposable copy of a six-entity project. Every edge was hovered with a real
+mouse at five points along its length — 20%, 35%, 50%, 65%, 80% — skipping
+points that landed on a node rather than the edge: 37 hovers across 10 of the
+11 edges. For each, the tooltip's rectangle was compared with the rendered
+boxes of every node and with the viewport. Run at 1280×800 and at 411×850.
+
+The "after" run is against a freshly started server confirmed to be serving the
+new code: the tooltip's computed `max-width` reads `260px`. An earlier attempt
+measured a stale server that had never picked up the edits — file-watching is
+blocked in the environment the server was started from — and its numbers are
+discarded.
+
+| Same 37 hovers | Desktop before | Desktop after | Phone before | Phone after |
+|---|---|---|---|---|
+| Covers an endpoint of the hovered edge | 54% (20) | **14% (5)** | 54% (20) | **38% (14)** |
+| Extends past the viewport | 0% | 0% | 100% | **0%** |
+| Covers any node | 84% | 84% | 84% | **100%** |
+| Tooltip size (px) | 291–357 × 30 | 260 × 46 | 291–357 × 30 | 260 × 46 |
+
+**Not improvements, recorded as measured:**
+
+- On a phone the tooltip still covers one of the hovered edge's endpoints in 14
+  of 37 hovers. A 260px tooltip on a 411px screen often has no position clear
+  of both nodes, so the least-overlap rule applies (FR-10, OQ-4).
+- On a phone it now covers *some* node in every hover, up from 84%. Clamping
+  pulls it inward, where the graph is, and nodes other than the hovered edge's
+  endpoints are deliberately not avoided (OQ-4).
+- At every screen size, tooltips now wrap at 260px, so a relationship that
+  previously read on one line now takes two.
+
+The flat 260 × 46 size in both "after" runs reflects this fixture — every edge
+description here is long enough to hit the cap. Shorter descriptions render
+narrower.
+

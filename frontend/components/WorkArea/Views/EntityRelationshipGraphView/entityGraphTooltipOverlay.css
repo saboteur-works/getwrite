@@ -10,12 +10,17 @@
  */
 
 .entity-graph-edge-tooltip {
-  transform: translate(10px, -100%);
   background: var(--color-gw-chrome2);
   border: 0.5px solid var(--color-gw-border-md);
   padding: 6px 9px;
   z-index: 300;
-  white-space: nowrap;
+  /* Same width bound as the app's shared tooltip (tooltipStyle.ts), so a long
+     relationship wraps instead of running off a phone screen. Placement,
+     including the gap from the pointer, is computed in
+     edgeTooltipPlacement.ts rather than set here. */
+  max-width: min(260px, calc(100vw - 24px));
+  white-space: normal;
+  overflow-wrap: break-word;
   border-radius: 2px;
   pointer-events: none;
   font-family: var(--font-mono);

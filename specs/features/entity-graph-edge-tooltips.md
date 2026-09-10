@@ -80,6 +80,8 @@ FR-8: A node MUST NOT gain a hover tooltip as part of this feature — a node's 
 
 FR-9: An edge MUST NOT become keyboard-focusable, and MUST NOT show a tooltip on keyboard focus, as part of this feature. The synchronized accessible list (`EntityGraphAccessibleList.tsx`) remains the sole keyboard and screen-reader surface for the same edge text this tooltip discloses on hover or tap, per Feature 39's own OQ-4 rejection of keyboard graph traversal. [US-1]
 
+FR-10: The tooltip MUST be drawn beside the pointer, fully inside the viewport, at whichever of the four diagonal positions around the pointer covers the least area of the hovered edge's own two endpoint nodes, preferring above-right — the original placement — when positions tie. It MUST wrap to the same width bound as the app's shared tooltip, `min(260px, calc(100vw - 24px))`, rather than extending on one line. Other nodes are not avoided: at the densities measured, most placements cover some node, and the endpoints are the nodes a reader inspecting the edge is looking at (see OQ-4). [US-1]
+
 ## Open questions
 
 - OQ-1 (resolved: attempt order, not outcome). `react-tooltip`'s `float`
@@ -125,6 +127,26 @@ FR-9: An edge MUST NOT become keyboard-focusable, and MUST NOT show a tooltip on
   `frontend/scripts/build-native-static.mjs:71-74` excludes only `api`,
   `login`, `reset-password`, and `verify-email` from the native export — no
   Work Area view is excluded. — Impact: FR-1, FR-4, FR-5.
+
+- OQ-4 (resolved 2026-09-10, post-ship amendment: tooltip placement). The
+  shipped tooltip sat at a fixed offset above-right of the pointer, on one
+  line, with no bound to the viewport. Measured in a browser — 37 hovers
+  across 10 of the 11 edges of a six-entity project, at five points along
+  each edge — it covered one of the hovered edge's own two endpoint nodes in
+  54% of hovers and some node in 84%. Those figures were identical at
+  1280×800 and 411×850, because placement is relative to the pointer and so
+  does not depend on screen size. It ran off the right edge in none of the
+  desktop hovers and all of the phone hovers, being 291–357px wide. The
+  first spike's pass criterion, "without covering the inspected node", had
+  been applied to `react-tooltip`'s `float` mode but never to the bespoke
+  overlay that shipped. Decided: avoid only the hovered edge's endpoint
+  nodes, not every node; when no position avoids them, take the least
+  overlap; and wrap to the shared tooltip's width cap at every screen size,
+  so desktop tooltips that previously ran up to 357px on one line now wrap
+  at 260px. Returning to the shared `react-tooltip` was considered and
+  rejected for this problem: its placement flips away from viewport edges
+  only and has no notion of nodes, so it would fix the clipping but not the
+  covering. — Impact: FR-10.
 
 ## Out of scope (deferred)
 
