@@ -121,3 +121,32 @@ The flat 260 × 46 size in both "after" runs reflects this fixture — every edg
 description here is long enough to hit the cap. Shorter descriptions render
 narrower.
 
+### On a Pixel 7 Pro — real WebView, taps (2026-09-10)
+
+The same method adapted for touch, on a debug build of this branch: 37 real
+taps (`adb shell input tap`) at the same five points along each of 10 edges,
+after scrolling the pane so the six-node cluster (367px wide) sat centred on
+the 411px screen. Each tap point was checked over DevTools before it was sent,
+so none landed on a node, and the tooltip was dismissed with a tap on empty
+canvas between samples.
+
+| Measured on device | Result |
+|---|---|
+| Tooltip shown | 37 of 37; none left hidden; no tap navigated away |
+| Extends past the viewport | 0% |
+| Tooltip size (px) | 260 × 46 |
+| Covers an endpoint of the tapped edge | **49% (18)** |
+| Covers any node | 100% |
+
+The old placement was pointer-relative, so its 54% rate applies at these same
+points: on the device the endpoint figure moved 54% → 49%, much less than the
+54% → 38% that desktop Chromium measured at 411×850. The two phone-width runs
+differ in where the graph sat (centred here; not recorded in the browser run),
+viewport height (826 vs 850px), and input (tap vs hover). Which of these
+accounts for the gap was not established.
+
+What the device run does establish: on a phone-sized screen with the graph
+nearly filling the width, a 260 × 46 tooltip usually has no position clear of
+the tapped edge's nodes, and least-overlap placement (FR-10) only partly
+helps. Clipping, by contrast, is fully fixed on the device.
+
