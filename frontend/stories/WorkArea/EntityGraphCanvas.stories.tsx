@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { userEvent, within, expect, waitFor } from "storybook/test";
+import { fireEvent, userEvent, within, expect, waitFor } from "storybook/test";
 import EntityGraphCanvas from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityGraphCanvas";
 import type {
   EntityGraphEdge,
@@ -45,6 +45,21 @@ const edges: EntityGraphEdge[] = [
     relationshipType: "rival",
   },
 ];
+
+/**
+ * Parses a node `<g>`'s `transform="translate(x, y)"` attribute into its
+ * numeric components — mirrors `EntityGraphCanvas.test.tsx`'s own
+ * `parseNodeTransform` helper, used the same way here to compare a dragged
+ * node's rendered position before and after the gesture.
+ */
+function parseNodeTransform(el: Element): { x: number; y: number } {
+  const transform = el.getAttribute("transform") ?? "";
+  const match = transform.match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+  if (!match) {
+    throw new Error(`Could not parse node transform: "${transform}"`);
+  }
+  return { x: Number(match[1]), y: Number(match[2]) };
+}
 
 const meta = {
   title: "WorkArea/EntityGraphCanvas",
@@ -155,5 +170,56 @@ export const EdgeTooltips: Story = {
         authoredEdge.relationshipType,
       ),
     );
+  },
+};
+
+/**
+ * Exercises the node drag gesture (entity-graph-node-dragging, Tasks 1-4) on
+ * the same `Populated` fixture above. Anna carries both a co-occurrence edge
+ * and an authored edge (to Castle Greywatch), so dragging her node visibly
+ * demonstrates Task 4's edge-follows-node behavior for both edge kinds in
+ * the same gesture. Dana carries no edge to Anna and is used as the control:
+ * her rendered position must stay put across the same gesture.
+ *
+ * The component listens for `pointermove`/`pointerup` at the WINDOW level
+ * (see `EntityGraphCanvas.tsx`'s drag-continuation effect), not on the node
+ * itself — mirroring `EntityGraphCanvas.test.tsx`'s own drag simulation, this
+ * play function fires `pointerdown` on the node's `<g>` and then
+ * `pointermove`/`pointerup` on `window` rather than on the node. Pointer
+ * events rather than mouse events, because the drag has to work for touch.
+ */
+export const NodeDragging: Story = {
+  args: { nodes, edges, onNodeActivated: () => {} },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const nodeElements = canvas.getAllByTestId("entity-graph-node");
+    const draggedNode = nodeElements.find(
+      (el) => el.getAttribute("data-entity-id") === "e-anna",
+    );
+    const controlNode = nodeElements.find(
+      (el) => el.getAttribute("data-entity-id") === "e-dana",
+    );
+    if (!draggedNode || !controlNode) {
+      throw new Error("Fixture must contain both Anna's and Dana's nodes");
+    }
+
+    const initialDraggedPosition = parseNodeTransform(draggedNode);
+    const initialControlPosition = parseNodeTransform(controlNode);
+
+    // A full drag gesture, well past `DRAG_CLICK_THRESHOLD_PX` (4px at time
+    // of writing) so it is unambiguously classified as a drag rather than a
+    // click, and moved a visible distance on the canvas.
+    fireEvent.pointerDown(draggedNode, { clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(window, { clientX: 180, clientY: 160 });
+    fireEvent.pointerUp(window);
+
+    const draggedPositionAfter = parseNodeTransform(draggedNode);
+    expect(draggedPositionAfter.x).not.toBeCloseTo(initialDraggedPosition.x);
+    expect(draggedPositionAfter.y).not.toBeCloseTo(initialDraggedPosition.y);
+
+    const controlPositionAfter = parseNodeTransform(controlNode);
+    expect(controlPositionAfter.x).toBeCloseTo(initialControlPosition.x);
+    expect(controlPositionAfter.y).toBeCloseTo(initialControlPosition.y);
   },
 };

@@ -16,9 +16,10 @@ A pair of entities can have both kinds of line at once — sharing a document do
 - **Pan** by clicking and dragging an empty area of the canvas.
 - **Zoom** with the scroll wheel.
 - **Click a node** (or press Enter/Space when it's focused) to jump straight to that entity's document in the editor, the same as clicking a row in the [Entities view](entity-roster.md).
+- **Drag a node** to move it out of the way. This just repositions that one node on the canvas — connected lines stretch to follow it, but nothing else on the graph moves or rearranges itself. It works with a mouse, trackpad, or finger — on a phone, dragging a node moves it, while swiping empty space scrolls the view. There's no keyboard equivalent for repositioning a node.
 - **Hover or tap a connection** to see a tooltip spelling out what it represents — the same text as its entry in the accessible list below (for example "Amara and Kestrel share 3 resources", or "Amara → Kestrel (mentor of)"). Connections aren't keyboard-focusable and show no tooltip on focus; the accessible list is the keyboard and screen-reader way to get the same information.
 
-Node positions are recalculated fresh every time you open the view — nothing about where a node sits on the canvas is saved.
+Node positions are recalculated fresh every time you open the view — nothing about where a node sits on the canvas is saved, including any node you've dragged. Reload the view or navigate away and back, and every node returns to its computed position.
 
 ## Accessible list
 

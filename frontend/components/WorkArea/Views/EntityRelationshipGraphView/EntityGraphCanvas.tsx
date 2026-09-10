@@ -133,6 +133,18 @@ function clampScale(value: number): number {
 }
 
 /**
+ * Maximum pointer movement, in client pixels, a node's pointerdown-to-pointerup
+ * gesture may travel and still be treated as a click (rather than a drag) of
+ * that node (entity-graph-node-dragging, FR-2/FR-7, OQ-1). This is a starting
+ * value, not a measured one: chosen as a typical click/drag threshold, then
+ * hand-checked during this feature's manual verification (2026-09-10) and
+ * judged within tolerable bounds. That is a judgment from use, not a
+ * measurement — see specs/features/entity-graph-node-dragging/
+ * manual-verification.md. Tuning it is a one-line change here.
+ */
+const DRAG_CLICK_THRESHOLD_PX = 4;
+
+/**
  * Computes a co-occurrence edge's `strokeWidth` from its `sharedResourceCount`
  * (FR-12). Monotonically increasing in `count` — a higher count never
  * produces an equal-or-thinner line than a lower one — via a log scale so the
@@ -165,6 +177,32 @@ function edgeKey(edge: EntityGraphEdge): string {
   return edge.kind === "authored"
     ? `authored:${edge.id}`
     : `cooccurrence:${edge.entityIdA}:${edge.entityIdB}`;
+}
+
+/**
+ * Resolves a single entity's rendered position at render time
+ * (entity-graph-node-dragging, FR-3): its live drag override if one exists,
+ * else `computeGraphLayout`'s own settled `x`/`y` for that entity, unchanged.
+ * This is the exact same override-or-layout precedence a node's own `<g>`
+ * transform already applies (see the nodes render loop below) — this helper
+ * lets an edge endpoint apply the identical rule without duplicating it.
+ *
+ * A no-override call is a pure pass-through of `layoutNode`'s coordinates:
+ * it introduces no new computation in that case, which is what keeps a
+ * dragless render's edge endpoints identical to `computeGraphLayout`'s own
+ * fixed output.
+ */
+function resolveEntityPosition(
+  entityId: string,
+  layoutNode: { x: number; y: number } | undefined,
+  overrides: Map<string, { x: number; y: number }>,
+  fallbackX: number,
+  fallbackY: number,
+): { x: number; y: number } {
+  const override = overrides.get(entityId);
+  if (override) return override;
+  if (layoutNode) return { x: layoutNode.x, y: layoutNode.y };
+  return { x: fallbackX, y: fallbackY };
 }
 
 /**
@@ -418,6 +456,19 @@ export default function EntityGraphCanvas({
     return map;
   }, [positionedNodes]);
 
+  // Entity id -> `computeGraphLayout`'s own settled x/y (entity-graph-node-
+  // dragging, FR-3). This is memoized off `positionedNodes` only — never off
+  // `nodePositionOverrides` — since it exists purely to give
+  // `resolveEntityPosition` the unchanged layout fallback; overrides are
+  // applied by that function at render time, not baked into this map.
+  const layoutPositionById = React.useMemo(() => {
+    const map = new Map<string, { x: number; y: number }>();
+    for (const node of positionedNodes) {
+      map.set(node.entityId, { x: node.x, y: node.y });
+    }
+    return map;
+  }, [positionedNodes]);
+
   const [activeTooltip, setActiveTooltip] =
     React.useState<ActiveEdgeTooltip | null>(null);
 
@@ -433,7 +484,17 @@ export default function EntityGraphCanvas({
     null,
   );
 
-  // Drag state lives in a ref, not React state, since a mousemove needs to
+  // Live, drag-authored node position overrides, keyed by `entityId`
+  // (entity-graph-node-dragging, FR-2/FR-7, OQ-2). Mirrors the
+  // `selectedNodeId`/`pan`/`scale` precedent exactly: plain component state,
+  // held outside `computeGraphLayout`'s `useMemo` and its dependency array,
+  // so a drag's override is never reset by that memo recomputing when
+  // `nodes`/`edges`/`width`/`height` change.
+  const [nodePositionOverrides, setNodePositionOverrides] = React.useState<
+    Map<string, { x: number; y: number }>
+  >(() => new Map());
+
+  // Drag state lives in a ref, not React state, since a move handler needs to
   // read it on every pointer move without forcing a re-render per pixel; the
   // only state updates that matter for rendering are the `pan` writes below.
   const dragOriginRef = React.useRef<{
@@ -442,6 +503,41 @@ export default function EntityGraphCanvas({
     startPanX: number;
     startPanY: number;
   } | null>(null);
+
+  // A node drag in progress, tracked separately from `dragOriginRef` (which
+  // drives background panning) rather than overloading it — the two gestures
+  // are mutually exclusive (a press lands on either the background
+  // `<rect>` or a node's `<g>`, never both) but keeping their state distinct
+  // avoids one handler needing to know about the other's shape.
+  //
+  // `exceededThreshold` (entity-graph-node-dragging, FR-6/FR-7) tracks
+  // whether this gesture's RAW CLIENT-PIXEL movement — never the
+  // viewBox-unit, scale-divided delta computed below for repositioning — has
+  // crossed `DRAG_CLICK_THRESHOLD_PX` at any point since pointerdown. It only
+  // ever flips false -> true during a gesture (never resets mid-gesture),
+  // and is read once, at `pointerup`, to decide whether the upcoming native
+  // `click` event should be allowed to activate the node.
+  const nodeDragRef = React.useRef<{
+    entityId: string;
+    pointerId: number;
+    startClientX: number;
+    startClientY: number;
+    startX: number;
+    startY: number;
+    exceededThreshold: boolean;
+  } | null>(null);
+
+  // Whether the gesture that most recently ended crossed the click/drag
+  // threshold, kept in a ref distinct from `nodeDragRef` because it must
+  // survive past `pointerup` (which clears `nodeDragRef.current`) into the
+  // browser's native `click` event that fires immediately afterward on the
+  // same element (entity-graph-node-dragging, FR-6). `handleNodeClick`
+  // consults and resets it. With a mouse a click always follows the release,
+  // so that alone would keep it from leaking — but a finger drag is NOT
+  // followed by a click, so the flag would stay set and swallow the next tap.
+  // Every node `pointerdown` therefore resets it too, and keyboard activation
+  // never consults it (a key press never ends a drag).
+  const justDraggedPastThresholdRef = React.useRef(false);
 
   const handleBackgroundMouseDown = React.useCallback(
     (event: React.MouseEvent<SVGRectElement>) => {
@@ -455,10 +551,66 @@ export default function EntityGraphCanvas({
     [pan.x, pan.y],
   );
 
-  // Drag continuation and release are tracked on `window`, not the `<rect>`
-  // itself, so a drag already in progress keeps updating even once the
-  // pointer moves outside the SVG's own bounds — the same reason a native
+  // Records a node drag gesture's start: the pointer's id and client
+  // coordinates, and the node's current RESOLVED position — its live override
+  // if one exists, else `computeGraphLayout`'s own settled `x`/`y` — so the
+  // drag continues from wherever the node actually is, not from a stale
+  // simulation position (entity-graph-node-dragging, FR-1). A pointer event,
+  // not a mouse event, so a finger starts a drag the same way a mouse does.
+  const handleNodePointerDown = React.useCallback(
+    (
+      event: React.PointerEvent<SVGGElement>,
+      entityId: string,
+      layoutX: number,
+      layoutY: number,
+    ) => {
+      justDraggedPastThresholdRef.current = false;
+      const override = nodePositionOverrides.get(entityId);
+      nodeDragRef.current = {
+        entityId,
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startX: override?.x ?? layoutX,
+        startY: override?.y ?? layoutY,
+        exceededThreshold: false,
+      };
+    },
+    [nodePositionOverrides],
+  );
+
+  // The wheel handler needs both the current `scale` and the current `pan` to
+  // anchor a zoom, but it is registered once (see the `[]` effect below) and
+  // would otherwise close over their first values. Mirroring them into refs
+  // keeps the listener registration stable while still reading live values.
+  // The node-drag continuation below needs the same live `scale` reference.
+  const scaleRef = React.useRef(scale);
+  scaleRef.current = scale;
+  const panRef = React.useRef(pan);
+  panRef.current = pan;
+
+  // Continuation and release are tracked on `window`, not the `<rect>` (or a
+  // node's `<g>`) itself, so a gesture already in progress keeps updating even
+  // once the pointer leaves the SVG's own bounds — the same reason a native
   // drag gesture is normally wired at the document level.
+  //
+  // The two gestures listen to different event families, deliberately:
+  //
+  // - A node drag uses Pointer Events, so a mouse, a pen, and a finger all
+  //   drive it. A finger drag on Android delivers `touch*` events and no
+  //   synthesized `mouse*` events at all — measured on a Pixel 7 Pro, see
+  //   `specs/features/entity-graph-node-dragging/manual-verification.md` — so
+  //   a mouse-only drag silently never starts on touch. A finger drag also has
+  //   to be kept from turning into a scroll — see the `touchmove` effect below.
+  // - A background pan stays on mouse events. On a phone, a finger swipe on
+  //   empty canvas scrolls the work-area pane natively instead, which is how a
+  //   narrow screen reaches the part of the fixed-width canvas past its right
+  //   edge; converting the pan would take that away.
+  //
+  // With a mouse both families fire for one gesture, but a node drag starts
+  // only on the node's `pointerdown` (it has no mousedown handler) and a pan
+  // only on the background's `mousedown`, so neither is applied twice.
+  // `dragOriginRef` and `nodeDragRef` are never both set at once.
   React.useEffect(() => {
     const handleMouseMove = (event: MouseEvent): void => {
       const origin = dragOriginRef.current;
@@ -471,22 +623,101 @@ export default function EntityGraphCanvas({
     const handleMouseUp = (): void => {
       dragOriginRef.current = null;
     };
+
+    const handlePointerMove = (event: PointerEvent): void => {
+      const nodeDrag = nodeDragRef.current;
+      // Only the pointer that started the drag moves the node, so a second
+      // finger landing mid-drag cannot take it over.
+      if (!nodeDrag || event.pointerId !== nodeDrag.pointerId) return;
+
+      // Click/drag discrimination (entity-graph-node-dragging, FR-6/FR-7):
+      // a RAW client-pixel distance from the gesture's start point,
+      // compared directly against `DRAG_CLICK_THRESHOLD_PX` with NO
+      // viewBox conversion and NO division by `scale` — a deliberately
+      // separate number from the reposition delta computed below, which
+      // *is* converted and scale-divided. Once true, this never resets
+      // until the next pointerdown starts a fresh gesture.
+      if (!nodeDrag.exceededThreshold) {
+        const rawDeltaX = event.clientX - nodeDrag.startClientX;
+        const rawDeltaY = event.clientY - nodeDrag.startClientY;
+        if (Math.hypot(rawDeltaX, rawDeltaY) > DRAG_CLICK_THRESHOLD_PX) {
+          nodeDrag.exceededThreshold = true;
+        }
+      }
+
+      // Same client-pixel -> viewBox-unit conversion the wheel handler
+      // derives: `getBoundingClientRect()`, falling back to a 1:1 ratio
+      // when the element is zero-sized (jsdom), then accounting for the
+      // canvas's current `scale` (entity-graph-node-dragging, FR-7).
+      const el = svgRef.current;
+      const rect = el?.getBoundingClientRect() ?? null;
+      const toViewBoxX = rect && rect.width > 0 ? width / rect.width : 1;
+      const toViewBoxY = rect && rect.height > 0 ? height / rect.height : 1;
+      const currentScale = scaleRef.current;
+      const deltaX =
+        ((event.clientX - nodeDrag.startClientX) * toViewBoxX) / currentScale;
+      const deltaY =
+        ((event.clientY - nodeDrag.startClientY) * toViewBoxY) / currentScale;
+      const nextPosition = {
+        x: nodeDrag.startX + deltaX,
+        y: nodeDrag.startY + deltaY,
+      };
+      setNodePositionOverrides((prev) => {
+        const next = new Map(prev);
+        next.set(nodeDrag.entityId, nextPosition);
+        return next;
+      });
+    };
+    const handlePointerEnd = (event: PointerEvent): void => {
+      const nodeDrag = nodeDragRef.current;
+      if (!nodeDrag || event.pointerId !== nodeDrag.pointerId) return;
+      // Stash the outcome before clearing `nodeDragRef` (entity-graph-node-
+      // dragging, FR-6): `pointerup` fires before the browser's native
+      // `click` on the same element, so `handleNodeClick` needs a way to see
+      // "this release just finished a drag" after `nodeDragRef.current` has
+      // already gone back to null. A `pointercancel` is never followed by a
+      // click, so it records no drag outcome.
+      justDraggedPastThresholdRef.current =
+        event.type === "pointerup" && nodeDrag.exceededThreshold;
+      nodeDragRef.current = null;
+    };
+
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerEnd);
+    window.addEventListener("pointercancel", handlePointerEnd);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerEnd);
+      window.removeEventListener("pointercancel", handlePointerEnd);
     };
-  }, []);
+  }, [width, height]);
 
-  // The wheel handler needs both the current `scale` and the current `pan` to
-  // anchor a zoom, but it is registered once (see the `[]` effect below) and
-  // would otherwise close over their first values. Mirroring them into refs
-  // keeps the listener registration stable while still reading live values.
-  const scaleRef = React.useRef(scale);
-  scaleRef.current = scale;
-  const panRef = React.useRef(pan);
-  panRef.current = pan;
+  // Keeps a finger drag on a node from turning into a page scroll. Measured on
+  // a Pixel 7 Pro WebView: with only `touch-action: none` on the node's `<g>`
+  // — which the node still sets, and which does compute to `none` — the
+  // browser still claimed the gesture after four moves, scrolled the
+  // work-area pane, and ended the drag with `pointercancel`, so the node moved
+  // a few units and stopped. Calling `preventDefault()` on each cancelable
+  // `touchmove` while a node drag is in progress stops the scroll before it
+  // starts; on the same device that gave an uninterrupted drag ending in
+  // `pointerup`, with the pane unscrolled. It has to be a native non-passive
+  // listener for the same reason as the wheel handler below: React attaches
+  // `onTouchMove` passively, which would silently drop the `preventDefault()`.
+  // Only a drag already started by a node's `pointerdown` is ever prevented,
+  // so a tap is unaffected and a swipe on empty canvas still scrolls the pane.
+  React.useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const handleTouchMove = (event: TouchEvent): void => {
+      if (nodeDragRef.current && event.cancelable) event.preventDefault();
+    };
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", handleTouchMove);
+  }, []);
 
   // A non-passive native `wheel` listener, following this codebase's own
   // `Timeline.tsx` precedent for wheel-driven zoom: React's synthetic
@@ -536,15 +767,31 @@ export default function EntityGraphCanvas({
   }, [width, height]);
 
   // The single activation path for a node — toggles the selection ring and
-  // fires `onNodeActivated` (Task 7, FR-9). Both a pointer click and a
-  // keyboard Enter/Space on the node's `<g>` call this exact function, so
-  // there is no divergent second implementation of "what activation means."
+  // fires `onNodeActivated` (Task 7, FR-9). Both a pointer click (via
+  // `handleNodeClick`) and a keyboard Enter/Space on the node's `<g>` end
+  // here, so there is no divergent second implementation of "what
+  // activation means."
   const handleNodeActivate = React.useCallback(
     (entityId: string) => {
       setSelectedNodeId((current) => (current === entityId ? null : entityId));
       onNodeActivated?.(entityId);
     },
     [onNodeActivated],
+  );
+
+  // A node's `click`: suppressed when it is the click that ends a gesture
+  // just classified as a drag past the threshold (entity-graph-node-
+  // dragging, FR-6), otherwise an ordinary activation. The flag is consumed
+  // so it applies to that one click only.
+  const handleNodeClick = React.useCallback(
+    (entityId: string) => {
+      if (justDraggedPastThresholdRef.current) {
+        justDraggedPastThresholdRef.current = false;
+        return;
+      }
+      handleNodeActivate(entityId);
+    },
+    [handleNodeActivate],
   );
 
   const handleNodeKeyDown = React.useCallback(
@@ -710,15 +957,39 @@ export default function EntityGraphCanvas({
                 edge.kind === "authored"
                   ? AUTHORED_EDGE_STROKE_WIDTH
                   : cooccurrenceStrokeWidth(edge.sharedResourceCount);
+              // Resolve each endpoint from the live position override for
+              // that entity, if one exists, else `computeGraphLayout`'s own
+              // fixed x1/y1/x2/y2 (entity-graph-node-dragging, FR-3). This
+              // happens fresh on every render, reading current
+              // `nodePositionOverrides` state directly — it is not memoized
+              // alongside `positionedEdges`, so a drag in progress on either
+              // endpoint's entity is reflected immediately without waiting
+              // on `computeGraphLayout` to rerun (which it never does for a
+              // drag; FR-2).
+              const [sourceEntityId, targetEntityId] = edgeEndpoints(edge);
+              const source = resolveEntityPosition(
+                sourceEntityId,
+                layoutPositionById.get(sourceEntityId),
+                nodePositionOverrides,
+                positioned.x1,
+                positioned.y1,
+              );
+              const target = resolveEntityPosition(
+                targetEntityId,
+                layoutPositionById.get(targetEntityId),
+                nodePositionOverrides,
+                positioned.x2,
+                positioned.y2,
+              );
               return (
                 <React.Fragment key={positioned.key}>
                   <line
                     data-testid="entity-graph-edge"
                     data-edge-kind={positioned.edge.kind}
-                    x1={positioned.x1}
-                    y1={positioned.y1}
-                    x2={positioned.x2}
-                    y2={positioned.y2}
+                    x1={source.x}
+                    y1={source.y}
+                    x2={target.x}
+                    y2={target.y}
                     strokeWidth={strokeWidth}
                     strokeDasharray={
                       isAuthored ? undefined : COOCCURRENCE_DASH_ARRAY
@@ -737,10 +1008,10 @@ export default function EntityGraphCanvas({
                   <line
                     data-testid="entity-graph-edge-hit-target"
                     data-edge-kind={positioned.edge.kind}
-                    x1={positioned.x1}
-                    y1={positioned.y1}
-                    x2={positioned.x2}
-                    y2={positioned.y2}
+                    x1={source.x}
+                    y1={source.y}
+                    x2={target.x}
+                    y2={target.y}
                     strokeWidth={EDGE_HIT_TARGET_STROKE_WIDTH}
                     stroke="transparent"
                     onMouseEnter={(event) =>
@@ -760,19 +1031,28 @@ export default function EntityGraphCanvas({
           <g data-testid="entity-graph-nodes">
             {positionedNodes.map((node) => {
               const isSelected = node.entityId === selectedNodeId;
+              // Resolved position (entity-graph-node-dragging, FR-2): a live
+              // drag override for this node if one exists, else
+              // `computeGraphLayout`'s own settled `x`/`y`.
+              const override = nodePositionOverrides.get(node.entityId);
+              const resolvedX = override?.x ?? node.x;
+              const resolvedY = override?.y ?? node.y;
               return (
                 <g
                   key={node.entityId}
                   data-testid="entity-graph-node"
                   data-entity-id={node.entityId}
                   data-selected={isSelected ? "true" : "false"}
-                  transform={`translate(${node.x}, ${node.y})`}
-                  onClick={() => handleNodeActivate(node.entityId)}
+                  transform={`translate(${resolvedX}, ${resolvedY})`}
+                  onPointerDown={(event) =>
+                    handleNodePointerDown(event, node.entityId, node.x, node.y)
+                  }
+                  onClick={() => handleNodeClick(node.entityId)}
                   onKeyDown={(event) => handleNodeKeyDown(event, node.entityId)}
                   tabIndex={0}
                   role="button"
                   aria-label={node.name}
-                  style={{ cursor: "pointer" }}
+                  style={{ cursor: "pointer", touchAction: "none" }}
                 >
                   {isSelected ? (
                     <circle

@@ -402,6 +402,19 @@ lost work.
   discipline) are never conflated. This is a large, two-part requirement —
   see Open Questions for whether it should split into more than one feature
   before task breakdown. [US-17]
+- FR-40: A writer MUST be able to reposition a node on the entity
+  relationship graph (FR-39) by dragging it. The resulting position is
+  ephemeral, exactly like every other node position on this graph: it MUST
+  NOT be persisted anywhere and does not survive a reload, the same
+  constraint the graph's underlying feature spec already places on its
+  computed layout. Dragging does not weaken FR-39's read-only guarantee —
+  it mutates only ephemeral view-layer position state, never entity data,
+  co-occurrence values, or authored relationship edges, none of which a
+  drag reads or writes. A drag repositions only the dragged node: no live
+  force simulation runs during or after a drag, and neighbouring nodes do
+  not respond, so dragging a node stretches its edges rather than letting
+  the layout relax around the new position (resolved: OQ-4). Dragging has
+  no keyboard-operable equivalent at this ship (resolved: OQ-6). [US-17]
 - FR-28: Users MUST be able to browse, restore, and permanently purge
   soft-deleted resources through a dedicated Trash UI (the underlying
   restore/purge model already exists). [US-11]
@@ -551,8 +564,70 @@ which the two halves' different costs and lifecycles become visible, and
 the feature-list rung is where a product spec's requirements are split into
 independently shippable features.
 
+**OQ-4 (resolved): When a writer drags a node (FR-40), does the drag only
+reposition that one node, or does it drive the graph's `d3-force`
+simulation live so neighbouring nodes respond?**
+**Resolution:** Static reposition. Dragging moves only the dragged node;
+neighbours do not respond, and no live force simulation runs during or
+after a drag. `computeGraphLayout` keeps its existing contract — the
+simulation is stopped immediately and advanced a fixed 300 synchronous
+ticks, remaining a pure, deterministic function of its inputs. The
+accepted trade-off: because neighbours do not respond, dragging a node
+stretches its edges rather than letting the layout relax around the new
+position. The live alternative was available and costed, not dismissed —
+`d3-force@3.0.0` as installed does support it (`fx`/`fy` position pinning,
+plus `restart()`/`alphaTarget()`), and 3 of the 34 tests in
+`frontend/tests/component/EntityGraphCanvas.test.tsx` read rendered
+coordinates. Neither of those facts was weighed as better or worse than
+the static approach — no comparison of look, feel, or performance between
+the two was measured.
+**Evidence:**
+`frontend/components/WorkArea/Views/EntityRelationshipGraphView/EntityGraphCanvas.tsx:249-257`
+(fixed-tick, non-live layout); `frontend/node_modules/d3-force/src/simulation.js:53-56,66-67`
+(`fx`/`fy` pinning and `restart()`/`alphaTarget()` as installed);
+`frontend/tests/component/EntityGraphCanvas.test.tsx` (3 of 34 tests read
+rendered coordinates).
+**Impact:** FR-40.
+
+**OQ-5 (resolved): Should a dragged arrangement survive a view switch or a
+reload?**
+**Resolution:** No — positions stay ephemeral; nothing is persisted. This
+confirms the existing answer rather than changing it: FR-40 as already
+written, and FR-13 with its resolved OQ-2 in
+`specs/features/entity-relationship-graph.md`, already say this. The
+question was raised and deliberately closed in favour of the status quo,
+so a later reader sees it was considered rather than overlooked. The
+accepted limitation stands: a manual rearrangement does not survive a
+reload or a view switch. No amendment to FR-13, the CLAUDE.md glossary, or
+the canvas's design comment is needed.
+**Evidence:** `specs/features/entity-relationship-graph.md:120,157-162`
+(OQ-2, resolved: positions are ephemeral).
+**Impact:** FR-40.
+
+**OQ-6 (resolved): Does dragging a node need a keyboard-operable
+equivalent?**
+**Resolution:** No, not at this ship — recorded explicitly as out of scope
+rather than left silent (see Out of Scope). `docs/standards/accessibility.md`
+states WCAG 2.1 AA as the working target, and drag-movement alternatives
+are WCAG 2.2 SC 2.5.7, which is absent from that standards file. The graph
+feature already rejected novel canvas keyboard affordances as its
+accessibility mechanism in favour of the synchronized accessible list (that
+feature spec's own resolved OQ-4). Consequence: a keyboard-only user cannot
+reposition a node. They retain full read access to every node and edge
+through the accessible list, which is unchanged — repositioning is the
+only thing lost, and it alters nothing about the data the graph presents.
+**Evidence:** `docs/standards/accessibility.md` (WCAG 2.1 AA target); WCAG
+2.2 SC 2.5.7 is not referenced anywhere in this repository's standards;
+`specs/features/entity-relationship-graph.md` (OQ-4, resolved: synchronized
+accessible list as the accessibility mechanism).
+**Impact:** FR-40.
+
 ## Out of Scope (Deferred)
 
+- A keyboard-operable equivalent for dragging a node on the entity
+  relationship graph (FR-40, resolved: OQ-6). A keyboard-only user cannot
+  reposition a node; the synchronized accessible list remains the
+  unaffected read path for every node and edge.
 - [Later] Hosted multi-tenant access and cross-device sync as a shipped,
   user-facing product (foundations exist per ADR-017–ADR-022; not shipped).
 - [Later] Native Android packaging, signing, and distribution as a shipped
