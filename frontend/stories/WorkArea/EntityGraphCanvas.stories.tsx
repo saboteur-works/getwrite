@@ -181,11 +181,12 @@ export const EdgeTooltips: Story = {
  * the same gesture. Dana carries no edge to Anna and is used as the control:
  * her rendered position must stay put across the same gesture.
  *
- * The component listens for `mousemove`/`mouseup` at the WINDOW level (see
- * `EntityGraphCanvas.tsx`'s drag-continuation effect), not on the node
+ * The component listens for `pointermove`/`pointerup` at the WINDOW level
+ * (see `EntityGraphCanvas.tsx`'s drag-continuation effect), not on the node
  * itself — mirroring `EntityGraphCanvas.test.tsx`'s own drag simulation, this
- * play function fires `mousedown` on the node's `<g>` and then `mousemove`/
- * `mouseup` on `window` rather than on the node.
+ * play function fires `pointerdown` on the node's `<g>` and then
+ * `pointermove`/`pointerup` on `window` rather than on the node. Pointer
+ * events rather than mouse events, because the drag has to work for touch.
  */
 export const NodeDragging: Story = {
   args: { nodes, edges, onNodeActivated: () => {} },
@@ -209,9 +210,9 @@ export const NodeDragging: Story = {
     // A full drag gesture, well past `DRAG_CLICK_THRESHOLD_PX` (4px at time
     // of writing) so it is unambiguously classified as a drag rather than a
     // click, and moved a visible distance on the canvas.
-    fireEvent.mouseDown(draggedNode, { clientX: 100, clientY: 100 });
-    fireEvent.mouseMove(window, { clientX: 180, clientY: 160 });
-    fireEvent.mouseUp(window);
+    fireEvent.pointerDown(draggedNode, { clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(window, { clientX: 180, clientY: 160 });
+    fireEvent.pointerUp(window);
 
     const draggedPositionAfter = parseNodeTransform(draggedNode);
     expect(draggedPositionAfter.x).not.toBeCloseTo(initialDraggedPosition.x);

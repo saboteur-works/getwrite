@@ -147,17 +147,17 @@ describe("EntityGraphCanvas", () => {
       <EntityGraphCanvas nodes={NODES} edges={EDGES} />,
     );
 
-    // Run a full node drag gesture — mousedown on a node, mousemove past
-    // DRAG_CLICK_THRESHOLD_PX, mouseup — before asserting (entity-graph-node-
+    // Run a full node drag gesture — pointerdown on a node, pointermove past
+    // DRAG_CLICK_THRESHOLD_PX, pointerup — before asserting (entity-graph-node-
     // dragging, FR-8): a dragged position is exactly the new persisted-
     // looking data this test must confirm never reaches localStorage.
     const [target] = screen.getAllByTestId("entity-graph-node");
-    fireEvent.mouseDown(target, { clientX: 0, clientY: 0 });
-    fireEvent.mouseMove(window, {
+    fireEvent.pointerDown(target, { clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(window, {
       clientX: DRAG_CLICK_THRESHOLD_PX + 20,
       clientY: DRAG_CLICK_THRESHOLD_PX + 12,
     });
-    fireEvent.mouseUp(window);
+    fireEvent.pointerUp(window);
 
     // Re-render with the identical input data, exactly the case FR-13 rules
     // out ever persisting or resuming from.
@@ -182,12 +182,12 @@ describe("EntityGraphCanvas", () => {
       // gesture this feature adds, so it is the one that most plausibly
       // could have introduced a fetch call if it had persisted anything.
       const [target] = screen.getAllByTestId("entity-graph-node");
-      fireEvent.mouseDown(target, { clientX: 0, clientY: 0 });
-      fireEvent.mouseMove(window, {
+      fireEvent.pointerDown(target, { clientX: 0, clientY: 0 });
+      fireEvent.pointerMove(window, {
         clientX: DRAG_CLICK_THRESHOLD_PX + 20,
         clientY: DRAG_CLICK_THRESHOLD_PX + 12,
       });
-      fireEvent.mouseUp(window);
+      fireEvent.pointerUp(window);
 
       rerender(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
 
@@ -495,8 +495,8 @@ describe("EntityGraphCanvas", () => {
       const dx = DRAG_CLICK_THRESHOLD_PX + 10;
       const dy = DRAG_CLICK_THRESHOLD_PX + 6;
 
-      fireEvent.mouseDown(target, { clientX: 100, clientY: 100 });
-      fireEvent.mouseMove(window, { clientX: 100 + dx, clientY: 100 + dy });
+      fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 100 + dx, clientY: 100 + dy });
 
       const afterMove = parseNodeTransform(target);
       // At default scale (1) and jsdom's zero-sized bounding rect (1:1
@@ -509,7 +509,7 @@ describe("EntityGraphCanvas", () => {
       expect(otherAfterMove.x).toBeCloseTo(initialOther.x);
       expect(otherAfterMove.y).toBeCloseTo(initialOther.y);
 
-      fireEvent.mouseUp(window);
+      fireEvent.pointerUp(window);
     });
 
     it("leaves every other node's rendered transform unchanged by the same gesture", () => {
@@ -521,8 +521,8 @@ describe("EntityGraphCanvas", () => {
         parseNodeTransform(el),
       );
 
-      fireEvent.mouseDown(target, { clientX: 0, clientY: 0 });
-      fireEvent.mouseMove(window, { clientX: 50, clientY: 40 });
+      fireEvent.pointerDown(target, { clientX: 0, clientY: 0 });
+      fireEvent.pointerMove(window, { clientX: 50, clientY: 40 });
 
       others.forEach((el: HTMLElement, index: number) => {
         const after = parseNodeTransform(el);
@@ -530,7 +530,7 @@ describe("EntityGraphCanvas", () => {
         expect(after.y).toBeCloseTo(othersInitial[index].y);
       });
 
-      fireEvent.mouseUp(window);
+      fireEvent.pointerUp(window);
     });
 
     it("scales the reposition by the canvas's current zoom, not just the raw pixel delta", () => {
@@ -549,27 +549,27 @@ describe("EntityGraphCanvas", () => {
 
       const dx = 30;
       const dy = 18;
-      fireEvent.mouseDown(target, { clientX: 50, clientY: 50 });
-      fireEvent.mouseMove(window, { clientX: 50 + dx, clientY: 50 + dy });
+      fireEvent.pointerDown(target, { clientX: 50, clientY: 50 });
+      fireEvent.pointerMove(window, { clientX: 50 + dx, clientY: 50 + dy });
 
       const afterMove = parseNodeTransform(target);
       expect(afterMove.x - initialTarget.x).toBeCloseTo(dx / scale);
       expect(afterMove.y - initialTarget.y).toBeCloseTo(dy / scale);
 
-      fireEvent.mouseUp(window);
+      fireEvent.pointerUp(window);
     });
 
-    it("leaves the moved node's new position in place after mouseup, with no snap-back", () => {
+    it("leaves the moved node's new position in place after pointerup, with no snap-back", () => {
       render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
 
       const [target] = screen.getAllByTestId("entity-graph-node");
       const initialTarget = parseNodeTransform(target);
 
-      fireEvent.mouseDown(target, { clientX: 10, clientY: 10 });
-      fireEvent.mouseMove(window, { clientX: 45, clientY: 33 });
+      fireEvent.pointerDown(target, { clientX: 10, clientY: 10 });
+      fireEvent.pointerMove(window, { clientX: 45, clientY: 33 });
       const afterMove = parseNodeTransform(target);
 
-      fireEvent.mouseUp(window);
+      fireEvent.pointerUp(window);
       const afterRelease = parseNodeTransform(target);
 
       expect(afterRelease.x).toBeCloseTo(afterMove.x);
@@ -595,9 +595,9 @@ describe("EntityGraphCanvas", () => {
       const alphaTargetSpy = vi.spyOn(simulationInstance, "alphaTarget");
 
       const [target] = screen.getAllByTestId("entity-graph-node");
-      fireEvent.mouseDown(target, { clientX: 0, clientY: 0 });
-      fireEvent.mouseMove(window, { clientX: 25, clientY: 15 });
-      fireEvent.mouseUp(window);
+      fireEvent.pointerDown(target, { clientX: 0, clientY: 0 });
+      fireEvent.pointerMove(window, { clientX: 25, clientY: 15 });
+      fireEvent.pointerUp(window);
 
       expect(forceSimulationSpy).toHaveBeenCalledTimes(1);
       expect(tickSpy).not.toHaveBeenCalled();
@@ -649,8 +649,8 @@ describe("EntityGraphCanvas", () => {
 
       const dx = DRAG_CLICK_THRESHOLD_PX + 20;
       const dy = DRAG_CLICK_THRESHOLD_PX + 12;
-      fireEvent.mouseDown(draggedNode, { clientX: 100, clientY: 100 });
-      fireEvent.mouseMove(window, { clientX: 100 + dx, clientY: 100 + dy });
+      fireEvent.pointerDown(draggedNode, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 100 + dx, clientY: 100 + dy });
 
       const draggedTransform = parseNodeTransform(draggedNode);
 
@@ -687,7 +687,7 @@ describe("EntityGraphCanvas", () => {
       expect(visibleAfter.getAttribute("x1")).not.toBe(originalX1);
       expect(visibleAfter.getAttribute("y1")).not.toBe(originalY1);
 
-      fireEvent.mouseUp(window);
+      fireEvent.pointerUp(window);
     });
 
     it("leaves computeGraphLayout's own return value for the edge identical before and after a drag, called independently of the rendered component", () => {
@@ -702,9 +702,9 @@ describe("EntityGraphCanvas", () => {
 
       render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
       const [draggedNode] = screen.getAllByTestId("entity-graph-node");
-      fireEvent.mouseDown(draggedNode, { clientX: 0, clientY: 0 });
-      fireEvent.mouseMove(window, { clientX: 40, clientY: 25 });
-      fireEvent.mouseUp(window);
+      fireEvent.pointerDown(draggedNode, { clientX: 0, clientY: 0 });
+      fireEvent.pointerMove(window, { clientX: 40, clientY: 25 });
+      fireEvent.pointerUp(window);
 
       // Calling the pure function again, with the identical inputs, after a
       // drag has happened on a rendered instance elsewhere: this is the
@@ -737,9 +737,9 @@ describe("EntityGraphCanvas", () => {
 
       // Raw client-pixel distance: hypot(1, 1) ≈ 1.41, comfortably under the
       // 4px threshold.
-      fireEvent.mouseDown(target, { clientX: 100, clientY: 100 });
-      fireEvent.mouseMove(window, { clientX: 101, clientY: 101 });
-      fireEvent.mouseUp(window);
+      fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 101, clientY: 101 });
+      fireEvent.pointerUp(window);
       fireEvent.click(target);
 
       expect(onNodeActivated).toHaveBeenCalledTimes(1);
@@ -762,9 +762,9 @@ describe("EntityGraphCanvas", () => {
 
       // Raw client-pixel distance: hypot(10, 6) ≈ 11.66, past the 4px
       // threshold.
-      fireEvent.mouseDown(target, { clientX: 100, clientY: 100 });
-      fireEvent.mouseMove(window, { clientX: 110, clientY: 106 });
-      fireEvent.mouseUp(window);
+      fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 110, clientY: 106 });
+      fireEvent.pointerUp(window);
       fireEvent.click(target);
 
       expect(onNodeActivated).not.toHaveBeenCalled();
@@ -783,9 +783,9 @@ describe("EntityGraphCanvas", () => {
 
       const [dragged, other] = screen.getAllByTestId("entity-graph-node");
 
-      fireEvent.mouseDown(dragged, { clientX: 100, clientY: 100 });
-      fireEvent.mouseMove(window, { clientX: 110, clientY: 106 });
-      fireEvent.mouseUp(other);
+      fireEvent.pointerDown(dragged, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 110, clientY: 106 });
+      fireEvent.pointerUp(other);
       // Mirrors a native browser click firing on whichever element the
       // pointer was released over.
       fireEvent.click(other);
@@ -808,9 +808,9 @@ describe("EntityGraphCanvas", () => {
       const [dragged] = screen.getAllByTestId("entity-graph-node");
       const background = screen.getByTestId("entity-graph-canvas-background");
 
-      fireEvent.mouseDown(dragged, { clientX: 100, clientY: 100 });
-      fireEvent.mouseMove(window, { clientX: 110, clientY: 106 });
-      fireEvent.mouseUp(background);
+      fireEvent.pointerDown(dragged, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 110, clientY: 106 });
+      fireEvent.pointerUp(background);
       // A click landing on the background never reaches a node's onClick at
       // all — this asserts the drag left no activation pending regardless.
       fireEvent.click(background);
@@ -833,9 +833,9 @@ describe("EntityGraphCanvas", () => {
       const [target] = screen.getAllByTestId("entity-graph-node");
 
       // First gesture: a drag past the threshold, suppressed.
-      fireEvent.mouseDown(target, { clientX: 100, clientY: 100 });
-      fireEvent.mouseMove(window, { clientX: 110, clientY: 106 });
-      fireEvent.mouseUp(window);
+      fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 110, clientY: 106 });
+      fireEvent.pointerUp(window);
       fireEvent.click(target);
       expect(onNodeActivated).not.toHaveBeenCalled();
 
@@ -862,9 +862,12 @@ describe("EntityGraphCanvas", () => {
         />,
       );
       const [targetAtDefaultScale] = screen.getAllByTestId("entity-graph-node");
-      fireEvent.mouseDown(targetAtDefaultScale, { clientX: 100, clientY: 100 });
-      fireEvent.mouseMove(window, { clientX: 100 + dx, clientY: 100 + dy });
-      fireEvent.mouseUp(window);
+      fireEvent.pointerDown(targetAtDefaultScale, {
+        clientX: 100,
+        clientY: 100,
+      });
+      fireEvent.pointerMove(window, { clientX: 100 + dx, clientY: 100 + dy });
+      fireEvent.pointerUp(window);
       fireEvent.click(targetAtDefaultScale);
       expect(onNodeActivatedAtDefaultScale).not.toHaveBeenCalled();
       unmount();
@@ -890,9 +893,12 @@ describe("EntityGraphCanvas", () => {
       expect(scale).toBeGreaterThan(1);
 
       const [targetAtZoomedScale] = screen.getAllByTestId("entity-graph-node");
-      fireEvent.mouseDown(targetAtZoomedScale, { clientX: 100, clientY: 100 });
-      fireEvent.mouseMove(window, { clientX: 100 + dx, clientY: 100 + dy });
-      fireEvent.mouseUp(window);
+      fireEvent.pointerDown(targetAtZoomedScale, {
+        clientX: 100,
+        clientY: 100,
+      });
+      fireEvent.pointerMove(window, { clientX: 100 + dx, clientY: 100 + dy });
+      fireEvent.pointerUp(window);
       fireEvent.click(targetAtZoomedScale);
       expect(onNodeActivatedAtZoomedScale).not.toHaveBeenCalled();
     });
@@ -923,9 +929,9 @@ describe("EntityGraphCanvas", () => {
       const [draggedNode] = nodeElementsBefore;
       const dx = DRAG_CLICK_THRESHOLD_PX + 20;
       const dy = DRAG_CLICK_THRESHOLD_PX + 12;
-      fireEvent.mouseDown(draggedNode, { clientX: 0, clientY: 0 });
-      fireEvent.mouseMove(window, { clientX: dx, clientY: dy });
-      fireEvent.mouseUp(window);
+      fireEvent.pointerDown(draggedNode, { clientX: 0, clientY: 0 });
+      fireEvent.pointerMove(window, { clientX: dx, clientY: dy });
+      fireEvent.pointerUp(window);
 
       const nodeElementsAfter = screen.getAllByTestId("entity-graph-node");
       const edgeElementsAfter = screen.getAllByTestId("entity-graph-edge");
@@ -973,6 +979,174 @@ describe("EntityGraphCanvas", () => {
           entityKind: n.entityKind,
         })),
       );
+    });
+  });
+
+  describe("touch and pointer input (entity-graph-node-dragging)", () => {
+    // A finger drag on Android delivers pointer and touch events but no
+    // synthesized mouse events, and no click follows its release — measured
+    // on a Pixel 7 Pro (specs/features/entity-graph-node-dragging/
+    // manual-verification.md). These tests drive the canvas the way that
+    // device does, and the way a real mouse does, which fires both families.
+
+    it("moves a node from pointer events alone, with no mouse events and no trailing click", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      const before = target.getAttribute("transform");
+
+      fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 140, clientY: 125 });
+      fireEvent.pointerUp(window);
+
+      expect(target.getAttribute("transform")).not.toBe(before);
+    });
+
+    it("does not swallow the next tap after a touch drag that no click followed", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+      const [dragged, tapped] = screen.getAllByTestId("entity-graph-node");
+
+      // A touch drag past the threshold: no click follows its release, so
+      // nothing consumes the "just dragged" flag it sets.
+      fireEvent.pointerDown(dragged, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 140, clientY: 125 });
+      fireEvent.pointerUp(window);
+
+      // A later tap: pointerdown, pointerup with no movement, then click.
+      fireEvent.pointerDown(tapped, { clientX: 50, clientY: 50 });
+      fireEvent.pointerUp(window);
+      fireEvent.click(tapped);
+
+      expect(onNodeActivated).toHaveBeenCalledTimes(1);
+      expect(tapped.getAttribute("data-selected")).toBe("true");
+    });
+
+    it("does not swallow keyboard activation after a touch drag that no click followed", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+      const [target] = screen.getAllByTestId("entity-graph-node");
+
+      fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 140, clientY: 125 });
+      fireEvent.pointerUp(window);
+
+      fireEvent.keyDown(target, { key: "Enter" });
+
+      expect(onNodeActivated).toHaveBeenCalledTimes(1);
+    });
+
+    it("moves a node exactly as far under a mouse's combined pointer and mouse events as under pointer events alone, without panning", () => {
+      const first = render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+      const [pointerOnly] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.pointerDown(pointerOnly, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 140, clientY: 125 });
+      fireEvent.pointerUp(window);
+      const pointerOnlyTransform = pointerOnly.getAttribute("transform");
+      first.unmount();
+
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+      const [withMouse] = screen.getAllByTestId("entity-graph-node");
+      const viewport = screen.getByTestId("entity-graph-viewport");
+      const viewportBefore = viewport.getAttribute("transform");
+
+      // The order a real mouse produces: each pointer event, then its mouse
+      // counterpart, then the click.
+      fireEvent.pointerDown(withMouse, { clientX: 100, clientY: 100 });
+      fireEvent.mouseDown(withMouse, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 140, clientY: 125 });
+      fireEvent.mouseMove(window, { clientX: 140, clientY: 125 });
+      fireEvent.pointerUp(window);
+      fireEvent.mouseUp(window);
+      fireEvent.click(withMouse);
+
+      expect(withMouse.getAttribute("transform")).toBe(pointerOnlyTransform);
+      expect(viewport.getAttribute("transform")).toBe(viewportBefore);
+    });
+
+    it("stops moving the node once the browser cancels the gesture, and a later click still activates", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+      const [target] = screen.getAllByTestId("entity-graph-node");
+
+      fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 140, clientY: 125 });
+      fireEvent.pointerCancel(window);
+      const afterCancel = target.getAttribute("transform");
+
+      fireEvent.pointerMove(window, { clientX: 200, clientY: 200 });
+      expect(target.getAttribute("transform")).toBe(afterCancel);
+
+      fireEvent.click(target);
+      expect(onNodeActivated).toHaveBeenCalledTimes(1);
+    });
+
+    it("ignores movement from a second pointer while one is dragging", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      const before = target.getAttribute("transform");
+
+      fireEvent.pointerDown(target, {
+        pointerId: 1,
+        clientX: 100,
+        clientY: 100,
+      });
+      fireEvent.pointerMove(window, {
+        pointerId: 2,
+        clientX: 160,
+        clientY: 160,
+      });
+      expect(target.getAttribute("transform")).toBe(before);
+
+      fireEvent.pointerMove(window, {
+        pointerId: 1,
+        clientX: 140,
+        clientY: 125,
+      });
+      expect(target.getAttribute("transform")).not.toBe(before);
+      fireEvent.pointerUp(window, { pointerId: 1 });
+    });
+
+    it("prevents the page from scrolling on touchmove while a node is being dragged, and only then", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+      const svg = screen.getByTestId("entity-graph-canvas");
+      const [target] = screen.getAllByTestId("entity-graph-node");
+
+      // fireEvent returns false when a listener called preventDefault().
+      // No drag in progress: a swipe on the canvas must still scroll.
+      expect(fireEvent.touchMove(svg)).toBe(true);
+
+      fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+      expect(fireEvent.touchMove(target)).toBe(false);
+
+      fireEvent.pointerUp(window);
+      expect(fireEvent.touchMove(svg)).toBe(true);
+    });
+
+    // Necessary but, on a Chrome WebView, not sufficient on its own — the
+    // browser still scrolled until touchmove was prevented (test above).
+    it("sets touch-action: none on every node", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+      for (const node of screen.getAllByTestId("entity-graph-node")) {
+        expect(node.style.getPropertyValue("touch-action")).toBe("none");
+      }
     });
   });
 

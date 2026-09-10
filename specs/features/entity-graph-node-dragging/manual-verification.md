@@ -79,8 +79,68 @@ asked for. What it is not: a measurement. Not recorded: which input devices
 accidental drags, or of short deliberate drags not registering, would be the
 signal to revisit — the value is a one-line change.
 
-Touch was not part of this check. The drag handles `mouse*` events only, and
-whether node dragging works on a touchscreen has not been verified.
+Touch was not part of this hand check. It was verified separately on a
+physical device — see "Touch input" below.
+
+## Touch input — Pixel 7 Pro, 2026-09-10
+
+**Method.** Debug build installed with `adb install -r` (app data kept), the
+disposable test project streamed into app-private storage, and the Graph view
+opened over the WebView's DevTools socket. Touch was real: `adb shell input
+swipe` and `input tap` go through the Android input system as touchscreen
+events. Page-side listeners recorded touch, pointer, and mouse events. The
+screen-to-page offset was calibrated from a tap on empty canvas: 108 device px
+at the top, 0 horizontally, device pixel ratio 2.625. Every drag below is the
+same gesture: a 180 CSS px swipe left over 900 ms, starting on Cecilia
+Gonzalez.
+
+### As first shipped on this branch (mouse-only drag)
+
+| Measured | Value |
+|---|---|
+| Node transform | unchanged |
+| Events received | `touchstart` 1, `touchmove` 7, `touchend` 1 — **no mouse events** |
+| Work-area pane `scrollLeft` | 0 → 183 — the swipe scrolled the pane instead |
+
+A finger drag delivers no synthesized mouse events at all (a tap does), so the
+mouse-only drag handler never ran.
+
+### Intermediate: pointer events plus `touch-action: none` on the node
+
+| Measured | Value |
+|---|---|
+| Computed `touch-action` on the node `<g>` | `none` |
+| Pointer sequence | `pointerdown`, 4 × `pointermove`, **`pointercancel`** — no `pointerup` |
+| Node moved | 8.9 units, then stopped |
+| Pane `scrollLeft` | 0 → 182.9 |
+
+The browser still claimed the gesture for scrolling and cancelled the drag. Why
+this WebView did not honour the computed `touch-action` on an SVG `<g>` was not
+established.
+
+### Fixed: pointer events plus `preventDefault()` on `touchmove` during a node drag
+
+The approach was first proven by injecting the listener into the live page, then
+confirmed on a rebuilt APK containing the committed code:
+
+| Measured | Value |
+|---|---|
+| Pointer sequence | `pointerdown` 1, `pointermove` 104, **`pointerup` 1** — no `pointercancel` |
+| Node moved | 367.00 → 187.77 — 179.2 units for a 180 px swipe (the canvas renders 1:1) |
+| Pane `scrollLeft` | 0 |
+| Navigation or selection from the drag | none — Graph stayed selected, no selection ring |
+| A tap on a *different* node immediately afterwards | navigated to Edit |
+
+The last row matters: no click follows a touch drag, so before the fix the
+"just dragged" flag stayed set and would have swallowed that tap. Each node
+`pointerdown` now resets it.
+
+Re-confirmed on the same build: tapping an edge shows its tooltip, tapping the
+same edge again hides it, a third tap shows it, and a tap elsewhere hides it.
+
+**Not verified:** any device other than this Pixel 7 Pro (no iOS/Safari, no
+other WebView versions), pen input, and multi-touch beyond the component test
+that ignores a second pointer.
 
 ## Unrelated observations from this session
 
@@ -98,3 +158,11 @@ recorded rather than discarded:
 Whether the duplicate-key error is a consequence of the orphan normalization
 (many resources being re-parented to root at once) is not established. Running
 `getwrite-cli doctor` against the project would be the first check.
+
+- The canvas renders 800 CSS px wide on a 411 px phone screen (a fixed width
+  from the original graph feature), so half the graph starts off-screen;
+  swiping empty canvas scrolls the pane to reach it.
+- The edge tooltip overflows the right edge of a phone screen — measured at x
+  259–588 on a 411 px screen, truncating its text. The overlay is
+  `white-space: nowrap`, placed 10 px right of the touch point, with no max
+  width and no clamp to the viewport.

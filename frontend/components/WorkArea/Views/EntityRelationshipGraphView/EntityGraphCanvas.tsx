@@ -133,7 +133,7 @@ function clampScale(value: number): number {
 }
 
 /**
- * Maximum pointer movement, in client pixels, a node's mousedown-to-mouseup
+ * Maximum pointer movement, in client pixels, a node's pointerdown-to-pointerup
  * gesture may travel and still be treated as a click (rather than a drag) of
  * that node (entity-graph-node-dragging, FR-2/FR-7, OQ-1). This is a starting
  * value, not a measured one: chosen as a typical click/drag threshold, then
@@ -494,7 +494,7 @@ export default function EntityGraphCanvas({
     Map<string, { x: number; y: number }>
   >(() => new Map());
 
-  // Drag state lives in a ref, not React state, since a mousemove needs to
+  // Drag state lives in a ref, not React state, since a move handler needs to
   // read it on every pointer move without forcing a re-render per pixel; the
   // only state updates that matter for rendering are the `pan` writes below.
   const dragOriginRef = React.useRef<{
@@ -506,19 +506,20 @@ export default function EntityGraphCanvas({
 
   // A node drag in progress, tracked separately from `dragOriginRef` (which
   // drives background panning) rather than overloading it — the two gestures
-  // are mutually exclusive (a mousedown lands on either the background
+  // are mutually exclusive (a press lands on either the background
   // `<rect>` or a node's `<g>`, never both) but keeping their state distinct
   // avoids one handler needing to know about the other's shape.
   //
   // `exceededThreshold` (entity-graph-node-dragging, FR-6/FR-7) tracks
   // whether this gesture's RAW CLIENT-PIXEL movement — never the
   // viewBox-unit, scale-divided delta computed below for repositioning — has
-  // crossed `DRAG_CLICK_THRESHOLD_PX` at any point since mousedown. It only
+  // crossed `DRAG_CLICK_THRESHOLD_PX` at any point since pointerdown. It only
   // ever flips false -> true during a gesture (never resets mid-gesture),
-  // and is read once, at `mouseup`, to decide whether the upcoming native
+  // and is read once, at `pointerup`, to decide whether the upcoming native
   // `click` event should be allowed to activate the node.
   const nodeDragRef = React.useRef<{
     entityId: string;
+    pointerId: number;
     startClientX: number;
     startClientY: number;
     startX: number;
@@ -528,11 +529,14 @@ export default function EntityGraphCanvas({
 
   // Whether the gesture that most recently ended crossed the click/drag
   // threshold, kept in a ref distinct from `nodeDragRef` because it must
-  // survive past `mouseup` (which clears `nodeDragRef.current`) into the
+  // survive past `pointerup` (which clears `nodeDragRef.current`) into the
   // browser's native `click` event that fires immediately afterward on the
-  // same element (entity-graph-node-dragging, FR-6). `handleNodeActivate`
-  // consults and immediately resets this flag, so it never leaks into a
-  // later, unrelated gesture.
+  // same element (entity-graph-node-dragging, FR-6). `handleNodeClick`
+  // consults and resets it. With a mouse a click always follows the release,
+  // so that alone would keep it from leaking — but a finger drag is NOT
+  // followed by a click, so the flag would stay set and swallow the next tap.
+  // Every node `pointerdown` therefore resets it too, and keyboard activation
+  // never consults it (a key press never ends a drag).
   const justDraggedPastThresholdRef = React.useRef(false);
 
   const handleBackgroundMouseDown = React.useCallback(
@@ -547,21 +551,24 @@ export default function EntityGraphCanvas({
     [pan.x, pan.y],
   );
 
-  // Records a node drag gesture's start: the pointer's client coordinates and
-  // the node's current RESOLVED position — its live override if one exists,
-  // else `computeGraphLayout`'s own settled `x`/`y` — so the drag continues
-  // from wherever the node actually is, not from a stale simulation position
-  // (entity-graph-node-dragging, FR-1).
-  const handleNodeMouseDown = React.useCallback(
+  // Records a node drag gesture's start: the pointer's id and client
+  // coordinates, and the node's current RESOLVED position — its live override
+  // if one exists, else `computeGraphLayout`'s own settled `x`/`y` — so the
+  // drag continues from wherever the node actually is, not from a stale
+  // simulation position (entity-graph-node-dragging, FR-1). A pointer event,
+  // not a mouse event, so a finger starts a drag the same way a mouse does.
+  const handleNodePointerDown = React.useCallback(
     (
-      event: React.MouseEvent<SVGGElement>,
+      event: React.PointerEvent<SVGGElement>,
       entityId: string,
       layoutX: number,
       layoutY: number,
     ) => {
+      justDraggedPastThresholdRef.current = false;
       const override = nodePositionOverrides.get(entityId);
       nodeDragRef.current = {
         entityId,
+        pointerId: event.pointerId,
         startClientX: event.clientX,
         startClientY: event.clientY,
         startX: override?.x ?? layoutX,
@@ -582,57 +589,30 @@ export default function EntityGraphCanvas({
   const panRef = React.useRef(pan);
   panRef.current = pan;
 
-  // Drag continuation and release are tracked on `window`, not the `<rect>`
-  // (or a node's `<g>`) itself, so a drag already in progress keeps updating
-  // even once the pointer moves outside the SVG's own bounds — the same
-  // reason a native drag gesture is normally wired at the document level.
-  // A node drag and a background pan drag are mutually exclusive per gesture
-  // (`dragOriginRef` and `nodeDragRef` are never both set at once), so the
-  // node-drag branch below returns before falling through to pan handling.
+  // Continuation and release are tracked on `window`, not the `<rect>` (or a
+  // node's `<g>`) itself, so a gesture already in progress keeps updating even
+  // once the pointer leaves the SVG's own bounds — the same reason a native
+  // drag gesture is normally wired at the document level.
+  //
+  // The two gestures listen to different event families, deliberately:
+  //
+  // - A node drag uses Pointer Events, so a mouse, a pen, and a finger all
+  //   drive it. A finger drag on Android delivers `touch*` events and no
+  //   synthesized `mouse*` events at all — measured on a Pixel 7 Pro, see
+  //   `specs/features/entity-graph-node-dragging/manual-verification.md` — so
+  //   a mouse-only drag silently never starts on touch. A finger drag also has
+  //   to be kept from turning into a scroll — see the `touchmove` effect below.
+  // - A background pan stays on mouse events. On a phone, a finger swipe on
+  //   empty canvas scrolls the work-area pane natively instead, which is how a
+  //   narrow screen reaches the part of the fixed-width canvas past its right
+  //   edge; converting the pan would take that away.
+  //
+  // With a mouse both families fire for one gesture, but a node drag starts
+  // only on the node's `pointerdown` (it has no mousedown handler) and a pan
+  // only on the background's `mousedown`, so neither is applied twice.
+  // `dragOriginRef` and `nodeDragRef` are never both set at once.
   React.useEffect(() => {
     const handleMouseMove = (event: MouseEvent): void => {
-      const nodeDrag = nodeDragRef.current;
-      if (nodeDrag) {
-        // Click/drag discrimination (entity-graph-node-dragging, FR-6/FR-7):
-        // a RAW client-pixel distance from the gesture's start point,
-        // compared directly against `DRAG_CLICK_THRESHOLD_PX` with NO
-        // viewBox conversion and NO division by `scale` — a deliberately
-        // separate number from the reposition delta computed below, which
-        // *is* converted and scale-divided. Once true, this never resets
-        // until the next mousedown starts a fresh gesture.
-        if (!nodeDrag.exceededThreshold) {
-          const rawDeltaX = event.clientX - nodeDrag.startClientX;
-          const rawDeltaY = event.clientY - nodeDrag.startClientY;
-          if (Math.hypot(rawDeltaX, rawDeltaY) > DRAG_CLICK_THRESHOLD_PX) {
-            nodeDrag.exceededThreshold = true;
-          }
-        }
-
-        // Same client-pixel -> viewBox-unit conversion the wheel handler
-        // derives: `getBoundingClientRect()`, falling back to a 1:1 ratio
-        // when the element is zero-sized (jsdom), then accounting for the
-        // canvas's current `scale` (entity-graph-node-dragging, FR-7).
-        const el = svgRef.current;
-        const rect = el?.getBoundingClientRect() ?? null;
-        const toViewBoxX = rect && rect.width > 0 ? width / rect.width : 1;
-        const toViewBoxY = rect && rect.height > 0 ? height / rect.height : 1;
-        const currentScale = scaleRef.current;
-        const deltaX =
-          ((event.clientX - nodeDrag.startClientX) * toViewBoxX) / currentScale;
-        const deltaY =
-          ((event.clientY - nodeDrag.startClientY) * toViewBoxY) / currentScale;
-        const nextPosition = {
-          x: nodeDrag.startX + deltaX,
-          y: nodeDrag.startY + deltaY,
-        };
-        setNodePositionOverrides((prev) => {
-          const next = new Map(prev);
-          next.set(nodeDrag.entityId, nextPosition);
-          return next;
-        });
-        return;
-      }
-
       const origin = dragOriginRef.current;
       if (!origin) return;
       setPan({
@@ -641,25 +621,103 @@ export default function EntityGraphCanvas({
       });
     };
     const handleMouseUp = (): void => {
-      // Stash the outcome before clearing `nodeDragRef` (entity-graph-node-
-      // dragging, FR-6): `mouseup` fires before the browser's native `click`
-      // event on the same element, so `handleNodeActivate` needs a way to
-      // see "this release just finished a drag" after `nodeDragRef.current`
-      // has already gone back to null.
-      const nodeDrag = nodeDragRef.current;
-      if (nodeDrag) {
-        justDraggedPastThresholdRef.current = nodeDrag.exceededThreshold;
-      }
       dragOriginRef.current = null;
+    };
+
+    const handlePointerMove = (event: PointerEvent): void => {
+      const nodeDrag = nodeDragRef.current;
+      // Only the pointer that started the drag moves the node, so a second
+      // finger landing mid-drag cannot take it over.
+      if (!nodeDrag || event.pointerId !== nodeDrag.pointerId) return;
+
+      // Click/drag discrimination (entity-graph-node-dragging, FR-6/FR-7):
+      // a RAW client-pixel distance from the gesture's start point,
+      // compared directly against `DRAG_CLICK_THRESHOLD_PX` with NO
+      // viewBox conversion and NO division by `scale` — a deliberately
+      // separate number from the reposition delta computed below, which
+      // *is* converted and scale-divided. Once true, this never resets
+      // until the next pointerdown starts a fresh gesture.
+      if (!nodeDrag.exceededThreshold) {
+        const rawDeltaX = event.clientX - nodeDrag.startClientX;
+        const rawDeltaY = event.clientY - nodeDrag.startClientY;
+        if (Math.hypot(rawDeltaX, rawDeltaY) > DRAG_CLICK_THRESHOLD_PX) {
+          nodeDrag.exceededThreshold = true;
+        }
+      }
+
+      // Same client-pixel -> viewBox-unit conversion the wheel handler
+      // derives: `getBoundingClientRect()`, falling back to a 1:1 ratio
+      // when the element is zero-sized (jsdom), then accounting for the
+      // canvas's current `scale` (entity-graph-node-dragging, FR-7).
+      const el = svgRef.current;
+      const rect = el?.getBoundingClientRect() ?? null;
+      const toViewBoxX = rect && rect.width > 0 ? width / rect.width : 1;
+      const toViewBoxY = rect && rect.height > 0 ? height / rect.height : 1;
+      const currentScale = scaleRef.current;
+      const deltaX =
+        ((event.clientX - nodeDrag.startClientX) * toViewBoxX) / currentScale;
+      const deltaY =
+        ((event.clientY - nodeDrag.startClientY) * toViewBoxY) / currentScale;
+      const nextPosition = {
+        x: nodeDrag.startX + deltaX,
+        y: nodeDrag.startY + deltaY,
+      };
+      setNodePositionOverrides((prev) => {
+        const next = new Map(prev);
+        next.set(nodeDrag.entityId, nextPosition);
+        return next;
+      });
+    };
+    const handlePointerEnd = (event: PointerEvent): void => {
+      const nodeDrag = nodeDragRef.current;
+      if (!nodeDrag || event.pointerId !== nodeDrag.pointerId) return;
+      // Stash the outcome before clearing `nodeDragRef` (entity-graph-node-
+      // dragging, FR-6): `pointerup` fires before the browser's native
+      // `click` on the same element, so `handleNodeClick` needs a way to see
+      // "this release just finished a drag" after `nodeDragRef.current` has
+      // already gone back to null. A `pointercancel` is never followed by a
+      // click, so it records no drag outcome.
+      justDraggedPastThresholdRef.current =
+        event.type === "pointerup" && nodeDrag.exceededThreshold;
       nodeDragRef.current = null;
     };
+
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerEnd);
+    window.addEventListener("pointercancel", handlePointerEnd);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerEnd);
+      window.removeEventListener("pointercancel", handlePointerEnd);
     };
   }, [width, height]);
+
+  // Keeps a finger drag on a node from turning into a page scroll. Measured on
+  // a Pixel 7 Pro WebView: with only `touch-action: none` on the node's `<g>`
+  // — which the node still sets, and which does compute to `none` — the
+  // browser still claimed the gesture after four moves, scrolled the
+  // work-area pane, and ended the drag with `pointercancel`, so the node moved
+  // a few units and stopped. Calling `preventDefault()` on each cancelable
+  // `touchmove` while a node drag is in progress stops the scroll before it
+  // starts; on the same device that gave an uninterrupted drag ending in
+  // `pointerup`, with the pane unscrolled. It has to be a native non-passive
+  // listener for the same reason as the wheel handler below: React attaches
+  // `onTouchMove` passively, which would silently drop the `preventDefault()`.
+  // Only a drag already started by a node's `pointerdown` is ever prevented,
+  // so a tap is unaffected and a swipe on empty canvas still scrolls the pane.
+  React.useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const handleTouchMove = (event: TouchEvent): void => {
+      if (nodeDragRef.current && event.cancelable) event.preventDefault();
+    };
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", handleTouchMove);
+  }, []);
 
   // A non-passive native `wheel` listener, following this codebase's own
   // `Timeline.tsx` precedent for wheel-driven zoom: React's synthetic
@@ -709,25 +767,31 @@ export default function EntityGraphCanvas({
   }, [width, height]);
 
   // The single activation path for a node — toggles the selection ring and
-  // fires `onNodeActivated` (Task 7, FR-9). Both a pointer click and a
-  // keyboard Enter/Space on the node's `<g>` call this exact function, so
-  // there is no divergent second implementation of "what activation means."
+  // fires `onNodeActivated` (Task 7, FR-9). Both a pointer click (via
+  // `handleNodeClick`) and a keyboard Enter/Space on the node's `<g>` end
+  // here, so there is no divergent second implementation of "what
+  // activation means."
   const handleNodeActivate = React.useCallback(
     (entityId: string) => {
-      // Suppress the click/keyboard activation this gesture would otherwise
-      // fire if it was just classified as a drag past the threshold
-      // (entity-graph-node-dragging, FR-6). The flag is consumed (reset)
-      // immediately so it cannot leak into a later, unrelated activation —
-      // e.g. a subsequent plain click or Enter/Space on this or another
-      // node.
-      if (justDraggedPastThresholdRef.current) {
-        justDraggedPastThresholdRef.current = false;
-        return;
-      }
       setSelectedNodeId((current) => (current === entityId ? null : entityId));
       onNodeActivated?.(entityId);
     },
     [onNodeActivated],
+  );
+
+  // A node's `click`: suppressed when it is the click that ends a gesture
+  // just classified as a drag past the threshold (entity-graph-node-
+  // dragging, FR-6), otherwise an ordinary activation. The flag is consumed
+  // so it applies to that one click only.
+  const handleNodeClick = React.useCallback(
+    (entityId: string) => {
+      if (justDraggedPastThresholdRef.current) {
+        justDraggedPastThresholdRef.current = false;
+        return;
+      }
+      handleNodeActivate(entityId);
+    },
+    [handleNodeActivate],
   );
 
   const handleNodeKeyDown = React.useCallback(
@@ -980,15 +1044,15 @@ export default function EntityGraphCanvas({
                   data-entity-id={node.entityId}
                   data-selected={isSelected ? "true" : "false"}
                   transform={`translate(${resolvedX}, ${resolvedY})`}
-                  onMouseDown={(event) =>
-                    handleNodeMouseDown(event, node.entityId, node.x, node.y)
+                  onPointerDown={(event) =>
+                    handleNodePointerDown(event, node.entityId, node.x, node.y)
                   }
-                  onClick={() => handleNodeActivate(node.entityId)}
+                  onClick={() => handleNodeClick(node.entityId)}
                   onKeyDown={(event) => handleNodeKeyDown(event, node.entityId)}
                   tabIndex={0}
                   role="button"
                   aria-label={node.name}
-                  style={{ cursor: "pointer" }}
+                  style={{ cursor: "pointer", touchAction: "none" }}
                 >
                   {isSelected ? (
                     <circle

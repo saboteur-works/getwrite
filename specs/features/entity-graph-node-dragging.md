@@ -62,7 +62,7 @@ co-occurrence value, or authored relationship is read or written by a drag.
 
 ## Functional requirements
 
-FR-1: A pointer-down on a node's `<g>` in `EntityGraphCanvas.tsx`, followed by pointer movement past the click/drag threshold (see OQ-1) and a pointer-up, MUST reposition that node to follow the pointer for the duration of the gesture. [US-1]
+FR-1: A pointer-down on a node's `<g>` in `EntityGraphCanvas.tsx`, followed by pointer movement past the click/drag threshold (see OQ-1) and a pointer-up, MUST reposition that node to follow the pointer for the duration of the gesture. A pointer here means a mouse, a pen, or a finger (see OQ-4). [US-1]
 
 FR-2: A dragged node's new position MUST be tracked in a live position override, read at render time, rather than written into `computeGraphLayout`'s memoized `PositionedNode`/`PositionedEdge` output; `computeGraphLayout` itself MUST remain unchanged — the same pure function, over the same fixed-300-tick, stopped-simulation contract it has today. [US-1]
 
@@ -87,6 +87,20 @@ FR-10: This feature MUST NOT read or write any entity data, co-occurrence value,
 - OQ-1 (resolved): a single named constant, its starting value unverified, tuned during manual verification. No in-repo or citable library precedent exists for a pointer-distance click/drag threshold: the resource tree's drag-and-drop uses native HTML5 `dragstart`/`drop` events, whose activation distance is a browser/OS-level detail rather than a configurable constant, so a search of this codebase and its dependencies found nothing to inherit — this is a fresh choice. The threshold MUST live in a single named constant, not inlined at its use site, so tuning it is a one-line change; its initial value is recorded as an unverified starting point, not asserted as correct. It is also settled that the threshold is measured in client pixels, before the client-pixel → viewBox-unit conversion FR-7 describes, not in viewBox units: the gesture it discriminates is physical hand movement, which is screen-space, and a viewBox-unit threshold would change how far the writer must physically move the pointer depending on the current zoom `scale` — requiring less movement zoomed in and more zoomed out — so the same hand gesture would be classified differently at different zoom levels. No specific threshold value is claimed correct here; only measurement during manual verification would establish that. — Impact: FR-1, FR-5, FR-6, FR-7.
 - OQ-2 (resolved): a stale override for a deleted entity is left un-synced and inert; no explicit purge. Rendering iterates the current `positionedNodes` (derived from the `nodes` prop) and looks up the override per rendered node, never the reverse — so an entry whose entity is gone is simply never looked up again. It cannot render, cannot crash, and cannot be observed. This matches the component's own existing precedent exactly: `selectedNodeId`, `pan`, and `scale` are all plain state that is never reset or revalidated when `nodes` changes (`EntityGraphCanvas.tsx` — `selectedNodeId` is checked per-node in the render loop the same way, and a selection ring for a removed entity simply stops rendering with no cleanup code anywhere). Overrides also survive a re-render caused by changed `nodes`/`edges`, because nothing resets non-memoized state when the layout `useMemo`'s dependencies change. The accepted consequence, stated plainly: the override map can accumulate entries across a long session of drag-then-delete cycles; this is memory hygiene, not correctness, and was judged not worth the extra code. — Impact: FR-2, FR-3.
 - OQ-3 (resolved): no bounds constraint. A drag may place a node outside the visible viewBox. `computeGraphLayout` already does not clamp simulated positions to the viewBox — its forces (`forceManyBody`, `forceLink`, `forceCenter`, `forceCollide`) include no rectangular clamp — so unconstrained positions are already the status quo before dragging exists. A node outside the visible area is not lost: `EntityGraphAccessibleList` renders every node and edge from the `nodes`/`edges` props with no coordinate dependency, so it stays listed, activatable, and navigable, and the canvas's existing pan brings it back into view. The obvious alternative — constraining to the static viewBox rectangle — was rejected because that boundary diverges from what the writer can actually see once zoomed or panned, restricting a gesture against a limit the writer cannot see. — Impact: FR-1, FR-7.
+- OQ-4 (resolved 2026-09-10, post-implementation amendment): touch input is in
+  scope. This spec's requirements were written in terms of a "pointer" but never
+  said whether that included a finger, and the first implementation listened
+  for mouse events only. Measured on a Pixel 7 Pro WebView, a finger drag
+  delivers touch events and no synthesized mouse events, so the node did not
+  move and the swipe scrolled the work-area pane instead. Resolution: the node
+  drag runs on Pointer Events, and while a node drag is in progress a
+  non-passive `touchmove` listener calls `preventDefault()` so the browser does
+  not claim the gesture for scrolling — `touch-action: none` on the node's `<g>`
+  alone was measured as not enough on that WebView (the drag ended in
+  `pointercancel` after four moves). A swipe that starts on empty canvas still
+  scrolls the pane. Verification is recorded in
+  `entity-graph-node-dragging/manual-verification.md`. — Impact: FR-1, FR-5,
+  FR-6.
 
 ## Out of scope (deferred)
 
