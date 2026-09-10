@@ -136,10 +136,11 @@ function clampScale(value: number): number {
  * Maximum pointer movement, in client pixels, a node's mousedown-to-mouseup
  * gesture may travel and still be treated as a click (rather than a drag) of
  * that node (entity-graph-node-dragging, FR-2/FR-7, OQ-1). This is a starting
- * value only — UNVERIFIED — chosen as a typical click/drag threshold, not
- * measured against this component's own pointer handling. It is expected to
- * be tuned during this feature's manual verification task; nothing here
- * should be taken as evidence that 4px is the correct threshold for this UI.
+ * value, not a measured one: chosen as a typical click/drag threshold, then
+ * hand-checked during this feature's manual verification (2026-09-10) and
+ * judged within tolerable bounds. That is a judgment from use, not a
+ * measurement — see specs/features/entity-graph-node-dragging/
+ * manual-verification.md. Tuning it is a one-line change here.
  */
 const DRAG_CLICK_THRESHOLD_PX = 4;
 

@@ -63,7 +63,7 @@ Source spec: `specs/features/entity-graph-node-dragging.md`. Granularity: story 
 **Depends on:** 3, 4, 6
 **Estimate:** 2
 **Notes:** This is the one place in this task list where the threshold's actual number is allowed to be written down — every other task's text deliberately avoids asserting a specific pixel value, per the spec's own instruction that the starting value is unverified. If manual testing changes the constant, that is a one-line follow-up to Task 1's file, not a reason to reopen Tasks 2-4's logic.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 7
