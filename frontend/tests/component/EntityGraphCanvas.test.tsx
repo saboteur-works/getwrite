@@ -9,6 +9,10 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import * as d3Force from "d3-force";
+import {
+  chooseTooltipPlacement,
+  TOOLTIP_VIEWPORT_MARGIN,
+} from "../../components/WorkArea/Views/EntityRelationshipGraphView/edgeTooltipPlacement";
 import EntityGraphCanvas, {
   computeGraphLayout,
 } from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityGraphCanvas";
@@ -1414,6 +1418,52 @@ describe("EntityGraphCanvas", () => {
       );
     });
 
+    it("places the tooltip away from the hovered edge's own endpoint node (FR-10)", () => {
+      // jsdom has no layout, so give the tooltip and one endpoint node real
+      // sizes: the endpoint sits exactly where the default above-right
+      // placement would draw the tooltip.
+      const box = (left: number, top: number, width: number, height: number) =>
+        ({
+          left,
+          top,
+          width,
+          height,
+          right: left + width,
+          bottom: top + height,
+          x: left,
+          y: top,
+          toJSON: () => ({}),
+        }) as DOMRect;
+      const spy = vi
+        .spyOn(Element.prototype, "getBoundingClientRect")
+        .mockImplementation(function (this: Element) {
+          const testId = this.getAttribute("data-testid");
+          if (testId === "entity-graph-edge-tooltip") return box(0, 0, 200, 40);
+          if (
+            testId === "entity-graph-node" &&
+            this.getAttribute("data-entity-id") === cooccurrenceEdge.entityIdA
+          ) {
+            return box(520, 340, 60, 55);
+          }
+          return box(0, 0, 0, 0);
+        });
+      try {
+        render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+        fireEvent.mouseEnter(getHitTargetFor("cooccurrence"), {
+          clientX: 500,
+          clientY: 400,
+        });
+
+        const tooltip = screen.getByTestId("entity-graph-edge-tooltip");
+        // Above-left of the pointer: clear of the endpoint node.
+        expect(tooltip.style.left).toBe("290px");
+        expect(tooltip.style.top).toBe("350px");
+        expect(tooltip.style.visibility).not.toBe("hidden");
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
     it("never shows a tooltip when hovering a node (FR-8)", () => {
       render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
 
@@ -1446,23 +1496,26 @@ describe("EntityGraphCanvas", () => {
         clientX: 1,
         clientY: 1,
       });
-      expect(cooccurrenceSpy).toHaveBeenCalledTimes(1);
-      const [cooccurrenceFirstArg] = cooccurrenceSpy.mock.calls[0];
-      expect(cooccurrenceFirstArg).toBeInstanceOf(Map);
-      expect((cooccurrenceFirstArg as Map<string, string>).get("e-1")).toBe(
-        "Anna",
-      );
+      // Every call receives the map as its first argument. The call count is
+      // not pinned: the tooltip renders once to be measured and again once
+      // placed (FR-10), and each render composes its text.
+      expect(cooccurrenceSpy).toHaveBeenCalled();
+      for (const [firstArg] of cooccurrenceSpy.mock.calls) {
+        expect(firstArg).toBeInstanceOf(Map);
+        expect((firstArg as Map<string, string>).get("e-1")).toBe("Anna");
+      }
 
       fireEvent.mouseEnter(getHitTargetFor("authored"), {
         clientX: 1,
         clientY: 1,
       });
-      expect(authoredSpy).toHaveBeenCalledTimes(1);
-      const [authoredFirstArg] = authoredSpy.mock.calls[0];
-      expect(authoredFirstArg).toBeInstanceOf(Map);
-      expect((authoredFirstArg as Map<string, string>).get("e-3")).toBe(
-        "Castle Greywatch",
-      );
+      expect(authoredSpy).toHaveBeenCalled();
+      for (const [firstArg] of authoredSpy.mock.calls) {
+        expect(firstArg).toBeInstanceOf(Map);
+        expect((firstArg as Map<string, string>).get("e-3")).toBe(
+          "Castle Greywatch",
+        );
+      }
     });
 
     it("introduces no new fetch call when hovering or tapping an edge's tooltip (FR-6)", () => {
@@ -1485,5 +1538,93 @@ describe("EntityGraphCanvas", () => {
         global.fetch = originalFetch;
       }
     });
+  });
+});
+
+describe("chooseTooltipPlacement (entity-graph-edge-tooltips, FR-10)", () => {
+  const base = {
+    pointerX: 500,
+    pointerY: 400,
+    width: 200,
+    height: 40,
+    viewportWidth: 1000,
+    viewportHeight: 800,
+  };
+  // Where each candidate lands for the base input, gap 10 on both axes:
+  //   above-right [510,710]x[350,390]   above-left [290,490]x[350,390]
+  //   below-right [510,710]x[410,450]   below-left [290,490]x[410,450]
+  const rect = (left: number, top: number, right: number, bottom: number) => ({
+    left,
+    top,
+    right,
+    bottom,
+  });
+
+  it("keeps the original above-right placement when nothing is in the way", () => {
+    expect(chooseTooltipPlacement({ ...base, avoid: [] })).toEqual({
+      left: 510,
+      top: 350,
+    });
+  });
+
+  it("moves to the left when an endpoint node sits above-right of the pointer", () => {
+    expect(
+      chooseTooltipPlacement({ ...base, avoid: [rect(520, 340, 580, 395)] }),
+    ).toEqual({ left: 290, top: 350 });
+  });
+
+  it("goes below the pointer when both positions above are covered", () => {
+    expect(
+      chooseTooltipPlacement({
+        ...base,
+        avoid: [rect(520, 340, 580, 395), rect(300, 340, 360, 395)],
+      }),
+    ).toEqual({ left: 510, top: 410 });
+  });
+
+  it("takes the least-overlapping position when every position covers something", () => {
+    expect(
+      chooseTooltipPlacement({
+        ...base,
+        avoid: [
+          rect(520, 350, 700, 390), // above-right: 7200
+          rect(300, 350, 480, 390), // above-left: 7200
+          rect(600, 410, 610, 420), // below-right: 100
+          rect(300, 410, 400, 450), // below-left: 4000
+        ],
+      }),
+    ).toEqual({ left: 510, top: 410 });
+  });
+
+  it("stays inside the viewport near its right edge", () => {
+    const { left } = chooseTooltipPlacement({
+      ...base,
+      pointerX: 990,
+      avoid: [],
+    });
+    expect(left).toBeGreaterThanOrEqual(TOOLTIP_VIEWPORT_MARGIN);
+    expect(left + base.width).toBeLessThanOrEqual(
+      base.viewportWidth - TOOLTIP_VIEWPORT_MARGIN,
+    );
+  });
+
+  it("stays inside the viewport near its top edge", () => {
+    const { top } = chooseTooltipPlacement({
+      ...base,
+      pointerY: 20,
+      avoid: [],
+    });
+    expect(top).toBeGreaterThanOrEqual(TOOLTIP_VIEWPORT_MARGIN);
+  });
+
+  it("pins a tooltip wider than the viewport to the leading margin rather than off-screen", () => {
+    expect(
+      chooseTooltipPlacement({
+        ...base,
+        pointerX: 100,
+        viewportWidth: 150,
+        avoid: [],
+      }).left,
+    ).toBe(TOOLTIP_VIEWPORT_MARGIN);
   });
 });

@@ -16,6 +16,7 @@ import {
   describeAuthoredEdge,
   describeCooccurrenceEdge,
 } from "./edgeDescriptions";
+import { chooseTooltipPlacement } from "./edgeTooltipPlacement";
 import "./entityGraphTooltipOverlay.css";
 
 const DEFAULT_WIDTH = 800;
@@ -899,6 +900,86 @@ export default function EntityGraphCanvas({
     return () => document.removeEventListener("click", handleDocumentClick);
   }, []);
 
+  // Where the open tooltip is drawn (entity-graph-edge-tooltips, FR-10). It
+  // depends on the tooltip's own measured size, so it is computed after the
+  // tooltip renders. `key` ties a placement to the tooltip it was computed
+  // for; until one exists, the tooltip renders hidden at the viewport origin,
+  // where its width is not narrowed by being near the right edge, and is
+  // measured there.
+  const [tooltipPlacement, setTooltipPlacement] = React.useState<{
+    key: string;
+    left: number;
+    top: number;
+  } | null>(null);
+  const tooltipRef = React.useRef<HTMLDivElement>(null);
+  // The measured size of the tooltip text last shown, reused while the
+  // pointer moves along the same edge so a move re-places the tooltip
+  // without re-measuring it.
+  const tooltipSizeRef = React.useRef<{
+    text: string;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  // Places the open tooltip beside the pointer, fully on-screen, on whichever
+  // side covers the least of the hovered edge's two endpoint nodes — the
+  // nodes a reader inspecting that edge is looking at (FR-10). Measured with
+  // the old fixed above-right offset, the tooltip covered one of them in 54%
+  // of hovers. A layout effect, so the placement commits before paint and the
+  // hidden measuring pass is never seen.
+  React.useLayoutEffect(() => {
+    if (!activeTooltip) {
+      setTooltipPlacement(null);
+      return;
+    }
+    const el = tooltipRef.current;
+    const svg = svgRef.current;
+    if (!el || !svg) return;
+
+    const text = el.textContent ?? "";
+    let size = tooltipSizeRef.current;
+    if (!size || size.text !== text) {
+      const measured = el.getBoundingClientRect();
+      size = { text, width: measured.width, height: measured.height };
+      tooltipSizeRef.current = size;
+    }
+
+    const endpointIds = new Set(edgeEndpoints(activeTooltip.edge));
+    const avoid = Array.from(
+      svg.querySelectorAll<SVGGElement>('[data-testid="entity-graph-node"]'),
+    )
+      .filter((node) =>
+        endpointIds.has(node.getAttribute("data-entity-id") ?? ""),
+      )
+      .map((node) => node.getBoundingClientRect());
+
+    // `clientWidth`/`clientHeight` exclude a scrollbar, which a fixed-position
+    // tooltip cannot draw under; jsdom reports them as 0, hence the fallback.
+    const viewport = document.documentElement;
+    const next = chooseTooltipPlacement({
+      pointerX: activeTooltip.clientX,
+      pointerY: activeTooltip.clientY,
+      width: size.width,
+      height: size.height,
+      viewportWidth: viewport.clientWidth || window.innerWidth,
+      viewportHeight: viewport.clientHeight || window.innerHeight,
+      avoid,
+    });
+    setTooltipPlacement((prev) =>
+      prev &&
+      prev.key === activeTooltip.key &&
+      prev.left === next.left &&
+      prev.top === next.top
+        ? prev
+        : { key: activeTooltip.key, ...next },
+    );
+  }, [activeTooltip]);
+
+  const placedTooltip =
+    activeTooltip && tooltipPlacement?.key === activeTooltip.key
+      ? tooltipPlacement
+      : null;
+
   return (
     <>
       <svg
@@ -1087,14 +1168,19 @@ export default function EntityGraphCanvas({
       </svg>
       {activeTooltip && (
         <div
+          ref={tooltipRef}
           className="entity-graph-edge-tooltip"
           data-testid="entity-graph-edge-tooltip"
           role="tooltip"
-          style={{
-            position: "fixed",
-            left: activeTooltip.clientX,
-            top: activeTooltip.clientY,
-          }}
+          style={
+            placedTooltip
+              ? {
+                  position: "fixed",
+                  left: placedTooltip.left,
+                  top: placedTooltip.top,
+                }
+              : { position: "fixed", left: 0, top: 0, visibility: "hidden" }
+          }
         >
           {describeEdge(activeTooltip.edge, nameById)}
         </div>
