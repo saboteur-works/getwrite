@@ -30,7 +30,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 2
 **Notes:** This is FR-10's entire scope. Because the module and its `resolveAlias` substitution already exist (built for the sibling `remove` method), this task carries none of the first-time `node:*`-leak risk Task 5 of `entity-relationships/tasks.md` called out — it only needs to confirm the existing substitution still covers the new method.
 **POS:** task_5b651146
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Add `ConfirmDialog`'s `isConfirmDisabled` prop (the resolved FR-6 exception)
 **What:** Adds exactly one new optional prop to `ConfirmDialogProps` (`frontend/components/common/ConfirmDialog.tsx`): `isConfirmDisabled?: boolean`, defaulting to `false`, wired to the confirm button's `disabled` attribute (`<Button variant="destructive" onClick={onConfirm} disabled={isConfirmDisabled}>`). This is the single narrowly-scoped exception to FR-6 resolved at Gate 3 (OQ-5): `ConfirmDialog.tsx` types `onConfirm: () => void`, never reads a return value, and had no `disabled` wiring at all, so a genuinely disabled confirm control — one also announced as unavailable to assistive tech, not merely styled inert — was not achievable without a prop. Backward-compatible: every existing caller (e.g. `ManageProjectMenu.tsx`) omits the prop and is unaffected.
