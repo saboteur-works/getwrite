@@ -100,7 +100,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 3
 **Notes:** This is FR-20's mechanism and FR-25's entire scope at the model/route layer. Deliberately independent of Tasks 1-9 so it can proceed in parallel with them; Task 11 depends on it.
 **POS:** task_583e43e7
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Transport parity for `clearKeys` — HTTP client and native backend
 **What:** Adds `clearKeys?: string[]` to `lib/api/resources.ts`'s `updateSidecar` signature, sending it through in the `JSON.stringify`'d request body to Task 10's route. Adds the same parameter to `native-resource-backend.ts`'s `updateSidecar`, passing it through in-process to `updateSidecarCore` (and to the `.web-stub.ts` counterpart's signature, matching its existing throw-if-reached contract). Native is switched onto this mechanism rather than continuing to rely on an in-process `undefined`-valued key surviving the object-spread merge, per OQ-6's unification decision.
@@ -110,7 +110,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 2
 **Notes:** This is FR-20's transport-parity half. No new route or dynamic-import specifier is introduced — this only adds a parameter to already-collapsed transport functions.
 **POS:** task_00d773c7
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Wire Remove Entity and the field-clearing path onto `clearKeys`
 **What:** Changes `RemoveEntityControl.tsx`'s confirm handler (Task 7) to call `updateSidecar` with `clearKeys: ["entityKind", "aliases"]` instead of sending explicit `undefined`-valued keys (FR-1, FR-4, FR-11 corrected per FR-20). Changes `EntitySection.tsx`'s `withEntityKind` field-clearing path to call `updateSidecar` with `clearKeys: ["entityKind"]` only when the kind is actually being cleared (aliases stay dormant and are never included — FR-3's documented intent is unchanged); when a kind value is being set rather than cleared, `clearKeys` is omitted and the value is sent in `updatedResource` exactly as today.
@@ -120,7 +120,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 3
 **Notes:** This is FR-4, FR-5, and FR-21's caller-side half for both cleared-field paths, replacing the explicit-`undefined` mechanism Task 7 originally documented (superseded by OQ-6's resolution) with `clearKeys`.
 **POS:** task_3ecf5c2e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Accessibility and colour — trigger name, checkbox name, non-red trigger
 **What:** Removes the overriding `aria-label` from the Remove Entity trigger so its accessible name matches its visible text, "Remove Entity" (FR-22), and removes the overriding `aria-label` from the keep/delete checkbox so its accessible name comes from its associated `<label>`, including the edge count (FR-23). Reads `frontend/components/common/UI/Button/Button.tsx` to pick an existing non-red variant, and switches the Remove Entity trigger off the red brand token onto that variant (FR-24). Updates every test and story that queried the old `aria-label` values, including `frontend/tests/component/RemoveEntityControl.test.tsx` and `frontend/stories/Sidebar/RemoveEntityControl.stories.tsx`.
