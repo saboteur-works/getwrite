@@ -117,6 +117,8 @@ FR-23: The keep/delete checkbox's (FR-18) accessible name MUST be derived from i
 
 FR-24: The Remove Entity trigger control MUST NOT use the red brand colour token, per CLAUDE.md's styling rule reserving red for position/canonical-state indicators and never for actions or alerts. [US-1]
 
+FR-26: The Remove Entity dialog's FR-17 edge-count fetch, on dialog open, MUST use a read that surfaces failure to the caller — a distinct transport method that rejects on failure, or one that returns a discriminated success/failure result — rather than `listEntityRelationships`'s existing `list()`, which degrades to `[]` on any failure (network error, non-2xx response, or a malformed body) and therefore cannot be distinguished from a genuine zero-edge project. This MUST hold on both HTTP and native, with ADR-021 parity between the two. `list()`'s existing degrade-to-`[]` semantics are UNCHANGED for its other callers (`EntityRelationshipsSection.tsx`, `EntityRelationshipGraphView.tsx`) — this requirement adds a second, failure-aware read path used only by the Remove Entity dialog; it does not alter what those other callers see. Owner decision at Gate 5 (2026-09-10): option (a), fix it — see the Amendment note below for the measurement and code reading that prompted this. [US-2][US-3]
+
 ## Amendment note (Stage 6.5 measurements, 2026-09-10)
 
 The following are measurements taken in the real app against a disposable
@@ -175,6 +177,26 @@ established by a follow-up experiment:
   relevant tests (task 7 of the original task list) assert the payload
   passed to a mocked `updateSidecar`, not the sidecar actually persisted to
   disk or a memory adapter — see FR-21.
+
+### Second-pass measurement (Stage 5, 2026-09-10)
+
+- Measurement: `pnpm test-storybook stories/Sidebar/RemoveEntityControl.stories.tsx`
+  → 4 passed, 1 failed; the `Fetch Failure` story fails with "Unable to find
+  an element with the text: /relationship data could not be loaded/i".
+- Code reading, consistent with that measurement: both transports' `list()`
+  resolve to `[]` on any failure — HTTP
+  `frontend/src/lib/api/entity-relationships.ts`
+  (`if (!response.ok) return []; … catch { return []; }`) and native
+  `frontend/src/store/transport/native-entity-relationships-backend.ts`
+  (`catch { // Mirrors the HTTP transport's degrade-to-[] parity. return
+  []; }`). So `RemoveEntityControl.tsx`'s `.catch(...)` that sets the FR-17
+  load error is unreachable on both runtimes; a failed load is
+  indistinguishable from zero edges. Data-safety consequence: the dialog
+  shows no checkbox, so removal keeps edges (FR-17's fail-closed-toward-keep
+  holds); what is missing is FR-17's inline error. Task 6's component test
+  for this state passed only because it mocked `listEntityRelationships` to
+  reject, which the real transports never do.
+- Owner decision at Gate 5 (2026-09-10): option (a) — fix it. See FR-26.
 
 ## Open questions
 
