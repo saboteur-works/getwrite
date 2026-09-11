@@ -356,6 +356,92 @@ describe("importScrivenerProject — Task 1 fixture", () => {
   });
 });
 
+// Task 14: a small, synthetic (not the checked-in fixture) .scrivx project
+// exercising Task 12's fragment-error recovery, FR-19's untitled fallback
+// naming, and Task 13's unresolvable-StatusID value skip, end to end
+// through the orchestrator and into the written report — confirming none of
+// these recoverable cases aborts the import.
+describe("importScrivenerProject — recoverable skips (Task 14)", () => {
+  const dataUuid = "EEEEEEEE-EEEE-4EEE-8EEE-EEEEEEEEEEEE";
+  let scrivDir: string;
+  let projectRoot: string;
+  let report: string;
+  let resources: AnyResource[];
+
+  beforeAll(async () => {
+    scrivDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-skips-src-"),
+    );
+    const dataDir = path.join(scrivDir, "Files", "Data", dataUuid);
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(
+      path.join(dataDir, "content.rtf"),
+      String.raw`{\rtf1\ansi\ansicpg1252\cocoartf2639\f0\fs24 \cf0 Untitled body text.\par}`,
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(scrivDir, "sample.scrivx"),
+      `<?xml version="1.0" encoding="UTF-8"?>
+<ScrivenerProject Identifier="X" Version="2.0" Creator="SCRMAC-3.5.2" Device="Test">
+  <Binder>
+    <BinderItem UUID="DDDDDDDD-DDDD-4DDD-8DDD-DDDDDDDDDDDD" Type="DraftFolder" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+      <Title>Draft</Title>
+      <Children>
+        <BinderItem UUID="${dataUuid}" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <MetaData>
+            <StatusID>-1</StatusID>
+            <CustomMetaData>
+              <MetaDataItem>
+                <Value>orphaned value, missing FieldID</Value>
+              </MetaDataItem>
+            </CustomMetaData>
+          </MetaData>
+        </BinderItem>
+      </Children>
+    </BinderItem>
+  </Binder>
+</ScrivenerProject>`,
+      "utf8",
+    );
+
+    projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-skips-dest-"),
+    );
+    await importScrivenerProject({ scrivPath: scrivDir, projectRoot });
+    await flushIndexer();
+
+    report = await fs.readFile(
+      path.join(projectRoot, "scrivener-import-report.txt"),
+      "utf8",
+    );
+    resources = await readAllResources(projectRoot);
+  });
+
+  afterAll(async () => {
+    await fs.rm(scrivDir, { recursive: true, force: true });
+    await fs.rm(projectRoot, { recursive: true, force: true });
+  });
+
+  it("does not abort on the malformed <MetaDataItem> fragment or the unresolvable StatusID — the resource still imports", () => {
+    const textResource = resources.find(
+      (r): r is TextResource => r.type === "text",
+    );
+    expect(textResource).toBeDefined();
+    expect(textResource?.plainText).toContain("Untitled body text.");
+  });
+
+  it("FR-19: lists the untitled fallback name in its own report section", () => {
+    expect(report).toContain("## Untitled Fallback Names");
+    expect(report).toContain('- "Untitled" (Draft/Untitled)');
+  });
+
+  it("folds the .scrivx fragment error and the unresolved StatusID value skip into the existing Skipped Items section", () => {
+    expect(report).toContain("## Skipped Items");
+    expect(report).toContain("FieldID");
+    expect(report).toContain('StatusID "-1"');
+  });
+});
+
 describe("importScrivenerProject — FR-2 refusal", () => {
   it("refuses and writes nothing to projectRoot for a non-SCRMAC-3 Creator", async () => {
     const scrivDir = await fs.mkdtemp(

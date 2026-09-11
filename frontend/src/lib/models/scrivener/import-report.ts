@@ -9,24 +9,33 @@
  * `buildImportReport` is a pure function: it takes the outcomes of the other
  * import-pipeline modules (FR-8 skips, FR-15 keyword merges, FR-16
  * unconverted Research content, FR-3 excluded `Type="Other"` items, the
- * project's Trash content, and any snapshot history) and renders them into a
- * single human-readable, Markdown-ish plain-text report. `writeImportReport`
- * persists that text under the destination project via the `io.ts`
- * `StorageAdapter` wrappers (never `node:fs` directly), per
- * `docs/standards/storage-context.md` — callers are responsible for having an
- * active `StorageContext` (e.g. via `runForTenant`) when they call it, the
- * same convention `project-creator.ts`'s callers follow.
+ * project's Trash content, any snapshot history, and FR-19's untitled
+ * fallback names) and renders them into a single human-readable,
+ * Markdown-ish plain-text report. `writeImportReport` persists that text
+ * under the destination project via the `io.ts` `StorageAdapter` wrappers
+ * (never `node:fs` directly), per `docs/standards/storage-context.md` —
+ * callers are responsible for having an active `StorageContext` (e.g. via
+ * `runForTenant`) when they call it, the same convention
+ * `project-creator.ts`'s callers follow.
  *
- * **Empty-category convention:** every one of the six FR-9 categories is
- * always rendered as its own heading, in a fixed order, even when there is
- * nothing to report for it — an empty category prints its heading followed
- * by an explicit "No … found." line rather than being omitted. This is a
- * deliberate design choice (the task's "your design call" clause): omitting
- * a category entirely would be indistinguishable, to a reader of the report
- * text, from the importer never having considered that category at all. The
- * fixed heading order also means the report's shape does not depend on which
- * categories happened to have content, making it easier to diff between
- * import runs.
+ * **Recoverable skips fold into the FR-8 skip list.** Task 12's `.scrivx`
+ * fragment errors (`ScrivxParsed.fragmentErrors`) and Task 13's metadata
+ * value skips (`MetadataPlan.valueSkips`) are both, in substance, FR-8
+ * skips — content the importer declined to carry over for a stated reason —
+ * so the orchestrator folds both into the same `skips` array this module
+ * already renders under "Skipped Items" rather than this module growing a
+ * second, parallel, never-reported category for them.
+ *
+ * **Empty-category convention:** every one of the seven FR-9/FR-19
+ * categories is always rendered as its own heading, in a fixed order, even
+ * when there is nothing to report for it — an empty category prints its
+ * heading followed by an explicit "No … found." line rather than being
+ * omitted. This is a deliberate design choice (the task's "your design
+ * call" clause): omitting a category entirely would be indistinguishable,
+ * to a reader of the report text, from the importer never having considered
+ * that category at all. The fixed heading order also means the report's
+ * shape does not depend on which categories happened to have content,
+ * making it easier to diff between import runs.
  */
 import path from "node:path";
 import { mkdir, writeFile } from "../io";
@@ -98,13 +107,31 @@ export interface ImportReportSnapshot {
 }
 
 /**
+ * A single binder item imported under a generated "Untitled" fallback name
+ * (FR-19). Field names mirror `ImportPlanUntitledFallback` (`binder-mapper.ts`),
+ * which is where this list originates.
+ */
+export interface ImportReportUntitledFallback {
+  /** The fallback name actually used ("Untitled", "Untitled 2", ...). */
+  readonly itemTitle: string;
+  /** This item's position in the binder, using the fallback name for its own segment. */
+  readonly binderPath: string;
+}
+
+/**
  * Full set of inputs `buildImportReport` renders. Populated by other
  * import-pipeline modules (FR-8 skip detection, FR-15 keyword merging, FR-16
- * Research handling, FR-3 binder filtering, FR-9's Trash/Snapshot scans) and
- * assembled by Task 8's orchestrator; each array may be empty.
+ * Research handling, FR-3 binder filtering, FR-9's Trash/Snapshot scans,
+ * FR-19's untitled fallback names) and assembled by Task 8's orchestrator;
+ * each array may be empty.
  */
 export interface ImportReportInput {
-  /** Every FR-8 skip, in encounter order. */
+  /**
+   * Every FR-8 skip, in encounter order — including Task 12's `.scrivx`
+   * fragment errors and Task 13's metadata value skips, which the
+   * orchestrator folds in here rather than this module rendering a separate
+   * category for them. See the module doc's "Recoverable skips" note.
+   */
   readonly skips: readonly ImportReportSkip[];
   /** Every FR-15 keyword merge, in encounter order. */
   readonly keywordMerges: readonly ImportReportKeywordMerge[];
@@ -116,6 +143,8 @@ export interface ImportReportInput {
   readonly trashContent: readonly ImportReportTrashItem[];
   /** Every snapshot found under the source project's Snapshots directory. */
   readonly snapshots: readonly ImportReportSnapshot[];
+  /** Every FR-19 untitled-fallback-name item, in encounter order. */
+  readonly untitledFallbacks: readonly ImportReportUntitledFallback[];
 }
 
 /**
@@ -149,6 +178,7 @@ export function buildImportReport(input: ImportReportInput): ImportReportText {
     renderExcludedOtherSection(input.excludedOther),
     renderTrashContentSection(input.trashContent),
     renderSnapshotsSection(input.snapshots),
+    renderUntitledFallbacksSection(input.untitledFallbacks),
   ];
 
   return ["# Scrivener Import Report", "", ...sections].join("\n");
@@ -220,6 +250,19 @@ function renderSnapshotsSection(
     "Snapshot History",
     lines,
     "No snapshot history was found.",
+  );
+}
+
+function renderUntitledFallbacksSection(
+  items: readonly ImportReportUntitledFallback[],
+): string {
+  const lines = items.map(
+    (item) => `- "${item.itemTitle}" (${item.binderPath})`,
+  );
+  return renderSection(
+    "Untitled Fallback Names",
+    lines,
+    'No binder items required a generated "Untitled" fallback name.',
   );
 }
 

@@ -35,6 +35,10 @@ const fullInput: ImportReportInput = {
       snapshotFile: "Snapshots/1234-uuid.snapshots/2026-01-01.rtf",
     },
   ],
+  untitledFallbacks: [
+    { itemTitle: "Untitled", binderPath: "Draft/Untitled" },
+    { itemTitle: "Untitled 2", binderPath: "Draft/Untitled 2" },
+  ],
 };
 
 const emptyInput: ImportReportInput = {
@@ -44,6 +48,7 @@ const emptyInput: ImportReportInput = {
   excludedOther: [],
   trashContent: [],
   snapshots: [],
+  untitledFallbacks: [],
 };
 
 describe("buildImportReport", () => {
@@ -60,6 +65,7 @@ describe("buildImportReport", () => {
       '## Excluded "Other" Items',
       "## Trash Content",
       "## Snapshot History",
+      "## Untitled Fallback Names",
     ];
     const positions = headingOrder.map((heading) => report.indexOf(heading));
     expect(positions.every((pos) => pos !== -1)).toBe(true);
@@ -90,6 +96,10 @@ describe("buildImportReport", () => {
     expect(report).toContain(
       '- "Chapter 1" — Snapshots/1234-uuid.snapshots/2026-01-01.rtf',
     );
+
+    // FR-19: untitled fallback names, title used + binder path.
+    expect(report).toContain('- "Untitled" (Draft/Untitled)');
+    expect(report).toContain('- "Untitled 2" (Draft/Untitled 2)');
   });
 
   it("still renders a valid, non-crashing report when no category has content", () => {
@@ -108,6 +118,10 @@ describe("buildImportReport", () => {
     expect(report).toContain("The project's Trash was empty.");
     expect(report).toContain("## Snapshot History");
     expect(report).toContain("No snapshot history was found.");
+    expect(report).toContain("## Untitled Fallback Names");
+    expect(report).toContain(
+      'No binder items required a generated "Untitled" fallback name.',
+    );
   });
 });
 

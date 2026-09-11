@@ -44,7 +44,11 @@
  *    aggregated feature-toggle enablement.
  * 8. Write the Task 6 report, having scanned the source project's
  *    `Snapshots/` directory for FR-9(f) (the one piece of report input no
- *    earlier task already assembles).
+ *    earlier task already assembles) and folded in Task 12's `.scrivx`
+ *    fragment errors, Task 13's per-document metadata value skips, and the
+ *    binder mapper's FR-19 untitled-fallback-name list — none of which can
+ *    abort the run by this point, since Task 12/13 already made them
+ *    non-throwing at their source.
  * 9. Rebuild the destination project's indexes, mirroring
  *    `cli/src/commands/reindex.ts`'s rebuild-from-scratch logic (FR-11).
  *
@@ -294,6 +298,13 @@ export async function importScrivenerProject(
   const packageDir = path.dirname(scrivxPath);
   const snapshots = await scanSnapshots(packageDir, titleByUuid);
 
+  const binderPathBySourceUuid = new Map<string, string>(
+    plan.resources.map((resource) => [
+      resource.sourceUuid,
+      resource.binderPath,
+    ]),
+  );
+
   const reportInput: ImportReportInput = {
     skips: [
       ...skips,
@@ -301,6 +312,19 @@ export async function importScrivenerProject(
         itemTitle: field.fieldTitle,
         binderPath: `CustomMetaData/${field.fieldId}`,
         reason: field.reason,
+      })),
+      // Task 12's recoverable .scrivx fragment errors — already shaped
+      // identically to ImportReportSkip (itemTitle/binderPath/reason).
+      ...parsed.fragmentErrors,
+      // Task 13's per-document metadata value skips (FR-20); joined against
+      // the binder plan for a binder path, since MetadataPlan.valueSkips
+      // only carries sourceUuid (buildMetadataPlan doesn't compute a binder
+      // path — see MetadataValueSkip's doc comment).
+      ...metadataPlan.valueSkips.map((skip) => ({
+        itemTitle: skip.itemTitle,
+        binderPath:
+          binderPathBySourceUuid.get(skip.sourceUuid) ?? skip.sourceUuid,
+        reason: skip.reason,
       })),
     ],
     keywordMerges: metadataPlan.keywordTagPlan.merges.map((merge) => ({
@@ -321,6 +345,7 @@ export async function importScrivenerProject(
         binderPath: item.binderPath,
       })),
     snapshots,
+    untitledFallbacks: plan.untitledFallbacks,
   };
   const report = buildImportReport(reportInput);
   await writeImportReport(projectRoot, report);

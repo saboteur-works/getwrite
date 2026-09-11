@@ -16,6 +16,20 @@
  * `docs/standards/package-selection.md` — control-word scanning is
  * hand-rolled below.
  *
+ * The FR-14 amendment (2026-09-11, owner decision, Gate 5), from a measured
+ * run of this converter over all 75 real-project `content.rtf`/`notes.rtf`
+ * files, added: `\emdash`/`\endash`/`\lquote`/`\rquote`/`\ldblquote`/
+ * `\rdblquote`/`\bullet` special-character mappings; `\tab` as a literal
+ * tab character; `\line` as a TipTap `hardBreak` node (a paragraph-internal
+ * line break, distinct from `\par`'s new-paragraph); `\listtext` destination
+ * suppression so a list paragraph's own text is kept as an ordinary
+ * paragraph without the `\listtext` marker text being duplicated into it;
+ * `\super`/`\sub` runs keeping their text while being reported as dropped
+ * formatting (no GetWrite mark exists for either); a fixed list of
+ * layout-only control words recognized and silently ignored; and an unknown
+ * ignorable destination (`{\*\…}`) now skipped with no report entry at all
+ * (previously reported — the amendment supersedes that).
+ *
  * Everything else falls into one of two buckets, per FR-8's
  * skip-with-reason principle:
  *
@@ -57,10 +71,25 @@ export interface RtfTipTapTextNode {
   marks?: RtfTipTapMark[];
 }
 
+/**
+ * A `\line` paragraph-internal line break — distinct from `\par`'s
+ * new-paragraph — as the TipTap `hardBreak` node type name confirmed on
+ * disk by FR-14's amendment (`"type": "hardBreak"` at
+ * `projects/937079b8-83d0-4052-8688-8c3b77499c2b/resources/9f32a555-583f-4824-b272-c3953938f8e2/content.tiptap.json`).
+ */
+export interface RtfTipTapHardBreakNode {
+  type: "hardBreak";
+}
+
+/** One node within a paragraph's `content`: a text run or a `\line` hard break. */
+export type RtfTipTapParagraphContentNode =
+  | RtfTipTapTextNode
+  | RtfTipTapHardBreakNode;
+
 /** A paragraph node; its `content` is empty for a blank paragraph. */
 export interface RtfTipTapParagraphNode {
   type: "paragraph";
-  content: RtfTipTapTextNode[];
+  content: RtfTipTapParagraphContentNode[];
 }
 
 /**
@@ -152,6 +181,29 @@ const SILENT_STRUCTURAL_CONTROL_WORDS = new Set([
   "nowidctlpar",
   "widctlpar",
   "itap",
+  // FR-14 amendment (2026-09-11): page size/margins, font/charset
+  // selection, and other cocoa-specific control words named explicitly in
+  // the amendment text.
+  "paperw",
+  "paperh",
+  "margl",
+  "margr",
+  "margt",
+  "margb",
+  "af",
+  "loch",
+  "hich",
+  "dbch",
+  "ltrch",
+  "partightenfactor",
+  "pardirnatural",
+  // FR-14 amendment: a list paragraph's own list-level/id markers
+  // (`\ls`/`\ilvl`) carry no visible content — the paragraph's own text is
+  // what reaches output as an ordinary paragraph (see
+  // SILENT_DESTINATION_GROUPS's `listtext` entry for the discarded marker
+  // text itself).
+  "ls",
+  "ilvl",
 ]);
 
 /**
@@ -178,6 +230,12 @@ const SILENT_DESTINATION_GROUPS = new Set([
   "themedata",
   "colorschememapping",
   "latentstyles",
+  // FR-14 amendment (2026-09-11): a list paragraph's `\listtext` group
+  // holds only the bullet/number marker text, which the item's own
+  // following paragraph text already supersedes — discarding it here (with
+  // no report entry, per the amendment) is what keeps the marker from
+  // being duplicated into the paragraph.
+  "listtext",
 ]);
 
 type TokenType = "open" | "close" | "star" | "word" | "symbol" | "text";
@@ -291,6 +349,10 @@ function tokenize(rtf: string): Token[] {
 interface Frame {
   bold: boolean;
   italic: boolean;
+  /** `\super`/`\sub` state, cleared by `\nosupersub`. Kept text still
+   * reaches output (per the FR-14 amendment) — there is no GetWrite mark
+   * for either, so this only drives the `droppedFeatures` report. */
+  superOrSub: "super" | "sub" | undefined;
   /** True while text encountered in this group must not reach visible
    * output (a suppressed destination group). */
   skip: boolean;
@@ -311,6 +373,7 @@ function newFrame(parent: Frame): Frame {
   return {
     bold: parent.bold,
     italic: parent.italic,
+    superOrSub: parent.superOrSub,
     skip: parent.skip,
     atStart: true,
     starPrefixed: false,
@@ -341,6 +404,7 @@ export function convertRtfToTiptap(
   const rootFrame: Frame = {
     bold: false,
     italic: false,
+    superOrSub: undefined,
     skip: false,
     atStart: false,
     starPrefixed: false,
@@ -350,12 +414,13 @@ export function convertRtfToTiptap(
   const fieldStack: FieldContext[] = [];
   const droppedFeatures: RtfDroppedFeature[] = [];
 
-  const paragraphs: RtfTipTapTextNode[][] = [[]];
+  const paragraphs: RtfTipTapParagraphContentNode[][] = [[]];
   const plainParagraphs: string[] = [""];
 
   let currentRunText = "";
   let currentRunBold = false;
   let currentRunItalic = false;
+  let currentRunSuperOrSub: "super" | "sub" | undefined;
   /** Number of fallback characters still owed to the most recent `\uN`
    * escape (RTF's `\ucN` convention; this converter assumes the default
    * N=1 since no fixture sets `\uc`). */
@@ -374,6 +439,12 @@ export function convertRtfToTiptap(
         : { type: "text", text: currentRunText };
     paragraphs[paragraphs.length - 1].push(node);
     plainParagraphs[plainParagraphs.length - 1] += currentRunText;
+    if (currentRunSuperOrSub !== undefined) {
+      droppedFeatures.push({
+        feature: currentRunSuperOrSub,
+        detail: `${currentRunSuperOrSub === "super" ? "Superscript" : "Subscript"} formatting dropped (text kept): "${currentRunText}"`,
+      });
+    }
     currentRunText = "";
   };
 
@@ -402,10 +473,15 @@ export function convertRtfToTiptap(
 
     if (frame.skip) return;
 
-    if (currentRunBold !== frame.bold || currentRunItalic !== frame.italic) {
+    if (
+      currentRunBold !== frame.bold ||
+      currentRunItalic !== frame.italic ||
+      currentRunSuperOrSub !== frame.superOrSub
+    ) {
       flushRun();
       currentRunBold = frame.bold;
       currentRunItalic = frame.italic;
+      currentRunSuperOrSub = frame.superOrSub;
     }
     currentRunText += text;
   };
@@ -472,15 +548,13 @@ export function convertRtfToTiptap(
         return;
       }
       if (frame.starPrefixed) {
-        // An RTF `\*`-marked destination this converter doesn't
-        // specifically recognize. Per the RTF spec such a group is safe
-        // to suppress entirely, but doing so may drop real content, so —
-        // unlike the boilerplate groups above — it is reported.
+        // An RTF `\*`-marked (unknown) destination this converter doesn't
+        // specifically recognize. Per the FR-14 amendment this MUST be
+        // skipped silently, with no report entry — RTF's own spec marks
+        // `\*` groups as safe to ignore when unrecognized, and (unlike the
+        // earlier, pre-amendment behavior) this is no longer treated as a
+        // reportable loss.
         frame.skip = true;
-        droppedFeatures.push({
-          feature: `rtf-destination:${name}`,
-          detail: `Unrecognized ignorable RTF destination group "\\*\\${name}" was skipped.`,
-        });
         return;
       }
       // Not a recognized destination keyword; fall through and handle it
@@ -498,6 +572,14 @@ export function convertRtfToTiptap(
       case "par":
         newParagraph();
         return;
+      case "line":
+        // A paragraph-internal line break — distinct from \par — converts
+        // to a TipTap hardBreak node rather than starting a new paragraph
+        // (FR-14 amendment).
+        flushRun();
+        paragraphs[paragraphs.length - 1].push({ type: "hardBreak" });
+        plainParagraphs[plainParagraphs.length - 1] += "\n";
+        return;
       case "u": {
         const code = param ?? 0;
         const codePoint = code < 0 ? code + 65536 : code;
@@ -505,6 +587,39 @@ export function convertRtfToTiptap(
         pendingUnicodeFallback += 1;
         return;
       }
+      case "emdash":
+        addText("—");
+        return;
+      case "endash":
+        addText("–");
+        return;
+      case "lquote":
+        addText("‘");
+        return;
+      case "rquote":
+        addText("’");
+        return;
+      case "ldblquote":
+        addText("“");
+        return;
+      case "rdblquote":
+        addText("”");
+        return;
+      case "bullet":
+        addText("•");
+        return;
+      case "tab":
+        addText("\t");
+        return;
+      case "super":
+        frame.superOrSub = "super";
+        return;
+      case "sub":
+        frame.superOrSub = "sub";
+        return;
+      case "nosupersub":
+        frame.superOrSub = undefined;
+        return;
       default:
         if (SILENT_STRUCTURAL_CONTROL_WORDS.has(name)) return;
         droppedFeatures.push({
