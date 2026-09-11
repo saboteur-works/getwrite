@@ -138,7 +138,7 @@ describe("buildMetadataPlan — CustomMetaData (FR-7)", () => {
       ...parsed,
       customMetaDataFields: [
         ...parsed.customMetaDataFields,
-        { id: "CMD99", type: "Checkbox" as never, title: "Reviewed" },
+        { id: "CMD99", type: "Checkbox", title: "Reviewed", listOptions: [] },
       ],
     };
 

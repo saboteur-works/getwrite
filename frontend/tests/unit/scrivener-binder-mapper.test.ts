@@ -235,6 +235,7 @@ describe("mapBinderToImportPlan — synthetic binder trees", () => {
       statuses: [],
       keywords: [],
       customMetaDataFields: [],
+      fragmentErrors: [],
     };
   }
 

@@ -6,15 +6,20 @@
  * Typed shape of a parsed Scrivener `.scrivx` file, as produced by
  * {@link "./scrivx-parser".parseScrivxFile}.
  *
- * These types mirror the XML shape measured directly off
- * `frontend/tests/fixtures/scrivener/sample.scriv/sample.scrivx` (Task 1),
- * not the schema-first-then-guess order: a `ScrivenerProject` root with a
- * `Binder` of nested `BinderItem`s, plus document-root
- * `StatusSettings`/`LabelSettings`/`Keywords`/`CustomMetaData` blocks. No RTF
- * content is modeled here — that is Task 3's concern; a `BinderItem` only
- * carries the metadata the `.scrivx` XML itself holds (`Type`, `Title`,
- * `UUID`, `MetaData`, per-document `Keywords` references, and nested
- * `Children`).
+ * These types mirror the FR-18 element shapes measured off a real
+ * Scrivener 3 Mac project and recorded in
+ * `specs/features/scrivener-cli-importer/scrivener-format.md`: a
+ * `ScrivenerProject` root with a `Binder` of nested `BinderItem`s, plus
+ * document-root `StatusSettings`/`LabelSettings`/`Keywords`/
+ * `CustomMetaDataSettings` blocks. No RTF content is modeled here — that is
+ * Task 3's concern; a `BinderItem` only carries the metadata the `.scrivx`
+ * XML itself holds (`Type`/`UUID` attributes, a child `<Title>`, `MetaData`,
+ * per-document `Keywords/KeywordID` references, and nested `Children`).
+ *
+ * A `BinderItem`'s, `Keyword`'s, `MetaDataField`'s, `Label`'s, and
+ * `Status`'s name always comes from a child element (`<Title>` for the
+ * first three, element text content for `Label`/`Status`) — never a
+ * `Title`/name attribute, per FR-18.
  */
 
 /**
@@ -32,15 +37,19 @@ export type ScrivxBinderItemType =
   | "Other";
 
 /**
- * A single `<MetaDataItem ID="..." Value="..."/>` entry under a binder
- * item's `<MetaData><CustomMetaData>`, keyed by the field's `CustomMetaData`
- * `ID` (resolved against the document-root {@link ScrivxCustomMetaDataField}
- * definitions by a later task's mapper, not here).
+ * A single `<MetaDataItem><FieldID>...</FieldID><Value>...</Value></MetaDataItem>`
+ * entry under a binder item's `<MetaData><CustomMetaData>`, keyed by the
+ * field's `CustomMetaData` `ID` (resolved against the document-root
+ * {@link ScrivxCustomMetaDataField} definitions by a later task's mapper,
+ * not here). Per FR-18, both `FieldID` and `Value` are child elements, never
+ * an `ID`/`Value` attribute pair on `MetaDataItem` itself — a `MetaDataItem`
+ * missing either child is recorded as a {@link ScrivxFragmentError} rather
+ * than included here.
  */
 export interface ScrivxCustomMetaDataValue {
-  /** The `CustomMetaData` field id this value belongs to, e.g. `"CMD1"`. */
+  /** The `CustomMetaData` field id this value belongs to, e.g. `"CMD1"`, from the `<FieldID>` child's text content. */
   readonly fieldId: string;
-  /** The raw string value, as it appeared in the `Value` attribute. */
+  /** The raw string value, from the `<Value>` child's text content. */
   readonly value: string;
 }
 
@@ -69,7 +78,14 @@ export interface ScrivxBinderItem {
   readonly uuid: string;
   /** The `Type` attribute. */
   readonly type: ScrivxBinderItemType;
-  /** The `Title` attribute. */
+  /**
+   * The item's name, from a child `<Title>` element's text content — never
+   * a `Title` attribute (FR-18). A `Type="Text"` binder item legitimately
+   * may carry no `<Title>` at all (an untitled document, measured on the
+   * real project); this is `""` in that case, not an error. Naming the
+   * "Untitled" fallback is a later task's concern (OQ-10), not this
+   * parser's.
+   */
   readonly title: string;
   /** This item's `<MetaData>` block, always present (empty when absent in XML). */
   readonly metaData: ScrivxBinderItemMetaData;
@@ -103,28 +119,74 @@ export interface ScrivxStatus {
  */
 export interface ScrivxKeyword {
   readonly id: string;
+  /** From the `Keyword`'s child `<Title>` element's text content — never a `Title` attribute (FR-18). */
   readonly title: string;
   readonly children: readonly ScrivxKeyword[];
 }
 
-/** The `Type` attribute values a `<MetaDataField>` definition may carry. */
-export type ScrivxCustomMetaDataFieldType = "Text" | "Date" | "List";
+/**
+ * A single `<ListOptions><Option ID="...">Display text</Option></ListOptions>`
+ * entry belonging to a `List`-type {@link ScrivxCustomMetaDataField}. A
+ * document's `MetaDataItem` `Value` for a List field stores this `id`, not
+ * `text` — resolving `id` to `text` is a later task's (metadata-mapper's)
+ * job, not this parser's.
+ */
+export interface ScrivxListOption {
+  /** The `Option`'s `ID` attribute — what a document's `MetaDataItem` `Value` stores for this field. */
+  readonly id: string;
+  /** The `Option`'s own element text content — the display text. */
+  readonly text: string;
+}
 
 /**
- * A single `<MetaDataField ID="..." Type="..." Title="..."/>` field
- * definition from the document-root `<CustomMetaData>` block.
+ * A single `<MetaDataField ID="..." Type="..." .../>` field definition from
+ * the document-root `<CustomMetaDataSettings>` block (FR-18 — not
+ * `project["CustomMetaData"]`, which is per-document values, not
+ * definitions). `type` is read verbatim from the `Type` attribute rather
+ * than narrowed to a closed union: the measured real-project vocabulary is
+ * `"Text" | "Date" | "List"`, but mapping (or rejecting) an unrecognized
+ * type is metadata-mapper's FR-8 "no GetWrite mapping" concern, not a
+ * parse-time structural failure.
  */
 export interface ScrivxCustomMetaDataField {
   readonly id: string;
-  readonly type: ScrivxCustomMetaDataFieldType;
+  /** The field's `Type` attribute, verbatim. */
+  readonly type: string;
+  /** From the field's child `<Title>` element's text content — never a `Title` attribute (FR-18). */
   readonly title: string;
+  /**
+   * `<ListOptions><Option ID="..."/></ListOptions>` entries, when present
+   * (List-type fields). Empty for every other field type.
+   */
+  readonly listOptions: readonly ScrivxListOption[];
+}
+
+/**
+ * A single malformed or unexpected `.scrivx` fragment encountered anywhere
+ * in the tree while parsing — a `MetaDataItem` missing `FieldID`/`Value`, a
+ * `BinderItem` missing a required attribute, an unresolvable reference, or
+ * any other element/attribute shape this parser does not recognize (FR-8,
+ * OQ-12). Recorded rather than thrown, so parsing continues past it; only
+ * an unreadable or non-XML `.scrivx` file still throws
+ * ({@link "./scrivx-parser".ScrivxParseError}). Field names mirror
+ * `import-report.ts`'s `ImportReportSkip` so a later task can flow this
+ * list straight into the FR-9 report's skips section.
+ */
+export interface ScrivxFragmentError {
+  /** The owning item's title, or a fallback identifier (e.g. its `UUID`) when no title is available. */
+  readonly itemTitle: string;
+  /** The owning item's position in the binder (or the document-root block name it lives under, e.g. `"LabelSettings"`), best-effort. */
+  readonly binderPath: string;
+  /** Human-readable reason the fragment was skipped. */
+  readonly reason: string;
 }
 
 /**
  * Full parsed result returned by
  * {@link "./scrivx-parser".parseScrivxFile}: the raw `Creator` string (for
- * the FR-2 allow-list check), the binder tree's top-level items, and the
- * four document-root settings/keyword blocks.
+ * the FR-2 allow-list check), the binder tree's top-level items, the four
+ * document-root settings/keyword blocks, and every FR-8 fragment error
+ * encountered while parsing.
  */
 export interface ScrivxParsed {
   /** The `<ScrivenerProject Creator="...">` attribute, unmodified. */
@@ -137,6 +199,11 @@ export interface ScrivxParsed {
   readonly statuses: readonly ScrivxStatus[];
   /** Document-root `<Keywords>` hierarchy. */
   readonly keywords: readonly ScrivxKeyword[];
-  /** Document-root `<CustomMetaData><MetaDataField>` definitions. */
+  /** Document-root `<CustomMetaDataSettings><MetaDataField>` definitions. */
   readonly customMetaDataFields: readonly ScrivxCustomMetaDataField[];
+  /**
+   * Every malformed/unexpected `.scrivx` fragment skipped while parsing
+   * (FR-8, OQ-12), in encounter order. Empty when the file parsed cleanly.
+   */
+  readonly fragmentErrors: readonly ScrivxFragmentError[];
 }

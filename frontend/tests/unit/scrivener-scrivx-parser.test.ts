@@ -67,18 +67,68 @@ describe("parseScrivxFile — malformed input", () => {
     );
   });
 
-  it("throws when a required attribute is missing from a BinderItem", async () => {
+  // FR-8/OQ-12: a malformed or unexpected element anywhere in the .scrivx
+  // tree — including a BinderItem missing a required attribute — is a
+  // recorded skip, not an aborting throw. Only an unreadable/non-XML file
+  // (or a missing root ScrivenerProject/Binder/Creator shape) still throws.
+  // This supersedes an earlier version of this test (pre-FR-18) that
+  // expected a throw here.
+  it("records a skip, and continues parsing, when a required attribute is missing from a BinderItem", async () => {
     tmpDir = mkdtempSync(path.join(os.tmpdir(), "scrivx-parser-test-"));
     const missingAttrPath = path.join(tmpDir, "missing-attr.scrivx");
     writeFileSync(
       missingAttrPath,
-      '<?xml version="1.0" encoding="UTF-8"?>\n<ScrivenerProject Creator="SCRMAC-3.5.2-17487"><Binder><BinderItem Type="Text" Title="No UUID"/></Binder></ScrivenerProject>',
+      '<?xml version="1.0" encoding="UTF-8"?>\n<ScrivenerProject Creator="SCRMAC-3.5.2-17487"><Binder><BinderItem Type="Text"><Title>No UUID</Title></BinderItem><BinderItem UUID="ok-1" Type="Text"><Title>Fine</Title></BinderItem></Binder></ScrivenerProject>',
       "utf8",
     );
 
-    await expect(parseScrivxFile(missingAttrPath)).rejects.toThrow(
-      ScrivxParseError,
+    const parsed = await parseScrivxFile(missingAttrPath);
+    expect(parsed.binder).toHaveLength(1);
+    expect(parsed.binder[0].uuid).toBe("ok-1");
+    expect(parsed.fragmentErrors).toHaveLength(1);
+    expect(parsed.fragmentErrors[0]).toMatchObject({
+      itemTitle: "No UUID",
+      reason: expect.stringContaining('"UUID"'),
+    });
+  });
+
+  it("records a skip, and continues parsing, when a MetaDataItem is missing FieldID", async () => {
+    tmpDir = mkdtempSync(path.join(os.tmpdir(), "scrivx-parser-test-"));
+    const missingFieldIdPath = path.join(tmpDir, "missing-field-id.scrivx");
+    writeFileSync(
+      missingFieldIdPath,
+      [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<ScrivenerProject Creator="SCRMAC-3.5.2-17487"><Binder>',
+        '<BinderItem UUID="doc-1" Type="Text"><Title>Doc One</Title>',
+        "<MetaData><CustomMetaData>",
+        "<MetaDataItem><Value>orphaned value</Value></MetaDataItem>",
+        "<MetaDataItem><FieldID>CMD1</FieldID><Value>kept</Value></MetaDataItem>",
+        "</CustomMetaData></MetaData>",
+        "</BinderItem>",
+        "</Binder></ScrivenerProject>",
+      ].join(""),
+      "utf8",
     );
+
+    const parsed = await parseScrivxFile(missingFieldIdPath);
+    expect(parsed.binder).toHaveLength(1);
+    expect(parsed.binder[0].metaData.customMetaData).toEqual([
+      { fieldId: "CMD1", value: "kept" },
+    ]);
+    expect(parsed.fragmentErrors).toHaveLength(1);
+    expect(parsed.fragmentErrors[0]).toMatchObject({
+      itemTitle: "Doc One",
+      reason: expect.stringContaining('"FieldID"'),
+    });
+  });
+
+  it("still throws on a fully malformed/non-XML .scrivx file", async () => {
+    tmpDir = mkdtempSync(path.join(os.tmpdir(), "scrivx-parser-test-"));
+    const notXmlPath = path.join(tmpDir, "not-xml.scrivx");
+    writeFileSync(notXmlPath, "this is not XML at all { } <<<", "utf8");
+
+    await expect(parseScrivxFile(notXmlPath)).rejects.toThrow(ScrivxParseError);
   });
 });
 
@@ -186,16 +236,34 @@ describe("parseScrivxFile — Task 1 fixture", () => {
     ]);
   });
 
-  it("parses the CustomMetaData field definitions", async () => {
+  it("parses the CustomMetaData field definitions, including List-type ListOptions", async () => {
     // FR-18: project-level field definitions now live under
     // <CustomMetaDataSettings><MetaDataField>, with the field's name coming
-    // from a child <Title> element rather than a Title attribute.
+    // from a child <Title> element rather than a Title attribute, and a
+    // List-type field's <ListOptions><Option ID="..."/></ListOptions>
+    // entries are exposed for a later task to resolve a document's raw
+    // Option id against.
     const parsed = await parseScrivxFile(FIXTURE_PATH);
     expect(parsed.customMetaDataFields).toEqual([
-      { id: "CMD1", type: "Text", title: "Working Title" },
-      { id: "CMD2", type: "Date", title: "Deadline" },
-      { id: "CMD3", type: "List", title: "POV Character" },
+      { id: "CMD1", type: "Text", title: "Working Title", listOptions: [] },
+      { id: "CMD2", type: "Date", title: "Deadline", listOptions: [] },
+      {
+        id: "CMD3",
+        type: "List",
+        title: "POV Character",
+        listOptions: [
+          { id: "OPT-PROTAG", text: "Protagonist" },
+          { id: "OPT-ANTAG", text: "Antagonist" },
+        ],
+      },
     ]);
+  });
+
+  it("parses the fixture cleanly, with no fragment errors", async () => {
+    // FR-8/OQ-12: the Task 11 fixture is a well-formed real-project-shaped
+    // .scrivx — it must parse with zero recorded skips.
+    const parsed = await parseScrivxFile(FIXTURE_PATH);
+    expect(parsed.fragmentErrors).toEqual([]);
   });
 
   it("parses the two same-leaf-name keywords nested under different parents", async () => {
