@@ -415,6 +415,56 @@ lost work.
   not respond, so dragging a node stretches its edges rather than letting
   the layout relax around the new position (resolved: OQ-4). Dragging has
   no keyboard-operable equivalent at this ship (resolved: OQ-6). [US-17]
+- FR-41: A writer MUST be able to remove a resource's entity declaration in
+  one action — un-declaring it as an entity, clearing both `entityKind` and
+  its `aliases` — while the resource itself (content, revisions, tags, and
+  all other metadata) remains untouched; this is not resource deletion. This
+  is a materially different action from the only path that exists today:
+  clearing the "Entity Kind" field in `EntitySection.tsx`, whose
+  `withEntityKind` sets `entityKind: undefined` and whose own doc comment
+  records that it deliberately leaves `aliases` dormant on the resource
+  until `entityKind` is set again. That field-clearing path remains
+  unchanged and distinct — a lighter-weight action that keeps aliases
+  dormant, as documented today — while this action is the complete one
+  (resolved: OQ-9). Because the alias editor renders only while `isEntity`
+  (`EntitySection.tsx:144`), that existing path leaves aliases with no UI to
+  remove once `entityKind` is cleared — a gap this requirement closes.
+  Removing the declaration MUST trigger the same mention-index and
+  alias-table cleanup clearing `entityKind` already triggers today —
+  `sidecar.ts`'s `enqueueEntityRescan`, `indexer-queue.ts` removing that
+  entity's `MentionRecord`s from `meta/index/mentions.json`, and
+  `entity-alias-table.ts` excluding resources without an `entityKind` — so
+  mention data and the alias table stay exactly as consistent as they are
+  today. The action MUST offer, as an explicit choice at the point of
+  removal, whether to also delete every authored relationship edge (FR-39's
+  authored half, persisted by `entity-relationships.ts`) in which the
+  entity being un-declared is source or target. This is a deliberate,
+  scoped exception to the product's existing rule that deleting an entity
+  leaves its authored edges untouched, mirroring `backlinks.json` and
+  `mentions.json` (see the CLAUDE.md glossary's "Entity relationship" entry
+  and FR-39) — stated here plainly because this requirement carves out an
+  exception to it rather than reaffirming it. The choice MUST default to
+  keeping the edges, matching that product-wide default, and MUST NOT be
+  shown at all when the entity has zero authored edges, since it would be
+  inert (resolved: OQ-7). The action MUST require confirmation via the
+  existing `ConfirmDialog` component before acting — the same precedent
+  used for project deletion (`ManageProjectMenu.tsx`) rather than the
+  immediate, unconfirmed single-edge removal `EntityRelationshipsSection.tsx`
+  otherwise uses — because this action's blast radius is broader. There is
+  no undo: edges deleted via the "delete" choice are not recoverable, and no
+  trash-like holding area is introduced for `meta/relationships.json`,
+  consistent with edges never being trashed anywhere in the product
+  (resolved: OQ-8). If the writer chooses not to delete the edges,
+  `EntityRelationshipsSection.tsx` continues to render an "Unknown entity"
+  placeholder for each one left dangling, exactly as it already does for
+  any other dangling edge. The action MUST live only in the entity's own
+  sidebar view; the roster (FR-38) remains read-only and gains no mutating
+  action of its own kind (resolved: OQ-10). This requirement interacts with
+  FR-35 (entity declaration — the mechanism this action reverses), the
+  authored-relationship capability of FR-39 (whose edges the explicit
+  choice may delete), and FR-38 (the roster, whose listing drops the entity
+  once this action completes). It rides the existing per-project `entities`
+  feature flag (FR-35) and MUST NOT introduce a flag of its own. [US-3]
 - FR-28: Users MUST be able to browse, restore, and permanently purge
   soft-deleted resources through a dedicated Trash UI (the underlying
   restore/purge model already exists). [US-11]
@@ -622,12 +672,69 @@ only thing lost, and it alters nothing about the data the graph presents.
 accessible list as the accessibility mechanism).
 **Impact:** FR-40.
 
+**OQ-7 (resolved): When removing an entity's declaration (FR-41), what does
+the authored-edge-deletion choice default to, and is the choice shown at
+all when the entity has zero authored edges?**
+**Resolution:** The choice defaults to keeping the edges, matching the
+product-wide rule that removing an entity leaves its edges, backlinks, and
+mentions untouched. The choice is not shown at all when the entity has zero
+authored edges, since offering it would be inert.
+**Evidence:** No UI for this action exists yet; `entity-relationships.ts`
+has no bulk-delete-by-entity operation today, only per-edge
+`createEntityRelationship`/`removeEntityRelationship`.
+**Impact:** FR-41.
+
+**OQ-8 (resolved): Is removing an entity's declaration (FR-41) reversible
+or confirmed before it acts, and should edges deleted this way be
+recoverable?**
+**Resolution:** The action requires confirmation via the existing
+`ConfirmDialog` component before acting, following the precedent of project
+deletion (`ManageProjectMenu.tsx:127`) rather than the immediate,
+unconfirmed single-edge removal `EntityRelationshipsSection.tsx:141-146`
+otherwise uses — this action's broader blast radius warrants the heavier
+precedent. There is no undo, and edges deleted via the "delete" choice are
+not recoverable: no trash-like holding area is introduced for
+`meta/relationships.json`, consistent with the existing product-wide
+absence of edge soft-deletion (edges are never trashed anywhere).
+**Evidence:** `trash.ts` (soft-delete for resources and sidecars only, no
+equivalent for `meta/relationships.json`); `ManageProjectMenu.tsx:127`
+(confirmation precedent for a broad, destructive action);
+`EntityRelationshipsSection.tsx:141-146` (immediate, unconfirmed single-edge
+removal precedent).
+**Impact:** FR-41.
+
+**OQ-9 (resolved): Should removing an entity's declaration (FR-41) clear
+aliases, or leave them dormant as today's field-clearing path does — and
+should that existing path's dormant-alias behavior change to match?**
+**Resolution:** FR-41 clears aliases as written. The existing path —
+clearing the Entity Kind field directly in `EntitySection.tsx` — remains
+unchanged and distinct, keeping aliases dormant per its current documented
+behavior. Two entry points exist deliberately with different outcomes: the
+Remove Entity action is the complete one; field-clearing stays the lighter,
+intentionally partial one.
+**Evidence:** `EntitySection.tsx`'s `withEntityKind` doc comment (clearing
+`entityKind` "never touches `aliases` — they stay dormant on the resource
+until `entityKind` is set again").
+**Impact:** FR-41.
+
+**OQ-10 (resolved): Where does the Remove Entity action (FR-41) live — the
+entity's own sidebar view, a roster row, or both?**
+**Resolution:** The sidebar only. The roster (FR-38) remains read-only;
+adding a roster-row equivalent is deferred (see Out of Scope).
+**Evidence:** FR-38 ("The roster is read-only... MUST NOT introduce any
+new entity-declaration mechanism"); `EntitySection.tsx` (existing sidebar
+surface for entity declaration and editing).
+**Impact:** FR-41.
+
 ## Out of Scope (Deferred)
 
 - A keyboard-operable equivalent for dragging a node on the entity
   relationship graph (FR-40, resolved: OQ-6). A keyboard-only user cannot
   reposition a node; the synchronized accessible list remains the
   unaffected read path for every node and edge.
+- A roster-row equivalent of the Remove Entity action (FR-41, resolved:
+  OQ-10). The action lives only in the entity's own sidebar view; the
+  roster (FR-38) remains read-only.
 - [Later] Hosted multi-tenant access and cross-device sync as a shipped,
   user-facing product (foundations exist per ADR-017–ADR-022; not shipped).
 - [Later] Native Android packaging, signing, and distribution as a shipped
