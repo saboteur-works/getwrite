@@ -27,6 +27,7 @@ import EntitiesMentionedSection from "./EntitiesMentionedSection";
 import EntityMentionsSection from "./EntityMentionsSection";
 import EntityCompileSection from "./EntityCompileSection";
 import EntityMentionsProvider from "./EntityMentionsContext";
+import EntityRelationshipsRefreshProvider from "./EntityRelationshipsRefreshContext";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
@@ -536,9 +537,11 @@ export default function MetadataSidebar({
                 <CollapsibleSection title="Entity" variant="sidebar">
                   <EntitySection />
                 </CollapsibleSection>
-                <CollapsibleSection title="Relationships" variant="sidebar">
-                  <EntityRelationshipsSection />
-                </CollapsibleSection>
+                <EntityRelationshipsRefreshProvider>
+                  <CollapsibleSection title="Relationships" variant="sidebar">
+                    <EntityRelationshipsSection />
+                  </CollapsibleSection>
+                </EntityRelationshipsRefreshProvider>
                 <CollapsibleSection
                   title="Entities Mentioned"
                   variant="sidebar"

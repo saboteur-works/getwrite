@@ -16,6 +16,7 @@ import {
 import type { EntityRelationshipEdge } from "../../src/lib/api/entity-relationships";
 import LabeledField from "./controls/LabeledField";
 import Button from "../common/UI/Button/Button";
+import { useEntityRelationshipsRefresh } from "./EntityRelationshipsRefreshContext";
 
 /**
  * Sidebar section for an entity's own view, authoring directed, typed
@@ -48,9 +49,17 @@ import Button from "../common/UI/Button/Button";
  * `EntitySection.tsx` is already gated on the `entities` feature flag
  * (`MetadataSidebar.tsx`) — this component invents no flag check of its
  * own (FR-10).
+ *
+ * The refetch also runs on a bump to `EntityRelationshipsRefreshContext`'s
+ * `refreshToken` (FR-16), so a mutation elsewhere in the sidebar — e.g. an
+ * entity removal — can invalidate a stale relationship list without this
+ * component remounting or its `projectId` changing. That context only
+ * signals; it fetches nothing itself, so this remains the same independent
+ * `list(projectId)` fetch described above, just with an added trigger.
  */
 export default function EntityRelationshipsSection(): JSX.Element | null {
   const projectId = useAppSelector(selectActiveProjectDirectoryId);
+  const { refreshToken } = useEntityRelationshipsRefresh();
   const resource = useAppSelector((state) => selectResource(state.resources));
   const aliasTable = useAppSelector(selectEntityAliasTable);
   const relationshipTypes = useAppSelector(
@@ -80,7 +89,9 @@ export default function EntityRelationshipsSection(): JSX.Element | null {
 
   useEffect(() => {
     refetch();
-  }, [refetch]);
+    // refreshToken is not read by refetch itself — it is a pure trigger
+    // (FR-16) that re-runs the identical projectId-scoped fetch above.
+  }, [refetch, refreshToken]);
 
   // Every other declared entity, excluding the currently-selected one
   // (FR-4 client-side defense-in-depth — the same-entity option is never
