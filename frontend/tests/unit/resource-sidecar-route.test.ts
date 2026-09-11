@@ -106,3 +106,225 @@ describe("POST /api/resource/[resource-id]/sidecar (projectId-based)", () => {
     });
   });
 });
+
+describe("POST /api/resource/[resource-id]/sidecar (clearKeys, FR-20/FR-25)", () => {
+  it("deletes the named keys from the persisted sidecar and leaves everything else, including orderIndex/folderId, unchanged", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+        entityKind: "character",
+        aliases: ["Al"],
+        orderIndex: 3,
+        folderId: "folder-1",
+      });
+
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/sidecar/route");
+      const res = await POST(
+        sidecarRequest(resourceId, {
+          projectId,
+          updatedResource: {},
+          clearKeys: ["entityKind", "aliases"],
+        }) as never,
+        { params: Promise.resolve({ "resource-id": resourceId }) },
+      );
+
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, resourceId);
+      expect(sidecar).not.toBeNull();
+      // Genuinely absent, not undefined-valued.
+      expect(Object.prototype.hasOwnProperty.call(sidecar, "entityKind")).toBe(
+        false,
+      );
+      expect(Object.prototype.hasOwnProperty.call(sidecar, "aliases")).toBe(
+        false,
+      );
+      // Everything else, including the orderIndex/folderId carve-out, is
+      // unchanged.
+      expect(sidecar?.name).toBe("Original");
+      expect(sidecar?.type).toBe("text");
+      expect(sidecar?.orderIndex).toBe(3);
+      expect(sidecar?.folderId).toBe("folder-1");
+    });
+  });
+
+  it("behaves exactly as a pure merge when clearKeys is omitted", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+        entityKind: "character",
+        aliases: ["Al"],
+        orderIndex: 3,
+        folderId: "folder-1",
+      });
+
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/sidecar/route");
+      const res = await POST(
+        sidecarRequest(resourceId, {
+          projectId,
+          updatedResource: { status: "in-progress" },
+        }) as never,
+        { params: Promise.resolve({ "resource-id": resourceId }) },
+      );
+
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, resourceId);
+      expect(sidecar?.status).toBe("in-progress");
+      expect(sidecar?.entityKind).toBe("character");
+      expect(sidecar?.aliases).toEqual(["Al"]);
+      expect(sidecar?.orderIndex).toBe(3);
+      expect(sidecar?.folderId).toBe("folder-1");
+    });
+  });
+
+  it("rejects a clearKeys entry outside the allowlist (folderId) with 400 and leaves the sidecar file byte-identical", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+        orderIndex: 3,
+        folderId: "folder-1",
+      });
+
+      const sidecarPath = path.join(
+        projectPath,
+        "meta",
+        `resource-${resourceId}.meta.json`,
+      );
+      const before = await fs.readFile(sidecarPath, "utf-8");
+
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/sidecar/route");
+      const res = await POST(
+        sidecarRequest(resourceId, {
+          projectId,
+          updatedResource: {},
+          clearKeys: ["folderId"],
+        }) as never,
+        { params: Promise.resolve({ "resource-id": resourceId }) },
+      );
+
+      expect(res.status).toBe(400);
+      const after = await fs.readFile(sidecarPath, "utf-8");
+      expect(after).toBe(before);
+    });
+  });
+
+  it("rejects a clearKeys entry outside the allowlist (id) with 400 and leaves the sidecar file byte-identical", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+        orderIndex: 3,
+        folderId: "folder-1",
+      });
+
+      const sidecarPath = path.join(
+        projectPath,
+        "meta",
+        `resource-${resourceId}.meta.json`,
+      );
+      const before = await fs.readFile(sidecarPath, "utf-8");
+
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/sidecar/route");
+      const res = await POST(
+        sidecarRequest(resourceId, {
+          projectId,
+          updatedResource: {},
+          clearKeys: ["id"],
+        }) as never,
+        { params: Promise.resolve({ "resource-id": resourceId }) },
+      );
+
+      expect(res.status).toBe(400);
+      const after = await fs.readFile(sidecarPath, "utf-8");
+      expect(after).toBe(before);
+    });
+  });
+
+  it("rejects a malformed clearKeys (a plain string) with 400 and leaves the sidecar file byte-identical", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+        entityKind: "character",
+      });
+
+      const sidecarPath = path.join(
+        projectPath,
+        "meta",
+        `resource-${resourceId}.meta.json`,
+      );
+      const before = await fs.readFile(sidecarPath, "utf-8");
+
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/sidecar/route");
+      const res = await POST(
+        sidecarRequest(resourceId, {
+          projectId,
+          updatedResource: {},
+          clearKeys: "entityKind",
+        }) as never,
+        { params: Promise.resolve({ "resource-id": resourceId }) },
+      );
+
+      expect(res.status).toBe(400);
+      const after = await fs.readFile(sidecarPath, "utf-8");
+      expect(after).toBe(before);
+    });
+  });
+
+  it("rejects a malformed clearKeys (an array containing a number) with 400 and leaves the sidecar file byte-identical", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+        entityKind: "character",
+      });
+
+      const sidecarPath = path.join(
+        projectPath,
+        "meta",
+        `resource-${resourceId}.meta.json`,
+      );
+      const before = await fs.readFile(sidecarPath, "utf-8");
+
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/sidecar/route");
+      const res = await POST(
+        sidecarRequest(resourceId, {
+          projectId,
+          updatedResource: {},
+          clearKeys: ["entityKind", 42],
+        }) as never,
+        { params: Promise.resolve({ "resource-id": resourceId }) },
+      );
+
+      expect(res.status).toBe(400);
+      const after = await fs.readFile(sidecarPath, "utf-8");
+      expect(after).toBe(before);
+    });
+  });
+});

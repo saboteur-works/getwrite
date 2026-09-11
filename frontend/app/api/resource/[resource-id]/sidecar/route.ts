@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  InvalidClearKeysCoreError,
   InvalidProjectIdCoreError,
   updateSidecarCore,
 } from "../../../../../src/lib/models/resource-crud-core";
@@ -9,6 +10,7 @@ import { withStorageContext } from "../../../_tenant/with-storage-context";
 interface SidecarUpdateBody {
   projectId: string;
   updatedResource: Record<string, unknown>;
+  clearKeys?: string[];
 }
 
 // Updates to resource metadata (notes, status, characters, locations, items, pov)
@@ -29,11 +31,22 @@ async function handlePost(
   }
 
   try {
-    await updateSidecarCore(body.projectId, resourceId, body.updatedResource);
+    await updateSidecarCore(
+      body.projectId,
+      resourceId,
+      body.updatedResource,
+      body.clearKeys,
+    );
     return NextResponse.json({ message: "Sidecar updated." });
   } catch (error) {
     if (error instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
+    }
+    if (error instanceof InvalidClearKeysCoreError) {
+      return NextResponse.json(
+        { error: "Invalid clearKeys", details: error.message },
+        { status: 400 },
+      );
     }
     throw error;
   }
