@@ -119,6 +119,8 @@ FR-24: The Remove Entity trigger control MUST NOT use the red brand colour token
 
 FR-26: The Remove Entity dialog's FR-17 edge-count fetch, on dialog open, MUST use a read that surfaces failure to the caller — a distinct transport method that rejects on failure, or one that returns a discriminated success/failure result — rather than `listEntityRelationships`'s existing `list()`, which degrades to `[]` on any failure (network error, non-2xx response, or a malformed body) and therefore cannot be distinguished from a genuine zero-edge project. This MUST hold on both HTTP and native, with ADR-021 parity between the two. `list()`'s existing degrade-to-`[]` semantics are UNCHANGED for its other callers (`EntityRelationshipsSection.tsx`, `EntityRelationshipGraphView.tsx`) — this requirement adds a second, failure-aware read path used only by the Remove Entity dialog; it does not alter what those other callers see. Owner decision at Gate 5 (2026-09-10): option (a), fix it — see the Amendment note below for the measurement and code reading that prompted this. [US-2][US-3]
 
+FR-27: After a successful removal, the Remove Entity control MUST return to its initial state — no submitting/pending state, no error, the dialog closed, and the keep/delete choice reset — and this state MUST NOT carry over from one resource to another: opening Remove Entity on any entity, after a prior successful removal earlier in the same session, MUST behave exactly as it did the first time the control was ever opened. [US-1][US-2][US-3]
+
 ## Amendment note (Stage 6.5 measurements, 2026-09-10)
 
 The following are measurements taken in the real app against a disposable
@@ -220,6 +222,35 @@ established by a follow-up experiment:
   record the shared-token contrast failures as a separate follow-up (tracked
   in the task tracker as its own task, outside this feature) rather than
   fixed here. See FR-22.
+
+### Fourth-pass measurement (Stage 6.5 third run, 2026-09-10)
+
+- Measured: in one page session, after a successful Remove Entity on one
+  entity (Location Profile, keep path), opening Remove Entity on a second
+  entity (Character Profile) showed the dialog's count loaded ("Also delete 1
+  relationship involving this entity") but the confirm `Remove` button stayed
+  `[disabled]` across three accessibility snapshots over 30+ seconds, with the
+  box both unticked and ticked.
+- Experiment that discriminated the cause: after a page reload, with
+  identical data (same resource, same count, same dangling edge), the same
+  dialog's `Remove` was enabled. This rules out a data-dependent cause and
+  supports carried-over component state.
+- Code reading consistent with it: in
+  `frontend/components/Sidebar/RemoveEntityControl.tsx`,
+  `isConfirmDisabled = isLoadingEdges || isSubmitting`; the checkbox renders
+  only when `!isLoadingEdges`, so `isSubmitting` was the true term. The
+  confirm handler's success path closes the dialog, dispatches, and moves
+  focus but never calls `setIsSubmitting(false)` (only the `catch` branch
+  does). The component's `if (!projectId || !resource || !isEntity) return
+  null` runs after its hooks, so it stays mounted (state preserved) and is
+  reused when the sidebar switches to another resource.
+- Why the suite missed it: every existing component test mounts a fresh
+  `RemoveEntityControl`; none exercises two removals in one mounted instance
+  or a resource switch after a success.
+- Everything else measured green in the same run: keep path, delete path
+  (edge deleted, `remove-by-entity` before sidecar write), field-clear path,
+  accessible names, non-red trigger, focus to entity-kind-input.
+- Owner decision at Gate 5 (2026-09-10): option (a) — fix it. See FR-27.
 
 ## Open questions
 
