@@ -32,6 +32,14 @@ function findResource(
   return plan.resources.find((r) => r.name === name && r.parentId === parentId);
 }
 
+// FR-18: the fixture now uses the measured real-project shapes (child
+// <Title> elements, <CustomMetaData><MetaDataItem><FieldID>/<Value>, etc.).
+// The assertions below already describe the correct target behavior and
+// need no value changes, but every one of them currently fails: parsing the
+// fixture itself throws (`scrivx-parser.ts`'s `readCustomMetaDataValues`
+// still requires an `ID` attribute on `MetaDataItem`, which the real shape
+// no longer carries) until a later task updates the parser/mapper to read
+// the new shapes.
 describe("mapBinderToImportPlan — Task 1 fixture", () => {
   it("places Draft content at the project root with no wrapper folder", async () => {
     const parsed = await parseScrivxFile(FIXTURE_PATH);

@@ -106,10 +106,17 @@ describe("parseScrivxFile — Task 1 fixture", () => {
     expect(chapterTwo.metaData.labelId).toBe("2");
     expect(chapterTwo.metaData.includeInCompile).toBe(true);
     expect(chapterTwo.keywordIds).toEqual(["K3"]);
+    // FR-18: per-document custom metadata now comes from
+    // <CustomMetaData><MetaDataItem><FieldID>/<Value> child elements, never
+    // an `ID`/`Value` attribute pair on `MetaDataItem`. CMD2 (a Date field)
+    // carries the sub-second-precision timestamp shape here; CMD3 (a List
+    // field) carries the raw `ListOptions/Option` id, not the option's
+    // display text — resolving that id to "Protagonist" is
+    // metadata-mapper's job (FR-7), not the parser's.
     expect(chapterTwo.metaData.customMetaData).toEqual([
       { fieldId: "CMD1", value: "Working title placeholder" },
-      { fieldId: "CMD2", value: "2026-12-01" },
-      { fieldId: "CMD3", value: "Protagonist" },
+      { fieldId: "CMD2", value: "2026-12-01 09:30:00.12345 +0000" },
+      { fieldId: "CMD3", value: "OPT-PROTAG" },
     ]);
 
     // FR-13: a Text-type binder item with its own children.
@@ -118,21 +125,32 @@ describe("parseScrivxFile — Task 1 fixture", () => {
     expect(sceneOne.type).toBe("Text");
     expect(sceneOne.title).toBe("Scene One");
     expect(sceneOne.keywordIds).toEqual(["K6"]);
+    // FR-18: the second measured Date-value shape (no sub-second precision,
+    // same shape as a BinderItem's own Created/Modified timestamp).
+    expect(sceneOne.metaData.customMetaData).toEqual([
+      { fieldId: "CMD2", value: "2026-12-05 10:00:00 +0000" },
+    ]);
   });
 
-  it("parses the Research folder's Text and non-Text (Other) items", async () => {
+  it("parses the Research folder's Text and non-Text (Other) items, including an untitled Text item", async () => {
     const parsed = await parseScrivxFile(FIXTURE_PATH);
     const research = parsed.binder.find(
       (item) => item.type === "ResearchFolder",
     );
     expect(research).toBeDefined();
-    expect(research?.children).toHaveLength(2);
+    expect(research?.children).toHaveLength(3);
 
-    const [characterNotes, syncConflict] = research!.children;
+    const [characterNotes, syncConflict, untitled] = research!.children;
     expect(characterNotes.type).toBe("Text");
     expect(characterNotes.title).toBe("Character Notes");
     expect(syncConflict.type).toBe("Other");
     expect(syncConflict.title).toBe("Sync Conflict Artifact");
+
+    // FR-18: a real Scrivener project has `Type="Text"` BinderItems with no
+    // child <Title> element at all (untitled documents) — Title is optional
+    // per item, not guaranteed.
+    expect(untitled.type).toBe("Text");
+    expect(untitled.title).toBe("");
   });
 
   it("parses the TrashFolder subtree and a top-level user folder", async () => {
@@ -149,6 +167,11 @@ describe("parseScrivxFile — Task 1 fixture", () => {
     expect(archive?.children).toHaveLength(1);
     expect(archive?.children[0].type).toBe("Text");
     expect(archive?.children[0].title).toBe("Old Draft");
+    // FR-18: one measured real StatusID value was -1, meaning unconfirmed
+    // (plausibly "No Status") — the parser still hands back the raw id
+    // unresolved; resolving it against StatusSettings (and skipping when it
+    // doesn't resolve, FR-8) is metadata-mapper's job.
+    expect(archive?.children[0].metaData.statusId).toBe("-1");
   });
 
   it("parses the StatusSettings and LabelSettings blocks", async () => {
@@ -164,6 +187,9 @@ describe("parseScrivxFile — Task 1 fixture", () => {
   });
 
   it("parses the CustomMetaData field definitions", async () => {
+    // FR-18: project-level field definitions now live under
+    // <CustomMetaDataSettings><MetaDataField>, with the field's name coming
+    // from a child <Title> element rather than a Title attribute.
     const parsed = await parseScrivxFile(FIXTURE_PATH);
     expect(parsed.customMetaDataFields).toEqual([
       { id: "CMD1", type: "Text", title: "Working Title" },

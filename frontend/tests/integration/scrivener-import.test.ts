@@ -106,6 +106,13 @@ async function readAllResources(projectRoot: string): Promise<AnyResource[]> {
   return resources;
 }
 
+// FR-18: the fixture now uses the measured real-project shapes. As of this
+// task, `importScrivenerProject` (via `parseScrivxFile`) throws on this
+// fixture (`scrivx-parser.ts`'s `readCustomMetaDataValues` still requires an
+// `ID` attribute on `MetaDataItem`, which the real shape no longer carries),
+// so every test in this describe block fails at `beforeAll` until a later
+// task updates the parser/mapper to read the new shapes — the assertions
+// themselves already describe the correct target behavior.
 describe("importScrivenerProject — Task 1 fixture", () => {
   let projectRoot: string;
   let beforeHash: string;
@@ -257,10 +264,26 @@ describe("importScrivenerProject — Task 1 fixture", () => {
     expect(userMetadata.status).toBe("Final Draft");
     expect(userMetadata.label).toBe("Character POV");
     expect(userMetadata["working-title"]).toBe("Working title placeholder");
-    expect(userMetadata.deadline).toBe("2026-12-01");
+    // FR-18: Chapter Two's Deadline now carries the sub-second-precision
+    // Date shape measured off the real project.
+    expect(userMetadata.deadline).toBe("2026-12-01 09:30:00.12345 +0000");
+    // FR-18: the List-type value stores the ListOptions/Option id
+    // ("OPT-PROTAG"), which the importer must resolve to its display text.
     expect(userMetadata["pov-character"]).toBe("Protagonist");
     expect(userMetadata.synopsis).toBeTruthy();
     expect(userMetadata.notes).toBe("A placeholder note about Chapter Two.");
+  });
+
+  // FR-18: one measured real StatusID value was -1 (meaning unconfirmed,
+  // plausibly "No Status") — it does not resolve to a status name, so no
+  // `status` key should be set on 'Old Draft's sidecar at all.
+  it("does not set a status for 'Old Draft', whose StatusID (-1) does not resolve", async () => {
+    const oldDraftText = resources.find(
+      (r): r is TextResource => r.type === "text" && r.name === "Old Draft",
+    ) as TextResource;
+    const sidecar = await readSidecar(projectRoot, oldDraftText.id);
+    const userMetadata = sidecar?.userMetadata as Record<string, unknown>;
+    expect(userMetadata?.status).toBeUndefined();
   });
 
   it("creates the Label field and every custom field on the metadata schema", () => {

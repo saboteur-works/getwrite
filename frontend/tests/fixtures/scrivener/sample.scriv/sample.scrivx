@@ -1,111 +1,172 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ScrivenerProject Identifier="8F3A1C20-1111-4A2B-9C3D-000000000001" Version="2.0" Creator="SCRMAC-3.5.2-17487" Device="Synthetic-Fixture">
+<ScrivenerProject Identifier="8F3A1C20-1111-4A2B-9C3D-000000000001" Version="2.0" Creator="SCRMAC-3.5.2-17487" Device="Synthetic-Fixture" Author="Fixture Author" ModID="1" Modified="2026-01-02 00:00:00 +0000">
   <Binder>
-    <BinderItem UUID="11111111-1111-4111-8111-111111111111" Type="DraftFolder" Title="Manuscript">
+    <BinderItem UUID="11111111-1111-4111-8111-111111111111" Type="DraftFolder" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+      <Title>Manuscript</Title>
       <MetaData>
         <IncludeInCompile>Yes</IncludeInCompile>
       </MetaData>
       <Children>
-        <BinderItem UUID="55555555-5555-4555-8555-555555555555" Type="Folder" Title="Chapter One">
+        <BinderItem UUID="55555555-5555-4555-8555-555555555555" Type="Folder" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Chapter One</Title>
           <MetaData>
             <IncludeInCompile>Yes</IncludeInCompile>
           </MetaData>
         </BinderItem>
-        <BinderItem UUID="66666666-6666-4666-8666-666666666666" Type="Text" Title="Chapter Two">
+        <BinderItem UUID="66666666-6666-4666-8666-666666666666" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Chapter Two</Title>
           <MetaData>
             <IncludeInCompile>Yes</IncludeInCompile>
             <StatusID>2</StatusID>
             <LabelID>2</LabelID>
             <CustomMetaData>
-              <MetaDataItem ID="CMD1" Value="Working title placeholder"/>
-              <MetaDataItem ID="CMD2" Value="2026-12-01"/>
-              <MetaDataItem ID="CMD3" Value="Protagonist"/>
+              <MetaDataItem>
+                <FieldID>CMD1</FieldID>
+                <Value>Working title placeholder</Value>
+              </MetaDataItem>
+              <MetaDataItem>
+                <FieldID>CMD2</FieldID>
+                <Value>2026-12-01 09:30:00.12345 +0000</Value>
+              </MetaDataItem>
+              <MetaDataItem>
+                <FieldID>CMD3</FieldID>
+                <Value>OPT-PROTAG</Value>
+              </MetaDataItem>
             </CustomMetaData>
           </MetaData>
           <Keywords>
-            <Keyword ID="K3"/>
+            <KeywordID>K3</KeywordID>
           </Keywords>
           <Children>
-            <BinderItem UUID="77777777-7777-4777-8777-777777777777" Type="Text" Title="Scene One">
+            <BinderItem UUID="77777777-7777-4777-8777-777777777777" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+              <Title>Scene One</Title>
               <MetaData>
                 <IncludeInCompile>Yes</IncludeInCompile>
+                <CustomMetaData>
+                  <MetaDataItem>
+                    <FieldID>CMD2</FieldID>
+                    <Value>2026-12-05 10:00:00 +0000</Value>
+                  </MetaDataItem>
+                </CustomMetaData>
               </MetaData>
               <Keywords>
-                <Keyword ID="K6"/>
+                <KeywordID>K6</KeywordID>
               </Keywords>
             </BinderItem>
           </Children>
         </BinderItem>
       </Children>
     </BinderItem>
-    <BinderItem UUID="22222222-2222-4222-8222-222222222222" Type="ResearchFolder" Title="Research">
+    <BinderItem UUID="22222222-2222-4222-8222-222222222222" Type="ResearchFolder" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+      <Title>Research</Title>
       <Children>
-        <BinderItem UUID="88888888-8888-4888-8888-888888888888" Type="Text" Title="Character Notes">
+        <BinderItem UUID="88888888-8888-4888-8888-888888888888" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Character Notes</Title>
           <MetaData>
             <IncludeInCompile>No</IncludeInCompile>
           </MetaData>
         </BinderItem>
-        <BinderItem UUID="99999999-9999-4999-8999-999999999999" Type="Other" Title="Sync Conflict Artifact">
+        <BinderItem UUID="99999999-9999-4999-8999-999999999999" Type="Other" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Sync Conflict Artifact</Title>
+          <MetaData>
+            <IncludeInCompile>No</IncludeInCompile>
+          </MetaData>
+        </BinderItem>
+        <BinderItem UUID="CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCCC" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
           <MetaData>
             <IncludeInCompile>No</IncludeInCompile>
           </MetaData>
         </BinderItem>
       </Children>
     </BinderItem>
-    <BinderItem UUID="33333333-3333-4333-8333-333333333333" Type="TrashFolder" Title="Trash">
+    <BinderItem UUID="33333333-3333-4333-8333-333333333333" Type="TrashFolder" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+      <Title>Trash</Title>
       <Children>
-        <BinderItem UUID="AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA" Type="Text" Title="Deleted Scene">
+        <BinderItem UUID="AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Deleted Scene</Title>
           <MetaData>
             <IncludeInCompile>No</IncludeInCompile>
           </MetaData>
         </BinderItem>
       </Children>
     </BinderItem>
-    <BinderItem UUID="44444444-4444-4444-8444-444444444444" Type="Folder" Title="Archive">
+    <BinderItem UUID="44444444-4444-4444-8444-444444444444" Type="Folder" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+      <Title>Archive</Title>
       <Children>
-        <BinderItem UUID="BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB" Type="Text" Title="Old Draft">
+        <BinderItem UUID="BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Old Draft</Title>
           <MetaData>
             <IncludeInCompile>No</IncludeInCompile>
+            <StatusID>-1</StatusID>
           </MetaData>
         </BinderItem>
       </Children>
     </BinderItem>
   </Binder>
   <LabelSettings>
+    <Title>Labels</Title>
+    <DefaultLabelID>1</DefaultLabelID>
     <Labels>
-      <Label ID="1">No Label</Label>
-      <Label ID="2">Character POV</Label>
+      <Label Color="1.0 1.0 1.0" ID="1">No Label</Label>
+      <Label Color="0.2 0.4 0.8" ID="2">Character POV</Label>
     </Labels>
   </LabelSettings>
   <StatusSettings>
+    <Title>Status</Title>
+    <DefaultStatusID>1</DefaultStatusID>
     <StatusItems>
       <Status ID="1">First Draft</Status>
       <Status ID="2">Final Draft</Status>
     </StatusItems>
   </StatusSettings>
   <Keywords>
-    <Keyword ID="K1" Title="Characters">
+    <Keyword ID="K1">
+      <Title>Characters</Title>
+      <Color>0.1 0.2 0.3</Color>
       <Children>
-        <Keyword ID="K2" Title="Protagonists">
+        <Keyword ID="K2">
+          <Title>Protagonists</Title>
+          <Color>0.1 0.2 0.3</Color>
           <Children>
-            <Keyword ID="K3" Title="Case"/>
+            <Keyword ID="K3">
+              <Title>Case</Title>
+              <Color>0.1 0.2 0.3</Color>
+            </Keyword>
           </Children>
         </Keyword>
       </Children>
     </Keyword>
-    <Keyword ID="K4" Title="Plot">
+    <Keyword ID="K4">
+      <Title>Plot</Title>
+      <Color>0.4 0.5 0.6</Color>
       <Children>
-        <Keyword ID="K5" Title="Threads">
+        <Keyword ID="K5">
+          <Title>Threads</Title>
+          <Color>0.4 0.5 0.6</Color>
           <Children>
-            <Keyword ID="K6" Title="Case"/>
+            <Keyword ID="K6">
+              <Title>Case</Title>
+              <Color>0.4 0.5 0.6</Color>
+            </Keyword>
           </Children>
         </Keyword>
       </Children>
     </Keyword>
   </Keywords>
-  <CustomMetaData>
-    <MetaDataField ID="CMD1" Type="Text" Title="Working Title"/>
-    <MetaDataField ID="CMD2" Type="Date" Title="Deadline"/>
-    <MetaDataField ID="CMD3" Type="List" Title="POV Character"/>
-  </CustomMetaData>
+  <CustomMetaDataSettings>
+    <MetaDataField ID="CMD1" Type="Text" Align="Left" Wraps="No">
+      <Title>Working Title</Title>
+    </MetaDataField>
+    <MetaDataField ID="CMD2" Type="Date" DateType="Short+Time">
+      <Title>Deadline</Title>
+      <DateFormat/>
+    </MetaDataField>
+    <MetaDataField ID="CMD3" Type="List">
+      <Title>POV Character</Title>
+      <ListOptions None="Yes">
+        <Option ID="OPT-PROTAG">Protagonist</Option>
+        <Option ID="OPT-ANTAG">Antagonist</Option>
+      </ListOptions>
+    </MetaDataField>
+  </CustomMetaDataSettings>
 </ScrivenerProject>

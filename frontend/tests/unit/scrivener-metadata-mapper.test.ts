@@ -20,6 +20,12 @@ async function loadFixture(): Promise<ScrivxParsed> {
   return parseScrivxFile(FIXTURE_PATH);
 }
 
+// FR-18: the fixture now uses the measured real-project shapes. Parsing it
+// currently throws (`scrivx-parser.ts`'s `readCustomMetaDataValues` still
+// requires an `ID` attribute on `MetaDataItem`), so every `it` below that
+// calls `loadFixture()` fails until a later task updates the parser/mapper
+// to read the new shapes — the assertions themselves already describe the
+// correct target behavior.
 describe("buildMetadataPlan — Status (FR-6)", () => {
   it("seeds config.statuses from StatusSettings labels", async () => {
     const plan = buildMetadataPlan(await loadFixture());
@@ -31,6 +37,17 @@ describe("buildMetadataPlan — Status (FR-6)", () => {
     const plan = buildMetadataPlan(await loadFixture());
     const values = plan.resourceUserMetadata.get(CHAPTER_TWO_UUID);
     expect(values?.status).toBe("Final Draft");
+  });
+
+  // FR-18: one measured real StatusID value was -1 (meaning unconfirmed,
+  // plausibly "No Status"). It does not resolve against any StatusSettings
+  // entry, so the FR-8 skip path applies: no `status` key is set at all,
+  // rather than a bogus/empty status value.
+  it("skips resolving 'Old Draft's StatusID -1 to a status (FR-8 skip path)", async () => {
+    const OLD_DRAFT_UUID = "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB";
+    const plan = buildMetadataPlan(await loadFixture());
+    const values = plan.resourceUserMetadata.get(OLD_DRAFT_UUID);
+    expect(values?.status).toBeUndefined();
   });
 });
 
@@ -94,8 +111,25 @@ describe("buildMetadataPlan — CustomMetaData (FR-7)", () => {
     )!.key;
 
     expect(values![workingTitleKey]).toBe("Working title placeholder");
-    expect(values![deadlineKey]).toBe("2026-12-01");
+    // FR-18: Chapter Two's Deadline value now carries the sub-second-
+    // precision Date shape as measured off the real project.
+    expect(values![deadlineKey]).toBe("2026-12-01 09:30:00.12345 +0000");
+    // FR-18: a List-type value now stores the ListOptions/Option id
+    // ("OPT-PROTAG"), never the option's display text — the importer must
+    // resolve the id to "Protagonist" via CustomMetaDataSettings.
     expect(values![povCharacterKey]).toBe("Protagonist");
+  });
+
+  // FR-18: the second measured Date shape (no sub-second precision, same
+  // shape as a BinderItem's own Created/Modified timestamp) lives on Scene
+  // One's own Deadline value.
+  it("resolves Scene One's Deadline value in the non-sub-second Date shape", async () => {
+    const plan = buildMetadataPlan(await loadFixture());
+    const values = plan.resourceUserMetadata.get(SCENE_ONE_UUID);
+    const deadlineKey = plan.customFields.find(
+      (f) => f.label === "Deadline",
+    )!.key;
+    expect(values?.[deadlineKey]).toBe("2026-12-05 10:00:00 +0000");
   });
 
   it("reports a custom-metadata field type with no GetWrite mapping and does not include it in customFields (FR-8)", async () => {
