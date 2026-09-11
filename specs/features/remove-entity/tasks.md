@@ -20,7 +20,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 2
 **Notes:** This is FR-9's entire scope. Native never reaches this route — see Task 3.
 **POS:** task_9f942710
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Add transport parity — client function, native backend, and web-stub
 **What:** Adds `removeEntityRelationshipsForEntity(projectId, entityId): Promise<number>` to `frontend/src/lib/api/entity-relationships.ts`'s `EntityRelationshipsTransport` interface and its `httpEntityRelationshipsTransport` implementation (hitting Task 2's route, degrading to `0` on any failure — network error, non-2xx, malformed body — mirroring `remove`'s degrade-to-`false` floor), and adds the matching method to `frontend/src/store/transport/native-entity-relationships-backend.ts` (in-process call to Task 1's model function via `resolveProjectRoot`, same `run(...)`/try-catch-degrade-to-`0` shape the sibling methods already use) and its `.web-stub.ts` counterpart (throw-if-reached, matching the sibling methods' contract). No new route, no new dynamic-import specifier, and no `next.config.mjs` change are needed — the existing `native-entity-relationships-backend` module and its `resolveAlias` substitution already cover this addition, since it is a new method on an already-collapsed transport, not a new transport module (FR-10).
