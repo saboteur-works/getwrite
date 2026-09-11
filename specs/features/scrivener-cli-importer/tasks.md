@@ -468,7 +468,7 @@ watcher registry has no entry for it, or an equivalent observable signal).
 **Depends on:** 15
 **Estimate:** 5
 **POS:** task_1802ca57
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Field-key clash suffix rule and per-field FR-8 recovery
 
@@ -496,7 +496,7 @@ Uses Task 16's fixture and tests.
 **Depends on:** 16
 **Estimate:** 5
 **POS:** task_30b653a1
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Run-created-destination cleanup on fatal error, and up-front non-empty refusal
 
@@ -521,7 +521,7 @@ test.
 **Depends on:** 16
 **Estimate:** 5
 **POS:** task_107b0536
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Import-scoped indexing suppression and watcher stop
 
@@ -550,7 +550,7 @@ that runs. Uses Task 16's no-leftover-indexing test. `writeSidecar`,
 **Depends on:** 16
 **Estimate:** 5
 **POS:** task_173aca2a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Re-run the gate
 
