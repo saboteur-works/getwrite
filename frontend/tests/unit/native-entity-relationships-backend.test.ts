@@ -169,5 +169,58 @@ describe("native entity-relationships transport — in-process backend reuses th
     await expect(transport.remove("not-a-uuid", generateUUID())).resolves.toBe(
       false,
     );
+    await expect(
+      transport.removeByEntity("not-a-uuid", generateUUID()),
+    ).resolves.toBe(0);
+  });
+
+  it("removeByEntity removes every edge referencing the entity on either side, matching Task 1's model function", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = generateUUID();
+    const entityA = generateUUID();
+    const entityB = generateUUID();
+    const entityC = generateUUID();
+    await seedProjectConfig(fs, projectId, ["ally", "rival"]);
+
+    const transport = createNativeEntityRelationshipsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    await transport.create(projectId, entityA, entityB, "ally");
+    await transport.create(projectId, entityB, entityA, "rival");
+    await transport.create(projectId, entityB, entityC, "ally");
+
+    const removedCount = await transport.removeByEntity(projectId, entityA);
+    expect(removedCount).toBe(2);
+
+    const remaining = await transport.list(projectId);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].sourceEntityId).toBe(entityB);
+    expect(remaining[0].targetEntityId).toBe(entityC);
+  });
+
+  it("removeByEntity resolves 0 when no edge references the entity", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = generateUUID();
+    const entityA = generateUUID();
+    const entityB = generateUUID();
+    await seedProjectConfig(fs, projectId, ["ally"]);
+
+    const transport = createNativeEntityRelationshipsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    await transport.create(projectId, entityA, entityB, "ally");
+
+    const removedCount = await transport.removeByEntity(
+      projectId,
+      generateUUID(),
+    );
+    expect(removedCount).toBe(0);
+
+    const remaining = await transport.list(projectId);
+    expect(remaining).toHaveLength(1);
   });
 });

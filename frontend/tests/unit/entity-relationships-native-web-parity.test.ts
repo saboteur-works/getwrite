@@ -25,6 +25,7 @@ import {
   POST,
 } from "../../app/api/project/[project-id]/entity-relationships/route";
 import { POST as REMOVE } from "../../app/api/project/[project-id]/entity-relationships/remove/route";
+import { POST as REMOVE_BY_ENTITY } from "../../app/api/project/[project-id]/entity-relationships/remove-by-entity/route";
 import type { EntityRelationshipEdge } from "../../src/lib/models/entity-relationships";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
@@ -81,6 +82,20 @@ function makeRemoveRequest(
 ): NextRequest {
   const url = new URL(
     `http://localhost/api/project/${projectId}/entity-relationships/remove`,
+  );
+  return new NextRequest(url.toString(), {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "content-type": "application/json" },
+  });
+}
+
+function makeRemoveByEntityRequest(
+  projectId: string,
+  body: Record<string, unknown>,
+): NextRequest {
+  const url = new URL(
+    `http://localhost/api/project/${projectId}/entity-relationships/remove-by-entity`,
   );
   return new NextRequest(url.toString(), {
     method: "POST",
@@ -313,5 +328,83 @@ describe("entity relationships — native/web parity (FR-1/FR-4/FR-8/FR-17)", ()
 
     expect(httpStatus).toBe(400);
     expect(nativeResult).toBeNull();
+  });
+
+  it("removeByEntity produces identical removedCount on both transports for the same fixture inputs (FR-9/FR-10)", async () => {
+    const entityA = generateUUID();
+    const entityB = generateUUID();
+    const entityC = generateUUID();
+
+    const { projectsDir, projectId: httpProjectId } = await setupHttpProject([
+      "ally",
+      "rival",
+    ]);
+    const {
+      nativeFs,
+      projectsDir: nativeProjectsDir,
+      projectId: nativeProjectId,
+    } = await setupNativeProject(["ally", "rival"]);
+    const nativeTransport = createNativeEntityRelationshipsTransport({
+      fs: nativeFs,
+      projectsDir: nativeProjectsDir,
+    });
+
+    // Seed the same three edges on both transports: two reference entityA
+    // (one as source, one as target), one does not.
+    await withProjectsDirEnv(projectsDir, async () => {
+      await POST(
+        makePostRequest(httpProjectId, {
+          sourceEntityId: entityA,
+          targetEntityId: entityB,
+          relationshipType: "ally",
+        }),
+        { params: Promise.resolve({ "project-id": httpProjectId }) },
+      );
+      await POST(
+        makePostRequest(httpProjectId, {
+          sourceEntityId: entityB,
+          targetEntityId: entityA,
+          relationshipType: "rival",
+        }),
+        { params: Promise.resolve({ "project-id": httpProjectId }) },
+      );
+      await POST(
+        makePostRequest(httpProjectId, {
+          sourceEntityId: entityB,
+          targetEntityId: entityC,
+          relationshipType: "ally",
+        }),
+        { params: Promise.resolve({ "project-id": httpProjectId }) },
+      );
+    });
+    await nativeTransport.create(nativeProjectId, entityA, entityB, "ally");
+    await nativeTransport.create(nativeProjectId, entityB, entityA, "rival");
+    await nativeTransport.create(nativeProjectId, entityB, entityC, "ally");
+
+    const httpRemovedCount = await withProjectsDirEnv(projectsDir, async () => {
+      const res = await REMOVE_BY_ENTITY(
+        makeRemoveByEntityRequest(httpProjectId, { entityId: entityA }),
+        { params: Promise.resolve({ "project-id": httpProjectId }) },
+      );
+      const body = (await res.json()) as { removedCount: number };
+      return body.removedCount;
+    });
+    const nativeRemovedCount = await nativeTransport.removeByEntity(
+      nativeProjectId,
+      entityA,
+    );
+
+    expect(httpRemovedCount).toBe(2);
+    expect(nativeRemovedCount).toBe(2);
+
+    const httpListAfter = await withProjectsDirEnv(projectsDir, async () => {
+      const res = await GET(makeGetRequest(httpProjectId), {
+        params: Promise.resolve({ "project-id": httpProjectId }),
+      });
+      return (await res.json()) as EntityRelationshipEdge[];
+    });
+    const nativeListAfter = await nativeTransport.list(nativeProjectId);
+    expect(httpListAfter).toHaveLength(1);
+    expect(nativeListAfter).toHaveLength(1);
   });
 });

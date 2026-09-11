@@ -15,6 +15,10 @@
  * - `remove` resolves to `true`/`false` matching the route's success/
  *   not-found response, and resolves `false` (never throws) on a network
  *   error.
+ * - `removeByEntity` resolves to the removed-edge count on success, and
+ *   resolves `0` (never throws) on any failure (network error, non-2xx
+ *   response, or a malformed body), mirroring `remove`'s degrade-on-failure
+ *   floor.
  */
 import { createTransport } from "../../store/transport/create-transport";
 import type { EntityRelationshipEdge } from "../models/entity-relationships";
@@ -78,6 +82,14 @@ export interface EntityRelationshipsTransport {
    * otherwise failed (including a network error) — never throws.
    */
   remove(projectId: string, edgeId: string): Promise<boolean>;
+
+  /**
+   * Removes every persisted edge that references `entityId` on either side
+   * (FR-9/FR-10). Resolves the number of edges removed — `0` if none
+   * referenced the entity, or if the request otherwise failed (including a
+   * network error) — never throws.
+   */
+  removeByEntity(projectId: string, entityId: string): Promise<number>;
 }
 
 /**
@@ -136,6 +148,24 @@ export const httpEntityRelationshipsTransport: EntityRelationshipsTransport = {
       return data.removed === true;
     } catch {
       return false;
+    }
+  },
+
+  async removeByEntity(projectId, entityId) {
+    try {
+      const response = await fetch(
+        `/api/project/${encodeURIComponent(projectId)}/entity-relationships/remove-by-entity`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entityId }),
+        },
+      );
+      if (!response.ok) return 0;
+      const data = (await response.json()) as { removedCount?: number };
+      return typeof data.removedCount === "number" ? data.removedCount : 0;
+    } catch {
+      return 0;
     }
   },
 };
@@ -205,4 +235,19 @@ export async function removeEntityRelationship(
 ): Promise<boolean> {
   const transport = await resolveEntityRelationshipsTransport();
   return transport.remove(projectId, edgeId);
+}
+
+/**
+ * Removes every persisted edge that references `entityId` on either side
+ * (FR-9/FR-10).
+ *
+ * @param projectId - The project's on-disk directory basename.
+ * @returns The number of edges removed, or `0` on any failure.
+ */
+export async function removeEntityRelationshipsForEntity(
+  projectId: string,
+  entityId: string,
+): Promise<number> {
+  const transport = await resolveEntityRelationshipsTransport();
+  return transport.removeByEntity(projectId, entityId);
 }

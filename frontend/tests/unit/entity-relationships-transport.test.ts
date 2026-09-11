@@ -9,6 +9,7 @@ import {
   httpEntityRelationshipsTransport,
   listEntityRelationships,
   removeEntityRelationship,
+  removeEntityRelationshipsForEntity,
 } from "../../src/lib/api/entity-relationships";
 import type { EntityRelationshipEdge } from "../../src/lib/models/entity-relationships";
 
@@ -188,10 +189,73 @@ describe("entity relationships transport — web runtime — remove", () => {
   });
 });
 
+describe("entity relationships transport — web runtime — removeByEntity", () => {
+  beforeEach(() => {
+    delete process.env[RUNTIME_ENV];
+  });
+
+  it("posts the entityId and returns the parsed removedCount on success", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({ removedCount: 3 }),
+      } as Response);
+
+    const removedCount = await removeEntityRelationshipsForEntity(
+      "project-1",
+      "entity-1",
+    );
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/project/project-1/entity-relationships/remove-by-entity",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ entityId: "entity-1" }),
+      }),
+    );
+    expect(removedCount).toBe(3);
+  });
+
+  it("resolves to 0 on a non-2xx response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      json: async () => ({ removedCount: 3 }),
+    } as Response);
+
+    await expect(
+      removeEntityRelationshipsForEntity("project-1", "entity-1"),
+    ).resolves.toBe(0);
+  });
+
+  it("resolves to 0 rather than throwing on a network error", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+
+    await expect(
+      removeEntityRelationshipsForEntity("project-1", "entity-1"),
+    ).resolves.toBe(0);
+  });
+
+  it("resolves to 0 on a malformed (non-numeric removedCount) body", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ not: "a removedCount" }),
+    } as Response);
+
+    await expect(
+      removeEntityRelationshipsForEntity("project-1", "entity-1"),
+    ).resolves.toBe(0);
+  });
+});
+
 describe("httpEntityRelationshipsTransport", () => {
   it("is the transport object used directly by the resolver in web runtime", () => {
     expect(typeof httpEntityRelationshipsTransport.list).toBe("function");
     expect(typeof httpEntityRelationshipsTransport.create).toBe("function");
     expect(typeof httpEntityRelationshipsTransport.remove).toBe("function");
+    expect(typeof httpEntityRelationshipsTransport.removeByEntity).toBe(
+      "function",
+    );
   });
 });
