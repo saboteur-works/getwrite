@@ -288,7 +288,7 @@ unused-export warnings from `frontend/src/lib/models/scrivener/` or the
 **Depends on:** 9
 **Estimate:** 2
 **POS:** task_39e4a136
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Manual verification against the private sample project
 
