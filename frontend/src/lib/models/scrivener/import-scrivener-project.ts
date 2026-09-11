@@ -198,6 +198,20 @@ export async function importScrivenerProject(
   const plan = await mapBinderToImportPlan(parsed, scrivxPath);
   const metadataPlan = buildMetadataPlan(parsed);
 
+  // FR-7's amendment: a candidate field key colliding with a built-in or an
+  // already-added field (`metadataPlan.fieldKeyRenames`) resolves to a free
+  // `<originalKey>-scrivener[-<n>]` key. This map lets every downstream
+  // consumer of a field's *original* derived key (the Label field's plan
+  // key and each custom field's `deriveFieldKey`-derived key) resolve the
+  // actual key to write, without `metadata-mapper.ts` needing to rewrite its
+  // own `labelField`/`customFields`/`resourceUserMetadata` output.
+  const finalFieldKeyByOriginalKey = new Map(
+    metadataPlan.fieldKeyRenames.map((rename) => [
+      rename.originalKey,
+      rename.renamedKey,
+    ]),
+  );
+
   // ── Destination project ──────────────────────────────────────────────────
   const projectName =
     options.name ?? path.basename(scrivPath).replace(/\.scriv$/i, "");
@@ -241,6 +255,7 @@ export async function importScrivenerProject(
       resourcePlan,
       realIdByPlanId,
       metadataPlan.resourceUserMetadata,
+      finalFieldKeyByOriginalKey,
       skips,
     );
     if (!created) continue;
@@ -266,7 +281,26 @@ export async function importScrivenerProject(
       fields: [],
     });
     for (const field of schemaFields) {
-      await addField(projectRoot, METADATA_GROUP_ID, field);
+      // FR-7's amendment: use the collision-resolved key (recorded by
+      // `buildMetadataPlan`'s `fieldKeyRenames`) when this field's original
+      // key collided with a built-in or already-added field; otherwise the
+      // field's own key is already free.
+      const finalKey = finalFieldKeyByOriginalKey.get(field.key) ?? field.key;
+      const fieldToCreate =
+        finalKey === field.key ? field : { ...field, key: finalKey };
+      // FR-8's generalization: any per-field metadata-schema creation
+      // failure — including one this pre-resolution should have already
+      // prevented, and any other unexpected `addField` failure — is a
+      // recorded skip, never a reason to abort the whole import.
+      try {
+        await addField(projectRoot, METADATA_GROUP_ID, fieldToCreate);
+      } catch (err) {
+        skips.push({
+          itemTitle: field.label,
+          binderPath: `CustomMetaData/${field.key}`,
+          reason: `Could not create metadata field "${field.label}": ${(err as Error).message}`,
+        });
+      }
     }
   }
 
@@ -327,6 +361,7 @@ export async function importScrivenerProject(
         reason: skip.reason,
       })),
     ],
+    fieldKeyRenames: metadataPlan.fieldKeyRenames,
     keywordMerges: metadataPlan.keywordTagPlan.merges.map((merge) => ({
       leafName: merge.leafName,
       mergedParentPaths: merge.parentPaths,
@@ -393,6 +428,30 @@ async function resolveScrivxPath(scrivPath: string): Promise<string> {
 }
 
 /**
+ * Rekeys a resolved per-document `userMetadata` record so its keys match the
+ * actual metadata-schema field keys that will be created (FR-7's amendment):
+ * `metadata-mapper.ts`'s `resourceUserMetadata` is keyed by each field's
+ * pre-collision-check derived key, but a field whose key collided with a
+ * built-in or already-added field is created under a renamed key — the
+ * sidecar value must be written under that same renamed key, or it would
+ * never match up with the field actually shown in the metadata schema.
+ * Keys with no matching rename pass through unchanged.
+ */
+function applyFieldKeyRenames(
+  userMetadata: Readonly<Record<string, string>> | undefined,
+  finalFieldKeyByOriginalKey: ReadonlyMap<string, string>,
+): Readonly<Record<string, string>> | undefined {
+  if (userMetadata === undefined) return undefined;
+  if (finalFieldKeyByOriginalKey.size === 0) return userMetadata;
+
+  const rekeyed: Record<string, string> = {};
+  for (const [key, value] of Object.entries(userMetadata)) {
+    rekeyed[finalFieldKeyByOriginalKey.get(key) ?? key] = value;
+  }
+  return rekeyed;
+}
+
+/**
  * Creates and persists one planned text resource: reads + converts its
  * `content.rtf` (Task 3), seeds its sidecar `userMetadata` from the metadata
  * plan's resolved per-document values, writes it (bulk-create pattern), and
@@ -408,6 +467,7 @@ async function createAndWriteResource(
   resourcePlan: ImportPlanResource,
   realIdByPlanId: Map<ImportPlanId, UUID>,
   resourceUserMetadata: ReadonlyMap<string, Readonly<Record<string, string>>>,
+  finalFieldKeyByOriginalKey: ReadonlyMap<string, string>,
   skips: ImportReportSkip[],
 ): Promise<TextResource | undefined> {
   let rtfText: string;
@@ -435,7 +495,10 @@ async function createAndWriteResource(
     resourcePlan.parentId === null
       ? null
       : (realIdByPlanId.get(resourcePlan.parentId) ?? null);
-  const userMetadata = resourceUserMetadata.get(resourcePlan.sourceUuid);
+  const userMetadata = applyFieldKeyRenames(
+    resourceUserMetadata.get(resourcePlan.sourceUuid),
+    finalFieldKeyByOriginalKey,
+  );
 
   const resource = createTextResource({
     name: resourcePlan.name,

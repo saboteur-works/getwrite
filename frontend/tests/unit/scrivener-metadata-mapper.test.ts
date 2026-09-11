@@ -97,18 +97,30 @@ describe("buildMetadataPlan — CustomMetaData (FR-7)", () => {
   });
 
   // Task 16 precondition for FR-7's collision-suffix rule (Task 17): the
-  // fixture's "POV" field must derive the *unsuffixed* key "pov" today,
-  // since `buildMetadataPlan` alone (unlike the full importer) has no
-  // knowledge of the destination project's built-in metadata schema and so
-  // cannot yet detect that "pov" collides with `default-metadata-schema.ts`'s
-  // built-in Point of View field. This assertion MUST pass now — it proves
-  // the fixture is built correctly — independent of Task 17's collision
-  // check, which runs one layer up in the orchestrator.
+  // fixture's "POV" field derives the *unsuffixed* key "pov" from
+  // `deriveFieldKey`'s within-import-only disambiguation, which has no
+  // knowledge of the destination project's built-in metadata schema.
+  // `plan.customFields` deliberately keeps exposing this pre-collision-check
+  // key — see `resolveBuiltInFieldKeyCollisions`'s doc comment
+  // (`metadata-mapper.ts`) — while the built-in-aware resolution (Task 17)
+  // is exposed separately via `plan.fieldKeyRenames`, asserted below.
   it("derives the unsuffixed key 'pov' for the field titled 'POV' (Task 16 fixture precondition for FR-7)", async () => {
     const plan = buildMetadataPlan(await loadFixture());
     const pov = plan.customFields.find((f) => f.label === "POV");
     expect(pov).toBeDefined();
     expect(pov?.key).toBe("pov");
+  });
+
+  // Task 17/FR-7's amendment: "pov" collides with `default-metadata-schema.ts`'s
+  // built-in Point of View field, so `buildMetadataPlan`'s final plan
+  // records a rename to the first free `pov-scrivener` key, keeping "POV"
+  // as the field's own title/label.
+  it("FR-7/Task 17: resolves the 'POV' field's built-in collision to 'pov-scrivener' via fieldKeyRenames", async () => {
+    const plan = buildMetadataPlan(await loadFixture());
+    const rename = plan.fieldKeyRenames.find((r) => r.originalKey === "pov");
+    expect(rename).toBeDefined();
+    expect(rename?.fieldTitle).toBe("POV");
+    expect(rename?.renamedKey).toBe("pov-scrivener");
   });
 
   it("resolves Chapter Two's POV field value under the derived key 'pov'", async () => {

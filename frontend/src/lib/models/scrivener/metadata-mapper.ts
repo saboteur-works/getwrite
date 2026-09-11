@@ -22,6 +22,7 @@
  * `writeSidecar`.
  */
 import { slugify } from "../../utils";
+import { DEFAULT_METADATA_SCHEMA } from "../default-metadata-schema";
 import type { MetadataField } from "../types";
 import type {
   ScrivxBinderItem,
@@ -67,6 +68,24 @@ export interface MetadataValueSkip {
   readonly sourceUuid: string;
   /** Human-readable reason this one value was skipped. */
   readonly reason: string;
+}
+
+/**
+ * A single FR-7-amendment key rename: the candidate key derived for the
+ * "Label" field or a custom field collided with a built-in field key
+ * (`default-metadata-schema.ts`) or with a key already finalized earlier in
+ * this same import, and was retried as `<originalKey>-scrivener`,
+ * `<originalKey>-scrivener-2`, … until a free key was found. Recorded for
+ * the FR-9 report (original key, field title, renamed key); the field's
+ * `label` is left as the source field's own title regardless of the rename.
+ */
+export interface FieldKeyRename {
+  /** The candidate key that collided (the Label field's `"label"`, or a custom field's `deriveFieldKey`-derived key). */
+  readonly originalKey: string;
+  /** The colliding field's own title/label (unchanged by the rename). */
+  readonly fieldTitle: string;
+  /** The free key actually used, after suffixing. */
+  readonly renamedKey: string;
 }
 
 /**
@@ -126,6 +145,17 @@ export interface MetadataPlan {
   readonly keywordTagPlan: KeywordTagPlan;
   /** Every per-document value the mapper declined to resolve (FR-8, FR-20), in encounter order. */
   readonly valueSkips: readonly MetadataValueSkip[];
+  /**
+   * Every FR-7-amendment key rename: the Label field's key (if it collided)
+   * followed by each custom field's key (if it collided), in the same order
+   * `labelField`/`customFields` are processed for `addField`. The candidate
+   * key each entry names (`originalKey`) is exactly `labelField.key` or the
+   * matching `customFields[].key` — callers resolve the actual key to create
+   * via a rename's `renamedKey` rather than the plan's own field `key`,
+   * which is left as the pre-collision-check derived key (see
+   * {@link resolveBuiltInFieldKeyCollisions}'s doc comment for why).
+   */
+  readonly fieldKeyRenames: readonly FieldKeyRename[];
 }
 
 const STATUS_KEY = "status";
@@ -186,6 +216,85 @@ function deriveFieldKey(
   }
   usedKeys.add(key);
   return key;
+}
+
+/** Every built-in field key from `DEFAULT_METADATA_SCHEMA`, flattened across all groups. */
+function builtInFieldKeys(): ReadonlySet<string> {
+  const keys = new Set<string>();
+  for (const group of DEFAULT_METADATA_SCHEMA.groups) {
+    for (const field of group.fields) {
+      keys.add(field.key);
+    }
+  }
+  return keys;
+}
+
+/**
+ * Retries `candidateKey` as `<candidateKey>-scrivener`, then
+ * `<candidateKey>-scrivener-2`, `<candidateKey>-scrivener-3`, … until a key
+ * not present in `takenKeys` is found (FR-7's amendment).
+ */
+function nextFreeSuffixedKey(
+  candidateKey: string,
+  takenKeys: ReadonlySet<string>,
+): string {
+  let suffix = 1;
+  let key = `${candidateKey}-scrivener`;
+  while (takenKeys.has(key)) {
+    suffix += 1;
+    key = `${candidateKey}-scrivener-${suffix}`;
+  }
+  return key;
+}
+
+/**
+ * Implements FR-7's amendment: before the "Label" field's key (if present)
+ * and each custom field's key is used to call `addField`, checks it against
+ * the union of every built-in field key (`DEFAULT_METADATA_SCHEMA`) and
+ * every key already finalized earlier in this same import — the Label
+ * field's own final key, then each custom field's final key, in processing
+ * order. A colliding key is retried as `<key>-scrivener`,
+ * `<key>-scrivener-2`, … until free; every such rename is recorded.
+ *
+ * This is additive to, and runs strictly after, `deriveFieldKey`'s existing
+ * within-import `-2`/`-3` disambiguation above — that only stops two custom
+ * fields from colliding with *each other*'s raw derived key; it has no
+ * knowledge of the destination project's built-in fields, which is the gap
+ * this function closes.
+ *
+ * Deliberately does not rewrite `labelField`/`customFields`' own `key`
+ * fields: `buildMetadataPlan` is exercised directly by unit tests that
+ * assert the *pre-collision-check* derived key (e.g. the fixture's "POV"
+ * field deriving to the raw key `"pov"`), and `resourceUserMetadata` is
+ * keyed by those same raw keys. The orchestrator
+ * (`import-scrivener-project.ts`) is responsible for consulting the
+ * returned renames to determine the actual key to pass to `addField`.
+ */
+function resolveBuiltInFieldKeyCollisions(
+  labelField: MetadataField | undefined,
+  customFields: readonly MetadataField[],
+): readonly FieldKeyRename[] {
+  const finalizedKeys = new Set<string>(builtInFieldKeys());
+  const renames: FieldKeyRename[] = [];
+
+  const resolveOne = (field: MetadataField): void => {
+    const finalKey = finalizedKeys.has(field.key)
+      ? nextFreeSuffixedKey(field.key, finalizedKeys)
+      : field.key;
+    if (finalKey !== field.key) {
+      renames.push({
+        originalKey: field.key,
+        fieldTitle: field.label,
+        renamedKey: finalKey,
+      });
+    }
+    finalizedKeys.add(finalKey);
+  };
+
+  if (labelField) resolveOne(labelField);
+  for (const field of customFields) resolveOne(field);
+
+  return renames;
 }
 
 /** Flattens the recursive binder tree into a single ordered list. */
@@ -393,6 +502,11 @@ export function buildMetadataPlan(parsed: ScrivxParsed): MetadataPlan {
     }
   }
 
+  const fieldKeyRenames = resolveBuiltInFieldKeyCollisions(
+    labelField,
+    customFields,
+  );
+
   return {
     statuses,
     labelField,
@@ -401,5 +515,6 @@ export function buildMetadataPlan(parsed: ScrivxParsed): MetadataPlan {
     resourceUserMetadata,
     keywordTagPlan,
     valueSkips,
+    fieldKeyRenames,
   };
 }

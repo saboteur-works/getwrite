@@ -53,6 +53,22 @@ export interface ImportReportSkip {
 }
 
 /**
+ * A single FR-7-amendment field key rename: a candidate metadata field key
+ * (the "Label" field's own key, or a custom field's derived key) collided
+ * with a built-in field key or a key already finalized earlier in the same
+ * import, and was retried under a free `<originalKey>-scrivener[-<n>]` key.
+ * Field names mirror `metadata-mapper.ts`'s `FieldKeyRename`.
+ */
+export interface ImportReportFieldKeyRename {
+  /** The candidate key that collided. */
+  readonly originalKey: string;
+  /** The colliding field's own title/label, unchanged by the rename. */
+  readonly fieldTitle: string;
+  /** The free key actually used, after suffixing. */
+  readonly renamedKey: string;
+}
+
+/**
  * A single FR-15 keyword merge: two or more Scrivener keywords sharing an
  * identical leaf name, collapsed into one GetWrite tag.
  */
@@ -133,6 +149,8 @@ export interface ImportReportInput {
    * category for them. See the module doc's "Recoverable skips" note.
    */
   readonly skips: readonly ImportReportSkip[];
+  /** Every FR-7-amendment field key rename, in processing order (Label field first, then each custom field). */
+  readonly fieldKeyRenames: readonly ImportReportFieldKeyRename[];
   /** Every FR-15 keyword merge, in encounter order. */
   readonly keywordMerges: readonly ImportReportKeywordMerge[];
   /** Every FR-16 non-text Research item left unconverted. */
@@ -173,6 +191,7 @@ export const IMPORT_REPORT_RELATIVE_PATH = "scrivener-import-report.txt";
 export function buildImportReport(input: ImportReportInput): ImportReportText {
   const sections = [
     renderSkipsSection(input.skips),
+    renderFieldKeyRenamesSection(input.fieldKeyRenames),
     renderKeywordMergesSection(input.keywordMerges),
     renderNonTextResearchSection(input.nonTextResearch),
     renderExcludedOtherSection(input.excludedOther),
@@ -189,6 +208,20 @@ function renderSkipsSection(skips: readonly ImportReportSkip[]): string {
     (skip) => `- "${skip.itemTitle}" (${skip.binderPath}) — ${skip.reason}`,
   );
   return renderSection("Skipped Items", lines, "No items were skipped.");
+}
+
+function renderFieldKeyRenamesSection(
+  renames: readonly ImportReportFieldKeyRename[],
+): string {
+  const lines = renames.map(
+    (rename) =>
+      `- "${rename.fieldTitle}" — key "${rename.originalKey}" renamed to "${rename.renamedKey}" (collided with a built-in or already-added field)`,
+  );
+  return renderSection(
+    "Field Key Renames",
+    lines,
+    "No metadata field keys needed to be renamed.",
+  );
 }
 
 function renderKeywordMergesSection(

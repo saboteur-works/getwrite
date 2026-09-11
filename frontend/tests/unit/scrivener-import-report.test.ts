@@ -16,6 +16,9 @@ const fullInput: ImportReportInput = {
       reason: 'Type="Other" item outside supported binder shapes',
     },
   ],
+  fieldKeyRenames: [
+    { originalKey: "pov", fieldTitle: "POV", renamedKey: "pov-scrivener" },
+  ],
   keywordMerges: [
     {
       leafName: "Protagonist",
@@ -43,6 +46,7 @@ const fullInput: ImportReportInput = {
 
 const emptyInput: ImportReportInput = {
   skips: [],
+  fieldKeyRenames: [],
   keywordMerges: [],
   nonTextResearch: [],
   excludedOther: [],
@@ -60,6 +64,7 @@ describe("buildImportReport", () => {
     // Section headings appear in the documented fixed order.
     const headingOrder = [
       "## Skipped Items",
+      "## Field Key Renames",
       "## Keyword Merges",
       "## Unconverted Research Content",
       '## Excluded "Other" Items',
@@ -76,6 +81,11 @@ describe("buildImportReport", () => {
     // (a) FR-8 skip: title, binder path, and reason.
     expect(report).toContain(
       '- "Old Scene" (Draft/Chapter 1/Old Scene) — Type="Other" item outside supported binder shapes',
+    );
+
+    // FR-7 amendment: field key rename, original key, title, and renamed key.
+    expect(report).toContain(
+      '- "POV" — key "pov" renamed to "pov-scrivener" (collided with a built-in or already-added field)',
     );
 
     // (b) FR-15 keyword merge: leaf name and merged parent paths.
@@ -108,6 +118,8 @@ describe("buildImportReport", () => {
     expect(report).toContain("# Scrivener Import Report");
     expect(report).toContain("## Skipped Items");
     expect(report).toContain("No items were skipped.");
+    expect(report).toContain("## Field Key Renames");
+    expect(report).toContain("No metadata field keys needed to be renamed.");
     expect(report).toContain("## Keyword Merges");
     expect(report).toContain("No keyword tags were merged.");
     expect(report).toContain("## Unconverted Research Content");
