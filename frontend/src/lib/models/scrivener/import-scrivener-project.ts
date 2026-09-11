@@ -71,6 +71,19 @@
  * `projectRoot` that already existed (necessarily empty, since a non-empty
  * one is refused above) is always left untouched.
  *
+ * ## FR-23: no leftover indexing (Task 19)
+ *
+ * The whole write phase (steps 3-9) runs inside {@link withIndexingSuspended}
+ * (`indexer-queue.ts`), so every `enqueueIndex` call `writeSidecar` makes
+ * during this run — one per resource/sidecar write — is a genuine no-op:
+ * `isStopped` is forced `true` for the duration, which `enqueueIndex` checks
+ * at its own top before doing any queueing, indexing, or watcher-start. The
+ * only indexing work this run ever performs is step 9's FR-11
+ * rebuild-from-scratch pass, after the suspension has already ended. Because
+ * nothing is ever actually enqueued, the FR-22 cleanup path above no longer
+ * needs to drain the indexer queue before removing a partially-written
+ * `projectRoot` — there is nothing in flight to race against.
+ *
  * ## Metadata-schema group choice
  *
  * `DEFAULT_METADATA_SCHEMA` (`default-metadata-schema.ts`) has exactly two
@@ -102,7 +115,7 @@ import { createFolderResource, createTextResource } from "../resource-factory";
 import { writeResourceToFile } from "../resource-persistence";
 import { writeRevision } from "../revision";
 import { addField, addGroup } from "../metadata-schema";
-import { flushIndexer } from "../indexer-queue";
+import { withIndexingSuspended } from "../indexer-queue";
 import { createTag, assignTagToResource } from "../tags";
 import { updateFeatureConfig } from "../project-features";
 import { readSidecar } from "../sidecar";
@@ -281,6 +294,36 @@ export async function importScrivenerProject(
   let currentPhase: (typeof ORCHESTRATION_PHASES)[number] =
     ORCHESTRATION_PHASES[0];
   try {
+    // FR-23 (Task 19): suspend GetWrite's normal background
+    // indexing/backlinks-watcher machinery for the whole write phase.
+    // `writeSidecar`'s `enqueueIndex` calls made during this run become
+    // genuine no-ops (see `indexer-queue.ts`'s `isStopped` check at the top
+    // of `enqueueIndex`), so the FR-11 rebuild below is the only indexing
+    // work this run ever performs. Process-wide by design — see
+    // `withIndexingSuspended`'s own doc comment for why that is safe here
+    // (one-shot CLI import) and not in the long-running server.
+    return await withIndexingSuspended(async () => {
+      return await runWritephase();
+    });
+  } catch (err) {
+    const originalMessage = err instanceof Error ? err.message : String(err);
+    const wrapped = new Error(
+      `Scrivener import failed during orchestration phase "${currentPhase}": ${originalMessage}`,
+      { cause: err },
+    );
+    // FR-22: only remove projectRoot when this run created it; a
+    // pre-existing (necessarily empty, per the up-front refusal above)
+    // projectRoot is left completely untouched.
+    if (!projectRootExistedBeforeRun) {
+      await rm(projectRoot, { recursive: true, force: true }).catch(() => {
+        // Best-effort cleanup: the original error is what matters to the
+        // caller either way.
+      });
+    }
+    throw wrapped;
+  }
+
+  async function runWritephase(): Promise<ImportScrivenerProjectResult> {
     // ── Destination project ────────────────────────────────────────────────
     const projectName =
       options.name ?? path.basename(scrivPath).replace(/\.scriv$/i, "");
@@ -474,30 +517,6 @@ export async function importScrivenerProject(
       tagCount: realTagIdByPlanTagId.size,
       report,
     };
-  } catch (err) {
-    const originalMessage = err instanceof Error ? err.message : String(err);
-    const wrapped = new Error(
-      `Scrivener import failed during orchestration phase "${currentPhase}": ${originalMessage}`,
-      { cause: err },
-    );
-    // FR-22: only remove projectRoot when this run created it; a
-    // pre-existing (necessarily empty, per the up-front refusal above)
-    // projectRoot is left completely untouched.
-    if (!projectRootExistedBeforeRun) {
-      // The partial write already in progress may have scheduled
-      // fire-and-forget background indexing (`sidecar.ts`'s `writeSidecar`
-      // enqueues via `setImmediate`, independent of this catch block's own
-      // execution). Draining it first avoids a transient `ENOTEMPTY` from
-      // racing this removal against a background write still in flight;
-      // this is a narrow, targeted drain for this cleanup path only, not a
-      // suspension of indexing for the whole run (that is FR-23 / Task 19).
-      await flushIndexer();
-      await rm(projectRoot, { recursive: true, force: true }).catch(() => {
-        // Best-effort cleanup: the original error is what matters to the
-        // caller either way.
-      });
-    }
-    throw wrapped;
   }
 }
 

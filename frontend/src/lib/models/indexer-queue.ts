@@ -398,6 +398,22 @@ export function flushIndexer(timeout = 5000): Promise<void> {
 export const waitForDrain = flushIndexer;
 
 /**
+ * Stops any currently-recorded backlink watcher, the same cleanup
+ * {@link shutdownIndexer} performs. Factored out so {@link withIndexingSuspended}
+ * can share it without going through the whole shutdown/flush sequence.
+ */
+function stopAllBacklinkWatchers(): void {
+  for (const stop of activeBacklinkWatchers.values()) {
+    try {
+      stop();
+    } catch {
+      // ignore individual watcher errors
+    }
+  }
+  activeBacklinkWatchers.clear();
+}
+
+/**
  * Gracefully shuts down the indexer queue. Stops accepting new tasks,
  * waits for any in-flight or queued tasks to finish (up to `timeoutMs`),
  * and stops all backlinks watchers started by this module.
@@ -410,14 +426,39 @@ export async function shutdownIndexer(timeoutMs = 5000): Promise<void> {
   try {
     await flushIndexer(timeoutMs);
   } finally {
-    for (const stop of activeBacklinkWatchers.values()) {
-      try {
-        stop();
-      } catch {
-        // ignore individual watcher errors during shutdown
-      }
-    }
-    activeBacklinkWatchers.clear();
+    stopAllBacklinkWatchers();
+  }
+}
+
+/**
+ * Runs `fn` with the module-level `isStopped` flag forced to `true`, so every
+ * {@link enqueueIndex} call made during `fn` short-circuits to a no-op (no
+ * queueing, no indexing, no watcher-start — see `enqueueIndex`'s own
+ * `isStopped` check at its top) and any backlink watcher already running is
+ * stopped for the duration. The prior `isStopped` value is restored once
+ * `fn` settles, whether it resolves or rejects — this is a *suspend*, not a
+ * `shutdownIndexer`: the `queue` array and `pendingEntityRescans` are left
+ * completely untouched, and `enqueueIndex`/`enqueueEntityRescan`/
+ * `shutdownIndexer`'s behavior when not suspended is unaffected.
+ *
+ * `isStopped` is process-wide module state, so this suspension affects the
+ * *entire process* for its duration — safe for a one-shot CLI import (Task
+ * 19 / FR-23), where nothing else in the process is relying on indexing
+ * concurrently, but **must not** be used from the long-running Next.js
+ * server process, where other requests could be indexing concurrently and
+ * would be silently starved. A future UI-driven import (Feature 43) will
+ * need a different, non-process-wide suspension mechanism.
+ */
+export async function withIndexingSuspended<T>(
+  fn: () => Promise<T>,
+): Promise<T> {
+  const previousIsStopped = isStopped;
+  isStopped = true;
+  try {
+    return await fn();
+  } finally {
+    stopAllBacklinkWatchers();
+    isStopped = previousIsStopped;
   }
 }
 
@@ -446,5 +487,6 @@ const indexerQueue = {
   waitForDrain,
   shutdownIndexer,
   installShutdownHooks,
+  withIndexingSuspended,
 };
 export default indexerQueue;
