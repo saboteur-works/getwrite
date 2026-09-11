@@ -140,7 +140,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 2
 **Notes:** This is FR-22, FR-23, and FR-24's entire scope.
 **POS:** task_93c98567
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Full verification pass
 **What:** Runs `pnpm typecheck`, `pnpm lint`, and `pnpm test:ci` from `frontend/`, and `pnpm knip` from the repo root, against the complete branch including Tasks 10-14. Fixes any failure traceable to this feature's own changes; does not silence or configure around a pre-existing, unrelated failure already on `main`. This includes fixing the two `'_entityKind'`/`'_aliases' is assigned a value but never used` lint warnings at `frontend/components/Sidebar/RemoveEntityControl.tsx:55` (`withoutEntityFields`), introduced by commit `5b52c304` (Task 12) — restructure `withoutEntityFields` so no unused binding is created; do not disable the lint rule.
