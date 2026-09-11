@@ -111,7 +111,7 @@ FR-25: `clearKeys`, wherever it is accepted (the sidecar route body and `updateS
 
 FR-21: Verification for this feature MUST include at least one test per cleared-field path (Remove Entity's `entityKind`+`aliases` clear, and the existing field-clearing path's `entityKind` clear) that exercises the real persistence path — the route handler or `updateSidecarCore` running against a temp-directory or in-memory-adapter project — and then reads the persisted sidecar back off that adapter to assert the key is absent. A test that instead asserts the shape of a payload passed to a mocked `updateSidecar` MUST NOT be treated as satisfying this requirement, since such a test passed while the underlying defect (FR-4's measurement) was present. This coverage MUST include both the HTTP entry point and the native transport's entry point, so a divergence between the two runtimes is caught rather than assumed away. [US-1]
 
-FR-22: The Remove Entity control's accessible name MUST match its visible label text ("Remove Entity") rather than being overridden by a separate `aria-label`. The component's Storybook stories MUST pass under `pnpm test-storybook`, and the addon-a11y results for those stories MUST be reviewed as part of verifying this requirement, not merely the play functions completing without throwing. [US-3]
+FR-22: The Remove Entity control's accessible name MUST match its visible label text ("Remove Entity") rather than being overridden by a separate `aria-label`. The component's Storybook stories MUST pass under `pnpm test-storybook`, and the addon-a11y results for those stories MUST be reviewed as part of verifying this requirement, not merely the play functions completing without throwing. The bar this requirement sets is no addon-a11y violation attributable to `RemoveEntityControl.tsx` or the other files this feature touches; the shared-token `color-contrast` violations measured on `text-gw-secondary` and on `ConfirmDialog`'s destructive confirm button (see the Amendment note's third-pass measurement) originate in shared design-system tokens and the pre-existing `ConfirmDialog` component, are out of scope for this requirement, and are tracked by a separate follow-up task instead. [US-3]
 
 FR-23: The keep/delete checkbox's (FR-18) accessible name MUST be derived from its associated `<label>` element rather than from an `aria-label` that overrides it, so that the count-bearing label text FR-18 requires ("Also delete N relationship(s) involving this entity") is what assistive technology actually announces. [US-2][US-3]
 
@@ -197,6 +197,29 @@ established by a follow-up experiment:
   for this state passed only because it mocked `listEntityRelationships` to
   reject, which the real transports never do.
 - Owner decision at Gate 5 (2026-09-10): option (a) — fix it. See FR-26.
+
+### Third-pass measurement (Stage 5, 2026-09-10)
+
+- Measured by the orchestrator: with `.storybook/preview.tsx`'s `a11y.test`
+  temporarily set to `"error"` (reverted, never committed), all five
+  `RemoveEntityControl` stories report a `color-contrast` violation, and
+  `ConfirmDialog.stories.tsx` reports the identical two violations:
+  `text-gw-secondary` description/error text (4.01) and `ConfirmDialog`'s
+  `destructive` confirm button on `border-gw-red-border` (4.14); WCAG AA
+  normal text needs 4.5.
+- Measured independently by the lead from the token values in
+  `frontend/styles/` using the WCAG relative-luminance formula:
+  `text-gw-secondary` on `gw-chrome` (the Dialog content background) = 4.02
+  light (`#7a7870` on `#f5f4f0`), 3.40 dark (`#6a6864` on `#111110`); `#d44040`
+  red on `gw-chrome` = 4.14 in both themes. These are shared design-system
+  tokens / the shared `ConfirmDialog` component, not introduced by this
+  feature's files; the dialog's own description/error text inherits
+  `text-gw-secondary`.
+- Owner decision at Gate 5 (2026-09-10): option 1 — scope Task 14's
+  accessibility bar to violations attributable to this feature's own files;
+  record the shared-token contrast failures as a separate follow-up (tracked
+  in the task tracker as its own task, outside this feature) rather than
+  fixed here. See FR-22.
 
 ## Open questions
 
