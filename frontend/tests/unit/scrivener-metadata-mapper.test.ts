@@ -48,6 +48,11 @@ describe("buildMetadataPlan — Status (FR-6)", () => {
     const plan = buildMetadataPlan(await loadFixture());
     const values = plan.resourceUserMetadata.get(OLD_DRAFT_UUID);
     expect(values?.status).toBeUndefined();
+
+    const skip = plan.valueSkips.find((s) => s.sourceUuid === OLD_DRAFT_UUID);
+    expect(skip).toBeDefined();
+    expect(skip?.itemTitle).toBe("Old Draft");
+    expect(skip?.reason.length).toBeGreaterThan(0);
   });
 });
 
@@ -114,10 +119,83 @@ describe("buildMetadataPlan — CustomMetaData (FR-7)", () => {
     // FR-18: Chapter Two's Deadline value now carries the sub-second-
     // precision Date shape as measured off the real project.
     expect(values![deadlineKey]).toBe("2026-12-01 09:30:00.12345 +0000");
-    // FR-18: a List-type value now stores the ListOptions/Option id
+    // FR-18/FR-20: a List-type value stores the ListOptions/Option id
     // ("OPT-PROTAG"), never the option's display text — the importer must
     // resolve the id to "Protagonist" via CustomMetaDataSettings.
     expect(values![povCharacterKey]).toBe("Protagonist");
+    expect(plan.valueSkips.some((s) => s.sourceUuid === CHAPTER_TWO_UUID)).toBe(
+      false,
+    );
+  });
+
+  it("FR-20: records an FR-8 skip for a List field value whose Option@ID has no matching ListOptions entry", async () => {
+    const parsed = await loadFixture();
+    const synthetic: ScrivxParsed = {
+      ...parsed,
+      binder: [
+        {
+          uuid: "synthetic-list-item",
+          type: "Text",
+          title: "Untracked Cast Member",
+          metaData: {
+            customMetaData: [{ fieldId: "CMD3", value: "OPT-UNKNOWN" }],
+          },
+          keywordIds: [],
+          children: [],
+        },
+        ...parsed.binder,
+      ],
+    };
+
+    const plan = buildMetadataPlan(synthetic);
+
+    const povCharacterKey = plan.customFields.find(
+      (f) => f.label === "POV Character",
+    )!.key;
+    const values = plan.resourceUserMetadata.get("synthetic-list-item");
+    expect(values?.[povCharacterKey]).toBeUndefined();
+
+    const skip = plan.valueSkips.find(
+      (s) => s.sourceUuid === "synthetic-list-item",
+    );
+    expect(skip).toBeDefined();
+    expect(skip?.itemTitle).toBe("Untracked Cast Member");
+    expect(skip?.reason.length).toBeGreaterThan(0);
+  });
+
+  it("FR-20: records an FR-8 skip for a Date field value matching neither measured shape", async () => {
+    const parsed = await loadFixture();
+    const synthetic: ScrivxParsed = {
+      ...parsed,
+      binder: [
+        {
+          uuid: "synthetic-date-item",
+          type: "Text",
+          title: "Malformed Deadline Doc",
+          metaData: {
+            customMetaData: [{ fieldId: "CMD2", value: "not-a-date" }],
+          },
+          keywordIds: [],
+          children: [],
+        },
+        ...parsed.binder,
+      ],
+    };
+
+    const plan = buildMetadataPlan(synthetic);
+
+    const deadlineKey = plan.customFields.find(
+      (f) => f.label === "Deadline",
+    )!.key;
+    const values = plan.resourceUserMetadata.get("synthetic-date-item");
+    expect(values?.[deadlineKey]).toBeUndefined();
+
+    const skip = plan.valueSkips.find(
+      (s) => s.sourceUuid === "synthetic-date-item",
+    );
+    expect(skip).toBeDefined();
+    expect(skip?.itemTitle).toBe("Malformed Deadline Doc");
+    expect(skip?.reason.length).toBeGreaterThan(0);
   });
 
   // FR-18: the second measured Date shape (no sub-second precision, same

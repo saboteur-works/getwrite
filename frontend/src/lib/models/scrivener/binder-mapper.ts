@@ -147,6 +147,20 @@ export interface ImportPlanNote {
 }
 
 /**
+ * A single binder item that had no `<Title>` element and was imported under
+ * a generated fallback name (FR-19, OQ-10). Field names mirror
+ * `ImportReportResearchItem`/`ImportReportExcludedOtherItem`'s
+ * `itemTitle`/`binderPath` shape so a later task can flow this list straight
+ * into the FR-9 report.
+ */
+export interface ImportPlanUntitledFallback {
+  /** The fallback name actually used ("Untitled", "Untitled 2", ...). */
+  readonly itemTitle: string;
+  /** This item's position in the binder, using the fallback name for its own segment. */
+  readonly binderPath: string;
+}
+
+/**
  * The full ordered, path-aware import plan `mapBinderToImportPlan` returns.
  */
 export interface ScrivenerImportPlan {
@@ -160,6 +174,8 @@ export interface ScrivenerImportPlan {
   readonly nonTextResearch: readonly ImportPlanNonTextResearchItem[];
   /** Any root-level title-collision suffixing performed (see module doc), for the FR-9 report. */
   readonly notes: readonly ImportPlanNote[];
+  /** Every binder item imported under a generated "Untitled" fallback name (FR-19), for the FR-9 report. */
+  readonly untitledFallbacks: readonly ImportPlanUntitledFallback[];
 }
 
 /**
@@ -173,8 +189,25 @@ interface PlanBuilder {
   readonly excluded: ImportPlanExcludedItem[];
   readonly nonTextResearch: ImportPlanNonTextResearchItem[];
   readonly notes: ImportPlanNote[];
+  readonly untitledFallbacks: ImportPlanUntitledFallback[];
   /** Names already used by a root-level (project-root) plan folder/resource, for the collision check. */
   readonly rootNames: Set<string>;
+}
+
+/**
+ * FR-19/OQ-10: computes each item's display title, replacing a missing
+ * `<Title>` (`item.title === ""`) with a fallback name — "Untitled",
+ * "Untitled 2", "Untitled 3", ... — de-duplicated only among the *other*
+ * items in this same sibling list that also lack a title, in binder order.
+ * An item that has a title is returned unchanged.
+ */
+function resolveSiblingTitles(items: readonly ScrivxBinderItem[]): string[] {
+  let untitledCount = 0;
+  return items.map((item) => {
+    if (item.title !== "") return item.title;
+    untitledCount += 1;
+    return untitledCount === 1 ? "Untitled" : `Untitled ${untitledCount}`;
+  });
 }
 
 /**
@@ -199,18 +232,22 @@ export async function mapBinderToImportPlan(
     excluded: [],
     nonTextResearch: [],
     notes: [],
+    untitledFallbacks: [],
     rootNames: new Set<string>(),
   };
 
   let rootOrderIndex = 0;
+  const rootTitles = resolveSiblingTitles(parsed.binder);
 
-  for (const item of parsed.binder) {
+  for (let i = 0; i < parsed.binder.length; i++) {
+    const item = parsed.binder[i];
+    const resolvedTitle = rootTitles[i];
     switch (item.type) {
       case "DraftFolder":
         rootOrderIndex = await mapChildren(
           item.children,
           null,
-          item.title,
+          resolvedTitle,
           false,
           rootOrderIndex,
           packageDir,
@@ -227,12 +264,12 @@ export async function mapBinderToImportPlan(
           parentId: null,
           orderIndex: rootOrderIndex++,
           sourceUuid: null,
-          binderPath: item.title,
+          binderPath: resolvedTitle,
         });
         await mapChildren(
           item.children,
           folderId,
-          item.title,
+          resolvedTitle,
           true,
           0,
           packageDir,
@@ -242,14 +279,19 @@ export async function mapBinderToImportPlan(
       }
 
       case "TrashFolder":
-        collectExcludedDescendants(item.children, item.title, "trash", builder);
+        collectExcludedDescendants(
+          item.children,
+          resolvedTitle,
+          "trash",
+          builder,
+        );
         break;
 
       case "Other":
-        recordExcludedOther(item, item.title, builder, false);
+        recordExcludedOther(item, resolvedTitle, builder, false);
         collectExcludedDescendants(
           item.children,
-          item.title,
+          resolvedTitle,
           "other-type",
           builder,
         );
@@ -260,11 +302,17 @@ export async function mapBinderToImportPlan(
         // FR-17: every other top-level binder item becomes its own
         // top-level GetWrite folder/resource (same FR-3/FR-13 rules as
         // everywhere else), preserving hierarchy.
-        const resolvedName = resolveRootCollision(item.title, builder);
+        const resolvedName = resolveRootCollision(resolvedTitle, builder);
+        if (item.title === "") {
+          builder.untitledFallbacks.push({
+            itemTitle: resolvedName,
+            binderPath: resolvedTitle,
+          });
+        }
         rootOrderIndex = await mapSingleItem(
           item,
           null,
-          item.title,
+          resolvedTitle,
           rootOrderIndex,
           false,
           packageDir,
@@ -282,6 +330,7 @@ export async function mapBinderToImportPlan(
     excluded: builder.excluded,
     nonTextResearch: builder.nonTextResearch,
     notes: builder.notes,
+    untitledFallbacks: builder.untitledFallbacks,
   };
 }
 
@@ -303,8 +352,11 @@ async function mapChildren(
   builder: PlanBuilder,
 ): Promise<number> {
   let orderIndex = startOrderIndex;
-  for (const item of items) {
-    const binderPath = `${binderPathPrefix}/${item.title}`;
+  const titles = resolveSiblingTitles(items);
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const resolvedTitle = titles[i];
+    const binderPath = `${binderPathPrefix}/${resolvedTitle}`;
     if (item.type === "Other") {
       recordExcludedOther(item, binderPath, builder, inResearch);
       collectExcludedDescendants(
@@ -315,6 +367,9 @@ async function mapChildren(
       );
       continue;
     }
+    if (item.title === "") {
+      builder.untitledFallbacks.push({ itemTitle: resolvedTitle, binderPath });
+    }
     orderIndex = await mapSingleItem(
       item,
       parentId,
@@ -323,6 +378,7 @@ async function mapChildren(
       inResearch,
       packageDir,
       builder,
+      resolvedTitle,
     );
   }
   return orderIndex;

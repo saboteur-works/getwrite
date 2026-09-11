@@ -163,6 +163,26 @@ describe("mapBinderToImportPlan — Task 1 fixture", () => {
     });
   });
 
+  it("FR-19: an untitled Research item ('CCCCCCCC...') imports under the fallback name 'Untitled'", async () => {
+    const parsed = await parseScrivxFile(FIXTURE_PATH);
+    const plan = await mapBinderToImportPlan(parsed, FIXTURE_PATH);
+
+    const research = findFolder(plan, "Research", null);
+    expect(research).toBeDefined();
+
+    const untitled = plan.resources.find(
+      (r) => r.sourceUuid === "CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCCC",
+    );
+    expect(untitled).toBeDefined();
+    expect(untitled?.name).toBe("Untitled");
+    expect(untitled?.parentId).toBe(research!.id);
+
+    expect(plan.untitledFallbacks).toContainEqual({
+      itemTitle: "Untitled",
+      binderPath: "Research/Untitled",
+    });
+  });
+
   it("assigns every planned folder a distinct plan-local id and a parentId chain, not slug-matched identity", async () => {
     const parsed = await parseScrivxFile(FIXTURE_PATH);
     const plan = await mapBinderToImportPlan(parsed, FIXTURE_PATH);
@@ -302,6 +322,53 @@ describe("mapBinderToImportPlan — synthetic binder trees", () => {
     expect(plan.notes).toHaveLength(1);
     expect(plan.notes[0]?.message).toContain('"Archive"');
     expect(plan.notes[0]?.message).toContain('"Archive (2)"');
+  });
+
+  it("FR-19: de-duplicates 'Untitled' among untitled siblings in binder order, counting only siblings under the same parent", async () => {
+    const parsed = parsedFrom([
+      draftFolderItem("Manuscript", [
+        textLeaf("titled-1", "Chapter One"),
+        textLeaf("untitled-1", ""),
+        textLeaf("untitled-2", ""),
+        folderItem("untitled-folder-1", "", [
+          textLeaf("nested-untitled-1", ""),
+        ]),
+        textLeaf("untitled-3", ""),
+      ]),
+    ]);
+
+    const plan = await mapBinderToImportPlan(parsed, SCRIVX_PATH);
+
+    expect(
+      plan.resources.find((r) => r.sourceUuid === "untitled-1")?.name,
+    ).toBe("Untitled");
+    expect(
+      plan.resources.find((r) => r.sourceUuid === "untitled-2")?.name,
+    ).toBe("Untitled 2");
+    expect(
+      plan.folders.find((f) => f.sourceUuid === "untitled-folder-1")?.name,
+    ).toBe("Untitled 3");
+    expect(
+      plan.resources.find((r) => r.sourceUuid === "untitled-3")?.name,
+    ).toBe("Untitled 4");
+    // The nested untitled item is under a different parent (the untitled
+    // folder), so its own counter restarts at 1 rather than continuing its
+    // ancestor's count.
+    expect(
+      plan.resources.find((r) => r.sourceUuid === "nested-untitled-1")?.name,
+    ).toBe("Untitled");
+
+    expect(plan.resources.find((r) => r.sourceUuid === "titled-1")?.name).toBe(
+      "Chapter One",
+    );
+
+    expect(plan.untitledFallbacks).toEqual([
+      { itemTitle: "Untitled", binderPath: "Manuscript/Untitled" },
+      { itemTitle: "Untitled 2", binderPath: "Manuscript/Untitled 2" },
+      { itemTitle: "Untitled 3", binderPath: "Manuscript/Untitled 3" },
+      { itemTitle: "Untitled", binderPath: "Manuscript/Untitled 3/Untitled" },
+      { itemTitle: "Untitled 4", binderPath: "Manuscript/Untitled 4" },
+    ]);
   });
 
   it("does not record a note or rename anything when there is no root-level collision", async () => {
