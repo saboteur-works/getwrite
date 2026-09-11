@@ -90,7 +90,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 1
 **Notes:** Final gate before the feature is considered complete. No task in this list measures or claims a performance characteristic of any read or write path introduced here.
 **POS:** task_1be36ade
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 9
