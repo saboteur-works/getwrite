@@ -290,11 +290,159 @@ unused-export warnings from `frontend/src/lib/models/scrivener/` or the
 **POS:** task_39e4a136
 **Done:** [x]
 
-### Task 11: Manual verification against the private sample project
+### Task 11: Rebuild the fixture to the measured real-project shapes
+
+**What:** Rebuild `sample.scrivx` (and any fixture files it references) to
+the element shapes recorded in `scrivener-format.md` (FR-18), replacing the
+guessed shapes the fixture previously used, and add the newly measured
+edge cases FR-18 now requires.
+**Files:** `frontend/tests/fixtures/scrivener/sample.scriv/sample.scrivx`,
+`frontend/tests/fixtures/scrivener/sample.scriv/Files/Data/<uuid>/*`,
+`frontend/tests/unit/scrivener-scrivx-parser.test.ts`,
+`frontend/tests/unit/scrivener-binder-mapper.test.ts`,
+`frontend/tests/unit/scrivener-metadata-mapper.test.ts`,
+`frontend/tests/integration/scrivener-import.test.ts`.
+**Done when:** the fixture's `BinderItem`, `Keyword`, `MetaDataField`,
+`LabelSettings`, and `StatusSettings` names come from a child `<Title>`
+element (never a `Title` attribute); per-document custom metadata uses
+`CustomMetaData/MetaDataItem/FieldID` + `.../Value` (never an `ID`
+attribute on `MetaDataItem`); project-level custom field definitions live
+under `CustomMetaDataSettings/MetaDataField` (`@ID`/`@Type`/`@Align`/
+`@DateType`/`@Wraps`, child `<Title>`, and `ListOptions/Option@ID` for the
+`List`-type field); per-document keywords use `Keywords/KeywordID`; Label
+and Status names are element text, not attributes. The fixture additionally
+includes: a `Text` binder item with no `<Title>` element at all; a `List`
+custom field whose document value is an `Option@ID` (not option text); two
+`Date` custom field values, one in each measured shape
+(`YYYY-MM-DD HH:MM:SS.fffff ±HHMM` and `YYYY-MM-DD HH:MM:SS ±HHMM`); and a
+document with `StatusID` `-1`. All prior FR-12/FR-13/FR-15 fixture cases
+(nested Folder-with-content.rtf, Text-with-children, same-leaf-name
+keyword merge, etc.) are preserved in the rebuilt fixture. Existing tests
+in the four listed files are updated to assert against the new shapes and
+pass.
+**Depends on:** none
+**Estimate:** 5
+**POS:** task_49aed81c
+**Done:** [ ]
+
+### Task 12: Fix `.scrivx` parser to the real element shapes, with recoverable fragment errors
+
+**What:** Rewrite `scrivx-parser.ts`/`scrivx-types.ts` to read the FR-18
+shapes and to collect malformed/unexpected fragments as reported skips
+(FR-8) instead of throwing and aborting the run.
+**Files:** `frontend/src/lib/models/scrivener/scrivx-parser.ts`,
+`frontend/src/lib/models/scrivener/scrivx-types.ts`,
+`frontend/tests/unit/scrivener-scrivx-parser.test.ts`.
+**Done when:** the parser reads titles from child `<Title>` elements
+(binder items, keywords, metadata fields, Label/Status settings); reads
+per-document custom metadata from `CustomMetaData/MetaDataItem/FieldID` +
+`.../Value`; reads project-level field definitions from
+`CustomMetaDataSettings/MetaDataField` (including `ListOptions/Option@ID`
+for List-type fields); reads per-document keywords from
+`Keywords/KeywordID`; reads Label/Status names from element text. A
+`MetaDataItem` missing `FieldID` or `Value`, or any other malformed or
+unexpected element the parser encounters while walking the tree, is
+collected into a `fragmentErrors`/`skips` list on the parse result (item
+title or binder path, and a reason) rather than thrown, so parsing
+continues past it — the parser's public entry point only throws for an
+unreadable or non-XML `.scrivx` file. Tests cover: the Task 11 fixture
+parses cleanly with the new shapes; a synthetic `.scrivx` variant with a
+`MetaDataItem` missing `FieldID` parses successfully with that item
+recorded as a skip rather than throwing; a fully malformed/non-XML
+`.scrivx` still throws.
+**Depends on:** 11
+**Estimate:** 8
+**POS:** task_0ac3e8a3
+**Done:** [ ]
+
+### Task 13: Fix binder-mapper (untitled fallback) and metadata-mapper (Option→text, date parsing, recoverable errors)
+
+**What:** Implements FR-19 (untitled fallback naming) in the binder mapper,
+and FR-20 (List `Option@ID`→text resolution, both Date shapes) plus
+recoverable per-value errors (FR-8) in the metadata mapper.
+**Files:** `frontend/src/lib/models/scrivener/binder-mapper.ts`,
+`frontend/src/lib/models/scrivener/metadata-mapper.ts`,
+`frontend/tests/unit/scrivener-binder-mapper.test.ts`,
+`frontend/tests/unit/scrivener-metadata-mapper.test.ts`.
+**Done when:** `mapBinderToImportPlan` gives a `<Title>`-less binder item
+the fallback name "Untitled", de-duplicated among siblings lacking a title
+by an appended counter ("Untitled", "Untitled 2", …) in binder order, and
+records each fallback-named item (name used, binder path) in a form the
+Task 6 report builder can consume; `buildMetadataPlan` resolves a List
+field's per-document `Option@ID` to that option's text before writing
+`userMetadata.<fieldKey>`, treating an unresolvable ID as a recorded FR-8
+skip for that value rather than a thrown error; it parses both measured
+Date shapes, treating an unparseable value as a recorded FR-8 skip for
+that value; a `StatusID` of `-1` (or any `StatusID` with no matching
+`Status@ID`) resolves via the same recorded-skip path rather than
+throwing. Tests exercise the Task 11 fixture's untitled item, its
+Option@ID list value (asserting resolved text, not the raw ID), both date
+shapes, and the `-1` status value.
+**Depends on:** 12
+**Estimate:** 8
+**POS:** task_f212cf59
+**Done:** [ ]
+
+### Task 14: Wire recoverable skips into the report and RTF converter fixes
+
+**What:** Threads the Task 12/13 recoverable-skip lists through
+`import-report.ts` and the orchestrator (FR-8, FR-9, FR-19), and fixes the
+RTF converter's text-fidelity gaps (FR-14 amendment): the special-character
+mapping, `hardBreak` for `\line`, list-item text handling, super/subscript
+reporting, and the layout-word silent-ignore list.
+**Files:** `frontend/src/lib/models/scrivener/import-report.ts`,
+`frontend/src/lib/models/scrivener/import-scrivener-project.ts`,
+`frontend/src/lib/models/scrivener/rtf-to-tiptap.ts`,
+`frontend/tests/unit/scrivener-import-report.test.ts`,
+`frontend/tests/unit/scrivener-rtf-to-tiptap.test.ts`,
+`frontend/tests/integration/scrivener-import.test.ts`.
+**Done when:** `buildImportReport` gains an "Untitled fallback names" entry
+(FR-19) and folds Task 12/13's recoverable skips into its existing FR-8
+skip list (no separate never-reported category); the orchestrator no longer
+aborts on a `.scrivx` fragment error and instead surfaces it through the
+report. `convertRtfToTiptap` converts `\emdash`→"—", `\endash`→"–",
+`\lquote`/`\rquote`/`\ldblquote`/`\rdblquote`→‘/’/“/”, `\bullet`→"•",
+`\tab`→a tab character, and `\line`→a TipTap `hardBreak` node (node type
+confirmed at
+`projects/937079b8-83d0-4052-8688-8c3b77499c2b/resources/9f32a555-583f-4824-b272-c3953938f8e2/content.tiptap.json`);
+a list paragraph's item text becomes an ordinary paragraph with the
+`\listtext` marker text discarded, not duplicated; `\super`/`\sub` runs
+keep their text and are added to `droppedFeatures`; the layout-only control
+words named in the FR-14 amendment are consumed silently, producing no
+text, no mark, and no `droppedFeatures` entry; an unknown destination
+(`{\*\…}`) is skipped silently. Tests use synthetic RTF snippets only (one
+per mapped/dropped/ignored control word) plus a re-run of the Task 11
+fixture's `content.rtf` bodies.
+**Depends on:** 13
+**Estimate:** 8
+**POS:** task_986df71a
+**Done:** [ ]
+
+### Task 15: Re-run the gate
+
+**What:** Confirms the full test/typecheck/knip gate is green after Tasks
+11–14 land.
+**Files:** none (verification only).
+**Done when:** `pnpm --filter getwrite-frontend exec vitest run
+scrivener-scrivx-parser scrivener-rtf-to-tiptap scrivener-binder-mapper
+scrivener-metadata-mapper scrivener-import-report
+scrivener-apply-document-metadata scrivener-import` and `pnpm --filter
+getwrite-frontend typecheck` both pass; `pnpm --filter getwrite-cli test`
+and `pnpm --filter getwrite-cli typecheck` both pass; `pnpm knip` (repo
+root) reports no new unused-export warnings from
+`frontend/src/lib/models/scrivener/` or `core.ts`.
+**Depends on:** 14
+**Estimate:** 2
+**POS:** task_74d187f0
+**Done:** [ ]
+
+### Task 16: Manual verification against the private sample project
 
 **What:** A human/lead-run, non-automated check of the shipped command
 against the real, private sample project, to catch anything the synthetic
-fixture doesn't surface.
+fixture doesn't surface. (Renumbered from Task 11 to Task 16 so its
+dependency on the fix-pass tasks satisfies task-list ordering; its POS id
+and scope are otherwise unchanged from the original Task 11.)
 **Files:** none tracked — operates only on the gitignored
 `import-inputs/The SF Sideshow.scriv`.
 **Done when:** a human/lead runs `getwrite-cli project import-scrivener
@@ -307,18 +455,22 @@ CustomMetaData all carried over plausibly; the report correctly lists the
 three `Other` items, the Trash content, and any snapshot history; and the
 source `.scriv` directory is byte-for-byte unmodified afterward. No content
 or structure from this sample project is copied into any repository fixture
-or test file as a result of this task.
-**Depends on:** 9
+or test file as a result of this task. Per FR-21, this run MUST complete
+successfully (exit 0, a report written) — this is the Stage-6.5-style
+acceptance requirement, verified by the lead, not by an automated test.
+**Depends on:** 15
 **Estimate:** 2
 **Notes:** Manual/exploratory — not part of the automated suite, and not a
-gate for Task 10.
+gate for Task 10 or Task 15. It now depends on the full Task 11–15 fix pass
+landing first, since the real project previously aborted mid-run against
+the pre-fix parser.
 **POS:** task_5b75a0d2
 **Done:** [ ]
 
 ## Summary
-- Total tasks: 11
-- Total estimated effort: 52 points
-- Critical path: Tasks 1 → 2 → 4 → 8 → 9 → 10
+- Total tasks: 16
+- Total estimated effort: 83 points
+- Critical path: Tasks 1 → 2 → 4 → 8 → 9 → 11 → 12 → 13 → 14 → 15 → 16
 - Risks: Task 3 (RTF→TipTap) and Task 4 (binder mapper) are the two largest
   and most novel units — Task 3 has no existing converter to model beyond
   `plainTextToTiptap`'s mark-free baseline, and Task 4 must get the FR-13
@@ -326,12 +478,19 @@ gate for Task 10.
   point both nesting shapes are exercised end to end. Task 8 is a wide
   integration point depending on five prior tasks (3, 4, 5, 6, 7); a defect
   surfaced there may require revisiting one of those five rather than being
-  fixable locally. Task 11 depends on access to the private sample project
-  and a human/lead's availability, and is not required for the automated
-  gate (Task 10) to pass.
+  fixable locally. Task 16 (originally Task 11, renumbered for ordering —
+  see its Notes) now depends on the Task 11–15 fix pass landing first,
+  since it previously aborted against the real project; it still depends
+  on access to the private sample project and a human/lead's availability,
+  and is not required for the automated gate (Task 15) to
+  pass. Task 12 (parser rewrite to real shapes, with recoverable-error
+  collection) and Task 13 (List/Date resolution with the same
+  recoverable-error discipline) are the two riskiest fix-pass tasks: both
+  replace throw-on-malformed behavior with skip-and-report, and a missed
+  case in either would reproduce the original real-project failure.
 
 ## Open Questions
 
-None. All open questions on the source feature spec (OQ-1 through OQ-8) are
-recorded there as resolved by owner decision; this task list does not
+None. All open questions on the source feature spec (OQ-1 through OQ-12)
+are recorded there as resolved by owner decision; this task list does not
 reopen or re-answer any of them.

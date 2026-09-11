@@ -133,10 +133,20 @@ a UI wrapper, is Feature 43) and does not touch the source project.
    into `userMetadata.<fieldKey>` on its resource's sidecar. [US-1]
 8. FR-8: When the command encounters content it cannot convert — an RTF
    feature with no GetWrite equivalent, a malformed or unreadable
-   `content.rtf`/`.scrivx` fragment, or a custom-metadata field type with no
-   GetWrite mapping — it MUST skip only that item, continue importing the
-   rest of the project, and record the skip (item title, its binder path,
-   and a reason) for the post-import report. [US-1]
+   `content.rtf`/`.scrivx` fragment, a custom-metadata field type with no
+   GetWrite mapping, a malformed or unexpected `.scrivx` element (e.g. a
+   `MetaDataItem` missing `FieldID` or `Value`), an unresolvable List-field
+   `Option` ID, or an unparseable Date-field value — it MUST skip only that
+   item or value, continue importing the rest of the project, and record the
+   skip (item title, its binder path, and a reason) for the post-import
+   report. This applies uniformly across the whole `.scrivx` tree; a
+   malformed or unexpected fragment anywhere in the file MUST NOT abort the
+   run. Only an unreadable or non-XML `.scrivx` file, or a failed FR-2
+   Creator check, aborts the import (writing nothing to the destination).
+   (Measured 2026-09-11: a real Scrivener 3.5.2 Mac project aborted the
+   command entirely on one `<MetaDataItem>` missing its `ID` attribute — the
+   fixture's synthetic shape, not the real one, per FR-12 — because the
+   parser threw rather than skipped; this amendment closes that gap.) [US-1]
 9. FR-9: On completion, the command MUST write a report file the writer can
    read, listing: (a) every skipped item and reason from FR-8; (b) every
    tag-name merge from FR-15's Keywords import; (c) non-text Research
@@ -191,7 +201,33 @@ a UI wrapper, is Feature 43) and does not touch the source project.
     listed in the FR-9 report as a formatting feature dropped. Any other
     RTF control word encountered MUST be handled per FR-8: kept as plain
     text where safe, otherwise skipped-with-reason. `content.txt` remains
-    plain text with no formatting. (Resolves former OQ-4 and OQ-5.) [US-1]
+    plain text with no formatting. (Resolves former OQ-4 and OQ-5.)
+    Amended 2026-09-11 (owner decision, Gate 5), from a measured run of the
+    converter over all 75 real-project `content.rtf`/`notes.rtf` files that
+    found it silently drops several text-bearing control words. The
+    converter MUST additionally: convert `\emdash` to "—" and `\endash` to
+    "–"; convert `\lquote`, `\rquote`, `\ldblquote`, `\rdblquote` to "‘",
+    "’", "“", "”" respectively; convert `\bullet` to "•"; convert `\tab` to
+    a literal tab character; convert `\line` to a TipTap `hardBreak` node —
+    confirmed as the node type name the editor actually persists on disk
+    (`"type": "hardBreak"` at
+    `projects/937079b8-83d0-4052-8688-8c3b77499c2b/resources/9f32a555-583f-4824-b272-c3953938f8e2/content.tiptap.json`);
+    within a list paragraph (`\listtext`/`\ls`/`\ilvl`), keep the item's own
+    text as an ordinary paragraph and discard the `\listtext` bullet/number
+    marker text itself, which MUST NOT be duplicated into the paragraph's
+    text; and `\super`/`\sub` runs MUST keep their text and be listed in the
+    FR-9 report as dropped formatting (superscript/subscript has no
+    GetWrite mark). Layout-only control words — page size and margins
+    (`\paperw`, `\paperh`, `\margl`, `\margr`, `\margt`, `\margb`),
+    font/charset selection (`\af`, `\loch`, `\hich`, `\dbch`, `\ltrch`), tab
+    stops, paragraph spacing/indents, colour tables, `\partightenfactor`,
+    `\pardirnatural`, and other cocoa-specific control words MUST be
+    recognized and ignored silently: consumed without producing text,
+    without a mark, and without an FR-9 report entry. An unrecognised
+    control word inside a text-bearing destination not covered above
+    remains governed by FR-8 (kept as plain text where safe, otherwise
+    skipped-with-reason and reported). An unknown destination (`{\*\…}`)
+    MUST be skipped silently, with no report entry. [US-1]
 15. FR-15: Scrivener's `LabelID`/color-coded Label MUST be imported as a
     user-defined custom **select** field named "Label" on the destination
     project's metadata schema (`"select"` is an existing field type,
@@ -223,6 +259,56 @@ a UI wrapper, is Feature 43) and does not touch the source project.
     Research folder, preserving hierarchy, using the same conversion rules
     as Draft content (FR-3, FR-13, FR-14). `Type="Other"` items within
     these folders remain excluded per FR-3 and reported per FR-9. [US-1]
+18. FR-18 (added 2026-09-11, owner decision, Gate 5): The `.scrivx` parser
+    and the synthetic fixture (FR-12) MUST conform to the element shapes
+    measured from a real Scrivener 3 Mac project and recorded in
+    `specs/features/scrivener-cli-importer/scrivener-format.md`, which is
+    the authoritative format reference for this importer. Specifically:
+    a `BinderItem`'s, `Keyword`'s, `MetaDataField`'s, `LabelSettings`'s, and
+    `StatusSettings`'s name comes from a child `<Title>` element, never a
+    `Title` attribute; per-document custom metadata is read from
+    `CustomMetaData/MetaDataItem/FieldID` and `.../Value` child elements,
+    never an `ID` attribute on `MetaDataItem`; project-level custom field
+    definitions are read from the project-level `CustomMetaDataSettings`
+    block (`MetaDataField` with `@ID`/`@Type`/`@Align`/`@DateType`/`@Wraps`,
+    child `<Title>`, and — for `List`-type fields — `ListOptions/Option
+    @ID` entries), not from `project["CustomMetaData"]`; per-document
+    keywords are read from `Keywords/KeywordID` child elements; and Label
+    and Status names are read from `Label`/`Status` element text content,
+    not an attribute. This measured shape replaces the guessed shape the
+    fixture and parser previously used (e.g. a `Title` attribute, an `ID`
+    attribute on `MetaDataItem`, and project-level fields under
+    `CustomMetaData`), which does not occur in a real Scrivener 3 project
+    and caused a real-project import to abort. The fixture stays synthetic
+    and hand-built (FR-12 unchanged in that respect) but MUST additionally
+    include: an untitled `Text` item (no `<Title>` element at all); a List
+    field whose document value is an `Option@ID`; both measured Date value
+    shapes (`YYYY-MM-DD HH:MM:SS.fffff ±HHMM` and
+    `YYYY-MM-DD HH:MM:SS ±HHMM`); and a `Status` document value of `-1`.
+    [US-1]
+19. FR-19 (added 2026-09-11, owner decision, Gate 5): A binder item with no
+    `<Title>` element (measured: 15/33 real-project `Text` items) MUST
+    import with the fallback name "Untitled", de-duplicated among its
+    siblings by appending a counter — "Untitled", "Untitled 2",
+    "Untitled 3", and so on, in binder order, counting only siblings under
+    the same parent that also lack a `<Title>`. Every fallback-named item
+    MUST be listed in the FR-9 report (title used, its binder path). [US-1]
+20. FR-20 (added 2026-09-11, owner decision, Gate 5): A List-type custom
+    field's per-document value MUST be resolved from the stored
+    `Option@ID` to that option's text (`ListOptions/Option`, per FR-18)
+    before being written to `userMetadata.<fieldKey>`; an `Option@ID` with
+    no matching `Option` in the field's `ListOptions` is an FR-8 skip for
+    that value. A Date-type custom field's per-document value MUST parse
+    both measured shapes (FR-18); a value matching neither shape is an
+    FR-8 skip for that value. [US-1]
+21. FR-21 (added 2026-09-11, owner decision, Gate 5): Once Tasks 1–15 land,
+    the command MUST be run manually, by the lead, against the owner's
+    private sample project (`import-inputs/The SF Sideshow.scriv`) into a
+    temporary destination outside `projects/`, and MUST complete
+    successfully — exit 0, a report written. This acceptance check is
+    verified by the lead's manual run (task list Task 11), not by an
+    automated test, since the sample is gitignored and reserved for manual
+    verification only (FR-12). [US-1]
 
 ## Open questions
 
@@ -286,6 +372,26 @@ a UI wrapper, is Feature 43) and does not touch the source project.
   `Creator` starts with `SCRMAC-3`; refuse everything else (Windows,
   Scrivener 2, unrecognised) with a clear message, non-zero exit, nothing
   written. — Impact: FR-2.
+- OQ-9 (resolved, 2026-09-11 owner decision, Gate 5, accepted from
+  evidence): the `.scrivx` parser and fixture conform to the real element
+  shapes recorded in `scrivener-format.md` (child `<Title>`,
+  `FieldID`/`Value`, `CustomMetaDataSettings`, `KeywordID`, Label/Status
+  element text, `ListOptions/Option`) rather than the previously-guessed
+  shapes, which caused a real-project import to abort. — Impact: FR-12,
+  FR-18.
+- OQ-10 (resolved, 2026-09-11 owner decision, Gate 5): an untitled binder
+  item (no `<Title>`) gets the fallback name "Untitled", de-duplicated
+  among siblings lacking a title by an appended counter in binder order,
+  and is listed in the FR-9 report. — Impact: FR-19.
+- OQ-11 (resolved, 2026-09-11 owner decision, Gate 5): List-field values
+  resolve from `Option@ID` to option text before being written; an
+  unresolvable ID is an FR-8 skip. Date values parse both measured shapes;
+  an unparseable date is an FR-8 skip. — Impact: FR-20.
+- OQ-12 (resolved, 2026-09-11 owner decision, Gate 5): a malformed or
+  unexpected `.scrivx` element or attribute (anywhere in the file, not
+  just `CustomMetaData`) is an FR-8 skip of the affected item/value only;
+  it MUST NOT abort the import. Only an unreadable/non-XML `.scrivx` or a
+  failed FR-2 Creator check aborts. — Impact: FR-8.
 
 ## Out of scope (deferred)
 
