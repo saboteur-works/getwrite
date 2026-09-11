@@ -52,8 +52,10 @@ function withEntityRemoved(resource: AnyResource): AnyResource {
  * an `undefined`-valued key surviving to the request body.
  */
 function withoutEntityFields(resource: AnyResource): AnyResource {
-  const { entityKind: _entityKind, aliases: _aliases, ...rest } = resource;
-  return rest as AnyResource;
+  const rest: AnyResource = { ...resource };
+  delete rest.entityKind;
+  delete rest.aliases;
+  return rest;
 }
 
 /**

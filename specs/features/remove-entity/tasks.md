@@ -150,7 +150,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 1
 **Notes:** Final gate before this branch's `clearKeys` work is considered complete. Supersedes Task 9 as the actual last gate for the branch as a whole, since Tasks 10-14 land after Task 9 was originally marked done.
 **POS:** task_22238e0d
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 15
