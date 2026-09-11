@@ -58,3 +58,11 @@ export {
   type MentionRecord,
   type MentionIndex,
 } from "./models/mention-index";
+
+// Scrivener import (CLI's `project import-scrivener` command)
+export {
+  importScrivenerProject,
+  UnsupportedScrivenerProjectError,
+  type ImportScrivenerProjectOptions,
+  type ImportScrivenerProjectResult,
+} from "./models/scrivener/import-scrivener-project";

@@ -1,5 +1,10 @@
 import type { Command } from "commander";
-import { createProjectFromType, runForTenant } from "@gw/core";
+import {
+  createProjectFromType,
+  importScrivenerProject,
+  runForTenant,
+  UnsupportedScrivenerProjectError,
+} from "@gw/core";
 
 export default function registerProject(program: Command): void {
   const cmd = program
@@ -42,6 +47,40 @@ export default function registerProject(program: Command): void {
         process.exit(0);
       } catch (err) {
         console.error("Failed to create project:", err);
+        process.exit(2);
+      }
+    });
+
+  cmd
+    .command("import-scrivener <scrivPath> [projectRoot]")
+    .description(
+      "Import a Scrivener 3 (Mac-authored) .scriv project into a new getwrite project",
+    )
+    .option("-n, --name <name>", "Optional destination project name")
+    .action(async (scrivPath: string, projectRoot = ".", options) => {
+      try {
+        const result = await runForTenant(projectRoot, () =>
+          importScrivenerProject({
+            scrivPath,
+            projectRoot,
+            name: options?.name,
+          }),
+        );
+
+        console.log(`Imported Scrivener project to: ${result.projectRoot}`);
+        console.log(
+          `Folders: ${result.folderCount}, Resources: ${result.resourceCount}, Tags: ${result.tagCount}`,
+        );
+        console.log(
+          `Report written to: ${result.projectRoot}/scrivener-import-report.txt`,
+        );
+        process.exit(0);
+      } catch (err) {
+        if (err instanceof UnsupportedScrivenerProjectError) {
+          console.error(err.message);
+          process.exit(2);
+        }
+        console.error("Failed to import Scrivener project:", err);
         process.exit(2);
       }
     });
