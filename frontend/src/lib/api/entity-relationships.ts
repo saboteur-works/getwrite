@@ -9,6 +9,12 @@
  * - `list` resolves to `[]` on ANY failure (network error, non-2xx, or a
  *   malformed body), mirroring `lib/api/entity-cooccurrence.ts`'s
  *   degrade-to-empty-map floor.
+ * - `listOrThrow` (FR-26) is the one exception to the degrade-gracefully
+ *   contract: it rejects on the identical set of failures `list` degrades
+ *   on (network error, non-2xx response, or a malformed body), for the one
+ *   caller (`RemoveEntityControl.tsx`) that must distinguish "this entity
+ *   really has zero edges" from "the read failed" so it can surface FR-17's
+ *   inline error. `list` itself is unchanged by this addition.
  * - `create` resolves to `null` on failure rather than throwing, mirroring
  *   the fire-and-forget-with-signal shape `updateSidecar`/
  *   `assignTagToResource`'s callers already tolerate.
@@ -64,6 +70,15 @@ export interface EntityRelationshipsTransport {
   list(projectId: string): Promise<EntityRelationshipEdge[]>;
 
   /**
+   * Lists every persisted relationship edge for the project, identically to
+   * `list`, except it REJECTS on any failure (network error, non-2xx
+   * response, or a malformed body) instead of degrading to `[]` (FR-26).
+   * Exists so a caller that must distinguish "zero edges" from "the read
+   * failed" — `RemoveEntityControl.tsx` — has a way to do so.
+   */
+  listOrThrow(projectId: string): Promise<EntityRelationshipEdge[]>;
+
+  /**
    * Creates a directed, typed edge from `sourceEntityId` to
    * `targetEntityId`. Resolves the created (or, per FR-17, the pre-existing
    * matching) edge on success, or `null` on any failure — including the
@@ -109,6 +124,22 @@ export const httpEntityRelationshipsTransport: EntityRelationshipsTransport = {
     } catch {
       return [];
     }
+  },
+
+  async listOrThrow(projectId) {
+    const response = await fetch(
+      `/api/project/${encodeURIComponent(projectId)}/entity-relationships`,
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to load entity relationships (status ${response.status}).`,
+      );
+    }
+    const data = (await response.json()) as unknown;
+    if (!Array.isArray(data)) {
+      throw new Error("Malformed entity relationships response.");
+    }
+    return data as EntityRelationshipEdge[];
   },
 
   async create(projectId, sourceEntityId, targetEntityId, relationshipType) {
@@ -197,6 +228,22 @@ export async function listEntityRelationships(
 ): Promise<EntityRelationshipEdge[]> {
   const transport = await resolveEntityRelationshipsTransport();
   return transport.list(projectId);
+}
+
+/**
+ * Lists every persisted relationship edge for the project (FR-5/FR-26),
+ * identically to `listEntityRelationships`, except it REJECTS on any
+ * failure (network error, non-2xx response, or a malformed body) instead of
+ * resolving to `[]`.
+ *
+ * @param projectId - The project's on-disk directory basename.
+ * @returns Every persisted edge on success; rejects on any failure.
+ */
+export async function listEntityRelationshipsOrThrow(
+  projectId: string,
+): Promise<EntityRelationshipEdge[]> {
+  const transport = await resolveEntityRelationshipsTransport();
+  return transport.listOrThrow(projectId);
 }
 
 /**

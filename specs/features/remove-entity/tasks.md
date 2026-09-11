@@ -130,7 +130,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 3
 **Notes:** This is FR-26's entire scope. It exists because `list()`'s degrade-to-`[]` floor — correct and load-bearing for its other two callers — made a genuine relationship-fetch failure indistinguishable from a zero-edge project inside the Remove Entity dialog specifically, so Task 6's original done-when could only be verified against a mock that the real transports never produce (Stage 5 second-pass measurement, 2026-09-10). Task 14 now also depends on this task, since its `pnpm test-storybook` done-when covers the same five stories including `Fetch Failure`.
 **POS:** task_2b49912a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Accessibility and colour — trigger name, checkbox name, non-red trigger
 **What:** Removes the overriding `aria-label` from the Remove Entity trigger so its accessible name matches its visible text, "Remove Entity" (FR-22), and removes the overriding `aria-label` from the keep/delete checkbox so its accessible name comes from its associated `<label>`, including the edge count (FR-23). Reads `frontend/components/common/UI/Button/Button.tsx` to pick an existing non-red variant, and switches the Remove Entity trigger off the red brand token onto that variant (FR-24). Updates every test and story that queried the old `aria-label` values, including `frontend/tests/component/RemoveEntityControl.test.tsx` and `frontend/stories/Sidebar/RemoveEntityControl.stories.tsx`.

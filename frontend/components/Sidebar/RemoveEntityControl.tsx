@@ -7,7 +7,7 @@ import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import { updateSidecar } from "../../src/lib/api/resources";
 import {
-  listEntityRelationships,
+  listEntityRelationshipsOrThrow,
   removeEntityRelationshipsForEntity,
 } from "../../src/lib/api/entity-relationships";
 import type { EntityRelationshipEdge } from "../../src/lib/api/entity-relationships";
@@ -66,7 +66,7 @@ function withoutEntityFields(resource: AnyResource): AnyResource {
  * false.
  *
  * Opening the confirmation dialog issues a fresh, independent
- * `listEntityRelationships(projectId)` call (mirroring
+ * `listEntityRelationshipsOrThrow(projectId)` call (FR-26; mirroring
  * `EntityRelationshipsSection.tsx`'s own self-contained fetch pattern rather
  * than reading that component's state, which exposes no edge count of its
  * own) and filters the result client-side to edges where the current entity
@@ -127,7 +127,7 @@ export default function RemoveEntityControl(): JSX.Element | null {
     setMatchingEdges([]);
     setShouldAlsoDeleteRelationships(false);
     setIsLoadingEdges(true);
-    void listEntityRelationships(projectId)
+    void listEntityRelationshipsOrThrow(projectId)
       .then((edges) => {
         const filtered = edges.filter(
           (edge) =>

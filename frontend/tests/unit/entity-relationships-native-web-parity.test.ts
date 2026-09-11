@@ -17,7 +17,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 import {
@@ -406,5 +406,35 @@ describe("entity relationships — native/web parity (FR-1/FR-4/FR-8/FR-17)", ()
     const nativeListAfter = await nativeTransport.list(nativeProjectId);
     expect(httpListAfter).toHaveLength(1);
     expect(nativeListAfter).toHaveLength(1);
+  });
+
+  it("listOrThrow (FR-26) rejects identically on both transports under the equivalent failure — a failed read", async () => {
+    const { nativeFs, projectsDir: nativeProjectsDir } =
+      await setupNativeProject(["ally"]);
+    const nativeTransport = createNativeEntityRelationshipsTransport({
+      fs: nativeFs,
+      projectsDir: nativeProjectsDir,
+    });
+
+    // Native side: an invalid projectId can never resolve to a project
+    // root, so `resolveProjectRoot` throws — the native analogue of a
+    // failed read.
+    await expect(nativeTransport.listOrThrow("not-a-uuid")).rejects.toThrow();
+
+    // HTTP side: a network-level fetch failure — the equivalent failed
+    // read at the transport's actual I/O boundary.
+    const { httpEntityRelationshipsTransport } =
+      await import("../../src/lib/api/entity-relationships");
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(new Error("network down")) as unknown as typeof fetch;
+    try {
+      await expect(
+        httpEntityRelationshipsTransport.listOrThrow("project-1"),
+      ).rejects.toThrow("network down");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

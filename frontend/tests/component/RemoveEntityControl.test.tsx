@@ -19,7 +19,7 @@ import { createTextResource } from "../../src/lib/models/resource";
 import type { AnyResource } from "../../src/lib/models/types";
 
 vi.mock("../../src/lib/api/entity-relationships", () => ({
-  listEntityRelationships: vi.fn(),
+  listEntityRelationshipsOrThrow: vi.fn(),
   removeEntityRelationshipsForEntity: vi.fn(),
 }));
 
@@ -30,14 +30,14 @@ vi.mock("../../src/lib/api/entity-alias-table", () => ({
 }));
 
 import {
-  listEntityRelationships,
+  listEntityRelationshipsOrThrow,
   removeEntityRelationshipsForEntity,
 } from "../../src/lib/api/entity-relationships";
 import type { EntityRelationshipEdge } from "../../src/lib/api/entity-relationships";
 import { updateSidecar } from "../../src/lib/api/resources";
 import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
 
-const mockedList = vi.mocked(listEntityRelationships);
+const mockedList = vi.mocked(listEntityRelationshipsOrThrow);
 const mockedRemoveByEntity = vi.mocked(removeEntityRelationshipsForEntity);
 const mockedUpdateSidecar = vi.mocked(updateSidecar);
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
@@ -265,6 +265,58 @@ describe("RemoveEntityControl", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("Remove") as HTMLButtonElement).not.toBeDisabled();
     expect(mockedRemoveByEntity).not.toHaveBeenCalled();
+  });
+
+  /**
+   * FR-26. Drives the failure at the transport's actual fetch boundary
+   * (mocking `globalThis.fetch` to reject the GET request, exactly like
+   * `RemoveEntityControl.stories.tsx`'s `FetchFailure` story) instead of
+   * mocking `listEntityRelationshipsOrThrow` itself — the previous version of
+   * this test suite only ever exercised the component's `.catch` handler
+   * with a manually-rejected mock, which meant a real transport that quietly
+   * degraded to `[]` on a genuine failure (the actual FR-26 bug) would never
+   * have been caught. `listEntityRelationshipsOrThrow`'s real implementation
+   * is restored for this one test via `vi.importActual`, so the assertion
+   * below is only true if the transport itself propagates the failure rather
+   * than swallowing it.
+   */
+  it("FR-26: surfaces the real transport's fetch failure through to the inline error, with no checkbox and confirm left enabled", async () => {
+    const actual = await vi.importActual<
+      typeof import("../../src/lib/api/entity-relationships")
+    >("../../src/lib/api/entity-relationships");
+    mockedList.mockImplementation(actual.listEntityRelationshipsOrThrow);
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        const method = (init?.method ?? "GET").toUpperCase();
+        if (url.includes("/entity-relationships") && method === "GET") {
+          throw new Error("network error");
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      },
+    ) as unknown as typeof fetch;
+
+    const store = setupStore({ entityKind: "character" });
+
+    try {
+      renderControl(store);
+
+      fireEvent.click(screen.getByRole("button", { name: "Remove Entity" }));
+
+      await screen.findByText(/relationship data could not be loaded/i);
+
+      expect(
+        screen.queryByRole("checkbox", { name: /also delete/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Remove") as HTMLButtonElement,
+      ).not.toBeDisabled();
+      expect(mockedRemoveByEntity).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   describe("confirm handler (Task 7)", () => {

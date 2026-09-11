@@ -53,7 +53,10 @@
  * degrade-to-`[]` behavior on any failure (including an invalid
  * `projectId`); `create` mirrors degrade-to-`null` (including the model
  * layer's FR-4/FR-15 validation throws); `remove` mirrors degrade-to-`false`;
- * `removeByEntity` mirrors degrade-to-`0` (FR-9/FR-10).
+ * `removeByEntity` mirrors degrade-to-`0` (FR-9/FR-10). `listOrThrow`
+ * (FR-26) is the one exception: it lets a failure (an invalid `projectId`,
+ * or `loadEntityRelationships` throwing) propagate rather than degrading,
+ * mirroring the HTTP transport's `listOrThrow`.
  */
 import { createNativeRunner, type NativeBackendDeps } from "./native-runner";
 import { resolveProjectRoot } from "../../lib/models/project-root-resolver";
@@ -86,6 +89,16 @@ export function createNativeEntityRelationshipsTransport(
           // Mirrors the HTTP transport's degrade-to-`[]` parity.
           return [];
         }
+      });
+    },
+
+    async listOrThrow(projectId) {
+      return run(async () => {
+        const projectRoot = resolveProjectRoot(projectId);
+        if (!projectRoot) {
+          throw new Error(`Invalid projectId: ${projectId}`);
+        }
+        return loadEntityRelationships(projectRoot);
       });
     },
 
