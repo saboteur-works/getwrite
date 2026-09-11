@@ -84,7 +84,7 @@ parsing).
 **Depends on:** 1
 **Estimate:** 5
 **POS:** task_01594827
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: RTF → TipTap converter
 
@@ -107,7 +107,7 @@ added (`docs/standards/package-selection.md`). Tests run the Task 1 fixture's
 **Depends on:** 1
 **Estimate:** 8
 **POS:** task_d31e3f24
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Binder → resource-tree mapper
 
