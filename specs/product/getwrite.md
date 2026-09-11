@@ -117,13 +117,16 @@ lost work.
   I choose, so that I can track who and what appears where — whether that
   folder holds characters, locations, factions, or anything else my project
   needs. [Shipped]
-- US-4: As a novelist migrating from Scrivener or Word, I want to import my
-  existing project into GetWrite so that I don't have to manually
-  re-create its structure. [Later]
+- US-4: As a novelist migrating from Scrivener, I want to import my existing
+  Scrivener project into GetWrite so that I don't have to manually re-create
+  its structure. [In Progress]
 - US-17: As a novelist, I want to see how my declared entities relate to one
   another — not just where each one individually appears — so that I can
   spot connections a flat per-entity roster or a single entity's mention list
   doesn't surface. [Next]
+- US-18: As a novelist migrating from Word, I want to import my existing
+  Word/DOCX project into GetWrite so that I don't have to manually re-create
+  its structure. [Later]
 
 **Plain-file-ownership writers**
 - US-5: As a plain-file writer, I want to have every resource stored as an
@@ -373,8 +376,50 @@ lost work.
   field) is a separate per-project setting that already ships. [US-7]
 - FR-27: Desktop builds MUST be signed and installable without an OS
   security warning on macOS and Windows. [US-8]
+- FR-42: The product SHOULD offer a CLI command that imports an existing
+  Scrivener 3, Mac-authored `.scriv` project into a new GetWrite project.
+  Owner decision (2026-09-11): Scrivener import is now committed, current
+  work — Scrivener is the closest analogue to GetWrite's own structure and
+  is the first import source — reversing the concept's earlier "planned but
+  not near-term" posture for Scrivener specifically. Nothing is built yet;
+  this is a statement of committed direction, not a shipped or
+  partially-shipped capability. The CLI command is the first deliverable
+  (resolved: OQ-14); a writer-facing UI import flow is a separate follow-up
+  requirement (FR-43). Import is one-shot: each run creates a fresh GetWrite
+  project, with no notion of re-importing into or merging with an existing
+  one (resolved: OQ-12; repeatable import is a separate, deferred
+  requirement — FR-44). The imported content is the project's binder —
+  Draft, user-created top-level folders beside Draft (e.g. Templates,
+  Archive, Scraps), and text documents (and their folders) within Research —
+  plus each document's text, synopsis and notes, status, keywords, and
+  custom metadata fields, mapped onto GetWrite's metadata layer (resolved:
+  OQ-13). Scrivener `Other`-typed top-level items are skipped and reported,
+  same as any other unconvertible content. Owner decision (widened
+  2026-09-11 at the Feature 31 feature-spec gate): this scope was widened
+  from an earlier "Draft binder's folder structure" framing to also cover
+  user-created top-level binder folders beside Draft and text documents
+  within Research; only non-text Research content (media: images, PDFs, web
+  archives) remains deferred. Carrying over Scrivener snapshots as GetWrite
+  revisions, Research-folder media, and the project's Trash is out of scope
+  for this requirement (see Out of Scope (Deferred)).
+  When the importer encounters content it cannot convert, it MUST skip that
+  item, continue importing the rest of the project, and produce a report a
+  writer can read after the import listing what was skipped and why
+  (resolved: OQ-15). This requirement supports only Scrivener 3 projects
+  authored on Mac; Scrivener 2 projects and Windows-authored projects are an
+  explicit, documented gap, not rejected outright (resolved: OQ-16; see Out
+  of Scope (Deferred)). [US-4]
 
 ### Next Requirements
+
+- FR-43: The product SHOULD offer a writer-facing UI flow for importing an
+  existing Scrivener project (FR-42), so that Scrivener import is not
+  limited to CLI users. This is the follow-up half of the CLI-first
+  sequencing decided for FR-42 (owner decision, 2026-09-11): it sits in Next
+  rather than In Progress because the CLI command it depends on has not yet
+  shipped. Scope otherwise matches FR-42 — same one-shot behavior, same
+  imported content, same skip-and-report handling of unconvertible content,
+  same Scrivener 3/Mac-only support. [US-4]
 
 - FR-39: The product SHOULD provide a project-level entity relationship
   graph — a view presenting declared entities as nodes and their
@@ -504,10 +549,18 @@ lost work.
   writer's offline edits made from multiple devices to the same project (a
   sync, not collaboration, conflict model), as part of the hosted
   multi-device work in FR-30. [US-12]
-- FR-33: The product SHOULD offer an importer for existing Scrivener
-  (`.scriv`) or Word/DOCX projects, converting them into a GetWrite project
-  structure. This is a real, planned feature belonging here in Later, not
-  in Out of Scope. [US-4]
+- FR-33: The product SHOULD offer an importer for existing Word/DOCX
+  projects, converting them into a GetWrite project structure. This is a
+  real, planned feature belonging here in Later, not in Out of Scope.
+  Split 2026-09-11 (owner decision) from the Scrivener half of this
+  requirement, which is now committed, current work — see FR-42. [US-18]
+- FR-44: The product MAY support repeatable Scrivener import — re-running
+  import against the same `.scriv` project to merge changes into, or
+  refresh, an already-imported GetWrite project, rather than always
+  creating a fresh one. Split 2026-09-11 (owner decision) from FR-42/FR-43,
+  which are one-shot only; repeatable import needs a notion of a prior
+  import's identity and a diff/merge strategy that neither of those
+  requirements defines. [US-4]
 - FR-34: The product SHOULD extend full-text search filtering to the saved
   query builder's predicates — its intrinsics (word count, character count,
   created/updated dates, tags, inbound and outbound links) and any
@@ -530,9 +583,11 @@ lost work.
 - The desktop build must remain fully functional with no network access and
   no account.
 - No import path currently exists from Scrivener (`.scriv`) or Word/DOCX
-  projects; this is a known adoption risk not met by any shipped, in
-  progress, or next requirement — an importer is a planned Later
-  requirement (FR-33).
+  projects; this remains a known adoption risk today, since nothing is
+  built yet for either. As of 2026-09-11 (owner decision), Scrivener import
+  specifically is committed, in-progress-as-planned work (FR-42), reversing
+  its earlier Later placement; Word/DOCX import remains an unscheduled
+  Later requirement (FR-33).
 - Compile is export-only and must never mutate revisions or project state.
 - Full-text search indexes and searches only each resource's canonical
   revision today; retained revisions remain browsable and diffable but are
@@ -740,6 +795,87 @@ new entity-declaration mechanism"); `EntitySection.tsx` (existing sidebar
 surface for entity declaration and editing).
 **Impact:** FR-41.
 
+**OQ-11 (resolved): Is "In Progress" the right milestone for Scrivener
+import (FR-42), or should it sit in "Next" instead?**
+**Resolution:** "In Progress" is confirmed. Owner decision (2026-09-11):
+FR-42 stays in In Progress.
+**Evidence:** The owner decision recorded 2026-09-11 says only that
+"importing projects is now being started," which is ambiguous between this
+spec's two committed-but-not-shipped milestones. "In Progress" was chosen
+here because the spec already uses that label loosely for committed,
+near-term work regardless of how much of it is actually built (FR-26 sits
+in In Progress despite the concept recording its underlying capability as
+"not started"), which matches "being started" more closely than "Next."
+**Impact:** FR-42's milestone placement, and by extension its priority
+relative to FR-26/FR-27 (the rest of In Progress) versus FR-28/FR-29/FR-39
+through FR-41 (Next).
+
+**OQ-12 (resolved): Is Scrivener import (FR-42) a one-shot conversion, or
+must it be repeatable — e.g. re-run against the same `.scriv` project after
+the writer has made further changes in Scrivener, or resumed after a
+partial import?**
+**Resolution:** One-shot. Owner decision (2026-09-11): each import creates
+a fresh GetWrite project; import needs no notion of a prior import's
+identity or diffing against it. Repeatable import (re-import or merge into
+an existing project) is deferred, not dropped — it is recorded as a
+separate requirement, FR-44, in Later Requirements.
+**Impact:** FR-42, FR-43, FR-44.
+
+**OQ-13 (resolved): Which Scrivener-project content beyond the Draft
+binder's folder structure and each document's text must also come across
+on import — the project's revision history
+(per-document `Snapshots/<UUID>.snapshots/*.rtf`), per-document synopses and
+notes, keywords/labels/status, custom metadata fields, Research-folder
+media, and/or the project's Trash?**
+**Resolution:** Owner decision (2026-09-11): beyond binder structure and
+document text, import MUST also bring across each document's synopsis and
+notes, status, keywords, and custom metadata fields, mapped onto
+GetWrite's metadata layer. Scrivener snapshots → GetWrite revisions,
+Research-folder media, and the project's Trash are deferred, out of FR-42's
+scope — recorded in Out of Scope (Deferred) so they stay visible.
+Refined 2026-09-11: Research text documents are imported; only Research
+media is deferred.
+**Evidence:** A real `.scriv` project (`import-inputs/The SF Sideshow.scriv`,
+Scrivener 3.5.2, gitignored/private, examined for structure only, never for
+content) shows document bodies stored as RTF under `Files/Data/<UUID>/`,
+per-document synopsis/notes sidecar files, and per-document revision
+history under `Snapshots/<UUID>.snapshots/*.rtf` — content types beyond
+binder structure and document text that a writer may reasonably expect to
+carry over but which this spec does not decide.
+**Impact:** FR-42.
+
+**OQ-14 (resolved): Does Scrivener import (FR-42) run through the app's UI,
+the CLI, or both?**
+**Resolution:** CLI first. Owner decision (2026-09-11): the first
+deliverable is a CLI command (FR-42); a writer-facing UI import flow is a
+follow-up requirement, FR-43, in Next Requirements — not built alongside
+FR-42, and not shipped at launch.
+**Evidence:** Consistent with how FR-19's template CLI already ships
+CLI-only with no UI or HTTP route.
+**Impact:** FR-42, FR-43.
+
+**OQ-15 (resolved): What must Scrivener import (FR-42) do when it
+encounters content it cannot convert — a document format, a compile
+setting, or a feature with no GetWrite equivalent?**
+**Resolution:** Owner decision (2026-09-11): skip the unconvertible item,
+continue importing the rest of the project, and produce a report the
+writer can read after the import listing what was skipped.
+**Impact:** FR-42, FR-43.
+
+**OQ-16 (resolved): Which Scrivener format and platform variants must
+import (FR-42) support — Scrivener 2 projects as well as Scrivener 3, and
+projects authored on Windows as well as Mac?**
+**Resolution:** Owner decision (2026-09-11): support Scrivener 3,
+Mac-authored projects only. Scrivener 2 projects and Windows-authored
+projects are an explicit, documented gap — deferred, not rejected — and are
+recorded in Out of Scope (Deferred).
+**Evidence:** This spec's one grounding example
+(`import-inputs/The SF Sideshow.scriv`) is a Scrivener 3.5.2, Mac-authored
+project; Scrivener 2 and 3 use different project formats, and a
+Windows-authored `.scriv` project has not been surveyed against this
+example.
+**Impact:** FR-42, FR-43.
+
 ## Out of Scope (Deferred)
 
 - A keyboard-operable equivalent for dragging a node on the entity
@@ -749,6 +885,18 @@ surface for entity declaration and editing).
 - A roster-row equivalent of the Remove Entity action (FR-41, resolved:
   OQ-10). The action lives only in the entity's own sidebar view; the
   roster (FR-38) remains read-only.
+- Carrying Scrivener snapshots across as GetWrite revisions, importing
+  Research-folder media, and importing the project's Trash, as part of
+  Scrivener import (FR-42/FR-43, resolved: OQ-13). Import is scoped to the
+  project's binder — Draft, user-created top-level folders, and text
+  documents in Research (widened 2026-09-11 at the Feature 31 feature-spec
+  gate) — plus document text, synopsis/notes, status, keywords, and custom
+  metadata fields; these three content types (snapshots, Research media,
+  Trash) are wanted later but not decided or built now.
+- Scrivener 2 project support and Windows-authored `.scriv` project support
+  for Scrivener import (FR-42/FR-43, resolved: OQ-16). Only Scrivener 3,
+  Mac-authored projects are supported; this is an explicit, documented gap,
+  not a rejection.
 - [Later] Hosted multi-tenant access and cross-device sync as a shipped,
   user-facing product (foundations exist per ADR-017–ADR-022; not shipped).
 - [Later] Native Android packaging, signing, and distribution as a shipped
