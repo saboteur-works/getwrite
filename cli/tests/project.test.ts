@@ -190,6 +190,37 @@ describe("getwrite-cli project:import-scrivener", () => {
     await expect(fs.access(projectRoot)).rejects.toThrow();
   });
 
+  it("refuses a non-empty pre-existing destination up front, writing nothing new to it (FR-22, Task 18)", async () => {
+    const destRoot = await makeTmpDestDir("gw-import-scrivener-nonempty-");
+    await fs.writeFile(
+      path.join(destRoot, "pre-existing-file.txt"),
+      "already here",
+      "utf8",
+    );
+
+    const argv = [
+      "node",
+      "getwrite-cli",
+      "project",
+      "import-scrivener",
+      FIXTURE_SCRIV_PATH,
+      destRoot,
+    ];
+
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        message: expect.stringContaining("already exists and is not empty"),
+      }),
+    );
+
+    const entries = await fs.readdir(destRoot);
+    expect(entries).toEqual(["pre-existing-file.txt"]);
+  });
+
   it("errors out when scrivPath is missing", async () => {
     const argv = ["node", "getwrite-cli", "project", "import-scrivener"];
 

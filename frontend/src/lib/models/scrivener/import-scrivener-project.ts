@@ -56,6 +56,21 @@
  * `scrivPath` — every read of the source project uses `io.ts`'s read-only
  * wrappers (`readFile`/`readdir`/`exists`), never a mutating one (FR-10).
  *
+ * ## FR-22: destination cleanup on fatal error
+ *
+ * Before step 3 (any destination write), whether `projectRoot` already
+ * exists is checked once and recorded; a `projectRoot` that already exists
+ * and is non-empty is refused immediately via
+ * {@link DestinationNotEmptyError} — nothing is written, and steps 3-9 never
+ * run. Steps 3-9 (the write phase) run inside a single `try`/`catch`: any
+ * fatal error (never an FR-8/FR-20 per-item/per-value skip, which are
+ * recorded and never thrown) is re-thrown annotated with which of the
+ * numbered steps above it failed in, and — only when the recorded flag says
+ * `projectRoot` did not exist before this run — `projectRoot` is removed
+ * entirely via `rm(projectRoot, { recursive: true, force: true })` first. A
+ * `projectRoot` that already existed (necessarily empty, since a non-empty
+ * one is refused above) is always left untouched.
+ *
  * ## Metadata-schema group choice
  *
  * `DEFAULT_METADATA_SCHEMA` (`default-metadata-schema.ts`) has exactly two
@@ -80,13 +95,14 @@
  * already uses.
  */
 import path from "node:path";
-import { exists, mkdir, readdir, readFile, writeFile } from "../io";
+import { exists, mkdir, readdir, readFile, rm, writeFile } from "../io";
 import { generateUUID } from "../uuid";
 import { createProject } from "../project";
 import { createFolderResource, createTextResource } from "../resource-factory";
 import { writeResourceToFile } from "../resource-persistence";
 import { writeRevision } from "../revision";
 import { addField, addGroup } from "../metadata-schema";
+import { flushIndexer } from "../indexer-queue";
 import { createTag, assignTagToResource } from "../tags";
 import { updateFeatureConfig } from "../project-features";
 import { readSidecar } from "../sidecar";
@@ -140,6 +156,37 @@ export class UnsupportedScrivenerProjectError extends Error {
     this.name = "UnsupportedScrivenerProjectError";
   }
 }
+
+/**
+ * Thrown by {@link importScrivenerProject} per FR-22 when `projectRoot`
+ * already exists and is non-empty. Raised before any destination write —
+ * nothing is created, written, or removed.
+ */
+export class DestinationNotEmptyError extends Error {
+  constructor(projectRoot: string) {
+    super(
+      `Cannot import Scrivener project: destination "${projectRoot}" ` +
+        `already exists and is not empty. Choose an empty or non-existent ` +
+        `destination.`,
+    );
+    this.name = "DestinationNotEmptyError";
+  }
+}
+
+/**
+ * The module doc's "Orchestration order" list (steps 3-9; steps 1-2 run
+ * before any destination write and cannot trigger the FR-22 cleanup below),
+ * used to label which phase a fatal write-phase error occurred in.
+ */
+const ORCHESTRATION_PHASES = [
+  "3. Create the destination project.json",
+  "4. Create every planned folder, then every planned resource",
+  "5. Create the Label and custom metadata-schema fields",
+  "6. Create tags for the keyword-merge plan and assign them to resources",
+  "7. Apply the per-resource synopsis/notes sidecar merge and the aggregated feature-toggle enablement",
+  "8. Write the FR-9 report",
+  "9. Rebuild the destination project's indexes (FR-11)",
+] as const;
 
 /** Input to {@link importScrivenerProject}. */
 export interface ImportScrivenerProjectOptions {
@@ -198,6 +245,19 @@ export async function importScrivenerProject(
   const plan = await mapBinderToImportPlan(parsed, scrivxPath);
   const metadataPlan = buildMetadataPlan(parsed);
 
+  // FR-22: record, once and before any write, whether projectRoot existed
+  // before this run — this recorded value (not a later filesystem check) is
+  // what "run-created" means for this run's fatal-error cleanup below. A
+  // pre-existing, non-empty projectRoot is refused up front, before any
+  // write.
+  const projectRootExistedBeforeRun = await exists(projectRoot);
+  if (projectRootExistedBeforeRun) {
+    const existingEntries = (await readdir(projectRoot)) as string[];
+    if (existingEntries.length > 0) {
+      throw new DestinationNotEmptyError(projectRoot);
+    }
+  }
+
   // FR-7's amendment: a candidate field key colliding with a built-in or an
   // already-added field (`metadataPlan.fieldKeyRenames`) resolves to a free
   // `<originalKey>-scrivener[-<n>]` key. This map lets every downstream
@@ -212,190 +272,233 @@ export async function importScrivenerProject(
     ]),
   );
 
-  // ── Destination project ──────────────────────────────────────────────────
-  const projectName =
-    options.name ?? path.basename(scrivPath).replace(/\.scriv$/i, "");
-  const project = createProject({
-    name: projectName,
-    slug: slugify(projectName),
-    rootPath: projectRoot,
-    config: { editorConfig: {}, statuses: [...metadataPlan.statuses] },
-  });
-  await mkdir(projectRoot, { recursive: true });
-  await writeFile(
-    path.join(projectRoot, "project.json"),
-    JSON.stringify(project, null, 2),
-    "utf8",
-  );
-
-  // ── Folders (plan array is already parent-before-child ordered) ─────────
-  const realIdByPlanId = new Map<ImportPlanId, UUID>();
-  for (const folder of plan.folders) {
-    const realParentId =
-      folder.parentId === null
-        ? null
-        : (realIdByPlanId.get(folder.parentId) ?? null);
-    const folderResource = createFolderResource({
-      name: folder.name,
-      parentFolderId: realParentId,
-      orderIndex: folder.orderIndex,
+  // ── Write phase (steps 3-9) ──────────────────────────────────────────────
+  // FR-22: any fatal error raised anywhere in here (never an FR-8/FR-20
+  // per-item/per-value skip, which are pushed onto `skips`/`valueSkips` and
+  // never thrown) must, before propagating: identify the orchestration
+  // phase it failed in, and remove `projectRoot` entirely if this run
+  // created it (never otherwise, and never any other path).
+  let currentPhase: (typeof ORCHESTRATION_PHASES)[number] =
+    ORCHESTRATION_PHASES[0];
+  try {
+    // ── Destination project ────────────────────────────────────────────────
+    const projectName =
+      options.name ?? path.basename(scrivPath).replace(/\.scriv$/i, "");
+    const project = createProject({
+      name: projectName,
+      slug: slugify(projectName),
+      rootPath: projectRoot,
+      config: { editorConfig: {}, statuses: [...metadataPlan.statuses] },
     });
-    await writeResourceToFile(projectRoot, folderResource);
-    realIdByPlanId.set(folder.id, folderResource.id);
-  }
-
-  // ── Resources ─────────────────────────────────────────────────────────
-  const skips: ImportReportSkip[] = [];
-  const sourceUuidToResourceId = new Map<string, UUID>();
-  const documentFlags: DocumentMetadataFlags[] = [];
-
-  for (const resourcePlan of plan.resources) {
-    const created = await createAndWriteResource(
-      projectRoot,
-      resourcePlan,
-      realIdByPlanId,
-      metadataPlan.resourceUserMetadata,
-      finalFieldKeyByOriginalKey,
-      skips,
+    await mkdir(projectRoot, { recursive: true });
+    await writeFile(
+      path.join(projectRoot, "project.json"),
+      JSON.stringify(project, null, 2),
+      "utf8",
     );
-    if (!created) continue;
-    sourceUuidToResourceId.set(resourcePlan.sourceUuid, created.id);
 
-    const flags = await applySynopsisAndNotes(
-      projectRoot,
-      resourcePlan,
-      created.id,
-    );
-    documentFlags.push(flags);
-  }
+    // ── Folders (plan array is already parent-before-child ordered) ───────
+    currentPhase = ORCHESTRATION_PHASES[1];
+    const realIdByPlanId = new Map<ImportPlanId, UUID>();
+    for (const folder of plan.folders) {
+      const realParentId =
+        folder.parentId === null
+          ? null
+          : (realIdByPlanId.get(folder.parentId) ?? null);
+      const folderResource = createFolderResource({
+        name: folder.name,
+        parentFolderId: realParentId,
+        orderIndex: folder.orderIndex,
+      });
+      await writeResourceToFile(projectRoot, folderResource);
+      realIdByPlanId.set(folder.id, folderResource.id);
+    }
 
-  // ── Metadata schema: Label field + custom fields (FR-7, FR-15) ──────────
-  const schemaFields = [
-    ...(metadataPlan.labelField ? [metadataPlan.labelField] : []),
-    ...metadataPlan.customFields,
-  ];
-  if (schemaFields.length > 0) {
-    await addGroup(projectRoot, {
-      id: METADATA_GROUP_ID,
-      label: METADATA_GROUP_LABEL,
-      fields: [],
-    });
-    for (const field of schemaFields) {
-      // FR-7's amendment: use the collision-resolved key (recorded by
-      // `buildMetadataPlan`'s `fieldKeyRenames`) when this field's original
-      // key collided with a built-in or already-added field; otherwise the
-      // field's own key is already free.
-      const finalKey = finalFieldKeyByOriginalKey.get(field.key) ?? field.key;
-      const fieldToCreate =
-        finalKey === field.key ? field : { ...field, key: finalKey };
-      // FR-8's generalization: any per-field metadata-schema creation
-      // failure — including one this pre-resolution should have already
-      // prevented, and any other unexpected `addField` failure — is a
-      // recorded skip, never a reason to abort the whole import.
-      try {
-        await addField(projectRoot, METADATA_GROUP_ID, fieldToCreate);
-      } catch (err) {
-        skips.push({
-          itemTitle: field.label,
-          binderPath: `CustomMetaData/${field.key}`,
-          reason: `Could not create metadata field "${field.label}": ${(err as Error).message}`,
-        });
+    // ── Resources ───────────────────────────────────────────────────────
+    const skips: ImportReportSkip[] = [];
+    const sourceUuidToResourceId = new Map<string, UUID>();
+    const documentFlags: DocumentMetadataFlags[] = [];
+
+    for (const resourcePlan of plan.resources) {
+      currentPhase = ORCHESTRATION_PHASES[1];
+      const created = await createAndWriteResource(
+        projectRoot,
+        resourcePlan,
+        realIdByPlanId,
+        metadataPlan.resourceUserMetadata,
+        finalFieldKeyByOriginalKey,
+        skips,
+      );
+      if (!created) continue;
+      sourceUuidToResourceId.set(resourcePlan.sourceUuid, created.id);
+
+      currentPhase = ORCHESTRATION_PHASES[4];
+      const flags = await applySynopsisAndNotes(
+        projectRoot,
+        resourcePlan,
+        created.id,
+      );
+      documentFlags.push(flags);
+    }
+
+    // ── Metadata schema: Label field + custom fields (FR-7, FR-15) ───────
+    currentPhase = ORCHESTRATION_PHASES[2];
+    const schemaFields = [
+      ...(metadataPlan.labelField ? [metadataPlan.labelField] : []),
+      ...metadataPlan.customFields,
+    ];
+    if (schemaFields.length > 0) {
+      await addGroup(projectRoot, {
+        id: METADATA_GROUP_ID,
+        label: METADATA_GROUP_LABEL,
+        fields: [],
+      });
+      for (const field of schemaFields) {
+        // FR-7's amendment: use the collision-resolved key (recorded by
+        // `buildMetadataPlan`'s `fieldKeyRenames`) when this field's
+        // original key collided with a built-in or already-added field;
+        // otherwise the field's own key is already free.
+        const finalKey = finalFieldKeyByOriginalKey.get(field.key) ?? field.key;
+        const fieldToCreate =
+          finalKey === field.key ? field : { ...field, key: finalKey };
+        // FR-8's generalization: any per-field metadata-schema creation
+        // failure — including one this pre-resolution should have already
+        // prevented, and any other unexpected `addField` failure — is a
+        // recorded skip, never a reason to abort the whole import.
+        try {
+          await addField(projectRoot, METADATA_GROUP_ID, fieldToCreate);
+        } catch (err) {
+          skips.push({
+            itemTitle: field.label,
+            binderPath: `CustomMetaData/${field.key}`,
+            reason: `Could not create metadata field "${field.label}": ${(err as Error).message}`,
+          });
+        }
       }
     }
-  }
 
-  // ── Tags (FR-15 Keywords) ────────────────────────────────────────────────
-  const realTagIdByPlanTagId = new Map<string, string>();
-  for (const plannedTag of metadataPlan.keywordTagPlan.tags) {
-    const tag = await createTag(projectRoot, plannedTag.name);
-    realTagIdByPlanTagId.set(plannedTag.id, tag.id);
-  }
-  for (const [sourceUuid, planTagIds] of metadataPlan.keywordTagPlan
-    .resourceKeywordTagIds) {
-    const resourceId = sourceUuidToResourceId.get(sourceUuid);
-    if (resourceId === undefined) continue;
-    for (const planTagId of planTagIds) {
-      const realTagId = realTagIdByPlanTagId.get(planTagId);
-      if (realTagId === undefined) continue;
-      await assignTagToResource(projectRoot, resourceId, realTagId);
+    // ── Tags (FR-15 Keywords) ─────────────────────────────────────────────
+    currentPhase = ORCHESTRATION_PHASES[3];
+    const realTagIdByPlanTagId = new Map<string, string>();
+    for (const plannedTag of metadataPlan.keywordTagPlan.tags) {
+      const tag = await createTag(projectRoot, plannedTag.name);
+      realTagIdByPlanTagId.set(plannedTag.id, tag.id);
     }
+    for (const [sourceUuid, planTagIds] of metadataPlan.keywordTagPlan
+      .resourceKeywordTagIds) {
+      const resourceId = sourceUuidToResourceId.get(sourceUuid);
+      if (resourceId === undefined) continue;
+      for (const planTagId of planTagIds) {
+        const realTagId = realTagIdByPlanTagId.get(planTagId);
+        if (realTagId === undefined) continue;
+        await assignTagToResource(projectRoot, resourceId, realTagId);
+      }
+    }
+
+    // ── Feature toggles (FR-5) ────────────────────────────────────────────
+    currentPhase = ORCHESTRATION_PHASES[4];
+    const toggles = resolveFeatureTogglesToEnable(documentFlags);
+    if (Object.keys(toggles).length > 0) {
+      await updateFeatureConfig(projectRoot, { features: toggles });
+    }
+
+    // ── Report (FR-9) ─────────────────────────────────────────────────────
+    currentPhase = ORCHESTRATION_PHASES[5];
+    const titleByUuid = buildUuidTitleIndex(parsed.binder);
+    const packageDir = path.dirname(scrivxPath);
+    const snapshots = await scanSnapshots(packageDir, titleByUuid);
+
+    const binderPathBySourceUuid = new Map<string, string>(
+      plan.resources.map((resource) => [
+        resource.sourceUuid,
+        resource.binderPath,
+      ]),
+    );
+
+    const reportInput: ImportReportInput = {
+      skips: [
+        ...skips,
+        ...metadataPlan.unsupportedFields.map((field) => ({
+          itemTitle: field.fieldTitle,
+          binderPath: `CustomMetaData/${field.fieldId}`,
+          reason: field.reason,
+        })),
+        // Task 12's recoverable .scrivx fragment errors — already shaped
+        // identically to ImportReportSkip (itemTitle/binderPath/reason).
+        ...parsed.fragmentErrors,
+        // Task 13's per-document metadata value skips (FR-20); joined
+        // against the binder plan for a binder path, since
+        // MetadataPlan.valueSkips only carries sourceUuid
+        // (buildMetadataPlan doesn't compute a binder path — see
+        // MetadataValueSkip's doc comment).
+        ...metadataPlan.valueSkips.map((skip) => ({
+          itemTitle: skip.itemTitle,
+          binderPath:
+            binderPathBySourceUuid.get(skip.sourceUuid) ?? skip.sourceUuid,
+          reason: skip.reason,
+        })),
+      ],
+      fieldKeyRenames: metadataPlan.fieldKeyRenames,
+      keywordMerges: metadataPlan.keywordTagPlan.merges.map((merge) => ({
+        leafName: merge.leafName,
+        mergedParentPaths: merge.parentPaths,
+      })),
+      nonTextResearch: plan.nonTextResearch,
+      excludedOther: plan.excluded
+        .filter((item) => item.reason === "other-type")
+        .map((item) => ({
+          itemTitle: item.itemTitle,
+          binderPath: item.binderPath,
+        })),
+      trashContent: plan.excluded
+        .filter((item) => item.reason === "trash")
+        .map((item) => ({
+          itemTitle: item.itemTitle,
+          binderPath: item.binderPath,
+        })),
+      snapshots,
+      untitledFallbacks: plan.untitledFallbacks,
+    };
+    const report = buildImportReport(reportInput);
+    await writeImportReport(projectRoot, report);
+
+    // ── Rebuild indexes (FR-11), mirroring cli/src/commands/reindex.ts ────
+    currentPhase = ORCHESTRATION_PHASES[6];
+    await rebuildIndexes(projectRoot);
+
+    return {
+      project,
+      projectRoot,
+      folderCount: plan.folders.length,
+      resourceCount: sourceUuidToResourceId.size,
+      tagCount: realTagIdByPlanTagId.size,
+      report,
+    };
+  } catch (err) {
+    const originalMessage = err instanceof Error ? err.message : String(err);
+    const wrapped = new Error(
+      `Scrivener import failed during orchestration phase "${currentPhase}": ${originalMessage}`,
+      { cause: err },
+    );
+    // FR-22: only remove projectRoot when this run created it; a
+    // pre-existing (necessarily empty, per the up-front refusal above)
+    // projectRoot is left completely untouched.
+    if (!projectRootExistedBeforeRun) {
+      // The partial write already in progress may have scheduled
+      // fire-and-forget background indexing (`sidecar.ts`'s `writeSidecar`
+      // enqueues via `setImmediate`, independent of this catch block's own
+      // execution). Draining it first avoids a transient `ENOTEMPTY` from
+      // racing this removal against a background write still in flight;
+      // this is a narrow, targeted drain for this cleanup path only, not a
+      // suspension of indexing for the whole run (that is FR-23 / Task 19).
+      await flushIndexer();
+      await rm(projectRoot, { recursive: true, force: true }).catch(() => {
+        // Best-effort cleanup: the original error is what matters to the
+        // caller either way.
+      });
+    }
+    throw wrapped;
   }
-
-  // ── Feature toggles (FR-5) ───────────────────────────────────────────────
-  const toggles = resolveFeatureTogglesToEnable(documentFlags);
-  if (Object.keys(toggles).length > 0) {
-    await updateFeatureConfig(projectRoot, { features: toggles });
-  }
-
-  // ── Report (FR-9) ────────────────────────────────────────────────────────
-  const titleByUuid = buildUuidTitleIndex(parsed.binder);
-  const packageDir = path.dirname(scrivxPath);
-  const snapshots = await scanSnapshots(packageDir, titleByUuid);
-
-  const binderPathBySourceUuid = new Map<string, string>(
-    plan.resources.map((resource) => [
-      resource.sourceUuid,
-      resource.binderPath,
-    ]),
-  );
-
-  const reportInput: ImportReportInput = {
-    skips: [
-      ...skips,
-      ...metadataPlan.unsupportedFields.map((field) => ({
-        itemTitle: field.fieldTitle,
-        binderPath: `CustomMetaData/${field.fieldId}`,
-        reason: field.reason,
-      })),
-      // Task 12's recoverable .scrivx fragment errors — already shaped
-      // identically to ImportReportSkip (itemTitle/binderPath/reason).
-      ...parsed.fragmentErrors,
-      // Task 13's per-document metadata value skips (FR-20); joined against
-      // the binder plan for a binder path, since MetadataPlan.valueSkips
-      // only carries sourceUuid (buildMetadataPlan doesn't compute a binder
-      // path — see MetadataValueSkip's doc comment).
-      ...metadataPlan.valueSkips.map((skip) => ({
-        itemTitle: skip.itemTitle,
-        binderPath:
-          binderPathBySourceUuid.get(skip.sourceUuid) ?? skip.sourceUuid,
-        reason: skip.reason,
-      })),
-    ],
-    fieldKeyRenames: metadataPlan.fieldKeyRenames,
-    keywordMerges: metadataPlan.keywordTagPlan.merges.map((merge) => ({
-      leafName: merge.leafName,
-      mergedParentPaths: merge.parentPaths,
-    })),
-    nonTextResearch: plan.nonTextResearch,
-    excludedOther: plan.excluded
-      .filter((item) => item.reason === "other-type")
-      .map((item) => ({
-        itemTitle: item.itemTitle,
-        binderPath: item.binderPath,
-      })),
-    trashContent: plan.excluded
-      .filter((item) => item.reason === "trash")
-      .map((item) => ({
-        itemTitle: item.itemTitle,
-        binderPath: item.binderPath,
-      })),
-    snapshots,
-    untitledFallbacks: plan.untitledFallbacks,
-  };
-  const report = buildImportReport(reportInput);
-  await writeImportReport(projectRoot, report);
-
-  // ── Rebuild indexes (FR-11), mirroring cli/src/commands/reindex.ts ──────
-  await rebuildIndexes(projectRoot);
-
-  return {
-    project,
-    projectRoot,
-    folderCount: plan.folders.length,
-    resourceCount: sourceUuidToResourceId.size,
-    tagCount: realTagIdByPlanTagId.size,
-    report,
-  };
 }
 
 /**
