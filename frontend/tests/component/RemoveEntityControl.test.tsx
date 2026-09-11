@@ -579,6 +579,87 @@ describe("RemoveEntityControl", () => {
       consoleErrorSpy.mockRestore();
     });
 
+    it("regression: after a successful removal on entity A, switching the selected resource to entity B still enables B's confirm button once its edges finish loading (dialog does not stay disabled forever)", async () => {
+      mockedUpdateSidecar.mockResolvedValue(undefined);
+      const store = setupStore({ entityKind: "character" });
+
+      const ENTITY_B_ID = "entity-briar";
+      const resourceB = createTextResource({ name: "Briar" });
+      (resourceB as unknown as { id: string }).id = ENTITY_B_ID;
+      Object.assign(resourceB, { entityKind: "character" });
+      store.dispatch(
+        setResources([getResource(store), resourceB] as AnyResource[]),
+      );
+
+      renderControl(store);
+
+      // Successful removal on entity A (zero edges, keep path).
+      mockedList.mockResolvedValueOnce([]);
+      await openDialogAndResolveEdges([]);
+      fireEvent.click(screen.getByText("Remove"));
+      await waitFor(() =>
+        expect(getResource(store).entityKind).toBeUndefined(),
+      );
+      await waitFor(() =>
+        expect(screen.queryByText("Remove entity")).not.toBeInTheDocument(),
+      );
+
+      // Switch the selected resource to entity B, mirroring how the real app
+      // switches resources without unmounting this control.
+      store.dispatch(setSelectedResourceId(ENTITY_B_ID));
+
+      await screen.findByRole("button", { name: "Remove Entity" });
+
+      mockedList.mockResolvedValueOnce([]);
+      fireEvent.click(screen.getByRole("button", { name: "Remove Entity" }));
+
+      await waitFor(() => expect(mockedList).toHaveBeenCalledWith(PROJECT_ID));
+
+      const confirmButton = screen.getByText("Remove") as HTMLButtonElement;
+      await waitFor(() => expect(confirmButton).not.toBeDisabled());
+    });
+
+    it("regression: two successive successful removals on the same mounted control each reset submitting state (no remount, no resource switch)", async () => {
+      mockedUpdateSidecar.mockResolvedValue(undefined);
+      const store = setupStore({ entityKind: "character" });
+
+      renderControl(store);
+
+      // First successful removal.
+      await openDialogAndResolveEdges([]);
+      fireEvent.click(screen.getByText("Remove"));
+      await waitFor(() =>
+        expect(getResource(store).entityKind).toBeUndefined(),
+      );
+      await waitFor(() =>
+        expect(screen.queryByText("Remove entity")).not.toBeInTheDocument(),
+      );
+
+      // Re-declare the SAME resource as an entity again, without unmounting.
+      store.dispatch(
+        setResources([
+          { ...getResource(store), entityKind: "character" },
+        ] as AnyResource[]),
+      );
+
+      await screen.findByRole("button", { name: "Remove Entity" });
+
+      // Second successful removal on the same mounted control instance.
+      mockedList.mockResolvedValueOnce([]);
+      fireEvent.click(screen.getByRole("button", { name: "Remove Entity" }));
+      await waitFor(() => expect(mockedList).toHaveBeenCalledTimes(2));
+      const confirmButton = screen.getByText("Remove") as HTMLButtonElement;
+      await waitFor(() => expect(confirmButton).not.toBeDisabled());
+
+      fireEvent.click(confirmButton);
+      await waitFor(() =>
+        expect(getResource(store).entityKind).toBeUndefined(),
+      );
+      await waitFor(() =>
+        expect(screen.queryByText("Remove entity")).not.toBeInTheDocument(),
+      );
+    });
+
     it("cancel closes the dialog without error (relies on Radix's default focus-return behavior)", async () => {
       const store = setupStore({ entityKind: "character" });
 

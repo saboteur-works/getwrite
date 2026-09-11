@@ -161,7 +161,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 3
 **Notes:** This is FR-27's entire scope. The finding it fixes: the component's early-return (`if (!projectId || !resource || !isEntity) return null`) runs after its hooks, so it stays mounted and its state survives both a resource switch and a second open in the same session; the confirm handler's success path never called `setIsSubmitting(false)`, only its `catch` branch did.
 **POS:** task_faeac9d5
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 16

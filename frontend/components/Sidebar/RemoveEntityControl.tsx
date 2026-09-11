@@ -213,6 +213,27 @@ export default function RemoveEntityControl(): JSX.Element | null {
             ?.focus();
         }, 0);
         dispatch(updateResource(updated));
+
+        // Reset every dialog-scoped piece of state back to its pristine
+        // default. This component's early-return (`if (!projectId ||
+        // !resource || !isEntity) return null;`, above) runs after all hooks
+        // are declared, so it stays mounted rather than unmounting when the
+        // selected resource changes or is re-declared as an entity again —
+        // its state would otherwise survive across a resource switch or a
+        // second removal on the same mounted instance. `isSubmitting` in
+        // particular was never reset on this success path before, which left
+        // `isConfirmDisabled` (`isLoadingEdges || isSubmitting`) stuck `true`
+        // forever after the first successful removal. These resets don't
+        // need a particular position relative to the `updateResource`
+        // dispatch above — unlike the dialog-close/focus/dispatch sequence,
+        // none of them depend on being observed before this control
+        // unmounts for the CURRENT entity, only on taking effect for
+        // whichever entity this control renders for next.
+        setIsSubmitting(false);
+        setSubmitError(null);
+        setLoadError(null);
+        setShouldAlsoDeleteRelationships(false);
+        setMatchingEdges([]);
       } catch {
         // Either call failed (FR-15): keep the dialog open, show an inline
         // error, dispatch nothing, and let the writer retry or cancel.

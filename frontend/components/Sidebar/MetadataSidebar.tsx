@@ -544,7 +544,7 @@ export default function MetadataSidebar({
                 <EntityRelationshipsRefreshProvider>
                   <CollapsibleSection title="Entity" variant="sidebar">
                     <EntitySection />
-                    <RemoveEntityControl />
+                    <RemoveEntityControl key={editableResource.id} />
                   </CollapsibleSection>
                   <CollapsibleSection title="Relationships" variant="sidebar">
                     <EntityRelationshipsSection />
