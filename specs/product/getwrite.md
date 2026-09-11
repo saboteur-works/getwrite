@@ -429,13 +429,27 @@ lost work.
   (resolved: OQ-9). Because the alias editor renders only while `isEntity`
   (`EntitySection.tsx:144`), that existing path leaves aliases with no UI to
   remove once `entityKind` is cleared — a gap this requirement closes.
-  Removing the declaration MUST trigger the same mention-index and
-  alias-table cleanup clearing `entityKind` already triggers today —
-  `sidecar.ts`'s `enqueueEntityRescan`, `indexer-queue.ts` removing that
-  entity's `MentionRecord`s from `meta/index/mentions.json`, and
-  `entity-alias-table.ts` excluding resources without an `entityKind` — so
-  mention data and the alias table stay exactly as consistent as they are
-  today. The action MUST offer, as an explicit choice at the point of
+  Removing the declaration MUST result in the persisted sidecar no longer
+  carrying `entityKind` or `aliases`, on every runtime this product ships
+  (web, desktop, and native), so that `sidecar.ts`'s `enqueueEntityRescan`,
+  `indexer-queue.ts`'s removal of that entity's `MentionRecord`s from
+  `meta/index/mentions.json`, and `entity-alias-table.ts`'s exclusion of
+  resources without an `entityKind` all see the field genuinely absent and
+  mention data and the alias table are actually cleaned up, not merely
+  requested to be. This premise was measured false on the web/desktop
+  runtime as it stood at Stage 6.5 (2026-09-10): the sidecar POST returned
+  200 but `entityKind` remained on disk, because the client
+  (`frontend/src/lib/api/resources.ts`) sends
+  `JSON.stringify({ projectId, updatedResource })`, which drops any key
+  whose value is `undefined`, before it ever reaches
+  `updateSidecarCore`'s `{ ...existing, ...updatedResource }` merge — so an
+  omitted key silently keeps its old persisted value instead of being
+  cleared. The existing field-clearing path (`withEntityKind`, clearing
+  only `entityKind`) has the identical on-disk defect and is corrected
+  alongside this requirement, as the owner-approved exception to "unchanged
+  as it is today": its documented intent — clearing only `entityKind` and
+  leaving `aliases` dormant — does not change, but its clear now reaches
+  disk. The action MUST offer, as an explicit choice at the point of
   removal, whether to also delete every authored relationship edge (FR-39's
   authored half, persisted by `entity-relationships.ts`) in which the
   entity being un-declared is source or target. This is a deliberate,

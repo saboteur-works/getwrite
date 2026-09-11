@@ -71,11 +71,11 @@ FR-1: A user MUST be able to remove a resource's entity declaration in a single 
 
 FR-2: The Remove Entity control MUST render only in the entity's own sidebar view (the `EntitySection.tsx` area rendered from `MetadataSidebar.tsx`), and only while `isEntity` is true (the same condition already gating the alias editor, `EntitySection.tsx:144`) — there is nothing to remove once the resource is already not an entity. [US-1]
 
-FR-3: The existing field-clearing path (`withEntityKind`, clearing only `entityKind` and leaving `aliases` dormant) MUST remain unchanged and reachable exactly as it is today, as a distinct, lighter action from Remove Entity. [US-1]
+FR-3: The existing field-clearing path (`withEntityKind`, clearing only `entityKind` and leaving `aliases` dormant) MUST remain reachable exactly as it is today, as a distinct, lighter action from Remove Entity, and its documented intent — clearing only `entityKind` and leaving `aliases` dormant — is unchanged. What changes, per the owner's decision at Gate 5 (2026-09-10): its clear MUST actually reach the persisted sidecar on disk (see FR-20), which it was measured not to do as this feature branch began. [US-1]
 
-FR-4: Removing the declaration MUST clear `aliases` by setting it to `undefined` — the same explicit-`undefined` key-clearing pattern `withEntityKind` already applies to `entityKind` — rather than an empty array, so the persisted sidecar omits the `aliases` key entirely after removal, identical on disk to a resource that was never declared an entity. The write MUST follow the same explicit-`undefined` pattern `withEntityKind`'s own doc comment already documents for `updateResource`'s shallow-merge reducer (`store/resourcesSlice.ts`), so the sidecar persists both cleared fields rather than one. [US-1]
+FR-4: Removing the declaration MUST clear both `entityKind` and `aliases` such that the persisted sidecar on disk omits both keys entirely after removal, identical on disk to a resource that was never declared an entity — not merely a client-side or in-Redux clearing, and not merely a 200 response from the sidecar write. This corrects the prior wording, which asserted that setting a value to `undefined` and relying on `updateResource`'s shallow-merge reducer was sufficient; it was measured, at Stage 6.5 (2026-09-10), to leave `entityKind`/`aliases` on disk unchanged despite a 200 response, because the client's `JSON.stringify` drops `undefined`-valued keys before the request body ever reaches the server-side merge. See FR-20 for the corrected write-path requirement. [US-1]
 
-FR-5: Removing the declaration MUST persist through the existing `updateSidecar` path, reusing the same downstream cleanup clearing `entityKind` already triggers today — `sidecar.ts`'s `enqueueEntityRescan`, `indexer-queue.ts` removing the entity's `MentionRecord`s from `meta/index/mentions.json`, and `entity-alias-table.ts` excluding resources without an `entityKind`. No new cleanup mechanism MUST be introduced for this. [US-1]
+FR-5: Removing the declaration MUST persist through the existing `updateSidecar` path (corrected per FR-20 to actually clear the on-disk keys), triggering the same downstream cleanup clearing `entityKind` is intended to trigger today — `sidecar.ts`'s `enqueueEntityRescan`, `indexer-queue.ts` removing the entity's `MentionRecord`s from `meta/index/mentions.json`, and `entity-alias-table.ts` excluding resources without an `entityKind` — and that cleanup MUST actually observe the field absent, not merely be invoked against a sidecar that still carries the old value. No new cleanup mechanism MUST be introduced for this. [US-1]
 
 FR-6: The action MUST require confirmation via the existing `ConfirmDialog` component (`isOpen`, `title`, `description?`, `details?: React.ReactNode`, `confirmLabel?`, `cancelLabel?`, `onConfirm`, `onCancel`) before it takes effect, following the project-deletion precedent (`ManageProjectMenu.tsx:127`) rather than `EntityRelationshipsSection.tsx`'s immediate, unconfirmed single-edge removal. No new `ConfirmDialog` prop MUST be added, with exactly one narrowly-scoped exception (resolved: OQ-5): `isConfirmDisabled?: boolean`, defaulting to `false`, wired to the confirm button's `disabled` attribute. This exception exists because `ConfirmDialog.tsx` types `onConfirm: () => void`, never reads its return value, and renders the confirm control (`<Button variant="destructive" onClick={onConfirm}>`, `ConfirmDialog.tsx:57`) with no `disabled` wiring at all — a disabled confirm control that is also announced as unavailable to assistive tech is not achievable through `details` or the confirm handler's return value. No other new `ConfirmDialog` prop MUST be added; pending-state label text goes through the existing `confirmLabel`, and inline errors and the keep/delete checkbox (FR-17, FR-18) go through the existing `details` slot. [US-3]
 
@@ -104,6 +104,77 @@ FR-17: FR-7's zero-edges show/hide decision MUST be based on a fresh `listEntity
 FR-18: FR-7's keep/delete choice MUST be presented as a single checkbox, unchecked by default (keep), rendered in `ConfirmDialog`'s `details` slot with a properly associated `<label>`. Its label text MUST state the count of edges that will be deleted if checked — "Also delete N relationship(s) involving this entity" (exact pluralization left to implementation) — so the writer knows the scope of the delete choice before confirming. [US-2][US-3]
 
 FR-19: On cancel, focus MUST return to the control that opened the dialog, relying on Radix's default `onCloseAutoFocus` behavior (`ConfirmDialog.tsx:34-45`, `common/UI/Dialog/Dialog.tsx:38-71`) with no override needed. On a successful confirm, because the Remove Entity control itself unmounts once `isEntity` goes false (FR-2), focus MUST be moved explicitly, once the dialog closes, to the Entity Kind input (`aria-label="entity-kind-input"`, `EntitySection.tsx:131`), satisfying `docs/standards/accessibility.md`'s requirement that focus never lands on nothing or on a removed element. [US-3]
+
+FR-20: The sidecar write path MUST support clearing a field so that the key is genuinely absent from the persisted sidecar afterward, for both Remove Entity (`entityKind` and `aliases`) and the existing field-clearing path (`entityKind` only), and this MUST behave identically whether reached over HTTP (web/desktop) or through the in-process native transport. Per the owner's decision at Gate (OQ-6, resolved below), the mechanism is an explicit, optional `clearKeys: string[]` threaded through the sidecar write: the sidecar-update request body (`{ projectId, updatedResource, clearKeys? }`, `frontend/app/api/resource/[resource-id]/sidecar/route.ts`) and `updateSidecarCore`'s signature (`updateSidecarCore(projectId, resourceId, updatedResource, clearKeys?: string[])`, `frontend/src/lib/models/resource-crud-core.ts`) both gain the new parameter. `updateSidecarCore` applies its existing merge unchanged for every key not named in `clearKeys` — including the existing `orderIndex`/`folderId` carve-out, which is untouched by this change — and then, after that merge and before `writeSidecar`, deletes each key named in `clearKeys` from the merged object. Both transports use the identical mechanism: HTTP via `lib/api/resources.ts`'s `updateSidecar` sending `clearKeys` through to the route, and native via `native-resource-backend.ts` passing `clearKeys` through to `updateSidecarCore` in-process — native does NOT keep relying on an in-process `undefined`-valued key surviving to `updateSidecarCore`'s object-spread merge, even though that path does not cross the `JSON.stringify` boundary that drops `undefined`-valued keys over HTTP. [US-1]
+
+FR-25: `clearKeys`, wherever it is accepted (the sidecar route body and `updateSidecarCore`'s parameter), MUST be validated against an allowlist of exactly the keys this feature clears — `entityKind` and `aliases` — per `docs/standards/security.md`'s fail-closed, validate-at-the-boundary guidance for client-supplied structure. A `clearKeys` entry naming any other key (e.g. `id`, `folderId`, `orderIndex`, `name`, `type`) MUST be rejected with a 400 response and no write performed — not silently dropped, not silently applied. A malformed `clearKeys` (present but not an array of strings) MUST also be rejected with a 400 and no write performed. This allowlist is the lead's reading of `docs/standards/security.md` applied to this feature's own scope, pending owner confirmation at Gate 4. [US-1]
+
+FR-21: Verification for this feature MUST include at least one test per cleared-field path (Remove Entity's `entityKind`+`aliases` clear, and the existing field-clearing path's `entityKind` clear) that exercises the real persistence path — the route handler or `updateSidecarCore` running against a temp-directory or in-memory-adapter project — and then reads the persisted sidecar back off that adapter to assert the key is absent. A test that instead asserts the shape of a payload passed to a mocked `updateSidecar` MUST NOT be treated as satisfying this requirement, since such a test passed while the underlying defect (FR-4's measurement) was present. This coverage MUST include both the HTTP entry point and the native transport's entry point, so a divergence between the two runtimes is caught rather than assumed away. [US-1]
+
+FR-22: The Remove Entity control's accessible name MUST match its visible label text ("Remove Entity") rather than being overridden by a separate `aria-label`. The component's Storybook stories MUST pass under `pnpm test-storybook`, and the addon-a11y results for those stories MUST be reviewed as part of verifying this requirement, not merely the play functions completing without throwing. [US-3]
+
+FR-23: The keep/delete checkbox's (FR-18) accessible name MUST be derived from its associated `<label>` element rather than from an `aria-label` that overrides it, so that the count-bearing label text FR-18 requires ("Also delete N relationship(s) involving this entity") is what assistive technology actually announces. [US-2][US-3]
+
+FR-24: The Remove Entity trigger control MUST NOT use the red brand colour token, per CLAUDE.md's styling rule reserving red for position/canonical-state indicators and never for actions or alerts. [US-1]
+
+## Amendment note (Stage 6.5 measurements, 2026-09-10)
+
+The following are measurements taken in the real app against a disposable
+workspace, not diagnoses, except where a cause is explicitly marked as
+established by a follow-up experiment:
+
+- Remove Entity, keep-edges path, on an entity with `entityKind: "place"`:
+  the UI showed the entity removed, the one
+  `POST /api/resource/<id>/sidecar` call returned 200, but the sidecar on
+  disk still had `entityKind: "place"`, the server's
+  `GET /entity-alias-table` still listed it, and after reload the Entity
+  Kind field showed "place" again with Remove Entity reappearing.
+- Delete-edges path on an entity with `entityKind: "character"`,
+  `aliases: ["Mara"]`: `relationships.json` became `[]` (correct), and the
+  requests ran remove-by-entity, then sidecar write, then refetches in the
+  documented order (correct) — but the sidecar kept
+  `entityKind: "character"` and `aliases: ["Mara"]` on disk, and the roster
+  re-listed the entity within the same session.
+- The pre-existing field-clearing path (`EntitySection.tsx`'s
+  `withEntityKind`, unchanged by this feature branch): clearing the Entity
+  Kind field produced a 200 sidecar POST, yet `entityKind` stayed on disk
+  and the alias table still listed the resource. This defect predates this
+  branch and is on `main`.
+- Cause, established by experiment (`curl` POST of a sidecar body): a body
+  containing `entityKind: "object"` persisted `"object"` to disk; a
+  follow-up POST with the same body but the `entityKind` key omitted
+  entirely left `"object"` on disk rather than clearing it. Mechanism: the
+  client (`frontend/src/lib/api/resources.ts:184`) sends
+  `JSON.stringify({ projectId, updatedResource })`, which drops any key
+  whose value is `undefined`; `updateSidecarCore`
+  (`frontend/src/lib/models/resource-crud-core.ts:327`) writes
+  `{ ...existing, ...updatedResource }`, so a key absent from the request
+  body keeps its prior persisted value. `RemoveEntityControl.tsx:39` and
+  `withEntityKind` both depend on sending an `undefined`-valued key to
+  clear it, which never survives `JSON.stringify`.
+- Not measured — hypothesis only: the native (Android) backend calls
+  `updateSidecarCore` in-process with the JS object intact (no
+  `JSON.stringify` boundary in between), so `{ ...existing, entityKind: undefined }`
+  would overwrite the key there. This has not been verified on-device or
+  under test; FR-21 requires it be covered rather than assumed.
+- All 5 stories in `frontend/stories/Sidebar/RemoveEntityControl.stories.tsx`
+  fail under `pnpm test-storybook` with "Unable to find an accessible
+  element with the role button and name /remove entity/i" — the button
+  renders `aria-label="remove-entity"`, overriding its visible "Remove
+  Entity" text. Addon-a11y (configured `test: "todo"`) never evaluated the
+  dialog because each play function fails before reaching it.
+- The keep/delete checkbox's accessible name is `also-delete-relationships`
+  (an `aria-label`), so assistive technology never receives the count
+  FR-18 requires its label state.
+- The sidebar Remove Entity trigger is styled red
+  (`border-gw-red-border … text-gw-red`), against CLAUDE.md's styling rule
+  reserving red for position/canonical-state indicators, never actions or
+  alerts. (`ConfirmDialog`'s own destructive confirm button styling is
+  pre-existing and out of scope for this feature.)
+- Why the existing test suite did not catch the persistence defect: the
+  relevant tests (task 7 of the original task list) assert the payload
+  passed to a mocked `updateSidecar`, not the sidecar actually persisted to
+  disk or a memory adapter — see FR-21.
 
 ## Open questions
 
@@ -178,6 +249,42 @@ FR-19: On cancel, focus MUST return to the control that opened the dialog, relyi
   to go through the existing `confirmLabel`, and the inline error and
   keep/delete checkbox (FR-17, FR-18) continue to go through the existing
   `details` slot. — Impact: FR-6, FR-15, FR-17.
+
+- OQ-6 (resolved): HOW should the sidecar write path (FR-20) actually clear
+  a key so it is genuinely absent from the persisted sidecar afterward?
+  Owner decision at Gate (2026-09-10): option (a) — an explicit
+  `clearKeys: string[]` threaded through the sidecar route body and
+  `updateSidecarCore`'s signature, used by BOTH the HTTP and native
+  transports (unified; native does not keep relying on in-process
+  `undefined` + `writeSidecar`'s `JSON.stringify`). Triage evidence that
+  decided it: all current callers send a full resource, not a partial
+  patch (`frontend/app/(app)/page.tsx:349-352`,
+  `frontend/components/Sidebar/EntitySection.tsx:65-81`,
+  `frontend/components/Sidebar/RemoveEntityControl.tsx:166-167`; native
+  `frontend/src/store/transport/native-resource-backend.ts:119-127`
+  forwards the same shape to `updateSidecarCore`), so a `clearKeys`-based
+  design costs none of them a rewrite. Candidate A (send a literal `null`
+  and delete any `null`-valued key server-side) is eliminated as stated:
+  `MetadataValue` includes `z.null()`
+  (`frontend/src/lib/models/schemas.ts:83-96`) and
+  `frontend/src/lib/models/field-values.ts:23-70` distinguishes an
+  explicit `null` value from a missing key for smart-folder/query counts,
+  so treating `null` as "delete this key" would silently break that
+  distinction for any other field. Candidate C (replace-instead-of-merge
+  semantics) is not a plain replace: `updateSidecarCore` deliberately
+  prefers on-disk `orderIndex`/`folderId` over the client's value
+  (`frontend/src/lib/models/resource-crud-core.ts:339-347`), so a full
+  replace would need to special-case those two fields regardless, at
+  which point it is no simpler than the chosen `clearKeys` approach and
+  carries a larger, uninventoried blast radius across every existing
+  caller of `updateSidecar`/`updateSidecarCore`. Native's current
+  behaviour (in-process `undefined` overwrite + `writeSidecar`'s
+  `JSON.stringify` at `frontend/src/lib/models/sidecar.ts:150`) remains a
+  deduction from reading the code, not a measurement — FR-21's test is
+  what measures it — and is superseded rather than left in place: native
+  now uses the same `clearKeys` mechanism as HTTP, per the owner's
+  unification decision, rather than being merely covered by a test while
+  differing in mechanism. — Impact: FR-20, FR-21, FR-25.
 
 ## Out of scope (deferred)
 
