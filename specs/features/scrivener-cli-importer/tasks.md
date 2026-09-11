@@ -269,7 +269,7 @@ argument handling.
 **Depends on:** 8
 **Estimate:** 3
 **POS:** task_088c019d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Verify build, type, and dead-export gates
 
