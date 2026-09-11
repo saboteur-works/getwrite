@@ -10,7 +10,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 3
 **Notes:** This is FR-8's entire model-layer scope. No cleanup/migration/sweep of edges is introduced beyond exactly what this function is called to do (non-goal).
 **POS:** task_06806c66
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Add the `remove-by-entity` HTTP route
 **What:** Adds `POST /api/project/[project-id]/entity-relationships/remove-by-entity` (`frontend/app/api/project/[project-id]/entity-relationships/remove-by-entity/route.ts`), modelled directly on the sibling `remove/route.ts`: resolves and validates `project-id` via `resolveProjectPath` (never a client-supplied path), wraps in `withStorageContext`, parses body `{ entityId: string }` with the same malformed-JSON and missing/empty-string 400 handling the sibling route uses for `edgeId`, and delegates entirely to Task 1's `removeEntityRelationshipsForEntity`. Always responds 200 with `{ removedCount: number }` — including when `removedCount` is 0 — never modeling "nothing to remove" as an error status, mirroring the sibling route's "no business logic here" floor (FR-9).
@@ -40,7 +40,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 2
 **Notes:** No other new `ConfirmDialog` prop is added anywhere in this feature — pending-state label text goes through the existing `confirmLabel`, and the inline error and keep/delete checkbox (Task 6) go through the existing `details` slot, per the resolved OQ-5.
 **POS:** task_4c6f9116
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Add the sidebar-scoped relationships-refresh context (FR-16)
 **What:** Adds `frontend/components/Sidebar/EntityRelationshipsRefreshContext.tsx`, a narrow provider in the style of `EntityMentionsContext.tsx` but write-signalling rather than data-fetching: it exposes a `refreshToken: number` and a `notifyRelationshipsChanged(): void` that increments it. Wraps `EntityRelationshipsSection.tsx`'s existing render location in `MetadataSidebar.tsx` (alongside, not replacing, `EntityMentionsProvider`) and threads `refreshToken` into `EntityRelationshipsSection.tsx`'s existing `refetch` `useEffect` dependency array, so a bump to the token re-runs the same `listEntityRelationships` fetch that mount and `projectId` changes already trigger — no new fetch shape, only a new trigger. `notifyRelationshipsChanged` is exported via a `useEntityRelationshipsRefresh()` hook so Task 7's confirm handler can call it after a successful edge-delete-then-sidecar-write sequence without either component holding a direct reference to the other.
@@ -50,7 +50,7 @@ Source spec: `specs/features/remove-entity.md`. Granularity: story points (1/2/3
 **Estimate:** 3
 **Notes:** This is FR-16's entire scope. Deliberately independent of Tasks 1-4 so it can be built and tested in isolation before Task 7 wires a caller into it.
 **POS:** task_c1745766
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Add the Remove Entity control and its confirmation dialog — fetch, gating, and the keep/delete checkbox
 **What:** Adds a new component, `frontend/components/Sidebar/RemoveEntityControl.tsx`, rendered in `MetadataSidebar.tsx` alongside `EntitySection.tsx` (inside the same `EntityMentionsProvider`/`EntityRelationshipsRefreshContext` wrapping Task 5 established), gated on the identical `isEntity` condition `EntitySection.tsx:144` already uses and on nothing else — no new feature flag (FR-2, FR-13). Renders a button that opens a `ConfirmDialog` (Task 4's `isConfirmDisabled` in place). On open, issues a fresh `listEntityRelationships(projectId)` fetch (never reading `EntityRelationshipsSection.tsx`'s own state, which exposes no count) filtered to edges naming the current entity as source or target (FR-17). While that fetch is in flight, the dialog's `details` slot shows neither the checkbox nor an error, and `isConfirmDisabled` is `true`. On fetch success with a nonzero filtered count, `details` renders a single checkbox, unchecked by default, with a properly associated `<label>` reading "Also delete N relationship(s) involving this entity" (FR-18); on a zero count, the checkbox is omitted entirely (FR-7). On fetch failure, the dialog fails closed toward keep: no checkbox is rendered, an inline error in `details` states relationship data could not be loaded, and `isConfirmDisabled` becomes `false` so removal can proceed on the keep path (no call to Task 3's edge-delete transport function is made in this state) rather than either blocking removal entirely or silently defaulting to delete (FR-17); `isConfirmDisabled` is `true` only while the fetch is in flight. This task stops at dialog presentation — the confirm action itself (the write sequence) is Task 7. Renders inside the existing "Entity" `CollapsibleSection` in `frontend/components/Sidebar/MetadataSidebar.tsx` (currently lines 536-538, wrapping `<EntitySection />`), inside the same `EntityMentionsProvider` (lines 534-556) and `EntityRelationshipsRefreshContext` wrapping Task 5 established — not a new section of its own.
