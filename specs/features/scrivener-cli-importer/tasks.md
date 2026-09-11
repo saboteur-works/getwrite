@@ -62,7 +62,7 @@ escape, and one `\field`/`HYPERLINK` run.
 **Notes:** Keep the fixture minimal but complete — every shape listed above
 needs only one instance, not full coverage of the survey project's breadth.
 **POS:** task_af28e884
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: `.scrivx` parser and Creator allow-list check
 
@@ -181,7 +181,7 @@ with none.
 **Depends on:** none
 **Estimate:** 3
 **POS:** task_6b2bd6ed
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Sidecar synopsis/notes and feature-toggle enablement
 
