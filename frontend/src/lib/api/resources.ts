@@ -82,11 +82,19 @@ export interface ResourcesTransport {
   ): Promise<{ resource: AnyResource }>;
   /** Deletes (soft-deletes) a resource. */
   remove(resourceId: string, projectId: string): Promise<void>;
-  /** Persists an updated sidecar (metadata) file for a resource. */
+  /**
+   * Persists an updated sidecar (metadata) file for a resource.
+   *
+   * `clearKeys`, when provided, names sidecar keys to delete from the merged
+   * result after the update, validated server-side (or in-process on native)
+   * against a fail-closed allowlist — see
+   * `resource-crud-core.ts`'s `updateSidecarCore`.
+   */
   updateSidecar(
     resourceId: string,
     projectId: string,
     updatedResource: AnyResource,
+    clearKeys?: string[],
   ): Promise<void>;
   /** Renames a resource or folder. */
   rename(
@@ -177,11 +185,15 @@ export const httpResourcesTransport: ResourcesTransport = {
     });
   },
 
-  async updateSidecar(resourceId, projectId, updatedResource) {
+  async updateSidecar(resourceId, projectId, updatedResource, clearKeys) {
     await fetch(`/api/resource/${resourceId}/sidecar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, updatedResource }),
+      body: JSON.stringify(
+        clearKeys !== undefined
+          ? { projectId, updatedResource, clearKeys }
+          : { projectId, updatedResource },
+      ),
     });
   },
 
@@ -332,14 +344,23 @@ export async function deleteResource(
  * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
  * `StoredProject.id` — `/api/resource/[resource-id]/sidecar` resolves it via
  * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ *
+ * `clearKeys`, when provided, names sidecar keys to delete after the merge —
+ * see {@link ResourcesTransport.updateSidecar}.
  */
 export async function updateSidecar(
   resourceId: string,
   projectId: string,
   updatedResource: AnyResource,
+  clearKeys?: string[],
 ): Promise<void> {
   const transport = await resolveResourcesTransport();
-  await transport.updateSidecar(resourceId, projectId, updatedResource);
+  await transport.updateSidecar(
+    resourceId,
+    projectId,
+    updatedResource,
+    clearKeys,
+  );
 }
 
 /**
