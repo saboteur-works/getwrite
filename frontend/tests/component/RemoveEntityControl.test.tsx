@@ -295,7 +295,7 @@ describe("RemoveEntityControl", () => {
       expect(mockedRemoveByEntity).toHaveBeenCalledWith(PROJECT_ID, ENTITY_ID);
     });
 
-    it("clears both entityKind and aliases to undefined via the sidecar write, leaving every other field unchanged", async () => {
+    it("calls updateSidecar with clearKeys for entityKind and aliases, omitting both from updatedResource, leaving every other field unchanged", async () => {
       mockedUpdateSidecar.mockResolvedValue(undefined);
       const store = setupStore({
         entityKind: "character",
@@ -310,15 +310,22 @@ describe("RemoveEntityControl", () => {
 
       await waitFor(() => expect(mockedUpdateSidecar).toHaveBeenCalled());
 
-      const [resourceId, projectId, updated] =
+      const [resourceId, projectId, updated, clearKeys] =
         mockedUpdateSidecar.mock.calls[0];
       expect(resourceId).toBe(ENTITY_ID);
       expect(projectId).toBe(PROJECT_ID);
-      expect(updated.entityKind).toBeUndefined();
-      expect(updated.aliases).toBeUndefined();
+      expect(clearKeys).toEqual(["entityKind", "aliases"]);
+      // The persisted-write payload omits both keys entirely rather than
+      // sending them as `undefined` — the actual clearing is now named via
+      // `clearKeys` (Task 10/11), not by an `undefined`-valued key surviving
+      // to the request body.
+      expect(Object.prototype.hasOwnProperty.call(updated, "entityKind")).toBe(
+        false,
+      );
+      expect(Object.prototype.hasOwnProperty.call(updated, "aliases")).toBe(
+        false,
+      );
       const restUpdated: Record<string, unknown> = { ...updated };
-      delete restUpdated.entityKind;
-      delete restUpdated.aliases;
       const restBefore: Record<string, unknown> = { ...before };
       delete restBefore.entityKind;
       delete restBefore.aliases;

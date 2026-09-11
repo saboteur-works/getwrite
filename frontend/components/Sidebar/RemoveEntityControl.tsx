@@ -26,17 +26,34 @@ import ConfirmDialog from "../common/ConfirmDialog";
 const ENTITY_KIND_INPUT_SELECTOR = '[aria-label="entity-kind-input"]';
 
 /**
- * Clears both `entityKind` and `aliases` on `resource`, using the identical
- * explicit-`undefined` key-clearing pattern `EntitySection.tsx`'s
- * `withEntityKind` documents for `updateResource`'s shallow-merge reducer
- * (FR-4): both keys must be *present* on the returned object (set to
- * `undefined`), not omitted, so the merge in `store/resourcesSlice.ts`
- * actually overwrites the previous values rather than leaving them in
- * place. `JSON.stringify` drops `undefined`-valued keys on its own, so the
- * persisted sidecar still omits both keys entirely.
+ * Clears both `entityKind` and `aliases` on `resource` for the client-side
+ * Redux dispatch only (FR-4). `updateResource`'s reducer
+ * (`store/resourcesSlice.ts`) merges partial updates with a shallow
+ * `{ ...previous, ...update }` spread, which only overwrites keys that are
+ * *present* on `update` — an omitted key leaves the previous value in place
+ * — so both keys must be explicitly set to `undefined` here, not omitted.
+ *
+ * This is unrelated to what actually persists to disk: the sidecar write
+ * uses `updateSidecar`'s `clearKeys` parameter (Task 10/11) instead, since
+ * `JSON.stringify` silently drops `undefined`-valued keys before an HTTP
+ * body ever reaches the server (Stage 6.5 measurement) — see
+ * `withoutEntityFields` below, used for that call.
  */
 function withEntityRemoved(resource: AnyResource): AnyResource {
   return { ...resource, entityKind: undefined, aliases: undefined };
+}
+
+/**
+ * Returns a copy of `resource` with `entityKind` and `aliases` omitted
+ * entirely (not set to `undefined`) — the shape `updateSidecar` expects for
+ * its `updatedResource` argument when paired with
+ * `clearKeys: ["entityKind", "aliases"]` (Task 10/11), since the actual
+ * clearing is now performed server-side via `clearKeys`, not by relying on
+ * an `undefined`-valued key surviving to the request body.
+ */
+function withoutEntityFields(resource: AnyResource): AnyResource {
+  const { entityKind: _entityKind, aliases: _aliases, ...rest } = resource;
+  return rest as AnyResource;
 }
 
 /**
@@ -164,7 +181,12 @@ export default function RemoveEntityControl(): JSX.Element | null {
         }
 
         const updated = withEntityRemoved(resource);
-        await updateSidecar(entityId, projectId, updated);
+        await updateSidecar(
+          entityId,
+          projectId,
+          withoutEntityFields(resource),
+          ["entityKind", "aliases"],
+        );
 
         // Success sequence (FR-19): every step below that depends on this
         // component still being mounted runs BEFORE the `updateResource`
