@@ -1,0 +1,592 @@
+/**
+ * @module import-scrivener-project
+ *
+ * The single model-layer entry point for the Scrivener CLI importer (Task 8,
+ * `specs/features/scrivener-cli-importer.md` FR-1, FR-4, FR-10, FR-11): ties
+ * the parser (Task 2), RTF→TipTap converter (Task 3), binder mapper (Task 4),
+ * metadata mapper (Task 5), report builder (Task 6), and sidecar/feature-toggle
+ * applier (Task 7) together into one call that produces a complete, valid
+ * destination GetWrite project.
+ *
+ * ## Error-signaling convention
+ *
+ * {@link importScrivenerProject} throws {@link UnsupportedScrivenerProjectError}
+ * for the FR-2 refusal case, rather than returning a discriminated-union
+ * result. This matches the codebase's existing convention for
+ * control-flow-relevant failures a caller must distinguish from "something
+ * went wrong" (`ScrivxParseError`, `ProjectBusyError`,
+ * `SameEntityRelationshipError`, `InvalidClearKeysCoreError`): a dedicated
+ * `Error` subclass the caller can `instanceof`-check. Task 9's CLI wrapper is
+ * expected to catch this specific error type and map it to a non-zero exit
+ * code with the error's own message; every other thrown error is an
+ * unexpected failure and should map to the same generic non-zero exit path
+ * `project create` already uses.
+ *
+ * ## Orchestration order
+ *
+ * 1. Resolve the source project's single `*.scrivx` file inside `scrivPath`
+ *    and parse it (Task 2). Refuse per FR-2 before any destination write.
+ * 2. Build the binder→resource-tree plan (Task 4) and the metadata plan
+ *    (Task 5) — both pure, no destination writes yet.
+ * 3. Create the destination `project.json`, seeding `config.statuses` from
+ *    the metadata plan (FR-6).
+ * 4. Create every planned folder, then every planned resource (bulk-create
+ *    pattern: `writeResourceToFile` + `writeRevision(..., { isCanonical:
+ *    true })`), converting each resource's `content.rtf` via Task 3 and
+ *    seeding its sidecar `userMetadata` from the metadata plan's resolved
+ *    per-document status/label/custom-field values (FR-4, FR-6, FR-7).
+ * 5. Create the "Label" and custom metadata-schema fields (Task 5's plan)
+ *    under a dedicated `scrivener-import` group (see below), skipped
+ *    entirely when the plan has neither.
+ * 6. Create tags for the keyword-merge plan and assign them to resources
+ *    (FR-15).
+ * 7. Apply Task 7's per-resource synopsis/notes sidecar merge and the
+ *    aggregated feature-toggle enablement.
+ * 8. Write the Task 6 report, having scanned the source project's
+ *    `Snapshots/` directory for FR-9(f) (the one piece of report input no
+ *    earlier task already assembles).
+ * 9. Rebuild the destination project's indexes, mirroring
+ *    `cli/src/commands/reindex.ts`'s rebuild-from-scratch logic (FR-11).
+ *
+ * No step above ever writes to, renames, or deletes anything under
+ * `scrivPath` — every read of the source project uses `io.ts`'s read-only
+ * wrappers (`readFile`/`readdir`/`exists`), never a mutating one (FR-10).
+ *
+ * ## Metadata-schema group choice
+ *
+ * `DEFAULT_METADATA_SCHEMA` (`default-metadata-schema.ts`) has exactly two
+ * groups: `builtin-document` (which already owns a *locked* built-in
+ * `status` select field with no configurable `options`) and
+ * `builtin-story-timeline`. Neither is an appropriate home for the Label
+ * field or per-project custom fields: folding them into `builtin-document`
+ * would mix built-in, always-present fields with fields that only exist
+ * because of this one import, and there is no existing "custom fields"
+ * group anywhere in the default schema to reuse. A fresh group,
+ * `scrivener-import` / "Imported Fields", is created (only when there is at
+ * least one field to add) via `metadata-schema.ts`'s `addGroup` before the
+ * fields are added via `addField` — leaving `DEFAULT_METADATA_SCHEMA`
+ * itself untouched and making every imported field's origin legible in the
+ * schema manager.
+ *
+ * This orchestrator deliberately does **not** call `runForTenant` itself —
+ * `createProjectFromType` (`project-creator.ts`), the closest existing
+ * precedent for "create a complete project on disk," does not wrap itself
+ * in `runForTenant` either; its callers (the CLI, tests) do. Task 9's CLI
+ * command is expected to follow the same convention `project create`
+ * already uses.
+ */
+import path from "node:path";
+import { exists, mkdir, readdir, readFile, writeFile } from "../io";
+import { generateUUID } from "../uuid";
+import { createProject } from "../project";
+import { createFolderResource, createTextResource } from "../resource-factory";
+import { writeResourceToFile } from "../resource-persistence";
+import { writeRevision } from "../revision";
+import { addField, addGroup } from "../metadata-schema";
+import { createTag, assignTagToResource } from "../tags";
+import { updateFeatureConfig } from "../project-features";
+import { readSidecar } from "../sidecar";
+import {
+  listResourceIds,
+  computeBacklinks,
+  persistBacklinks,
+} from "../backlinks";
+import { indexResource } from "../inverted-index";
+import { buildEntityAliasTable } from "../entity-alias-table";
+import { findMentionOffsets } from "../entity-detection";
+import {
+  persistMentionIndex,
+  type MentionIndex,
+  type MentionRecord,
+} from "../mention-index";
+import { loadResourceContent } from "../../tiptap-utils";
+import { slugify } from "../../utils";
+import type { MetadataValue, Project, TextResource, UUID } from "../types";
+import {
+  applyDocumentMetadata,
+  resolveFeatureTogglesToEnable,
+  type DocumentMetadataFlags,
+} from "./apply-document-metadata";
+import {
+  buildImportReport,
+  writeImportReport,
+  type ImportReportInput,
+  type ImportReportSkip,
+  type ImportReportSnapshot,
+} from "./import-report";
+import { isSupportedScrivenerProject, parseScrivxFile } from "./scrivx-parser";
+import {
+  mapBinderToImportPlan,
+  type ImportPlanId,
+  type ImportPlanResource,
+} from "./binder-mapper";
+import { buildMetadataPlan } from "./metadata-mapper";
+import { convertRtfToTiptap } from "./rtf-to-tiptap";
+import type { ScrivxBinderItem } from "./scrivx-types";
+
+/**
+ * Thrown by {@link importScrivenerProject} when the source project at
+ * `scrivPath` fails FR-2's Creator allow-list check, or when its `.scrivx`
+ * file cannot be located. Nothing is written to `projectRoot` before this is
+ * thrown — see the module doc's "Error-signaling convention".
+ */
+export class UnsupportedScrivenerProjectError extends Error {
+  constructor(scrivPath: string, reason: string) {
+    super(`Cannot import Scrivener project at "${scrivPath}": ${reason}`);
+    this.name = "UnsupportedScrivenerProjectError";
+  }
+}
+
+/** Input to {@link importScrivenerProject}. */
+export interface ImportScrivenerProjectOptions {
+  /** Absolute path to the source `.scriv` package directory (not the `.scrivx` file itself). */
+  scrivPath: string;
+  /** Absolute path where the new destination GetWrite project should be created. */
+  projectRoot: string;
+  /** Optional destination project name; defaults to `scrivPath`'s basename with the `.scriv` extension stripped. */
+  name?: string;
+}
+
+/** Result of a successful {@link importScrivenerProject} run. */
+export interface ImportScrivenerProjectResult {
+  /** The created destination project. */
+  readonly project: Project;
+  /** Absolute path to the created destination project. */
+  readonly projectRoot: string;
+  /** Number of folders created. */
+  readonly folderCount: number;
+  /** Number of text resources created. */
+  readonly resourceCount: number;
+  /** Number of tags created. */
+  readonly tagCount: number;
+  /** Rendered FR-9 report text (already persisted via `writeImportReport`). */
+  readonly report: string;
+}
+
+const METADATA_GROUP_ID = "scrivener-import";
+const METADATA_GROUP_LABEL = "Imported Fields";
+
+/**
+ * Imports a Scrivener 3, Mac-authored `.scriv` project into a new, complete
+ * GetWrite project at `projectRoot` (FR-1, FR-4, FR-10, FR-11).
+ *
+ * @throws {UnsupportedScrivenerProjectError} When the source project is not
+ *   Scrivener 3, Mac-authored (FR-2), or its `.scrivx` file cannot be found.
+ *   Nothing is written to `projectRoot` in this case.
+ */
+export async function importScrivenerProject(
+  options: ImportScrivenerProjectOptions,
+): Promise<ImportScrivenerProjectResult> {
+  const { scrivPath, projectRoot } = options;
+
+  const scrivxPath = await resolveScrivxPath(scrivPath);
+  const parsed = await parseScrivxFile(scrivxPath);
+
+  if (!isSupportedScrivenerProject(parsed.creator)) {
+    throw new UnsupportedScrivenerProjectError(
+      scrivPath,
+      `unsupported Creator "${parsed.creator}" (only Scrivener 3, Mac-authored ` +
+        `projects — Creator starting with "SCRMAC-3" — are supported).`,
+    );
+  }
+
+  // ── Planning (pure; no destination writes yet) ──────────────────────────
+  const plan = await mapBinderToImportPlan(parsed, scrivxPath);
+  const metadataPlan = buildMetadataPlan(parsed);
+
+  // ── Destination project ──────────────────────────────────────────────────
+  const projectName =
+    options.name ?? path.basename(scrivPath).replace(/\.scriv$/i, "");
+  const project = createProject({
+    name: projectName,
+    slug: slugify(projectName),
+    rootPath: projectRoot,
+    config: { editorConfig: {}, statuses: [...metadataPlan.statuses] },
+  });
+  await mkdir(projectRoot, { recursive: true });
+  await writeFile(
+    path.join(projectRoot, "project.json"),
+    JSON.stringify(project, null, 2),
+    "utf8",
+  );
+
+  // ── Folders (plan array is already parent-before-child ordered) ─────────
+  const realIdByPlanId = new Map<ImportPlanId, UUID>();
+  for (const folder of plan.folders) {
+    const realParentId =
+      folder.parentId === null
+        ? null
+        : (realIdByPlanId.get(folder.parentId) ?? null);
+    const folderResource = createFolderResource({
+      name: folder.name,
+      parentFolderId: realParentId,
+      orderIndex: folder.orderIndex,
+    });
+    await writeResourceToFile(projectRoot, folderResource);
+    realIdByPlanId.set(folder.id, folderResource.id);
+  }
+
+  // ── Resources ─────────────────────────────────────────────────────────
+  const skips: ImportReportSkip[] = [];
+  const sourceUuidToResourceId = new Map<string, UUID>();
+  const documentFlags: DocumentMetadataFlags[] = [];
+
+  for (const resourcePlan of plan.resources) {
+    const created = await createAndWriteResource(
+      projectRoot,
+      resourcePlan,
+      realIdByPlanId,
+      metadataPlan.resourceUserMetadata,
+      skips,
+    );
+    if (!created) continue;
+    sourceUuidToResourceId.set(resourcePlan.sourceUuid, created.id);
+
+    const flags = await applySynopsisAndNotes(
+      projectRoot,
+      resourcePlan,
+      created.id,
+    );
+    documentFlags.push(flags);
+  }
+
+  // ── Metadata schema: Label field + custom fields (FR-7, FR-15) ──────────
+  const schemaFields = [
+    ...(metadataPlan.labelField ? [metadataPlan.labelField] : []),
+    ...metadataPlan.customFields,
+  ];
+  if (schemaFields.length > 0) {
+    await addGroup(projectRoot, {
+      id: METADATA_GROUP_ID,
+      label: METADATA_GROUP_LABEL,
+      fields: [],
+    });
+    for (const field of schemaFields) {
+      await addField(projectRoot, METADATA_GROUP_ID, field);
+    }
+  }
+
+  // ── Tags (FR-15 Keywords) ────────────────────────────────────────────────
+  const realTagIdByPlanTagId = new Map<string, string>();
+  for (const plannedTag of metadataPlan.keywordTagPlan.tags) {
+    const tag = await createTag(projectRoot, plannedTag.name);
+    realTagIdByPlanTagId.set(plannedTag.id, tag.id);
+  }
+  for (const [sourceUuid, planTagIds] of metadataPlan.keywordTagPlan
+    .resourceKeywordTagIds) {
+    const resourceId = sourceUuidToResourceId.get(sourceUuid);
+    if (resourceId === undefined) continue;
+    for (const planTagId of planTagIds) {
+      const realTagId = realTagIdByPlanTagId.get(planTagId);
+      if (realTagId === undefined) continue;
+      await assignTagToResource(projectRoot, resourceId, realTagId);
+    }
+  }
+
+  // ── Feature toggles (FR-5) ───────────────────────────────────────────────
+  const toggles = resolveFeatureTogglesToEnable(documentFlags);
+  if (Object.keys(toggles).length > 0) {
+    await updateFeatureConfig(projectRoot, { features: toggles });
+  }
+
+  // ── Report (FR-9) ────────────────────────────────────────────────────────
+  const titleByUuid = buildUuidTitleIndex(parsed.binder);
+  const packageDir = path.dirname(scrivxPath);
+  const snapshots = await scanSnapshots(packageDir, titleByUuid);
+
+  const reportInput: ImportReportInput = {
+    skips: [
+      ...skips,
+      ...metadataPlan.unsupportedFields.map((field) => ({
+        itemTitle: field.fieldTitle,
+        binderPath: `CustomMetaData/${field.fieldId}`,
+        reason: field.reason,
+      })),
+    ],
+    keywordMerges: metadataPlan.keywordTagPlan.merges.map((merge) => ({
+      leafName: merge.leafName,
+      mergedParentPaths: merge.parentPaths,
+    })),
+    nonTextResearch: plan.nonTextResearch,
+    excludedOther: plan.excluded
+      .filter((item) => item.reason === "other-type")
+      .map((item) => ({
+        itemTitle: item.itemTitle,
+        binderPath: item.binderPath,
+      })),
+    trashContent: plan.excluded
+      .filter((item) => item.reason === "trash")
+      .map((item) => ({
+        itemTitle: item.itemTitle,
+        binderPath: item.binderPath,
+      })),
+    snapshots,
+  };
+  const report = buildImportReport(reportInput);
+  await writeImportReport(projectRoot, report);
+
+  // ── Rebuild indexes (FR-11), mirroring cli/src/commands/reindex.ts ──────
+  await rebuildIndexes(projectRoot);
+
+  return {
+    project,
+    projectRoot,
+    folderCount: plan.folders.length,
+    resourceCount: sourceUuidToResourceId.size,
+    tagCount: realTagIdByPlanTagId.size,
+    report,
+  };
+}
+
+/**
+ * Locates the single `*.scrivx` file directly under `scrivPath` (the `.scriv`
+ * package directory).
+ *
+ * @throws {UnsupportedScrivenerProjectError} When no `.scrivx` file is found.
+ */
+async function resolveScrivxPath(scrivPath: string): Promise<string> {
+  let entries: string[];
+  try {
+    const raw = await readdir(scrivPath);
+    entries = (raw as string[]).filter((e) => typeof e === "string");
+  } catch (err) {
+    throw new UnsupportedScrivenerProjectError(
+      scrivPath,
+      `could not read the source directory: ${(err as Error).message}`,
+    );
+  }
+  const scrivxEntry = entries.find((entry) =>
+    entry.toLowerCase().endsWith(".scrivx"),
+  );
+  if (scrivxEntry === undefined) {
+    throw new UnsupportedScrivenerProjectError(
+      scrivPath,
+      "no .scrivx file found directly under the source directory",
+    );
+  }
+  return path.join(scrivPath, scrivxEntry);
+}
+
+/**
+ * Creates and persists one planned text resource: reads + converts its
+ * `content.rtf` (Task 3), seeds its sidecar `userMetadata` from the metadata
+ * plan's resolved per-document values, writes it (bulk-create pattern), and
+ * writes its initial canonical revision. A `content.rtf` this cannot read is
+ * recorded as an FR-8 skip and the resource is not created; any RTF features
+ * Task 3 could not convert are recorded as further FR-8 skips regardless.
+ *
+ * @returns The created `TextResource`, or `undefined` when the resource was
+ *   skipped entirely (unreadable `content.rtf`).
+ */
+async function createAndWriteResource(
+  projectRoot: string,
+  resourcePlan: ImportPlanResource,
+  realIdByPlanId: Map<ImportPlanId, UUID>,
+  resourceUserMetadata: ReadonlyMap<string, Readonly<Record<string, string>>>,
+  skips: ImportReportSkip[],
+): Promise<TextResource | undefined> {
+  let rtfText: string;
+  try {
+    rtfText = await readFile(resourcePlan.contentRtfPath, "utf8");
+  } catch (err) {
+    skips.push({
+      itemTitle: resourcePlan.name,
+      binderPath: resourcePlan.binderPath,
+      reason: `content.rtf could not be read: ${(err as Error).message}`,
+    });
+    return undefined;
+  }
+
+  const { tiptap, plainText, droppedFeatures } = convertRtfToTiptap(rtfText);
+  for (const dropped of droppedFeatures) {
+    skips.push({
+      itemTitle: resourcePlan.name,
+      binderPath: resourcePlan.binderPath,
+      reason: dropped.detail,
+    });
+  }
+
+  const realParentId =
+    resourcePlan.parentId === null
+      ? null
+      : (realIdByPlanId.get(resourcePlan.parentId) ?? null);
+  const userMetadata = resourceUserMetadata.get(resourcePlan.sourceUuid);
+
+  const resource = createTextResource({
+    name: resourcePlan.name,
+    folderId: realParentId,
+    plainText,
+    tiptap,
+    orderIndex: resourcePlan.orderIndex,
+    userMetadata: userMetadata
+      ? (userMetadata as Record<string, MetadataValue>)
+      : undefined,
+  });
+
+  await writeResourceToFile(projectRoot, resource);
+  await writeRevision(projectRoot, resource.id, 1, resource.plainText ?? "", {
+    isCanonical: true,
+  });
+
+  return resource;
+}
+
+/**
+ * Reads a resource's sibling `synopsis.txt`/`notes.rtf` (if present, next to
+ * its `content.rtf`) and applies them to its sidecar via Task 7's
+ * `applyDocumentMetadata` (FR-5).
+ */
+async function applySynopsisAndNotes(
+  projectRoot: string,
+  resourcePlan: ImportPlanResource,
+  resourceId: UUID,
+): Promise<DocumentMetadataFlags> {
+  const dataDir = path.dirname(resourcePlan.contentRtfPath);
+
+  let synopsis: string | undefined;
+  const synopsisPath = path.join(dataDir, "synopsis.txt");
+  if (await exists(synopsisPath)) {
+    synopsis = await readFile(synopsisPath, "utf8");
+  }
+
+  let notesRtf: string | undefined;
+  const notesPath = path.join(dataDir, "notes.rtf");
+  if (await exists(notesPath)) {
+    notesRtf = await readFile(notesPath, "utf8");
+  }
+
+  const result = await applyDocumentMetadata(projectRoot, resourceId, {
+    synopsis,
+    notesRtf,
+  });
+  return { hasSynopsis: result.hasSynopsis, hasNotes: result.hasNotes };
+}
+
+/** Flattens the entire source binder tree (every item, regardless of type or exclusion) into a UUID -> Title map, for the FR-9(f) snapshot section. */
+function buildUuidTitleIndex(
+  items: readonly ScrivxBinderItem[],
+  index: Map<string, string> = new Map(),
+): Map<string, string> {
+  for (const item of items) {
+    index.set(item.uuid, item.title);
+    if (item.children.length > 0) buildUuidTitleIndex(item.children, index);
+  }
+  return index;
+}
+
+/**
+ * Scans the source project's `Snapshots/<uuid>.snapshots/*.rtf` directory
+ * (FR-9(f)), never mutating anything under it.
+ */
+async function scanSnapshots(
+  packageDir: string,
+  titleByUuid: ReadonlyMap<string, string>,
+): Promise<ImportReportSnapshot[]> {
+  const snapshotsDir = path.join(packageDir, "Snapshots");
+  if (!(await exists(snapshotsDir))) return [];
+
+  const snapshots: ImportReportSnapshot[] = [];
+  const entries = (await readdir(snapshotsDir)) as string[];
+  for (const entry of entries.sort()) {
+    const match = /^(.+)\.snapshots$/.exec(entry);
+    if (!match) continue;
+    const uuid = match[1];
+    const resourceTitle = titleByUuid.get(uuid) ?? uuid;
+    const entryDir = path.join(snapshotsDir, entry);
+    let files: string[];
+    try {
+      files = (await readdir(entryDir)) as string[];
+    } catch {
+      continue;
+    }
+    for (const file of files
+      .filter((f) => f.toLowerCase().endsWith(".rtf"))
+      .sort()) {
+      snapshots.push({
+        resourceTitle,
+        snapshotFile: path.relative(packageDir, path.join(entryDir, file)),
+      });
+    }
+  }
+  return snapshots;
+}
+
+/**
+ * Rebuilds the destination project's inverted index, backlinks, and entity
+ * mention index from scratch, mirroring `cli/src/commands/reindex.ts:23-60`
+ * (FR-11).
+ */
+async function rebuildIndexes(projectRoot: string): Promise<void> {
+  const resourceIds = await listResourceIds(projectRoot);
+  const now = new Date().toISOString();
+  const plainTextById = new Map<string, string | undefined>();
+
+  for (const id of resourceIds) {
+    let name = id;
+    try {
+      const side = await readSidecar(projectRoot, id);
+      if (side && (side as Record<string, unknown>).name) {
+        name = String((side as Record<string, unknown>).name);
+      }
+    } catch {
+      // no sidecar — use id as name
+    }
+
+    let plainText: string | undefined;
+    try {
+      const loaded = await loadResourceContent(projectRoot, id);
+      plainText = loaded.plainText ?? undefined;
+    } catch {
+      // no content — index will be empty for this resource
+    }
+    plainTextById.set(id, plainText);
+
+    const minimal: TextResource = {
+      id,
+      name,
+      type: "text",
+      folderId: undefined,
+      createdAt: now,
+      plainText,
+      tiptap: undefined,
+    } as unknown as TextResource;
+
+    await indexResource(projectRoot, minimal);
+  }
+
+  const backlinks = await computeBacklinks(projectRoot);
+  await persistBacklinks(projectRoot, backlinks);
+
+  const aliasTable = await buildEntityAliasTable(projectRoot);
+  const mentionIndex: MentionIndex = {};
+
+  for (const id of resourceIds) {
+    const plainText = plainTextById.get(id);
+    const records: MentionRecord[] = [];
+
+    for (const entity of Object.values(aliasTable.entities)) {
+      const offsets: number[] = [];
+      for (const term of entity.terms) {
+        offsets.push(...findMentionOffsets(plainText ?? "", term));
+      }
+      if (offsets.length > 0) {
+        offsets.sort((a, b) => a - b);
+        records.push({
+          entityId: entity.entityId,
+          resourceId: id,
+          count: offsets.length,
+          offsets,
+        });
+      }
+    }
+
+    if (records.length > 0) {
+      mentionIndex[id] = records;
+    }
+  }
+
+  await persistMentionIndex(projectRoot, mentionIndex);
+}
+
+const scrivenerImporter = { importScrivenerProject };
+export default scrivenerImporter;
