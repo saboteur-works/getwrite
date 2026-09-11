@@ -3,6 +3,9 @@
     "permissions": {
         "deny": ["Read(./.specify/**)", "Read(./.github/agents/**)"]
     },
+    "worktree": {
+        "baseRef": "head"
+    },
     "hooks": {
     "PreToolUse": [
       {
