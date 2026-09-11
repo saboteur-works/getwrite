@@ -195,7 +195,7 @@ export const ZeroEdges: Story = {
     await body.findByText(/this will clear this resource's entity status/i);
     await waitFor(() => {
       expect(
-        body.queryByLabelText("also-delete-relationships"),
+        body.queryByRole("checkbox", { name: /also delete/i }),
       ).not.toBeInTheDocument();
     });
     const confirmButton = body.getByRole("button", { name: "Remove" });
@@ -214,9 +214,9 @@ export const SeveralEdges: Story = {
   play: async ({ canvasElement }) => {
     await openDialog(canvasElement);
     const body = within(document.body);
-    const checkbox = await body.findByLabelText<HTMLInputElement>(
-      "also-delete-relationships",
-    );
+    const checkbox = await body.findByRole<HTMLInputElement>("checkbox", {
+      name: /also delete/i,
+    });
     expect(checkbox.checked).toBe(false);
     await body.findByText(/also delete 3 relationships involving this entity/i);
   },
@@ -236,7 +236,7 @@ export const PendingFetch: Story = {
     const confirmButton = await body.findByRole("button", { name: "Remove" });
     await waitFor(() => expect(confirmButton).toBeDisabled());
     expect(
-      body.queryByLabelText("also-delete-relationships"),
+      body.queryByRole("checkbox", { name: /also delete/i }),
     ).not.toBeInTheDocument();
     expect(body.queryByRole("alert")).not.toBeInTheDocument();
   },
@@ -255,7 +255,7 @@ export const FetchFailure: Story = {
     const body = within(document.body);
     await body.findByText(/relationship data could not be loaded/i);
     expect(
-      body.queryByLabelText("also-delete-relationships"),
+      body.queryByRole("checkbox", { name: /also delete/i }),
     ).not.toBeInTheDocument();
     const confirmButton = body.getByRole("button", { name: "Remove" });
     await waitFor(() => expect(confirmButton).toBeEnabled());

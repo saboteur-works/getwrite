@@ -104,9 +104,9 @@ function getResource(store: ReturnType<typeof setupStore>): AnyResource {
 
 async function openDialogAndResolveEdges(edges: EntityRelationshipEdge[] = []) {
   mockedList.mockResolvedValue(edges);
-  fireEvent.click(screen.getByLabelText("remove-entity"));
+  fireEvent.click(screen.getByRole("button", { name: "Remove Entity" }));
   if (edges.length > 0) {
-    await screen.findByLabelText("also-delete-relationships");
+    await screen.findByRole("checkbox", { name: /also delete/i });
   } else {
     await waitFor(() => expect(mockedList).toHaveBeenCalled());
     await waitFor(() =>
@@ -146,7 +146,9 @@ describe("RemoveEntityControl", () => {
 
     renderControl(store);
 
-    expect(screen.getByLabelText("remove-entity")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Entity" }),
+    ).toBeInTheDocument();
   });
 
   it("issues a scoped listEntityRelationships call on open, and disables confirm with no checkbox while pending", async () => {
@@ -160,12 +162,12 @@ describe("RemoveEntityControl", () => {
 
     renderControl(store);
 
-    fireEvent.click(screen.getByLabelText("remove-entity"));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Entity" }));
 
     await waitFor(() => expect(mockedList).toHaveBeenCalledWith(PROJECT_ID));
 
     expect(
-      screen.queryByLabelText("also-delete-relationships"),
+      screen.queryByRole("checkbox", { name: /also delete/i }),
     ).not.toBeInTheDocument();
     const confirmButton = screen.getByText("Remove") as HTMLButtonElement;
     expect(confirmButton).toBeDisabled();
@@ -202,11 +204,11 @@ describe("RemoveEntityControl", () => {
 
     renderControl(store);
 
-    fireEvent.click(screen.getByLabelText("remove-entity"));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Entity" }));
 
-    const checkbox = (await screen.findByLabelText(
-      "also-delete-relationships",
-    )) as HTMLInputElement;
+    const checkbox = (await screen.findByRole("checkbox", {
+      name: /also delete/i,
+    })) as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
     expect(screen.getByText(/Also delete 2 relationships/)).toBeInTheDocument();
 
@@ -220,9 +222,9 @@ describe("RemoveEntityControl", () => {
 
     renderControl(store);
 
-    fireEvent.click(screen.getByLabelText("remove-entity"));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Entity" }));
 
-    await screen.findByLabelText("also-delete-relationships");
+    await screen.findByRole("checkbox", { name: /also delete/i });
     expect(
       screen.getByText(/Also delete 1 relationship\b/),
     ).toBeInTheDocument();
@@ -234,12 +236,12 @@ describe("RemoveEntityControl", () => {
 
     renderControl(store);
 
-    fireEvent.click(screen.getByLabelText("remove-entity"));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Entity" }));
 
     await waitFor(() => expect(mockedList).toHaveBeenCalled());
 
     expect(
-      screen.queryByLabelText("also-delete-relationships"),
+      screen.queryByRole("checkbox", { name: /also delete/i }),
     ).not.toBeInTheDocument();
     await waitFor(() =>
       expect(
@@ -254,12 +256,12 @@ describe("RemoveEntityControl", () => {
 
     renderControl(store);
 
-    fireEvent.click(screen.getByLabelText("remove-entity"));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Entity" }));
 
     await screen.findByText(/could not be loaded/i);
 
     expect(
-      screen.queryByLabelText("also-delete-relationships"),
+      screen.queryByRole("checkbox", { name: /also delete/i }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Remove") as HTMLButtonElement).not.toBeDisabled();
     expect(mockedRemoveByEntity).not.toHaveBeenCalled();
@@ -282,7 +284,7 @@ describe("RemoveEntityControl", () => {
       renderControl(store);
       await openDialogAndResolveEdges(ONE_EDGE);
 
-      fireEvent.click(screen.getByLabelText("also-delete-relationships"));
+      fireEvent.click(screen.getByRole("checkbox", { name: /also delete/i }));
       fireEvent.click(screen.getByText("Remove"));
 
       await waitFor(() => expect(mockedUpdateSidecar).toHaveBeenCalled());
@@ -395,7 +397,13 @@ describe("RemoveEntityControl", () => {
 
       await screen.findByText(/failed to remove entity/i);
       expect(getResource(store).entityKind).toBe("character");
-      expect(screen.getByLabelText("remove-entity")).toBeInTheDocument();
+      // `hidden: true` because Radix marks background content (including
+      // this control's own trigger) `aria-hidden` while the dialog stays
+      // open — this assertion is about DOM presence, not accessible-tree
+      // visibility.
+      expect(
+        screen.getByRole("button", { name: "Remove Entity", hidden: true }),
+      ).toBeInTheDocument();
 
       mockedUpdateSidecar.mockResolvedValueOnce(undefined);
       fireEvent.click(screen.getByText("Remove"));
@@ -411,7 +419,7 @@ describe("RemoveEntityControl", () => {
 
       renderControl(store);
       await openDialogAndResolveEdges(ONE_EDGE);
-      fireEvent.click(screen.getByLabelText("also-delete-relationships"));
+      fireEvent.click(screen.getByRole("checkbox", { name: /also delete/i }));
 
       fireEvent.click(screen.getByText("Remove"));
 
@@ -427,7 +435,7 @@ describe("RemoveEntityControl", () => {
 
       renderControl(store);
       await openDialogAndResolveEdges(ONE_EDGE);
-      fireEvent.click(screen.getByLabelText("also-delete-relationships"));
+      fireEvent.click(screen.getByRole("checkbox", { name: /also delete/i }));
 
       expect(mockedGetEntityAliasTable).not.toHaveBeenCalled();
       expect(getResource(store).entityKind).toBe("character");
@@ -501,7 +509,7 @@ describe("RemoveEntityControl", () => {
       );
       await waitFor(() =>
         expect(
-          screen.queryByLabelText("remove-entity"),
+          screen.queryByRole("button", { name: "Remove Entity" }),
         ).not.toBeInTheDocument(),
       );
       await waitFor(() =>

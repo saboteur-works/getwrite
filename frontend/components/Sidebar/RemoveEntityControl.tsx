@@ -224,11 +224,7 @@ export default function RemoveEntityControl(): JSX.Element | null {
 
   return (
     <div>
-      <Button
-        variant="destructive"
-        onClick={openDialog}
-        aria-label="remove-entity"
-      >
+      <Button variant="outline" onClick={openDialog}>
         Remove Entity
       </Button>
 
@@ -252,7 +248,6 @@ export default function RemoveEntityControl(): JSX.Element | null {
                 <label className="flex items-center gap-2 text-sm text-gw-primary">
                   <input
                     type="checkbox"
-                    aria-label="also-delete-relationships"
                     checked={shouldAlsoDeleteRelationships}
                     onChange={(e) =>
                       setShouldAlsoDeleteRelationships(e.target.checked)
