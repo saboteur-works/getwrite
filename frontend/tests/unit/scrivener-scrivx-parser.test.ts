@@ -163,10 +163,17 @@ describe("parseScrivxFile — Task 1 fixture", () => {
     // field) carries the raw `ListOptions/Option` id, not the option's
     // display text — resolving that id to "Protagonist" is
     // metadata-mapper's job (FR-7), not the parser's.
+    // Task 16: an additional CustomMetaData field/value whose id/derived key
+    // is "pov" — chosen to collide with the built-in "pov" (Point of View)
+    // metadata field (`default-metadata-schema.ts:18`), exercising FR-7's
+    // amended collision-suffix rule (Task 17). The field's <Title> is "POV"
+    // (not "Point of View") because `deriveFieldKey` derives primarily from
+    // the title, and only "POV" slugifies to "pov".
     expect(chapterTwo.metaData.customMetaData).toEqual([
       { fieldId: "CMD1", value: "Working title placeholder" },
       { fieldId: "CMD2", value: "2026-12-01 09:30:00.12345 +0000" },
       { fieldId: "CMD3", value: "OPT-PROTAG" },
+      { fieldId: "pov", value: "Third Limited" },
     ]);
 
     // FR-13: a Text-type binder item with its own children.
@@ -256,6 +263,9 @@ describe("parseScrivxFile — Task 1 fixture", () => {
           { id: "OPT-ANTAG", text: "Antagonist" },
         ],
       },
+      // Task 16: id "pov", title "POV" — see the field-collision comment on
+      // "parses the DraftFolder's nested children" above.
+      { id: "pov", type: "Text", title: "POV", listOptions: [] },
     ]);
   });
 

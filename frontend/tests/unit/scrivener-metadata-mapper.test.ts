@@ -77,7 +77,7 @@ describe("buildMetadataPlan — Label (FR-15)", () => {
 describe("buildMetadataPlan — CustomMetaData (FR-7)", () => {
   it("maps Text/Date/List field types to text/date/select field definitions", async () => {
     const plan = buildMetadataPlan(await loadFixture());
-    expect(plan.customFields).toHaveLength(3);
+    expect(plan.customFields).toHaveLength(4);
 
     const workingTitle = plan.customFields.find(
       (f) => f.label === "Working Title",
@@ -91,6 +91,30 @@ describe("buildMetadataPlan — CustomMetaData (FR-7)", () => {
       (f) => f.label === "POV Character",
     );
     expect(povCharacter?.type).toBe("select");
+
+    const pov = plan.customFields.find((f) => f.label === "POV");
+    expect(pov?.type).toBe("text");
+  });
+
+  // Task 16 precondition for FR-7's collision-suffix rule (Task 17): the
+  // fixture's "POV" field must derive the *unsuffixed* key "pov" today,
+  // since `buildMetadataPlan` alone (unlike the full importer) has no
+  // knowledge of the destination project's built-in metadata schema and so
+  // cannot yet detect that "pov" collides with `default-metadata-schema.ts`'s
+  // built-in Point of View field. This assertion MUST pass now — it proves
+  // the fixture is built correctly — independent of Task 17's collision
+  // check, which runs one layer up in the orchestrator.
+  it("derives the unsuffixed key 'pov' for the field titled 'POV' (Task 16 fixture precondition for FR-7)", async () => {
+    const plan = buildMetadataPlan(await loadFixture());
+    const pov = plan.customFields.find((f) => f.label === "POV");
+    expect(pov).toBeDefined();
+    expect(pov?.key).toBe("pov");
+  });
+
+  it("resolves Chapter Two's POV field value under the derived key 'pov'", async () => {
+    const plan = buildMetadataPlan(await loadFixture());
+    const values = plan.resourceUserMetadata.get(CHAPTER_TWO_UUID);
+    expect(values?.pov).toBe("Third Limited");
   });
 
   it("derives slug-safe field keys satisfying metadata-schema.ts's SLUG_RE", async () => {
@@ -100,7 +124,7 @@ describe("buildMetadataPlan — CustomMetaData (FR-7)", () => {
     }
   });
 
-  it("resolves Chapter Two's three CustomMetaData values, keyed by each field's derived key", async () => {
+  it("resolves Chapter Two's four CustomMetaData values, keyed by each field's derived key", async () => {
     const plan = buildMetadataPlan(await loadFixture());
     const values = plan.resourceUserMetadata.get(CHAPTER_TWO_UUID);
     expect(values).toBeDefined();

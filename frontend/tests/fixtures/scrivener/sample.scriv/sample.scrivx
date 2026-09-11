@@ -32,6 +32,10 @@
                 <FieldID>CMD3</FieldID>
                 <Value>OPT-PROTAG</Value>
               </MetaDataItem>
+              <MetaDataItem>
+                <FieldID>pov</FieldID>
+                <Value>Third Limited</Value>
+              </MetaDataItem>
             </CustomMetaData>
           </MetaData>
           <Keywords>
@@ -167,6 +171,9 @@
         <Option ID="OPT-PROTAG">Protagonist</Option>
         <Option ID="OPT-ANTAG">Antagonist</Option>
       </ListOptions>
+    </MetaDataField>
+    <MetaDataField ID="pov" Type="Text" Align="Left" Wraps="No">
+      <Title>POV</Title>
     </MetaDataField>
   </CustomMetaDataSettings>
 </ScrivenerProject>

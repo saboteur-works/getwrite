@@ -1,4 +1,12 @@
-import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import {
+  describe,
+  expect,
+  it,
+  beforeAll,
+  afterAll,
+  afterEach,
+  vi,
+} from "vitest";
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import os from "node:os";
@@ -8,13 +16,64 @@ import {
   UnsupportedScrivenerProjectError,
 } from "../../src/lib/models/scrivener/import-scrivener-project";
 import { readSidecar } from "../../src/lib/models/sidecar";
-import { flushIndexer } from "../../src/lib/models/indexer-queue";
+import { flushIndexer, enqueueIndex } from "../../src/lib/models/indexer-queue";
+import { startBacklinkWatcher } from "../../src/lib/models/backlinks-watcher";
+import { applyDocumentMetadata } from "../../src/lib/models/scrivener/apply-document-metadata";
 import type {
   AnyResource,
   Folder as FolderType,
   Project,
   TextResource,
 } from "../../src/lib/models/types";
+
+// Task 16/FR-22 (Task 18): lets individual tests inject a one-time fatal
+// error partway through the importer's write phase — after
+// `applyDocumentMetadata` is first called, which only happens once its
+// owning resource's `content.rtf`/revision have already been written to
+// disk (`import-scrivener-project.ts`'s `createAndWriteResource` runs before
+// `applySynopsisAndNotes`/`applyDocumentMetadata` for each resource). Falls
+// through to the real implementation otherwise, so every other describe
+// block in this file is unaffected.
+vi.mock(
+  "../../src/lib/models/scrivener/apply-document-metadata",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("../../src/lib/models/scrivener/apply-document-metadata")
+      >();
+    return {
+      ...actual,
+      applyDocumentMetadata: vi.fn(actual.applyDocumentMetadata),
+    };
+  },
+);
+
+// Task 16/FR-23 (Task 19): lets tests observe whether the importer started a
+// backlinks watcher for its destination project. `indexer-queue.ts`'s own
+// `ensureBacklinkWatcher` never calls this under `VITEST`/`NODE_ENV=test`
+// (see its guard comment), so this spy also verifies the *importer* never
+// tries to go through a path that would start one outside test environments.
+vi.mock("../../src/lib/models/backlinks-watcher", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../../src/lib/models/backlinks-watcher")
+    >();
+  return {
+    ...actual,
+    startBacklinkWatcher: vi.fn(actual.startBacklinkWatcher),
+  };
+});
+
+// Task 16/FR-23 (Task 19): lets tests observe whether `enqueueIndex` was
+// ever called during the import. `sidecar.ts`'s `writeSidecar` reaches this
+// via a dynamic `import("./indexer-queue")` on every sidecar write — vitest's
+// module mock applies to that dynamic import too, since it intercepts the
+// same module specifier regardless of how it is imported.
+vi.mock("../../src/lib/models/indexer-queue", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/models/indexer-queue")>();
+  return { ...actual, enqueueIndex: vi.fn(actual.enqueueIndex) };
+});
 
 const FIXTURE_SCRIV_DIR = path.join(
   __dirname,
@@ -302,6 +361,38 @@ describe("importScrivenerProject — Task 1 fixture", () => {
     expect(labelField?.options).toEqual(["No Label", "Character POV"]);
   });
 
+  // Task 16, expected red until Task 17 lands (FR-7's amendment): today,
+  // `buildMetadataPlan` derives the fixture's "POV" field to the unsuffixed
+  // key "pov", which collides with `default-metadata-schema.ts`'s built-in
+  // "pov" (Point of View) field — the same collision the amendment's
+  // motivating real-project abort measured (`Error: Field key already
+  // exists: "pov"`). Until Task 17 adds the built-in/already-added key
+  // check and suffix retry, this collision throws out of `addField` and
+  // aborts the whole import, which is why every test in this describe block
+  // (all sharing the one `beforeAll` import run) is red right now, not just
+  // this one.
+  it("FR-7/Task 17: renames the colliding 'POV' field to 'pov-scrivener', keeps 'POV' as its label, and records the rename in the report", async () => {
+    const schema = project.config?.metadataSchema;
+    const importGroup = schema?.groups.find((g) => g.id === "scrivener-import");
+    const povField = importGroup?.fields.find((f) => f.label === "POV");
+
+    expect(povField).toBeDefined();
+    // FR-7's suffix rule: <original-key>-scrivener, then -scrivener-2, ...,
+    // using the first free key. "pov" collides with the built-in field, so
+    // the first candidate, "pov-scrivener", must be the one actually used
+    // (nothing else in the fixture's schema claims it).
+    expect(povField?.key).toBe("pov-scrivener");
+    expect(povField?.type).toBe("text");
+
+    const reportPath = path.join(projectRoot, "scrivener-import-report.txt");
+    const report = await fs.readFile(reportPath, "utf8");
+    // FR-7: "every such rename MUST be listed in the FR-9 report (original
+    // key, field title, renamed key)".
+    expect(report).toContain("pov");
+    expect(report).toContain("pov-scrivener");
+    expect(report).toContain("POV");
+  });
+
   it("enables the synopsis and notes feature toggles since Chapter Two carries both", () => {
     expect(project.config?.features?.synopsis).toBe(true);
     expect(project.config?.features?.notes).toBe(true);
@@ -439,6 +530,218 @@ describe("importScrivenerProject — recoverable skips (Task 14)", () => {
     expect(report).toContain("## Skipped Items");
     expect(report).toContain("FieldID");
     expect(report).toContain('StatusID "-1"');
+  });
+});
+
+// Task 16, expected red until Task 18 lands (FR-22): destination-cleanup
+// behavior for a fatal error raised after the import's write phase has
+// started, plus the up-front refusal of a non-empty pre-existing
+// `projectRoot`. Uses a small, dedicated scriv fixture (rather than the
+// larger sample.scriv fixture above) so each case's expectations about
+// exactly what got written are simple to state and check.
+describe("importScrivenerProject — FR-22 destination cleanup (Task 18)", () => {
+  let scrivDir: string;
+
+  beforeAll(async () => {
+    scrivDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-fr22-src-"),
+    );
+    const dataDir = path.join(
+      scrivDir,
+      "Files",
+      "Data",
+      "F0000000-0000-4000-8000-000000000001",
+    );
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(
+      path.join(dataDir, "content.rtf"),
+      String.raw`{\rtf1\ansi\ansicpg1252\cocoartf2639\f0\fs24 \cf0 FR-22 body text.\par}`,
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(scrivDir, "sample.scrivx"),
+      `<?xml version="1.0" encoding="UTF-8"?>
+<ScrivenerProject Identifier="X" Version="2.0" Creator="SCRMAC-3.5.2" Device="Test">
+  <Binder>
+    <BinderItem UUID="F1111111-1111-4111-8111-111111111111" Type="DraftFolder" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+      <Title>Draft</Title>
+      <Children>
+        <BinderItem UUID="F0000000-0000-4000-8000-000000000001" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Only Document</Title>
+        </BinderItem>
+      </Children>
+    </BinderItem>
+  </Binder>
+</ScrivenerProject>`,
+      "utf8",
+    );
+  });
+
+  afterAll(async () => {
+    await fs.rm(scrivDir, { recursive: true, force: true });
+  });
+
+  afterEach(() => {
+    vi.mocked(applyDocumentMetadata).mockClear();
+  });
+
+  it("(a) removes a projectRoot this run created, after a fatal error raised once writing has started", async () => {
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-fr22-notexist-"),
+    );
+    const projectRoot = path.join(parent, "destination");
+    await expect(fs.stat(projectRoot)).rejects.toThrow();
+
+    vi.mocked(applyDocumentMetadata).mockRejectedValueOnce(
+      new Error("FR-22 injected fatal error (Task 18)"),
+    );
+
+    await expect(
+      importScrivenerProject({ scrivPath: scrivDir, projectRoot }),
+    ).rejects.toThrow("FR-22 injected fatal error");
+    // Drain any fire-and-forget background indexing the partial write
+    // already triggered (`sidecar.ts`'s `writeSidecar` enqueues via
+    // `setImmediate`), so it can't race the cleanup assertion/rm below.
+    await flushIndexer();
+
+    // Task 18: projectRoot did not exist before this run, so a fatal error
+    // after writing started must remove it entirely.
+    await expect(fs.stat(projectRoot)).rejects.toThrow();
+
+    await fs.rm(parent, { recursive: true, force: true }).catch(() => {});
+  });
+
+  it("(b) leaves an already-existing (empty) projectRoot untouched after the same injected fatal error", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-fr22-preexist-"),
+    );
+
+    vi.mocked(applyDocumentMetadata).mockRejectedValueOnce(
+      new Error("FR-22 injected fatal error (Task 18)"),
+    );
+
+    await expect(
+      importScrivenerProject({ scrivPath: scrivDir, projectRoot }),
+    ).rejects.toThrow("FR-22 injected fatal error");
+    await flushIndexer();
+
+    // Task 18: projectRoot existed before this run, so it must be left
+    // exactly as far as the run got — never removed.
+    await expect(fs.stat(projectRoot)).resolves.toBeDefined();
+
+    await fs.rm(projectRoot, { recursive: true, force: true }).catch(() => {});
+  });
+
+  it("(c) refuses a non-empty pre-existing projectRoot before any write, and writes nothing", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-fr22-nonempty-"),
+    );
+    await fs.writeFile(
+      path.join(projectRoot, "pre-existing-file.txt"),
+      "already here",
+      "utf8",
+    );
+
+    await expect(
+      importScrivenerProject({ scrivPath: scrivDir, projectRoot }),
+    ).rejects.toThrow();
+    await flushIndexer();
+
+    // Task 18: refused before any write — the only file present is the one
+    // that was already there.
+    const entries = await fs.readdir(projectRoot);
+    expect(entries).toEqual(["pre-existing-file.txt"]);
+
+    await fs.rm(projectRoot, { recursive: true, force: true }).catch(() => {});
+  });
+});
+
+// Task 16, expected red until Task 19 lands (FR-23): a successful import run
+// must not leave GetWrite's normal background indexing/backlinks-watcher
+// machinery running or triggered during the write phase.
+describe("importScrivenerProject — FR-23 no leftover indexing (Task 19)", () => {
+  // Deliberately a small, dedicated fixture (no CustomMetaData fields at
+  // all) rather than the sample.scriv fixture above — that one now carries
+  // the FR-7 "pov" collision (Task 16), which aborts the import until Task
+  // 17 lands. Task 19 is independent of Task 17 (`tasks.md`'s Summary notes
+  // 17/18/19 "can run in parallel once Task 16's fixture/tests land"), so
+  // this suite must be able to exercise a *successful* import run without
+  // waiting on Task 17.
+  let scrivDir: string;
+  let projectRoot: string;
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeAll(async () => {
+    scrivDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-fr23-src-"),
+    );
+    const dataDir = path.join(
+      scrivDir,
+      "Files",
+      "Data",
+      "FA000000-0000-4000-8000-00000000000A",
+    );
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(
+      path.join(dataDir, "content.rtf"),
+      String.raw`{\rtf1\ansi\ansicpg1252\cocoartf2639\f0\fs24 \cf0 FR-23 body text.\par}`,
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(scrivDir, "sample.scrivx"),
+      `<?xml version="1.0" encoding="UTF-8"?>
+<ScrivenerProject Identifier="X" Version="2.0" Creator="SCRMAC-3.5.2" Device="Test">
+  <Binder>
+    <BinderItem UUID="FB000000-0000-4000-8000-00000000000B" Type="DraftFolder" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+      <Title>Draft</Title>
+      <Children>
+        <BinderItem UUID="FA000000-0000-4000-8000-00000000000A" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Only Document</Title>
+        </BinderItem>
+      </Children>
+    </BinderItem>
+  </Binder>
+</ScrivenerProject>`,
+      "utf8",
+    );
+
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.mocked(enqueueIndex).mockClear();
+    vi.mocked(startBacklinkWatcher).mockClear();
+
+    projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-fr23-dest-"),
+    );
+    await importScrivenerProject({ scrivPath: scrivDir, projectRoot });
+    await flushIndexer();
+  });
+
+  afterAll(async () => {
+    consoleWarnSpy.mockRestore();
+    await fs.rm(scrivDir, { recursive: true, force: true });
+    await fs.rm(projectRoot, { recursive: true, force: true });
+  });
+
+  it("never calls enqueueIndex during the import's write phase", () => {
+    // Task 19: `withIndexingSuspended` sets `isStopped` for the whole write
+    // phase, so `writeSidecar`'s own `enqueueIndex` call (scheduled via
+    // `setImmediate` on every sidecar write this importer makes) must never
+    // actually run while the import is suspending indexing.
+    expect(enqueueIndex).not.toHaveBeenCalled();
+  });
+
+  it("never starts a backlinks watcher for the destination project", () => {
+    expect(startBacklinkWatcher).not.toHaveBeenCalled();
+  });
+
+  it('logs no "sidecar not found" warning during the run', () => {
+    const sidecarNotFoundCalls = consoleWarnSpy.mock.calls.filter(
+      (call: unknown[]) =>
+        call.some(
+          (arg) => typeof arg === "string" && arg.includes("sidecar not found"),
+        ),
+    );
+    expect(sidecarNotFoundCalls).toEqual([]);
   });
 });
 
