@@ -19,6 +19,7 @@ export interface ConfirmDialogProps {
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  isConfirmDisabled?: boolean;
 }
 
 export default function ConfirmDialog({
@@ -30,6 +31,7 @@ export default function ConfirmDialog({
   cancelLabel = "Cancel",
   onConfirm,
   onCancel,
+  isConfirmDisabled = false,
 }: ConfirmDialogProps): JSX.Element {
   return (
     <Dialog
@@ -54,7 +56,11 @@ export default function ConfirmDialog({
           <Button variant="outline" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button variant="destructive" onClick={onConfirm}>
+          <Button
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={isConfirmDisabled}
+          >
             {confirmLabel}
           </Button>
         </DialogFooter>

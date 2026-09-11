@@ -61,6 +61,31 @@ describe("ConfirmDialog", () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  describe("isConfirmDisabled", () => {
+    it("does not disable the confirm button when isConfirmDisabled is omitted or false", () => {
+      render(<ConfirmDialog {...baseProps} confirmLabel="Delete" />);
+      expect((screen.getByText("Delete") as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+    });
+
+    it("disables the confirm button and blocks onConfirm when isConfirmDisabled is true", () => {
+      const onConfirm = vi.fn();
+      render(
+        <ConfirmDialog
+          {...baseProps}
+          onConfirm={onConfirm}
+          confirmLabel="Delete"
+          isConfirmDisabled
+        />,
+      );
+      const confirmButton = screen.getByText("Delete") as HTMLButtonElement;
+      expect(confirmButton.disabled).toBe(true);
+      fireEvent.click(confirmButton);
+      expect(onConfirm).not.toHaveBeenCalled();
+    });
+  });
+
   describe("details slot", () => {
     it("renders details content when provided", () => {
       render(
