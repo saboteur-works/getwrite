@@ -242,7 +242,7 @@ source fixture was not modified.
 playing the same role `createProjectFromType` plays for template-based
 project creation.
 **POS:** task_f60daa66
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Core barrel export and thin CLI command
 
