@@ -1442,6 +1442,9 @@ paths:
         Merges `updatedResource` into the resource sidecar at
         `meta/resource-<id>.meta.json` (preserving `orderIndex`/`folderId` from the
         existing sidecar). Used to persist userMetadata changes from the Metadata sidebar.
+        An optional `clearKeys` array names sidecar keys to delete from the merged
+        result after the merge; it is validated against a fail-closed allowlist
+        (`entityKind`, `aliases`) and rejected with 400 if it names anything else.
       parameters:
         - name: resource-id
           in: path
@@ -1460,6 +1463,12 @@ paths:
                   $ref: "#/components/schemas/UUID"
                 updatedResource:
                   $ref: "#/components/schemas/ResourceSidecar"
+                clearKeys:
+                  type: array
+                  items:
+                    type: string
+                    enum: [entityKind, aliases]
+                  description: Sidecar keys to delete after the merge.
       responses:
         "200":
           description: Sidecar updated
@@ -1470,6 +1479,12 @@ paths:
                 properties:
                   message:
                     type: string
+        "400":
+          description: Invalid clearKeys (not an array of strings, or names a key outside the allowlist)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   # ── Resource Delete ───────────────────────────────────────────────────────
 

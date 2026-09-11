@@ -912,7 +912,7 @@ shipped spec did not include (its Out of scope section does not name
 tooltips, so this is a new increment on top of a shipped feature, not a
 resumption of something already deferred there).
 
-### Feature 41: Entity graph node dragging — Not started
+### Feature 41: Entity graph node dragging — Shipped
 **Value:** A novelist looking at Feature 39's graph can pull a node into a
 clearer spot — away from an overlapping neighbour, or toward the part of the
 canvas they're focused on — instead of being stuck with whatever position
@@ -934,7 +934,9 @@ handler in the same file already derives.
 **User stories:** US-17
 **Depends on:** Feature 39
 **Branch suggestion:** feat/entity-graph-node-dragging
-**Notes:** Not started. Three product-rung decisions are settled and not
+**Notes:** Shipped. Merged as PR #194
+(`6f699f4c`), including `676da04b` (fix: make node dragging work on touch).
+Three product-rung decisions are settled and not
 reopened here: reposition is static — only the dragged node moves, no live
 force simulation runs during or after a drag, and `computeGraphLayout` keeps
 its pure, deterministic, fixed-tick contract, accepting that edges stretch
@@ -1082,7 +1084,7 @@ with edges never being soft-deleted anywhere in the product.
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42 (30 is the only feature left with an unmet hard
   dependency — on 28)
-- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 41, 42.
+- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 42.
   Everything else in this list has shipped.
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
