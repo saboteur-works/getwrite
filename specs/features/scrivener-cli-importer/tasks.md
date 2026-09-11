@@ -323,7 +323,7 @@ pass.
 **Depends on:** none
 **Estimate:** 5
 **POS:** task_49aed81c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Fix `.scrivx` parser to the real element shapes, with recoverable fragment errors
 
@@ -353,7 +353,7 @@ recorded as a skip rather than throwing; a fully malformed/non-XML
 **Depends on:** 11
 **Estimate:** 8
 **POS:** task_0ac3e8a3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Fix binder-mapper (untitled fallback) and metadata-mapper (Option→text, date parsing, recoverable errors)
 
@@ -381,7 +381,7 @@ shapes, and the `-1` status value.
 **Depends on:** 12
 **Estimate:** 8
 **POS:** task_f212cf59
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Wire recoverable skips into the report and RTF converter fixes
 
@@ -416,7 +416,7 @@ fixture's `content.rtf` bodies.
 **Depends on:** 13
 **Estimate:** 8
 **POS:** task_986df71a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Re-run the gate
 
@@ -434,7 +434,7 @@ root) reports no new unused-export warnings from
 **Depends on:** 14
 **Estimate:** 2
 **POS:** task_74d187f0
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Manual verification against the private sample project
 
