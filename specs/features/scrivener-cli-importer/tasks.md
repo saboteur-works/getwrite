@@ -436,13 +436,149 @@ root) reports no new unused-export warnings from
 **POS:** task_74d187f0
 **Done:** [x]
 
-### Task 16: Manual verification against the private sample project
+### Task 16: Fixture and tests for field-key clash, destination cleanup, and no-leftover-indexing
+
+**What:** Extend the synthetic fixture and write the test coverage FR-7,
+FR-22, and FR-23 require before the production code changes land: a custom
+field whose id clashes with a built-in metadata key, and the test cases for
+suffix-rule resolution, run-created-vs-pre-existing destination cleanup, and
+no leftover watcher/queued indexing after an import.
+**Files:** `frontend/tests/fixtures/scrivener/sample.scriv/sample.scrivx`
+(add a `CustomMetaData` field whose id/derived key is `pov`, matching
+`default-metadata-schema.ts:18`), `frontend/tests/integration/scrivener-import.test.ts`,
+`frontend/tests/unit/scrivener-metadata-mapper.test.ts`.
+**Done when:** the fixture includes a `CustomMetaData` field deriving the
+key `pov` with at least one document value, alongside all prior fixture
+cases (unchanged). New/updated tests assert: (1) the imported `pov` field
+lands under the key `pov-scrivener` (or the next free
+`pov-scrivener-<n>` if that fixture also happens to collide), keeps
+"Point of View" — the fixture's field title — as its `label`, and the
+rename is recorded in the FR-9 report; (2) running the importer against a
+fatal error injected after writing has started, targeting a `projectRoot`
+that did not exist beforehand, leaves no directory behind at that path
+afterward; (3) the same injected-fatal-error run targeting a `projectRoot`
+that already existed (empty) before the run leaves that directory (now
+however far the run got) untouched — not removed; (4) a run against a
+non-empty pre-existing `projectRoot` is refused before any write, exits
+non-zero, and writes nothing; (5) after a full successful
+`importScrivenerProject` run resolves, no "sidecar not found" warning was
+logged during the run, and the process has no live backlinks watcher left
+running for the destination project (e.g. asserting `indexer-queue.ts`'s
+watcher registry has no entry for it, or an equivalent observable signal).
+**Depends on:** 15
+**Estimate:** 5
+**POS:** task_1802ca57
+**Done:** [ ]
+
+### Task 17: Field-key clash suffix rule and per-field FR-8 recovery
+
+**What:** Implements FR-7's amendment (built-in/already-added key clash
+resolves to a free `<key>-scrivener[-<n>]` suffix, Scrivener title kept as
+label, rename recorded) and FR-8's generalization (any per-field
+metadata-schema creation failure is a recorded skip, never an abort).
+**Files:** `frontend/src/lib/models/scrivener/metadata-mapper.ts`,
+`frontend/src/lib/models/scrivener/import-scrivener-project.ts`,
+`frontend/src/lib/models/scrivener/import-report.ts`,
+`frontend/tests/unit/scrivener-metadata-mapper.test.ts`,
+`frontend/tests/integration/scrivener-import.test.ts`.
+**Done when:** the destination project's realized metadata schema (every
+built-in field from `default-metadata-schema.ts` plus every field already
+added earlier in the same import) is checked before each candidate field
+key — including the "Label" field's key — is used; a colliding key is
+retried as `<original-key>-scrivener`, then `-scrivener-2`,
+`-scrivener-3`, … until free, keeping the source field's title as `label`;
+every such rename is recorded (original key, field title, renamed key) and
+folded into the FR-9 report by `import-report.ts`; a field whose creation
+still fails for any other reason is recorded as an FR-8 skip rather than
+thrown. This is additive to `deriveFieldKey`'s existing within-import `-2`/
+`-3` disambiguation (`metadata-mapper.ts:174-189`), which is unchanged.
+Uses Task 16's fixture and tests.
+**Depends on:** 16
+**Estimate:** 5
+**POS:** task_30b653a1
+**Done:** [ ]
+
+### Task 18: Run-created-destination cleanup on fatal error, and up-front non-empty refusal
+
+**What:** Implements FR-22: refuse a non-empty pre-existing `projectRoot`
+up front; on a fatal error after writing has started, remove `projectRoot`
+only when this run created it (it did not exist beforehand), reporting the
+error and the failed phase either way.
+**Files:** `frontend/src/lib/models/scrivener/import-scrivener-project.ts`,
+`cli/src/commands/project.ts`, `frontend/tests/integration/scrivener-import.test.ts`,
+`cli/tests/project.test.ts`.
+**Done when:** `importScrivenerProject` records, once and before any write,
+whether `projectRoot` existed and whether it was empty; refuses
+immediately (no write) when it existed and was non-empty; on any later
+fatal error (not an FR-8/FR-20 skip), removes `projectRoot` via
+`rm(projectRoot, { recursive: true, force: true })` from `io.ts` only when
+it did not exist before the run, and never touches it otherwise; the
+thrown/printed error identifies the orchestration phase it failed in
+(module doc's "Orchestration order" list) for the CLI wrapper to print.
+Uses Task 16's fixture and tests; extends `cli/tests/project.test.ts` with
+the up-front-refusal CLI case if not already covered by the model-layer
+test.
+**Depends on:** 16
+**Estimate:** 5
+**POS:** task_107b0536
+**Done:** [ ]
+
+### Task 19: Import-scoped indexing suppression and watcher stop
+
+**What:** Implements FR-23: a minimal, import-scoped addition to
+`indexer-queue.ts` that suspends background indexing/watcher-starting for
+the duration of the importer's own writes, restoring normal behavior
+afterward for any other in-process consumer.
+**Files:** `frontend/src/lib/models/indexer-queue.ts`,
+`frontend/src/lib/models/scrivener/import-scrivener-project.ts`,
+`frontend/src/lib/core.ts` (if the new function needs re-exporting),
+`frontend/tests/unit/indexer-queue.test.ts` (or existing equivalent),
+`frontend/tests/integration/scrivener-import.test.ts`.
+**Done when:** `indexer-queue.ts` exports a new function (e.g.
+`withIndexingSuspended<T>(fn: () => Promise<T>): Promise<T>`) that sets the
+existing `isStopped` flag, runs `fn`, and on completion (success or throw)
+stops any watcher recorded in `activeBacklinkWatchers` and resets
+`isStopped` to its prior state; `enqueueIndex`/`enqueueEntityRescan`/
+`shutdownIndexer`'s behavior for the running app is unchanged by this
+addition. `importScrivenerProject` wraps its entire write phase
+(destination-project creation through the FR-11 rebuild) in this call, so
+`writeResourceToFile`, `applyDocumentMetadata`, and `addField`/`addGroup`
+never schedule background indexing or start a backlinks watcher during an
+import, and the importer's own FR-11 rebuild remains the only indexing
+that runs. Uses Task 16's no-leftover-indexing test. `writeSidecar`,
+`revision-manager.ts`, and `inverted-index.ts` are unmodified by this task.
+**Depends on:** 16
+**Estimate:** 5
+**POS:** task_173aca2a
+**Done:** [ ]
+
+### Task 20: Re-run the gate
+
+**What:** Confirms the full test/typecheck/knip gate is green after Tasks
+16–19 land.
+**Files:** none (verification only).
+**Done when:** `pnpm --filter getwrite-frontend exec vitest run
+scrivener-scrivx-parser scrivener-rtf-to-tiptap scrivener-binder-mapper
+scrivener-metadata-mapper scrivener-import-report
+scrivener-apply-document-metadata scrivener-import` and `pnpm --filter
+getwrite-frontend typecheck` both pass; `pnpm --filter getwrite-cli test`
+and `pnpm --filter getwrite-cli typecheck` both pass; `pnpm knip` (repo
+root) reports no new unused-export warnings from
+`frontend/src/lib/models/scrivener/`, `frontend/src/lib/models/indexer-queue.ts`,
+or `core.ts`.
+**Depends on:** 17, 18, 19
+**Estimate:** 2
+**POS:** task_6b49b143
+**Done:** [ ]
+
+### Task 21: Manual verification against the private sample project
 
 **What:** A human/lead-run, non-automated check of the shipped command
 against the real, private sample project, to catch anything the synthetic
-fixture doesn't surface. (Renumbered from Task 11 to Task 16 so its
-dependency on the fix-pass tasks satisfies task-list ordering; its POS id
-and scope are otherwise unchanged from the original Task 11.)
+fixture doesn't surface. (Renumbered from Task 11 to Task 16, and now to
+Task 21, so its dependency on the fix-pass tasks satisfies task-list
+ordering; its POS id and scope are otherwise unchanged from the original
+Task 11.)
 **Files:** none tracked — operates only on the gitignored
 `import-inputs/The SF Sideshow.scriv`.
 **Done when:** a human/lead runs `getwrite-cli project import-scrivener
@@ -458,19 +594,20 @@ or structure from this sample project is copied into any repository fixture
 or test file as a result of this task. Per FR-21, this run MUST complete
 successfully (exit 0, a report written) — this is the Stage-6.5-style
 acceptance requirement, verified by the lead, not by an automated test.
-**Depends on:** 15
+**Depends on:** 20
 **Estimate:** 2
 **Notes:** Manual/exploratory — not part of the automated suite, and not a
-gate for Task 10 or Task 15. It now depends on the full Task 11–15 fix pass
-landing first, since the real project previously aborted mid-run against
-the pre-fix parser.
+gate for Task 10, Task 15, or Task 20. It now depends on the full Task
+16–19 second fix pass landing first, since the real project previously
+aborted mid-run on the field-key clash this pass fixes.
 **POS:** task_5b75a0d2
 **Done:** [ ]
 
 ## Summary
-- Total tasks: 16
-- Total estimated effort: 83 points
-- Critical path: Tasks 1 → 2 → 4 → 8 → 9 → 11 → 12 → 13 → 14 → 15 → 16
+- Total tasks: 21
+- Total estimated effort: 105 points
+- Critical path: Tasks 1 → 2 → 4 → 8 → 9 → 11 → 12 → 13 → 14 → 15 → 16 →
+  17/18/19 → 20 → 21
 - Risks: Task 3 (RTF→TipTap) and Task 4 (binder mapper) are the two largest
   and most novel units — Task 3 has no existing converter to model beyond
   `plainTextToTiptap`'s mark-free baseline, and Task 4 must get the FR-13
@@ -478,16 +615,21 @@ the pre-fix parser.
   point both nesting shapes are exercised end to end. Task 8 is a wide
   integration point depending on five prior tasks (3, 4, 5, 6, 7); a defect
   surfaced there may require revisiting one of those five rather than being
-  fixable locally. Task 16 (originally Task 11, renumbered for ordering —
-  see its Notes) now depends on the Task 11–15 fix pass landing first,
-  since it previously aborted against the real project; it still depends
-  on access to the private sample project and a human/lead's availability,
-  and is not required for the automated gate (Task 15) to
-  pass. Task 12 (parser rewrite to real shapes, with recoverable-error
-  collection) and Task 13 (List/Date resolution with the same
-  recoverable-error discipline) are the two riskiest fix-pass tasks: both
-  replace throw-on-malformed behavior with skip-and-report, and a missed
-  case in either would reproduce the original real-project failure.
+  fixable locally. Task 12 (parser rewrite to real shapes, with
+  recoverable-error collection) and Task 13 (List/Date resolution with the
+  same recoverable-error discipline) are the two riskiest first-fix-pass
+  tasks: both replace throw-on-malformed behavior with skip-and-report, and
+  a missed case in either would reproduce the original real-project
+  failure. Tasks 17, 18, and 19 are independent of each other (each touches
+  a distinct concern — field-key clashes, destination cleanup, indexing
+  suppression — with limited file overlap in
+  `import-scrivener-project.ts`) and can run in parallel once Task 16's
+  fixture/tests land; Task 19 (indexing suppression) carries the most risk
+  of the three, since it adds new shared state-management to
+  `indexer-queue.ts` that must not regress the running app's own indexing.
+  Task 21 (originally Task 11, then Task 16, now Task 21) still depends on
+  access to the private sample project and a human/lead's availability,
+  and is not required for the automated gate (Task 20) to pass.
 
 ## Open Questions
 

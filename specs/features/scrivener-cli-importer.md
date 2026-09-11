@@ -130,7 +130,31 @@ a UI wrapper, is Feature 43) and does not touch the source project.
    `Text`/`Date`/`List` observed in the survey project map to GetWrite's
    `text`/`date`/`select` field types respectively) the first time that
    field is encountered, and MUST write each document's per-field value
-   into `userMetadata.<fieldKey>` on its resource's sidecar. [US-1]
+   into `userMetadata.<fieldKey>` on its resource's sidecar. Amended
+   2026-09-11 (owner decision, Gate 5), from a measured real-project abort —
+   `Error: Field key already exists: "pov"` — where the source project's
+   custom field id `pov` collided with GetWrite's built-in `pov` (Point of
+   View) field (`default-metadata-schema.ts:18`), and `addField`'s
+   existing throw-on-any-existing-key behavior (`metadata-schema.ts:486-492`)
+   aborted the whole run: before creating a field's key (and before creating
+   the "Label" field's key, FR-15), the command MUST check the key it
+   derived against the destination project's live metadata schema — every
+   built-in field (the schema the destination project falls back to
+   whenever no project-specific schema has been written yet,
+   `default-metadata-schema.ts`) plus every field already added earlier in
+   this same import. A colliding key MUST NOT abort the import: the command
+   MUST instead create the field under a free, deterministic suffixed key —
+   `<original-key>-scrivener`, then `<original-key>-scrivener-2`,
+   `<original-key>-scrivener-3`, and so on, using the first such key not
+   already present — while keeping the Scrivener field's own title as the
+   created field's `label`. Every such rename MUST be listed in the FR-9
+   report (original key, field title, renamed key). This is a separate rule
+   from, and runs after, `deriveFieldKey`'s existing `-2`/`-3`
+   disambiguation among two *custom* fields that derive the same key from
+   within the same import (`metadata-mapper.ts:174-189`, unchanged) — that
+   rule only prevents two imported fields from colliding with each other; it
+   does not know about the destination project's built-in fields, which is
+   the gap this amendment closes. [US-1]
 8. FR-8: When the command encounters content it cannot convert — an RTF
    feature with no GetWrite equivalent, a malformed or unreadable
    `content.rtf`/`.scrivx` fragment, a custom-metadata field type with no
@@ -146,7 +170,14 @@ a UI wrapper, is Feature 43) and does not touch the source project.
    (Measured 2026-09-11: a real Scrivener 3.5.2 Mac project aborted the
    command entirely on one `<MetaDataItem>` missing its `ID` attribute — the
    fixture's synthetic shape, not the real one, per FR-12 — because the
-   parser threw rather than skipped; this amendment closes that gap.) [US-1]
+   parser threw rather than skipped; this amendment closes that gap.) More
+   generally (amended 2026-09-11, owner decision, Gate 5, from a second
+   measured real-project abort — `Error: Field key already exists: "pov"`):
+   any per-field metadata-schema creation failure — including a field-key
+   collision, resolved by FR-7's suffix rule rather than an abort, and any
+   other unexpected `addField`/`addGroup` failure — is skipped and reported
+   the same way as every other case above; it is never a reason to abort
+   the run. [US-1]
 9. FR-9: On completion, the command MUST write a report file the writer can
    read, listing: (a) every skipped item and reason from FR-8; (b) every
    tag-name merge from FR-15's Keywords import; (c) non-text Research
@@ -165,7 +196,12 @@ a UI wrapper, is Feature 43) and does not touch the source project.
     leave the project's search/backlink/mention indexes in a consistent
     state on completion — either building them incrementally during import
     or by invoking the existing `reindex` command's rebuild logic
-    (`cli/src/commands/reindex.ts`) at the end of the run. [US-1]
+    (`cli/src/commands/reindex.ts`) at the end of the run. Amended
+    2026-09-11 (owner decision, Gate 5): this end-of-run rebuild MUST be the
+    only indexing that runs during an import — see FR-23 for the
+    requirement that GetWrite's normal background indexing and backlinks
+    watcher (otherwise triggered by every sidecar/resource write this
+    command makes) MUST NOT also run during the import. [US-1]
 12. FR-12: Test coverage for this command MUST use a synthetic,
     committable `.scriv` fixture built for the purpose (binder XML plus
     minimal RTF/synopsis/notes/metadata files), not the private sample
@@ -309,6 +345,75 @@ a UI wrapper, is Feature 43) and does not touch the source project.
     verified by the lead's manual run (task list Task 11), not by an
     automated test, since the sample is gitignored and reserved for manual
     verification only (FR-12). [US-1]
+22. FR-22 (added 2026-09-11, owner decision, Gate 5): Before any destination
+    write, the command MUST determine whether `projectRoot` already exists.
+    (Measured: `importScrivenerProject`
+    (`frontend/src/lib/models/scrivener/import-scrivener-project.ts:210`)
+    currently calls `mkdir(projectRoot, { recursive: true })`
+    unconditionally, with no prior existence or emptiness check — this FR
+    closes that gap rather than replacing an existing guard.) If
+    `projectRoot` exists and is non-empty, the command MUST refuse to
+    import — a clear message, non-zero exit, nothing written or removed —
+    before any write. Otherwise (`projectRoot` does not exist, or exists
+    and is empty) the import proceeds, and this initial check's result is
+    recorded once, up front, as whether `projectRoot` existed before this
+    run; that recorded value — not a later filesystem check — is what
+    "run-created" means for the rest of this requirement. If a fatal error
+    (any error that is not itself an FR-8/FR-20 per-item or per-value skip)
+    is raised anywhere after the import has started writing, the command
+    MUST, before exiting non-zero: (a) print the error and which phase of
+    the orchestration (the module doc's numbered "Orchestration order" list
+    in `import-scrivener-project.ts`) it failed in; (b) when `projectRoot`
+    did not exist before this run, remove it entirely via
+    `rm(projectRoot, { recursive: true, force: true })` (via `io.ts`, not
+    `node:fs`) before exiting; (c) when `projectRoot` already existed
+    (necessarily empty, since a non-empty pre-existing destination was
+    already refused above), leave it and everything under it untouched. The
+    command MUST NEVER remove any path other than the exact `projectRoot`
+    it was given, and MUST NEVER remove it when it existed before this
+    run. [US-1]
+23. FR-23 (added 2026-09-11, owner decision, Gate 5): During an import,
+    GetWrite's normal background indexing and backlinks-watcher machinery
+    MUST NOT be left running when the command returns, and MUST NOT
+    produce spurious warnings (e.g. `readSidecar`'s "sidecar not found") or
+    failures (e.g. a logged `[indexer-queue] task failed`) during the run.
+    (Measured: `writeSidecar`, `sidecar.ts:161-177`, schedules
+    `enqueueIndex` via `setImmediate` plus a dynamic import of
+    `indexer-queue.ts` on every call; the importer reaches this on every
+    created text resource through `writeResourceToFile`
+    (`resource-persistence.ts:200`), on every resource's synopsis/notes
+    through `applyDocumentMetadata`, and on every metadata-schema field
+    through `addField`/`addGroup`. `indexer-queue.ts` already exposes the
+    mechanism this relies on: a module-level `isStopped` flag that makes
+    `enqueueIndex`/`enqueueEntityRescan` resolve immediately without
+    entering the queue or starting the recursive `fs.watch` backlinks
+    watcher (`ensureBacklinkWatcher`, gated on `!isStopped`), and the
+    existing `shutdownIndexer(timeoutMs)`, which sets that flag, drains any
+    already-queued work, and stops every watcher `activeBacklinkWatchers`
+    is tracking.) Draining alone is not sufficient: a task already queued
+    before suppression begins can still race a concurrent sidecar write and
+    log a spurious warning, which is what was measured. The command MUST
+    therefore suppress enqueueing for the entire duration of its own
+    writes — from before its first `writeResourceToFile`/`applyDocumentMetadata`/
+    `addField`-triggered sidecar write through its own FR-11 rebuild — not
+    merely drain at the end. Because `isStopped` and the watcher registry
+    are process-wide module state, and the importer's own FR-11 rebuild
+    must still run afterward, this requires a minimal addition to
+    `indexer-queue.ts`, scoped to the import path only: an exported
+    function (e.g. `withIndexingSuspended<T>(fn: () => Promise<T>):
+    Promise<T>`) that sets `isStopped = true`, runs `fn`, and on completion
+    (success or throw) stops any watcher recorded in
+    `activeBacklinkWatchers` and resets `isStopped = false` — restoring the
+    flag and watcher registry to their prior state for any other in-process
+    consumer, since the running app itself never calls this. The importer
+    wraps its entire write phase (destination-project creation through the
+    FR-11 rebuild) in this call. This MUST NOT change
+    `enqueueIndex`/`enqueueEntityRescan`/`shutdownIndexer`'s existing
+    behavior for the running app, and MUST NOT be implemented by modifying
+    `writeSidecar`, `revision-manager.ts`, or `inverted-index.ts`
+    themselves. The shared `writeSidecar`/`readSidecar` race that produced
+    the measured `SyntaxError: Unexpected end of JSON input` is out of
+    scope for this requirement (see Out of scope). [US-1]
 
 ## Open questions
 
@@ -392,6 +497,25 @@ a UI wrapper, is Feature 43) and does not touch the source project.
   just `CustomMetaData`) is an FR-8 skip of the affected item/value only;
   it MUST NOT abort the import. Only an unreadable/non-XML `.scrivx` or a
   failed FR-2 Creator check aborts. — Impact: FR-8.
+- OQ-13 (resolved, 2026-09-11 owner decision, Gate 5, second real-project
+  run): a custom field's (or the Label field's) key colliding with a
+  built-in or already-added key resolves to a free, deterministic
+  suffixed key (`<key>-scrivener`, then `-scrivener-2`, …), keeping the
+  Scrivener field's own title as the label and recording the rename in the
+  FR-9 report; a field-key clash, and any other per-field schema-creation
+  failure, is an FR-8 skip, never an abort. — Impact: FR-7, FR-8.
+- OQ-14 (resolved, 2026-09-11 owner decision, Gate 5): a non-empty
+  pre-existing `projectRoot` is refused up front; a fatal error after
+  writing has started removes `projectRoot` only when this run created it
+  (it did not exist before the run), and never touches a `projectRoot`
+  that already existed. — Impact: FR-22.
+- OQ-15 (resolved, 2026-09-11 owner decision, Gate 5): the import's own
+  writes suppress GetWrite's normal background indexing and backlinks
+  watcher for the run's duration via a minimal, import-scoped addition to
+  `indexer-queue.ts` built on its existing `isStopped` flag and
+  `shutdownIndexer` watcher-stop logic; the importer's own FR-11 rebuild
+  remains the sole indexing that runs. The `writeSidecar`/`readSidecar`
+  race itself stays deferred (see Out of scope). — Impact: FR-11, FR-23.
 
 ## Out of scope (deferred)
 
@@ -413,3 +537,13 @@ a UI wrapper, is Feature 43) and does not touch the source project.
   needed to actually support them).
 - Repeatable/merge import against an already-imported project (Feature 44).
 - A writer-facing UI for import (Feature 43).
+- The `writeSidecar`/`readSidecar` race (`sidecar.ts`): `writeSidecar`
+  writes a sidecar in place under `withMetaLock` while `readSidecar` reads
+  without any lock, so a concurrent read can observe a partially-written
+  file. Measured as the likely cause of one
+  `SyntaxError: Unexpected end of JSON input` during a real-project import
+  run (2026-09-11); FR-23's indexing suppression prevents the importer's
+  own writes from triggering the background reads that raced in that run,
+  but does not fix the underlying race, which can still be hit by any
+  other concurrent reader/writer pair. A separate follow-up, not part of
+  this feature.
