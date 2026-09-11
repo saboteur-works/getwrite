@@ -912,7 +912,7 @@ shipped spec did not include (its Out of scope section does not name
 tooltips, so this is a new increment on top of a shipped feature, not a
 resumption of something already deferred there).
 
-### Feature 41: Entity graph node dragging — Not started
+### Feature 41: Entity graph node dragging — Shipped
 **Value:** A novelist looking at Feature 39's graph can pull a node into a
 clearer spot — away from an overlapping neighbour, or toward the part of the
 canvas they're focused on — instead of being stuck with whatever position
@@ -934,7 +934,9 @@ handler in the same file already derives.
 **User stories:** US-17
 **Depends on:** Feature 39
 **Branch suggestion:** feat/entity-graph-node-dragging
-**Notes:** Not started. Three product-rung decisions are settled and not
+**Notes:** Shipped. Merged as PR #194
+(`6f699f4c`), including `676da04b` (fix: make node dragging work on touch).
+Three product-rung decisions are settled and not
 reopened here: reposition is static — only the dragged node moves, no live
 force simulation runs during or after a drag, and `computeGraphLayout` keeps
 its pure, deterministic, fixed-tick contract, accepting that edges stretch
@@ -950,6 +952,55 @@ drives the drag. Distinguishing a drag from the existing click-to-select/
 click-to-navigate gesture is a real implementation cost this entry does not
 minimize away — see this feature list's Open Questions for the pixel-movement
 threshold that decision needs.
+
+### Feature 42: Remove an entity declaration — Not started
+**Value:** A novelist who declared a resource as an entity by mistake, or no
+longer wants it tracked as one, can fully un-declare it in one action —
+clearing `entityKind` and `aliases` together — instead of using the existing
+field-clearing path, which deliberately leaves `aliases` dormant with no UI
+left to remove them once `isEntity` goes false.
+**Vertical slice:** A model-layer bulk delete in
+`frontend/src/lib/models/entity-relationships.ts` removing every authored
+edge where the entity being un-declared is source or target, under the same
+single `withMetaLock` read-modify-write discipline `createEntityRelationship`/
+`removeEntityRelationship` already use — nothing like it exists today, only
+per-edge removal; a new sibling HTTP route alongside the existing
+`frontend/app/api/project/[project-id]/entity-relationships/route.ts` (GET/
+POST) and `.../entity-relationships/remove/route.ts` (POST) — e.g. `.../
+entity-relationships/remove-by-entity/route.ts` — plus the
+`lib/api/entity-relationships.ts` /
+`store/transport/native-entity-relationships-backend.ts` `createTransport`
+collapse exposing it, per ADR-021 parity; a sidecar write clearing
+`entityKind` and `aliases` together through the existing `updateSidecar`
+path, which already triggers `enqueueEntityRescan` and the alias table's
+exclusion of non-entity resources — no new cleanup mechanism; and a Remove
+Entity control in the entity's own sidebar view (`EntitySection.tsx` area)
+that opens the existing `ConfirmDialog` component (`isOpen`, `title`,
+`description?`, `details?: React.ReactNode`, `confirmLabel?`,
+`cancelLabel?`, `onConfirm`, `onCancel`), placing the keep/delete-edges
+choice in its `details` slot with no new props needed, defaulting to keep
+and hidden entirely when the entity has zero authored edges, then refetches
+the alias table on completion.
+**Requirements covered:** FR-41
+**User stories:** US-3
+**Depends on:** Feature 33, Feature 38
+**Branch suggestion:** feat/remove-entity
+**Notes:** Not started. This is a scoped exception to the product's
+otherwise-universal rule that deleting an entity leaves its authored edges,
+backlinks, and mentions untouched (see FR-39 and the CLAUDE.md glossary's
+"Entity relationship" entry) — FR-41 explicitly carves out an opt-in bulk
+edge delete as one of the two choices this action offers, rather than
+reaffirming the untouched-edges default everywhere. The existing
+field-clearing path in `EntitySection.tsx` (`withEntityKind` setting
+`entityKind: undefined`, leaving `aliases` dormant) is unchanged by this
+feature and remains the lighter, intentionally partial alternative — the two
+entry points are deliberately distinct, per the parent spec's resolved OQ-9,
+not a fix to or replacement of the old one. No new feature flag — rides the
+existing `entities` flag FR-35 already established. The action lives only in
+the entity's own sidebar view; the roster (Feature 36) stays read-only and
+gains no mutating action, per the parent spec's resolved OQ-10. No undo and
+no trash-like holding area for deleted edges, per resolved OQ-8, consistent
+with edges never being soft-deleted anywhere in the product.
 
 ---
 
@@ -998,11 +1049,12 @@ threshold that decision needs.
     requirement with no FR of their own — see this feature list's Open
     Questions)
   - FR-40: Feature 41
+  - FR-41: Feature 42
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 41
+- Total features: 42
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -1024,12 +1076,15 @@ threshold that decision needs.
   on it). 29 (durable search backend) is contingent on demonstrated need
   rather than sequenced by dependency. 31 (Scrivener/Word importer) only
   depends on the already-shipped Feature 2. 32 (joining search and query
-  predicates) depends on the already-shipped Features 8 and 9.
+  predicates) depends on the already-shipped Features 8 and 9. 42 (removing
+  an entity declaration) depends on the already-shipped Features 33 and 38 —
+  33 for the entity declaration it reverses, 38 for the authored edges its
+  keep/delete-edges choice acts on — and is independently startable now.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-  36, 37, 38, 39, 40, 41 (30 is the only feature left with an unmet hard
+  36, 37, 38, 39, 40, 41, 42 (30 is the only feature left with an unmet hard
   dependency — on 28)
-- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 41.
+- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 42.
   Everything else in this list has shipped.
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
@@ -1168,3 +1223,16 @@ FR-39 split (this document's own scoping call — Gate 2 review, 2026-09-07):
   held — is unresolved.
 - Whether Feature 41's drag should be constrained to the canvas's visible
   bounds, or allowed to move a node off-canvas, is unresolved.
+- **Resolved (product owner, Gate 2 review, 2026-09-10): Feature 42's HTTP
+  route name and shape for the bulk edge delete is deferred to the feature
+  spec `specs/features/remove-entity.md`.** The proposed shape there is
+  `POST /api/project/[project-id]/entity-relationships/remove-by-entity`
+  with body `{ entityId }`, always 200 with `{ removedCount }`, delegating
+  to a new model function `removeEntityRelationshipsForEntity`, modelled on
+  the sibling `remove/route.ts` (which treats nothing-to-remove as success).
+- **Resolved (product owner, Gate 2 review, 2026-09-10): not split.** The
+  bulk-delete-every-edge-for-an-entity operation stays inside Feature 42
+  rather than becoming its own feature — its only caller is the Remove
+  Entity confirmation choice, and on its own it ships nothing a writer can
+  use, failing this document's own independently-shippable bar (the Feature
+  37 precedent).

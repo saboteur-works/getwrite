@@ -317,23 +317,78 @@ export async function deleteResourceCore(
 // ---------------------------------------------------------------------------
 
 /**
+ * Allowlist of sidecar keys {@link updateSidecarCore}'s `clearKeys` parameter
+ * may name. A fail-closed boundary: any key outside this list — including
+ * structural fields like `orderIndex`/`folderId` or the resource's `id` —
+ * is rejected rather than silently ignored or coerced (FR-20/FR-25,
+ * `docs/standards/security.md`).
+ */
+const SIDECAR_CLEARABLE_KEYS: readonly string[] = ["entityKind", "aliases"];
+
+/**
+ * Thrown by {@link updateSidecarCore} when `clearKeys` is malformed (not an
+ * array of strings) or names a key outside {@link SIDECAR_CLEARABLE_KEYS}.
+ * Thrown before any read-modify-write occurs, so no mutation of the sidecar
+ * happens on rejection.
+ */
+export class InvalidClearKeysCoreError extends Error {
+  constructor(clearKeys: unknown) {
+    super(`Invalid clearKeys: ${JSON.stringify(clearKeys)}`);
+    this.name = "InvalidClearKeysCoreError";
+  }
+}
+
+/**
+ * Validates `clearKeys` against {@link SIDECAR_CLEARABLE_KEYS}, throwing
+ * {@link InvalidClearKeysCoreError} when it is not an array of strings or
+ * contains an entry outside the allowlist. Returns `undefined` unchanged
+ * when `clearKeys` itself is `undefined` (the omitted-parameter case).
+ */
+function validateClearKeys(clearKeys: string[] | undefined): void {
+  if (clearKeys === undefined) return;
+  if (
+    !Array.isArray(clearKeys) ||
+    !clearKeys.every((key) => typeof key === "string")
+  ) {
+    throw new InvalidClearKeysCoreError(clearKeys);
+  }
+  for (const key of clearKeys) {
+    if (!SIDECAR_CLEARABLE_KEYS.includes(key)) {
+      throw new InvalidClearKeysCoreError(clearKeys);
+    }
+  }
+}
+
+/**
  * Merges an incoming sidecar update with the existing sidecar, preserving
  * structural fields (`orderIndex`, `folderId`) that only the reorder route
  * may change.
  *
  * Lifted verbatim from `POST /api/resource/[resource-id]/sidecar`'s
- * `handlePost` body.
+ * `handlePost` body, plus an optional `clearKeys` parameter (FR-20/FR-25):
+ * unlike `updatedResource`, whose `undefined`-valued keys are dropped by
+ * `JSON.stringify` before an HTTP body ever reaches this function, `clearKeys`
+ * names keys to delete from the merged sidecar explicitly, after the merge
+ * and before the write. `clearKeys` is validated against a fail-closed
+ * allowlist before any read-modify-write occurs.
+ *
+ * @throws {InvalidClearKeysCoreError} When `clearKeys` is not an array of
+ *   strings, or names a key outside the allowlist. No sidecar read or write
+ *   occurs in this case.
  */
 export async function updateSidecarCore(
   projectId: string,
   resourceId: string,
   updatedResource: Record<string, unknown>,
+  clearKeys?: string[],
 ): Promise<void> {
+  validateClearKeys(clearKeys);
+
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
 
   const existing = await readSidecar(projectRoot, resourceId).catch(() => null);
 
-  const merged = {
+  const merged: Record<string, unknown> = {
     ...(existing ?? {}),
     ...updatedResource,
     orderIndex:
@@ -345,6 +400,12 @@ export async function updateSidecarCore(
       (updatedResource.folderId as string | null | undefined) ??
       null,
   };
+
+  if (clearKeys) {
+    for (const key of clearKeys) {
+      delete merged[key];
+    }
+  }
 
   await writeSidecar(
     projectRoot,

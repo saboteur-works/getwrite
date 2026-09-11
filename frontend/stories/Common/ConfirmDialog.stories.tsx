@@ -83,6 +83,28 @@ export const CloseProjectWithBlockers: Story = {
   },
 };
 
+export const ConfirmDisabled: Story = {
+  render: (args: React.ComponentProps<typeof ConfirmDialog>) => (
+    <div>
+      <ConfirmDialog {...args} />
+      <div data-testid="dialog-title" aria-hidden style={{ display: "none" }}>
+        {args.title}
+      </div>
+    </div>
+  ),
+  args: {
+    isOpen: true,
+    title: "Delete resource",
+    description:
+      "This action cannot be undone. The selected resource will be removed.",
+    confirmLabel: "Delete",
+    cancelLabel: "Cancel",
+    isConfirmDisabled: true,
+    onConfirm: () => console.log("confirmed"),
+    onCancel: () => console.log("canceled"),
+  },
+};
+
 export const Interactive: Story = {
   render: (args: React.ComponentProps<typeof ConfirmDialog>) => {
     const [isOpen, setIsOpen] = React.useState(true);

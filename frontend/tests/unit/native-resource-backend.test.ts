@@ -9,6 +9,7 @@ import { generateUUID } from "../../src/lib/models/uuid";
 import { createFakeCapacitorFilesystem } from "../../src/lib/models/capacitor-filesystem";
 import { capacitorFsAdapter } from "../../src/lib/models/capacitorFsAdapter";
 import { createNativeResourcesTransport } from "../../src/store/transport/native-resource-backend";
+import { sidecarPathForProject } from "../../src/lib/models/sidecar";
 
 const PROJECTS_DIR = "/projects";
 
@@ -141,6 +142,51 @@ describe("native resources transport — in-process backend reuses the shared re
       created.resource.id,
     );
     expect(fetched).not.toBeNull();
+  });
+
+  it("updateSidecar with clearKeys deletes the named keys from the persisted sidecar via the same updateSidecarCore mechanism as HTTP (FR-20)", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = await makeProject(fs);
+    const transport = createNativeResourcesTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    const created = await transport.create(projectId, {
+      type: "text",
+      name: "Entity Target",
+      text: { plainText: "content" },
+    });
+
+    await transport.updateSidecar(created.resource.id, projectId, {
+      ...created.resource,
+      entityKind: "character",
+      aliases: ["Al"],
+    } as never);
+
+    await transport.updateSidecar(
+      created.resource.id,
+      projectId,
+      { ...created.resource } as never,
+      ["entityKind", "aliases"],
+    );
+
+    const adapter = capacitorFsAdapter(fs);
+    const sidecarPath = sidecarPathForProject(
+      path.join(PROJECTS_DIR, projectId),
+      created.resource.id,
+    );
+    const raw = await adapter.readFile(sidecarPath, "utf-8");
+    const sidecar = JSON.parse(raw as string) as Record<string, unknown>;
+
+    // Genuinely absent, not undefined-valued.
+    expect(Object.prototype.hasOwnProperty.call(sidecar, "entityKind")).toBe(
+      false,
+    );
+    expect(Object.prototype.hasOwnProperty.call(sidecar, "aliases")).toBe(
+      false,
+    );
+    expect(sidecar.name).toBe("Entity Target");
   });
 
   it("fetchContent resolves to null on failure (invalid projectId), matching the HTTP transport's null-on-failure parity", async () => {

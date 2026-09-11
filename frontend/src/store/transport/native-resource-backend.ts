@@ -116,12 +116,13 @@ export function createNativeResourcesTransport(
       });
     },
 
-    async updateSidecar(resourceId, projectId, updatedResource) {
+    async updateSidecar(resourceId, projectId, updatedResource, clearKeys) {
       await run(async () => {
         await updateSidecarCore(
           projectId,
           resourceId,
           updatedResource as unknown as Record<string, unknown>,
+          clearKeys,
         );
       });
     },

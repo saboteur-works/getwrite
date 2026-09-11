@@ -62,14 +62,23 @@ export default function EntitySection(): JSX.Element | null {
 
   const [newAlias, setNewAlias] = useState("");
 
-  const persist = (updated: AnyResource): void => {
+  /**
+   * `clearKeys`, when provided, is forwarded to `updateSidecar` so the
+   * server actually deletes those sidecar keys (Task 10/11) rather than
+   * relying on an `undefined`-valued key in `updated` surviving
+   * `JSON.stringify` — it does not (Stage 6.5 measurement). `updated` itself
+   * is still what gets optimistically dispatched to Redux, whose reducer
+   * merge does rely on `undefined`-valued keys being present (see
+   * `withEntityKind` below).
+   */
+  const persist = (updated: AnyResource, clearKeys?: string[]): void => {
     dispatch(updateResource(updated));
     if (!projectId) return;
     // FR-12 trigger 3: refetch the alias table once this entity sidecar
     // write resolves, so open editors pick up the new/changed name or
     // aliases without a manual refresh. Only fires on success — a failed
     // write left the sidecar (and thus the alias table) unchanged.
-    void updateSidecar(updated.id, projectId, updated)
+    void updateSidecar(updated.id, projectId, updated, clearKeys)
       .then(() => {
         dispatch(fetchEntityAliasTable(projectId));
       })
@@ -84,7 +93,15 @@ export default function EntitySection(): JSX.Element | null {
     resource?.entityKind ?? "",
     (nextKind: string) => {
       if (!resource) return;
-      persist(withEntityKind(resource, nextKind));
+      // Only the clear case (blank kind) needs `clearKeys`, and only
+      // `entityKind` — `aliases` stays dormant and is never cleared on this
+      // path (FR-3). Setting a non-empty value omits `clearKeys` entirely
+      // and persists exactly as before.
+      const isClearing = nextKind.trim().length === 0;
+      persist(
+        withEntityKind(resource, nextKind),
+        isClearing ? ["entityKind"] : undefined,
+      );
     },
   );
 

@@ -169,5 +169,120 @@ describe("native entity-relationships transport — in-process backend reuses th
     await expect(transport.remove("not-a-uuid", generateUUID())).resolves.toBe(
       false,
     );
+    await expect(
+      transport.removeByEntity("not-a-uuid", generateUUID()),
+    ).resolves.toBe(0);
+  });
+
+  it("removeByEntity removes every edge referencing the entity on either side, matching Task 1's model function", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = generateUUID();
+    const entityA = generateUUID();
+    const entityB = generateUUID();
+    const entityC = generateUUID();
+    await seedProjectConfig(fs, projectId, ["ally", "rival"]);
+
+    const transport = createNativeEntityRelationshipsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    await transport.create(projectId, entityA, entityB, "ally");
+    await transport.create(projectId, entityB, entityA, "rival");
+    await transport.create(projectId, entityB, entityC, "ally");
+
+    const removedCount = await transport.removeByEntity(projectId, entityA);
+    expect(removedCount).toBe(2);
+
+    const remaining = await transport.list(projectId);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].sourceEntityId).toBe(entityB);
+    expect(remaining[0].targetEntityId).toBe(entityC);
+  });
+
+  it("listOrThrow (FR-26) resolves the same edges list() would on success", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = generateUUID();
+    const sourceId = generateUUID();
+    const targetId = generateUUID();
+    await seedProjectConfig(fs, projectId, ["ally"]);
+
+    const transport = createNativeEntityRelationshipsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    await transport.create(projectId, sourceId, targetId, "ally");
+
+    await expect(transport.listOrThrow(projectId)).resolves.toHaveLength(1);
+  });
+
+  it("listOrThrow (FR-26) REJECTS rather than degrading to [] when the underlying storage load throws (corrupt relationships.json)", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = generateUUID();
+    await seedProjectConfig(fs, projectId, ["ally"]);
+    const adapter = capacitorFsAdapter(fs);
+    const metaDir = path.join(PROJECTS_DIR, projectId, "meta");
+    await adapter.mkdir(metaDir, { recursive: true });
+    await adapter.writeFile(
+      path.join(metaDir, "relationships.json"),
+      "not valid json",
+    );
+
+    const transport = createNativeEntityRelationshipsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    await expect(transport.listOrThrow(projectId)).rejects.toThrow();
+    // list() itself still degrades to [] under the identical failure.
+    await expect(transport.list(projectId)).resolves.toEqual([]);
+  });
+
+  it("listOrThrow (FR-26) REJECTS rather than degrading to [] on an invalid projectId", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const transport = createNativeEntityRelationshipsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    // An invalid projectId can never resolve to a project root, so
+    // `resolveProjectRoot` throws inside `listOrThrow` instead of the
+    // graceful-degrade `null` check `list` performs.
+    await expect(transport.listOrThrow("not-a-uuid")).rejects.toThrow();
+  });
+
+  it("listOrThrow (FR-26) does not change list()'s own degrade-to-[] behavior on an invalid projectId", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const transport = createNativeEntityRelationshipsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    await expect(transport.list("not-a-uuid")).resolves.toEqual([]);
+  });
+
+  it("removeByEntity resolves 0 when no edge references the entity", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = generateUUID();
+    const entityA = generateUUID();
+    const entityB = generateUUID();
+    await seedProjectConfig(fs, projectId, ["ally"]);
+
+    const transport = createNativeEntityRelationshipsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    await transport.create(projectId, entityA, entityB, "ally");
+
+    const removedCount = await transport.removeByEntity(
+      projectId,
+      generateUUID(),
+    );
+    expect(removedCount).toBe(0);
+
+    const remaining = await transport.list(projectId);
+    expect(remaining).toHaveLength(1);
   });
 });

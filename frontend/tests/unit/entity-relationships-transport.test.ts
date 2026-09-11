@@ -8,7 +8,9 @@ import {
   createEntityRelationship,
   httpEntityRelationshipsTransport,
   listEntityRelationships,
+  listEntityRelationshipsOrThrow,
   removeEntityRelationship,
+  removeEntityRelationshipsForEntity,
 } from "../../src/lib/api/entity-relationships";
 import type { EntityRelationshipEdge } from "../../src/lib/models/entity-relationships";
 
@@ -71,6 +73,62 @@ describe("entity relationships transport — web runtime — list", () => {
       ok: true,
       json: async () => ({ not: "an array" }),
     } as Response);
+
+    await expect(listEntityRelationships("project-1")).resolves.toEqual([]);
+  });
+});
+
+describe("entity relationships transport — web runtime — listOrThrow (FR-26)", () => {
+  beforeEach(() => {
+    delete process.env[RUNTIME_ENV];
+  });
+
+  it("calls fetch('/api/project/:id/entity-relationships') and returns the parsed array on 200", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({
+        ok: true,
+        json: async () => [SAMPLE_EDGE],
+      } as Response);
+
+    const result = await listEntityRelationshipsOrThrow("project-1");
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/project/project-1/entity-relationships",
+    );
+    expect(result).toEqual([SAMPLE_EDGE]);
+  });
+
+  it("REJECTS rather than resolving to [] on a non-2xx response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => [SAMPLE_EDGE],
+    } as Response);
+
+    await expect(listEntityRelationshipsOrThrow("project-1")).rejects.toThrow();
+  });
+
+  it("REJECTS rather than resolving to [] on a network error", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+
+    await expect(listEntityRelationshipsOrThrow("project-1")).rejects.toThrow(
+      "network down",
+    );
+  });
+
+  it("REJECTS rather than resolving to [] on a malformed (non-array) body", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ not: "an array" }),
+    } as Response);
+
+    await expect(listEntityRelationshipsOrThrow("project-1")).rejects.toThrow();
+  });
+
+  it("does not change list()'s own degrade-to-[] behavior", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
 
     await expect(listEntityRelationships("project-1")).resolves.toEqual([]);
   });
@@ -188,10 +246,76 @@ describe("entity relationships transport — web runtime — remove", () => {
   });
 });
 
+describe("entity relationships transport — web runtime — removeByEntity", () => {
+  beforeEach(() => {
+    delete process.env[RUNTIME_ENV];
+  });
+
+  it("posts the entityId and returns the parsed removedCount on success", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({ removedCount: 3 }),
+      } as Response);
+
+    const removedCount = await removeEntityRelationshipsForEntity(
+      "project-1",
+      "entity-1",
+    );
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/project/project-1/entity-relationships/remove-by-entity",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ entityId: "entity-1" }),
+      }),
+    );
+    expect(removedCount).toBe(3);
+  });
+
+  it("resolves to 0 on a non-2xx response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      json: async () => ({ removedCount: 3 }),
+    } as Response);
+
+    await expect(
+      removeEntityRelationshipsForEntity("project-1", "entity-1"),
+    ).resolves.toBe(0);
+  });
+
+  it("resolves to 0 rather than throwing on a network error", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+
+    await expect(
+      removeEntityRelationshipsForEntity("project-1", "entity-1"),
+    ).resolves.toBe(0);
+  });
+
+  it("resolves to 0 on a malformed (non-numeric removedCount) body", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ not: "a removedCount" }),
+    } as Response);
+
+    await expect(
+      removeEntityRelationshipsForEntity("project-1", "entity-1"),
+    ).resolves.toBe(0);
+  });
+});
+
 describe("httpEntityRelationshipsTransport", () => {
   it("is the transport object used directly by the resolver in web runtime", () => {
     expect(typeof httpEntityRelationshipsTransport.list).toBe("function");
+    expect(typeof httpEntityRelationshipsTransport.listOrThrow).toBe(
+      "function",
+    );
     expect(typeof httpEntityRelationshipsTransport.create).toBe("function");
     expect(typeof httpEntityRelationshipsTransport.remove).toBe("function");
+    expect(typeof httpEntityRelationshipsTransport.removeByEntity).toBe(
+      "function",
+    );
   });
 });

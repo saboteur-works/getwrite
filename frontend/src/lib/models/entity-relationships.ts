@@ -214,9 +214,41 @@ export async function removeEntityRelationship(
   });
 }
 
+/**
+ * Removes every persisted edge naming `entityId` as either its
+ * `sourceEntityId` or `targetEntityId` (FR-8).
+ *
+ * Called when an entity is removed, so that no dangling edge references the
+ * now-gone entity. This is the entity-relationships side of that cleanup only
+ * — it does not touch the mention index, backlinks, or any trash/holding-area
+ * behavior.
+ *
+ * @returns The number of edges removed. `0` is a no-op — nothing is written
+ *   in that case, mirroring {@link removeEntityRelationship}.
+ */
+export async function removeEntityRelationshipsForEntity(
+  projectRoot: string,
+  entityId: string,
+): Promise<number> {
+  return withMetaLock(projectRoot, async () => {
+    const edges = await loadEntityRelationships(projectRoot);
+    const next = edges.filter(
+      (edge) =>
+        edge.sourceEntityId !== entityId && edge.targetEntityId !== entityId,
+    );
+    const removedCount = edges.length - next.length;
+    if (removedCount === 0) {
+      return 0;
+    }
+    await persistEntityRelationships(projectRoot, next);
+    return removedCount;
+  });
+}
+
 const entityRelationships = {
   loadEntityRelationships,
   createEntityRelationship,
   removeEntityRelationship,
+  removeEntityRelationshipsForEntity,
 };
 export default entityRelationships;

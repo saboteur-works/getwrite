@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import EntityRelationshipsSection from "../../components/Sidebar/EntityRelationshipsSection";
+import EntityRelationshipsRefreshProvider from "../../components/Sidebar/EntityRelationshipsRefreshContext";
 import { makeStore } from "../../src/store/store";
 import {
   setProject,
@@ -120,7 +121,9 @@ describe("EntityRelationshipsSection", () => {
 
     render(
       <Provider store={store}>
-        <EntityRelationshipsSection />
+        <EntityRelationshipsRefreshProvider>
+          <EntityRelationshipsSection />
+        </EntityRelationshipsRefreshProvider>
       </Provider>,
     );
 
@@ -144,7 +147,9 @@ describe("EntityRelationshipsSection", () => {
 
     render(
       <Provider store={store}>
-        <EntityRelationshipsSection />
+        <EntityRelationshipsRefreshProvider>
+          <EntityRelationshipsSection />
+        </EntityRelationshipsRefreshProvider>
       </Provider>,
     );
 
@@ -168,7 +173,9 @@ describe("EntityRelationshipsSection", () => {
 
     render(
       <Provider store={store}>
-        <EntityRelationshipsSection />
+        <EntityRelationshipsRefreshProvider>
+          <EntityRelationshipsSection />
+        </EntityRelationshipsRefreshProvider>
       </Provider>,
     );
 
@@ -196,7 +203,9 @@ describe("EntityRelationshipsSection", () => {
 
     render(
       <Provider store={store}>
-        <EntityRelationshipsSection />
+        <EntityRelationshipsRefreshProvider>
+          <EntityRelationshipsSection />
+        </EntityRelationshipsRefreshProvider>
       </Provider>,
     );
 
@@ -275,7 +284,9 @@ describe("EntityRelationshipsSection", () => {
 
     render(
       <Provider store={store}>
-        <EntityRelationshipsSection />
+        <EntityRelationshipsRefreshProvider>
+          <EntityRelationshipsSection />
+        </EntityRelationshipsRefreshProvider>
       </Provider>,
     );
 
@@ -320,7 +331,9 @@ describe("EntityRelationshipsSection", () => {
 
     render(
       <Provider store={store}>
-        <EntityRelationshipsSection />
+        <EntityRelationshipsRefreshProvider>
+          <EntityRelationshipsSection />
+        </EntityRelationshipsRefreshProvider>
       </Provider>,
     );
 
@@ -353,7 +366,9 @@ describe("EntityRelationshipsSection", () => {
 
     render(
       <Provider store={store}>
-        <EntityRelationshipsSection />
+        <EntityRelationshipsRefreshProvider>
+          <EntityRelationshipsSection />
+        </EntityRelationshipsRefreshProvider>
       </Provider>,
     );
 
@@ -389,7 +404,9 @@ describe("EntityRelationshipsSection", () => {
 
     render(
       <Provider store={store}>
-        <EntityRelationshipsSection />
+        <EntityRelationshipsRefreshProvider>
+          <EntityRelationshipsSection />
+        </EntityRelationshipsRefreshProvider>
       </Provider>,
     );
 
@@ -402,5 +419,53 @@ describe("EntityRelationshipsSection", () => {
       list.querySelectorAll("button") as NodeListOf<HTMLButtonElement>,
     ).map((btn) => btn.getAttribute("aria-label"));
     expect(rowButtons).toEqual(["Remove relationship with Priya"]);
+  });
+
+  it("still fetches on mount and re-fetches on a projectId change, unaffected by the addition of EntityRelationshipsRefreshContext (no lifecycle regression)", async () => {
+    mockedList.mockResolvedValue([]);
+    const firstStore = await setupStore();
+
+    const { rerender } = render(
+      <Provider store={firstStore}>
+        <EntityRelationshipsRefreshProvider>
+          <EntityRelationshipsSection />
+        </EntityRelationshipsRefreshProvider>
+      </Provider>,
+    );
+
+    await waitFor(() => expect(mockedList).toHaveBeenCalledTimes(1));
+    expect(mockedList).toHaveBeenLastCalledWith(PROJECT_ID);
+
+    const SECOND_PROJECT_ID = "proj-relationships-2";
+    mockedGetEntityAliasTable.mockResolvedValue(ALIAS_TABLE);
+    const secondStore = makeStore();
+    secondStore.dispatch(
+      setProject({
+        id: SECOND_PROJECT_ID,
+        name: "Second Project",
+        rootPath: `/tmp/${SECOND_PROJECT_ID}`,
+        relationshipTypes: ["ally of", "rival of"],
+      }),
+    );
+    secondStore.dispatch(setSelectedProjectId(SECOND_PROJECT_ID));
+    const secondRes = createTextResource({ name: "Aria" });
+    (secondRes as unknown as { id: string }).id = "entity-aria";
+    Object.assign(secondRes, { entityKind: "character" });
+    secondStore.dispatch(setResources([secondRes] as AnyResource[]));
+    secondStore.dispatch(setSelectedResourceId("entity-aria"));
+    await secondStore.dispatch(
+      fetchEntityAliasTable(SECOND_PROJECT_ID) as never,
+    );
+
+    rerender(
+      <Provider store={secondStore}>
+        <EntityRelationshipsRefreshProvider>
+          <EntityRelationshipsSection />
+        </EntityRelationshipsRefreshProvider>
+      </Provider>,
+    );
+
+    await waitFor(() => expect(mockedList).toHaveBeenCalledTimes(2));
+    expect(mockedList).toHaveBeenLastCalledWith(SECOND_PROJECT_ID);
   });
 });

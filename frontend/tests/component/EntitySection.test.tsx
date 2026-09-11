@@ -49,6 +49,7 @@ function getLastSidecarBody(fetchStub: ReturnType<typeof makeFetchStub>) {
   return JSON.parse(call[1]?.body as string) as {
     projectId: string;
     updatedResource: AnyResource;
+    clearKeys?: string[];
   };
 }
 
@@ -206,5 +207,9 @@ describe("EntitySection", () => {
     expect(body).not.toBeNull();
     expect(body!.updatedResource.entityKind).toBeUndefined();
     expect(body!.updatedResource.aliases).toEqual(["Alpha", "Bravo"]);
+    // Task 12: the clear case now names entityKind via clearKeys (not just
+    // an undefined-valued key), and aliases is never included in clearKeys
+    // on this path (FR-3).
+    expect(body!.clearKeys).toEqual(["entityKind"]);
   });
 });

@@ -6,6 +6,7 @@ import {
   loadEntityRelationships,
   createEntityRelationship,
   removeEntityRelationship,
+  removeEntityRelationshipsForEntity,
 } from "../../src/lib/models/entity-relationships";
 import { DEFAULT_RELATIONSHIP_TYPES } from "../../src/lib/models/default-relationship-types";
 
@@ -226,6 +227,84 @@ describe("removeEntityRelationship", () => {
     expect(didRemove).toBe(false);
     const loaded = await loadEntityRelationships(tmp);
     expect(loaded).toEqual([]);
+    await removeDirRetry(tmp);
+  });
+});
+
+describe("removeEntityRelationshipsForEntity", () => {
+  it("removes every edge naming the entity as source or target, leaves an unrelated edge untouched, and returns the count (FR-8)", async () => {
+    const tmp = await makeTmp();
+    await writeProjectConfig(tmp, ["ally", "rival"]);
+
+    // Two edges with SOURCE_ID as source.
+    await createEntityRelationship(tmp, SOURCE_ID, TARGET_ID, "ally");
+    await createEntityRelationship(tmp, SOURCE_ID, OTHER_TARGET_ID, "rival");
+    // One edge with SOURCE_ID as target.
+    await createEntityRelationship(tmp, TARGET_ID, SOURCE_ID, "rival");
+    // One unrelated edge not touching SOURCE_ID at all.
+    const unrelated = await createEntityRelationship(
+      tmp,
+      TARGET_ID,
+      OTHER_TARGET_ID,
+      "ally",
+    );
+
+    const removedCount = await removeEntityRelationshipsForEntity(
+      tmp,
+      SOURCE_ID,
+    );
+    expect(removedCount).toBe(3);
+
+    const loaded = await loadEntityRelationships(tmp);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0]).toEqual(unrelated);
+
+    await removeDirRetry(tmp);
+  });
+
+  it("returns 0 and leaves meta/relationships.json byte-for-byte unchanged when no edge matches", async () => {
+    const tmp = await makeTmp();
+    await writeProjectConfig(tmp, ["ally"]);
+    await createEntityRelationship(tmp, TARGET_ID, OTHER_TARGET_ID, "ally");
+
+    const relationshipsPath = path.join(tmp, "meta", "relationships.json");
+    const before = await fs.readFile(relationshipsPath, "utf8");
+    const statBefore = await fs.stat(relationshipsPath);
+
+    const removedCount = await removeEntityRelationshipsForEntity(
+      tmp,
+      SOURCE_ID,
+    );
+    expect(removedCount).toBe(0);
+
+    const after = await fs.readFile(relationshipsPath, "utf8");
+    const statAfter = await fs.stat(relationshipsPath);
+    expect(after).toBe(before);
+    expect(statAfter.mtimeMs).toBe(statBefore.mtimeMs);
+
+    await removeDirRetry(tmp);
+  });
+
+  it("completes correctly with no interleaved/corrupted write when racing an unrelated create", async () => {
+    const tmp = await makeTmp();
+    await writeProjectConfig(tmp, ["ally", "rival"]);
+    await createEntityRelationship(tmp, SOURCE_ID, TARGET_ID, "ally");
+
+    // Both calls are started before either is awaited — this is what proves
+    // the lock spans the read-modify-write sequence, not just the write.
+    const [removedCount, created] = await Promise.all([
+      removeEntityRelationshipsForEntity(tmp, SOURCE_ID),
+      createEntityRelationship(tmp, TARGET_ID, OTHER_TARGET_ID, "rival"),
+    ]);
+
+    expect(removedCount).toBe(1);
+    expect(created.sourceEntityId).toBe(TARGET_ID);
+    expect(created.targetEntityId).toBe(OTHER_TARGET_ID);
+
+    const loaded = await loadEntityRelationships(tmp);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0]).toEqual(created);
+
     await removeDirRetry(tmp);
   });
 });

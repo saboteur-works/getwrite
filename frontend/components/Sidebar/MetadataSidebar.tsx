@@ -22,11 +22,13 @@ import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
 import TagsSection from "./TagsSection";
 import EntitySection from "./EntitySection";
+import RemoveEntityControl from "./RemoveEntityControl";
 import EntityRelationshipsSection from "./EntityRelationshipsSection";
 import EntitiesMentionedSection from "./EntitiesMentionedSection";
 import EntityMentionsSection from "./EntityMentionsSection";
 import EntityCompileSection from "./EntityCompileSection";
 import EntityMentionsProvider from "./EntityMentionsContext";
+import EntityRelationshipsRefreshProvider from "./EntityRelationshipsRefreshContext";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
@@ -533,12 +535,21 @@ export default function MetadataSidebar({
             </CollapsibleSection>
             {isEntitiesEnabled && (
               <EntityMentionsProvider>
-                <CollapsibleSection title="Entity" variant="sidebar">
-                  <EntitySection />
-                </CollapsibleSection>
-                <CollapsibleSection title="Relationships" variant="sidebar">
-                  <EntityRelationshipsSection />
-                </CollapsibleSection>
+                {/* RemoveEntityControl and EntityRelationshipsSection share
+                    this one provider instance so a successful entity
+                    removal that deleted the entity's authored edges can
+                    signal EntityRelationshipsSection to refetch immediately
+                    (FR-16) — the control could not reach
+                    useEntityRelationshipsRefresh() otherwise. */}
+                <EntityRelationshipsRefreshProvider>
+                  <CollapsibleSection title="Entity" variant="sidebar">
+                    <EntitySection />
+                    <RemoveEntityControl key={editableResource.id} />
+                  </CollapsibleSection>
+                  <CollapsibleSection title="Relationships" variant="sidebar">
+                    <EntityRelationshipsSection />
+                  </CollapsibleSection>
+                </EntityRelationshipsRefreshProvider>
                 <CollapsibleSection
                   title="Entities Mentioned"
                   variant="sidebar"

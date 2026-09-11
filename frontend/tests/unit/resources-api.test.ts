@@ -112,6 +112,32 @@ describe("resources.ts CRUD functions (T9c regression)", () => {
     expect(body).not.toHaveProperty("projectRoot");
   });
 
+  it("updateSidecar sends clearKeys in the POST body when provided, and omits it when not", async () => {
+    const updated = {
+      id: resourceId,
+      name: "Renamed",
+    } as unknown as AnyResource;
+
+    await updateSidecar(resourceId, directoryUuid, updated, [
+      "entityKind",
+      "aliases",
+    ]);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`/api/resource/${resourceId}/sidecar`);
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.clearKeys).toEqual(["entityKind", "aliases"]);
+
+    fetchMock.mockClear();
+    await updateSidecar(resourceId, directoryUuid, updated);
+
+    const [, initWithoutClearKeys] = fetchMock.mock.calls[0];
+    const bodyWithoutClearKeys = JSON.parse(
+      (initWithoutClearKeys as RequestInit).body as string,
+    );
+    expect(bodyWithoutClearKeys).not.toHaveProperty("clearKeys");
+  });
+
   it("renameResource sends projectId in the POST body, with no projectRoot field", async () => {
     await renameResource(resourceId, directoryUuid, "New name", "resource");
 

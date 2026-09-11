@@ -2,6 +2,7 @@
  * Unit tests for:
  * - GET/POST /api/project/[project-id]/entity-relationships
  * - POST /api/project/[project-id]/entity-relationships/remove
+ * - POST /api/project/[project-id]/entity-relationships/remove-by-entity
  *
  * Exercises the route handlers against a `projectId`-scoped
  * `GETWRITE_PROJECTS_DIR`, per the pattern established in
@@ -19,6 +20,7 @@ import {
   POST,
 } from "../../app/api/project/[project-id]/entity-relationships/route";
 import { POST as REMOVE } from "../../app/api/project/[project-id]/entity-relationships/remove/route";
+import { POST as REMOVE_BY_ENTITY } from "../../app/api/project/[project-id]/entity-relationships/remove-by-entity/route";
 import type { EntityRelationshipEdge } from "../../src/lib/models/entity-relationships";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
@@ -97,6 +99,20 @@ function makeRemoveRequest(
   return new NextRequest(url.toString(), {
     method: "POST",
     body: JSON.stringify(body),
+    headers: { "content-type": "application/json" },
+  });
+}
+
+function makeRemoveByEntityRequest(
+  projectId: string,
+  body: unknown,
+): NextRequest {
+  const url = new URL(
+    `http://localhost/api/project/${projectId}/entity-relationships/remove-by-entity`,
+  );
+  return new NextRequest(url.toString(), {
+    method: "POST",
+    body: typeof body === "string" ? body : JSON.stringify(body),
     headers: { "content-type": "application/json" },
   });
 }
@@ -297,6 +313,127 @@ describe("POST /api/project/[project-id]/entity-relationships/remove", () => {
     await withProjectsDirEnv(projectsDir, async () => {
       const res = await REMOVE(
         makeRemoveRequest("not-a-uuid", { edgeId: "any" }),
+        { params: Promise.resolve({ "project-id": "not-a-uuid" }) },
+      );
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Invalid projectId");
+    });
+  });
+});
+
+describe("POST /api/project/[project-id]/entity-relationships/remove-by-entity", () => {
+  it("removes every edge referencing the entity and returns the correct removedCount", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir([
+      "ally",
+      "enemy",
+    ]);
+    await withProjectsDirEnv(projectsDir, async () => {
+      const OTHER_ID = "33333333-3333-4333-8333-333333333333";
+
+      // SOURCE -> TARGET (matches SOURCE), TARGET -> OTHER (matches TARGET on
+      // the target side), OTHER -> unrelated third id (does not match).
+      await POST(
+        makePostRequest(projectId, {
+          sourceEntityId: SOURCE_ID,
+          targetEntityId: TARGET_ID,
+          relationshipType: "ally",
+        }),
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+      await POST(
+        makePostRequest(projectId, {
+          sourceEntityId: TARGET_ID,
+          targetEntityId: OTHER_ID,
+          relationshipType: "enemy",
+        }),
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+
+      const removeRes = await REMOVE_BY_ENTITY(
+        makeRemoveByEntityRequest(projectId, { entityId: TARGET_ID }),
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+      expect(removeRes.status).toBe(200);
+      const json = await removeRes.json();
+      expect(json.removedCount).toBe(2);
+
+      const listRes = await GET(makeGetRequest(projectId), {
+        params: Promise.resolve({ "project-id": projectId }),
+      });
+      const listed = (await listRes.json()) as EntityRelationshipEdge[];
+      expect(listed).toEqual([]);
+    });
+  });
+
+  it("returns 200 with removedCount 0 for an entity with no matching edges (not an error)", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const removeRes = await REMOVE_BY_ENTITY(
+        makeRemoveByEntityRequest(projectId, {
+          entityId: "44444444-4444-4444-8444-444444444444",
+        }),
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+      expect(removeRes.status).toBe(200);
+      const json = await removeRes.json();
+      expect(json.removedCount).toBe(0);
+    });
+  });
+
+  it("returns 400 with no write attempted for malformed JSON", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      await POST(
+        makePostRequest(projectId, {
+          sourceEntityId: SOURCE_ID,
+          targetEntityId: TARGET_ID,
+          relationshipType: "ally",
+        }),
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+
+      const res = await REMOVE_BY_ENTITY(
+        makeRemoveByEntityRequest(projectId, "{not-valid-json"),
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+      expect(res.status).toBe(400);
+
+      const listRes = await GET(makeGetRequest(projectId), {
+        params: Promise.resolve({ "project-id": projectId }),
+      });
+      const listed = (await listRes.json()) as EntityRelationshipEdge[];
+      expect(listed).toHaveLength(1);
+    });
+  });
+
+  it("returns 400 with no write attempted for a missing entityId", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await REMOVE_BY_ENTITY(
+        makeRemoveByEntityRequest(projectId, {}),
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+      expect(res.status).toBe(400);
+    });
+  });
+
+  it("returns 400 with no write attempted for an empty-string entityId", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await REMOVE_BY_ENTITY(
+        makeRemoveByEntityRequest(projectId, { entityId: "" }),
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+      expect(res.status).toBe(400);
+    });
+  });
+
+  it("returns the uniform 400 when project-id is not a well-formed UUID", async () => {
+    const { projectsDir } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await REMOVE_BY_ENTITY(
+        makeRemoveByEntityRequest("not-a-uuid", { entityId: "any" }),
         { params: Promise.resolve({ "project-id": "not-a-uuid" }) },
       );
       expect(res.status).toBe(400);
