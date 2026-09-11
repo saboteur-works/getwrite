@@ -137,7 +137,7 @@ against the Task 1 fixture's known shape for every case above.
 **Depends on:** 2
 **Estimate:** 8
 **POS:** task_8899ba4a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Metadata mapper — Status, Label, Keywords, CustomMetaData
 
@@ -161,7 +161,7 @@ keywords and asserts a single merged tag plus one recorded merge entry.
 **Depends on:** 2
 **Estimate:** 5
 **POS:** task_a04d9498
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Import report builder
 
@@ -201,7 +201,7 @@ Tests cover a document with only synopsis, only notes, both, and neither.
 **Depends on:** 2
 **Estimate:** 3
 **POS:** task_6743a166
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Import orchestrator — `importScrivenerProject`
 
