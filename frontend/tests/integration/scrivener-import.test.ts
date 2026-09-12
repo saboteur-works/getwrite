@@ -16,6 +16,7 @@ import {
   UnsupportedScrivenerProjectError,
 } from "../../src/lib/models/scrivener/import-scrivener-project";
 import { readSidecar } from "../../src/lib/models/sidecar";
+import { revisionDir } from "../../src/lib/models/revision";
 import { flushIndexer, enqueueIndex } from "../../src/lib/models/indexer-queue";
 import { startBacklinkWatcher } from "../../src/lib/models/backlinks-watcher";
 import { indexResource } from "../../src/lib/models/inverted-index";
@@ -123,6 +124,41 @@ async function hashTree(dir: string): Promise<string> {
     hash.update(await fs.readFile(file));
   }
   return hash.digest("hex");
+}
+
+/** Minimal shape this test needs to walk a TipTap document tree. */
+interface TipTapNodeLike {
+  type?: string;
+  content?: TipTapNodeLike[];
+  marks?: { type?: string }[];
+}
+
+async function readResourceTiptapJson(
+  projectRoot: string,
+  resourceId: string,
+): Promise<TipTapNodeLike> {
+  const raw = await fs.readFile(
+    path.join(projectRoot, "resources", resourceId, "content.tiptap.json"),
+    "utf8",
+  );
+  return JSON.parse(raw) as TipTapNodeLike;
+}
+
+/** Counts top-level `content` nodes of the given `type` on a TipTap doc. */
+function countTopLevelNodesOfType(doc: TipTapNodeLike, type: string): number {
+  return (doc.content ?? []).filter((node) => node.type === type).length;
+}
+
+/** Recursively counts text nodes anywhere in the tree carrying a mark of `markType`. */
+function countMarksOfType(node: TipTapNodeLike, markType: string): number {
+  let count = 0;
+  if (node.marks?.some((mark) => mark.type === markType)) {
+    count += 1;
+  }
+  for (const child of node.content ?? []) {
+    count += countMarksOfType(child, markType);
+  }
+  return count;
 }
 
 async function readProjectJson(projectRoot: string): Promise<Project> {
@@ -285,6 +321,80 @@ describe("importScrivenerProject — Task 1 fixture", () => {
     expect(chapterTwoText.plainText).toContain("italic");
     expect(chapterTwoText.plainText).toContain("reference link");
     expect(chapterTwoText.plainText).not.toContain("HYPERLINK");
+  });
+
+  // FR-4: the canonical revision must be written as the serialized TipTap
+  // document (matching content.tiptap.json byte-for-byte in content, not
+  // resource.plainText), so opening the import in the editor renders the
+  // real structure instead of collapsing to one flattened paragraph. No
+  // single fixture document in this checked-in sample.scriv combines
+  // multiple paragraphs with a bold/italic mark, so paragraph-count parity
+  // is checked against "Mixed Par And Backslash Newline" (3 paragraphs, no
+  // marks) below, and mark-count parity against "Chapter Two" (1 paragraph,
+  // bold + italic) in the following test — together covering all four
+  // required checks against real structural counts from each resource's own
+  // content.tiptap.json.
+  it("FR-4: writes the canonical revision as JSON matching content.tiptap.json's paragraph count", async () => {
+    const mixedParagraphsText = resources.find(
+      (r): r is TextResource =>
+        r.type === "text" && r.name === "Mixed Par And Backslash Newline",
+    ) as TextResource;
+    expect(mixedParagraphsText).toBeDefined();
+
+    const tiptapJson = await readResourceTiptapJson(
+      projectRoot,
+      mixedParagraphsText.id,
+    );
+    const revisionContentPath = path.join(
+      revisionDir(projectRoot, mixedParagraphsText.id, 1),
+      "content.bin",
+    );
+    const revisionRaw = await fs.readFile(revisionContentPath, "utf8");
+
+    let revisionDoc: TipTapNodeLike | undefined;
+    expect(() => {
+      revisionDoc = JSON.parse(revisionRaw) as TipTapNodeLike;
+    }).not.toThrow();
+    expect(revisionDoc!.type).toBe("doc");
+
+    const expectedParagraphCount = countTopLevelNodesOfType(
+      tiptapJson,
+      "paragraph",
+    );
+    // Sanity check the fixture actually exercises multiple paragraphs.
+    expect(expectedParagraphCount).toBeGreaterThan(1);
+    expect(countTopLevelNodesOfType(revisionDoc!, "paragraph")).toBe(
+      expectedParagraphCount,
+    );
+  });
+
+  it("FR-4: writes the canonical revision as JSON matching content.tiptap.json's bold/italic mark counts", async () => {
+    const chapterTwoText = resources.find(
+      (r): r is TextResource => r.type === "text" && r.name === "Chapter Two",
+    ) as TextResource;
+
+    const tiptapJson = await readResourceTiptapJson(
+      projectRoot,
+      chapterTwoText.id,
+    );
+    const revisionContentPath = path.join(
+      revisionDir(projectRoot, chapterTwoText.id, 1),
+      "content.bin",
+    );
+    const revisionRaw = await fs.readFile(revisionContentPath, "utf8");
+
+    let revisionDoc: TipTapNodeLike | undefined;
+    expect(() => {
+      revisionDoc = JSON.parse(revisionRaw) as TipTapNodeLike;
+    }).not.toThrow();
+    expect(revisionDoc!.type).toBe("doc");
+
+    const expectedBoldCount = countMarksOfType(tiptapJson, "bold");
+    const expectedItalicCount = countMarksOfType(tiptapJson, "italic");
+    expect(expectedBoldCount).toBeGreaterThan(0);
+    expect(expectedItalicCount).toBeGreaterThan(0);
+    expect(countMarksOfType(revisionDoc!, "bold")).toBe(expectedBoldCount);
+    expect(countMarksOfType(revisionDoc!, "italic")).toBe(expectedItalicCount);
   });
 
   it("places Research text content under a top-level 'Research' folder", () => {

@@ -634,9 +634,13 @@ async function createAndWriteResource(
   });
 
   await writeResourceToFile(projectRoot, resource);
-  await writeRevision(projectRoot, resource.id, 1, resource.plainText ?? "", {
-    isCanonical: true,
-  });
+  await writeRevision(
+    projectRoot,
+    resource.id,
+    1,
+    JSON.stringify(resource.tiptap),
+    { isCanonical: true },
+  );
 
   return resource;
 }
