@@ -44,7 +44,7 @@ afterward); a test confirms `consume` on an already-consumed handle returns
 Electron globals" discipline (per that module's own doc comment) so this is
 testable with plain Vitest, no Electron runtime.
 **POS:** task_29c7d3a1
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Single-import guard (main-process, pure)
 
@@ -64,7 +64,7 @@ test` and `pnpm --filter getwrite-electron typecheck` pass.
 **Notes:** Deliberately independent of Task 1's file so both can be built and
 reviewed in parallel.
 **POS:** task_dc5b5c84
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Destination-root and default-name computation (main-process, pure)
 
@@ -89,7 +89,7 @@ it has no such extension; `pnpm --filter getwrite-electron test` and
 (`electron/src/projects-dir.ts`) is reused, not reimplemented — this module
 only adds the UUID-directory and name-stripping logic that sits on top of it.
 **POS:** task_922823a7
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Worker entry point (electron-src-safe), `DestinationNotEmptyError` export, and the `build:worker` bundle
 
