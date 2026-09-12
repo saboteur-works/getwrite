@@ -8,6 +8,11 @@ import {
   writeSidecar,
 } from "../../src/lib/models/sidecar";
 import type { MetadataValue } from "../../src/lib/models/types";
+import {
+  getStorageAdapter,
+  runForTenant,
+  type StorageAdapter,
+} from "../../src/lib/models/io";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
@@ -66,6 +71,55 @@ describe("models/sidecar", () => {
     const resourceId = generateUUID();
     const read = await readSidecar(tmp, resourceId);
     expect(read).toBeNull();
+    await removeDirRetry(tmp);
+  });
+});
+
+describe("models/sidecar — concurrent read during write", () => {
+  it("never exposes a partially-written sidecar to a concurrent reader", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-sidecar-race-"),
+    );
+    const resourceId = generateUUID();
+    await writeSidecar(tmp, resourceId, { title: "Before" });
+    await flushIndexer();
+
+    // A write that lands its first half, pauses, then finishes — the window
+    // a real filesystem write leaves open to an unlocked reader.
+    let markPaused!: () => void;
+    let release!: () => void;
+    const paused = new Promise<void>((resolve) => (markPaused = resolve));
+    const released = new Promise<void>((resolve) => (release = resolve));
+    const base = getStorageAdapter();
+    const slowAdapter: StorageAdapter = {
+      ...base,
+      writeFile: async (p, data, opts) => {
+        if (!path.basename(p).startsWith("resource-")) {
+          return base.writeFile(p, data, opts);
+        }
+        const text = data.toString();
+        await base.writeFile(p, text.slice(0, text.length / 2), opts);
+        markPaused();
+        await released;
+        await base.writeFile(p, text, opts);
+      },
+    };
+
+    const next = { title: "After", tags: ["a", "b", "c"] };
+    const writing = runForTenant(
+      tmp,
+      () => writeSidecar(tmp, resourceId, next),
+      slowAdapter,
+    );
+    await paused;
+
+    const midWrite = await readSidecar(tmp, resourceId);
+    release();
+    await writing;
+    await flushIndexer();
+
+    expect(midWrite).toEqual({ title: "Before" });
+    expect(await readSidecar(tmp, resourceId)).toEqual(next);
     await removeDirRetry(tmp);
   });
 });

@@ -733,7 +733,13 @@ a UI wrapper, is Feature 43) and does not touch the source project.
   own writes from triggering the background reads that raced in that run,
   but does not fix the underlying race, which can still be hit by any
   other concurrent reader/writer pair. A separate follow-up, not part of
-  this feature.
+  this feature. (Fixed outside this feature, 2026-09-12: `writeSidecar` now
+  writes through `atomicWriteFile`, write-then-rename, so an unlocked reader
+  sees either the previous or the new sidecar, never a partial one. A unit
+  test in `frontend/tests/unit/sidecar.test.ts` pauses a sidecar write
+  halfway and reproduced this `SyntaxError` against the in-place write
+  before the fix; that the 2026-09-11 import-run error came from this race
+  remains the likely cause, not a confirmed one.)
 - Changing the running editor/app to also recognize a plain-text canonical
   revision payload. Only the importer's own initial canonical revision
   write is fixed (FR-4 amendment, 2026-09-12); the editor keeps flattening
