@@ -358,7 +358,7 @@ test file to extend — `getDesktopBridge()`'s duck-typed detection in
 **Depends on:** 5
 **Estimate:** 2
 **POS:** task_3ac7c24b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: `ImportScrivenerDialog` — the import flow's state machine
 
