@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "./io";
+import { atomicWriteFile, mkdir, readFile, writeFile } from "./io";
 import path from "node:path";
 import type { UUID, MetadataValue } from "./types";
 import { withMetaLock } from "./meta-locks";
@@ -150,7 +150,10 @@ export async function writeSidecar(
   const json = JSON.stringify(metadata, null, 2);
   await withMetaLock(projectRoot, async () => {
     await mkdir(dir, { recursive: true });
-    await writeFile(filePath, json, "utf8");
+    // Write-then-rename: readSidecar takes no lock, so an in-place write
+    // would let a concurrent reader parse a half-written file. The fixed
+    // `.tmp` name is safe because the meta lock serializes writers.
+    await atomicWriteFile(filePath, json, "utf8");
     await bumpMetadataRevision(projectRoot);
   });
 
