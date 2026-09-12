@@ -279,6 +279,24 @@ describe("convertRtfToTiptap", () => {
       expect(result.tiptap.content).toHaveLength(1);
       expect(result.plainText).toBe("before\\after.");
     });
+
+    it("never mistakes a backslash-newline for a control word split across the line break", () => {
+      // A control word only ever starts when a backslash is IMMEDIATELY
+      // followed by a letter. A backslash followed by a raw newline is
+      // always a paragraph break, even when the text that happens to
+      // follow the newline looks like it could continue a control word's
+      // name/parameter (here, digits that would look like a `\qc123`-style
+      // parameter if merged) — it must be read as a break plus ordinary
+      // literal text, never as a resumed/split control word.
+      const rtf =
+        String.raw`{\rtf1\ansi\ansicpg1252\deftab720 before.` +
+        "\\\n" +
+        String.raw`123 after.\par}`;
+      const result = convertRtfToTiptap(rtf);
+
+      expect(result.tiptap.content).toHaveLength(2);
+      expect(result.plainText).toBe("before.\n123 after.");
+    });
   });
 
   describe("Task 21: mixing \\par and backslash-newline breaks", () => {
@@ -287,7 +305,7 @@ describe("convertRtfToTiptap", () => {
         String.raw`{\rtf1\ansi\ansicpg1252\deftab720 one.\par ` +
         "two." +
         "\\\n" +
-        `three.\par}`;
+        String.raw`three.\par}`;
       const result = convertRtfToTiptap(rtf);
 
       expect(result.tiptap.content).toHaveLength(3);

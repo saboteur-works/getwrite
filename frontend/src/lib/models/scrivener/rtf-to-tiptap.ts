@@ -321,7 +321,8 @@ type TokenType =
   | "word"
   | "symbol"
   | "text"
-  | "hexescape";
+  | "hexescape"
+  | "parbreak";
 
 interface Token {
   type: TokenType;
@@ -414,6 +415,26 @@ function tokenize(rtf: string): Token[] {
         }
         tokens.push({ type: "word", name: word, param });
         i = j;
+        continue;
+      }
+
+      // Backslash-newline paragraph break (FR-14 amendment, Task 23):
+      // a backslash immediately followed by a line feed, or by a CR-LF
+      // pair, is emitted as its own token type distinct from an ordinary
+      // control symbol so the main loop can treat it exactly like `\par`.
+      // CR-LF is consumed as one two-character newline (the `\r` and the
+      // `\n` together), so this is exactly one paragraph break, not two —
+      // and the bare `\r`/`\n` bytes consumed here never reach the ordinary
+      // text-scanning loop below (which would otherwise just drop them as
+      // insignificant, but only once, not twice).
+      if (next === "\n") {
+        tokens.push({ type: "parbreak" });
+        i += 2;
+        continue;
+      }
+      if (next === "\r" && rtf[i + 2] === "\n") {
+        tokens.push({ type: "parbreak" });
+        i += 3;
         continue;
       }
 
@@ -793,6 +814,17 @@ export function convertRtfToTiptap(
     }
     if (token.type === "word") {
       handleWord(token.name as string, token.param);
+      continue;
+    }
+    if (token.type === "parbreak") {
+      // A backslash-newline (or backslash-CRLF) sequence is a paragraph
+      // break identical to `\par` (FR-14 amendment, Task 23). Mirror
+      // `handleWord`'s `\par` case exactly, including its guard against
+      // firing inside a suppressed destination group.
+      const frame = top();
+      frame.atStart = false;
+      if (frame.skip) continue;
+      newParagraph();
       continue;
     }
     if (token.type === "symbol") {
