@@ -599,7 +599,7 @@ not-yet-implemented behavior.
 **Depends on:** 20
 **Estimate:** 5
 **POS:** task_cfaead61
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Hex-escape/code-page decoding, C0 control-character drop, and `\ucN` fallback skip
 
@@ -629,7 +629,7 @@ case.
 **Depends on:** 21
 **Estimate:** 8
 **POS:** task_ce03b6b4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Backslash-newline paragraph breaks
 
@@ -650,7 +650,7 @@ split across a line break, asserting paragraph count and structure.
 **Depends on:** 21
 **Estimate:** 5
 **POS:** task_2bf3e928
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Silent-ignore list completion for `\deftab`/`\pardeftab`
 
@@ -666,7 +666,7 @@ entry, using Task 21's fixture case.
 **Depends on:** 21
 **Estimate:** 2
 **POS:** task_7ec9e89a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Correct the false dependency comment in `scrivx-parser.ts`
 
@@ -684,7 +684,7 @@ XML parsing). No behavior change — comment only.
 **Depends on:** none
 **Estimate:** 1
 **POS:** task_ade307b4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Re-run the gate
 
@@ -702,7 +702,7 @@ root) reports no new unused-export warnings from
 **Depends on:** 22, 23, 24, 25
 **Estimate:** 2
 **POS:** task_fc36f70d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Manual verification against the private sample project
 
