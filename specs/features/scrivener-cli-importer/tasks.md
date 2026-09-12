@@ -704,14 +704,65 @@ root) reports no new unused-export warnings from
 **POS:** task_fc36f70d
 **Done:** [x]
 
-### Task 27: Manual verification against the private sample project
+### Task 27: Write the canonical revision as the serialized TipTap document
+
+**What:** Implements FR-4's amendment: the resource's initial canonical
+revision payload MUST be the same serialized TipTap document written to
+`content.tiptap.json`, not plain text, so the app's revision parser
+(`useRevisionContent.ts`) recognizes it and does not flatten the document
+on first open.
+
+**Files:** `frontend/src/lib/models/scrivener/import-scrivener-project.ts`,
+`frontend/tests/integration/scrivener-import.test.ts`.
+**Done when:** the orchestrator's per-`Text`-item write no longer calls
+`writeRevision(..., resource.plainText ?? "", { isCanonical: true })`
+(the plain-text pattern mirrored from `project-creator.ts:334-341` that
+caused the defect); it instead writes
+`writeRevision(..., JSON.stringify(tiptapDocument), { isCanonical: true })`
+using the same `TipTapDocument` value written to `content.tiptap.json` for
+that resource, so the two are byte-identical in content (not merely
+structurally similar). `content.txt`'s plain-text write is unchanged. A new
+unit or integration test asserts, for at least one fixture document with
+multiple paragraphs and at least one bold/italic mark: (1) the written
+canonical revision payload parses as JSON; (2) the parsed value's `type` is
+`"doc"`; (3) its paragraph count equals `content.tiptap.json`'s paragraph
+count for that resource; (4) its bold/italic mark counts equal
+`content.tiptap.json`'s mark counts for that resource. No paragraph `attrs`
+(`id`, `textAlign`, `paragraphLeading`) are added by this task — per FR-4's
+amendment, the editor's own extensions (`UniqueID`, `TextAlign`,
+`GetWriteParagraphLeading`) supply defaults for any node missing them, so
+the importer does not need to populate them.
+**Depends on:** 26
+**Estimate:** 3
+**POS:** task_12a1b0a4
+**Done:** [ ]
+
+### Task 28: Re-run the gate
+
+**What:** Confirms the full test/typecheck/knip gate is green after Task 27
+lands.
+**Files:** none (verification only).
+**Done when:** `pnpm --filter getwrite-frontend exec vitest run
+scrivener-scrivx-parser scrivener-rtf-to-tiptap scrivener-binder-mapper
+scrivener-metadata-mapper scrivener-import-report
+scrivener-apply-document-metadata scrivener-import` and `pnpm --filter
+getwrite-frontend typecheck` both pass; `pnpm --filter getwrite-cli test`
+and `pnpm --filter getwrite-cli typecheck` both pass; `pnpm knip` (repo
+root) reports no new unused-export warnings from
+`frontend/src/lib/models/scrivener/` or `core.ts`.
+**Depends on:** 27
+**Estimate:** 2
+**POS:** task_6e6cd439
+**Done:** [ ]
+
+### Task 29: Manual verification against the private sample project
 
 **What:** A human/lead-run, non-automated check of the shipped command
 against the real, private sample project, to catch anything the synthetic
 fixture doesn't surface. (Renumbered from Task 11 to Task 16, to Task 21,
-to Task 26, and now to Task 27, so its dependency on the fix-pass tasks
-satisfies task-list ordering; its POS id and scope are otherwise unchanged
-from the original Task 11.)
+to Task 26, to Task 27, and now to Task 29, so its dependency on the
+fix-pass tasks satisfies task-list ordering; its POS id and scope are
+otherwise unchanged from the original Task 11.)
 **Files:** none tracked — operates only on the gitignored
 `import-inputs/The SF Sideshow.scriv`.
 **Done when:** a human/lead runs `getwrite-cli project import-scrivener
@@ -722,25 +773,32 @@ inspection that: the Draft binder's structure and text, Research text
 content, the four top-level user folders, Status/Label/Keywords, and
 CustomMetaData all carried over plausibly; the report correctly lists the
 three `Other` items, the Trash content, and any snapshot history; and the
-source `.scriv` directory is byte-for-byte unmodified afterward. No content
-or structure from this sample project is copied into any repository fixture
-or test file as a result of this task. Per FR-21, this run MUST complete
-successfully (exit 0, a report written) — this is the Stage-6.5-style
-acceptance requirement, verified by the lead, not by an automated test.
-**Depends on:** 26
+source `.scriv` directory is byte-for-byte unmodified afterward. Per FR-21's
+fourth-pass amendment, the lead MUST additionally open at least two of the
+imported documents in the running app and confirm, for each, that its
+paragraphs and bold/italic marks survive the open and that opening it does
+not rewrite `content.tiptap.json` or the canonical revision into a
+flattened, single-paragraph, mark-free form. No content or structure from
+this sample project is copied into any repository fixture or test file as
+a result of this task. Per FR-21, this run MUST complete successfully (exit
+0, a report written) — this is the Stage-6.5-style acceptance requirement,
+verified by the lead, not by an automated test.
+**Depends on:** 28
 **Estimate:** 2
 **Notes:** Manual/exploratory — not part of the automated suite, and not a
-gate for Task 10, Task 15, or Task 20. It now depends on the full Task
-16–19 second fix pass landing first, since the real project previously
-aborted mid-run on the field-key clash this pass fixes.
+gate for Task 10, Task 15, Task 20, or Task 28. It now depends on the full
+Task 16–19 second fix pass and the Task 27 canonical-revision fix landing
+first, since the real project previously aborted mid-run on the field-key
+clash the second pass fixes, and opening an imported document previously
+flattened it before the Task 27 fix.
 **POS:** task_5b75a0d2
 **Done:** [ ]
 
 ## Summary
-- Total tasks: 27
-- Total estimated effort: 128 points
+- Total tasks: 29
+- Total estimated effort: 133 points
 - Critical path: Tasks 1 → 2 → 4 → 8 → 9 → 11 → 12 → 13 → 14 → 15 → 16 →
-  17/18/19 → 20 → 21 → 22/23/24 → 25 → 26 → 27
+  17/18/19 → 20 → 21 → 22/23/24 → 25 → 26 → 27 → 28 → 29
 - Risks: Task 3 (RTF→TipTap) and Task 4 (binder mapper) are the two largest
   and most novel units — Task 3 has no existing converter to model beyond
   `plainTextToTiptap`'s mark-free baseline, and Task 4 must get the FR-13
@@ -772,10 +830,16 @@ aborted mid-run on the field-key clash this pass fixes.
   split across a line, which the fixture can only partially exercise.
   Task 25 (dependency-comment fix) is low-risk and independent of Tasks
   22–24, touching only a module doc comment in `scrivx-parser.ts` with no
-  behavior change. Task 27 (originally Task 11, then Task 16, then Task 21,
-  then Task 26, now Task 27) still depends on access to the private sample
-  project and a human/lead's availability, and is not required for the
-  automated gate (Task 26) to pass.
+  behavior change. Task 27 (write the canonical revision as the serialized
+  TipTap document) is low-risk and narrowly scoped — it changes one call
+  site's payload argument to reuse a value already computed for
+  `content.tiptap.json` — but is on the critical path to Task 29, since a
+  regression there reproduces the fourth-measured-pass defect (an imported
+  document flattening to one paragraph on first open in the app). Task 29
+  (originally Task 11, then Task 16, then Task 21, then Task 26, then Task
+  27, now Task 29) still depends on access to the private sample project
+  and a human/lead's availability, and is not required for the automated
+  gate (Task 28) to pass.
 
 ## Open Questions
 

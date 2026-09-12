@@ -99,14 +99,54 @@ a UI wrapper, is Feature 43) and does not touch the source project.
    `Files/Data/<UUID>/content.rtf` body, convert it with the RTF→TipTap
    converter from FR-14, and write the result as `content.txt` (plain text)
    plus `content.tiptap.json` for the created resource
-   (`resource-persistence.ts`), then write it as that resource's initial
-   canonical revision following the bulk-create pattern
-   `createProjectFromType` already uses for a project type's seeded
-   resources — `writeResourceToFile` followed by `writeRevision(...,
-   { isCanonical: true })` (`frontend/src/lib/models/project-creator.ts:334-341`;
-   the single-resource equivalent used by the resource-creation API route is
-   `createResourceCore`, `frontend/src/lib/models/resource-crud-core.ts:106-128`).
-   [US-1]
+   (`resource-persistence.ts`). The resource's initial canonical revision
+   payload MUST be a JSON string whose parsed value is a `{"type": "doc"}`
+   TipTap document whose paragraph and mark structure matches
+   `content.tiptap.json` — i.e., the same serialized TipTap document written
+   to `content.tiptap.json`, not plain text. `content.txt` remains plain
+   text, unchanged. Amended 2026-09-12 (owner decision, Gate 5, fourth
+   measured pass), correcting this requirement's prior instruction to mirror
+   the bulk-create pattern `createProjectFromType` uses for a project type's
+   seeded resources — `writeResourceToFile` followed by `writeRevision(...,
+   resource.plainText ?? "", { isCanonical: true })`
+   (`frontend/src/lib/models/project-creator.ts:334-341`) — which writes the
+   canonical revision as plain text and is precisely what caused the defect
+   below; that citation is corrected, not repeated. (The single-resource
+   equivalent used by the resource-creation API route,
+   `createResourceCore`, `frontend/src/lib/models/resource-crud-core.ts:106-128`,
+   is unaffected by this amendment and not a pattern this FR follows.)
+   Measured 2026-09-12: opening one imported document (Scene 1) in the
+   running app flattened it — `content.tiptap.json` dropped from 89
+   paragraphs and its bold/italic marks to 1 paragraph, 0 marks, and the
+   canonical revision's `content.bin` was rewritten at the same instant —
+   because the app's revision-content parser
+   (`frontend/components/WorkArea/useRevisionContent.ts:42-66`) only
+   JSON-parses a revision payload whose trimmed text starts with `{`/`[` and
+   whose parsed `type` is `"doc"`; a plain-text payload fails that check, so
+   `AppShell.tsx:451` and `TipTapEditor.tsx:320,455` instead feed the raw
+   plain text to TipTap as `content`, which TipTap parses as HTML —
+   collapsing every newline into one paragraph and dropping bold/italic —
+   and autosave then persists that flattened document back over both
+   `content.tiptap.json` and the canonical revision. Whether the importer
+   must also populate the paragraph `attrs` the editor itself writes (`id`,
+   `textAlign`, `paragraphLeading`) is settled from code, not left open:
+   it need not. `TipTapNodeSchema` declares `attrs` optional
+   (`frontend/src/lib/models/schemas.ts:305-311`), and the editor's own
+   TipTap extensions supply defaults for any node missing them on load —
+   `@tiptap/extension-unique-id` (configured in `editorExtensions.ts:67`)
+   assigns an `id` to a node that lacks one, `@tiptap/extension-text-align`
+   (`editorExtensions.ts:74`) has a built-in default alignment, and
+   `GetWriteParagraphLeading`'s `addGlobalAttributes`
+   (`frontend/components/Editor/Extensions/GetWriteParagraphLeading.ts:30-31`)
+   defaults `paragraphLeading` to `"1.5"` when absent — so a
+   `content.tiptap.json`-shaped document omitting these attrs loads and
+   renders correctly; the importer is not required to add them. This fix is
+   importer-side only: the owner declined changing the editor, so the app
+   continues to flatten any plain-text revision payload it is handed by any
+   other caller. `project-creator.ts`'s own seeded resources have this same
+   latent plain-text-revision shape and are unaffected in practice today
+   only because those resources are effectively empty; changing that is out
+   of scope for this feature (see Out of scope). [US-1]
 5. FR-5: For every converted `Text` binder item that has a
    `Files/Data/<UUID>/synopsis.txt` and/or `notes.rtf`, the command MUST
    carry that content into the created resource's sidecar
@@ -451,7 +491,15 @@ a UI wrapper, is Feature 43) and does not touch the source project.
     per-document paragraph count that tracks that document's own source
     paragraph-break count (`\par` plus backslash-newline occurrences in its
     `content.rtf`) rather than the single-paragraph collapse measured in
-    the second pass. [US-1]
+    the second pass. Further amended 2026-09-12 (owner decision, Gate 5,
+    fourth measured pass): the lead's manual verification MUST also open at
+    least two of the imported documents in the running app and confirm, for
+    each, that its paragraphs and bold/italic marks survive the open (the
+    rendered content and `content.tiptap.json` still match what the report
+    from FR-9/the import run showed for that document), and that opening it
+    does not rewrite `content.tiptap.json` or the canonical revision into a
+    flattened, single-paragraph, mark-free form — the defect FR-4's
+    amendment above fixes. [US-1]
 22. FR-22 (added 2026-09-11, owner decision, Gate 5): Before any destination
     write, the command MUST determine whether `projectRoot` already exists.
     (Measured: `importScrivenerProject`
@@ -686,3 +734,10 @@ a UI wrapper, is Feature 43) and does not touch the source project.
   but does not fix the underlying race, which can still be hit by any
   other concurrent reader/writer pair. A separate follow-up, not part of
   this feature.
+- Changing the running editor/app to also recognize a plain-text canonical
+  revision payload. Only the importer's own initial canonical revision
+  write is fixed (FR-4 amendment, 2026-09-12); the editor keeps flattening
+  any plain-text revision payload handed to it by any other caller.
+  `project-creator.ts`'s seeded resources have this same latent plain-text-
+  revision shape and are left unaffected — harmless today only because
+  those resources are effectively empty.
