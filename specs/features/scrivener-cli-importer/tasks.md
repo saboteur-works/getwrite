@@ -735,7 +735,7 @@ the importer does not need to populate them.
 **Depends on:** 26
 **Estimate:** 3
 **POS:** task_12a1b0a4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: Re-run the gate
 
@@ -753,7 +753,7 @@ root) reports no new unused-export warnings from
 **Depends on:** 27
 **Estimate:** 2
 **POS:** task_6e6cd439
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Manual verification against the private sample project
 
