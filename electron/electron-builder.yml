@@ -19,6 +19,12 @@ extraResources:
     to: getwrite-config
     filter:
       - "**/*"
+  # Ships the forked Scrivener import worker bundle outside app.asar, since
+  # utilityProcess.fork cannot fork a script packed inside an asar archive
+  # (the same reason the Next standalone server above ships as extraResources
+  # rather than through `files`). Lands at process.resourcesPath/scrivener-import-worker.cjs.
+  - from: dist/scrivener-import-worker.cjs
+    to: scrivener-import-worker.cjs
   # Note: projects/ is intentionally NOT bundled — the packaged app creates an
   # empty projects dir under resourcesPath on first run (see main.ts), so installs
   # start with a clean workspace instead of shipping the repo's dev/test projects.

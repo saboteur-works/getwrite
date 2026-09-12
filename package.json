@@ -8,7 +8,7 @@
     "start-dev": "pnpm --filter getwrite-frontend dev",
     "test": "pnpm --filter getwrite-frontend exec vitest",
     "electron:dev": "pnpm --filter getwrite-electron dev",
-    "electron:build": "pnpm --filter getwrite-frontend build && pnpm --filter getwrite-electron build",
+    "electron:build": "pnpm --filter getwrite-frontend build && pnpm --filter getwrite-electron build && pnpm --filter getwrite-electron build:worker",
     "electron:package": "pnpm electron:build && pnpm --filter getwrite-electron package",
     "storybook": "pnpm --filter getwrite-frontend storybook",
     "cli": "pnpm --filter getwrite-cli exec getwrite-cli",

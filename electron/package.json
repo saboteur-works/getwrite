@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit --project tsconfig.worker.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev": "tsc && electron dist/main.js",
+    "dev": "tsc && pnpm run build:worker && electron dist/main.js",
     "package": "electron-builder --config electron-builder.yml"
   },
   "devDependencies": {
