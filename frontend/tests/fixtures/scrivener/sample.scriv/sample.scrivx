@@ -81,6 +81,24 @@
             <IncludeInCompile>No</IncludeInCompile>
           </MetaData>
         </BinderItem>
+        <BinderItem UUID="DDDDDDDD-DDDD-4DDD-8DDD-DDDDDDDDDDDD" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Backslash Newline Paragraphs</Title>
+          <MetaData>
+            <IncludeInCompile>No</IncludeInCompile>
+          </MetaData>
+        </BinderItem>
+        <BinderItem UUID="EEEEEEEE-EEEE-4EEE-8EEE-EEEEEEEEEEEE" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Mixed Par And Backslash Newline</Title>
+          <MetaData>
+            <IncludeInCompile>No</IncludeInCompile>
+          </MetaData>
+        </BinderItem>
+        <BinderItem UUID="FFFFFFFF-FFFF-4FFF-8FFF-FFFFFFFFFFFF" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Hex Escapes And Layout Words</Title>
+          <MetaData>
+            <IncludeInCompile>No</IncludeInCompile>
+          </MetaData>
+        </BinderItem>
       </Children>
     </BinderItem>
     <BinderItem UUID="33333333-3333-4333-8333-333333333333" Type="TrashFolder" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">

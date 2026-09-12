@@ -6,7 +6,9 @@ import {
   writeImportReport,
   IMPORT_REPORT_RELATIVE_PATH,
   type ImportReportInput,
+  type ImportReportSkip,
 } from "../../src/lib/models/scrivener/import-report";
+import { convertRtfToTiptap } from "../../src/lib/models/scrivener/rtf-to-tiptap";
 
 const fullInput: ImportReportInput = {
   skips: [
@@ -134,6 +136,38 @@ describe("buildImportReport", () => {
     expect(report).toContain(
       'No binder items required a generated "Untitled" fallback name.',
     );
+  });
+});
+
+// Task 21 (third fix pass, FR-8/FR-14/FR-9 amendment, 2026-09-11): a
+// `\deftab`/`\pardeftab` occurrence in the source RTF MUST NOT surface as a
+// "Skipped Items" report entry. `buildImportReport` itself is a pure
+// renderer with no filtering of its own — the actual fix belongs in
+// `rtf-to-tiptap.ts`'s silent-ignore list (Tasks 22-24), which is what
+// decides whether `\deftab`/`\pardeftab` ever become an
+// `RtfDroppedFeature` in the first place. This test reproduces the same
+// droppedFeatures-to-skips mapping `import-scrivener-project.ts`'s
+// `createAndWriteResource` uses, so it exercises the two pieces together the
+// way a real import run would, without touching that orchestrator module.
+// It is EXPECTED TO FAIL (red) today, since `deftab`/`pardeftab` are not yet
+// in `rtf-to-tiptap.ts`'s silent-ignore list and so still produce a
+// `droppedFeatures` entry that this mapping folds into the report.
+describe("buildImportReport: Task 21 \\deftab/\\pardeftab silent-ignore", () => {
+  it("renders no Skipped Items entry for \\deftab/\\pardeftab present in a converted document", () => {
+    const rtf = String.raw`{\rtf1\ansi\ansicpg1252\deftab720\pardeftab720\pard visible text.\par}`;
+    const { droppedFeatures } = convertRtfToTiptap(rtf);
+
+    const skips: ImportReportSkip[] = droppedFeatures.map((dropped) => ({
+      itemTitle: "Some Document",
+      binderPath: "Draft/Some Document",
+      reason: dropped.detail,
+    }));
+
+    const report = buildImportReport({ ...emptyInput, skips });
+
+    expect(report).not.toMatch(/deftab/i);
+    expect(report).not.toMatch(/pardeftab/i);
+    expect(report).toContain("No items were skipped.");
   });
 });
 

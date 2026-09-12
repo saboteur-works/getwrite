@@ -234,6 +234,172 @@ describe("convertRtfToTiptap", () => {
     });
   });
 
+  // Task 21 (third fix pass, FR-8/FR-14 amendment, 2026-09-11): fixture and
+  // test coverage for backslash-newline paragraph breaks, the general
+  // `\'XX` hex-escape decode table, `\ucN` ANSI-fallback-byte discarding, and
+  // `\deftab`/`\pardeftab` joining the silent-ignore list. These specify
+  // Tasks 22-24's not-yet-implemented production behavior and are EXPECTED
+  // TO FAIL (red) until those tasks land — see the task's `done_when`.
+  describe("Task 21: backslash-newline paragraph breaks", () => {
+    it("treats a bare backslash-newline as a paragraph break when there is no \\par at all", () => {
+      const rtf =
+        String.raw`{\rtf1\ansi\ansicpg1252\deftab720 first paragraph.` +
+        "\\\n" +
+        "second paragraph." +
+        "\\\n" +
+        `third paragraph.}`;
+      const result = convertRtfToTiptap(rtf);
+
+      expect(result.tiptap.content).toHaveLength(3);
+      expect(result.plainText).toBe(
+        "first paragraph.\nsecond paragraph.\nthird paragraph.",
+      );
+    });
+
+    it("treats a backslash-CRLF sequence as a paragraph break too", () => {
+      const rtf =
+        String.raw`{\rtf1\ansi\ansicpg1252\deftab720 first.` +
+        "\\\r\n" +
+        "second.}";
+      const result = convertRtfToTiptap(rtf);
+
+      expect(result.tiptap.content).toHaveLength(2);
+      expect(result.plainText).toBe("first.\nsecond.");
+    });
+
+    it("does not treat an escaped literal backslash (\\\\) followed by a newline as a paragraph break", () => {
+      // `\\` is one escaped literal backslash character; a newline
+      // following it belongs to the surrounding text, not the escape, and
+      // MUST NOT be read as a paragraph-breaking backslash-newline.
+      const rtf =
+        String.raw`{\rtf1\ansi\ansicpg1252\deftab720 before\\` +
+        "\nafter.\\par}";
+      const result = convertRtfToTiptap(rtf);
+
+      expect(result.tiptap.content).toHaveLength(1);
+      expect(result.plainText).toBe("before\\after.");
+    });
+  });
+
+  describe("Task 21: mixing \\par and backslash-newline breaks", () => {
+    it("treats both forms as paragraph breaks within the same document", () => {
+      const rtf =
+        String.raw`{\rtf1\ansi\ansicpg1252\deftab720 one.\par ` +
+        "two." +
+        "\\\n" +
+        `three.\par}`;
+      const result = convertRtfToTiptap(rtf);
+
+      expect(result.tiptap.content).toHaveLength(3);
+      expect(result.plainText).toBe("one.\ntwo.\nthree.");
+    });
+  });
+
+  // Task 21: the general `\ansicpg`-driven `\'XX` decode table (FR-14
+  // amendment, third measured pass).
+  describe("Task 21: \\'XX hex-escape decoding under \\ansicpg1252", () => {
+    it("decodes a punctuation escape (\\'92, right single quote)", () => {
+      const rtf = String.raw`{\rtf1\ansi\ansicpg1252\deftab720 it\'92s here.\par}`;
+      expect(convertRtfToTiptap(rtf).plainText).toBe("it\u2019s here.");
+    });
+
+    it("decodes an accented-letter escape (\\'e9, e-acute)", () => {
+      const rtf = String.raw`{\rtf1\ansi\ansicpg1252\deftab720 caf\'e9.\par}`;
+      expect(convertRtfToTiptap(rtf).plainText).toBe("caf\u00e9.");
+    });
+
+    it("decodes the non-breaking-space escape (\\'a0)", () => {
+      const rtf = String.raw`{\rtf1\ansi\ansicpg1252\deftab720 end\'a0here.\par}`;
+      expect(convertRtfToTiptap(rtf).plainText).toBe("end\u00a0here.");
+    });
+
+    it("drops a decoded C0 control-byte escape (\\'01) and records one report entry", () => {
+      const rtf = String.raw`{\rtf1\ansi\ansicpg1252\deftab720 before\'01after.\par}`;
+      const result = convertRtfToTiptap(rtf);
+
+      expect(result.plainText).toBe("beforeafter.");
+      expect(result.plainText).not.toMatch(/[\u0000-\u001f]/);
+      // The exact `feature`/`detail` identifier this drop is reported under
+      // is not yet fixed by any spec/code — the requirement is only that it
+      // IS reported, once per affected document.
+      const c0Drops = result.droppedFeatures.filter(
+        (f) => /control/i.test(f.feature) || /control/i.test(f.detail),
+      );
+      expect(c0Drops).toHaveLength(1);
+    });
+  });
+
+  // Task 21: `\ucN` ANSI-fallback-byte skip semantics.
+  describe("Task 21: \\uN escape with an ANSI fallback under \\uc1", () => {
+    it("decodes the \\uN escape and discards its \\'XX fallback byte without duplicating it", () => {
+      const rtf = String.raw`{\rtf1\ansi\ansicpg1252\deftab720 \uc1\u8217\'92 done.\par}`;
+      const result = convertRtfToTiptap(rtf);
+
+      expect(result.plainText).toBe("\u2019 done.");
+    });
+  });
+
+  // Task 21: \deftab/\pardeftab join the silent-ignore list.
+  describe("Task 21: \\deftab/\\pardeftab are silently ignored", () => {
+    it("consumes \\deftab and \\pardeftab with no text, mark, or report entry", () => {
+      const rtf = String.raw`{\rtf1\ansi\ansicpg1252\deftab720\pardeftab720\pard visible text.\par}`;
+      const result = convertRtfToTiptap(rtf);
+
+      expect(result.plainText).toBe("visible text.");
+      expect(result.droppedFeatures).toEqual([]);
+    });
+  });
+
+  // Task 21: end-to-end reads of the new fixture documents registered in
+  // sample.scrivx under the Research folder.
+  describe("Task 21: end-to-end fixture documents", () => {
+    it("converts the backslash-newline-only fixture (DDDDDDDD-...) into three paragraphs", () => {
+      const rtfBytes = loadFixtureRtf("DDDDDDDD-DDDD-4DDD-8DDD-DDDDDDDDDDDD");
+      const result = convertRtfToTiptap(rtfBytes);
+
+      expect(result.tiptap.content).toHaveLength(3);
+      expect(result.plainText).toBe(
+        "First backslash-newline paragraph.\nSecond backslash-newline paragraph.\nThird and final paragraph, no trailing par.",
+      );
+      expect(result.droppedFeatures).toEqual([]);
+    });
+
+    it("converts the mixed \\par/backslash-newline fixture (EEEEEEEE-...) into three paragraphs", () => {
+      const rtfBytes = loadFixtureRtf("EEEEEEEE-EEEE-4EEE-8EEE-EEEEEEEEEEEE");
+      const result = convertRtfToTiptap(rtfBytes);
+
+      expect(result.tiptap.content).toHaveLength(3);
+      expect(result.plainText).toBe(
+        "Paragraph one uses par.\nParagraph two uses backslash-newline.\nParagraph three uses par again.",
+      );
+      expect(result.droppedFeatures).toEqual([]);
+    });
+
+    it("converts the hex-escape/layout-word fixture (FFFFFFFF-...) with decoded text and no deftab/pardeftab report entries", () => {
+      const rtfBytes = loadFixtureRtf("FFFFFFFF-FFFF-4FFF-8FFF-FFFFFFFFFFFF");
+      const result = convertRtfToTiptap(rtfBytes);
+
+      expect(result.tiptap.content).toHaveLength(1);
+      expect(result.plainText).toBe(
+        "Curly quote: it\u2019s a test. Accented: caf\u00e9. Non-breaking:end\u00a0here. Control:beforeafter. Fallback pair: \u2019 done.",
+      );
+      expect(result.plainText).not.toMatch(/[\u0000-\u001f]/);
+      expect(
+        result.droppedFeatures.some(
+          (f) => f.feature.includes("deftab") || f.detail.includes("deftab"),
+        ),
+      ).toBe(false);
+      expect(
+        result.droppedFeatures.some(
+          (f) =>
+            f.feature.includes("pardeftab") || f.detail.includes("pardeftab"),
+        ),
+      ).toBe(false);
+      // Only the single C0-control drop should be reported.
+      expect(result.droppedFeatures).toHaveLength(1);
+    });
+  });
+
   // Task 14: re-run of Task 11's rebuilt fixture content.rtf bodies, as a
   // regression check that this converter's FR-14 amendment fixes did not
   // disturb conversion of the real fixture set.
