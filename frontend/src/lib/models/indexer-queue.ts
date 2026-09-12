@@ -452,13 +452,13 @@ export async function shutdownIndexer(timeoutMs = 5000): Promise<void> {
 export async function withIndexingSuspended<T>(
   fn: () => Promise<T>,
 ): Promise<T> {
-  const previousIsStopped = isStopped;
+  const isPreviouslyStopped = isStopped;
   isStopped = true;
   try {
     return await fn();
   } finally {
     stopAllBacklinkWatchers();
-    isStopped = previousIsStopped;
+    isStopped = isPreviouslyStopped;
   }
 }
 

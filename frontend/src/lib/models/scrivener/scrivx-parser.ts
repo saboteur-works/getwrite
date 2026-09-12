@@ -351,7 +351,7 @@ function readBinderItemMetaData(
   }
 
   const includeRaw = node["IncludeInCompile"];
-  const includeInCompile =
+  const hasIncludeInCompile =
     typeof includeRaw === "string" ? includeRaw === "Yes" : undefined;
 
   const statusId =
@@ -360,7 +360,7 @@ function readBinderItemMetaData(
     typeof node["LabelID"] === "string" ? node["LabelID"] : undefined;
 
   return {
-    includeInCompile,
+    includeInCompile: hasIncludeInCompile,
     statusId,
     labelId,
     customMetaData: readCustomMetaDataValues(

@@ -263,8 +263,8 @@ export async function importScrivenerProject(
   // what "run-created" means for this run's fatal-error cleanup below. A
   // pre-existing, non-empty projectRoot is refused up front, before any
   // write.
-  const projectRootExistedBeforeRun = await exists(projectRoot);
-  if (projectRootExistedBeforeRun) {
+  const didProjectRootExistBeforeRun = await exists(projectRoot);
+  if (didProjectRootExistBeforeRun) {
     const existingEntries = (await readdir(projectRoot)) as string[];
     if (existingEntries.length > 0) {
       throw new DestinationNotEmptyError(projectRoot);
@@ -314,7 +314,7 @@ export async function importScrivenerProject(
     // FR-22: only remove projectRoot when this run created it; a
     // pre-existing (necessarily empty, per the up-front refusal above)
     // projectRoot is left completely untouched.
-    if (!projectRootExistedBeforeRun) {
+    if (!didProjectRootExistBeforeRun) {
       await rm(projectRoot, { recursive: true, force: true }).catch(() => {
         // Best-effort cleanup: the original error is what matters to the
         // caller either way.
