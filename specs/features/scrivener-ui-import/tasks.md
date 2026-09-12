@@ -511,7 +511,7 @@ sync mechanism. The FR-17 restructuring (Gate 4) moves the picker call and
 its cancelled/success handling into Task 8's dialog, which is why this
 task's scope — and estimate — shrank relative to its pre-Gate-4 version.
 **POS:** task_bde05f95
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Storybook stories and accessibility pass
 
