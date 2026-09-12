@@ -20,6 +20,14 @@ import {
   writeConfiguredProjectsDir,
   type ProjectsDirEnvironment,
 } from "./projects-dir";
+import { createSelectionHandleRegistry } from "./scrivener-import/selection-handles";
+import { createImportGuard } from "./scrivener-import/import-guard";
+import { computeDestinationProjectRoot } from "./scrivener-import/destination";
+import { awaitWorkerOutcome } from "./scrivener-import/await-worker-outcome";
+import type {
+  ImportOutcome,
+  ImportRequest,
+} from "./scrivener-import/handle-import-request";
 
 const PORT = 3000;
 let serverProcess: ChildProcess | UtilityProcess | null = null;
@@ -228,6 +236,113 @@ function registerWorkspaceHandlers(): void {
   });
 }
 
+// The one active `.scriv` selection (FR-1, FR-3) and the one-in-flight-import
+// guard (FR-6's main-process half). Both are process-wide singletons for the
+// same reason: only one import can meaningfully be in flight at a time, and a
+// new selection always supersedes whatever was picked before.
+const scrivenerSelectionHandles = createSelectionHandleRegistry();
+const scrivenerImportGuard = createImportGuard();
+
+/**
+ * Resolves the path to the built Scrivener import worker bundle.
+ *
+ * Mirrors `resolveDirectories()`'s own packaged-vs-dev split: a packaged
+ * build ships the bundle via `electron-builder.yml`'s `extraResources`
+ * (landing beside the app, at `process.resourcesPath`) rather than inside
+ * `dist/**`, because `utilityProcess.fork` cannot fork a script packed into
+ * `app.asar`. A dev/CI build finds it at `electron/dist`, where the
+ * `build:worker` esbuild step emits it.
+ *
+ * @returns Absolute path to `scrivener-import-worker.cjs`.
+ */
+function resolveWorkerBundlePath(): string {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "scrivener-import-worker.cjs")
+    : path.join(
+        getRepoRoot(),
+        "electron",
+        "dist",
+        "scrivener-import-worker.cjs",
+      );
+}
+
+/** Request body the renderer sends to start a Scrivener import. */
+interface ScrivenerStartImportRequest {
+  handle: string;
+  name: string;
+}
+
+/**
+ * Wires the two Scrivener-import channels the preload bridge calls (FR-1,
+ * FR-5, FR-6's main-process half, FR-11, FR-12's main-process half).
+ *
+ * The source `.scriv` path never crosses back into a renderer-visible value:
+ * `getwrite:scrivener-choose-source` hands back only an opaque handle and a
+ * display name, and `getwrite:scrivener-start-import` reads the real path
+ * only to pass it into the forked worker's message — never into its own
+ * return value.
+ */
+function registerScrivenerImportHandlers(): void {
+  ipcMain.handle("getwrite:scrivener-choose-source", async () => {
+    const picked = await dialog.showOpenDialog({
+      title: "Choose a Scrivener project to import",
+      properties: ["openDirectory"],
+      buttonLabel: "Import",
+    });
+    if (picked.canceled || picked.filePaths.length === 0) {
+      return { ok: false, cancelled: true };
+    }
+
+    const [scrivPath] = picked.filePaths;
+    const displayName = path.basename(scrivPath);
+    const handle = scrivenerSelectionHandles.record(scrivPath, displayName);
+    return { ok: true, handle, displayName };
+  });
+
+  ipcMain.handle(
+    "getwrite:scrivener-start-import",
+    async (
+      _event,
+      request: ScrivenerStartImportRequest,
+    ): Promise<ImportOutcome> => {
+      if (!scrivenerImportGuard.tryStart()) {
+        return { kind: "fatal", message: "An import is already running." };
+      }
+
+      try {
+        const target = scrivenerSelectionHandles.resolve(request.handle);
+        if (target === null) {
+          return {
+            kind: "fatal",
+            message:
+              "This selection is no longer valid. Please choose the project again.",
+          };
+        }
+        scrivenerSelectionHandles.consume(request.handle);
+
+        const { projectRoot } = computeDestinationProjectRoot(
+          resolveProjectsDir(projectsDirEnvironment()),
+        );
+
+        const workerBundlePath = resolveWorkerBundlePath();
+        log(`Forking Scrivener import worker: ${workerBundlePath}`);
+        const worker = utilityProcess.fork(workerBundlePath);
+
+        const importRequest: ImportRequest = {
+          scrivPath: target.path,
+          name: request.name,
+          projectRoot,
+        };
+        worker.postMessage(importRequest);
+
+        return await awaitWorkerOutcome(worker);
+      } finally {
+        scrivenerImportGuard.finish();
+      }
+    },
+  );
+}
+
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1400,
@@ -350,6 +465,7 @@ if (!app.requestSingleInstanceLock()) {
     log(`app ready — isPackaged: ${app.isPackaged}`);
     log(`resourcesPath: ${process.resourcesPath}`);
     registerWorkspaceHandlers();
+    registerScrivenerImportHandlers();
 
     const dirs = resolveDirectories();
 
