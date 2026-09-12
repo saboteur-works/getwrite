@@ -195,7 +195,11 @@ describe("parseScrivxFile — Task 1 fixture", () => {
       (item) => item.type === "ResearchFolder",
     );
     expect(research).toBeDefined();
-    expect(research?.children).toHaveLength(3);
+    // Task 21 (third fix pass) appended 3 more Research-folder Text items
+    // (backslash-newline/hex-escape fixture documents) after these original
+    // 3, so the folder now has 6 children total; this test only cares about
+    // the first 3's shape.
+    expect(research?.children).toHaveLength(6);
 
     const [characterNotes, syncConflict, untitled] = research!.children;
     expect(characterNotes.type).toBe("Text");
