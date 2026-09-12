@@ -63,6 +63,7 @@ export {
 export {
   importScrivenerProject,
   UnsupportedScrivenerProjectError,
+  DestinationNotEmptyError,
   type ImportScrivenerProjectOptions,
   type ImportScrivenerProjectResult,
 } from "./models/scrivener/import-scrivener-project";
