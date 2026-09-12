@@ -545,8 +545,8 @@ export function convertRtfToTiptap(
   const plainParagraphs: string[] = [""];
 
   let currentRunText = "";
-  let currentRunBold = false;
-  let currentRunItalic = false;
+  let isCurrentRunBold = false;
+  let isCurrentRunItalic = false;
   let currentRunSuperOrSub: "super" | "sub" | undefined;
   /** Number of fallback bytes still owed to the most recent `\uN` escape
    * (RTF's `\ucN` convention — the count comes from the enclosing frame's
@@ -562,10 +562,10 @@ export function convertRtfToTiptap(
   let declaredCodePage: number | undefined;
   /** True once an unsupported (non-1252) `\ansicpg` has been recorded as an
    * FR-8 skip for this document, so it is reported only once. */
-  let unsupportedCodePageReported = false;
+  let hasReportedUnsupportedCodePage = false;
   /** True once a decoded C0 control character has been dropped from this
    * document's output, so the FR-9 drop is recorded only once (Task 22). */
-  let c0ControlDropped = false;
+  let hasDroppedC0Control = false;
 
   const effectiveCodePage = (): number => declaredCodePage ?? 1252;
   const codePageSupported = (): boolean =>
@@ -576,8 +576,8 @@ export function convertRtfToTiptap(
   const flushRun = (): void => {
     if (currentRunText === "") return;
     const marks: RtfTipTapMark[] = [];
-    if (currentRunBold) marks.push({ type: "bold" });
-    if (currentRunItalic) marks.push({ type: "italic" });
+    if (isCurrentRunBold) marks.push({ type: "bold" });
+    if (isCurrentRunItalic) marks.push({ type: "italic" });
     const node: RtfTipTapTextNode =
       marks.length > 0
         ? { type: "text", text: currentRunText, marks }
@@ -619,13 +619,13 @@ export function convertRtfToTiptap(
     if (frame.skip) return;
 
     if (
-      currentRunBold !== frame.bold ||
-      currentRunItalic !== frame.italic ||
+      isCurrentRunBold !== frame.bold ||
+      isCurrentRunItalic !== frame.italic ||
       currentRunSuperOrSub !== frame.superOrSub
     ) {
       flushRun();
-      currentRunBold = frame.bold;
-      currentRunItalic = frame.italic;
+      isCurrentRunBold = frame.bold;
+      isCurrentRunItalic = frame.italic;
       currentRunSuperOrSub = frame.superOrSub;
     }
     currentRunText += text;
@@ -747,10 +747,10 @@ export function convertRtfToTiptap(
         if (declaredCodePage === undefined && param !== undefined) {
           declaredCodePage = param;
           if (
-            !unsupportedCodePageReported &&
+            !hasReportedUnsupportedCodePage &&
             !SUPPORTED_ANSI_CODE_PAGES.has(declaredCodePage)
           ) {
-            unsupportedCodePageReported = true;
+            hasReportedUnsupportedCodePage = true;
             droppedFeatures.push({
               feature: "unsupported-codepage",
               detail: `Unsupported \\ansicpg${declaredCodePage} code page; \\'XX hex escapes in this document were left undecoded.`,
@@ -864,8 +864,8 @@ export function convertRtfToTiptap(
       const codePoint = decodeWindowsCodePageByte(token.byte as number);
       if (codePoint <= 0x1f) {
         // C0 control character: drop from output, report once per document.
-        if (!c0ControlDropped) {
-          c0ControlDropped = true;
+        if (!hasDroppedC0Control) {
+          hasDroppedC0Control = true;
           droppedFeatures.push({
             feature: "control-character",
             detail:

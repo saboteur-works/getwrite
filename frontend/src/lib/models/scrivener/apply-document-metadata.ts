@@ -155,18 +155,18 @@ export interface FeatureTogglesToEnable {
 export function resolveFeatureTogglesToEnable(
   documentFlags: Iterable<DocumentMetadataFlags>,
 ): FeatureTogglesToEnable {
-  let anySynopsis = false;
-  let anyNotes = false;
+  let hasAnySynopsis = false;
+  let hasAnyNotes = false;
 
   for (const flags of documentFlags) {
-    if (flags.hasSynopsis) anySynopsis = true;
-    if (flags.hasNotes) anyNotes = true;
-    if (anySynopsis && anyNotes) break;
+    if (flags.hasSynopsis) hasAnySynopsis = true;
+    if (flags.hasNotes) hasAnyNotes = true;
+    if (hasAnySynopsis && hasAnyNotes) break;
   }
 
   const result: FeatureTogglesToEnable = {};
-  if (anySynopsis) result.synopsis = true;
-  if (anyNotes) result.notes = true;
+  if (hasAnySynopsis) result.synopsis = true;
+  if (hasAnyNotes) result.notes = true;
   return result;
 }
 
