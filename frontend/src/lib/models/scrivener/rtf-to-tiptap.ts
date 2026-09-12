@@ -163,6 +163,8 @@ const SILENT_STRUCTURAL_CONTROL_WORDS = new Set([
   "deff",
   "deflang",
   "deflangfe",
+  "deftab",
+  "pardeftab",
   "pard",
   "plain",
   "ql",
