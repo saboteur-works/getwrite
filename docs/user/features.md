@@ -24,7 +24,7 @@ Everything in a project — documents, images, audio, and folders — appears in
 
 ### Start page
 
-Opening GetWrite shows all your projects at a glance, along with totals for how much you've created. From here you can jump into a project, or create, rename, delete, and compile projects without digging through menus.
+Opening GetWrite shows all your projects at a glance, along with totals for how much you've created. From here you can jump into a project, or create, rename, delete, and compile projects without digging through menus. On desktop, you can also import an existing Scrivener 3 project as a new GetWrite project.
 
 → [Start Page](start-page.md)
 

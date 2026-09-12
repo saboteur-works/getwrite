@@ -80,7 +80,7 @@ node cli/dist/bin/getwrite-cli.cjs project create ./my-novel \
 
 ### `project import-scrivener`
 
-Imports a Scrivener 3, Mac-authored `.scriv` project into a new, complete GetWrite project (Feature 31). One-shot, CLI-only, never writes to the source project.
+Imports a Scrivener 3, Mac-authored `.scriv` project into a new, complete GetWrite project (Feature 31). One-shot, never writes to the source project. The desktop app also exposes this pipeline as an "Import" flow on the Start Page (Feature 43) — this CLI command is no longer the only way to run it.
 
 ```sh
 getwrite-cli project import-scrivener <scrivPath> [projectRoot] [--name <name>]
