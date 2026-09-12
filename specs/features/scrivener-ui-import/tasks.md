@@ -220,7 +220,7 @@ shape (`project: Project`, no bare `projectId` field) at
 why `runImport`'s narrowing step reads `result.project.id` rather than
 deriving an id from the destination path.
 **POS:** task_babc419d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Wire the import IPC handlers into `main.ts`
 
@@ -299,7 +299,7 @@ living untested inside `main.ts`, which is why it is pulled out into
 `projects-dir.ts` is unit tested but `registerWorkspaceHandlers()` itself is
 not.
 **POS:** task_25d8ff8c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Package and build wiring for the worker bundle
 
@@ -330,7 +330,7 @@ output, or a direct read of the resolved `extraResources` list) confirms
 **Notes:** Independent of Task 5's file (`main.ts`) — both depend only on
 Task 4's convention and can proceed in parallel with it.
 **POS:** task_32a9fde8
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: `preload.ts` and `desktop-bridge.ts` — the renderer-facing channels
 
