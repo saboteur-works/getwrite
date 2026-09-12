@@ -456,7 +456,7 @@ the picker call from the Start page (Task 9) into this dialog's own
 focus-management and cancel-handling tests versus the pre-Gate-4 version of
 this task, which is reflected in the raised estimate.
 **POS:** task_3833a997
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Wire the "Import" entry point on the Start page
 
