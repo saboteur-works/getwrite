@@ -229,7 +229,17 @@ describe("native resources transport — in-process backend reuses the shared re
       projectId,
       String(canonicalRevisionId),
     );
-    expect(readContent).toBe("seed content");
+    // `createResourceCore` writes the first canonical revision as a
+    // serialized TipTap document, not plain text: the editor only parses a
+    // JSON revision payload, and a plain-text one is loaded as HTML and
+    // collapses to a single paragraph. Assert the seeded text round-trips
+    // through that payload rather than pinning the old raw-string form.
+    const readDoc = JSON.parse(String(readContent)) as {
+      type: string;
+      content: { content?: { text?: string }[] }[];
+    };
+    expect(readDoc.type).toBe("doc");
+    expect(readDoc.content[0]?.content?.[0]?.text).toBe("seed content");
 
     const patched = await transport.patchRevisionContent(
       created.resource.id,

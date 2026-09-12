@@ -39,6 +39,7 @@ import path from "node:path";
 import type { Dirent } from "node:fs";
 import { cp, exists, readdir, readFile, writeFile } from "./io";
 import { resolveProjectRoot } from "./project-root-resolver";
+import { plainTextToTipTapDocument } from "./tiptap-doc";
 import {
   InvalidProjectIdCoreError,
   findProjectRootByInternalId,
@@ -117,7 +118,14 @@ export async function createResourceCore(
     const revisionName = config
       ? resolveInitialRevisionName(config)
       : "Initial Draft";
-    const content = (resource as TextResource).plainText ?? "";
+    // Store the first canonical revision as a serialized TipTap document.
+    // The editor only recognises a JSON payload when it loads a revision; a
+    // plain-text one reaches Tiptap as HTML and collapses to one paragraph,
+    // which the canonical autosave then writes back over the resource.
+    const text = resource as TextResource;
+    const content = JSON.stringify(
+      text.tiptap ?? plainTextToTipTapDocument(text.plainText ?? ""),
+    );
     await writeRevision(projectPath, resource.id, 1, content, {
       isCanonical: true,
       metadata: { name: revisionName },
