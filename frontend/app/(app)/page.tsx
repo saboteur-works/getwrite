@@ -306,6 +306,24 @@ export default function Home(): JSX.Element {
   };
 
   /**
+   * Called by {@link StartPage} after a Scrivener import completes
+   * successfully (Feature 43, Task 9 / FR-4, FR-7).
+   *
+   * Re-reads the project list via `refreshProjects` — the same
+   * `GET /api/projects` re-read the app already does on every mount and on
+   * every unlock — so the newly imported project appears before `handleOpen`
+   * tries to open it, then opens it via the existing directory-id open flow.
+   * Runs in that order so the writer lands in the freshly imported project
+   * with no restart or manual refresh.
+   *
+   * @param projectId - The imported project's on-disk directory id.
+   */
+  const handleImportComplete = async (projectId: string): Promise<void> => {
+    await refreshProjects();
+    await handleOpen(projectId);
+  };
+
+  /**
    * Marks a resource as selected in both the Redux store and local state.
    *
    * Dispatches `setResourceId` so that the sidebar, editor, and other
@@ -791,6 +809,7 @@ export default function Home(): JSX.Element {
           isUnlocking={isUnlocking}
           unlockErrorMessage={unlockErrorMessage}
           onUnlock={handleUnlock}
+          onImportComplete={handleImportComplete}
         />
       ) : (
         <section className="p-6">
