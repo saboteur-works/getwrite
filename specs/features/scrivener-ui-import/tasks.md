@@ -544,7 +544,7 @@ Playwright runner are known to fail inside the sandbox).
 **Depends on:** 9
 **Estimate:** 3
 **POS:** task_9249d7ba
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Full gate verification pass
 
