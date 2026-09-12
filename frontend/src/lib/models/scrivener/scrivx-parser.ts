@@ -29,8 +29,9 @@
  * `node:fs/promises` directly, since `docs/standards/storage-context.md` §5
  * requires all *new* model code to go through the adapter.
  *
- * Uses `fast-xml-parser` (already a transitive dependency elsewhere in the
- * lockfile, promoted here to a direct `frontend` dependency) rather than a
+ * Uses `fast-xml-parser` — a direct `frontend` dependency added for this
+ * feature, since neither `frontend/package.json` nor `cli/package.json` had
+ * an existing dependency covering XML parsing — rather than a
  * hand-rolled XML parser — unlike RTF parsing (Task 3), which the spec
  * explicitly scopes to a hand-rolled implementation, XML parsing is
  * out-of-scope work `docs/standards/package-selection.md` does not ask this
