@@ -1,6 +1,6 @@
 # GetWrite CLI
 
-The GetWrite CLI (`getwrite-cli`) is a Node.js command-line tool for project management, template operations, revision pruning, integrity checks, screenshot capture, and a developer-facing agentic QA harness.
+The GetWrite CLI (`getwrite-cli`) is a Node.js command-line tool for project management, Scrivener import, template operations, revision pruning, integrity checks, screenshot capture, and a developer-facing agentic QA harness.
 
 It lives in its own pnpm workspace package, **`cli/`**, separate from the Next.js frontend. It consumes the framework-free model layer through the single `@gw/core` barrel (`frontend/src/lib/core.ts`), which esbuild bundles at build time. See [ADR-016](../architecture/ADRs/adr-016-cli-extraction-and-deferred-core-package.md) for the rationale and the deferred follow-up (promoting `@gw/core` to a standalone package).
 
@@ -74,6 +74,47 @@ getwrite-cli project create [projectRoot] --spec <specPath> [--name <name>]
 node cli/dist/bin/getwrite-cli.cjs project create ./my-novel \
   --spec getwrite-config/templates/project-types/novel_project_type.json \
   --name "My Novel"
+```
+
+---
+
+### `project import-scrivener`
+
+Imports a Scrivener 3, Mac-authored `.scriv` project into a new, complete GetWrite project (Feature 31). One-shot, CLI-only, never writes to the source project.
+
+```sh
+getwrite-cli project import-scrivener <scrivPath> [projectRoot] [--name <name>]
+```
+
+**Arguments:**
+
+- `scrivPath` (required) — path to the source `.scriv` package directory (not the `.scrivx` file itself).
+- `projectRoot` (optional) — directory to create the destination project in. Defaults to `.` (current directory).
+
+**Options:**
+
+- `-n, --name <name>` (optional) — destination project name. Defaults to `scrivPath`'s basename with the `.scriv` extension stripped.
+
+**Refusal check:** before writing anything, the command inspects the source `.scrivx` file's root `Creator` attribute. Only a `Creator` starting with `SCRMAC-3` (Scrivener 3, Mac-authored) is accepted — this is an allow-list, so a Windows-authored project, a Scrivener 2 project, or any unrecognized `Creator` format is refused with a clear message and a non-zero exit, with nothing written to the destination. A `projectRoot` that already exists and is non-empty is refused the same way, before any write; if `projectRoot` did not exist before the run, a fatal error partway through the write phase deletes it again on the way out.
+
+**What it carries over:**
+
+1. The Draft binder's folder/document hierarchy and text (at the destination project's root), plus the Research folder's text content and every other top-level user folder, each as its own top-level GetWrite folder. A binder item with no `<Title>` is imported under a generated fallback name ("Untitled", "Untitled 2", ...), reported.
+2. Each document's `content.rtf`, converted to `content.txt` + `content.tiptap.json` (bold/italic preserved as TipTap marks; `\line` as a hard break; backslash-newline treated as a paragraph break alongside `\par`; `\'XX` hex escapes decoded via the document's declared `\ansicpg` code page; a `\field`/`HYPERLINK` run converts to plain text).
+3. Each document's synopsis/notes (into sidecar `userMetadata.synopsis`/`userMetadata.notes`, enabling the corresponding feature toggles), Status (seeding `config.statuses` and `userMetadata.status`), Label (a new "Label" select metadata field), Keywords (as GetWrite tags, merging keywords that share a leaf name), and CustomMetaData fields (as new per-project metadata-schema fields). A field whose derived key collides with a built-in or already-added field is created under a suffixed key instead (e.g. `pov-scrivener`), keeping its Scrivener title as the label; the rename is reported.
+4. Rebuilds the destination project's inverted index, backlinks, and entity mention index from scratch (mirroring `reindex`); background indexing and the backlinks watcher are suspended for the whole write phase so this rebuild is the only indexing work the run performs.
+
+**What it skips or defers, and reports:** an RTF feature with no GetWrite equivalent, an unreadable/malformed `content.rtf` fragment, a malformed `.scrivx` fragment (recovered as a skip rather than aborting the import), or a custom-metadata field type with no GetWrite mapping (each skipped individually, without aborting the run); the project's Trash content; non-text Research content (media, PDFs, web archives); and any `Type="Other"` binder item, wherever it occurs. On completion the command writes `<projectRoot>/scrivener-import-report.txt`, a fixed eight-section report (Skipped Items, Field Key Renames, Keyword Merges, Unconverted Research Content, Excluded "Other" Items, Trash Content, Snapshot History, Untitled Fallback Names) — every section always appears, even when empty.
+
+**Exit codes:** `0` = success, `2` = refused source project (unsupported Creator or non-empty destination) or unexpected error
+
+**Example:**
+
+```sh
+node cli/dist/bin/getwrite-cli.cjs project import-scrivener ./MyNovel.scriv ./my-novel
+# Imported Scrivener project to: ./my-novel
+# Folders: 4, Resources: 12, Tags: 6
+# Report written to: ./my-novel/scrivener-import-report.txt
 ```
 
 ---
