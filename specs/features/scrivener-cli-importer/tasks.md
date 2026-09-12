@@ -792,7 +792,7 @@ first, since the real project previously aborted mid-run on the field-key
 clash the second pass fixes, and opening an imported document previously
 flattened it before the Task 27 fix.
 **POS:** task_5b75a0d2
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 29
