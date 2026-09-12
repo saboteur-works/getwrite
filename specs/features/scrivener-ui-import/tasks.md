@@ -572,7 +572,7 @@ not merely in the unpacked `dist/`.
 manual, real-import verification, which nothing here exercises (every test
 above mocks the bridge, the worker, or both).
 **POS:** task_da125a98
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Manual Stage-6.5 verification against the private sample project (FR-23)
 
