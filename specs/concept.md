@@ -141,6 +141,7 @@ release line is already at **2.1.0** (`getwrite-v2.1.0`, released 2026-08-18, pe
 
 **Later.**
 - Import from Scrivener (`.scriv`) and Word/DOCX — *owner-confirmed as a real planned feature, not near-term*. Placed here rather than dropped because the adoption argument for it is strong (see Caveats), but it is not committed to current work.
+  > **Amended 2026-09-11 (owner decision, owner-supplied):** reversed for Scrivener specifically — Scrivener import is now committed, in-progress work: FR-42 (CLI importer) is In Progress, FR-43 (UI flow) is Next, FR-44 (repeatable import) is Later. Word/DOCX import stays Later, unchanged (FR-33). Nothing is built yet. See `specs/product/getwrite.md`.
 
 ## What This Is Not
 
@@ -169,6 +170,7 @@ release line is already at **2.1.0** (`getwrite-v2.1.0`, released 2026-08-18, pe
 ## Caveats & Pitfalls
 
 - **Adoption: the switching cost is the whole battle.** Scrivener users have years of work in `.scriv` containers and no import path exists. Ownership arguments do not move people who would have to retype a novel. The absence of an importer may matter more than any feature on the roadmap. As of 2026-08-24 an importer is planned but deliberately not near-term, so this risk is carried knowingly.
+  > **Amended 2026-09-11 (owner decision, owner-supplied):** Scrivener import is no longer near-term — it is committed, in-progress work (FR-42 In Progress, FR-43 Next, FR-44 Later in `specs/product/getwrite.md`). Word/DOCX import remains not-near-term (FR-33).
 - **Execution: compile is deceptively hard.** Output a writer will actually send to an agent or publisher is a long tail of formatting edge cases. Compile currently exists and is export-only; treating it as "done" is the most likely way to lose users at the last step.
 - **Assumption: writers may not enter metadata.** The metadata layer is the differentiator, but it demands sustained manual annotation. If writers skip it, GetWrite degrades to a folder of files with a nice editor. Nothing in the design earns the annotation back automatically, and as of 2026-08-24 the owner has settled on manual-only deliberately — so this is an *accepted* risk, not an unexamined one. It is still the assumption most likely to be wrong, and nothing currently measures whether writers sustain the annotation.
 - **Effort/pain mismatch (observed, not owner-stated).** Revision handling is the most heavily engineered subsystem in the codebase — invariants, guards, pruning, diff view, a dedicated slice — yet the owner did not list it among the driving problems. This is a measurement about where effort went, not a diagnosis of why; it is worth checking whether the roadmap is being set by what is interesting to build.
@@ -178,6 +180,7 @@ release line is already at **2.1.0** (`getwrite-v2.1.0`, released 2026-08-18, pe
 ## Technical Considerations
 
 - **An import path from Scrivener and DOCX** is worth exploring early, because it is plausibly the single largest determinant of adoption and it constrains the data model.
+  > **Amended 2026-09-11 (owner decision, owner-supplied):** for Scrivener this is no longer exploratory — it is committed, in-progress work (FR-42/FR-43/FR-44 in `specs/product/getwrite.md`). DOCX import remains exploratory/Later (FR-33).
 - **A conflict model for the multi-device roadmap.** The current data model is single-writer with no merge story; hosted plus desktop plus Android implies concurrent edits to the same project. Worth resolving before the hosted path is committed, not after.
 - **Making file ownership legible.** The on-disk layout uses UUID-named directories, which is defensible technically but undercuts the "open your folder and it's just files" promise. Worth exploring whether human-readable paths can coexist with path-independent identity.
 
@@ -188,6 +191,10 @@ recorded here because every future run inherits them):
 
 - **Migration from Scrivener/Word** — an importer is wanted, but as a *future*
   feature, not near-term. Placed in the Later milestone above.
+  > **Amended 2026-09-11 (owner decision, owner-supplied):** reversed for
+  > Scrivener — now committed, in-progress work (FR-42 In Progress, FR-43
+  > Next, FR-44 Later; `specs/product/getwrite.md`). Word/DOCX stays Later,
+  > unchanged (FR-33).
 - **Hosted/Android sequencing** — timeboxed to a fixed calendar horizon in
   parallel with desktop work, *not* gated on desktop adoption metrics.
 - **Hosted multi-user model** — sync yes, collaboration no. One writer may reach

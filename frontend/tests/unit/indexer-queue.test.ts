@@ -12,6 +12,7 @@ import {
   flushIndexer,
   waitForDrain,
   shutdownIndexer,
+  withIndexingSuspended,
   __resetIndexerForTests,
 } from "../../src/lib/models/indexer-queue";
 
@@ -269,5 +270,76 @@ describe("shutdownIndexer (graceful shutdown)", () => {
   it("is safe to call more than once", async () => {
     await shutdownIndexer(1);
     await expect(shutdownIndexer(1)).resolves.toBeUndefined();
+  });
+});
+
+describe("withIndexingSuspended (Task 19 / FR-23)", () => {
+  beforeEach(() => {
+    setStorageAdapter(createMemoryAdapter());
+    __resetIndexerForTests();
+  });
+
+  afterEach(() => {
+    __resetIndexerForTests();
+  });
+
+  it("suspends enqueueIndex during fn so it resolves immediately without doing indexing work", async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-suspend-"));
+    const res = createTextResource({
+      name: "Suspended",
+      plainText: "suspended body text",
+    });
+
+    await withIndexingSuspended(async () => {
+      // While suspended, `enqueueIndex` must resolve without ever
+      // performing real indexing work (its own `isStopped` check at the
+      // top short-circuits to `Promise.resolve()`).
+      await enqueueIndex(projectRoot, res.id);
+    });
+
+    const found = await search(projectRoot, "suspended");
+    expect(found).toEqual([]);
+  });
+
+  it("restores isStopped to false afterward (assuming it started false)", async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-restore-"));
+    const res = createTextResource({
+      name: "Restored",
+      plainText: "restored body text",
+    });
+
+    await withIndexingSuspended(async () => {
+      // no-op
+    });
+
+    // After the suspension ends, a normal `createRevision` (which enqueues
+    // indexing exactly like the very first test above) must index for real
+    // again — proving isStopped was restored to its prior (false) value,
+    // not left true.
+    await createRevision(projectRoot, res.id, res.plainText ?? "");
+    const found = await waitForIndex(projectRoot, "restored");
+    expect(found).toContain(res.id);
+  });
+
+  it("restores isStopped correctly when fn throws, re-throwing the original error unchanged", async () => {
+    const boom = new Error("boom");
+
+    await expect(
+      withIndexingSuspended(async () => {
+        throw boom;
+      }),
+    ).rejects.toBe(boom);
+
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-throw-"));
+    const res = createTextResource({
+      name: "AfterThrow",
+      plainText: "afterthrow body text",
+    });
+
+    // Indexing must work normally again after a suspended fn throws — the
+    // restore in `finally` must run regardless of how fn settled.
+    await createRevision(projectRoot, res.id, res.plainText ?? "");
+    const found = await waitForIndex(projectRoot, "afterthrow");
+    expect(found).toContain(res.id);
   });
 });

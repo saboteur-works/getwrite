@@ -475,19 +475,67 @@ model only; multi-user/collaboration conflict handling is a permanent
 non-goal per the parent spec's Non-goals. Broken out as its own feature so
 it is not silently absorbed into Feature 28's scope.
 
-### Feature 31: Scrivener/Word project importer — Not started
-**Value:** A novelist migrating from Scrivener or Word imports their
-existing project structure into GetWrite instead of manually re-creating it.
-**Vertical slice:** `.scriv` and DOCX parsers, mapping from source project
-structure to GetWrite's project-type/resource-tree model, an import flow in
-the UI or CLI that runs the conversion.
-**Requirements covered:** FR-33
+### Feature 31: Scrivener CLI importer — Not started
+**Value:** A novelist migrating from Scrivener imports their Scrivener 3,
+Mac-authored project's binder — Draft, user-created top-level folders beside
+Draft, and text documents within Research — document text, and per-document
+metadata into a fresh GetWrite project with one CLI command, instead of
+manually re-creating it.
+**Vertical slice:** A `.scriv` reader parsing the project's `.scrivx` XML
+binder hierarchy — Draft, any user-created top-level folders beside Draft
+(e.g. Templates, Archive, Scraps), and text documents (and their folders)
+within Research, skipping and reporting `Other`-typed top-level items — plus
+each document's RTF body under `Files/Data/<UUID>/`, synopsis, notes,
+status, keywords, and custom metadata fields; a mapping layer from that
+binder structure onto a new GetWrite project's resource tree (reusing
+`project-creator.ts`'s scaffolding machinery, with Research rendered as a
+top-level GetWrite folder) and metadata layer (status field, keywords onto
+tags, custom fields onto GetWrite's user-defined schema, per FR-42); a new
+`getwrite-cli` subcommand performing the one-shot conversion end to end; and
+skip-and-report handling that logs any unconvertible content — including
+Research media (images, PDFs, web archives) and `Other`-typed items — and
+continues importing the rest of the project, producing a post-import report
+the writer can read.
+**Requirements covered:** FR-42
 **User stories:** US-4
 **Depends on:** Feature 2
-**Branch suggestion:** feat/scrivener-docx-importer
-**Notes:** Not started. Planned, not near-term — no committed milestone
-slot yet. No import path exists today from either format, which is a known
-adoption risk called out in the parent spec's Constraints.
+**Branch suggestion:** feat/scrivener-cli-importer
+**Notes:** Not started. This feature replaces the former combined "Scrivener/
+Word project importer" entry that previously held this ID — split 2026-09-11
+(owner decision) once Scrivener import became committed, current work (FR-42)
+distinct from Word/DOCX import, which stays an unscheduled Later requirement
+(now Feature 45). Scoped to Scrivener 3, Mac-authored projects only (resolved
+OQ-16 in the parent spec); Scrivener 2 projects and Windows-authored projects
+are an explicit, documented gap, not rejected outright — see the parent
+spec's Out of Scope (Deferred). Widened 2026-09-11 at this feature's own
+feature-spec gate (owner decision, recorded in the parent spec's FR-42):
+text documents (and their folders) within Scrivener's Research folder are
+imported under a top-level GetWrite "Research" folder, and user-created
+top-level binder folders beside Draft (e.g. Templates, Archive, Scraps) are
+imported as top-level GetWrite folders alongside Draft content; Scrivener
+`Other`-typed items are skipped and reported like any other unconvertible
+content. Only non-text Research content (media: images, PDFs, web archives)
+remains deferred, along with carrying Scrivener snapshots across as
+GetWrite revisions and importing the project's Trash — none of these three
+are broken out as separate features here because the parent spec has no
+requirement covering them — see its Out of Scope (Deferred) section
+instead. One-shot only: each run creates a fresh GetWrite
+project, with no notion of re-importing into or merging with an existing one
+(resolved OQ-12); repeatable/merge import is Feature 44, a separate, deferred
+feature. This is the first deliverable in the CLI-first sequencing decided at
+the product-spec gate (resolved OQ-14) — a writer-facing UI import flow is
+Feature 43, a follow-up that depends on this feature shipping first.
+Considered and rejected: splitting this feature further into a
+binder-plus-text slice and a separate metadata-mapping slice. FR-42 bundles
+synopsis/notes/status/keywords/custom-metadata carry-over into the same
+one-shot command and the same skip-and-report behavior as binder structure
+and document text; a binder-plus-text-only first slice would ship a
+materially lesser import (silently dropping status, keywords, and custom
+fields a writer would reasonably expect) rather than a genuinely independent
+vertical slice, so the requirement's own bundling is treated as the shippable
+unit here. If this feature's own task breakdown finds the combined scope too
+large for one implementation pass, splitting there is still open — see this
+feature list's Open Questions.
 
 ### Feature 32: Join full-text search with saved-query predicates — Not started
 **Value:** A plain-file writer filters by full-text content and by
@@ -1002,6 +1050,75 @@ gains no mutating action, per the parent spec's resolved OQ-10. No undo and
 no trash-like holding area for deleted edges, per resolved OQ-8, consistent
 with edges never being soft-deleted anywhere in the product.
 
+### Feature 43: Scrivener UI import flow — Not started
+**Value:** A novelist who doesn't want to touch the CLI can import their
+Scrivener project directly from the app, with the same one-shot scope
+Feature 31's CLI command already provides.
+**Vertical slice:** An import entry point in the app (e.g. from the Start
+page's project-management surface, alongside create/open/rename/delete) that
+lets a writer pick a `.scriv` project, invokes the same underlying binder/
+text/metadata conversion logic Feature 31's CLI command performs — reused,
+not reimplemented, consistent with how this codebase shares model-layer logic
+between CLI and UI elsewhere — plus progress/completion UI and a UI rendering
+of the same skip-and-report output the CLI produces as a file.
+**Requirements covered:** FR-43
+**User stories:** US-4
+**Depends on:** Feature 31
+**Branch suggestion:** feat/scrivener-ui-import
+**Notes:** Not started. Sits in the parent spec's Next milestone rather than
+alongside Feature 31 in In Progress, because it depends on Feature 31's CLI
+command shipping first (resolved OQ-14 in the parent spec: CLI first, UI as
+a follow-up). Scope otherwise matches Feature 31 exactly — same one-shot
+behavior, same imported content (the project's binder — Draft, user-created
+top-level folders, and text documents in Research, widened 2026-09-11 at
+Feature 31's feature-spec gate — document text, synopsis/notes, status,
+keywords, custom metadata), same skip-and-report handling, same Scrivener
+3/Mac-only support — this feature is a UI wrapper around Feature 31's
+conversion, not a re-scoping of it.
+
+### Feature 44: Repeatable Scrivener import — Not started
+**Value:** A novelist who already imported a Scrivener project can re-run
+the import later to bring across changes made in Scrivener since, instead of
+being limited to a single one-time conversion that leaves the GetWrite
+project to diverge on its own from then on.
+**Vertical slice:** A notion of a prior import's identity — linking a
+GetWrite project back to the `.scriv` source it was imported from, so a
+later run can recognize it as a re-import rather than a fresh one; a diff/
+merge strategy for reconciling re-imported binder structure, document text,
+and metadata against the existing GetWrite project's current state (design
+not yet decided — see this feature list's Open Questions); and a CLI (and
+possibly UI) surface to trigger a re-import against an already-imported
+project.
+**Requirements covered:** FR-44
+**User stories:** US-4
+**Depends on:** Feature 31
+**Branch suggestion:** feat/scrivener-repeatable-import
+**Notes:** Not started, and undesigned in the same sense Feature 30 and
+Feature 38 are — the parent spec states this as a MAY-level Later
+requirement and explicitly notes that repeatable import "needs a notion of a
+prior import's identity and a diff/merge strategy that neither of [FR-42 nor
+FR-43] defines." Split 2026-09-11 (owner decision) from FR-42/FR-43, which
+are one-shot only. Deferred, not scheduled against a fixed date.
+
+### Feature 45: Word/DOCX project importer — Not started
+**Value:** A novelist migrating from Word imports their existing DOCX
+project structure into GetWrite instead of manually re-creating it.
+**Vertical slice:** A DOCX parser, mapping from Word document structure to
+GetWrite's project-type/resource-tree model, and an import flow (UI or CLI)
+that runs the conversion.
+**Requirements covered:** FR-33
+**User stories:** US-18
+**Depends on:** Feature 2
+**Branch suggestion:** feat/docx-importer
+**Notes:** Not started. Later milestone, unscheduled — this is a real,
+planned feature, not out of scope. This feature carries the ID previously
+held together with Scrivener import under the old combined Feature 31
+entry; split 2026-09-11 (owner decision) once Scrivener import became
+committed, current work (now Features 31/43/44) distinct from Word/DOCX
+import, which remains an unscheduled Later requirement. No import path
+exists today from either format, which is a known adoption risk called out
+in the parent spec's Constraints.
+
 ---
 
 ## Coverage check
@@ -1039,7 +1156,7 @@ with edges never being soft-deleted anywhere in the product.
   - FR-30: Feature 28
   - FR-31: Feature 29
   - FR-32: Feature 30
-  - FR-33: Feature 31
+  - FR-33: Feature 45
   - FR-34: Feature 32
   - FR-35: Feature 33
   - FR-36: Feature 34
@@ -1050,11 +1167,14 @@ with edges never being soft-deleted anywhere in the product.
     Questions)
   - FR-40: Feature 41
   - FR-41: Feature 42
+  - FR-42: Feature 31
+  - FR-43: Feature 43
+  - FR-44: Feature 44
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 42
+- Total features: 45
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -1074,17 +1194,24 @@ with edges never being soft-deleted anywhere in the product.
   revisions) are independently startable now. 28 (hosted multi-device
   access) must land before 30 (its conflict-resolution model, which depends
   on it). 29 (durable search backend) is contingent on demonstrated need
-  rather than sequenced by dependency. 31 (Scrivener/Word importer) only
-  depends on the already-shipped Feature 2. 32 (joining search and query
+  rather than sequenced by dependency. 31 (Scrivener CLI importer) only
+  depends on the already-shipped Feature 2. 43 (Scrivener UI import flow) and
+  44 (repeatable Scrivener import) both depend on 31 shipping first, per the
+  CLI-first sequencing the parent spec's resolved OQ-14 settles — 43 wraps
+  31's conversion logic in a UI, and 44 needs 31's one-shot conversion to
+  already exist before a re-run/merge strategy can build on it; 43 and 44 do
+  not depend on each other and can be built in either order once 31 ships. 45
+  (Word/DOCX importer) only depends on the already-shipped Feature 2,
+  independently of the Scrivener chain. 32 (joining search and query
   predicates) depends on the already-shipped Features 8 and 9. 42 (removing
   an entity declaration) depends on the already-shipped Features 33 and 38 —
   33 for the entity declaration it reverses, 38 for the authored edges its
   keep/delete-edges choice acts on — and is independently startable now.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-  36, 37, 38, 39, 40, 41, 42 (30 is the only feature left with an unmet hard
-  dependency — on 28)
-- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 42.
+  36, 37, 38, 39, 40, 41, 42, 45 (30, 43, and 44 are the features left with an
+  unmet hard dependency — 30 on 28, and both 43 and 44 on 31)
+- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 42, 43, 44, 45.
   Everything else in this list has shipped.
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
@@ -1094,7 +1221,12 @@ with edges never being soft-deleted anywhere in the product.
   task list, though substantial foundations already ship. Feature 31
   carries external-format-parsing risk (Scrivener's `.scriv` container
   format is undocumented by Scrivener itself) that may affect estimate
-  confidence more than the other Not-started features. Feature 27 merges two
+  confidence more than the other Not-started features; Feature 45 carries the
+  equivalent risk for the DOCX format. Features 43 and 44 inherit Feature
+  31's parsing risk by depending on it, plus their own: Feature 43's scope is
+  well-defined (a UI wrapper around already-decided conversion logic) but
+  Feature 44 is undesigned in the same sense Feature 30 and Feature 38 are —
+  see its own entry. Feature 27 merges two
   previously separate concerns (revision-aware indexing and diff-open
   revision selection) per the parent spec's FR-29 correction; its task
   breakdown should confirm the merge doesn't hide two different sizes of
@@ -1236,3 +1368,29 @@ FR-39 split (this document's own scoping call — Gate 2 review, 2026-09-07):
   Entity confirmation choice, and on its own it ships nothing a writer can
   use, failing this document's own independently-shippable bar (the Feature
   37 precedent).
+
+FR-42 split (this document's own scoping call, 2026-09-11):
+
+- **Resolved 2026-09-11 in the Feature 31 feature spec
+  (`specs/features/scrivener-cli-importer.md`): Feature 31's exact CLI
+  subcommand name and invocation shape.** Previously open here as "not
+  decided and left to that feature's own task breakdown."
+- **Resolved 2026-09-11 in the Feature 31 feature spec
+  (`specs/features/scrivener-cli-importer.md`): whether Feature 31 splits
+  further into a binder-plus-text slice and a separate metadata-mapping
+  slice.** It does not split; the feature spec confirms the combined scope
+  ships as one feature (see Feature 31's Notes for the reasoning this
+  document already recorded).
+- **Resolved 2026-09-11 in the Feature 31 feature spec
+  (`specs/features/scrivener-cli-importer.md`): the exact mapping from
+  Scrivener's per-document Label/Status/keywords/custom metadata onto
+  GetWrite's metadata layer.** Bold/italic formatting is preserved; Label
+  maps onto a custom select field; Keywords map onto leaf-name tags with
+  collisions/merges reported to the writer.
+- Feature 43's exact UI entry point (Start page project-management surface,
+  a dedicated import wizard, or somewhere else) is not decided here.
+- Feature 44's diff/merge strategy for reconciling a re-import against an
+  already-imported project's current state — and how a prior import's
+  identity is recorded and linked back to its `.scriv` source — is
+  genuinely undesigned and left open, consistent with the parent spec's own
+  framing of FR-44 as a MAY-level requirement with no defined mechanism yet.
