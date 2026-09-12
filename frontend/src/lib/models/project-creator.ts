@@ -56,6 +56,7 @@ import type {
 } from "./types";
 import { createResourceOfType, writeResourceToFile } from "./resource";
 import { writeRevision } from "./revision";
+import { plainTextToTipTapDocument } from "./tiptap-doc";
 import { slugify } from "../utils";
 
 /**
@@ -332,11 +333,17 @@ export async function createProjectFromType(options: {
 
       resources.push(seededTextResource);
       await writeResourceToFile(projectRoot, seededTextResource);
+      // Serialized document, not plain text: the editor only parses a JSON
+      // revision payload, and a plain-text one is loaded as HTML — collapsing
+      // a seeded template's paragraphs into one the first time it is opened.
       await writeRevision(
         projectRoot,
         seededTextResource.id,
         1,
-        seededTextResource.plainText ?? "",
+        JSON.stringify(
+          seededTextResource.tiptap ??
+            plainTextToTipTapDocument(seededTextResource.plainText ?? ""),
+        ),
         { isCanonical: true },
       );
     }

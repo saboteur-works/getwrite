@@ -448,11 +448,15 @@ export default function TipTapEditor({
     if (value === lastEmittedDocRef.current) return;
     const current = editor.getHTML();
     if (value !== current) {
-      // Use a minimal, explicit cast to satisfy the Tiptap typing
-      // while preserving the previous behaviour (no-emitted update).
-      // TODO: refine to the precise options type when migrating tiptap types.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      editor.commands.setContent(value || "", false as any);
+      // Tiptap v3's signature is `setContent(content, options)`. The v2
+      // signature took the emit flag as a second positional boolean, so the
+      // `false as any` this replaced was destructured as `{} = false` and
+      // left `emitUpdate` at its default of `true`: every external swap
+      // (resource or revision switch) emitted an update, which reached the
+      // canonical autosave and rewrote a document merely because it was
+      // opened. Pass the options object so loading stays silent, matching
+      // `setContent(doc, { emitUpdate: false })` above.
+      editor.commands.setContent(value || "", { emitUpdate: false });
       // The content swap resets the selection; refresh the node-type indicator
       // so it reflects the newly loaded document (resource/revision switch)
       // rather than a stale value carried over from the previous one.

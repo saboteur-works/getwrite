@@ -5,6 +5,7 @@ import {
   fetchRevisionContent,
   type ResourceContentResponse,
 } from "../../src/lib/api/resources";
+import { plainTextToTiptap } from "../../src/lib/tiptap-text";
 
 interface UseRevisionContentOptions {
   initialContent: string;
@@ -128,7 +129,14 @@ export function useRevisionContent({
         return;
       }
 
-      setTipTapDoc(null);
+      // A canonical revision whose payload is plain text rather than a
+      // serialized document (written by `createResourceCore` and
+      // `createProjectFromType` for a new resource's first revision). Convert
+      // it instead of clearing the document: `EditView` passes
+      // `tipTapDoc ?? content` to the editor, and a bare string reaches Tiptap
+      // as HTML, where every newline collapses — silently flattening the
+      // resource to one paragraph, which the canonical autosave then persists.
+      setTipTapDoc(plainTextToTiptap(canonicalContent));
       setContent(canonicalContent);
     };
 
@@ -161,7 +169,10 @@ export function useRevisionContent({
       return;
     }
 
-    setTipTapDoc(null);
+    // Same plain-text payload case as the canonical load above: convert
+    // rather than clear, so viewing an older plain-text revision keeps its
+    // paragraphs instead of collapsing into one.
+    setTipTapDoc(plainTextToTiptap(currentRevisionContent));
     setContent(currentRevisionContent);
   }, [currentRevisionContent, currentRevisionId, parseTipTapRevisionContent]);
 
