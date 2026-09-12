@@ -206,3 +206,46 @@ Text-bearing control words dropped (not currently converted, losing visible text
 - `\super` / `\nosupersub` — 5 / 5 occurrences; superscript/subscript formatting is lost (text survives).
 
 Layout-only control words recorded as present but carrying no text or visible-formatting loss (~3,100 total occurrences across the run): `\af` 1059, `\loch` 613, `\hich` 439, `\dbch` 353, `\ltrch` 174, `\paperw`/`\paperh`/`\margl`/`\margr`/`\margt`/`\margb` 37 each, `\partightenfactor` 49, `\pardeftab` 47, `\deftab` 36, `\expandedcolortbl` 38, `\pardirnatural` 2.
+
+## Third pass: RTF importer defects measured against the owner's real project (2026-09-11, Gate 5)
+
+Measured by re-importing the owner's 61-`content.rtf` real project through the (second-pass) importer and inspecting the result. All figures below are measurements against that imported project and its source files, not inferences.
+
+### Stray hex-escape digits in imported prose
+
+The converter drops the backslash of a `\'XX` escape and leaves the two hex digits in the text (e.g. `New Year92s Eve`, `93You have the next round?94`). Measured in the imported project: 2,801 stray digit pairs across 30 of 60 imported documents — `92` ×1454, `94` ×806, `93` ×241, `97` ×212, `85` ×88.
+
+Measured in the source (`content.rtf` + `notes.rtf` combined), the full `\'XX` escape inventory, decoded value, and count:
+
+| Escape | Decodes to | Count |
+| --- | --- | --- |
+| `\'92` | ’ (right single quote) | 1839 |
+| `\'93` | “ (left double quote) | 1574 |
+| `\'94` | ” (right double quote) | 1565 |
+| `\'97` | — (em dash) | 254 |
+| `\'85` | … (ellipsis) | 122 |
+| `\'91` | ‘ (left single quote) | 108 |
+| `\'01` | 0x01 (C0 control character) | 26 |
+| `\'95` | • (bullet) | 21 |
+| `\'ed` | í | 6 |
+| `\'3F` | ? | 2 |
+| `\'a0` | U+00A0 (non-breaking space) | 2 |
+| `\'e9` | é | 1 |
+| `\'f1` | ñ | 1 |
+| `\'e8` | è | 1 |
+
+55 of 61 source `content.rtf` files use one or more `\'XX` escapes. The document's `\ansicpg` declares the code page these bytes decode against; the sample project declares `\ansicpg1252` (Windows-1252) throughout the survey.
+
+### Lost paragraph structure
+
+34 of 61 source `content.rtf` files contain no `\par` at all; they terminate every paragraph with a bare backslash immediately followed by a newline (the Cocoa/macOS RTF convention), measured 1,770 times across those files, up to 155 occurrences in a single file. The (second-pass) converter handled only `\par` (731 word-boundary occurrences across all 61 files — an earlier figure of "1,022" was wrong: it substring-matched `\pard`, `\pardeftab`, and `\pardirnatural` in addition to `\par` itself) and `\line` (14 occurrences).
+
+Measured result of importing without backslash-newline support: 34 of the 60 imported documents are a single paragraph (median paragraphs per imported document: 1); one 1,944-word scene imports as one block. The same fault surfaces in imported notes fields, where sentences run together (e.g. `scene?Establish`).
+
+### Report noise (FR-14 silent-ignore list incomplete)
+
+Of 80 "Skipped Items" entries in the real import's report, 67 are layout-only control words FR-14 already says to ignore silently but the implementation had not yet covered: `\pardeftab` (39) and `\deftab` (28). Only 13 entries were genuine (a hyperlink, superscript).
+
+### Owner decisions arising from these measurements
+
+See `specs/features/scrivener-cli-importer.md` FR-8, FR-14, and FR-21 (amended 2026-09-11, Gate 5, third measured pass) and OQ-16 through OQ-19 for the resulting requirements: general `\ansicpg`-driven Windows-code-page decoding of `\'XX` (with an unsupported code page as an FR-8 skip); dropping decoded C0 control characters with one report entry per affected document; `\ucN` ANSI-fallback-byte skip semantics; backslash-newline as a paragraph break alongside `\par` (distinct from an escaped `\\` and from a control word split across a line); and `\deftab`/`\pardeftab` joining the silent-ignore list.

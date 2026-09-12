@@ -177,7 +177,19 @@ a UI wrapper, is Feature 43) and does not touch the source project.
    collision, resolved by FR-7's suffix rule rather than an abort, and any
    other unexpected `addField`/`addGroup` failure — is skipped and reported
    the same way as every other case above; it is never a reason to abort
-   the run. [US-1]
+   the run. Further amended 2026-09-11 (owner decision, Gate 5, third
+   measured pass, from a real-project run of the second-pass converter over
+   all 61 `content.rtf` files that measured 2,801 stray digit-pair
+   artifacts and 34 of 60 imported documents collapsed to a single
+   paragraph): a `content.rtf`/`notes.rtf` document whose `\ansicpg`
+   declares a code page the converter has no decode table for is an FR-8
+   skip — record it and continue, do not guess a fallback encoding (see
+   FR-14's decoding rule). A `\'XX` hex escape that decodes to a C0 control
+   character (0x00–0x1F — measured: 0x01, 26 times in the real project)
+   MUST be dropped from the emitted text and MUST NOT be written into
+   `content.txt` or `content.tiptap.json`; record exactly one FR-9 report
+   entry per affected document (not one per occurrence), consistent with
+   the existing text/format-loss reporting rule. [US-1]
 9. FR-9: On completion, the command MUST write a report file the writer can
    read, listing: (a) every skipped item and reason from FR-8; (b) every
    tag-name merge from FR-15's Keywords import; (c) non-text Research
@@ -263,7 +275,66 @@ a UI wrapper, is Feature 43) and does not touch the source project.
     control word inside a text-bearing destination not covered above
     remains governed by FR-8 (kept as plain text where safe, otherwise
     skipped-with-reason and reported). An unknown destination (`{\*\…}`)
-    MUST be skipped silently, with no report entry. [US-1]
+    MUST be skipped silently, with no report entry. Further amended
+    2026-09-11 (owner decision, Gate 5, third measured pass), from a
+    measured run of the second-pass converter over all 61 real-project
+    `content.rtf` files (55 of which use `\'XX` escapes) that found 2,801
+    stray digit-pair artifacts in the imported prose (e.g. `New Year92s
+    Eve`, `93You have the next round?94`) and 34 of 60 imported documents
+    collapsed to a single paragraph because 34 of 61 source files terminate
+    every paragraph with a bare backslash-newline (measured 1,770 times,
+    the Cocoa/macOS RTF convention) rather than `\par` (731 word-boundary
+    occurrences) or `\line` (14). The converter MUST additionally: decode
+    every `\'XX` escape as a byte in the code page the document's own
+    `\ansicpg` declares (the general case, not a hardcoded shortlist of
+    punctuation values), translating that byte to its Unicode codepoint via
+    that Windows code page's table (e.g. `\ansicpg1252` decodes via
+    Windows-1252 — `\'92`→’, `\'93`→“, `\'94`→”, `\'97`→—, `\'85`→…,
+    `\'91`→‘, `\'95`→•, `\'ed`→í, `\'a0`→U+00A0 non-breaking space,
+    `\'e9`→é, `\'f1`→ñ, `\'e8`→è), where a document declaring a code page
+    the converter has no table for is an FR-8 skip (per the FR-8 amendment
+    above), never a guess at a fallback encoding; never emit a decoded C0
+    control character (0x00–0x1F) into `content.txt` or
+    `content.tiptap.json`, dropping it and recording one FR-9 report entry
+    per affected document (FR-8 amendment above); honor `\ucN` skip
+    semantics, so that when a `\uN` Unicode escape is in effect under a
+    preceding `\ucN` (N > 0, measured set on 38 of the sample's files), the
+    N ANSI-fallback bytes that follow `\uN` — most commonly written as one
+    or more `\'XX` escapes — are consumed and discarded rather than also
+    emitted as text, so the decoded Unicode character is not duplicated by
+    its own fallback (this counts skipped bytes, per RTF's own `\ucN`
+    semantics, however the fallback bytes are spelled); treat a backslash
+    immediately followed by a line-feed or CR-LF newline, with nothing else
+    between the backslash and the newline, as a paragraph break, exactly as
+    `\par` is treated — this MUST NOT be confused with an escaped literal
+    backslash (`\\`, two literal backslash characters forming one escaped
+    character, which is never itself directly followed by a newline as the
+    very next character, since any newline after a `\\` belongs to the
+    surrounding text, not the escape) or with a control word whose
+    name/parameter merely happens to be split across a source line break (a
+    control word's letters and any numeric parameter are one contiguous
+    token; a newline occurring inside that token does not close the
+    paragraph and is not itself a paragraph-breaking backslash-newline);
+    `\line` continues to convert to a `hardBreak` node within the current
+    paragraph and MUST NOT be treated as a paragraph break; and recognize
+    `\deftab` and `\pardeftab` — and any other tab-stop or default-tab-width
+    control word of the same family — as layout-only, joining the existing
+    silent-ignore list above (consumed without producing text, a mark, or
+    an FR-9 report entry), measured accounting for 67 of 80 "Skipped Items"
+    entries (39 `\pardeftab`, 28 `\deftab`) in a real import's report, which
+    FR-9's silent-ignore rule already said to exclude but the
+    implementation had not yet covered. Fixture coverage (extends FR-12's
+    synthetic-only fixture, which stays synthetic and hand-built — the
+    owner declined adding a test that runs against the private sample)
+    MUST additionally include: a document using only backslash-newline
+    paragraph breaks with no `\par` at all; a document mixing `\par` and
+    backslash-newline breaks; `\'XX` escapes covering a punctuation case
+    (e.g. `\'92`), an accented-letter case (e.g. `\'e9`), a
+    non-breaking-space case (`\'a0`), and a C0 control-byte case (e.g.
+    `\'01`); a `\uN` escape immediately followed by its ANSI fallback bytes
+    under `\uc1`, asserting the fallback is not duplicated into the output;
+    and `\deftab`/`\pardeftab` present in the source but absent from the
+    FR-9 report. [US-1]
 15. FR-15: Scrivener's `LabelID`/color-coded Label MUST be imported as a
     user-defined custom **select** field named "Label" on the destination
     project's metadata schema (`"select"` is an existing field type,
@@ -321,7 +392,34 @@ a UI wrapper, is Feature 43) and does not touch the source project.
     field whose document value is an `Option@ID`; both measured Date value
     shapes (`YYYY-MM-DD HH:MM:SS.fffff ±HHMM` and
     `YYYY-MM-DD HH:MM:SS ±HHMM`); and a `Status` document value of `-1`.
-    [US-1]
+    Amended 2026-09-11 (owner decision): the `.scrivx` parser (this FR) MUST
+    use the `fast-xml-parser` package, added to `frontend/package.json` as a
+    direct dependency by commit ae61baf2 (Task 2), rather than a hand-rolled
+    XML parser — the owner reviewed this addition after the fact and
+    decided to KEEP it, per `docs/standards/package-selection.md` §6's
+    justification requirement: purpose — parsing the `.scrivx` file's XML
+    binder tree, `StatusSettings`/`LabelSettings`/`CustomMetaDataSettings`/
+    `Keywords` blocks, and the FR-2 Creator check, all of which this FR and
+    FR-2/FR-3/FR-6/FR-7/FR-15 depend on; necessity — a hand-rolled XML
+    parser was not attempted and is not proposed, since `.scrivx` is
+    arbitrary-depth, attribute-and-child-element XML with no scoped control-
+    word vocabulary comparable to FR-14's hand-rolled-RTF case, so a general
+    parser is the appropriate tool, not a workaround; no existing dependency
+    covers this need — verified by checking `frontend/package.json` and
+    `cli/package.json` on `main` (pre-Task-2) and finding no XML/DOM/SAX/
+    XPath parsing package (`fast-xml-parser` itself is absent from both
+    manifests and from `pnpm-lock.yaml` on `main`, confirmed via `git show
+    main:pnpm-lock.yaml | grep -c fast-xml-parser` returning 0), so this is
+    a genuinely new dependency, not a promotion of an existing transitive
+    one. This corrects a false in-code claim: `scrivx-parser.ts`'s module
+    doc comment (line 32 as of this writing) currently states
+    `fast-xml-parser` was "already a transitive dependency elsewhere in the
+    lockfile" before this feature — that claim is false and MUST be
+    corrected (task list) to state plainly that it is a direct dependency
+    added for this feature, with a one-line reason. For the avoidance of
+    doubt, FR-14's "no RTF-parsing dependency MUST be added" rule governs
+    RTF parsing only and does NOT apply to `.scrivx` XML parsing, which this
+    amendment governs separately. [US-1]
 19. FR-19 (added 2026-09-11, owner decision, Gate 5): A binder item with no
     `<Title>` element (measured: 15/33 real-project `Text` items) MUST
     import with the fallback name "Untitled", de-duplicated among its
@@ -344,7 +442,16 @@ a UI wrapper, is Feature 43) and does not touch the source project.
     successfully — exit 0, a report written. This acceptance check is
     verified by the lead's manual run (task list Task 11), not by an
     automated test, since the sample is gitignored and reserved for manual
-    verification only (FR-12). [US-1]
+    verification only (FR-12). Further amended 2026-09-11 (owner decision,
+    Gate 5, third measured pass): once the third fix pass's tasks land, the
+    lead's re-run against the private sample MUST additionally verify, by
+    inspection of the imported project's resources, zero stray escape-digit
+    artifacts left over from an undecoded `\'XX` escape (e.g. no leftover
+    `92`/`93`/`94`/`97`/`85` digit pairs adjacent to a word boundary) and a
+    per-document paragraph count that tracks that document's own source
+    paragraph-break count (`\par` plus backslash-newline occurrences in its
+    `content.rtf`) rather than the single-paragraph collapse measured in
+    the second pass. [US-1]
 22. FR-22 (added 2026-09-11, owner decision, Gate 5): Before any destination
     write, the command MUST determine whether `projectRoot` already exists.
     (Measured: `importScrivenerProject`
@@ -516,6 +623,38 @@ a UI wrapper, is Feature 43) and does not touch the source project.
   `shutdownIndexer` watcher-stop logic; the importer's own FR-11 rebuild
   remains the sole indexing that runs. The `writeSidecar`/`readSidecar`
   race itself stays deferred (see Out of scope). — Impact: FR-11, FR-23.
+- OQ-16 (resolved, 2026-09-11 owner decision, Gate 5, third measured pass):
+  a `\'XX` escape decodes as a general byte in the document's own
+  `\ansicpg`-declared code page (not a hardcoded punctuation shortlist); an
+  unsupported declared code page is an FR-8 skip, never a guessed
+  encoding; a decoded C0 control character is dropped and never emitted,
+  with one FR-9 report entry per affected document. — Impact: FR-8, FR-14.
+- OQ-17 (resolved, 2026-09-11 owner decision, Gate 5, third measured pass):
+  a backslash immediately followed by a newline (nothing else between
+  them) is a paragraph break, alongside `\par`; `\line` stays a
+  `hardBreak` and is never treated as a paragraph break; the rule is
+  specified to not be confused with an escaped literal backslash (`\\`)
+  or a control word merely wrapping across a source line. — Impact:
+  FR-14.
+- OQ-18 (resolved, 2026-09-11 owner decision, Gate 5, third measured
+  pass): under `\ucN` (N > 0), the N ANSI-fallback bytes following a `\uN`
+  Unicode escape are consumed and discarded rather than also emitted, so
+  the fallback does not duplicate the decoded character. — Impact: FR-14.
+- OQ-19 (resolved, 2026-09-11 owner decision, Gate 5, third measured
+  pass): `\deftab` and `\pardeftab` (and other tab-stop/layout words of
+  the same family) join the silent-ignore list and are never reported;
+  synthetic fixture coverage is extended for all of the above (backslash-
+  newline-only, mixed `\par`/backslash-newline, punctuation/accented/NBSP/
+  C0-control `\'XX` cases, a `\uN`+`\uc1` fallback case, and a present-but-
+  unreported `\deftab`/`\pardeftab` case). — Impact: FR-8, FR-12, FR-14.
+- OQ-20 (resolved, 2026-09-11 owner decision, reviewed after the fact): the
+  `fast-xml-parser` dependency added to `frontend/package.json` by commit
+  ae61baf2 (Task 2) is KEPT, not removed, with its §6 justification now
+  recorded (purpose, necessity, and the checked-and-confirmed absence of
+  any existing XML-parsing dependency on `main`); the false in-code claim
+  that it was "already a transitive dependency" is corrected by task list.
+  FR-14's no-new-dependency rule is confirmed to govern RTF parsing only,
+  not `.scrivx` XML parsing. — Impact: FR-18.
 
 ## Out of scope (deferred)
 

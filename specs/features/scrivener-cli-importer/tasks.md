@@ -571,14 +571,147 @@ or `core.ts`.
 **POS:** task_6b49b143
 **Done:** [ ]
 
-### Task 21: Manual verification against the private sample project
+### Task 21: Fixture and tests for hex-escape/paragraph-break/silent-ignore coverage
+
+**What:** Extend the synthetic fixture and write the test coverage the
+third fix pass's FR-8/FR-14 amendments require, ahead of the production
+code changes: backslash-newline-only and mixed `\par`/backslash-newline
+paragraph breaks; `\'XX` escapes covering a punctuation case, an
+accented-letter case, a non-breaking space, and a C0 control byte; a `\uN`
+escape with an ANSI fallback under `\uc1`; and `\deftab`/`\pardeftab`
+present but absent from the report.
+**Files:** `frontend/tests/fixtures/scrivener/sample.scriv/sample.scrivx`,
+`frontend/tests/fixtures/scrivener/sample.scriv/Files/Data/<uuid>/content.rtf`
+(new/updated fixture documents), `frontend/tests/unit/scrivener-rtf-to-tiptap.test.ts`,
+`frontend/tests/unit/scrivener-import-report.test.ts`.
+**Done when:** the fixture gains: (1) a document using only
+backslash-newline paragraph breaks with no `\par` at all; (2) a document
+mixing `\par` and backslash-newline breaks; (3) `\'XX` escapes covering a
+punctuation case (e.g. `\'92`), an accented-letter case (e.g. `\'e9`), a
+non-breaking-space case (`\'a0`), and a C0 control-byte case (e.g.
+`\'01`), all under a document declaring `\ansicpg1252`; (4) a `\uN` escape
+immediately followed by its ANSI fallback bytes under `\uc1`; (5) a
+`\deftab`/`\pardeftab` occurrence with no corresponding report entry
+expected. All prior fixture cases (Tasks 1, 11, 16) are preserved
+unchanged. New test cases are written against these fixture additions but
+are expected to fail (red) until Tasks 22–24 land, since they specify the
+not-yet-implemented behavior.
+**Depends on:** 20
+**Estimate:** 5
+**POS:** task_cfaead61
+**Done:** [ ]
+
+### Task 22: Hex-escape/code-page decoding, C0 control-character drop, and `\ucN` fallback skip
+
+**What:** Implements FR-14's `\'XX`-decoding amendment and FR-8's
+code-page/control-character amendment: general `\ansicpg`-driven
+Windows-code-page decoding of `\'XX` escapes, an FR-8 skip for an
+unsupported declared code page, dropping a decoded C0 control character
+with one report entry per affected document, and `\ucN` ANSI-fallback-byte
+skip semantics.
+**Files:** `frontend/src/lib/models/scrivener/rtf-to-tiptap.ts`,
+`frontend/src/lib/models/scrivener/import-report.ts`,
+`frontend/tests/unit/scrivener-rtf-to-tiptap.test.ts`.
+**Done when:** `convertRtfToTiptap` decodes every `\'XX` escape as a byte
+in the document's declared `\ansicpg` code page (starting with
+Windows-1252 support, since that is the only code page measured in the
+real project), producing the correct Unicode character for each of the 14
+measured escape values in `scrivener-format.md`'s third-pass table; a
+document declaring an unsupported code page is recorded as an FR-8 skip
+rather than decoded with a guess; a decoded C0 control character (0x00–
+0x1F) is dropped from the output text and recorded as exactly one FR-9
+report entry per affected document (not one per occurrence); and under an
+active `\ucN` (N > 0), the N ANSI-fallback bytes following a `\uN` escape
+are consumed and discarded rather than emitted, so the decoded Unicode
+character is not duplicated. Tests use Task 21's fixture cases and
+synthetic RTF snippets for each escape value and the unsupported-code-page
+case.
+**Depends on:** 21
+**Estimate:** 8
+**POS:** task_ce03b6b4
+**Done:** [ ]
+
+### Task 23: Backslash-newline paragraph breaks
+
+**What:** Implements FR-14's backslash-newline paragraph-break amendment.
+**Files:** `frontend/src/lib/models/scrivener/rtf-to-tiptap.ts`,
+`frontend/tests/unit/scrivener-rtf-to-tiptap.test.ts`.
+**Done when:** `convertRtfToTiptap` treats a backslash immediately
+followed by a line-feed or CR-LF newline (nothing else between them) as a
+paragraph break, identically to `\par`; an escaped literal backslash
+(`\\`) is never treated as a paragraph break, including when ordinary text
+or a newline follows it; a control word whose name/parameter is split
+across a source line break is never mistaken for a paragraph-breaking
+backslash-newline; `\line` continues to produce a `hardBreak` node within
+the current paragraph and is never treated as a paragraph break. Tests use
+Task 21's backslash-newline-only and mixed fixture documents, plus
+synthetic snippets isolating `\\` followed by a newline and a control word
+split across a line break, asserting paragraph count and structure.
+**Depends on:** 21
+**Estimate:** 5
+**POS:** task_2bf3e928
+**Done:** [ ]
+
+### Task 24: Silent-ignore list completion for `\deftab`/`\pardeftab`
+
+**What:** Implements FR-14's silent-ignore amendment for tab-stop/
+default-tab-width control words.
+**Files:** `frontend/src/lib/models/scrivener/rtf-to-tiptap.ts`,
+`frontend/tests/unit/scrivener-rtf-to-tiptap.test.ts`.
+**Done when:** `\deftab` and `\pardeftab` are consumed silently —
+producing no text, no mark, and no `droppedFeatures`/FR-9 report entry —
+joining the existing layout-only silent-ignore list. Tests assert a
+`content.rtf` snippet containing `\deftab`/`\pardeftab` produces no report
+entry, using Task 21's fixture case.
+**Depends on:** 21
+**Estimate:** 2
+**POS:** task_7ec9e89a
+**Done:** [ ]
+
+### Task 25: Correct the false dependency comment in `scrivx-parser.ts`
+
+**What:** Fixes the false module-doc claim at `scrivx-parser.ts:32` about
+`fast-xml-parser`'s origin, per FR-18's dependency-justification amendment
+and the owner's after-the-fact decision to keep the dependency.
+**Files:** `frontend/src/lib/models/scrivener/scrivx-parser.ts`.
+**Done when:** the module doc comment no longer states or implies
+`fast-xml-parser` was "already a transitive dependency elsewhere in the
+lockfile" before this feature; it instead states plainly that
+`fast-xml-parser` is a direct `frontend` dependency added for this
+feature, with a one-line reason (parsing the `.scrivx` XML binder tree; no
+existing dependency in `frontend/package.json`/`cli/package.json` covered
+XML parsing). No behavior change — comment only.
+**Depends on:** none
+**Estimate:** 1
+**POS:** task_ade307b4
+**Done:** [ ]
+
+### Task 26: Re-run the gate
+
+**What:** Confirms the full test/typecheck/knip gate is green after Tasks
+21–25 land.
+**Files:** none (verification only).
+**Done when:** `pnpm --filter getwrite-frontend exec vitest run
+scrivener-scrivx-parser scrivener-rtf-to-tiptap scrivener-binder-mapper
+scrivener-metadata-mapper scrivener-import-report
+scrivener-apply-document-metadata scrivener-import` and `pnpm --filter
+getwrite-frontend typecheck` both pass; `pnpm --filter getwrite-cli test`
+and `pnpm --filter getwrite-cli typecheck` both pass; `pnpm knip` (repo
+root) reports no new unused-export warnings from
+`frontend/src/lib/models/scrivener/` or `core.ts`.
+**Depends on:** 22, 23, 24, 25
+**Estimate:** 2
+**POS:** task_fc36f70d
+**Done:** [ ]
+
+### Task 27: Manual verification against the private sample project
 
 **What:** A human/lead-run, non-automated check of the shipped command
 against the real, private sample project, to catch anything the synthetic
-fixture doesn't surface. (Renumbered from Task 11 to Task 16, and now to
-Task 21, so its dependency on the fix-pass tasks satisfies task-list
-ordering; its POS id and scope are otherwise unchanged from the original
-Task 11.)
+fixture doesn't surface. (Renumbered from Task 11 to Task 16, to Task 21,
+to Task 26, and now to Task 27, so its dependency on the fix-pass tasks
+satisfies task-list ordering; its POS id and scope are otherwise unchanged
+from the original Task 11.)
 **Files:** none tracked — operates only on the gitignored
 `import-inputs/The SF Sideshow.scriv`.
 **Done when:** a human/lead runs `getwrite-cli project import-scrivener
@@ -594,7 +727,7 @@ or structure from this sample project is copied into any repository fixture
 or test file as a result of this task. Per FR-21, this run MUST complete
 successfully (exit 0, a report written) — this is the Stage-6.5-style
 acceptance requirement, verified by the lead, not by an automated test.
-**Depends on:** 20
+**Depends on:** 26
 **Estimate:** 2
 **Notes:** Manual/exploratory — not part of the automated suite, and not a
 gate for Task 10, Task 15, or Task 20. It now depends on the full Task
@@ -604,10 +737,10 @@ aborted mid-run on the field-key clash this pass fixes.
 **Done:** [ ]
 
 ## Summary
-- Total tasks: 21
-- Total estimated effort: 105 points
+- Total tasks: 27
+- Total estimated effort: 128 points
 - Critical path: Tasks 1 → 2 → 4 → 8 → 9 → 11 → 12 → 13 → 14 → 15 → 16 →
-  17/18/19 → 20 → 21
+  17/18/19 → 20 → 21 → 22/23/24 → 25 → 26 → 27
 - Risks: Task 3 (RTF→TipTap) and Task 4 (binder mapper) are the two largest
   and most novel units — Task 3 has no existing converter to model beyond
   `plainTextToTiptap`'s mark-free baseline, and Task 4 must get the FR-13
@@ -627,12 +760,25 @@ aborted mid-run on the field-key clash this pass fixes.
   fixture/tests land; Task 19 (indexing suppression) carries the most risk
   of the three, since it adds new shared state-management to
   `indexer-queue.ts` that must not regress the running app's own indexing.
-  Task 21 (originally Task 11, then Task 16, now Task 21) still depends on
-  access to the private sample project and a human/lead's availability,
-  and is not required for the automated gate (Task 20) to pass.
+  Tasks 22, 23, and 24 are independent of each other (each touches a
+  distinct concern in `rtf-to-tiptap.ts` — code-page/control-character
+  decoding, paragraph-break detection, and the silent-ignore list — with
+  limited overlap) and can run in parallel once Task 21's fixture/tests
+  land; Task 22 (code-page decoding + `\ucN` fallback skip) carries the
+  most risk of the three, since a general `\ansicpg`-driven decode table
+  is new surface area with no prior converter code to model beyond the
+  hardcoded punctuation shortlist it replaces, and Task 23 (backslash-
+  newline detection) must not misfire on an escaped `\\` or a control word
+  split across a line, which the fixture can only partially exercise.
+  Task 25 (dependency-comment fix) is low-risk and independent of Tasks
+  22–24, touching only a module doc comment in `scrivx-parser.ts` with no
+  behavior change. Task 27 (originally Task 11, then Task 16, then Task 21,
+  then Task 26, now Task 27) still depends on access to the private sample
+  project and a human/lead's availability, and is not required for the
+  automated gate (Task 26) to pass.
 
 ## Open Questions
 
-None. All open questions on the source feature spec (OQ-1 through OQ-12)
+None. All open questions on the source feature spec (OQ-1 through OQ-20)
 are recorded there as resolved by owner decision; this task list does not
 reopen or re-answer any of them.
