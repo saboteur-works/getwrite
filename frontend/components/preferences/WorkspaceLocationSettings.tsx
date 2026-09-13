@@ -4,6 +4,7 @@ import React from "react";
 import Button from "../common/UI/Button/Button";
 import {
   getDesktopBridge,
+  type DesktopBridge,
   type WorkspaceChangeResult,
 } from "../../src/lib/desktop-bridge";
 
@@ -20,11 +21,22 @@ import {
  * switched and then serving the previous workspace.
  */
 export default function WorkspaceLocationSettings(): JSX.Element | null {
-  const bridge = React.useMemo(() => getDesktopBridge(), []);
+  // Detected after mount rather than synchronously during render: this
+  // component is reachable via the server-rendered `/preferences` route
+  // (`frontend/app/preferences/page.tsx`), so a synchronous `useMemo` read
+  // here would disagree between the server-rendered HTML (no bridge) and
+  // the Electron client's first render (bridge already present on
+  // `window`), producing the same hydration mismatch class fixed in
+  // `StartPage.tsx`.
+  const [bridge, setBridge] = React.useState<DesktopBridge | null>(null);
   const [currentDir, setCurrentDir] = React.useState<string | null>(null);
   const [pendingDir, setPendingDir] = React.useState<string | null>(null);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [isChoosing, setIsChoosing] = React.useState(false);
+
+  React.useEffect(() => {
+    setBridge(getDesktopBridge());
+  }, []);
 
   React.useEffect(() => {
     if (!bridge) return;

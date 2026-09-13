@@ -35,7 +35,10 @@ import { getProjectDirectoryId } from "../../src/store/projectsSlice";
 import { formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 import Button from "../common/UI/Button";
 import UnlockModal from "../common/UnlockModal";
-import { getDesktopBridge } from "../../src/lib/desktop-bridge";
+import {
+  getDesktopBridge,
+  type DesktopBridge,
+} from "../../src/lib/desktop-bridge";
 
 /**
  * Project card data shape displayed on the start page.
@@ -229,8 +232,24 @@ export default function StartPage({
    * Absent (`null`) on hosted/web and Android — the Import control must be
    * absent there, not merely disabled, mirroring
    * `WorkspaceLocationSettings.tsx`'s `if (!bridge) return null` pattern.
+   *
+   * Detected after mount rather than synchronously during render: on the
+   * Electron client, `window.getwriteDesktop` is already present on the
+   * very first client render, while the server-rendered HTML has no bridge
+   * to see. Computing this with `useMemo` during render made the first
+   * client render disagree with the server-rendered markup (the Import
+   * button present vs. absent), a hydration mismatch. Deferring detection
+   * to a mount effect keeps the server-rendered markup and the client's
+   * first render in agreement (both show no Import button); the button
+   * appears only after the effect runs, post-hydration.
    */
-  const desktopBridge = useMemo(() => getDesktopBridge(), []);
+  const [desktopBridge, setDesktopBridge] = useState<DesktopBridge | null>(
+    null,
+  );
+
+  useEffect(() => {
+    setDesktopBridge(getDesktopBridge());
+  }, []);
 
   /** Controls the Scrivener import dialog's visibility. */
   const [isImportDialogOpen, setIsImportDialogOpen] = useState<boolean>(false);

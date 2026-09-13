@@ -13,7 +13,8 @@
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server.node";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import StartPage from "../../components/Start/StartPage";
@@ -146,5 +147,34 @@ describe("StartPage — Scrivener import launcher", () => {
     expect(
       screen.queryByRole("heading", { name: /Import from Scrivener/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("agrees with its own SSR markup on first render, then reveals Import post-mount, when a desktop bridge is present (hydration-mismatch regression)", async () => {
+    installBridge({});
+
+    // Simulate the server-rendered HTML. `window.getwriteDesktop` is
+    // installed above to mirror the Electron client environment, but a real
+    // Next.js server render never sees it — the server has no `window` at
+    // all. Detecting the bridge synchronously during render (the pre-fix
+    // `useMemo` approach) would make this SSR-equivalent string disagree
+    // with the client's first render, since the bridge stub is already
+    // present on `window` by the time client rendering starts.
+    const store = makeStore();
+    const ssrMarkup = renderToString(
+      <Provider store={store}>
+        <StartPage projects={[]} />
+      </Provider>,
+    );
+    expect(ssrMarkup).not.toContain('aria-label="Import from Scrivener"');
+
+    // A normal client render (with the same bridge stub present) must still
+    // reveal the Import control once its mount effect resolves the bridge —
+    // the SSR-agreement fix above must not regress the desktop behavior.
+    renderStartPage();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Import from Scrivener/i }),
+      ).toBeInTheDocument();
+    });
   });
 });
