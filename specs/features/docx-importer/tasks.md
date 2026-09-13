@@ -233,7 +233,7 @@ the three) asserts all three counts are zero.
 **Depends on:** 1, 2
 **Estimate:** 5
 **POS:** task_e3e650db
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: `mammoth` HTML → TipTap conversion, including footnote/endnote handling
 
