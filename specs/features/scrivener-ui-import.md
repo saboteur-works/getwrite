@@ -63,7 +63,15 @@ the Electron desktop build only.
    `frontend/src/lib/desktop-bridge.ts`). The picker response returned to the
    renderer MUST contain only an opaque, single-use selection handle and a
    display name (the picked `.scriv` folder's basename) — never the absolute
-   path (OQ-1). [US-1]
+   path (OQ-1). Amended 2026-09-12 (owner-verified in the running app): the
+   picker's selection mode MUST depend on the platform. On macOS a `.scriv`
+   project is registered as a package (`com.apple.package`, measured on the
+   sample project), and an open panel treats packages as files, so an
+   `openDirectory`-only picker greys out every `.scriv`; there the picker
+   MUST select files filtered to the `scriv` extension (`openFile`). On
+   Windows and Linux, where a `.scriv` is an ordinary folder, it MUST select
+   directories (`openDirectory`). The options are built by
+   `electron/src/scrivener-import/source-dialog.ts`. [US-1]
 2. FR-2: Cancelling the picker MUST leave the app in its prior state with no
    error shown, mirroring `WorkspaceChangeResult.cancelled`'s existing
    handling in `WorkspaceLocationSettings.tsx`. [US-1]

@@ -27,6 +27,7 @@ import {
   buildScrivenerSelectionResult,
 } from "./scrivener-import/destination";
 import { awaitWorkerOutcome } from "./scrivener-import/await-worker-outcome";
+import { scrivenerSourceDialogOptions } from "./scrivener-import/source-dialog";
 import type {
   ImportOutcome,
   ImportRequest,
@@ -287,11 +288,9 @@ interface ScrivenerStartImportRequest {
  */
 function registerScrivenerImportHandlers(): void {
   ipcMain.handle("getwrite:scrivener-choose-source", async () => {
-    const picked = await dialog.showOpenDialog({
-      title: "Choose a Scrivener project to import",
-      properties: ["openDirectory"],
-      buttonLabel: "Import",
-    });
+    const picked = await dialog.showOpenDialog(
+      scrivenerSourceDialogOptions(process.platform),
+    );
     if (picked.canceled || picked.filePaths.length === 0) {
       return { ok: false, cancelled: true };
     }
