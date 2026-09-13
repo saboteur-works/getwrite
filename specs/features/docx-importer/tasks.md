@@ -210,7 +210,7 @@ exact title/author values it was generated with) and a fixture/file with no
 **Depends on:** 1, 2
 **Estimate:** 3
 **POS:** task_0db8238c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Package-part detection — comments, tracked changes, images
 
