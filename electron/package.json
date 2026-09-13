@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "build:worker": "esbuild worker/scrivener-import-worker.ts --bundle --platform=node --format=cjs --outfile=dist/scrivener-import-worker.cjs --alias:@gw/core=../frontend/src/lib/core.ts",
+    "build:worker": "esbuild worker/scrivener-import-worker.ts --bundle --platform=node --format=cjs --outfile=dist/scrivener-import-worker.cjs --alias:@gw/core=../frontend/src/lib/core.ts && esbuild worker/docx-import-worker.ts --bundle --platform=node --format=cjs --outfile=dist/docx-import-worker.cjs --alias:@gw/core=../frontend/src/lib/core.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit --project tsconfig.worker.json",
     "test": "vitest run",
     "test:watch": "vitest",
