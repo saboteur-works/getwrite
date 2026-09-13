@@ -319,7 +319,7 @@ seven sections populated and one with none.
 **Depends on:** none
 **Estimate:** 3
 **POS:** task_faeaa2d6
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Import orchestrator — `importDocxProject`
 
