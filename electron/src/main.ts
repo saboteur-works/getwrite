@@ -335,7 +335,10 @@ function registerScrivenerImportHandlers(): void {
         };
         worker.postMessage(importRequest);
 
-        return await awaitWorkerOutcome(worker);
+        return await awaitWorkerOutcome(worker, (err) => {
+          const detail = err instanceof Error ? err.message : String(err);
+          log(`Scrivener import worker error: ${detail}`);
+        });
       } finally {
         scrivenerImportGuard.finish();
       }

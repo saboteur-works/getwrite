@@ -316,11 +316,21 @@ export default function Home(): JSX.Element {
    * Runs in that order so the writer lands in the freshly imported project
    * with no restart or manual refresh.
    *
+   * `handleOpen` can throw (e.g. a `POST /api/project` failure); like
+   * `refreshProjects` above, that failure is caught and logged here rather
+   * than left to become an unhandled promise rejection — the import itself
+   * already succeeded and the dialog has already reported that, so a failure
+   * to auto-open is degraded, not surfaced as a new error.
+   *
    * @param projectId - The imported project's on-disk directory id.
    */
   const handleImportComplete = async (projectId: string): Promise<void> => {
     await refreshProjects();
-    await handleOpen(projectId);
+    try {
+      await handleOpen(projectId);
+    } catch (err) {
+      console.error("Error opening imported project:", err);
+    }
   };
 
   /**

@@ -45,15 +45,15 @@ function describeExit(code: unknown): string {
 }
 
 /**
- * Describes a worker error for inclusion in a fatal outcome's message.
+ * Fixed, path-free description used when the worker's `error` event fires.
  *
- * @param err - The error the worker's `error` event carried.
- * @returns A human-readable description including the error.
+ * The worker's own error (e.g. a filesystem error) can embed the absolute
+ * source path (FR-3), so its `message` must never be forwarded into an
+ * `ImportOutcome` sent to the renderer. Callers that want the real detail
+ * for server-side diagnosis should pass an `onWorkerError` callback to
+ * {@link awaitWorkerOutcome}.
  */
-function describeError(err: unknown): string {
-  const detail = err instanceof Error ? err.message : String(err);
-  return `The import process failed to run: ${detail}`;
-}
+const WORKER_ERROR_MESSAGE = "The import process failed to run.";
 
 /**
  * Awaits a forked import worker's single terminal outcome.
@@ -70,9 +70,16 @@ function describeError(err: unknown): string {
  * worker are ignored — they neither resolve nor reject a second time.
  *
  * @param worker - The forked worker to listen to.
+ * @param onWorkerError - Optional callback invoked with the worker's raw
+ *   `error` event value, for server-side logging only — its detail (which
+ *   can embed the absolute source path, FR-3) is never included in the
+ *   resolved outcome.
  * @returns A promise resolving to the worker's terminal outcome.
  */
-export function awaitWorkerOutcome(worker: WorkerLike): Promise<ImportOutcome> {
+export function awaitWorkerOutcome(
+  worker: WorkerLike,
+  onWorkerError?: (err: unknown) => void,
+): Promise<ImportOutcome> {
   return new Promise<ImportOutcome>((resolve) => {
     let settled = false;
 
@@ -91,7 +98,8 @@ export function awaitWorkerOutcome(worker: WorkerLike): Promise<ImportOutcome> {
     worker.on("error", (err: unknown) => {
       if (settled) return;
       settled = true;
-      resolve({ kind: "fatal", message: describeError(err) });
+      onWorkerError?.(err);
+      resolve({ kind: "fatal", message: WORKER_ERROR_MESSAGE });
     });
   });
 }

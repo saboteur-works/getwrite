@@ -78,16 +78,36 @@ describe("awaitWorkerOutcome", () => {
     expect(result.kind === "fatal" && result.message).toContain("null");
   });
 
-  it("resolves with a fatal outcome including the error when the worker errors before any message", async () => {
+  it("resolves with a generic, path-free fatal outcome when the worker errors before any message, without leaking the raw error message (FR-3)", async () => {
     const { worker, emit } = createFakeWorker();
-    const error = new Error("boom");
+    const error = new Error(
+      'ENOENT: no such file or directory, open "/private/tmp/foo/Old.scriv"',
+    );
 
     const promise = awaitWorkerOutcome(worker);
     emit("error", error);
 
     const result = await promise;
     expect(result.kind).toBe("fatal");
-    expect(result.kind === "fatal" && result.message).toContain("boom");
+    expect(JSON.stringify(result)).not.toContain("/private/tmp/foo");
+    expect(JSON.stringify(result)).not.toContain("/private/tmp");
+  });
+
+  it("invokes the onWorkerError callback with the raw error, for server-side logging, while still resolving a generic outcome", async () => {
+    const { worker, emit } = createFakeWorker();
+    const error = new Error(
+      'ENOENT: no such file or directory, open "/private/tmp/foo/Old.scriv"',
+    );
+    const onWorkerError = vi.fn();
+
+    const promise = awaitWorkerOutcome(worker, onWorkerError);
+    emit("error", error);
+
+    const result = await promise;
+    expect(onWorkerError).toHaveBeenCalledTimes(1);
+    expect(onWorkerError).toHaveBeenCalledWith(error);
+    expect(result.kind).toBe("fatal");
+    expect(JSON.stringify(result)).not.toContain("/private/tmp/foo");
   });
 
   it("settles only once: a later exit/error after a message produces no second resolution", async () => {

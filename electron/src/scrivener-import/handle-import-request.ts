@@ -12,6 +12,7 @@
  * which is built by a separate esbuild bundle and never shares a tsconfig
  * program with this file.
  */
+import path from "node:path";
 
 /** Request to import a single Scrivener project, as sent by the main process. */
 export interface ImportRequest {
@@ -74,7 +75,10 @@ export interface HandleImportRequestDeps {
 }
 
 /**
- * Extracts a human-readable message from an unknown thrown value.
+ * Extracts a human-readable message from an unknown thrown value, for
+ * server-side logging only. Never forward this value into an
+ * {@link ImportOutcome} — a thrown error's message can embed the absolute
+ * source path (FR-3), which must never reach the renderer.
  *
  * @param err - The thrown value.
  * @returns Its `message` if it is an `Error`, otherwise its string form.
@@ -84,8 +88,36 @@ function messageFor(err: unknown): string {
 }
 
 /**
+ * Fixed, path-free message for a refused unsupported-source import (FR-2,
+ * FR-3). The dialog (`ImportScrivenerDialog.tsx`) already supplies its own
+ * kind-specific surrounding copy, so this need not repeat it — it only must
+ * never embed the source path a thrown error's message might carry.
+ */
+const UNSUPPORTED_SOURCE_MESSAGE =
+  "This project isn't a Scrivener 3, Mac-authored project, so it can't be imported.";
+
+/** Fixed, path-free message for a refused non-empty-destination import. */
+const DESTINATION_NOT_EMPTY_MESSAGE =
+  "A project already exists at the destination and won't be overwritten.";
+
+/** Fixed, path-free message for any other import failure. */
+const FATAL_IMPORT_MESSAGE =
+  "The import couldn't complete due to an unexpected error. Check the application logs for details.";
+
+/**
  * Runs `deps.runImport` for `request` and resolves to one of the four
  * discriminated outcomes, never rejecting.
+ *
+ * The success outcome's `projectId` is always derived from `request
+ * .projectRoot`'s basename — the destination directory id the frontend's
+ * `openProject`/`handleOpen` expect (FR-7) — rather than trusted from
+ * whatever `deps.runImport` returns, since a project's on-disk directory id
+ * and its `project.json` id are two different UUIDs in this codebase.
+ *
+ * No outcome ever carries a thrown error's raw `message`: it can embed the
+ * absolute source path (FR-3), so every non-success branch uses a fixed,
+ * generic message instead and logs the real error to the console for
+ * server-side diagnosis.
  *
  * @param request - The import request to run.
  * @param deps - Injected import runner and error predicates.
@@ -97,17 +129,31 @@ export async function handleImportRequest(
 ): Promise<ImportOutcome> {
   try {
     const data = await deps.runImport(request);
-    return { kind: "success", ...data };
+    return {
+      kind: "success",
+      ...data,
+      projectId: path.basename(request.projectRoot),
+    };
   } catch (err) {
     if (deps.isUnsupportedSourceError(err)) {
-      return { kind: "refusal-unsupported", message: messageFor(err) };
-    }
-    if (deps.isNonEmptyDestinationError(err)) {
+      console.error(
+        `Scrivener import refused (unsupported source): ${messageFor(err)}`,
+      );
       return {
-        kind: "refusal-destination-not-empty",
-        message: messageFor(err),
+        kind: "refusal-unsupported",
+        message: UNSUPPORTED_SOURCE_MESSAGE,
       };
     }
-    return { kind: "fatal", message: messageFor(err) };
+    if (deps.isNonEmptyDestinationError(err)) {
+      console.error(
+        `Scrivener import refused (destination not empty): ${messageFor(err)}`,
+      );
+      return {
+        kind: "refusal-destination-not-empty",
+        message: DESTINATION_NOT_EMPTY_MESSAGE,
+      };
+    }
+    console.error(`Scrivener import failed: ${messageFor(err)}`);
+    return { kind: "fatal", message: FATAL_IMPORT_MESSAGE };
   }
 }
