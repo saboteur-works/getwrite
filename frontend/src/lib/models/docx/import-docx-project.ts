@@ -13,14 +13,22 @@
  *
  * ## Error-signaling convention
  *
- * {@link importDocxProject} throws {@link DestinationNotEmptyError} (reused,
- * unmodified, from `import-scrivener-project.ts` — it is a generic,
- * format-agnostic condition, not Scrivener-specific logic) for FR-7's
- * refusal case, and a new {@link UnknownProjectTypeError} for FR-8's
+ * {@link importDocxProject} throws {@link DocxDestinationNotEmptyError} for
+ * FR-7's refusal case, and a new {@link UnknownProjectTypeError} for FR-8's
  * refusal case. Both are dedicated `Error` subclasses a caller can
  * `instanceof`-check, matching the codebase's existing convention for
  * control-flow-relevant failures (`UnsupportedScrivenerProjectError`,
  * `NoDocxFilesFoundError`, `SameEntityRelationshipError`).
+ *
+ * {@link DocxDestinationNotEmptyError} is this module's own class rather than
+ * a reuse of `import-scrivener-project.ts`'s `DestinationNotEmptyError`
+ * (Stage 6.5, 2026-09-13 owner decision, FR-7): although the underlying
+ * refused condition is the same generic, format-agnostic
+ * "destination already exists and is not empty" check, the Scrivener class's
+ * message is worded for a Scrivener import ("Cannot import Scrivener
+ * project: …") and must not be surfaced verbatim during a DOCX import. The
+ * two classes are otherwise unrelated types — a caller must check for the
+ * one that matches the importer it called.
  *
  * ## Orchestration order
  *
@@ -116,7 +124,6 @@ import { loadResourceContent } from "../../tiptap-utils";
 import { slugify } from "../../utils";
 import { getProjectType } from "../../projectTypes";
 import type { MetadataValue, Project, TextResource, UUID } from "../types";
-import { DestinationNotEmptyError } from "../scrivener/import-scrivener-project";
 import {
   buildDocxImportReport,
   writeDocxImportReport,
@@ -162,6 +169,23 @@ export class UnknownProjectTypeError extends Error {
         `Choose one of the existing project types, or omit it for the default ("blank").`,
     );
     this.name = "UnknownProjectTypeError";
+  }
+}
+
+/**
+ * Thrown by {@link importDocxProject} per FR-7 when `projectRoot` already
+ * exists and is non-empty. Raised before any destination write — nothing is
+ * created, written, or removed. DOCX-specific wording (Stage 6.5,
+ * 2026-09-13): unlike `import-scrivener-project.ts`'s own
+ * `DestinationNotEmptyError`, this message never mentions Scrivener.
+ */
+export class DocxDestinationNotEmptyError extends Error {
+  constructor(projectRoot: string) {
+    super(
+      `Cannot import DOCX project: destination "${projectRoot}" already ` +
+        `exists and is not empty. Choose an empty or non-existent destination.`,
+    );
+    this.name = "DocxDestinationNotEmptyError";
   }
 }
 
@@ -511,8 +535,8 @@ async function writeFolderEntries(
  *
  * @throws {UnknownProjectTypeError} When `projectType` does not match an
  *   existing project-type spec (FR-8). Nothing is written in this case.
- * @throws {DestinationNotEmptyError} When `projectRoot` already exists and
- *   is non-empty (FR-7). Nothing is written in this case.
+ * @throws {DocxDestinationNotEmptyError} When `projectRoot` already exists
+ *   and is non-empty (FR-7). Nothing is written in this case.
  * @throws {NoDocxFilesFoundError} When `sourcePath` is a directory
  *   containing no `.docx` file anywhere in its tree (FR-1). Nothing is
  *   written in this case.
@@ -536,7 +560,7 @@ export async function importDocxProject(
   if (didProjectRootExistBeforeRun) {
     const existingEntries = (await readdir(projectRoot)) as string[];
     if (existingEntries.length > 0) {
-      throw new DestinationNotEmptyError(projectRoot);
+      throw new DocxDestinationNotEmptyError(projectRoot);
     }
   }
 

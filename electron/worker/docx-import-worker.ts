@@ -18,7 +18,7 @@ import {
   importDocxProject,
   runForTenant,
   UnknownProjectTypeError,
-  DestinationNotEmptyError,
+  DocxDestinationNotEmptyError,
   NoDocxFilesFoundError,
   type ImportDocxProjectResult,
 } from "@gw/core";
@@ -67,7 +67,7 @@ process.parentPort.once("message", (event: { data: ImportRequest }) => {
     isUnsupportedSourceError: (err: unknown) =>
       err instanceof NoDocxFilesFoundError,
     isNonEmptyDestinationError: (err: unknown) =>
-      err instanceof DestinationNotEmptyError,
+      err instanceof DocxDestinationNotEmptyError,
     isUnknownProjectTypeError: (err: unknown) =>
       err instanceof UnknownProjectTypeError,
   }).then((outcome) => {

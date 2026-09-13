@@ -799,7 +799,7 @@ pass.
 **Depends on:** 19
 **Estimate:** 3
 **POS:** task_0358cbd2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Eliminate the `sidecar not found` diagnostic on a successful import
 

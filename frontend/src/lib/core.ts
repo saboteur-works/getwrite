@@ -72,6 +72,7 @@ export {
 export {
   importDocxProject,
   UnknownProjectTypeError,
+  DocxDestinationNotEmptyError,
   type ImportDocxProjectOptions,
   type ImportDocxProjectResult,
 } from "./models/docx/import-docx-project";

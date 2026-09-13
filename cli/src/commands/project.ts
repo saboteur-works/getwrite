@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import {
   createProjectFromType,
   detectDocxSource,
-  DestinationNotEmptyError,
+  DocxDestinationNotEmptyError,
   importDocxProject,
   importScrivenerProject,
   NoDocxFilesFoundError,
@@ -184,7 +184,7 @@ export default function registerProject(program: Command): void {
       } catch (err) {
         if (
           err instanceof UnknownProjectTypeError ||
-          err instanceof DestinationNotEmptyError ||
+          err instanceof DocxDestinationNotEmptyError ||
           err instanceof NoDocxFilesFoundError
         ) {
           console.error(err.message);

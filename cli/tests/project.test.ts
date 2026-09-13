@@ -353,7 +353,9 @@ describe("getwrite-cli project:import-docx", () => {
 
     expect(exitSpy).toHaveBeenCalledWith(2);
     expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("--split-level cannot be used with a folder source"),
+      expect.stringContaining(
+        "--split-level cannot be used with a folder source",
+      ),
     );
 
     await expect(fs.access(projectRoot)).rejects.toThrow();
@@ -421,5 +423,39 @@ describe("getwrite-cli project:import-docx", () => {
     expect(exitSpy).toHaveBeenCalled();
     const exitCode = exitSpy.mock.calls[0]?.[0];
     expect(exitCode).not.toBe(0);
+  });
+
+  it("refuses a non-empty pre-existing destination up front with DOCX-specific wording, writing nothing new to it (Stage 6.5)", async () => {
+    const destRoot = await makeTmpDestDir("gw-import-docx-nonempty-");
+    await fs.writeFile(
+      path.join(destRoot, "pre-existing-file.txt"),
+      "already here",
+      "utf8",
+    );
+
+    const argv = [
+      "node",
+      "getwrite-cli",
+      "project",
+      "import-docx",
+      FIXTURE_DOCX_PATH,
+      destRoot,
+    ];
+
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("already exists and is not empty"),
+    );
+    const [refusalMessage] = errorSpy.mock.calls.find(
+      ([message]) =>
+        typeof message === "string" &&
+        message.includes("already exists and is not empty"),
+    ) as [string];
+    expect(refusalMessage).not.toContain("Scrivener");
+
+    const entries = await fs.readdir(destRoot);
+    expect(entries).toEqual(["pre-existing-file.txt"]);
   });
 });

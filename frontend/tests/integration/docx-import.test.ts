@@ -14,8 +14,8 @@ import path from "node:path";
 import {
   importDocxProject,
   UnknownProjectTypeError,
+  DocxDestinationNotEmptyError,
 } from "../../src/lib/models/docx/import-docx-project";
-import { DestinationNotEmptyError } from "../../src/lib/models/scrivener/import-scrivener-project";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
 import type {
   AnyResource,
@@ -457,12 +457,17 @@ describe("importDocxProject — refusals before any write", () => {
       "utf8",
     );
 
-    await expect(
-      importDocxProject({
+    let caughtError: unknown;
+    try {
+      await importDocxProject({
         sourcePath: path.join(FIXTURES_DIR, "no-headings.docx"),
         projectRoot,
-      }),
-    ).rejects.toThrow(DestinationNotEmptyError);
+      });
+    } catch (err) {
+      caughtError = err;
+    }
+    expect(caughtError).toBeInstanceOf(DocxDestinationNotEmptyError);
+    expect((caughtError as Error).message).not.toContain("Scrivener");
 
     const entries = await fs.readdir(projectRoot);
     expect(entries).toEqual(["pre-existing-file.txt"]);
