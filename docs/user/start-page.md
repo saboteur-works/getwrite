@@ -15,5 +15,6 @@ From the Start Page you can act on a project without opening it first:
 - **Rename** a project.
 - **Delete** a project you no longer need.
 - **Compile** a project into a single output. See [Compiling Projects](compiling.md).
+- **Import** a Scrivener 3 project (created on a Mac) as a new GetWrite project — desktop app only. Choose the `.scriv` project, name the new project, and GetWrite carries over its folders, documents, and metadata, then shows a report of anything it couldn't convert.
 
 Keeping these actions in one place means less time managing files and more time writing.

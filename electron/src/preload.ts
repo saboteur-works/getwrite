@@ -15,6 +15,7 @@
  * server-side only and invisible to a client component.
  */
 import { contextBridge, ipcRenderer } from "electron";
+import type { ImportOutcome } from "./scrivener-import/handle-import-request";
 
 /** What changing the workspace location can result in. */
 export interface WorkspaceChangeResult {
@@ -28,6 +29,14 @@ export interface WorkspaceChangeResult {
   cancelled?: boolean;
 }
 
+/** What choosing a Scrivener source project can result in. */
+export type ScrivenerSourceChoice =
+  | { ok: true; handle: string; displayName: string }
+  | { ok: false; cancelled: true };
+
+/** The four-kind discriminated outcome of a Scrivener import (FR-12). */
+export type ScrivenerImportOutcome = ImportOutcome;
+
 /** The surface the renderer may call. */
 export interface GetWriteDesktopBridge {
   /** Returns where projects are currently stored. */
@@ -36,12 +45,23 @@ export interface GetWriteDesktopBridge {
   chooseWorkspaceDir(): Promise<WorkspaceChangeResult>;
   /** Restarts the app so the change takes effect. */
   restart(): Promise<void>;
+  /** Opens a native picker for a Scrivener `.scriv` source project. */
+  chooseScrivenerSource(): Promise<ScrivenerSourceChoice>;
+  /** Runs a Scrivener import from a previously chosen source. */
+  startScrivenerImport(
+    handle: string,
+    name: string,
+  ): Promise<ScrivenerImportOutcome>;
 }
 
 const bridge: GetWriteDesktopBridge = {
   getWorkspaceDir: () => ipcRenderer.invoke("getwrite:workspace-dir"),
   chooseWorkspaceDir: () => ipcRenderer.invoke("getwrite:choose-workspace-dir"),
   restart: () => ipcRenderer.invoke("getwrite:restart"),
+  chooseScrivenerSource: () =>
+    ipcRenderer.invoke("getwrite:scrivener-choose-source"),
+  startScrivenerImport: (handle: string, name: string) =>
+    ipcRenderer.invoke("getwrite:scrivener-start-import", { handle, name }),
 };
 
 contextBridge.exposeInMainWorld("getwriteDesktop", bridge);

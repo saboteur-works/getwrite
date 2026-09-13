@@ -475,7 +475,7 @@ model only; multi-user/collaboration conflict handling is a permanent
 non-goal per the parent spec's Non-goals. Broken out as its own feature so
 it is not silently absorbed into Feature 28's scope.
 
-### Feature 31: Scrivener CLI importer — Not started
+### Feature 31: Scrivener CLI importer — Shipped
 **Value:** A novelist migrating from Scrivener imports their Scrivener 3,
 Mac-authored project's binder — Draft, user-created top-level folders beside
 Draft, and text documents within Research — document text, and per-document
@@ -500,8 +500,15 @@ the writer can read.
 **User stories:** US-4
 **Depends on:** Feature 2
 **Branch suggestion:** feat/scrivener-cli-importer
-**Notes:** Not started. This feature replaces the former combined "Scrivener/
-Word project importer" entry that previously held this ID — split 2026-09-11
+**Notes:** Shipped. Merged to `main` on 2026-09-12 as merge commit
+`f12745de` ("Merge branch 'feat/scrivener-cli-importer'" — a local merge, no
+PR number). Its feature spec, `specs/features/scrivener-cli-importer.md`, is
+the authoritative record of the shipped scope. Two follow-up fixes merged
+the same day: an editor plain-text revision-flattening fix (`ef387a18`,
+2026-09-12) and a sidecar write/read race fix making sidecar writes atomic
+so unlocked readers never see a partial file (PR #197, `600094f5`,
+2026-09-12). This feature replaces the former combined "Scrivener/Word
+project importer" entry that previously held this ID — split 2026-09-11
 (owner decision) once Scrivener import became committed, current work (FR-42)
 distinct from Word/DOCX import, which stays an unscheduled Later requirement
 (now Feature 45). Scoped to Scrivener 3, Mac-authored projects only (resolved
@@ -522,20 +529,20 @@ requirement covering them — see its Out of Scope (Deferred) section
 instead. One-shot only: each run creates a fresh GetWrite
 project, with no notion of re-importing into or merging with an existing one
 (resolved OQ-12); repeatable/merge import is Feature 44, a separate, deferred
-feature. This is the first deliverable in the CLI-first sequencing decided at
-the product-spec gate (resolved OQ-14) — a writer-facing UI import flow is
-Feature 43, a follow-up that depends on this feature shipping first.
-Considered and rejected: splitting this feature further into a
-binder-plus-text slice and a separate metadata-mapping slice. FR-42 bundles
+feature. This was the first deliverable in the CLI-first sequencing decided
+at the product-spec gate (resolved OQ-14); a writer-facing UI import flow,
+Feature 43, now depends on this feature having shipped rather than on it
+shipping in the future. Considered and rejected: splitting this feature
+further into a binder-plus-text slice and a separate metadata-mapping
+slice — resolved 2026-09-11 in this feature's own feature spec (that spec's
+OQ-3): one combined implementation pass, no split. FR-42 bundles
 synopsis/notes/status/keywords/custom-metadata carry-over into the same
 one-shot command and the same skip-and-report behavior as binder structure
-and document text; a binder-plus-text-only first slice would ship a
+and document text; a binder-plus-text-only first slice would have shipped a
 materially lesser import (silently dropping status, keywords, and custom
 fields a writer would reasonably expect) rather than a genuinely independent
-vertical slice, so the requirement's own bundling is treated as the shippable
-unit here. If this feature's own task breakdown finds the combined scope too
-large for one implementation pass, splitting there is still open — see this
-feature list's Open Questions.
+vertical slice, so the requirement's own bundling was the shippable unit
+implemented here.
 
 ### Feature 32: Join full-text search with saved-query predicates — Not started
 **Value:** A plain-file writer filters by full-text content and by
@@ -1001,7 +1008,7 @@ click-to-navigate gesture is a real implementation cost this entry does not
 minimize away — see this feature list's Open Questions for the pixel-movement
 threshold that decision needs.
 
-### Feature 42: Remove an entity declaration — Not started
+### Feature 42: Remove an entity declaration — Shipped
 **Value:** A novelist who declared a resource as an entity by mistake, or no
 longer wants it tracked as one, can fully un-declare it in one action —
 clearing `entityKind` and `aliases` together — instead of using the existing
@@ -1033,7 +1040,14 @@ the alias table on completion.
 **User stories:** US-3
 **Depends on:** Feature 33, Feature 38
 **Branch suggestion:** feat/remove-entity
-**Notes:** Not started. This is a scoped exception to the product's
+**Notes:** Shipped. Merged as PR #196 (`7559a5e3`), 2026-09-11. Its feature
+spec, `specs/features/remove-entity.md`, is the authoritative record of the
+shipped scope — including a sidecar-clearing defect found and fixed along
+the way: clearing `entityKind`/`aliases` by sending an `undefined`-valued
+key never survived `JSON.stringify` to the server, so the field was measured
+to persist on disk despite a 200 response; the fix introduced an explicit
+`clearKeys` parameter threaded through the sidecar write on both HTTP and
+native transports. This is a scoped exception to the product's
 otherwise-universal rule that deleting an entity leaves its authored edges,
 backlinks, and mentions untouched (see FR-39 and the CLAUDE.md glossary's
 "Entity relationship" entry) — FR-41 explicitly carves out an opt-in bulk
@@ -1051,30 +1065,52 @@ no trash-like holding area for deleted edges, per resolved OQ-8, consistent
 with edges never being soft-deleted anywhere in the product.
 
 ### Feature 43: Scrivener UI import flow — Not started
-**Value:** A novelist who doesn't want to touch the CLI can import their
-Scrivener project directly from the app, with the same one-shot scope
-Feature 31's CLI command already provides.
-**Vertical slice:** An import entry point in the app (e.g. from the Start
-page's project-management surface, alongside create/open/rename/delete) that
-lets a writer pick a `.scriv` project, invokes the same underlying binder/
-text/metadata conversion logic Feature 31's CLI command performs — reused,
-not reimplemented, consistent with how this codebase shares model-layer logic
-between CLI and UI elsewhere — plus progress/completion UI and a UI rendering
-of the same skip-and-report output the CLI produces as a file.
+**Value:** A novelist using the Electron desktop app who doesn't want to
+touch the CLI can import their Scrivener project directly from the app, with
+the same one-shot scope Feature 31's CLI command already provides.
+**Vertical slice:** A native OS directory picker running in the Electron
+main process (precedent: `electron/src/main.ts`'s
+`getwrite:choose-workspace-dir` IPC handler using
+`dialog.showOpenDialog({ properties: ["openDirectory"] })`, exposed via
+`electron/src/preload.ts`) that lets a writer pick a `.scriv` project; the
+picked path is handed to the already-shipped `importScrivenerProject`
+conversion through a trusted main-process path, reusing Feature 31's binder/
+text/metadata conversion logic unchanged rather than reimplementing it — the
+renderer MUST NOT send a filesystem path to a Next API route
+(`docs/standards/security.md` §2, "Never Trust a Client-Supplied Path"); the
+exact handoff design between the main-process picker and the conversion call
+is a feature-spec decision, not settled here; plus progress/completion UI and
+a UI rendering of the same skip-and-report output the CLI produces as a file.
 **Requirements covered:** FR-43
 **User stories:** US-4
 **Depends on:** Feature 31
 **Branch suggestion:** feat/scrivener-ui-import
-**Notes:** Not started. Sits in the parent spec's Next milestone rather than
-alongside Feature 31 in In Progress, because it depends on Feature 31's CLI
-command shipping first (resolved OQ-14 in the parent spec: CLI first, UI as
-a follow-up). Scope otherwise matches Feature 31 exactly — same one-shot
-behavior, same imported content (the project's binder — Draft, user-created
-top-level folders, and text documents in Research, widened 2026-09-11 at
-Feature 31's feature-spec gate — document text, synopsis/notes, status,
-keywords, custom metadata), same skip-and-report handling, same Scrivener
-3/Mac-only support — this feature is a UI wrapper around Feature 31's
-conversion, not a re-scoping of it.
+**Notes:** Not started — no code exists yet for this feature. In the parent
+product spec, FR-43 moved from Next Requirements into In Progress
+Requirements on 2026-09-12 (owner decision, resolved OQ-17) now that its
+platform-scope gate is resolved (resolved OQ-18): the flow is scoped to the
+Electron desktop build only, using a native OS directory picker in the
+Electron main process, with the picked path reaching the existing,
+already-shipped `importScrivenerProject` conversion through a trusted
+main-process path — never a client-supplied filesystem path sent to a Next
+API route. Hosted web and native Android UI import are deferred, not
+permanently excluded (see the parent spec's Out of Scope (Deferred)); no
+separate feature entry exists here for either, since the owner's instruction
+at this feature's Gate 0 was that a platform-scope split should come back to
+them only if scope forced one, and the Electron-only decision does not force
+one — see this feature list's Open Questions for whether the deferred web/
+native scope should eventually get its own feature entry. This replaces the
+earlier "depends on Feature 31's CLI command shipping first" rationale for
+sitting outside In Progress — Feature 31 has since shipped (merged
+2026-09-12 as `f12745de`), so that dependency is now satisfied; this
+feature's own implementation work has simply not started yet. Scope
+otherwise matches Feature 31 exactly — same one-shot behavior, same imported
+content (the project's binder — Draft, user-created top-level folders, and
+text documents in Research, widened 2026-09-11 at Feature 31's feature-spec
+gate — document text, synopsis/notes, status, keywords, custom metadata),
+same skip-and-report handling, same Scrivener 3/Mac-only support — this
+feature is a UI wrapper around Feature 31's conversion, not a re-scoping of
+it.
 
 ### Feature 44: Repeatable Scrivener import — Not started
 **Value:** A novelist who already imported a Scrivener project can re-run
@@ -1115,9 +1151,76 @@ planned feature, not out of scope. This feature carries the ID previously
 held together with Scrivener import under the old combined Feature 31
 entry; split 2026-09-11 (owner decision) once Scrivener import became
 committed, current work (now Features 31/43/44) distinct from Word/DOCX
-import, which remains an unscheduled Later requirement. No import path
-exists today from either format, which is a known adoption risk called out
-in the parent spec's Constraints.
+import, which remains an unscheduled Later requirement. Feature 31 (the
+Scrivener CLI importer) has since shipped, but no import path exists today
+from Word/DOCX, and the Scrivener CLI's own adoption reach is limited to
+writers willing to use a command line pending Feature 43 — both remain a
+known adoption risk called out in the parent spec's Constraints.
+
+### Feature 46: Scrivener UI import on hosted web — Not started
+**Value:** A novelist using GetWrite's hosted web product imports their
+Scrivener project directly from the browser, with the same one-shot scope
+Feature 31's CLI command and Feature 43's desktop UI already provide.
+**Vertical slice:** A multi-file/directory or zip-upload mechanism for a
+`.scriv` bundle — none exists today; `app/api/resource/upload` accepts a
+single file only — plus server-side decompression and path-traversal limits
+consistent with `docs/standards/security.md`, hosted object-store/tenant
+storage staging for the uploaded bundle (ADR-019/ADR-020 considerations), and
+a UI wrapper around the already-shipped `importScrivenerProject` conversion
+(Feature 31), analogous to Feature 43's desktop wrapper.
+**Requirements covered:** None of its own — this is deferred platform scope
+carved out of the Scrivener UI import requirement (see parent spec Out of
+Scope (Deferred) and this document's Open Questions); no dedicated
+requirement exists for it in the product spec yet.
+**User stories:** US-4
+**Depends on:** Feature 43, and Feature 31
+**Branch suggestion:** feat/scrivener-web-import
+**Notes:** Placeholder entry — not started, undesigned, and not scheduled.
+Added at the owner's Gate 2 decision (2026-09-12) resolving this document's
+own open question about whether the deferred hosted-web/native-Android
+Scrivener UI import scope should eventually become its own feature entry
+(resolved OQ-18 in the parent spec). Blocked on the absence of any
+multi-file/directory upload or zip mechanism in the hosted product —
+`app/api/resource/upload` is single-file only — which would need a new
+upload/staging mechanism with decompression and path-traversal limits, plus
+hosted object-store/tenant storage (ADR-019/ADR-020) considerations, before
+any of this could be built. A dedicated requirement would need to be added to
+the product spec before this feature is specced — the parent spec currently
+documents this scope only as an Out of Scope (Deferred) bullet, not a
+requirement, and this entry does not invent one. The mechanism is entirely
+unproven: no upload/staging design, no decompression/path-traversal design,
+and no hosted object-store staging design exist yet.
+
+### Feature 47: Scrivener UI import on native Android — Not started
+**Value:** A novelist using GetWrite's native Android app imports their
+Scrivener project directly from the device, with the same one-shot scope
+Feature 31's CLI command and Feature 43's desktop UI already provide.
+**Vertical slice:** A directory-picking mechanism for a multi-file `.scriv`
+bundle via Capacitor — no such precedent exists in the native shell today —
+routed through the ADR-021 in-process `native-*-backend.ts` pattern to reach
+the already-shipped `importScrivenerProject` conversion (Feature 31), plus
+whatever on-device staging the picked bundle needs before conversion can run
+against it.
+**Requirements covered:** None of its own — this is deferred platform scope
+carved out of the Scrivener UI import requirement (see parent spec Out of
+Scope (Deferred) and this document's Open Questions); no dedicated
+requirement exists for it in the product spec yet.
+**User stories:** US-4
+**Depends on:** Feature 43, and Feature 31
+**Branch suggestion:** feat/scrivener-android-import
+**Notes:** Placeholder entry — not started, undesigned, and not scheduled.
+Added at the owner's Gate 2 decision (2026-09-12) resolving this document's
+own open question about whether the deferred hosted-web/native-Android
+Scrivener UI import scope should eventually become its own feature entry
+(resolved OQ-18 in the parent spec). Blocked on the absence of any
+directory-picking precedent for a multi-file `.scriv` bundle via Capacitor,
+and on routing that picker's output through the ADR-021 in-process
+`native-*-backend.ts` pattern the rest of the native data layer already
+uses. A dedicated requirement would need to be added to the product spec
+before this feature is specced — the parent spec currently documents this
+scope only as an Out of Scope (Deferred) bullet, not a requirement, and this
+entry does not invent one. The mechanism is entirely unproven: no
+directory-picker design and no on-device staging design exist yet.
 
 ---
 
@@ -1174,7 +1277,7 @@ in the parent spec's Constraints.
 
 ## Summary
 
-- Total features: 45
+- Total features: 47
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -1194,39 +1297,49 @@ in the parent spec's Constraints.
   revisions) are independently startable now. 28 (hosted multi-device
   access) must land before 30 (its conflict-resolution model, which depends
   on it). 29 (durable search backend) is contingent on demonstrated need
-  rather than sequenced by dependency. 31 (Scrivener CLI importer) only
-  depends on the already-shipped Feature 2. 43 (Scrivener UI import flow) and
-  44 (repeatable Scrivener import) both depend on 31 shipping first, per the
-  CLI-first sequencing the parent spec's resolved OQ-14 settles — 43 wraps
-  31's conversion logic in a UI, and 44 needs 31's one-shot conversion to
-  already exist before a re-run/merge strategy can build on it; 43 and 44 do
-  not depend on each other and can be built in either order once 31 ships. 45
-  (Word/DOCX importer) only depends on the already-shipped Feature 2,
-  independently of the Scrivener chain. 32 (joining search and query
-  predicates) depends on the already-shipped Features 8 and 9. 42 (removing
-  an entity declaration) depends on the already-shipped Features 33 and 38 —
-  33 for the entity declaration it reverses, 38 for the authored edges its
-  keep/delete-edges choice acts on — and is independently startable now.
+  rather than sequenced by dependency. 31 (Scrivener CLI importer) has
+  shipped, having depended only on the already-shipped Feature 2. 43
+  (Scrivener UI import flow) and 44 (repeatable Scrivener import) both
+  depended on 31 shipping first, per the CLI-first sequencing the parent
+  spec's resolved OQ-14 settles, and can now both start — 43 wraps 31's
+  conversion logic in a UI, and 44 needs 31's one-shot conversion to already
+  exist before a re-run/merge strategy can build on it; 43 and 44 do not
+  depend on each other and can be built in either order now that 31 has
+  shipped. 45 (Word/DOCX importer) only depends on the already-shipped
+  Feature 2, independently of the Scrivener chain. 32 (joining search and
+  query predicates) depends on the already-shipped Features 8 and 9. 42
+  (removing an entity declaration) has shipped, having depended on the
+  already-shipped Features 33 and 38 — 33 for the entity declaration it
+  reverses, 38 for the authored edges its keep/delete-edges choice acted on.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-  36, 37, 38, 39, 40, 41, 42, 45 (30, 43, and 44 are the features left with an
-  unmet hard dependency — 30 on 28, and both 43 and 44 on 31)
-- Not yet built: 24, 26, 27, 28, 29, 30, 31, 32, 42, 43, 44, 45.
+  36, 37, 38, 39, 40, 41, 42, 43, 44, 45 (30, 46, and 47 are the features left
+  with an unmet hard dependency — 30 on 28, and 46 and 47 both on 43, which
+  has not shipped; Feature 31 has since shipped, so 43's and 44's former
+  dependency on it is now satisfied)
+- Not yet built: 24, 26, 27, 28, 29, 30, 32, 43, 44, 45, 46, 47.
   Everything else in this list has shipped.
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
   design decision before implementation tasks can be written. Feature 28 is
   the largest slice in this list (hosted tenancy + sync transport) and is
   likely to need its own further feature breakdown rather than a single
-  task list, though substantial foundations already ship. Feature 31
-  carries external-format-parsing risk (Scrivener's `.scriv` container
-  format is undocumented by Scrivener itself) that may affect estimate
-  confidence more than the other Not-started features; Feature 45 carries the
-  equivalent risk for the DOCX format. Features 43 and 44 inherit Feature
-  31's parsing risk by depending on it, plus their own: Feature 43's scope is
-  well-defined (a UI wrapper around already-decided conversion logic) but
-  Feature 44 is undesigned in the same sense Feature 30 and Feature 38 are —
-  see its own entry. Feature 27 merges two
+  task list, though substantial foundations already ship. Feature 31 has
+  shipped; its RTF-parsing approach was measured against a real Scrivener
+  project's 75 RTF files rather than left as an unverified assumption about
+  Scrivener's undocumented `.scriv` container format
+  (`specs/features/scrivener-cli-importer.md`'s OQ-4: bold/italic control
+  words appeared in the majority of files, Unicode escapes in under half,
+  and no file exercised underline, tables, images, strikethrough, or a
+  Scrivener-specific link/annotation control word). Feature 45 still carries
+  the equivalent format-parsing risk unmeasured for DOCX. Features 43 and
+  44's dependency on Feature 31 is now satisfied, so neither carries Feature
+  31's former unmeasured-format risk by inheritance; Feature 43's own scope
+  remains well-defined (a UI wrapper, per FR-43, around already-shipped
+  conversion logic — its own risk is confined to the Electron main-process
+  directory-picker handoff, an implementation detail left to that feature's
+  own feature spec) while Feature 44 remains undesigned in the same sense
+  Feature 30 and Feature 38 are — see its own entry. Feature 27 merges two
   previously separate concerns (revision-aware indexing and diff-open
   revision selection) per the parent spec's FR-29 correction; its task
   breakdown should confirm the merge doesn't hide two different sizes of
@@ -1387,8 +1500,25 @@ FR-42 split (this document's own scoping call, 2026-09-11):
   GetWrite's metadata layer.** Bold/italic formatting is preserved; Label
   maps onto a custom select field; Keywords map onto leaf-name tags with
   collisions/merges reported to the writer.
-- Feature 43's exact UI entry point (Start page project-management surface,
-  a dedicated import wizard, or somewhere else) is not decided here.
+- Feature 43's exact UI entry point within the Electron desktop app (Start
+  page project-management surface, a dedicated import wizard, or somewhere
+  else) is not decided here, nor is the exact handoff design between the
+  Electron main-process directory picker and the `importScrivenerProject`
+  call it hands off to — both left to this feature's own feature spec, per
+  the parent spec's resolved OQ-18.
+- **Resolved (owner decision, Gate 2 review, 2026-09-12): the deferred
+  hosted-web/native-Android Scrivener UI import scope gets two placeholder
+  feature entries now, not one.** The parent spec's OQ-18 defers Scrivener UI
+  import on hosted web and native Android without a defined mechanism (hosted
+  web has no multi-file/directory upload today; native Android has no
+  directory-picking precedent) — this was previously left open here as
+  whether that deferred scope should eventually become its own feature entry.
+  The owner chose to add it now rather than wait for a platform mechanism to
+  exist, as two separate entries rather than one, since the two platforms'
+  blocking mechanisms differ: Feature 46 (Scrivener UI import on hosted web)
+  and Feature 47 (Scrivener UI import on native Android). Both are
+  placeholders — undesigned, not scheduled, mechanism unproven — and neither
+  carries a dedicated FR of its own; see each entry's Notes.
 - Feature 44's diff/merge strategy for reconciling a re-import against an
   already-imported project's current state — and how a prior import's
   identity is recorded and linked back to its `.scriv` source — is

@@ -364,30 +364,24 @@ lost work.
   declarations from within the roster itself — MUST NOT discover or infer
   an entity the writer never declared, and MUST NOT perform
   pronoun/coreference resolution or any model-backed inference. [US-3]
-
-### In Progress Requirements
-
-- FR-26: Organizer view MUST support filtering cards by Status, by word
-  count, and by the resource-reference fields a project defines (the
-  characters and locations folders the fiction templates provide being the
-  common case); no card filtering of any kind exists today. Organizer's only
-  in-view control is a show/hide-bodies toggle — though what a card body
-  renders (nothing, a text excerpt of configurable length, or any metadata
-  field) is a separate per-project setting that already ships. [US-7]
-- FR-27: Desktop builds MUST be signed and installable without an OS
-  security warning on macOS and Windows. [US-8]
 - FR-42: The product SHOULD offer a CLI command that imports an existing
   Scrivener 3, Mac-authored `.scriv` project into a new GetWrite project.
-  Owner decision (2026-09-11): Scrivener import is now committed, current
-  work — Scrivener is the closest analogue to GetWrite's own structure and
-  is the first import source — reversing the concept's earlier "planned but
-  not near-term" posture for Scrivener specifically. Nothing is built yet;
-  this is a statement of committed direction, not a shipped or
-  partially-shipped capability. The CLI command is the first deliverable
-  (resolved: OQ-14); a writer-facing UI import flow is a separate follow-up
-  requirement (FR-43). Import is one-shot: each run creates a fresh GetWrite
-  project, with no notion of re-importing into or merging with an existing
-  one (resolved: OQ-12; repeatable import is a separate, deferred
+  Shipped: merged to main 2026-09-12 as `f12745de` ("Merge branch
+  'feat/scrivener-cli-importer'"). The command is
+  `getwrite-cli project import-scrivener <scrivPath> [projectRoot] [-n
+  <name>]`; its entry point is
+  `frontend/src/lib/models/scrivener/import-scrivener-project.ts`
+  (`importScrivenerProject`). Its feature spec,
+  `specs/features/scrivener-cli-importer.md`, is the authoritative record of
+  the shipped scope. Owner decision (2026-09-11): Scrivener import was
+  committed as current work — Scrivener is the closest analogue to
+  GetWrite's own structure and is the first import source — reversing the
+  concept's earlier "planned but not near-term" posture for Scrivener
+  specifically. The CLI command was the first deliverable (resolved:
+  OQ-14); a writer-facing UI import flow is a separate follow-up
+  requirement (FR-43). Import is one-shot: each run creates a fresh
+  GetWrite project, with no notion of re-importing into or merging with an
+  existing one (resolved: OQ-12; repeatable import is a separate, deferred
   requirement — FR-44). The imported content is the project's binder —
   Draft, user-created top-level folders beside Draft (e.g. Templates,
   Archive, Scraps), and text documents (and their folders) within Research —
@@ -410,16 +404,39 @@ lost work.
   explicit, documented gap, not rejected outright (resolved: OQ-16; see Out
   of Scope (Deferred)). [US-4]
 
-### Next Requirements
+### In Progress Requirements
 
+- FR-26: Organizer view MUST support filtering cards by Status, by word
+  count, and by the resource-reference fields a project defines (the
+  characters and locations folders the fiction templates provide being the
+  common case); no card filtering of any kind exists today. Organizer's only
+  in-view control is a show/hide-bodies toggle — though what a card body
+  renders (nothing, a text excerpt of configurable length, or any metadata
+  field) is a separate per-project setting that already ships. [US-7]
+- FR-27: Desktop builds MUST be signed and installable without an OS
+  security warning on macOS and Windows. [US-8]
 - FR-43: The product SHOULD offer a writer-facing UI flow for importing an
   existing Scrivener project (FR-42), so that Scrivener import is not
   limited to CLI users. This is the follow-up half of the CLI-first
-  sequencing decided for FR-42 (owner decision, 2026-09-11): it sits in Next
-  rather than In Progress because the CLI command it depends on has not yet
-  shipped. Scope otherwise matches FR-42 — same one-shot behavior, same
-  imported content, same skip-and-report handling of unconvertible content,
-  same Scrivener 3/Mac-only support. [US-4]
+  sequencing decided for FR-42 (owner decision, 2026-09-11). FR-42's CLI
+  command has since shipped (merged to main 2026-09-12 as `f12745de`).
+  Owner decision (2026-09-12): FR-43 moves from Next Requirements into In
+  Progress Requirements now that its platform-scope gate (OQ-18) is
+  resolved (resolved: OQ-17). Scope otherwise matches FR-42 — same one-shot
+  behavior, same imported content, same skip-and-report handling of
+  unconvertible content, same Scrivener 3/Mac-only support. This
+  requirement is scoped to the Electron desktop build: a writer picks the
+  source `.scriv` project via a native OS directory picker running in the
+  Electron main process, and that main-process-resolved path is handed to
+  the existing `importScrivenerProject` conversion — the renderer MUST NOT
+  send a filesystem path to a Next API route (`docs/standards/security.md`
+  §2, "Never Trust a Client-Supplied Path"). The exact handoff design
+  between the main-process picker and the conversion call is a
+  feature-level decision, not decided here. Hosted web and native Android
+  UI import are deferred (resolved: OQ-18; see Out of Scope (Deferred)).
+  [US-4]
+
+### Next Requirements
 
 - FR-39: The product SHOULD provide a project-level entity relationship
   graph — a view presenting declared entities as nodes and their
@@ -553,7 +570,7 @@ lost work.
   projects, converting them into a GetWrite project structure. This is a
   real, planned feature belonging here in Later, not in Out of Scope.
   Split 2026-09-11 (owner decision) from the Scrivener half of this
-  requirement, which is now committed, current work — see FR-42. [US-18]
+  requirement — see FR-42, which has since shipped (2026-09-12). [US-18]
 - FR-44: The product MAY support repeatable Scrivener import — re-running
   import against the same `.scriv` project to merge changes into, or
   refresh, an already-imported GetWrite project, rather than always
@@ -582,12 +599,11 @@ lost work.
   the project; no feature may rely on path as identity.
 - The desktop build must remain fully functional with no network access and
   no account.
-- No import path currently exists from Scrivener (`.scriv`) or Word/DOCX
-  projects; this remains a known adoption risk today, since nothing is
-  built yet for either. As of 2026-09-11 (owner decision), Scrivener import
-  specifically is committed, in-progress-as-planned work (FR-42), reversing
-  its earlier Later placement; Word/DOCX import remains an unscheduled
-  Later requirement (FR-33).
+- A CLI import path from Scrivener (`.scriv`) now exists (FR-42, shipped
+  2026-09-12); no writer-facing UI import path exists yet (FR-43, Next) and
+  no import path exists from Word/DOCX projects (FR-33, Later) — the CLI's
+  own adoption reach is limited to writers willing to use a command line,
+  so the absence of a UI path remains a known adoption risk today.
 - Compile is export-only and must never mutate revisions or project state.
 - Full-text search indexes and searches only each resource's canonical
   revision today; retained revisions remain browsable and diffable but are
@@ -876,6 +892,53 @@ Windows-authored `.scriv` project has not been surveyed against this
 example.
 **Impact:** FR-42, FR-43.
 
+**OQ-17 (resolved): Now that FR-42's CLI dependency has shipped, should
+FR-43 (the Scrivener UI import flow) move out of Next Requirements into a
+different milestone, or stay in Next?**
+**Resolution (owner decision, 2026-09-12):** FR-43 moves from Next
+Requirements into In Progress Requirements, with its start gated on OQ-18's
+resolution. OQ-18 is resolved in this same decision, so that gate is
+satisfied and FR-43 sits in In Progress now.
+**Impact:** FR-43's milestone placement, and by extension its priority
+relative to the rest of Next (FR-28, FR-29, FR-39 through FR-41) versus In
+Progress (FR-26, FR-27).
+**Evidence:** FR-43's original rationale for sitting in Next rather than In
+Progress was that "the CLI command it depends on has not yet shipped"
+(owner decision, 2026-09-11, OQ-14). FR-42 merged to main 2026-09-12
+(`f12745de`), so that stated blocker no longer holds.
+
+**OQ-18 (resolved): Which platform(s) must the Scrivener UI import flow
+(FR-43) support, and how does the source `.scriv` project reach the
+conversion on each?**
+**Resolution (owner decision, 2026-09-12):** Electron desktop first;
+hosted web and native Android UI import are deferred, not permanently
+excluded (see Out of Scope (Deferred)). Mechanism: a native OS directory
+picker running in the Electron main process (precedent:
+`electron/src/main.ts`'s `getwrite:choose-workspace-dir` IPC handler using
+`dialog.showOpenDialog({ properties: ["openDirectory"] })`, exposed via
+`electron/src/preload.ts`), with the picked `.scriv` path handed to the
+already-shipped `importScrivenerProject` conversion through a trusted
+main-process path — not by the renderer sending a filesystem path to a Next
+API route, since `docs/standards/security.md` §2 "Never Trust a
+Client-Supplied Path" forbids that. The exact handoff design is a
+feature-level decision, not decided here.
+**Impact:** FR-43.
+**Evidence:** The shipped CLI importer (FR-42) reads the `.scriv` source by
+filesystem path through `frontend/src/lib/models/io.ts` —
+`scrivx-parser.ts`, `binder-mapper.ts`, and `import-scrivener-project.ts`
+all import from `../io`. GetWrite ships on three platforms with different
+filesystem access models: hosted web (a server-side filesystem/object-store
+backend per request, tenant-scoped), Electron desktop (a local Next
+standalone server with direct `node:fs` access), and native Android
+(Capacitor, no `node:fs`, every client-to-server call collapsed in-process
+per ADR-021). A browser file picker yields no filesystem path for the
+hosted-web case, and a `.scriv` project is a directory bundle rather than a
+single file, which a standard file input does not hand over as a path
+either; neither case has an existing multi-file/directory upload or zip
+mechanism to build on (`app/api/resource/upload` is single-file), and
+native has no directory-picking precedent, which is why both remain
+deferred rather than resolved here.
+
 ## Out of Scope (Deferred)
 
 - A keyboard-operable equivalent for dragging a node on the entity
@@ -897,6 +960,12 @@ example.
   for Scrivener import (FR-42/FR-43, resolved: OQ-16). Only Scrivener 3,
   Mac-authored projects are supported; this is an explicit, documented gap,
   not a rejection.
+- Scrivener UI import (FR-43) on hosted web and native Android (resolved:
+  OQ-18). Hosted web has no existing multi-file/directory upload or zip
+  mechanism to build on (`app/api/resource/upload` is single-file), and
+  native Android has no directory-picking precedent; a future requirement
+  would be needed for either. FR-43 is scoped to Electron desktop only;
+  this deferral is not a permanent exclusion.
 - [Later] Hosted multi-tenant access and cross-device sync as a shipped,
   user-facing product (foundations exist per ADR-017–ADR-022; not shipped).
 - [Later] Native Android packaging, signing, and distribution as a shipped

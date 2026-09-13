@@ -26,11 +26,64 @@ export interface WorkspaceChangeResult {
   cancelled?: boolean;
 }
 
+/** What choosing a Scrivener source project can result in. */
+export type ScrivenerSourceChoice =
+  | { ok: true; handle: string; displayName: string }
+  | { ok: false; cancelled: true };
+
+/** A successful import. */
+export interface ImportSuccessOutcome {
+  readonly kind: "success";
+  readonly projectId: string;
+  readonly projectRoot: string;
+  readonly folderCount: number;
+  readonly resourceCount: number;
+  readonly tagCount: number;
+  readonly report: string;
+}
+
+/** The source `.scriv` project was refused as unsupported (FR-2). */
+export interface ImportRefusalUnsupportedOutcome {
+  readonly kind: "refusal-unsupported";
+  readonly message: string;
+}
+
+/** The destination project root already exists and is non-empty. */
+export interface ImportRefusalDestinationNotEmptyOutcome {
+  readonly kind: "refusal-destination-not-empty";
+  readonly message: string;
+}
+
+/** Any other error raised while importing. */
+export interface ImportFatalOutcome {
+  readonly kind: "fatal";
+  readonly message: string;
+}
+
+/**
+ * The four-kind discriminated outcome of a Scrivener import (FR-12).
+ * Mirrors `electron/src/scrivener-import/handle-import-request.ts`'s
+ * `ImportOutcome` byte-for-byte; redeclared here because `frontend` cannot
+ * import across the `electron/src` package boundary.
+ */
+export type ScrivenerImportOutcome =
+  | ImportSuccessOutcome
+  | ImportRefusalUnsupportedOutcome
+  | ImportRefusalDestinationNotEmptyOutcome
+  | ImportFatalOutcome;
+
 /** The surface `preload.ts` exposes. Mirrors its `GetWriteDesktopBridge`. */
 export interface DesktopBridge {
   getWorkspaceDir(): Promise<string>;
   chooseWorkspaceDir(): Promise<WorkspaceChangeResult>;
   restart(): Promise<void>;
+  /** Opens a native picker for a Scrivener `.scriv` source project. */
+  chooseScrivenerSource(): Promise<ScrivenerSourceChoice>;
+  /** Runs a Scrivener import from a previously chosen source. */
+  startScrivenerImport(
+    handle: string,
+    name: string,
+  ): Promise<ScrivenerImportOutcome>;
 }
 
 /**

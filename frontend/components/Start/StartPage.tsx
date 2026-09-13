@@ -10,7 +10,7 @@
  * and local optimistic updates for create/rename/delete interactions.
  */
 import { useEffect, useMemo, useState } from "react";
-import { FolderPlus, Plus, FolderOpen } from "lucide-react";
+import { FolderPlus, Plus, FolderOpen, Import } from "lucide-react";
 import Card from "../common/UI/Card/Card";
 import type {
   Project as CanonicalProject,
@@ -22,6 +22,7 @@ import CreateProjectModal, {
 } from "./CreateProjectModal";
 import ManageProjectMenu from "./ManageProjectMenu";
 import CompilePreviewModal from "../common/CompilePreviewModal";
+import ImportScrivenerDialog from "./ImportScrivenerDialog";
 import { toastService } from "../../src/lib/toast-service";
 import { downloadFile } from "../../src/lib/compile/download-file";
 import {
@@ -34,6 +35,10 @@ import { getProjectDirectoryId } from "../../src/store/projectsSlice";
 import { formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 import Button from "../common/UI/Button";
 import UnlockModal from "../common/UnlockModal";
+import {
+  getDesktopBridge,
+  type DesktopBridge,
+} from "../../src/lib/desktop-bridge";
 
 /**
  * Project card data shape displayed on the start page.
@@ -182,6 +187,14 @@ export interface StartPageProps {
   unlockErrorMessage?: string;
   /** Called with the entered passphrase. Absent means no gate is shown. */
   onUnlock?: (passphrase: string) => void;
+  /**
+   * Called after a Scrivener import completes successfully, with the
+   * newly created project's on-disk directory id.
+   *
+   * Absent on the hosted/web build's `StartPage` usage sites that never
+   * render the Import control in the first place (no desktop bridge).
+   */
+  onImportComplete?: (projectId: string) => void;
 }
 
 /**
@@ -211,7 +224,35 @@ export default function StartPage({
   isUnlocking = false,
   unlockErrorMessage,
   onUnlock,
+  onImportComplete,
 }: StartPageProps): JSX.Element {
+  /**
+   * The desktop bridge, when running in the Electron shell.
+   *
+   * Absent (`null`) on hosted/web and Android — the Import control must be
+   * absent there, not merely disabled, mirroring
+   * `WorkspaceLocationSettings.tsx`'s `if (!bridge) return null` pattern.
+   *
+   * Detected after mount rather than synchronously during render: on the
+   * Electron client, `window.getwriteDesktop` is already present on the
+   * very first client render, while the server-rendered HTML has no bridge
+   * to see. Computing this with `useMemo` during render made the first
+   * client render disagree with the server-rendered markup (the Import
+   * button present vs. absent), a hydration mismatch. Deferring detection
+   * to a mount effect keeps the server-rendered markup and the client's
+   * first render in agreement (both show no Import button); the button
+   * appears only after the effect runs, post-hydration.
+   */
+  const [desktopBridge, setDesktopBridge] = useState<DesktopBridge | null>(
+    null,
+  );
+
+  useEffect(() => {
+    setDesktopBridge(getDesktopBridge());
+  }, []);
+
+  /** Controls the Scrivener import dialog's visibility. */
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState<boolean>(false);
   /**
    * Whether the user chose to carry on without unlocking this session.
    *
@@ -378,6 +419,17 @@ export default function StartPage({
         onClose={() => setIsModalOpen(false)}
         onCreate={handleModalCreate}
       />
+
+      {desktopBridge ? (
+        <ImportScrivenerDialog
+          isOpen={isImportDialogOpen}
+          onClose={() => setIsImportDialogOpen(false)}
+          onImported={(projectId) => {
+            setIsImportDialogOpen(false);
+            onImportComplete?.(projectId);
+          }}
+        />
+      ) : null}
 
       <CompilePreviewModal
         isOpen={compileTargetProjectId !== null}
@@ -576,15 +628,29 @@ export default function StartPage({
                   </Card>
                 </div>
 
-                <Button
-                  variant="default"
-                  onClick={() => setIsModalOpen(true)}
-                  title="Start a New Projct"
-                  aria-label="Start a new project"
-                >
-                  <FolderPlus size={16} aria-hidden="true" />
-                  Start a New Project
-                </Button>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    variant="default"
+                    onClick={() => setIsModalOpen(true)}
+                    title="Start a New Projct"
+                    aria-label="Start a new project"
+                  >
+                    <FolderPlus size={16} aria-hidden="true" />
+                    Start a New Project
+                  </Button>
+
+                  {desktopBridge ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => setIsImportDialogOpen(true)}
+                      title="Import from Scrivener"
+                      aria-label="Import from Scrivener"
+                    >
+                      <Import size={16} aria-hidden="true" />
+                      Import
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </aside>
           </div>

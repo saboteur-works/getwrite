@@ -1,6 +1,7 @@
 import React from "react";
 import { useDispatch } from "react-redux";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { within, expect } from "storybook/test";
 import StartPage, {
   StartPageProps,
   StartPageCreateResult,
@@ -14,6 +15,7 @@ import {
 } from "../../src/store/projectsSlice";
 import { setResources, setFolders } from "../../src/store/resourcesSlice";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
+import type { DesktopBridge } from "../../src/lib/desktop-bridge";
 
 const meta: Meta<typeof StartPage> = {
   title: "Start/StartPage",
@@ -610,5 +612,74 @@ export const Interactive: Story = {
     };
 
     return <Wrapper />;
+  },
+};
+
+/**
+ * Installs a fake desktop bridge on `window`, mirroring the convention
+ * `tests/component/StartPage.test.tsx` and
+ * `tests/component/ImportScrivenerDialog.test.tsx` both use.
+ */
+function installScrivenerBridge(): void {
+  const bridge: DesktopBridge = {
+    getWorkspaceDir: async () => "/tmp",
+    chooseWorkspaceDir: async () => ({ ok: false, cancelled: true }),
+    restart: async () => {},
+    chooseScrivenerSource: async () => ({
+      ok: true,
+      handle: "handle-1",
+      displayName: "My Novel",
+    }),
+    startScrivenerImport: async () => ({
+      kind: "success",
+      projectId: "proj-1",
+      projectRoot: "/tmp/proj-1",
+      folderCount: 1,
+      resourceCount: 1,
+      tagCount: 0,
+      report: "Report body",
+    }),
+  };
+  (window as unknown as Record<string, unknown>).getwriteDesktop = bridge;
+}
+
+/** Removes the fake desktop bridge, mimicking web/native (no bridge). */
+function removeScrivenerBridge(): void {
+  delete (window as unknown as Record<string, unknown>).getwriteDesktop;
+}
+
+/**
+ * The "Import from Scrivener" launcher renders only when a desktop bridge is
+ * present (Task 9, Feature 43) — this story installs a fake one.
+ */
+export const ImportButtonVisible: Story = {
+  args: { projects: [] },
+  render: (args: StartPageProps) => {
+    installScrivenerBridge();
+    return <StartPage {...args} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("button", { name: /Import from Scrivener/i });
+  },
+};
+
+/**
+ * With no desktop bridge (web/native), the Import control is absent
+ * entirely — not merely disabled.
+ */
+export const ImportButtonAbsent: Story = {
+  args: { projects: [] },
+  render: (args: StartPageProps) => {
+    removeScrivenerBridge();
+    return <StartPage {...args} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Wait a tick for StartPage's render to settle, then assert absence.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(
+      canvas.queryByRole("button", { name: /Import from Scrivener/i }),
+    ).not.toBeInTheDocument();
   },
 };
