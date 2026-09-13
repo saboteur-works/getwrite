@@ -37,7 +37,13 @@ a duplicate); `electron/package.json` (written by both Task 12's
 Task 12); `electron/electron-builder.yml` (Task 13 only); `electron/src/main.ts`
 (Task 14 only, but sequenced after Task 13 by an added dependency — Task
 14's dev-vs-packaged worker-path resolution must match the packaged resource
-name Task 13's `extraResources` entry establishes); `electron/src/preload.ts`
+name Task 13's `extraResources` entry establishes); `electron/src/docx-import/handle-import-request.ts`
+(written by Task 12 — already complete and committed on this branch,
+`0317790e` — then edited by Task 11 to remove the unused exported outcome
+interfaces the Gate 5 knip measurement found, then read by Task 14 for its
+`ImportOutcome` import; Task 13 depends on both Task 12 and Task 11, which is
+what enforces 12/11-then-13-then-14 ordering for any of that chain still to
+run); `electron/src/preload.ts`
 and `frontend/src/lib/desktop-bridge.ts` (Task 15). Adding new IPC channels,
 bridge methods, and worker-bundle wiring to these already-shared files is
 expected — Feature 43 established the same pattern — and is not itself a
@@ -419,22 +425,67 @@ flag is expected, but this is confirmed by running the build, not assumed.
 **POS:** task_17473395
 **Done:** [x]
 
-### Task 11: Full frontend + CLI gate verification
+### Task 11: Full frontend + CLI gate verification, and knip cleanup
 
-**What:** Confirms the model-layer and CLI test/typecheck/build/knip gate is
-green after Tasks 1–10 land, before the Electron desktop work (Tasks 12–18)
-proceeds.
-**Files:** none expected beyond fixes to files already touched by Tasks 1–10,
-if any failure surfaces.
+**What:** Confirms the model-layer, CLI, and Electron docx-import
+test/typecheck/build/knip gate is green after Tasks 1–10 and Task 12 land,
+before the remaining Electron desktop work (Tasks 13–18) proceeds. Also
+resolves the knip findings this feature introduces, per the pipeline lead's
+measurement of `pnpm knip` on this branch (2026-09-13) — the repo-wide
+baseline is non-zero so `pnpm knip` exits 1 regardless, but the findings in
+scope here are this feature's own: the unused file
+`frontend/tests/fixtures/docx/generate-docx-fixtures.ts`; the unused default
+export of `frontend/src/lib/models/docx/import-docx-project.ts`; the unused
+exported interfaces in `electron/src/docx-import/handle-import-request.ts` —
+`ImportSuccessOutcome`, `ImportRefusalNoDocxFoundOutcome`,
+`ImportRefusalDestinationNotEmptyOutcome`,
+`ImportRefusalUnknownProjectTypeOutcome`, `ImportFatalOutcome`; and the
+unused exported types `NoteRef` (`models/docx/heading-split.ts`),
+`DocxTipTapMark`, `DocxTipTapTextNode`, `DocxTipTapHardBreakNode`
+(`models/docx/mammoth-to-tiptap.ts`), and `DocxWalkFile`, `DocxWalkFolder`
+(`models/docx/source-detection.ts`). Stop exporting each of these — a check
+of Tasks 12–19's own text confirms nothing else in this feature imports any
+of them by name — and remove the unused default export. The one exception is
+`ImportOutcome`, the discriminated union in `handle-import-request.ts`
+(distinct from the individual outcome interfaces listed above): it must stay
+exported, since Task 14 imports it. Add
+`frontend/tests/fixtures/docx/generate-docx-fixtures.ts` to `knip.json`'s
+ignore list with a short comment or field noting it's a one-off script run
+by hand, not dead code, per knip's own config support for ignore-list
+justifications.
+**Files:** `frontend/tests/fixtures/docx/generate-docx-fixtures.ts` (added to
+`knip.json`'s ignore list, not removed), `frontend/src/lib/models/docx/import-docx-project.ts`,
+`electron/src/docx-import/handle-import-request.ts`, `frontend/src/lib/models/docx/heading-split.ts`,
+`frontend/src/lib/models/docx/mammoth-to-tiptap.ts`, `frontend/src/lib/models/docx/source-detection.ts`,
+`knip.json`, plus fixes to any other file already touched by Tasks 1–10 and
+12, if any other failure surfaces.
 **Done when:** `pnpm --filter getwrite-frontend exec vitest run
 docx-source-detection docx-core-properties docx-package-parts
 docx-mammoth-to-tiptap docx-heading-split docx-import-report docx-import`
 and `pnpm --filter getwrite-frontend typecheck` both pass; `pnpm --filter
-getwrite-cli test` and `pnpm --filter getwrite-cli typecheck` both pass;
-`pnpm knip` (repo root) reports no new unused-export warnings from
-`frontend/src/lib/models/docx/` or the `core.ts` additions.
+getwrite-electron typecheck` and `pnpm --filter getwrite-electron test` both
+pass (covering Task 12's Electron additions after this task's edits to
+`handle-import-request.ts`); `pnpm --filter getwrite-cli test` and `pnpm
+--filter getwrite-cli typecheck` both pass — the CLI suite MUST be run from
+the **main worktree**; recorded as a fact (measured 2026-09-13):
+`cli/tests/qa/server.test.ts` and `cli/tests/qa/workspace.test.ts` fail when
+the suite runs from an agent worktree under `.claude/worktrees/` (the
+`workspace.test.ts` failure was reproduced from a worktree of `main`), while
+the suite passed 108/108 from the main worktree on this branch — that
+failure is pre-existing, out of scope, and does not block this task; running
+`pnpm knip` and filtering its output to `frontend/src/lib/models/docx/`,
+`electron/src/docx-import/`, `electron/worker/docx-import-worker.ts`,
+`frontend/tests/fixtures/docx/`, and the docx-related `core.ts` re-exports
+shows **zero** findings.
 **Depends on:** 10
-**Estimate:** 2
+**Estimate:** 3
+**Notes:** This task edits `electron/src/docx-import/handle-import-request.ts`,
+which Task 12 creates. No formal dependency on Task 12 is listed above
+because a later-numbered task cannot appear as a dependency in this schema —
+but Task 12 is already complete and committed on this branch (`0317790e`,
+Gate 5, 2026-09-13), so the file exists by the time this task runs regardless.
+Task 13 depends on both Task 12 and this task, which is what actually
+enforces 12-then-11-then-13 ordering for any work still to be sequenced.
 **POS:** task_cad18601
 **Done:** [ ]
 
@@ -487,7 +538,7 @@ export of either — `core.ts` already carries them once Task 10 lands.
 Depends on Task 10 (in addition to Task 9) so the two tasks' `core.ts`
 edits never run concurrently.
 **POS:** task_99d8d530
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Package and build wiring for the worker bundle
 
@@ -508,8 +559,13 @@ root) completes and both `electron/dist/scrivener-import-worker.cjs` and
 resolved `extraResources` list (e.g. via `electron-builder --config
 electron/electron-builder.yml --dir` on that build output) confirms
 `docx-import-worker.cjs` is present alongside the existing Scrivener entry.
-**Depends on:** 12
+**Depends on:** 11, 12
 **Estimate:** 3
+**Notes:** Depends on Task 11 (in addition to Task 12, which Task 11 already
+implicitly follows since Task 12 is already complete and committed on this
+branch) because Task 11 edits `electron/src/docx-import/handle-import-request.ts`
+to remove unused knip exports — depending on both avoids that edit running
+concurrently with this task's or Task 14's own work.
 **POS:** task_e197764b
 **Done:** [ ]
 
@@ -675,10 +731,19 @@ was added).
 **Done when:** `pnpm --filter getwrite-frontend typecheck`, `pnpm --filter
 getwrite-frontend lint`, and `pnpm --filter getwrite-frontend test:ci` all
 pass; `pnpm --filter getwrite-cli test`, `pnpm --filter getwrite-cli
-typecheck`, and `pnpm --filter getwrite-cli build` all pass; `pnpm --filter
-getwrite-electron typecheck` and `pnpm --filter getwrite-electron test` both
-pass; `pnpm knip` (repo root) reports no new unused-export findings versus
-the known pre-existing baseline; `pnpm electron:build` (repo root) completes
+typecheck`, and `pnpm --filter getwrite-cli build` all pass — the CLI suite
+MUST be run from the **main worktree**; recorded as a fact (measured
+2026-09-13): `cli/tests/qa/server.test.ts` and `cli/tests/qa/workspace.test.ts`
+fail when the suite runs from an agent worktree under `.claude/worktrees/`
+(the `workspace.test.ts` failure was reproduced from a worktree of `main`),
+while the suite passed 108/108 from the main worktree on this branch — that
+failure is pre-existing, out of scope, and does not block this task; `pnpm
+--filter getwrite-electron typecheck` and `pnpm --filter getwrite-electron
+test` both pass; running `pnpm knip` and filtering its output to
+`frontend/src/lib/models/docx/`, `electron/src/docx-import/`,
+`electron/worker/docx-import-worker.ts`, `frontend/tests/fixtures/docx/`, and
+the docx-related `core.ts` re-exports shows **zero** findings (Task 11's
+knip cleanup carried forward and re-confirmed here); `pnpm electron:build` (repo root) completes
 successfully and both `electron/dist/scrivener-import-worker.cjs` and
 `electron/dist/docx-import-worker.cjs` exist afterward; the resolved
 `extraResources` list (defined in `electron/electron-builder.yml`) includes
@@ -721,7 +786,7 @@ manual task in this list.
 
 - Total tasks: 19
 - Total estimated effort: 89 points
-- Critical path: 1 → 2 → 3/4/5/6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 →
+- Critical path: 1 → 2 → 3/4/5/6 → 7 → 8 → 9 → 10 → 11/12 → 13 → 14 → 15 →
   16 → 17 → 18 → 19 (Task 1 is now the sole owner of every
   `frontend/package.json`/`pnpm-lock.yaml` change and gates Task 2 directly
   and Tasks 3–6 transitively — Task 2 depends on Task 1 so its fixture-script
@@ -733,13 +798,20 @@ manual task in this list.
   dependencies and Task 2's fixtures land — Task 3 alone has no direct
   dependency on Task 1, only on Task 2; Task 12 depends on both Task 9 and
   Task 10, not Task 9 alone, since a concurrent Task 10/Task 12 run
-  previously collided on `frontend/src/lib/core.ts`; Task 14 depends on both
+  previously collided on `frontend/src/lib/core.ts`; Task 11 now also edits
+  `electron/src/docx-import/handle-import-request.ts` (Task 12's file) to
+  clear the Gate 5 knip findings, in addition to its original frontend/CLI
+  gate role — it lists no formal dependency on Task 12 (a later-numbered
+  task cannot appear as a dependency in this schema), but Task 12 is already
+  complete and committed on this branch, so the file exists regardless; Task
+  13 depends on both Task 12 and Task 11, which is what actually sequences
+  12/11-then-13 for any of that chain not yet run; Task 14 depends on both
   Task 12 and Task 13 — not Task 12 alone — since Task 14's `main.ts`
   worker-path resolution must match the packaged resource name Task 13's
-  `electron-builder.yml` establishes, so Task 13 and Task 14 are sequenced
-  rather than run in parallel; Tasks 15–18 remain a strict linear chain with
-  no parallel pairs among them, and Task 11 shares no file with any of Tasks
-  12–18, so it may still run alongside Task 12 once Task 10 lands).
+  `electron-builder.yml` establishes, and it also reads Task 11's
+  cleaned-up `handle-import-request.ts` for its `ImportOutcome` import, so
+  Tasks 13 and 14 are sequenced rather than run in parallel; Tasks 15–18
+  remain a strict linear chain with no parallel pairs among them).
 - Risks: Task 9 (the orchestrator) is the single highest-leverage task,
   exactly as `importScrivenerProject` was for Feature 31 — it is the first
   point every prior unit's output is exercised together, and depends on six
