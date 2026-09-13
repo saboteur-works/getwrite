@@ -189,7 +189,7 @@ sorting is asserted with a "Chapter 2"/"Chapter 10"-style pair.
 **Depends on:** 2
 **Estimate:** 5
 **POS:** task_c2258b9e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: `docProps/core.xml` properties reader
 
