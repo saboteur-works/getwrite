@@ -608,7 +608,7 @@ distinct from each other and from a generic failure message.
 gate for any other task. Depends on the full automated gate (Task 11)
 passing first so the lead is not debugging a known-broken build.
 **POS:** task_ebea8b66
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 
