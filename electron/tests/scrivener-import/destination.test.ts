@@ -7,7 +7,9 @@ import path from "path";
 import {
   computeDestinationProjectRoot,
   deriveDefaultProjectName,
+  buildScrivenerSelectionResult,
 } from "../../src/scrivener-import/destination";
+import { createSelectionHandleRegistry } from "../../src/scrivener-import/selection-handles";
 
 describe("computeDestinationProjectRoot", () => {
   it("returns a valid UUID project id and a matching project root", () => {
@@ -44,5 +46,40 @@ describe("deriveDefaultProjectName", () => {
 
   it("leaves the basename unchanged when there is no .scriv extension", () => {
     expect(deriveDefaultProjectName("My Novel")).toBe("My Novel");
+  });
+});
+
+describe("buildScrivenerSelectionResult", () => {
+  it("strips the .scriv extension from the display name (FR-16)", () => {
+    const handles = createSelectionHandleRegistry();
+
+    const result = buildScrivenerSelectionResult(
+      "/Users/writer/Documents/The SF Sideshow.scriv",
+      handles,
+    );
+
+    expect(result.displayName).toBe("The SF Sideshow");
+  });
+
+  it("never includes the source path in the returned result", () => {
+    const handles = createSelectionHandleRegistry();
+    const scrivPath = "/Users/writer/Documents/The SF Sideshow.scriv";
+
+    const result = buildScrivenerSelectionResult(scrivPath, handles);
+
+    expect(Object.values(result)).not.toContain(scrivPath);
+    expect(JSON.stringify(result)).not.toContain(scrivPath);
+  });
+
+  it("records the handle so it resolves back to the original path and the stripped display name", () => {
+    const handles = createSelectionHandleRegistry();
+    const scrivPath = "/Users/writer/Documents/The SF Sideshow.scriv";
+
+    const result = buildScrivenerSelectionResult(scrivPath, handles);
+
+    expect(handles.resolve(result.handle)).toEqual({
+      path: scrivPath,
+      displayName: "The SF Sideshow",
+    });
   });
 });

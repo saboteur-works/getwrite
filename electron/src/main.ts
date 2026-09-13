@@ -22,7 +22,10 @@ import {
 } from "./projects-dir";
 import { createSelectionHandleRegistry } from "./scrivener-import/selection-handles";
 import { createImportGuard } from "./scrivener-import/import-guard";
-import { computeDestinationProjectRoot } from "./scrivener-import/destination";
+import {
+  computeDestinationProjectRoot,
+  buildScrivenerSelectionResult,
+} from "./scrivener-import/destination";
 import { awaitWorkerOutcome } from "./scrivener-import/await-worker-outcome";
 import type {
   ImportOutcome,
@@ -294,9 +297,7 @@ function registerScrivenerImportHandlers(): void {
     }
 
     const [scrivPath] = picked.filePaths;
-    const displayName = path.basename(scrivPath);
-    const handle = scrivenerSelectionHandles.record(scrivPath, displayName);
-    return { ok: true, handle, displayName };
+    return buildScrivenerSelectionResult(scrivPath, scrivenerSelectionHandles);
   });
 
   ipcMain.handle(

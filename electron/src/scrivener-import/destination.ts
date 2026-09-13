@@ -15,6 +15,7 @@
  */
 import crypto from "crypto";
 import path from "path";
+import type { SelectionHandleRegistry } from "./selection-handles";
 
 /** A freshly computed, not-yet-created destination for an import. */
 export interface DestinationProjectRoot {
@@ -62,4 +63,38 @@ const SCRIV_EXTENSION = /\.scriv$/i;
  */
 export function deriveDefaultProjectName(basename: string): string {
   return basename.replace(SCRIV_EXTENSION, "");
+}
+
+/** Result of picking a `.scriv` source, safe to hand to a renderer. */
+export interface ScrivenerSelectionResult {
+  ok: true;
+  /** Opaque handle standing in for the picked path (see `selection-handles.ts`). */
+  handle: string;
+  /** The picked folder's basename, with any `.scriv` extension stripped
+   * (FR-16): what the import dialog's name field is prefilled with. */
+  displayName: string;
+}
+
+/**
+ * Builds the result returned to the renderer for a picked `.scriv` source,
+ * recording it in the selection-handle registry along the way.
+ *
+ * Pure aside from the registry mutation: no filesystem access, no Electron
+ * APIs. Never includes `scrivPath` itself in the returned object — only the
+ * opaque handle and the derived display name — matching the existing FR-1/
+ * FR-3 no-path-to-renderer constraint the IPC handler otherwise enforces.
+ *
+ * @param scrivPath - The already-picked absolute path to the `.scriv`
+ *   package (never returned to the caller).
+ * @param handles - The selection-handle registry to record the pick in.
+ * @returns The renderer-safe result: an opaque handle plus the
+ *   extension-stripped display name.
+ */
+export function buildScrivenerSelectionResult(
+  scrivPath: string,
+  handles: SelectionHandleRegistry,
+): ScrivenerSelectionResult {
+  const displayName = deriveDefaultProjectName(path.basename(scrivPath));
+  const handle = handles.record(scrivPath, displayName);
+  return { ok: true, handle, displayName };
 }
