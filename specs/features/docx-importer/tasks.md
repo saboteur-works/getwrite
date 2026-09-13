@@ -26,10 +26,19 @@ depends (directly or transitively) on the earlier one specifically to avoid
 this: `frontend/package.json` and `pnpm-lock.yaml` (Task 1, then read-only
 after — Task 1 is the sole owner of every `frontend/package.json`/
 `pnpm-lock.yaml` change in this feature; no other task below may edit either
-file); `frontend/src/lib/core.ts` (Task 9, then read by Tasks 10 and 12);
-`electron/src/main.ts`, `electron/package.json`, and
-`electron/electron-builder.yml` (Tasks 12–14, sequenced); `electron/src/preload.ts` and
-`frontend/src/lib/desktop-bridge.ts` (Task 15). Adding new IPC channels,
+file); `frontend/src/lib/core.ts` (written by Tasks 9 and 10, then read by
+Task 12 — sequenced by dependency: Task 12 depends on both 9 and 10. A
+concurrent Task 10 / Task 12 run collided on `core.ts` at integration — a
+cherry-pick conflict, observed 2026-09-13 — because both tasks independently
+attempted to add the same `detectDocxSource`/`NoDocxFilesFoundError`
+re-export; Task 10's export is the one that stands, and Task 12 must not add
+a duplicate); `electron/package.json` (written by both Task 12's
+`build:worker` extension and Task 13, sequenced via Task 13 depending on
+Task 12); `electron/electron-builder.yml` (Task 13 only); `electron/src/main.ts`
+(Task 14 only, but sequenced after Task 13 by an added dependency — Task
+14's dev-vs-packaged worker-path resolution must match the packaged resource
+name Task 13's `extraResources` entry establishes); `electron/src/preload.ts`
+and `frontend/src/lib/desktop-bridge.ts` (Task 15). Adding new IPC channels,
 bridge methods, and worker-bundle wiring to these already-shared files is
 expected — Feature 43 established the same pattern — and is not itself a
 Scrivener-code change.
@@ -377,13 +386,16 @@ a deliberate choice — it is a generic, format-agnostic condition already
 exported from `core.ts`, not Scrivener conversion/UI/CLI logic, so reusing it
 does not conflict with this feature's Non-goals.
 **POS:** task_c93ff801
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: CLI command — `project import-docx`
 
 **What:** Implements FR-9: registers the CLI subcommand and validates its
 own flags before calling the orchestrator.
-**Files:** `cli/src/commands/project.ts`, `cli/tests/project.test.ts`.
+**Files:** `cli/src/commands/project.ts`, `cli/tests/project.test.ts`,
+`frontend/src/lib/core.ts` (adds named re-exports for `detectDocxSource` and
+`NoDocxFilesFoundError`, needed by this task's `--split-level`-vs-directory
+refusal check and its error-mapping).
 **Done when:** `getwrite-cli project import-docx <source> [projectRoot]
 [-n, --name <name>] [-s, --split-level <1-6|none>] [-t, --project-type <id>]`
 is registered under the existing `project` command group, wrapped in
@@ -424,7 +436,7 @@ getwrite-cli test` and `pnpm --filter getwrite-cli typecheck` both pass;
 **Depends on:** 10
 **Estimate:** 2
 **POS:** task_cad18601
-**Done:** [x]
+**Done:** [ ]
 
 ### Task 12: Electron worker entry point, `handle-import-request`, and `build:worker` bundle
 
@@ -459,7 +471,7 @@ esbuild invocation (or the existing one is parameterized) producing
 `scrivener-import-worker.cjs` output — `pnpm --filter getwrite-electron
 build:worker` produces both files; `pnpm --filter getwrite-electron test`
 passes.
-**Depends on:** 9
+**Depends on:** 9, 10
 **Estimate:** 6
 **Notes:** Reuses the `NoDocxFilesFoundError`-shaped refusal from Task 3/9
 rather than the Scrivener worker's `refusal-unsupported` naming, since the
@@ -468,7 +480,12 @@ No esbuild dependency or `--external` flag change is needed for the extended
 `build:worker` script: `mammoth` and `jszip` (Task 1) are both pure
 JavaScript with no native bindings, so esbuild bundles them into
 `docx-import-worker.cjs` the same way it already bundles Feature 31's
-Scrivener dependencies — confirmed by running the build, not assumed.
+Scrivener dependencies — confirmed by running the build, not assumed. This
+task relies on Task 10's `frontend/src/lib/core.ts` re-export of
+`detectDocxSource`/`NoDocxFilesFoundError` and must not add a duplicate
+export of either — `core.ts` already carries them once Task 10 lands.
+Depends on Task 10 (in addition to Task 9) so the two tasks' `core.ts`
+edits never run concurrently.
 **POS:** task_99d8d530
 **Done:** [ ]
 
@@ -531,8 +548,13 @@ worker path is resolved; awaits `awaitWorkerOutcome`; calls `finish()` in a
 `ipcMain.handle` return value — only the opaque handle and display name do.
 `pnpm --filter getwrite-electron typecheck` and `pnpm --filter
 getwrite-electron test` both pass.
-**Depends on:** 12
+**Depends on:** 12, 13
 **Estimate:** 8
+**Notes:** Depends on Task 13 (in addition to Task 12) because this task's
+`main.ts` dev-vs-packaged worker-path resolution must reference the same
+packaged resource name Task 13's `electron-builder.yml` `extraResources`
+entry establishes for `docx-import-worker.cjs` — the two are not literally
+the same file, but a concurrent edit risks the two path strings diverging.
 **POS:** task_a4d4cc0c
 **Done:** [ ]
 
@@ -709,8 +731,15 @@ manual task in this list.
   dependency and can be built any time before Task 9; Tasks 3, 4, and 5 are
   independent of each other and can run in parallel once Task 1's
   dependencies and Task 2's fixtures land — Task 3 alone has no direct
-  dependency on Task 1, only on Task 2; Task 13 depends only on Task 12, not
-  on Task 14, so it can proceed in parallel with Task 14 once Task 12 lands).
+  dependency on Task 1, only on Task 2; Task 12 depends on both Task 9 and
+  Task 10, not Task 9 alone, since a concurrent Task 10/Task 12 run
+  previously collided on `frontend/src/lib/core.ts`; Task 14 depends on both
+  Task 12 and Task 13 — not Task 12 alone — since Task 14's `main.ts`
+  worker-path resolution must match the packaged resource name Task 13's
+  `electron-builder.yml` establishes, so Task 13 and Task 14 are sequenced
+  rather than run in parallel; Tasks 15–18 remain a strict linear chain with
+  no parallel pairs among them, and Task 11 shares no file with any of Tasks
+  12–18, so it may still run alongside Task 12 once Task 10 lands).
 - Risks: Task 9 (the orchestrator) is the single highest-leverage task,
   exactly as `importScrivenerProject` was for Feature 31 — it is the first
   point every prior unit's output is exercised together, and depends on six
