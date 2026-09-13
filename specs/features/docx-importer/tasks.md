@@ -567,7 +567,7 @@ branch) because Task 11 edits `electron/src/docx-import/handle-import-request.ts
 to remove unused knip exports — depending on both avoids that edit running
 concurrently with this task's or Task 14's own work.
 **POS:** task_e197764b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Main-process IPC — selection handles, import guard, and `main.ts` wiring
 
