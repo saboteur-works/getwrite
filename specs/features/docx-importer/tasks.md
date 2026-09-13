@@ -690,7 +690,7 @@ StartPage` and `pnpm --filter getwrite-frontend typecheck` both pass.
 **Depends on:** 16
 **Estimate:** 3
 **POS:** task_8df6a3f4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Storybook stories and accessibility pass
 
