@@ -405,7 +405,7 @@ flag is expected, but this is confirmed by running the build, not assumed.
 **Depends on:** 9
 **Estimate:** 5
 **POS:** task_17473395
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Full frontend + CLI gate verification
 
