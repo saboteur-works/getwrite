@@ -683,3 +683,40 @@ export const ImportButtonAbsent: Story = {
     ).not.toBeInTheDocument();
   },
 };
+
+/**
+ * The "Import Word Document" launcher renders only when a desktop bridge is
+ * present (Task 17, DOCX importer) — this story installs a fake one that
+ * also satisfies the DOCX bridge methods `ImportDocxDialog` needs.
+ */
+export const ImportDocxButtonVisible: Story = {
+  args: { projects: [] },
+  render: (args: StartPageProps) => {
+    installScrivenerBridge();
+    return <StartPage {...args} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("button", { name: /Import Word Document/i });
+  },
+};
+
+/**
+ * With no desktop bridge (web/native), the Import Word Document control is
+ * absent entirely — not merely disabled.
+ */
+export const ImportDocxButtonAbsent: Story = {
+  args: { projects: [] },
+  render: (args: StartPageProps) => {
+    removeScrivenerBridge();
+    return <StartPage {...args} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Wait a tick for StartPage's render to settle, then assert absence.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(
+      canvas.queryByRole("button", { name: /Import Word Document/i }),
+    ).not.toBeInTheDocument();
+  },
+};
