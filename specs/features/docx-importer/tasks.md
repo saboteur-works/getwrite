@@ -293,7 +293,7 @@ mid-document heading lands in that later section, not the first.
 **Depends on:** 6
 **Estimate:** 5
 **POS:** task_c251bafc
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: DOCX import report builder
 
