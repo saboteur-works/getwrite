@@ -119,7 +119,7 @@ a type annotation directly (`node --experimental-strip-types <file>.ts`)
 ahead of this task; `tsx` is not a dependency anywhere in the repo and was
 not added.
 **POS:** task_3bf469c5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Synthetic `.docx` fixture generation script
 
