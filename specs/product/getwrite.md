@@ -403,6 +403,31 @@ lost work.
   authored on Mac; Scrivener 2 projects and Windows-authored projects are an
   explicit, documented gap, not rejected outright (resolved: OQ-16; see Out
   of Scope (Deferred)). [US-4]
+- FR-43: The product SHOULD offer a writer-facing UI flow for importing an
+  existing Scrivener project (FR-42), so that Scrivener import is not
+  limited to CLI users. This is the follow-up half of the CLI-first
+  sequencing decided for FR-42 (owner decision, 2026-09-11). Shipped: merged
+  to main 2026-09-13 as `e2768ed4` ("Merge pull request #198 from
+  saboteur-works/feat/scrivener-ui-import"). Its feature spec,
+  `specs/features/scrivener-ui-import.md`, is the authoritative record of
+  the shipped scope. The Electron main process (`electron/src/main.ts`)
+  registers IPC channels `getwrite:scrivener-choose-source` (a native OS
+  directory picker returning an opaque selection handle and display name via
+  `electron/src/scrivener-import/selection-handles.ts` — the source path
+  itself never crosses into the renderer, consistent with the "no
+  client-supplied path" rule this requirement's In Progress entry set out)
+  and `getwrite:scrivener-start-import` (one import in flight at a time,
+  `electron/src/scrivener-import/import-guard.ts`). The import runs in a
+  separate forked utility process, `electron/worker/scrivener-import-worker.ts`,
+  which drives the existing `importScrivenerProject` conversion (FR-42)
+  unchanged. The UI is `frontend/components/Start/ImportScrivenerDialog.tsx`,
+  opened from an "Import" button on `StartPage.tsx` that renders only when a
+  desktop bridge is present — i.e. only in the Electron shell. Scope
+  otherwise matches FR-42 — same one-shot behavior, same imported content,
+  same skip-and-report handling of unconvertible content, same Scrivener
+  3/Mac-only support. Scoped to the Electron desktop build only; hosted web
+  and native Android UI import remain deferred (resolved: OQ-18; see Out of
+  Scope (Deferred)). [US-4]
 
 ### In Progress Requirements
 
@@ -415,26 +440,6 @@ lost work.
   field) is a separate per-project setting that already ships. [US-7]
 - FR-27: Desktop builds MUST be signed and installable without an OS
   security warning on macOS and Windows. [US-8]
-- FR-43: The product SHOULD offer a writer-facing UI flow for importing an
-  existing Scrivener project (FR-42), so that Scrivener import is not
-  limited to CLI users. This is the follow-up half of the CLI-first
-  sequencing decided for FR-42 (owner decision, 2026-09-11). FR-42's CLI
-  command has since shipped (merged to main 2026-09-12 as `f12745de`).
-  Owner decision (2026-09-12): FR-43 moves from Next Requirements into In
-  Progress Requirements now that its platform-scope gate (OQ-18) is
-  resolved (resolved: OQ-17). Scope otherwise matches FR-42 — same one-shot
-  behavior, same imported content, same skip-and-report handling of
-  unconvertible content, same Scrivener 3/Mac-only support. This
-  requirement is scoped to the Electron desktop build: a writer picks the
-  source `.scriv` project via a native OS directory picker running in the
-  Electron main process, and that main-process-resolved path is handed to
-  the existing `importScrivenerProject` conversion — the renderer MUST NOT
-  send a filesystem path to a Next API route (`docs/standards/security.md`
-  §2, "Never Trust a Client-Supplied Path"). The exact handoff design
-  between the main-process picker and the conversion call is a
-  feature-level decision, not decided here. Hosted web and native Android
-  UI import are deferred (resolved: OQ-18; see Out of Scope (Deferred)).
-  [US-4]
 
 ### Next Requirements
 
@@ -600,10 +605,11 @@ lost work.
 - The desktop build must remain fully functional with no network access and
   no account.
 - A CLI import path from Scrivener (`.scriv`) now exists (FR-42, shipped
-  2026-09-12); no writer-facing UI import path exists yet (FR-43, Next) and
-  no import path exists from Word/DOCX projects (FR-33, Later) — the CLI's
-  own adoption reach is limited to writers willing to use a command line,
-  so the absence of a UI path remains a known adoption risk today.
+  2026-09-12), and a writer-facing UI import path for the Electron desktop
+  build has since shipped alongside it (FR-43, shipped 2026-09-13); no
+  import path exists from Word/DOCX projects (FR-33, Later), and hosted web
+  and native Android still have no UI import path of their own — FR-43 is
+  scoped to the Electron desktop build only (see Out of Scope (Deferred)).
 - Compile is export-only and must never mutate revisions or project state.
 - Full-text search indexes and searches only each resource's canonical
   revision today; retained revisions remain browsable and diffable but are
