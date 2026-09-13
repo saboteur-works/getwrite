@@ -110,19 +110,19 @@ import { XMLParser } from "fast-xml-parser";
 
 /** A TipTap mark this converter can produce, matching the on-disk mark
  * names `rtf-to-tiptap.ts` also uses (FR-4). */
-export interface DocxTipTapMark {
+interface DocxTipTapMark {
   type: "bold" | "italic";
 }
 
 /** A single run of text within a block node, with zero or more marks. */
-export interface DocxTipTapTextNode {
+interface DocxTipTapTextNode {
   type: "text";
   text: string;
   marks?: DocxTipTapMark[];
 }
 
 /** A `<br>` line break within a paragraph or heading. */
-export interface DocxTipTapHardBreakNode {
+interface DocxTipTapHardBreakNode {
   type: "hardBreak";
 }
 
@@ -144,7 +144,9 @@ export interface DocxTipTapHeadingNode {
 }
 
 /** A top-level block node in the converted document. */
-export type DocxTipTapBlockNode = DocxTipTapParagraphNode | DocxTipTapHeadingNode;
+export type DocxTipTapBlockNode =
+  | DocxTipTapParagraphNode
+  | DocxTipTapHeadingNode;
 
 /**
  * TipTap document root produced by this converter. Structurally compatible
@@ -188,7 +190,9 @@ export interface ConvertDocxToTiptapResult {
  * itself via the helpers below rather than propagating `any`. */
 type XmlPreserveOrderNode = Record<string, unknown>;
 
-function isXmlTextNode(node: XmlPreserveOrderNode): node is { "#text": string } {
+function isXmlTextNode(
+  node: XmlPreserveOrderNode,
+): node is { "#text": string } {
   return typeof node["#text"] === "string";
 }
 
@@ -217,7 +221,10 @@ function getAttr(node: XmlPreserveOrderNode, name: string): string | undefined {
 /** Adds `type` to `marks` if not already present, returning a new array
  * (marks arrays are never mutated in place, since a run's marks are shared
  * with siblings via structural sharing while recursing). */
-function withMark(marks: DocxTipTapMark[], type: DocxTipTapMark["type"]): DocxTipTapMark[] {
+function withMark(
+  marks: DocxTipTapMark[],
+  type: DocxTipTapMark["type"],
+): DocxTipTapMark[] {
   if (marks.some((mark) => mark.type === type)) return marks;
   return [...marks, { type }];
 }
@@ -236,7 +243,10 @@ function isNoteBackLink(anchor: XmlPreserveOrderNode): boolean {
  * `mammoth` emits at a note's point of reference, wrapped in `<sup>`. */
 function isNoteReferenceAnchor(anchor: XmlPreserveOrderNode): boolean {
   const id = getAttr(anchor, "id");
-  return id !== undefined && (id.startsWith("footnote-ref-") || id.startsWith("endnote-ref-"));
+  return (
+    id !== undefined &&
+    (id.startsWith("footnote-ref-") || id.startsWith("endnote-ref-"))
+  );
 }
 
 /**
@@ -265,7 +275,9 @@ function collectPlainText(nodes: XmlPreserveOrderNode[]): string {
  * (per {@link isNoteReferenceAnchor}), returns that anchor's `"[n]"` text;
  * otherwise `undefined` (an ordinary, non-note superscript run).
  */
-function extractNoteReferenceText(supNode: XmlPreserveOrderNode): string | undefined {
+function extractNoteReferenceText(
+  supNode: XmlPreserveOrderNode,
+): string | undefined {
   const anchor = getChildren(supNode).find(
     (child) => getTagName(child) === "a" && isNoteReferenceAnchor(child),
   );
@@ -288,7 +300,11 @@ function convertInline(
     if (isXmlTextNode(node)) {
       const text = node["#text"];
       if (text.length === 0) continue;
-      result.push(marks.length > 0 ? { type: "text", text, marks } : { type: "text", text });
+      result.push(
+        marks.length > 0
+          ? { type: "text", text, marks }
+          : { type: "text", text },
+      );
       continue;
     }
 
@@ -309,7 +325,9 @@ function convertInline(
     }
 
     if (tag === "em") {
-      result.push(...convertInline(getChildren(node), withMark(marks, "italic")));
+      result.push(
+        ...convertInline(getChildren(node), withMark(marks, "italic")),
+      );
       continue;
     }
 
@@ -352,11 +370,16 @@ function convertInline(
  * which only appears on the in-text `<a>`, not the list's own `<li>`).
  */
 function isNotesList(olNode: XmlPreserveOrderNode): boolean {
-  const items = getChildren(olNode).filter((child) => getTagName(child) === "li");
+  const items = getChildren(olNode).filter(
+    (child) => getTagName(child) === "li",
+  );
   if (items.length === 0) return false;
   return items.every((li) => {
     const id = getAttr(li, "id");
-    return id !== undefined && (id.startsWith("footnote-") || id.startsWith("endnote-"));
+    return (
+      id !== undefined &&
+      (id.startsWith("footnote-") || id.startsWith("endnote-"))
+    );
   });
 }
 
@@ -367,7 +390,9 @@ function isNotesList(olNode: XmlPreserveOrderNode): boolean {
  * paragraphs within one note are joined with a blank line.
  */
 function extractNotes(olNode: XmlPreserveOrderNode): DocxNoteRef[] {
-  const items = getChildren(olNode).filter((child) => getTagName(child) === "li");
+  const items = getChildren(olNode).filter(
+    (child) => getTagName(child) === "li",
+  );
   return items.map((li, index) => {
     const blocks = getChildren(li).filter((child) => !isXmlTextNode(child));
     const paragraphs = blocks
@@ -399,9 +424,13 @@ const WRAPPER_TAG = "gw-docx-root";
 export async function convertDocxToTiptap(
   docxBytes: Buffer | Uint8Array,
 ): Promise<ConvertDocxToTiptapResult> {
-  const buffer = Buffer.isBuffer(docxBytes) ? docxBytes : Buffer.from(docxBytes);
+  const buffer = Buffer.isBuffer(docxBytes)
+    ? docxBytes
+    : Buffer.from(docxBytes);
   const converted = await mammoth.convertToHtml({ buffer });
-  const messages = converted.messages.map((message) => `${message.type}: ${message.message}`);
+  const messages = converted.messages.map(
+    (message) => `${message.type}: ${message.message}`,
+  );
 
   const parsed = PARSER.parse(
     `<${WRAPPER_TAG}>${converted.value}</${WRAPPER_TAG}>`,
@@ -438,19 +467,21 @@ export async function convertDocxToTiptap(
     }
 
     if (tag === "p") {
-      content.push({ type: "paragraph", content: convertInline(getChildren(node), []) });
+      content.push({
+        type: "paragraph",
+        content: convertInline(getChildren(node), []),
+      });
       continue;
     }
 
     // An unrecognized top-level block (a real list or table — neither
     // appears in this feature's fixture set): flatten its text into one
     // paragraph rather than silently dropping it.
-    content.push({ type: "paragraph", content: convertInline(getChildren(node), []) });
+    content.push({
+      type: "paragraph",
+      content: convertInline(getChildren(node), []),
+    });
   }
 
-  return {
-    document: { type: "doc", content },
-    notes,
-    messages,
-  };
+  return { document: { type: "doc", content }, notes, messages };
 }

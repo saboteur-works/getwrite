@@ -49,30 +49,30 @@ export interface ImportOutcomeData {
 }
 
 /** A successful import. */
-export interface ImportSuccessOutcome extends ImportOutcomeData {
+interface ImportSuccessOutcome extends ImportOutcomeData {
   readonly kind: "success";
 }
 
 /** The source contained no `.docx` file anywhere in its tree (FR-1). */
-export interface ImportRefusalNoDocxFoundOutcome {
+interface ImportRefusalNoDocxFoundOutcome {
   readonly kind: "refusal-no-docx-found";
   readonly message: string;
 }
 
 /** The destination project root already exists and is non-empty (FR-7). */
-export interface ImportRefusalDestinationNotEmptyOutcome {
+interface ImportRefusalDestinationNotEmptyOutcome {
   readonly kind: "refusal-destination-not-empty";
   readonly message: string;
 }
 
 /** The requested project type did not match an existing project-type spec (FR-8). */
-export interface ImportRefusalUnknownProjectTypeOutcome {
+interface ImportRefusalUnknownProjectTypeOutcome {
   readonly kind: "refusal-unknown-project-type";
   readonly message: string;
 }
 
 /** Any other error raised while importing. */
-export interface ImportFatalOutcome {
+interface ImportFatalOutcome {
   readonly kind: "fatal";
   readonly message: string;
 }

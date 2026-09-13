@@ -69,7 +69,7 @@ import type {
 
 /** A footnote/endnote reference attributed to a single section, identical
  * in shape to Task 6's {@link DocxNoteRef}. */
-export type NoteRef = DocxNoteRef;
+type NoteRef = DocxNoteRef;
 
 /** The heading level to split at (FR-9's `--split-level`), or `"none"` for
  * no split — the whole document imports as a single section. */

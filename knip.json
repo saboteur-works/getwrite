@@ -1,7 +1,13 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "tags": ["-lintignore"],
-  "ignore": ["scripts/hosted-smoke/smoke.mjs"],
+  "ignore": [
+    "scripts/hosted-smoke/smoke.mjs",
+    // frontend/tests/fixtures/docx/generate-docx-fixtures.ts: a one-off
+    // script run by hand (see its own header comment) to regenerate the
+    // committed synthetic .docx fixtures — not dead code.
+    "frontend/tests/fixtures/docx/generate-docx-fixtures.ts"
+  ],
   "workspaces": {
     ".": { "paths": { "@gw/core": ["frontend/src/lib/core.ts"] } },
     "cli": { "entry": ["src/getwrite-cli.ts"], "project": ["src/**/*.ts"] }

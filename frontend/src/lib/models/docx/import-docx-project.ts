@@ -752,6 +752,3 @@ async function rebuildIndexes(projectRoot: string): Promise<void> {
 
   await persistMentionIndex(projectRoot, mentionIndex);
 }
-
-const docxImporter = { importDocxProject, UnknownProjectTypeError };
-export default docxImporter;

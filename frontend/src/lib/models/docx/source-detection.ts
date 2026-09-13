@@ -83,7 +83,7 @@ export class NoDocxFilesFoundError extends Error {
 /**
  * A single `.docx` file included in a {@link DocxFolderWalkPlan}.
  */
-export interface DocxWalkFile {
+interface DocxWalkFile {
   /** Discriminant identifying this entry as a file, not a folder. */
   readonly kind: "file";
   /** The file's own basename, including its `.docx` extension. */
@@ -97,7 +97,7 @@ export interface DocxWalkFile {
  * contains at least one `.docx` file somewhere beneath it (see the module
  * doc's "Pruning convention").
  */
-export interface DocxWalkFolder {
+interface DocxWalkFolder {
   /** Discriminant identifying this entry as a folder, not a file. */
   readonly kind: "folder";
   /** The subfolder's own basename. */

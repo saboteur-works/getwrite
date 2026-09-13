@@ -487,7 +487,7 @@ Gate 5, 2026-09-13), so the file exists by the time this task runs regardless.
 Task 13 depends on both Task 12 and this task, which is what actually
 enforces 12-then-11-then-13 ordering for any work still to be sequenced.
 **POS:** task_cad18601
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Electron worker entry point, `handle-import-request`, and `build:worker` bundle
 
