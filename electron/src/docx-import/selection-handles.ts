@@ -24,7 +24,7 @@
 import { randomUUID } from "crypto";
 
 /** A DOCX import source's path and the name to show the user for it. */
-export interface SelectionHandleTarget {
+interface SelectionHandleTarget {
   /** Absolute path to the selected `.docx` file or folder. Never exposed
    * except as this field, returned directly from
    * {@link SelectionHandleRegistry.record} or

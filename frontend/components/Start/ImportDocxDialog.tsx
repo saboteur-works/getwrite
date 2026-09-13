@@ -232,7 +232,7 @@ export default function ImportDocxDialog({
   };
 
   const isImporting = state.kind === "importing";
-  const showSplitLevel = sourceKind === "file";
+  const shouldShowSplitLevel = sourceKind === "file";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -302,7 +302,7 @@ export default function ImportDocxDialog({
               <div className="project-modal-error">{nameError}</div>
             ) : null}
 
-            {showSplitLevel && (
+            {shouldShowSplitLevel && (
               <label className="project-modal-field mt-3 block">
                 <div className="project-modal-label">
                   Split into resources at

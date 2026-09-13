@@ -757,7 +757,7 @@ real desktop-app exercise of this feature (launching the app, running a real
 import, opening imported documents) happens there rather than as a duplicate
 manual task in this list.
 **POS:** task_4b44ded0
-**Done:** [ ]
+**Done:** [x]
 
 ## FR coverage map
 
