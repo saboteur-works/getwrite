@@ -110,13 +110,24 @@ project format.
    happened, per FR-18's own detection; (d) images/embedded media not
    imported; (e) non-`.docx` files skipped in a folder source, plus lock
    files and hidden/dot files, summarized per FR-15; (f) documents with no
-   heading at the chosen split level (FR-2); and (g) footnotes and endnotes
+   heading at the chosen split level (FR-2); (g) footnotes and endnotes
    converted to the endnote-style Notes-list treatment (FR-13) (resolved:
-   OQ-4). [US-1][US-2]
+   OQ-4); and (h) Untitled Fallback Names: each generated "Untitled"/
+   "Untitled 2"/... resource name produced by FR-14's no-heading/preamble
+   naming rule, mirroring Scrivener's own "Untitled Fallback Names" report
+   section (owner decision, Stage 6.5, 2026-09-13). [US-1][US-2]
 7. FR-7: Each import run MUST create a fresh GetWrite project and MUST refuse
    a non-empty destination before any write, mirroring
-   `DestinationNotEmptyError`'s existing behavior; repeatable/merge DOCX
-   import is out of scope (resolved parent OQ-23). [US-1][US-2]
+   `DestinationNotEmptyError`'s existing "refuse before writing" behavior;
+   repeatable/merge DOCX import is out of scope (resolved parent OQ-23). The
+   refusal MUST be reported to the writer with DOCX-appropriate wording and
+   MUST NOT mention Scrivener; the Scrivener importer's own refusal message is
+   unchanged (Non-goals) (owner decision, Stage 6.5, 2026-09-13 — measured
+   finding: the DOCX CLI's non-empty-destination refusal printed `Cannot
+   import Scrivener project: destination "…" already exists and is not
+   empty…`, because `import-docx-project.ts` reuses `DestinationNotEmptyError`
+   from the Scrivener importer along with its Scrivener-worded message).
+   [US-1][US-2]
 8. FR-8: The writer MUST choose the destination project's project type at
    import time — a CLI flag (`-t, --project-type`, FR-9) and, on the desktop
    UI, a UI control (FR-10) — from the existing project types under
@@ -126,7 +137,14 @@ project format.
    note `game_documentation.json`'s `id` is `game_writing`, not
    `game_documentation`), defaulting to `blank` when the writer chooses none
    (resolved parent OQ-23; resolved: OQ-3). An unknown project-type id MUST
-   be refused before any write (FR-9). [US-1][US-2][US-3]
+   be refused before any write (FR-9). The destination project's tree MUST
+   mirror the source only — a single document's split sections (FR-2) or a
+   folder's own subdirectory structure (FR-3) — and the chosen project type
+   MUST contribute config only (statuses, metadata schema) and MUST NOT
+   scaffold its own default folders (owner decision, Stage 6.5, 2026-09-13,
+   confirming measured behavior: with `-t novel`, statuses were populated but
+   none of the type's default folders were created — this is the intended
+   behaviour, not a defect). [US-1][US-2][US-3]
 9. FR-9: The product MUST ship a CLI command for this import (mirroring
    `getwrite-cli project import-scrivener`'s registration in
    `cli/src/commands/project.ts`) and an Electron desktop UI together in the
@@ -235,7 +253,22 @@ project format.
     empty); each file's own core author, when present, MUST be written to
     that same file's resource under the `docx-import` group's "Author" field,
     the same field/group used in the single-document case (resolved: OQ-2).
-    [US-1][US-2]
+    For a single-`.docx` source, when the document has no heading at the
+    chosen split level (including `--split-level none`), the one resulting
+    resource MUST be named the same way FR-14 already names the
+    whole-document resource in the folder case: from the document's core
+    title, falling back to the filename without its `.docx` extension when
+    the title is absent or empty. When non-empty content precedes the first
+    split-level heading, that leading section MUST be created as its own
+    resource named "Untitled", or "Untitled 2", "Untitled 3", and so on if
+    the name repeats under the same parent; each such generated name MUST be
+    recorded in the FR-6(h) report section (owner decision, Stage 6.5,
+    2026-09-13 — measured finding: a single-document import named the
+    resource "Front Matter" both when the whole document had no heading at
+    the split level, e.g. `footnotes-endnotes.docx`/`tracked-changes.docx`,
+    and when content preceded the first heading, seen on the owner's real
+    manuscript — two different conditions collapsed into one name). [US-1]
+    [US-2]
 15. FR-15 (added 2026-09-13, owner decision): A folder source MUST be
     traversed recursively to any depth (FR-3's subdirectory mirroring is not
     limited to one level). A non-`.docx` file, a Word temporary lock file
@@ -296,6 +329,15 @@ project format.
     this detection and FR-6(c)'s accepted-as-shown text, which also confirms
     or refutes the inferred no-warning behavior recorded at OQ-10. [US-1]
     [US-2]
+19. FR-19 (added 2026-09-13, owner decision, Stage 6.5): A successful DOCX
+    import MUST NOT print a diagnostic for a condition the importer itself
+    caused — including the `sidecar not found` message — to stdout/stderr.
+    Measured finding: every one of the 7 fixture imports run at Stage 6.5
+    printed `sidecar not found for <resourceId> at
+    <projectRoot>/meta/resource-<id>.meta.json` to the terminal before
+    `Imported DOCX project to: …`; which call triggers it has not yet been
+    investigated, and Task 21 (`specs/features/docx-importer/tasks.md`) names
+    that investigation as its first requirement. [US-1][US-2]
 
 ## Open questions
 

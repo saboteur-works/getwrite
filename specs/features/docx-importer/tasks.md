@@ -49,6 +49,15 @@ bridge methods, and worker-bundle wiring to these already-shared files is
 expected — Feature 43 established the same pattern — and is not itself a
 Scrivener-code change.
 
+`frontend/src/lib/models/docx/import-docx-project.ts` gains three more
+writers after the branch's initial close-out: Task 20 (DOCX-specific
+destination-not-empty refusal), Task 21 (eliminating the `sidecar not found`
+diagnostic — may also touch this file, pending its own investigation step),
+and Task 22 (the no-heading/preamble naming rule and its report section).
+These three are sequenced strictly (20 → 21 → 22, each depending on the
+previous) rather than run in parallel, to avoid the same kind of collision
+Task 10/Task 12 previously had on `core.ts`.
+
 **Docs (CLAUDE.md, CLI section, Electron section):** left to the scribe stage,
 per the pipeline's own separation of implementation from documentation update
 — no task below edits `CLAUDE.md`.
@@ -759,6 +768,131 @@ manual task in this list.
 **POS:** task_4b44ded0
 **Done:** [x]
 
+### Task 20: DOCX-specific destination-not-empty refusal
+
+**What:** Implements FR-7's added wording requirement (owner decision, Stage
+6.5, 2026-09-13): the DOCX importer's non-empty-destination refusal MUST use
+DOCX-appropriate wording and MUST NOT mention Scrivener, without touching the
+Scrivener importer's own message. Measured finding: `import-docx-project.ts`
+reuses `DestinationNotEmptyError` from the Scrivener importer, and its
+message reads `Cannot import Scrivener project: destination "…" already
+exists and is not empty…` even during a DOCX import. Look at how
+`import-docx-project.ts`, `cli/src/commands/project.ts`, and
+`electron/src/docx-import/handle-import-request.ts` each detect and surface
+this error today. Prefer either a DOCX-specific error class or a message
+parameter on the existing error that leaves the Scrivener call site's message
+untouched, and check whether the Electron worker's refusal classifier
+(`isNonEmptyDestinationError` in `handle-import-request.ts`) still correctly
+recognizes the DOCX-thrown error after the change.
+**Files:** `frontend/src/lib/models/docx/import-docx-project.ts`,
+`frontend/src/lib/models/scrivener/import-scrivener-project.ts` (read-only
+reference; not expected to change), `cli/src/commands/project.ts`,
+`electron/src/docx-import/handle-import-request.ts`,
+`cli/tests/project.test.ts`, `frontend/tests/integration/docx-import.test.ts`.
+**Done when:** a CLI test asserts the DOCX non-empty-destination refusal
+message contains no "Scrivener"; the existing Scrivener CLI and integration
+tests still pass unchanged; `electron/tests/docx-import/handle-import-request.test.ts`
+still passes, confirming the refusal classifier still recognizes the
+DOCX-specific error; `pnpm --filter getwrite-frontend typecheck`, `pnpm
+--filter getwrite-cli test`, and `pnpm --filter getwrite-electron test` all
+pass.
+**Depends on:** 19
+**Estimate:** 3
+**POS:** task_0358cbd2
+**Done:** [ ]
+
+### Task 21: Eliminate the `sidecar not found` diagnostic on a successful import
+
+**What:** Implements FR-19 (owner decision, Stage 6.5, 2026-09-13): a
+successful DOCX import MUST NOT print `sidecar not found for <resourceId> at
+<projectRoot>/meta/resource-<id>.meta.json`, or any other warning for a
+condition the importer itself caused, to stdout/stderr. Measured finding: all
+7 fixture imports run at Stage 6.5 printed this line before `Imported DOCX
+project to: …`. This task's first requirement is investigation, not a fix:
+find the exact call site that emits the line and which step of
+`importDocxProject`'s write phase triggers it (a likely candidate is a
+sidecar read racing a resource's own sidecar write, but this MUST be
+confirmed by tracing the call, not assumed), and state the measured cause in
+the commit message before changing any code — per this repository's rule
+that a cause is a hypothesis until an experiment discriminates it from the
+alternatives.
+**Files:** `frontend/src/lib/models/docx/import-docx-project.ts` (pending the
+investigation's finding — may or may not be the actual site), plus whichever
+file the investigation identifies as the true source (e.g. `frontend/src/lib/models/sidecar.ts`
+or a shared write-path helper it calls), `frontend/tests/integration/docx-import.test.ts`,
+`cli/tests/project.test.ts`.
+**Done when:** the commit message states the measured call site and trigger
+found by the investigation step; a test asserts a successful import (both
+single-file and folder source) writes no `sidecar not found` line, and no
+other diagnostic, to stdout/stderr; `frontend/tests/integration/docx-import.test.ts`
+and `cli/tests/project.test.ts` still pass in full; `pnpm --filter
+getwrite-frontend exec vitest run docx-import` and `pnpm --filter
+getwrite-cli test` both pass.
+**Depends on:** 20
+**Estimate:** 5
+**POS:** task_c6732be6
+**Done:** [ ]
+
+### Task 22: No-heading/preamble resource naming and the Untitled Fallback Names report section
+
+**What:** Implements FR-14's added naming rule and FR-6(h) (owner decision,
+Stage 6.5, 2026-09-13). Measured finding: a single-document import named the
+resource "Front Matter" both when the whole document had no heading at the
+chosen split level (`footnotes-endnotes.docx`, `tracked-changes.docx`) and
+when content preceded the first heading (seen on the owner's real
+manuscript) — two different conditions collapsed into one name. Task 7's
+`splitDocxAtHeadingLevel` already returns a `noHeadingFound` flag and a
+"generic placeholder" title for the pre-first-heading section; this task
+replaces that placeholder with the new rule: a no-heading-at-level document
+(including `--split-level none`) names its one resource from the document's
+core title, falling back to the filename without `.docx`; a preamble section
+is named "Untitled", or "Untitled 2", "Untitled 3", ... if the name repeats
+under the same parent.
+**Files:** `frontend/src/lib/models/docx/heading-split.ts`,
+`frontend/src/lib/models/docx/import-docx-project.ts`,
+`frontend/src/lib/models/docx/docx-import-report.ts`,
+`frontend/tests/unit/docx-heading-split.test.ts`,
+`frontend/tests/unit/docx-import-report.test.ts`,
+`frontend/tests/integration/docx-import.test.ts`.
+**Done when:** a test against `no-headings.docx` and a test against
+`footnotes-endnotes.docx` (used at a split level with no heading present)
+both assert the resulting resource is named from the document's core title
+or, when absent, the filename without `.docx`; a test against a fixture with
+content preceding its first heading asserts that leading section's resource
+is named "Untitled" and that the FR-6(h) report section lists it; a test
+with two same-parent preamble-style sections (or two repeats of the same
+generated name under one parent) asserts the second is named "Untitled 2";
+`pnpm --filter getwrite-frontend exec vitest run docx-heading-split
+docx-import-report docx-import` and `pnpm --filter getwrite-frontend
+typecheck` both pass.
+**Depends on:** 21
+**Estimate:** 5
+**POS:** task_f3477a8b
+**Done:** [ ]
+
+### Task 23: Full re-verification in the main worktree
+
+**What:** Re-runs the repository's complete pre-merge verification suite,
+covering Tasks 20–22's changes, from the main worktree (per Task 11/Task 19's
+recorded fact that some CLI QA tests fail from an agent worktree under
+`.claude/worktrees/`).
+**Files:** none expected beyond fixes to files already touched by Tasks
+20–22, if any failure surfaces.
+**Done when:** `pnpm --filter getwrite-frontend typecheck`, `pnpm --filter
+getwrite-frontend lint`, and `pnpm --filter getwrite-frontend test:ci` all
+pass; `pnpm --filter getwrite-cli test`, `pnpm --filter getwrite-cli
+typecheck`, and `pnpm --filter getwrite-cli build` all pass, run from the
+main worktree; `pnpm --filter getwrite-electron typecheck` and `pnpm
+--filter getwrite-electron test` both pass; running `pnpm knip` and
+filtering its output to `frontend/src/lib/models/docx/`,
+`electron/src/docx-import/`, `electron/worker/docx-import-worker.ts`,
+`frontend/tests/fixtures/docx/`, and the docx-related `core.ts` re-exports
+shows **zero** findings.
+**Depends on:** 20, 21, 22
+**Estimate:** 3
+**POS:** task_a2a2219c
+**Done:** [ ]
+
 ## FR coverage map
 
 | FR | Covered by |
@@ -768,26 +902,33 @@ manual task in this list.
 | FR-3 | Task 3, Task 9 |
 | FR-4 | Task 6, Task 9 |
 | FR-5 | Task 9 |
-| FR-6 | Task 8, Task 9 |
-| FR-7 | Task 9 |
+| FR-6 | Task 8, Task 9, Task 22 |
+| FR-7 | Task 9, Task 20 |
 | FR-8 | Task 9, Task 10, Task 16 |
 | FR-9 | Task 10 |
 | FR-10 | Task 14, Task 15, Task 16 |
 | FR-11 | Task 19 (verifies the non-goal boundary by omission) |
 | FR-12 | Task 2 |
 | FR-13 | Task 6, Task 8 |
-| FR-14 | Task 4, Task 9 |
+| FR-14 | Task 4, Task 9, Task 22 |
 | FR-15 | Task 3, Task 9 |
 | FR-16 | Task 1 |
 | FR-17 | Task 12, Task 13 |
 | FR-18 | Task 5, Task 6 |
+| FR-19 | Task 21 |
 
 ## Summary
 
-- Total tasks: 19
-- Total estimated effort: 89 points
+- Total tasks: 23
+- Total estimated effort: 105 points
 - Critical path: 1 → 2 → 3/4/5/6 → 7 → 8 → 9 → 10 → 11/12 → 13 → 14 → 15 →
-  16 → 17 → 18 → 19 (Task 1 is now the sole owner of every
+  16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 (Tasks 20–23 are a Stage 6.5
+  post-verification fix pass added after the original branch close-out: Task
+  20 depends on Task 19 so it starts from a gate-verified codebase; Tasks 20,
+  21, and 22 are sequenced strictly rather than run in parallel because all
+  three may touch `frontend/src/lib/models/docx/import-docx-project.ts`;
+  Task 23 depends on all three and re-runs the full gate. Task 1 is now the
+  sole owner of every
   `frontend/package.json`/`pnpm-lock.yaml` change and gates Task 2 directly
   and Tasks 3–6 transitively — Task 2 depends on Task 1 so its fixture-script
   runner decision and Task 1's dependency/lockfile edit never run
