@@ -3,9 +3,7 @@
   "tags": ["-lintignore"],
   "ignore": ["scripts/hosted-smoke/smoke.mjs"],
   "workspaces": {
-    ".": {
-      "paths": { "@gw/core": ["frontend/src/lib/core.ts"] }
-    },
+    ".": { "paths": { "@gw/core": ["frontend/src/lib/core.ts"] } },
     "cli": { "entry": ["src/getwrite-cli.ts"], "project": ["src/**/*.ts"] }
   }
 }
