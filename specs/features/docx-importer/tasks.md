@@ -424,7 +424,7 @@ getwrite-cli test` and `pnpm --filter getwrite-cli typecheck` both pass;
 **Depends on:** 10
 **Estimate:** 2
 **POS:** task_cad18601
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Electron worker entry point, `handle-import-request`, and `build:worker` bundle
 

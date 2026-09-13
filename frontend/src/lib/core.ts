@@ -75,3 +75,10 @@ export {
   type ImportDocxProjectOptions,
   type ImportDocxProjectResult,
 } from "./models/docx/import-docx-project";
+
+// DOCX source detection (needed by the CLI to refuse --split-level against a
+// directory source before calling the orchestrator).
+export {
+  detectDocxSource,
+  NoDocxFilesFoundError,
+} from "./models/docx/source-detection";
