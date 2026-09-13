@@ -159,7 +159,7 @@ verified present in `docx@9.6.1`'s type declarations per the source spec's
 FR-12. Keep each fixture minimal — one instance of each shape, not full
 coverage breadth.
 **POS:** task_d0757835
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Source detection and folder walk
 
