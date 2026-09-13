@@ -635,7 +635,7 @@ between `preload.ts` and `desktop-bridge.ts`.
 **Depends on:** 14
 **Estimate:** 2
 **POS:** task_455afc11
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: `ImportDocxDialog` — the import flow's state machine
 
