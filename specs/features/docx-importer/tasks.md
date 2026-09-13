@@ -671,7 +671,7 @@ token; every state transition moves focus per `docs/standards/accessibility.md`.
 **Depends on:** 15
 **Estimate:** 10
 **POS:** task_858ac96d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Wire the "Import Word Document" entry point on the Start page
 
