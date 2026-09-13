@@ -612,7 +612,7 @@ packaged resource name Task 13's `electron-builder.yml` `extraResources`
 entry establishes for `docx-import-worker.cjs` — the two are not literally
 the same file, but a concurrent edit risks the two path strings diverging.
 **POS:** task_a4d4cc0c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: `preload.ts` and `desktop-bridge.ts` — renderer-facing channels
 

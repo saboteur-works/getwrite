@@ -32,6 +32,13 @@ import type {
   ImportOutcome,
   ImportRequest,
 } from "./scrivener-import/handle-import-request";
+import { createSelectionHandleRegistry as createDocxSelectionHandleRegistry } from "./docx-import/selection-handles";
+import { createImportGuard as createDocxImportGuard } from "./docx-import/import-guard";
+import { awaitWorkerOutcome as awaitDocxWorkerOutcome } from "./docx-import/await-worker-outcome";
+import type {
+  ImportOutcome as DocxImportOutcome,
+  ImportRequest as DocxImportRequest,
+} from "./docx-import/handle-import-request";
 
 const PORT = 3000;
 let serverProcess: ChildProcess | UtilityProcess | null = null;
@@ -346,6 +353,127 @@ function registerScrivenerImportHandlers(): void {
   );
 }
 
+// The one active DOCX import selection (mirrors the Scrivener singletons
+// above, for the same reason: only one import can meaningfully be in flight
+// at a time, and a new selection always supersedes whatever was picked
+// before) and the one-in-flight-import guard for DOCX imports.
+const docxSelectionHandles = createDocxSelectionHandleRegistry();
+const docxImportGuard = createDocxImportGuard();
+
+/**
+ * Resolves the path to the built DOCX import worker bundle.
+ *
+ * Mirrors `resolveWorkerBundlePath()`'s own packaged-vs-dev split: a packaged
+ * build ships the bundle via `electron-builder.yml`'s `extraResources`
+ * (landing beside the app, at `process.resourcesPath`) rather than inside
+ * `dist/**`, because `utilityProcess.fork` cannot fork a script packed into
+ * `app.asar`. A dev/CI build finds it at `electron/dist`, where the
+ * `build:worker` esbuild step emits it.
+ *
+ * @returns Absolute path to `docx-import-worker.cjs`.
+ */
+function resolveDocxWorkerBundlePath(): string {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "docx-import-worker.cjs")
+    : path.join(getRepoRoot(), "electron", "dist", "docx-import-worker.cjs");
+}
+
+/** Request body the renderer sends to start a DOCX import. */
+interface DocxStartImportRequest {
+  handle: string;
+  name: string;
+  splitLevel?: 1 | 2 | 3 | 4 | 5 | 6 | "none";
+  projectType?: string;
+}
+
+/**
+ * Wires the three DOCX-import channels the preload bridge calls (FR-10).
+ *
+ * The source path (a single `.docx` file or a folder of them) never crosses
+ * back into a renderer-visible value: `getwrite:docx-choose-file` and
+ * `getwrite:docx-choose-folder` hand back only an opaque handle and a display
+ * name, and `getwrite:docx-start-import` reads the real path only to pass it
+ * into the forked worker's message — never into its own return value.
+ */
+function registerDocxImportHandlers(): void {
+  ipcMain.handle("getwrite:docx-choose-file", async () => {
+    const picked = await dialog.showOpenDialog({
+      properties: ["openFile"],
+      filters: [{ name: "Word Document", extensions: ["docx"] }],
+    });
+    if (picked.canceled || picked.filePaths.length === 0) {
+      return { ok: false, cancelled: true };
+    }
+
+    const [sourcePath] = picked.filePaths;
+    const displayName = path.basename(sourcePath, path.extname(sourcePath));
+    const handle = docxSelectionHandles.record(sourcePath, displayName);
+    return { ok: true, handle, displayName };
+  });
+
+  ipcMain.handle("getwrite:docx-choose-folder", async () => {
+    const picked = await dialog.showOpenDialog({
+      properties: ["openDirectory"],
+    });
+    if (picked.canceled || picked.filePaths.length === 0) {
+      return { ok: false, cancelled: true };
+    }
+
+    const [sourcePath] = picked.filePaths;
+    const displayName = path.basename(sourcePath);
+    const handle = docxSelectionHandles.record(sourcePath, displayName);
+    return { ok: true, handle, displayName };
+  });
+
+  ipcMain.handle(
+    "getwrite:docx-start-import",
+    async (
+      _event,
+      request: DocxStartImportRequest,
+    ): Promise<DocxImportOutcome> => {
+      if (!docxImportGuard.tryStart()) {
+        return { kind: "fatal", message: "An import is already running." };
+      }
+
+      try {
+        const target = docxSelectionHandles.resolve(request.handle);
+        if (target === null) {
+          return {
+            kind: "fatal",
+            message:
+              "This selection is no longer valid. Please choose the source again.",
+          };
+        }
+        docxSelectionHandles.consume(request.handle);
+
+        const { projectRoot } = computeDestinationProjectRoot(
+          resolveProjectsDir(projectsDirEnvironment()),
+        );
+
+        const workerBundlePath = resolveDocxWorkerBundlePath();
+        log(`Forking DOCX import worker: ${workerBundlePath}`);
+        const worker = utilityProcess.fork(workerBundlePath);
+
+        const importRequest: DocxImportRequest = {
+          sourcePath: target.path,
+          name: request.name,
+          projectRoot,
+          splitLevel: request.splitLevel,
+          projectType: request.projectType,
+        };
+        worker.postMessage(importRequest);
+
+        return await awaitDocxWorkerOutcome(worker, (err) => {
+          const detail = err instanceof Error ? err.message : String(err);
+          log(`DOCX import worker error: ${detail}`);
+        });
+      } finally {
+        docxImportGuard.finish();
+      }
+    },
+  );
+}
+
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1400,
@@ -469,6 +597,7 @@ if (!app.requestSingleInstanceLock()) {
     log(`resourcesPath: ${process.resourcesPath}`);
     registerWorkspaceHandlers();
     registerScrivenerImportHandlers();
+    registerDocxImportHandlers();
 
     const dirs = resolveDirectories();
 
