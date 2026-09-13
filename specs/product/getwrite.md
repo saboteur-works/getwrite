@@ -440,6 +440,48 @@ lost work.
   field) is a separate per-project setting that already ships. [US-7]
 - FR-27: Desktop builds MUST be signed and installable without an OS
   security warning on macOS and Windows. [US-8]
+- FR-33: The product SHOULD offer an importer for existing Word/DOCX
+  projects, converting them into a GetWrite project structure. Split
+  2026-09-11 (owner decision) from the Scrivener half of this requirement —
+  see FR-42, which has since shipped (2026-09-12). Owner decision
+  (2026-09-13): FR-33 moves from Later Requirements into In Progress
+  Requirements; it is being carried forward through the pipeline as
+  Feature 45. The importer MUST auto-detect and support both a single
+  `.docx` file and a folder of `.docx` files as its source (resolved:
+  OQ-19). A single `.docx` MUST be split into multiple GetWrite resources
+  at Heading 1 by default, with the split level configurable to another
+  heading level or to no split at all; a document with no headings at the
+  chosen level MUST import as a single resource, and the import report
+  MUST say so (resolved: OQ-19). A folder of `.docx` files MUST import one
+  resource per file, with the folder's subdirectory structure mirrored as
+  GetWrite folders (resolved: OQ-19). Imported content MUST include text,
+  heading/paragraph structure, and bold/italic — matching FR-42's fidelity
+  bar — plus footnotes and basic document properties (title, author);
+  comments, tracked changes, and images/embedded media are deferred
+  (resolved: OQ-20; see Out of Scope (Deferred)). Where footnotes and
+  document properties land in GetWrite's data model is a feature-spec
+  decision, not decided here (resolved: OQ-20). The importer SHOULD ship a
+  CLI command and an Electron desktop UI together in its first delivery,
+  not CLI-first as FR-42/FR-43 sequenced (resolved: OQ-21). The desktop UI
+  MUST follow FR-43's pattern: a native OS picker running in the Electron
+  main process, and the source path MUST NOT cross into the renderer or
+  reach a Next API route (`docs/standards/security.md` §2, "Never Trust a
+  Client-Supplied Path") (resolved: OQ-21). Hosted web and native Android
+  DOCX import are deferred (resolved: OQ-21; see Out of Scope (Deferred)).
+  When the importer encounters content it cannot convert, it MUST skip that
+  item, continue importing the rest of the project, and produce a
+  DOCX-specific import report a writer can read after the import, whose
+  sections reflect DOCX content rather than reusing Scrivener's
+  eight-section report as-is (resolved: OQ-22); whether the report-writing
+  code is shared with `import-report.ts` is a feature-spec decision, not
+  decided here (resolved: OQ-22). Import is one-shot: each run MUST create
+  a fresh GetWrite project and MUST refuse a non-empty destination,
+  mirroring FR-42/FR-43's resolved OQ-12; repeatable DOCX import is out of
+  scope (resolved: OQ-23; see Out of Scope (Deferred)). The writer MUST
+  choose the destination project's project type at import time — a CLI
+  flag and a UI choice — from the existing project types, with one of them
+  as a default; which type is the default is a feature-spec decision, not
+  decided here (resolved: OQ-23). [US-18]
 
 ### Next Requirements
 
@@ -571,11 +613,6 @@ lost work.
   writer's offline edits made from multiple devices to the same project (a
   sync, not collaboration, conflict model), as part of the hosted
   multi-device work in FR-30. [US-12]
-- FR-33: The product SHOULD offer an importer for existing Word/DOCX
-  projects, converting them into a GetWrite project structure. This is a
-  real, planned feature belonging here in Later, not in Out of Scope.
-  Split 2026-09-11 (owner decision) from the Scrivener half of this
-  requirement — see FR-42, which has since shipped (2026-09-12). [US-18]
 - FR-44: The product MAY support repeatable Scrivener import — re-running
   import against the same `.scriv` project to merge changes into, or
   refresh, an already-imported GetWrite project, rather than always
@@ -607,7 +644,7 @@ lost work.
 - A CLI import path from Scrivener (`.scriv`) now exists (FR-42, shipped
   2026-09-12), and a writer-facing UI import path for the Electron desktop
   build has since shipped alongside it (FR-43, shipped 2026-09-13); no
-  import path exists from Word/DOCX projects (FR-33, Later), and hosted web
+  import path exists from Word/DOCX projects (FR-33, In Progress), and hosted web
   and native Android still have no UI import path of their own — FR-43 is
   scoped to the Electron desktop build only (see Out of Scope (Deferred)).
 - Compile is export-only and must never mutate revisions or project state.
@@ -945,6 +982,133 @@ mechanism to build on (`app/api/resource/upload` is single-file), and
 native has no directory-picking precedent, which is why both remain
 deferred rather than resolved here.
 
+**OQ-19: What is a "Word/DOCX project" as an import source for FR-33 — one
+`.docx` split into multiple GetWrite resources, a folder of `.docx` files
+each becoming its own resource, or both?**
+**Resolution (owner decision, 2026-09-13):** Both source kinds are
+supported and auto-detected: (a) a single `.docx` file, split into
+multiple GetWrite resources, and (b) a folder of `.docx` files, imported
+one resource per file with the folder's subdirectory structure mirrored as
+GetWrite folders. For case (a), the default split point is Heading 1; the
+split level is configurable to another heading level or to no split at
+all. A document with no headings at the chosen level imports as a single
+resource, and the import report records that.
+**Impact:** This decides the entire shape of the importer. If the source is
+a single `.docx`, the importer needs a splitting rule (e.g. at Heading 1,
+at a page break, at a section break) with no obvious default — Word has no
+binder-like structure the way a `.scriv` project does, so there is no
+Scrivener-equivalent document boundary to carry over. If the source is a
+folder of separate `.docx` files, the importer instead needs a decision
+about whether the folder's own directory structure becomes GetWrite folders
+(mirroring how FR-42 carries over Scrivener's binder folders) or every file
+lands flat. Left undecided, a feature spec would have to invent this
+boundary itself.
+**Owner:** Product owner.
+**Evidence:** `frontend/src/lib/models/scrivener/binder-mapper.ts` maps an
+explicit Scrivener Binder tree (Draft, top-level folders, Research) onto
+GetWrite folders/resources — that structure comes for free from Scrivener's
+own project format. A `.docx` file (or a plain folder of them) carries no
+equivalent explicit multi-resource structure; Word's own outline/heading
+levels are the closest analogue, and this spec does not decide whether they
+should be read as split points.
+
+**OQ-20: For FR-33, which content within a Word/DOCX source carries over,
+and which is deferred — headings/structure, bold/italic and other
+character/paragraph formatting, comments, tracked changes, footnotes,
+images/embedded media, and document properties (author, title, custom
+fields)?**
+**Resolution (owner decision, 2026-09-13):** Text, heading/paragraph
+structure, and bold/italic carry over — matching FR-42's fidelity bar —
+plus footnotes and basic document properties (title, author). Comments,
+tracked changes, and images/embedded media are deferred. Where footnotes
+and document properties land in GetWrite's data model is a feature-spec
+decision, not decided here.
+**Impact:** FR-42's own content scope (OQ-13) took a real owner decision to
+pin down piece by piece (text, synopsis/notes, status, keywords, custom
+metadata in; snapshots, Research media, Trash out). FR-33 has had no
+equivalent pass. Word/DOCX-specific content types with no Scrivener
+analogue — tracked changes, comments, footnotes — aren't even covered by
+that precedent and need their own call.
+**Owner:** Product owner.
+**Evidence:** `frontend/src/lib/models/scrivener/rtf-to-tiptap.ts` is
+narrowly scoped to the RTF control words FR-42's own source material
+actually used (bold/italic, `\line`/`\par`, `\'XX` hex escapes, `\field`
+flattening) rather than full RTF fidelity — the same document-by-document
+scoping choice would need to be made for `.docx`'s OOXML markup, and no
+survey of a real `.docx` project's markup (comments, tracked changes,
+footnotes, embedded media) has been done the way
+`import-inputs/The SF Sideshow.scriv` grounded FR-42/OQ-13.
+
+**OQ-21: What delivery surface(s) does FR-33 ship on — CLI first (as FR-42
+did, per resolved OQ-14), desktop UI, or both from the start — and on which
+platforms (Electron desktop, hosted web, native Android)?**
+**Resolution (owner decision, 2026-09-13):** CLI and Electron desktop UI
+ship together in FR-33's first delivery, not CLI-first as FR-42/FR-43
+sequenced. The desktop UI follows FR-43's pattern: a native picker running
+in the Electron main process, with the source path never crossing into
+the renderer or reaching a Next API route (`docs/standards/security.md`
+§2). Hosted web and native Android DOCX import are deferred.
+**Impact:** Determines sequencing (a single deliverable vs. a CLI-then-UI
+split mirroring FR-42/FR-43) and which platforms need a source-selection
+mechanism at all. If a desktop UI is in scope, the same constraint FR-43 had
+to design around applies: a renderer MUST NOT send a filesystem path to a
+Next API route (`docs/standards/security.md` §2, "Never Trust a
+Client-Supplied Path") — FR-43 resolved this via a native OS picker running
+in the Electron main process handing the path to the conversion through a
+trusted main-process path, never through the renderer or an API route
+(resolved OQ-18). Whether that same mechanism, a different one, or none (CLI
+only) applies to FR-33 is not decided.
+**Owner:** Product owner.
+**Evidence:** `docs/standards/security.md` §2; FR-42's resolved OQ-14
+(CLI-first sequencing) and FR-43's resolved OQ-18 (Electron-desktop-only UI,
+native-picker mechanism) are the only precedent this product has for
+sequencing and platform scope on an importer; neither commits FR-33 to the
+same path.
+
+**OQ-22: Does FR-33 reuse Scrivener import's skip-and-report model — a
+post-import report file listing unconvertible content — for content it
+cannot carry over?**
+**Resolution (owner decision, 2026-09-13):** Same skip, continue, and
+report principle as FR-42/FR-43 (resolved: OQ-15), but with a
+DOCX-specific report whose sections reflect DOCX content — it does not
+reuse Scrivener's eight-section list as-is. Whether the report-writing
+code is shared with `import-report.ts` is a feature-spec decision.
+**Impact:** FR-42/FR-43 (resolved OQ-15) commit to skip, continue, and
+report rather than abort on unconvertible content, and
+`frontend/src/lib/models/scrivener/import-report.ts` is a working
+implementation of that pattern. Reusing or diverging from it changes what a
+Word/DOCX-import feature spec needs to design from scratch versus adapt.
+**Owner:** Product owner.
+**Evidence:** `frontend/src/lib/models/scrivener/import-report.ts`
+(`buildImportReport`/`writeImportReport`, fixed eight-section report written
+to `<projectRoot>/scrivener-import-report.txt`) is the only precedent in
+this codebase for a post-import report; nothing commits FR-33 to reusing its
+shape, its file-naming convention, or its section list.
+
+**OQ-23: Does FR-33 create only a fresh GetWrite project (one-shot, no
+merge/re-import — mirroring FR-42's resolved OQ-12), and which project type
+does the new project use?**
+**Resolution (owner decision, 2026-09-13):** One-shot only, mirroring
+FR-42/FR-43's resolved OQ-12: each import creates a fresh GetWrite project
+and refuses a non-empty destination; repeatable DOCX import is out of
+scope. The writer picks the destination project's project type at import
+time — a CLI flag and a UI choice — from the existing project types, with
+a default. Which type is the default is a feature-spec decision.
+**Impact:** FR-42 resolved this for Scrivener (one-shot; repeatable import
+deferred to FR-44) but nothing in this spec states the same for Word/DOCX.
+Separately, `getwrite-cli project create` and `import-scrivener-project.ts`
+both need to know which project-type spec (`getwrite-config/templates/
+project-types/`) shapes the destination project's config, statuses, and
+metadata schema — Scrivener import builds this from the source project's
+own Binder/metadata; a `.docx` source has no equivalent self-describing
+project-type signal.
+**Owner:** Product owner.
+**Evidence:** `frontend/src/lib/models/scrivener/import-scrivener-project.ts`
+refuses a non-empty pre-existing `projectRoot` and always creates a fresh
+project (one-shot); `getwrite-config/templates/project-types/*.json` is the
+existing project-type mechanism FR-33 would need to select from, or extend,
+for a Word/DOCX-sourced project.
+
 ## Out of Scope (Deferred)
 
 - A keyboard-operable equivalent for dragging a node on the entity
@@ -972,6 +1136,19 @@ deferred rather than resolved here.
   native Android has no directory-picking precedent; a future requirement
   would be needed for either. FR-43 is scoped to Electron desktop only;
   this deferral is not a permanent exclusion.
+- Comments, tracked changes, and images/embedded media as part of
+  Word/DOCX import (FR-33, resolved: OQ-20). Text, heading/paragraph
+  structure, bold/italic, footnotes, and basic document properties (title,
+  author) carry over; these three content types are deferred, not decided
+  against.
+- Word/DOCX import (FR-33, resolved: OQ-21) on hosted web and native
+  Android. FR-33 ships a CLI command and an Electron desktop UI together
+  in its first delivery; either other platform would need a future
+  requirement of its own.
+- Repeatable Word/DOCX import — re-running import to merge into or
+  refresh an already-imported GetWrite project (FR-33, resolved: OQ-23).
+  Import is one-shot only, mirroring FR-42/FR-43's resolved OQ-12 and
+  FR-44's Scrivener-scoped precedent.
 - [Later] Hosted multi-tenant access and cross-device sync as a shipped,
   user-facing product (foundations exist per ADR-017–ADR-022; not shipped).
 - [Later] Native Android packaging, signing, and distribution as a shipped
