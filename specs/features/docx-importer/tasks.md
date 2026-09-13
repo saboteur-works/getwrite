@@ -266,7 +266,7 @@ appear anywhere in the output).
 **Depends on:** 1, 2
 **Estimate:** 8
 **POS:** task_e547c5a1
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Heading-level document split
 
