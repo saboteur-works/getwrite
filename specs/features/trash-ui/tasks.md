@@ -405,7 +405,7 @@ typecheck` pass.
 **Depends on:** 4, 6, 7, 9
 **Estimate:** 10
 **POS:** task_1d613c6b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Trash list, restore, and purge API routes (FR-1, FR-2, FR-11, FR-12)
 

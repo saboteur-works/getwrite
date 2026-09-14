@@ -37,6 +37,14 @@ export {
   type TrashRefRecord,
 } from "./models/trash";
 
+// Trash — FR-18 ordered, resumable purge sweep
+export {
+  purgeResource,
+  purgeFolder,
+  PurgeSweepError,
+  type PurgeStepName,
+} from "./models/trash";
+
 // Revisions (pruning)
 export { runCli as runPruneCli } from "./models/pruneExecutor";
 

@@ -21,6 +21,7 @@ import { removeResourceFromMentionIndex } from "./mention-index";
 import { getLocalResources, writeResourceToFile } from "./resource-persistence";
 import { getSchema } from "./metadata-schema";
 import { enqueueIndex } from "./indexer-queue";
+import { removeEntityRelationshipsForEntity } from "./entity-relationships";
 import {
   FolderSchema,
   TrashRefRecordSchema,
@@ -1111,34 +1112,255 @@ async function pathExists(p: string): Promise<boolean> {
 }
 
 /**
- * Permanently remove resource and sidecar from the trash area.
+ * Identifies which of the five FR-18 ordered purge-sweep steps a
+ * {@link PurgeSweepError} failed at, in sweep order:
+ *
+ * 1. `"index-backlinks-mentions"` — inverted index, backlinks, mention index.
+ * 2. `"relationships"` — authored entity relationship edges.
+ * 3. `"revisions"` — trashed revisions.
+ * 4. `"sidecar-and-ref-record"` — trashed sidecar and FR-8 ref record (or,
+ *    for a folder purge, that resource's own step — the manifest/folder
+ *    descriptor removal is a separate, later step of {@link purgeFolder}
+ *    itself, not this per-resource enum).
+ * 5. `"content-files"` — trashed resource content files, last.
+ */
+export type PurgeStepName =
+  | "index-backlinks-mentions"
+  | "relationships"
+  | "revisions"
+  | "sidecar-and-ref-record"
+  | "content-files"
+  | "folder-manifest-and-descriptor";
+
+/**
+ * Structured error thrown by {@link purgeResource}/{@link purgeFolder} when a
+ * purge-sweep step fails (FR-18). Names the step that failed and the item
+ * being purged, and carries the original error as `cause`, so a caller (the
+ * Task 11 API route) can surface exactly where the sweep stopped rather than
+ * a generic failure. The item remains listed in Trash; re-running purge on it
+ * completes only the remaining steps, since every step is independently
+ * idempotent.
+ */
+export class PurgeSweepError extends Error {
+  readonly step: PurgeStepName;
+  readonly itemId: UUID;
+
+  constructor(step: PurgeStepName, itemId: UUID, cause: unknown) {
+    const causeMessage = cause instanceof Error ? cause.message : String(cause);
+    super(
+      `Purge sweep failed at step "${step}" for ${itemId}: ${causeMessage}`,
+      { cause },
+    );
+    this.name = "PurgeSweepError";
+    this.step = step;
+    this.itemId = itemId;
+  }
+}
+
+/**
+ * The five FR-18 ordered purge-sweep steps for a single resource, each
+ * exported on this object (rather than called as bare module-local
+ * functions) so a test can substitute one via `vi.spyOn` / direct property
+ * assignment to simulate a mid-sweep failure — {@link purgeResource} always
+ * calls through this object, never the underlying functions directly, so a
+ * substituted step is honored on the very next sweep.
+ *
+ * Each step mirrors an already-idempotent Task 5/7 primitive: calling it
+ * again after it already succeeded (or already found nothing to do) throws
+ * nothing and changes nothing. This is what makes purge resumable without a
+ * journal (FR-18) — a re-run simply re-executes every step from the top,
+ * and every step before the one that previously failed is a safe no-op.
+ */
+export const purgeResourceSteps = {
+  /** Step 1: inverted index, backlinks, mention index (FR-16's inverse). */
+  async removeIndexEntries(
+    projectRoot: string,
+    resourceId: UUID,
+  ): Promise<void> {
+    await removeResourceFromIndex(projectRoot, resourceId);
+    await removeResourceFromBacklinks(projectRoot, resourceId);
+    await removeResourceFromMentionIndex(projectRoot, resourceId);
+  },
+
+  /** Step 2: authored entity relationship edges naming this resource. */
+  async removeRelationships(
+    projectRoot: string,
+    resourceId: UUID,
+  ): Promise<void> {
+    await removeEntityRelationshipsForEntity(projectRoot, resourceId);
+  },
+
+  /** Step 3: trashed (or legacy-path) revisions. */
+  async purgeRevisions(projectRoot: string, resourceId: UUID): Promise<void> {
+    await purgeTrashedRevisions(projectRoot, resourceId);
+  },
+
+  /** Step 4: trashed sidecar and its FR-8 nullified-reference record. */
+  async purgeSidecarAndRefRecord(
+    projectRoot: string,
+    resourceId: UUID,
+  ): Promise<void> {
+    const { trashMetaDir } = trashPaths(projectRoot);
+    const sidecarPath = path.join(trashMetaDir, sidecarFilename(resourceId));
+    await rm(sidecarPath, { force: true });
+    await rm(trashRefRecordPath(projectRoot, resourceId), { force: true });
+  },
+
+  /** Step 5, last: trashed resource content files. */
+  async purgeContentFiles(
+    projectRoot: string,
+    resourceId: UUID,
+  ): Promise<void> {
+    const { trashResourcesDir } = trashPaths(projectRoot);
+    let entries: string[];
+    try {
+      entries = await readdir(trashResourcesDir);
+    } catch (err: unknown) {
+      if (isEnoent(err)) return;
+      throw err;
+    }
+    for (const e of entries) {
+      if (e.startsWith(resourceId + "-")) {
+        await rm(path.join(trashResourcesDir, e), {
+          recursive: true,
+          force: true,
+        });
+      }
+    }
+  },
+};
+
+/**
+ * Permanently removes a trashed resource, running the fixed FR-18 order:
+ * (1) inverted index/backlinks/mentions, (2) authored relationship edges,
+ * (3) trashed revisions, (4) trashed sidecar + FR-8 ref record, (5) trashed
+ * content files, last.
+ *
+ * On any step's failure, the sweep stops immediately and throws a
+ * {@link PurgeSweepError} naming the failed step; every step before it has
+ * already taken effect and is left in place, and the resource remains listed
+ * in Trash (nothing here removes it from a "currently trashed" listing other
+ * than actually deleting its trashed files). Re-running `purgeResource` on
+ * the same resource re-executes every step from the top — including the
+ * already-completed ones — which is safe because every step is independently
+ * idempotent (FR-18: idempotency, not skip-logic, is the resumability
+ * mechanism).
  */
 export async function purgeResource(
   projectRoot: string,
   resourceId: UUID,
 ): Promise<void> {
-  const { trashResourcesDir, trashMetaDir } = trashPaths(projectRoot);
+  const steps: [PurgeStepName, () => Promise<void>][] = [
+    [
+      "index-backlinks-mentions",
+      () => purgeResourceSteps.removeIndexEntries(projectRoot, resourceId),
+    ],
+    [
+      "relationships",
+      () => purgeResourceSteps.removeRelationships(projectRoot, resourceId),
+    ],
+    [
+      "revisions",
+      () => purgeResourceSteps.purgeRevisions(projectRoot, resourceId),
+    ],
+    [
+      "sidecar-and-ref-record",
+      () =>
+        purgeResourceSteps.purgeSidecarAndRefRecord(projectRoot, resourceId),
+    ],
+    [
+      "content-files",
+      () => purgeResourceSteps.purgeContentFiles(projectRoot, resourceId),
+    ],
+  ];
 
-  // Delete sidecar from trash
-  const sidecarName = sidecarFilename(resourceId);
-  const sidecarPath = path.join(trashMetaDir, sidecarName);
+  for (const [step, run] of steps) {
+    try {
+      await run();
+    } catch (err: unknown) {
+      throw new PurgeSweepError(step, resourceId, err);
+    }
+  }
+}
+
+/**
+ * Permanently removes a trashed folder and every descendant resource/folder
+ * recorded in its Task 6 manifest (FR-7/FR-18).
+ *
+ * Runs the same {@link purgeResource} five-step sweep, in the same order,
+ * against every manifest resource entry (in manifest order — a pre-order
+ * walk), stopping and throwing a {@link PurgeSweepError} on the first
+ * resource whose sweep fails, before any manifest/descriptor cleanup runs.
+ * Only once every descendant resource has been fully purged does it remove
+ * every descendant folder's own trashed descriptor, then the manifest
+ * itself, then the target folder's own trashed descriptor, last.
+ *
+ * Resumable the same way {@link purgeResource} is: re-running `purgeFolder`
+ * re-walks the manifest from the top. Every already-purged resource's sweep
+ * is a safe no-op (each of its five steps is independently idempotent), and
+ * removing an already-absent folder descriptor/manifest/target descriptor is
+ * a no-op too (`rm`'s `force: true`).
+ *
+ * Throws if no Task 6 manifest exists for `folderId` and the folder's own
+ * trashed descriptor is also absent (nothing left to purge, and nothing was
+ * ever recorded — not a resumable partial state).
+ */
+export async function purgeFolder(
+  projectRoot: string,
+  folderId: UUID,
+): Promise<void> {
+  const { trashFoldersDir } = trashPaths(projectRoot);
+  const manifestPath = trashFolderManifestPath(projectRoot, folderId);
+
+  let manifest: TrashFolderManifest | undefined;
   try {
-    await rm(sidecarPath, { force: true });
-  } catch {
-    // ignore
+    const raw = await readFile(manifestPath, "utf8");
+    manifest = TrashFolderManifestSchema.parse(JSON.parse(raw));
+  } catch (err: unknown) {
+    if (!isEnoent(err)) throw err;
   }
 
-  // Delete resource files from trash
-  try {
-    const entries = await readdir(trashResourcesDir);
-    for (const e of entries) {
-      if (e.startsWith(resourceId + "-")) {
-        const p = path.join(trashResourcesDir, e);
-        await rm(p, { force: true });
+  const trashedDescriptors = await collectFolderDescriptors(trashFoldersDir);
+  const trashedByFolderId = new Map(
+    trashedDescriptors.map((fd) => [fd.folder.id, fd]),
+  );
+  const targetTrashedDir = trashedByFolderId.get(folderId)?.dirPath;
+
+  if (!manifest && !targetTrashedDir) {
+    throw new Error(`No trashed folder found to purge: ${folderId}`);
+  }
+
+  if (manifest) {
+    for (const entry of manifest.descendants) {
+      if (entry.kind !== "resource") continue;
+      await purgeResource(projectRoot, entry.id);
+    }
+
+    for (const entry of manifest.descendants) {
+      if (entry.kind !== "folder") continue;
+      const dirPath = trashedByFolderId.get(entry.id)?.dirPath;
+      if (dirPath) {
+        await rm(dirPath, { recursive: true, force: true });
       }
     }
-  } catch {
-    // ignore
+  }
+
+  try {
+    await rm(manifestPath, { force: true });
+  } catch (err: unknown) {
+    throw new PurgeSweepError("folder-manifest-and-descriptor", folderId, err);
+  }
+
+  if (targetTrashedDir) {
+    try {
+      await rm(targetTrashedDir, { recursive: true, force: true });
+    } catch (err: unknown) {
+      throw new PurgeSweepError(
+        "folder-manifest-and-descriptor",
+        folderId,
+        err,
+      );
+    }
   }
 }
 
@@ -1148,5 +1370,6 @@ export default {
   restoreResource,
   restoreFolder,
   purgeResource,
+  purgeFolder,
   purgeTrashedRevisions,
 };
