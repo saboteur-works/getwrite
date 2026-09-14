@@ -32,15 +32,29 @@
  * `"none"` means "no split requested," not "no heading found," so it is
  * always `false` for that mode.
  *
- * **Section titles.** A section that starts with a matching heading takes
- * that heading's own flattened inline text as its title. A section with no
- * heading to name it — the content before the first matching heading (when
- * that content is non-empty), the whole document under `"none"`, or the
- * whole document when `noHeadingFound` is `true` — falls back to
- * {@link UNTITLED_SECTION_TITLE}. Purely blank leading content (no
- * non-whitespace text anywhere in it) before the first heading is dropped
- * rather than becoming its own placeholder-titled section, since an empty
- * section carries no information worth a resource of its own.
+ * **Section titles and `titleSource` (FR-14, Stage 6.5, 2026-09-13).** A
+ * section that starts with a matching heading whose own flattened inline
+ * text is non-empty takes that text as its title, with `titleSource:
+ * "heading"`. Every other section — the whole document under `"none"` or
+ * when `noHeadingFound` is `true`, the content before the first matching
+ * heading (when that content is non-empty), and (rare) a matching heading
+ * whose own text is empty — gets `titleSource: "auto"` and a generated
+ * placeholder name: {@link UNTITLED_SECTION_TITLE} ("Untitled"), or
+ * "Untitled 2", "Untitled 3", ... for a second, third, ... auto-named
+ * section within the same call's result, de-duplicated only among each
+ * other in document order (mirroring `scrivener/binder-mapper.ts`'s
+ * `resolveSiblingTitles`). This module only produces that numbering; it does
+ * not know whether its single whole-document section (the `noHeadingFound`/
+ * `"none"` case) will end up named from the source document's own core
+ * title or filename instead — Task 9's orchestrator makes that substitution
+ * for that one case, since only it has the core-properties/filename inputs
+ * needed, and does not report it under the "Untitled Fallback Names"
+ * category (FR-6(h)) — only a section actually named "Untitled"/"Untitled
+ * 2"/... within an otherwise-successful split is reported there. Purely
+ * blank leading content (no non-whitespace text anywhere in it) before the
+ * first heading is dropped rather than becoming its own placeholder-titled
+ * section, since an empty section carries no information worth a resource
+ * of its own.
  *
  * **Attributing footnotes/endnotes to a section (a real design decision).**
  * Task 6 leaves each note reference in the running text as plain `"[n]"`
@@ -75,20 +89,33 @@ type NoteRef = DocxNoteRef;
  * no split — the whole document imports as a single section. */
 export type HeadingSplitLevel = 1 | 2 | 3 | 4 | 5 | 6 | "none";
 
-/** Placeholder title for a section with no heading of its own to name it —
- * pre-first-heading content, the single section under `level: "none"`, or
- * the whole document when no heading exists at the chosen level. */
-export const UNTITLED_SECTION_TITLE = "Front Matter";
+/** Placeholder title (before any same-call de-duplication numbering — see
+ * the module doc's "Section titles and `titleSource`" note) for a section
+ * with no heading of its own to name it — pre-first-heading content, the
+ * single section under `level: "none"`, the whole document when no heading
+ * exists at the chosen level, or a matching heading with no text of its
+ * own. */
+export const UNTITLED_SECTION_TITLE = "Untitled";
+
+/** How a {@link DocxSection}'s `title` was determined (FR-14, Stage 6.5,
+ * 2026-09-13): `"heading"` when it is the section's own starting heading's
+ * flattened, non-empty text; `"auto"` when it is a generated
+ * {@link UNTITLED_SECTION_TITLE}-based placeholder. Task 9's orchestrator
+ * uses this to decide the FR-14 no-heading/preamble naming rule and the
+ * FR-6(h) report. */
+export type DocxSectionTitleSource = "heading" | "auto";
 
 /**
  * One heading-delimited (or, under `"none"`/`noHeadingFound`, whole-document)
  * section of a split DOCX document.
  */
 export interface DocxSection {
-  /** The section's title: the starting heading's flattened text, or
-   * {@link UNTITLED_SECTION_TITLE} when the section has no heading of its
-   * own. */
+  /** The section's title: the starting heading's flattened text
+   * (`titleSource: "heading"`), or a generated, same-call-deduplicated
+   * {@link UNTITLED_SECTION_TITLE} placeholder (`titleSource: "auto"`). */
   readonly title: string;
+  /** How `title` was determined; see {@link DocxSectionTitleSource}. */
+  readonly titleSource: DocxSectionTitleSource;
   /** This section's own slice of the original document, as a complete,
    * independently valid `DocxTipTapDocument`. */
   readonly content: DocxTipTapDocument;
@@ -150,23 +177,57 @@ function collectReferencedNoteNumbers(
  * top-level nodes, attributing notes per the module doc's `"[n]"`-scanning
  * algorithm.
  *
- * @param title - The section's title (a heading's text, or the untitled
+ * @param title - The section's title (a heading's text, or a generated
  *   placeholder).
+ * @param titleSource - How `title` was determined; see
+ *   {@link DocxSectionTitleSource}.
  * @param nodes - This section's own top-level block nodes.
  * @param notes - The full, original notes array to attribute from.
  * @returns The assembled section.
  */
 function buildSection(
   title: string,
+  titleSource: DocxSectionTitleSource,
   nodes: readonly DocxTipTapBlockNode[],
   notes: readonly DocxNoteRef[],
 ): DocxSection {
   const referenced = collectReferencedNoteNumbers(nodes);
   return {
     title,
+    titleSource,
     content: { type: "doc", content: [...nodes] },
     notes: notes.filter((note) => referenced.has(note.n)),
   };
+}
+
+/**
+ * One not-yet-titled section, produced by a first pass over a normal
+ * (heading-found) split, before {@link deduplicateAutoTitles} assigns final,
+ * same-call-unique names to every `"auto"` one.
+ */
+interface RawSection {
+  readonly title: string;
+  readonly titleSource: DocxSectionTitleSource;
+  readonly nodes: readonly DocxTipTapBlockNode[];
+}
+
+/**
+ * Assigns final titles to a normal split's raw sections (FR-14, Stage 6.5,
+ * 2026-09-13): every `"heading"` section keeps its own title unchanged; every
+ * `"auto"` section is renumbered "Untitled", "Untitled 2", "Untitled 3", ...
+ * in document order, de-duplicated only among the *other* `"auto"` sections
+ * in this same result (mirroring `scrivener/binder-mapper.ts`'s
+ * `resolveSiblingTitles`).
+ */
+function deduplicateAutoTitles(rawSections: readonly RawSection[]): string[] {
+  let autoCount = 0;
+  return rawSections.map((raw) => {
+    if (raw.titleSource === "heading") return raw.title;
+    autoCount += 1;
+    return autoCount === 1
+      ? UNTITLED_SECTION_TITLE
+      : `${UNTITLED_SECTION_TITLE} ${autoCount}`;
+  });
 }
 
 /**
@@ -190,7 +251,9 @@ export function splitDocxAtHeadingLevel(
 ): SplitDocxResult {
   if (level === "none") {
     return {
-      sections: [buildSection(UNTITLED_SECTION_TITLE, document.content, notes)],
+      sections: [
+        buildSection(UNTITLED_SECTION_TITLE, "auto", document.content, notes),
+      ],
       noHeadingFound: false,
     };
   }
@@ -202,28 +265,47 @@ export function splitDocxAtHeadingLevel(
 
   if (headingIndexes.length === 0) {
     return {
-      sections: [buildSection(UNTITLED_SECTION_TITLE, document.content, notes)],
+      sections: [
+        buildSection(UNTITLED_SECTION_TITLE, "auto", document.content, notes),
+      ],
       noHeadingFound: true,
     };
   }
 
-  const sections: DocxSection[] = [];
+  const rawSections: RawSection[] = [];
 
   const leading = document.content.slice(0, headingIndexes[0]);
   if (hasNonEmptyContent(leading)) {
-    sections.push(buildSection(UNTITLED_SECTION_TITLE, leading, notes));
+    rawSections.push({
+      title: UNTITLED_SECTION_TITLE,
+      titleSource: "auto",
+      nodes: leading,
+    });
   }
 
   headingIndexes.forEach((startIndex, position) => {
     const endIndex = headingIndexes[position + 1] ?? document.content.length;
     const sectionNodes = document.content.slice(startIndex, endIndex);
     const headingNode = sectionNodes[0];
-    const title =
+    const headingTitle =
       headingNode.type === "heading"
         ? flattenBlockText([headingNode]).trim()
-        : UNTITLED_SECTION_TITLE;
-    sections.push(buildSection(title, sectionNodes, notes));
+        : "";
+    rawSections.push(
+      headingTitle.length > 0
+        ? { title: headingTitle, titleSource: "heading", nodes: sectionNodes }
+        : {
+            title: UNTITLED_SECTION_TITLE,
+            titleSource: "auto",
+            nodes: sectionNodes,
+          },
+    );
   });
+
+  const titles = deduplicateAutoTitles(rawSections);
+  const sections = rawSections.map((raw, index) =>
+    buildSection(titles[index], raw.titleSource, raw.nodes, notes),
+  );
 
   return { sections, noHeadingFound: false };
 }

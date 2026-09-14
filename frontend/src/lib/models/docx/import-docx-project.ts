@@ -50,7 +50,16 @@
  *    independently read/converted here, never split), via the bulk-create
  *    pattern (`writeResourceToFile` + `writeRevision(..., { isCanonical:
  *    true })`), appending each resource's own Notes list as trailing
- *    paragraphs.
+ *    paragraphs. A single-file source's resource naming follows FR-14's
+ *    no-heading/preamble rule (Stage 6.5, 2026-09-13): when the whole
+ *    document has no heading at the split level (or `splitLevel: "none"`),
+ *    its one resource is named from the document's own core title, falling
+ *    back to the source filename without its `.docx` extension; otherwise
+ *    each of Task 7's sections keeps its own resolved name — a real
+ *    heading's text unchanged, or `heading-split.ts`'s already-deduplicated
+ *    "Untitled"/"Untitled 2"/... placeholder for a section with no heading
+ *    of its own (`titleSource: "auto"`), each such placeholder also recorded
+ *    for the FR-6(h) report.
  * 6. Create the `docx-import` metadata group's "Author" field (only when at
  *    least one processed document actually had a non-empty core author) and
  *    write each resource's own author onto it.
@@ -130,6 +139,7 @@ import {
   type DocxImportReportInput,
   type DocxImportReportNoHeadingDocument,
   type DocxImportReportSkip,
+  type DocxImportReportUntitledFallback,
 } from "./docx-import-report";
 import {
   detectDocxSource,
@@ -256,6 +266,8 @@ interface ReportAccumulator {
   imagesNotImportedCount: number;
   noHeadingFoundDocuments: DocxImportReportNoHeadingDocument[];
   footnoteEndnoteConvertedCount: number;
+  /** Every resource named "Untitled"/"Untitled 2"/... by FR-14's preamble naming rule (FR-6(h)). */
+  untitledFallbacks: DocxImportReportUntitledFallback[];
   /** `true` once at least one processed document had a non-empty core author (drives whether the `docx-import` group is created at all). */
   anyAuthorFound: boolean;
 }
@@ -268,6 +280,7 @@ function newReportAccumulator(): ReportAccumulator {
     imagesNotImportedCount: 0,
     noHeadingFoundDocuments: [],
     footnoteEndnoteConvertedCount: 0,
+    untitledFallbacks: [],
     anyAuthorFound: false,
   };
 }
@@ -411,6 +424,15 @@ interface SingleFileImportPlan {
   readonly author?: string;
   readonly sections: readonly DocxSection[];
   readonly noHeadingFound: boolean;
+  /**
+   * `true` when this plan's single section represents the *whole document*
+   * with no split applied — either `noHeadingFound` (a numeric level with no
+   * matching heading anywhere) or `splitLevel: "none"` (Stage 6.5,
+   * 2026-09-13, FR-14). That one resource is named from `title`, falling
+   * back to the source filename, rather than from `sections[0]`'s own
+   * (irrelevant, since it's always alone) `heading-split.ts` placeholder.
+   */
+  readonly isWholeDocument: boolean;
   readonly packageFeatures: DocxPackageFeatures;
   readonly messages: readonly string[];
 }
@@ -436,9 +458,23 @@ async function planSingleFileImport(
     author: coreProperties.author,
     sections: splitResult.sections,
     noHeadingFound: splitResult.noHeadingFound,
+    isWholeDocument: splitLevel === "none" || splitResult.noHeadingFound,
     packageFeatures,
     messages: converted.messages,
   };
+}
+
+/** `title` when non-empty, else `sourcePath`'s basename without its `.docx`
+ * extension (FR-14's no-heading/preamble naming rule, Stage 6.5,
+ * 2026-09-13) — used for a single-file source's one resource when the whole
+ * document has no heading at the chosen split level, or `splitLevel:
+ * "none"`. */
+function resolveWholeDocumentResourceName(
+  title: string | undefined,
+  sourcePath: string,
+): string {
+  if (title !== undefined && title.trim() !== "") return title;
+  return path.basename(sourcePath, path.extname(sourcePath));
 }
 
 /**
@@ -446,13 +482,43 @@ async function planSingleFileImport(
  * appending each section's own Notes list as trailing paragraphs and
  * writing the document's own author (shared across every section, FR-14)
  * onto each.
+ *
+ * Naming (FR-14's no-heading/preamble rule, Stage 6.5, 2026-09-13): when
+ * `plan.isWholeDocument` is `true`, the plan's single section is named from
+ * `sourcePath` via {@link resolveWholeDocumentResourceName} rather than from
+ * its own (irrelevant `heading-split.ts` placeholder) title. Otherwise every
+ * section keeps its own already-resolved `title` — a real heading's text
+ * unchanged, or `heading-split.ts`'s already-deduplicated "Untitled"/
+ * "Untitled 2"/... placeholder (`titleSource: "auto"`), each such
+ * placeholder folded into `acc.untitledFallbacks` for the FR-6(h) report.
  */
 async function writeSingleFileSections(
   projectRoot: string,
+  sourcePath: string,
   plan: SingleFileImportPlan,
+  acc: ReportAccumulator,
 ): Promise<number> {
+  if (plan.isWholeDocument) {
+    const section = plan.sections[0];
+    const documentWithNotes = appendNotes(section.content, section.notes);
+    await createAndWriteDocxResource(projectRoot, {
+      name: resolveWholeDocumentResourceName(plan.title, sourcePath),
+      folderId: null,
+      document: documentWithNotes,
+      orderIndex: 0,
+      author: plan.author,
+    });
+    return 1;
+  }
+
   let orderIndex = 0;
   for (const section of plan.sections) {
+    if (section.titleSource === "auto") {
+      acc.untitledFallbacks.push({
+        resourceName: section.title,
+        documentPath: sourcePath,
+      });
+    }
     const documentWithNotes = appendNotes(section.content, section.notes);
     await createAndWriteDocxResource(projectRoot, {
       name: section.title,
@@ -646,7 +712,9 @@ export async function importDocxProject(
     if (singleFilePlan !== undefined) {
       resourceCount = await writeSingleFileSections(
         projectRoot,
+        sourcePath,
         singleFilePlan,
+        acc,
       );
     } else if (folderPlan !== undefined) {
       const counts = { folderCount: 0, resourceCount: 0 };
@@ -689,6 +757,7 @@ export async function importDocxProject(
       hiddenFilesSkippedCount: folderSkipCounts.hiddenFilesSkippedCount,
       noHeadingFoundDocuments: acc.noHeadingFoundDocuments,
       footnoteEndnoteConvertedCount: acc.footnoteEndnoteConvertedCount,
+      untitledFallbacks: acc.untitledFallbacks,
     };
     const report = buildDocxImportReport(reportInput);
     await writeDocxImportReport(projectRoot, report);

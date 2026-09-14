@@ -38,6 +38,7 @@ describe("splitDocxAtHeadingLevel", () => {
       "paragraph",
     ]);
     expect(sections[0].notes).toEqual([]);
+    expect(sections[0].titleSource).toBe("heading");
   });
 
   it("splits multi-heading.docx into one section per level-2 heading, leaving the level-1 heading in the leading section", async () => {
@@ -52,10 +53,12 @@ describe("splitDocxAtHeadingLevel", () => {
     // it becomes its own untitled leading section.
     expect(sections).toHaveLength(2);
     expect(sections[0].title).toBe(UNTITLED_SECTION_TITLE);
+    expect(sections[0].titleSource).toBe("auto");
     expect(sections[0].content.content.map((node) => node.type)).toEqual([
       "heading",
     ]);
     expect(sections[1].title).toBe("A Section");
+    expect(sections[1].titleSource).toBe("heading");
     expect(sections[1].content.content.map((node) => node.type)).toEqual([
       "heading",
       "heading",
@@ -73,11 +76,13 @@ describe("splitDocxAtHeadingLevel", () => {
     expect(isNoHeadingFound).toBe(false);
     expect(sections).toHaveLength(2);
     expect(sections[0].title).toBe(UNTITLED_SECTION_TITLE);
+    expect(sections[0].titleSource).toBe("auto");
     expect(sections[0].content.content.map((node) => node.type)).toEqual([
       "heading",
       "heading",
     ]);
     expect(sections[1].title).toBe("A Subsection");
+    expect(sections[1].titleSource).toBe("heading");
     expect(sections[1].content.content.map((node) => node.type)).toEqual([
       "heading",
       "paragraph",
@@ -93,6 +98,7 @@ describe("splitDocxAtHeadingLevel", () => {
     expect(result.noHeadingFound).toBe(true);
     expect(result.sections).toHaveLength(1);
     expect(result.sections[0].title).toBe(UNTITLED_SECTION_TITLE);
+    expect(result.sections[0].titleSource).toBe("auto");
     expect(result.sections[0].content).toEqual(document);
   });
 
@@ -104,6 +110,7 @@ describe("splitDocxAtHeadingLevel", () => {
 
     expect(result.noHeadingFound).toBe(false);
     expect(result.sections).toHaveLength(1);
+    expect(result.sections[0].titleSource).toBe("auto");
     expect(result.sections[0].content).toEqual(document);
   });
 
@@ -152,10 +159,12 @@ describe("splitDocxAtHeadingLevel", () => {
     expect(isNoHeadingFound).toBe(false);
     expect(sections).toHaveLength(2);
     expect(sections[0].title).toBe(UNTITLED_SECTION_TITLE);
+    expect(sections[0].titleSource).toBe("auto");
     expect(sections[0].notes).toEqual([
       { n: 1, text: "This is the footnote text." },
     ]);
     expect(sections[1].title).toBe("Later Section");
+    expect(sections[1].titleSource).toBe("heading");
     expect(sections[1].notes).toEqual([
       { n: 2, text: "This is the endnote text." },
     ]);
@@ -178,5 +187,68 @@ describe("splitDocxAtHeadingLevel", () => {
 
     expect(sections).toHaveLength(1);
     expect(sections[0].title).toBe("First Heading");
+    expect(sections[0].titleSource).toBe("heading");
+  });
+
+  it("treats a matching heading with no text of its own as an auto-named section, not a heading-derived title", () => {
+    const document: DocxTipTapDocument = {
+      type: "doc",
+      content: [
+        { type: "heading", attrs: { level: 1 }, content: [] },
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Body under the empty heading." }],
+        },
+      ],
+    };
+
+    const { sections, noHeadingFound: isNoHeadingFound } =
+      splitDocxAtHeadingLevel(document, [], 1);
+
+    expect(isNoHeadingFound).toBe(false);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].title).toBe(UNTITLED_SECTION_TITLE);
+    expect(sections[0].titleSource).toBe("auto");
+  });
+
+  // FR-14's preamble naming rule (Stage 6.5, 2026-09-13): two auto-named
+  // sections produced by the same split (the pre-first-heading preamble and
+  // a heading whose own text is empty) are de-duplicated as "Untitled" and
+  // "Untitled 2" — same-call, document order — leaving the real heading's
+  // title untouched.
+  it('de-duplicates two auto-named sections from the same split as "Untitled" and "Untitled 2"', () => {
+    const document: DocxTipTapDocument = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Leading content before any heading." },
+          ],
+        },
+        { type: "heading", attrs: { level: 1 }, content: [] },
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Body under the empty heading." }],
+        },
+        {
+          type: "heading",
+          attrs: { level: 1 },
+          content: [{ type: "text", text: "Real Heading" }],
+        },
+      ],
+    };
+
+    const { sections, noHeadingFound: isNoHeadingFound } =
+      splitDocxAtHeadingLevel(document, [], 1);
+
+    expect(isNoHeadingFound).toBe(false);
+    expect(sections).toHaveLength(3);
+    expect(sections[0].title).toBe("Untitled");
+    expect(sections[0].titleSource).toBe("auto");
+    expect(sections[1].title).toBe("Untitled 2");
+    expect(sections[1].titleSource).toBe("auto");
+    expect(sections[2].title).toBe("Real Heading");
+    expect(sections[2].titleSource).toBe("heading");
   });
 });

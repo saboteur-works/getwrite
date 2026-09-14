@@ -25,12 +25,20 @@
  * its own input shape, not an extension of the Scrivener report.
  *
  * **Empty-category convention (matching `scrivener/import-report.ts`):**
- * every one of the seven FR-6 categories is always rendered as its own
+ * every one of the eight FR-6 categories is always rendered as its own
  * heading, in a fixed order, even when there is nothing to report for it —
  * an empty category prints its heading followed by an explicit "nothing to
  * report" line rather than being omitted. This keeps the report's shape
  * independent of which categories happened to have content, and makes it
  * easier to diff between import runs.
+ *
+ * **(h) Untitled Fallback Names (FR-6(h), FR-14, Stage 6.5, 2026-09-13).**
+ * Mirrors `scrivener/import-report.ts`'s own "Untitled Fallback Names"
+ * section. Every entry here is a resource actually named "Untitled",
+ * "Untitled 2", ... by `heading-split.ts`'s FR-14 preamble rule — a
+ * no-heading-at-the-split-level *whole document*, named instead from its
+ * core title or filename (FR-14's other naming rule), is never listed here;
+ * that case is already covered by (f).
  */
 import path from "node:path";
 import { mkdir, writeFile } from "../io";
@@ -60,12 +68,25 @@ export interface DocxImportReportNoHeadingDocument {
 }
 
 /**
+ * A single resource named "Untitled"/"Untitled 2"/... by `heading-split.ts`'s
+ * FR-14 preamble naming rule (FR-6(h), Stage 6.5, 2026-09-13). Field names
+ * mirror `ImportReportUntitledFallback` (`scrivener/import-report.ts`), which
+ * this section mirrors.
+ */
+export interface DocxImportReportUntitledFallback {
+  /** The fallback name actually used ("Untitled", "Untitled 2", ...). */
+  readonly resourceName: string;
+  /** The source document's path (single-file source) or filename (folder source). */
+  readonly documentPath: string;
+}
+
+/**
  * Full set of inputs `buildDocxImportReport` renders. Populated by other
  * DOCX import-pipeline modules (FR-5 skip detection, FR-18's comment/
  * tracked-change/image detection, FR-15's folder-source skip categories,
  * FR-2/Task 7's no-heading-found detection, FR-13's footnote/endnote
- * conversion) and assembled by Task 9's orchestrator; every count defaults
- * to zero and every array may be empty.
+ * conversion, FR-14's preamble naming rule) and assembled by Task 9's
+ * orchestrator; every count defaults to zero and every array may be empty.
  */
 export interface DocxImportReportInput {
   /** (a) Every FR-5 skip, in encounter order. */
@@ -92,6 +113,8 @@ export interface DocxImportReportInput {
   readonly noHeadingFoundDocuments: readonly DocxImportReportNoHeadingDocument[];
   /** (g) Number of footnotes and endnotes converted to the Notes-list treatment (FR-13). */
   readonly footnoteEndnoteConvertedCount: number;
+  /** (h) Every resource named "Untitled"/"Untitled 2"/... by FR-14's preamble naming rule (FR-6(h)). */
+  readonly untitledFallbacks: readonly DocxImportReportUntitledFallback[];
 }
 
 /**
@@ -134,6 +157,7 @@ export function buildDocxImportReport(
     ),
     renderNoHeadingFoundSection(input.noHeadingFoundDocuments),
     renderFootnoteEndnoteSection(input.footnoteEndnoteConvertedCount),
+    renderUntitledFallbacksSection(input.untitledFallbacks),
   ];
 
   return ["# DOCX Import Report", "", ...sections].join("\n");
@@ -230,6 +254,19 @@ function renderFootnoteEndnoteSection(
     "Footnotes/Endnotes Converted",
     lines,
     "No footnotes or endnotes were found in the source.",
+  );
+}
+
+function renderUntitledFallbacksSection(
+  fallbacks: readonly DocxImportReportUntitledFallback[],
+): string {
+  const lines = fallbacks.map(
+    (fallback) => `- "${fallback.resourceName}" (${fallback.documentPath})`,
+  );
+  return renderSection(
+    "Untitled Fallback Names",
+    lines,
+    'No resource required a generated "Untitled" fallback name.',
   );
 }
 

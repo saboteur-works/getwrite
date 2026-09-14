@@ -868,7 +868,7 @@ typecheck` both pass.
 **Depends on:** 21
 **Estimate:** 5
 **POS:** task_f3477a8b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Full re-verification in the main worktree
 

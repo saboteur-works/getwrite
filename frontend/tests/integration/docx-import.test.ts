@@ -202,10 +202,10 @@ describe("importDocxProject — single-file source, core-properties.docx (FR-14)
     expect(project.name).toBe("Synthetic Core Properties Fixture");
   });
 
-  it("creates a single resource (no heading at the default split level) carrying the body text", () => {
+  it("creates a single resource (no heading at the default split level) named from the document's core title, per FR-14", () => {
     const textResources = resources.filter((r) => r.type === "text");
     expect(textResources).toHaveLength(1);
-    expect(textResources[0].name).toBe("Front Matter");
+    expect(textResources[0].name).toBe("Synthetic Core Properties Fixture");
     expect(textResources[0].plainText).toContain("Body text.");
   });
 
@@ -270,6 +270,64 @@ describe("importDocxProject — single-file source, multi-heading.docx (FR-2)", 
   });
 });
 
+describe("importDocxProject — multi-heading.docx split at level 2 (FR-14 preamble naming)", () => {
+  const sourcePath = path.join(FIXTURES_DIR, "multi-heading.docx");
+  let projectRoot: string;
+  let resources: (AnyResource & { plainText?: string })[];
+  let report: string;
+
+  beforeAll(async () => {
+    projectRoot = await mkTempProjectRoot("getwrite-docx-import-preamble-");
+    await importDocxProject({ sourcePath, projectRoot, splitLevel: 2 });
+    await flushIndexer();
+    resources = await readAllResources(projectRoot);
+    report = await readReport(projectRoot);
+  });
+
+  afterAll(async () => {
+    await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
+  });
+
+  it('names the pre-first-heading (H1-only) leading section "Untitled", leaving the real heading title untouched', () => {
+    const textResources = (
+      resources.filter((r) => r.type === "text") as (TextResource & {
+        plainText?: string;
+      })[]
+    ).sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+    expect(textResources).toHaveLength(2);
+    expect(textResources[0].name).toBe("Untitled");
+    expect(textResources[1].name).toBe("A Section");
+  });
+
+  it('records the generated "Untitled" resource name in the FR-6(h) report', () => {
+    expect(report).toContain("Untitled Fallback Names");
+    expect(report).toContain(`"Untitled" (${sourcePath})`);
+  });
+});
+
+describe("importDocxProject — no-headings.docx (FR-14 no-heading naming, filename fallback)", () => {
+  const sourcePath = path.join(FIXTURES_DIR, "no-headings.docx");
+  let projectRoot: string;
+  let resources: (AnyResource & { plainText?: string })[];
+
+  beforeAll(async () => {
+    projectRoot = await mkTempProjectRoot("getwrite-docx-import-no-headings-");
+    await importDocxProject({ sourcePath, projectRoot });
+    await flushIndexer();
+    resources = await readAllResources(projectRoot);
+  });
+
+  afterAll(async () => {
+    await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
+  });
+
+  it("names the one resulting resource from the source filename, since no-headings.docx has no core title", () => {
+    const textResources = resources.filter((r) => r.type === "text");
+    expect(textResources).toHaveLength(1);
+    expect(textResources[0].name).toBe("no-headings");
+  });
+});
+
 describe("importDocxProject — single-file source, footnotes-endnotes.docx (FR-13)", () => {
   const sourcePath = path.join(FIXTURES_DIR, "footnotes-endnotes.docx");
   let projectRoot: string;
@@ -286,6 +344,13 @@ describe("importDocxProject — single-file source, footnotes-endnotes.docx (FR-
 
   afterAll(async () => {
     await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
+  });
+
+  it("names the one resource from the source filename (FR-14), since footnotes-endnotes.docx has no core title and no heading at this split level", () => {
+    const textResource = resources.find((r) => r.type === "text") as
+      | TextResource
+      | undefined;
+    expect(textResource?.name).toBe("footnotes-endnotes");
   });
 
   it("renders footnote/endnote references as plain [n] text with a trailing Notes list", () => {

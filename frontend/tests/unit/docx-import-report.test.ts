@@ -23,6 +23,10 @@ const fullInput: DocxImportReportInput = {
   hiddenFilesSkippedCount: 2,
   noHeadingFoundDocuments: [{ documentPath: "notes.docx" }],
   footnoteEndnoteConvertedCount: 4,
+  untitledFallbacks: [
+    { resourceName: "Untitled", documentPath: "chapter-3.docx" },
+    { resourceName: "Untitled 2", documentPath: "chapter-3.docx" },
+  ],
 };
 
 const emptyInput: DocxImportReportInput = {
@@ -35,6 +39,7 @@ const emptyInput: DocxImportReportInput = {
   hiddenFilesSkippedCount: 0,
   noHeadingFoundDocuments: [],
   footnoteEndnoteConvertedCount: 0,
+  untitledFallbacks: [],
 };
 
 describe("buildDocxImportReport", () => {
@@ -52,6 +57,7 @@ describe("buildDocxImportReport", () => {
       "## Folder Source: Skipped Files",
       "## Documents With No Heading Found",
       "## Footnotes/Endnotes Converted",
+      "## Untitled Fallback Names",
     ];
     const positions = headingOrder.map((heading) => report.indexOf(heading));
     expect(positions.every((pos) => pos !== -1)).toBe(true);
@@ -95,6 +101,11 @@ describe("buildDocxImportReport", () => {
     expect(report).toContain(
       '- 4 footnote(s)/endnote(s) were converted to the Notes-list treatment (inline "[n]" reference plus a numbered Notes list).',
     );
+
+    // (h) FR-6(h) Untitled Fallback Names: each generated "Untitled"/
+    // "Untitled 2"/... resource name, with the source document it came from.
+    expect(report).toContain('- "Untitled" (chapter-3.docx)');
+    expect(report).toContain('- "Untitled 2" (chapter-3.docx)');
   });
 
   it("still renders a valid, non-crashing report when no category has content", () => {
@@ -122,6 +133,10 @@ describe("buildDocxImportReport", () => {
     expect(report).toContain("## Footnotes/Endnotes Converted");
     expect(report).toContain(
       "No footnotes or endnotes were found in the source.",
+    );
+    expect(report).toContain("## Untitled Fallback Names");
+    expect(report).toContain(
+      'No resource required a generated "Untitled" fallback name.',
     );
   });
 });
