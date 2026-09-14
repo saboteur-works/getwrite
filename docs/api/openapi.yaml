@@ -1147,6 +1147,262 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # ── Trash ─────────────────────────────────────────────────────────────────
+
+  /api/project/{project-id}/trash:
+    get:
+      summary: List everything currently in the project's Trash
+      description: |
+        Lists every currently trashed resource and top-level trashed folder in
+        one combined response. A resource or folder that is itself a
+        descendant of a trashed folder is omitted from its own top-level
+        entry — it is reachable only via that folder's `descendants` field —
+        so a cascade-trashed item is never listed twice. A legacy item
+        trashed before the underlying ref-record/manifest tracking existed is
+        still listed (with an empty `descendants` array for a folder with no
+        manifest).
+      parameters:
+        - name: project-id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Combined trash listing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resources:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          $ref: "#/components/schemas/UUID"
+                        originalName:
+                          type: string
+                        resourceType:
+                          type: string
+                        originalParentId:
+                          type: string
+                          nullable: true
+                        deletedAt:
+                          type: string
+                          nullable: true
+                  folders:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          $ref: "#/components/schemas/UUID"
+                        originalName:
+                          type: string
+                        originalParentId:
+                          type: string
+                          nullable: true
+                        deletedAt:
+                          type: string
+                          nullable: true
+                        descendants:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                $ref: "#/components/schemas/UUID"
+                              kind:
+                                type: string
+                                enum: [resource, folder]
+                              parentId:
+                                type: string
+                                nullable: true
+                              orderIndex:
+                                type: number
+
+  /api/project/{project-id}/trash/restore:
+    post:
+      summary: Restore a batch of trashed resources and/or folders
+      description: |
+        Restores each requested id independently and reports its own outcome
+        — a failing item never aborts the batch, and stays listed in Trash
+        rather than being silently dropped. Each id is dispatched to the
+        resource or folder restore path by inspecting what is actually in
+        `.trash/`, so a caller need not know the kind up front; an id
+        matching neither is reported as a per-item failure.
+
+        Restoring a resource whose original parent folder no longer exists
+        falls back to the project root; a name collision at the destination
+        is resolved with a `" (restored)"`, `" (restored 2)"`, ... suffix.
+        The restored resource is re-indexed (inverted index, backlinks,
+        mentions), and any inbound `resource-ref` field still in its
+        cleared `{ id: null, name }` state is re-linked back to it — a field
+        repointed elsewhere since the delete is left alone and reported via
+        `referencesNotRestored`. A resource trashed before this tracking
+        existed has no ref record at all, reported as
+        `referencesNotRestored: "no-record"`. Restoring a folder rebuilds its
+        whole descendant subtree at the originally recorded structure, then
+        applies the same root-fallback/rename rule to the folder itself.
+      parameters:
+        - name: project-id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Per-item restore outcomes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        ok:
+                          type: boolean
+                        relocated:
+                          type: boolean
+                        renamed:
+                          type: boolean
+                        referencesNotRestored:
+                          description: Array of un-relinked reference entries, or the string "no-record" for a legacy item
+                        error:
+                          type: string
+        "400":
+          description: Invalid request (ids is not a string array)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/project/{project-id}/trash/purge:
+    post:
+      summary: Permanently delete a batch of trashed resources and/or folders
+      description: |
+        Permanently removes each requested id via an ordered, idempotent
+        purge sweep (inverted index/backlinks/mentions, then authored entity
+        relationship edges, then trashed revisions, then the trashed
+        sidecar and its nullified-reference record, then trashed content
+        files last). Pass `{ "all": true }` instead of `ids` for "Empty
+        trash" — every currently trashed top-level id, resolved via the
+        listing above before any deletion runs.
+
+        Each id is processed independently and reported with its own
+        outcome; a failing item never aborts the batch. Because every sweep
+        step is independently idempotent, an item whose sweep failed partway
+        through stays listed in Trash with the completed steps already
+        applied, and a retried purge simply re-runs the sweep from the top.
+      parameters:
+        - name: project-id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                all:
+                  type: boolean
+                  description: 'Purge every currently trashed top-level item ("Empty trash"). Mutually exclusive with `ids`.'
+      responses:
+        "200":
+          description: Per-item purge outcomes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        ok:
+                          type: boolean
+                        error:
+                          type: string
+        "400":
+          description: "Invalid request (neither ids nor all: true provided)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── Folder Delete ─────────────────────────────────────────────────────────
+
+  /api/folder/{folder-id}/delete:
+    post:
+      summary: Soft-delete a folder and its entire descendant subtree
+      description: |
+        Soft-deletes the target folder and every descendant folder/resource
+        beneath it: nullifies inbound `resource-ref` fields for each
+        descendant resource, writes a manifest recording the whole subtree's
+        structure (so a later restore can rebuild it), then moves every
+        descendant resource and folder descriptor into `.trash/`.
+      parameters:
+        - name: folder-id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId]
+              properties:
+                projectId:
+                  $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Folder deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "404":
+          description: Folder not found in the project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # ── Project Resources ─────────────────────────────────────────────────────
 
   /api/project-resources:

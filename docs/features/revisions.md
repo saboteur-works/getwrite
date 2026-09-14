@@ -120,38 +120,52 @@ See [docs/api/openapi.yaml](../api/openapi.yaml) for full request/response schem
 
 ## Soft-Delete (Trash)
 
-GetWrite implements **soft-delete** for resources via `trash.ts`. When a resource is deleted through the UI, `softDeleteResource` moves its files to a `.trash/` directory inside the project root rather than permanently deleting them.
+GetWrite implements **soft-delete** for resources and folders via `trash.ts`. When a resource is deleted, `softDeleteResource` moves its files to a `.trash/` directory inside the project root rather than permanently deleting them; `softDeleteFolder` does the same for a folder and its entire descendant subtree. A project-wide **Trash** tab in the app (`TrashView.tsx`) lists everything currently trashed and drives restore/purge.
 
 ### `.trash/` layout
 
-`.trash/` is split into `resources/` and `meta/` subtrees. Each moved resource file is prefixed with the resource ID, and the sidecar keeps its canonical name:
+`.trash/` is split into `resources/`, `meta/`, `revisions/`, and `folders/` subtrees. Each moved resource file is prefixed with the resource ID, and the sidecar keeps its canonical name:
 
 ```
 <projectRoot>/.trash/
 ├── resources/
 │   ├── <resourceId>-content.txt
 │   └── <resourceId>-content.tiptap.json
+├── revisions/
+│   └── <resourceId>/v-<N>/...
+├── folders/
+│   └── <folder directory, unchanged from `folders/`>
 └── meta/
-    └── resource-<resourceId>.meta.json
+    ├── resource-<resourceId>.meta.json
+    ├── refs-<resourceId>.json
+    └── folder-<folderId>.json
 ```
 
-The revision directories under `<projectRoot>/revisions/<resourceId>/` are **not** moved to `.trash/` — only the resource content and sidecar are relocated.
+A resource's revision directory under `<projectRoot>/revisions/<resourceId>/` is moved into `.trash/revisions/<resourceId>/` alongside its content and sidecar. `softDeleteResource` also removes the resource from the inverted index, backlinks, and mention index immediately, rather than deferring that to purge.
+
+`refs-<resourceId>.json` (validated by `TrashRefRecordSchema` in `schemas.ts`) records every inbound `resource-ref` sidecar field that `nullifyResourceRefs` cleared to `{ id: null, name }` when the resource was deleted, so restore can re-link them. `folder-<folderId>.json` (`TrashFolderManifestSchema`) records a deleted folder's own descriptor plus every descendant folder/resource id with its original `parentId`/`orderIndex`, so restore can rebuild the subtree.
 
 ### Recovery
 
-`trash.ts` exports `restoreResource(projectRoot, resourceId)`, which moves the content files and sidecar back out of `.trash/`, and `purgeResource(projectRoot, resourceId)`, which permanently deletes them. There is currently no UI wired to these functions — recovery happens programmatically (or by manually moving files). A trash-bin UI is on the roadmap.
+`trash.ts` exports `restoreResource(projectRoot, resourceId)` and `restoreFolder(projectRoot, folderId)`, which move content/sidecar/revisions (and, for a folder, the whole recorded subtree) back out of `.trash/`. A resource whose original parent folder no longer exists is restored to the project root instead; a name collision with an existing sibling is resolved by appending `" (restored)"`, then `" (restored 2)"`, etc. Restoring a resource re-indexes it (inverted index, backlinks, mentions) and re-links any reference still in its cleared `{ id: null, name }` state; a reference repointed elsewhere since the delete is left alone. A resource trashed before this ref-record/manifest tracking existed is tolerated (no ref record, or a folder manifest with no descendants) rather than treated as an error.
+
+`purgeResource`/`purgeFolder` permanently delete a trashed item via a fixed, ordered, idempotent five-step sweep (index/backlinks/mentions removal, authored entity-relationship edges, trashed revisions, trashed sidecar + ref record, then trashed content files last) — see `PurgeSweepError`/`PurgeStepName` for how a mid-sweep failure is reported; since every step is idempotent, a retried purge simply re-runs the sweep from the top.
+
+Both restore and purge are reachable from the app's **Trash** tab, individually or as a batch (including an "Empty trash" action that purges everything). This is web/desktop only — the native Android transport (`native-trash-backend.ts`) is a stub that rejects every call, deferred as follow-up work.
 
 ---
 
 ## Source Files
 
-| File                                                        | Role                                                                          |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `frontend/src/lib/models/revision.ts`                       | Core revision filesystem utilities                                            |
-| `frontend/src/lib/models/pruneExecutor.ts`                  | CLI-orchestrated pruning across all project resources                         |
-| `frontend/src/lib/models/trash.ts`                          | Soft-delete implementation                                                    |
-| `frontend/src/store/revisionsSlice.ts`                      | Redux state for revision UI                                                   |
-| `frontend/src/store/revision-canonical-guards.ts`           | Client-side canonical invariant enforcement                                   |
-| `frontend/src/store/revision-normalization.ts`              | Normalizes raw revision data into `RevisionEntry` shape                       |
-| `frontend/src/store/revision-transport-service.ts`          | Transport layer for revision operations (HTTP web/desktop, in-process native) |
-| `frontend/app/api/resource/revision/[resource-id]/route.ts` | Next.js route handler                                                         |
+| File                                                         | Role                                                                          |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `frontend/src/lib/models/revision.ts`                        | Core revision filesystem utilities                                            |
+| `frontend/src/lib/models/pruneExecutor.ts`                   | CLI-orchestrated pruning across all project resources                         |
+| `frontend/src/lib/models/trash.ts`                           | Soft-delete, restore, and purge implementation (resources and folders)        |
+| `frontend/src/lib/api/trash.ts`                              | Client transport for the Trash tab (`createTransport`, web/desktop only)      |
+| `frontend/components/WorkArea/Views/TrashView/TrashView.tsx` | The project-wide Trash tab UI                                                 |
+| `frontend/src/store/revisionsSlice.ts`                       | Redux state for revision UI                                                   |
+| `frontend/src/store/revision-canonical-guards.ts`            | Client-side canonical invariant enforcement                                   |
+| `frontend/src/store/revision-normalization.ts`               | Normalizes raw revision data into `RevisionEntry` shape                       |
+| `frontend/src/store/revision-transport-service.ts`           | Transport layer for revision operations (HTTP web/desktop, in-process native) |
+| `frontend/app/api/resource/revision/[resource-id]/route.ts`  | Next.js route handler                                                         |
