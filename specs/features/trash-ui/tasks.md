@@ -631,7 +631,7 @@ TrashView` and `pnpm --filter getwrite-frontend typecheck` pass.
 **Depends on:** 15, 16
 **Estimate:** 8
 **POS:** task_6dc26c7d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Restore relocation/rename notices and accessibility pass (FR-5, FR-9, FR-14)
 
