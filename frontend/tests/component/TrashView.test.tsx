@@ -18,6 +18,7 @@ import {
 } from "@testing-library/react";
 import { Provider } from "react-redux";
 import TrashView from "../../components/WorkArea/Views/TrashView/TrashView";
+import { buttonVariants } from "../../components/common/UI/Button";
 import { makeStore } from "../../src/store/store";
 import {
   setProject,
@@ -402,6 +403,49 @@ describe("TrashView — batch restore/purge/Empty trash controls (Task 17)", () 
       .map((row: HTMLElement) => row.getAttribute("data-trash-id"))
       .sort();
     expect(remainingIds).toEqual(["res-2", "res-3"]);
+  });
+});
+
+describe("TrashView — Task 25 (Finding 5): batch toolbar uses the shared Button primitive", () => {
+  it("renders the batch toolbar's Restore/Delete/Empty trash controls as the shared Button component, not a bare native button", async () => {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+
+    const store = setupStore();
+
+    render(
+      <Provider store={store}>
+        <TrashView />
+      </Provider>,
+    );
+
+    await screen.findAllByTestId("trash-row");
+
+    const restoreButton = screen.getByTestId("trash-restore-selected");
+    const deleteButton = screen.getByTestId("trash-delete-selected");
+    const emptyTrashButton = screen.getByTestId("trash-empty-trash");
+
+    // `Button`'s `variant="outline"`/`variant="destructive"` styles apply a
+    // brand class token (`buttonVariants`, `common/UI/Button/Button.tsx`)
+    // that a bare native `<button>` with no `Button` wrapper would never
+    // carry. Before this task, these three were plain `<button type="button">`
+    // elements with no className at all, so this assertion fails on the
+    // pre-Task-25 markup and passes once each is rendered via `Button`.
+    const outlineClassNames = buttonVariants({
+      variant: "outline",
+      size: "sm",
+    }).split(" ");
+    const destructiveClassNames = buttonVariants({
+      variant: "destructive",
+      size: "sm",
+    }).split(" ");
+
+    outlineClassNames.forEach((className) =>
+      expect(restoreButton.className).toContain(className),
+    );
+    destructiveClassNames.forEach((className) => {
+      expect(deleteButton.className).toContain(className);
+      expect(emptyTrashButton.className).toContain(className);
+    });
   });
 });
 

@@ -19,6 +19,8 @@ import type {
   TrashedResourceEntry,
 } from "../../../../src/lib/api/trash";
 import ConfirmDialog from "../../../common/ConfirmDialog";
+import Button from "../../../common/UI/Button/Button";
+import Checkbox from "../../../common/UI/Checkbox/Checkbox";
 
 export interface TrashViewProps {
   /** Optional className for the outer container. */
@@ -171,6 +173,25 @@ function buildRestoreNotices(
  * that pair itself — chosen over reconstructing added nodes from the batch
  * result because a folder restore's cascade of descendants isn't fully
  * described by `RestoreItemResult`.
+ *
+ * Gate 6 finding (measured, `specs/features/trash-ui/tasks.md` Task 25):
+ * before this fix, the batch toolbar rendered three bare native `<button>`s
+ * and each row a bare native `<input type="checkbox">`, with no row
+ * container styling at all — unlike every sibling Work Area view. Fixed by
+ * reusing the primitives already established elsewhere in this codebase for
+ * an analogous role, confirmed by reading each component's own source before
+ * using it: `ConfirmDialog.tsx` (already imported by this file, above) uses
+ * `Button` (`common/UI/Button/Button.tsx`) with `variant="outline"` for its
+ * Cancel action and `variant="destructive"` for its Confirm action, so the
+ * batch toolbar below follows that same variant convention (`outline` for
+ * Restore, `destructive` for the two permanent-delete actions); `Checkbox`
+ * (`common/UI/Checkbox/Checkbox.tsx`) is the primitive `CompileResourceTree.tsx`
+ * already uses for its own per-row selection checkboxes; and each top-level
+ * row now carries the `workarea-list-item`/`workarea-list-item-label`/
+ * `workarea-list-item-meta` classes `EntityRosterRow.tsx` (the nearest
+ * sibling project-wide, list-shaped view) already applies to its own rows
+ * (`styles/getwrite-utilities.css`). No `data-testid`, ARIA role, or
+ * keyboard behavior from Tasks 15/17/18/19 changes.
  */
 export default function TrashView({
   className = "",
@@ -454,30 +475,33 @@ export default function TrashView({
             {allTopLevelIds.length === 1 ? "" : "s"} selected
           </div>
           <div data-testid="trash-batch-toolbar" className="flex gap-2 mb-2">
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               data-testid="trash-restore-selected"
               onClick={openRestoreSelectedDialog}
               disabled={selectedIds.size === 0 || isSubmitting}
             >
               Restore selected
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
               data-testid="trash-delete-selected"
               onClick={openDeleteSelectedDialog}
               disabled={selectedIds.size === 0 || isSubmitting}
             >
               Delete selected permanently
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
               data-testid="trash-empty-trash"
               onClick={openEmptyTrashDialog}
               disabled={isSubmitting}
             >
               Empty trash
-            </button>
+            </Button>
           </div>
 
           {/* Task 19 Part B: this list previously carried `role="listbox"`/
@@ -505,16 +529,24 @@ export default function TrashView({
                 data-trash-kind="resource"
                 data-trash-id={resource.id}
                 data-trash-selected={selectedIds.has(resource.id)}
+                className="workarea-list-item !cursor-default flex-col !items-stretch gap-2 mb-2"
               >
-                <input
-                  type="checkbox"
-                  data-testid="trash-row-select"
-                  aria-label={`Select ${resource.originalName}`}
-                  checked={selectedIds.has(resource.id)}
-                  onChange={() => toggleSelected(resource.id)}
-                />
-                <div data-testid="trash-row-label">{resource.originalName}</div>
-                <div data-testid="trash-row-actions" />
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    className="w-[13px] h-[13px] flex-shrink-0"
+                    data-testid="trash-row-select"
+                    aria-label={`Select ${resource.originalName}`}
+                    checked={selectedIds.has(resource.id)}
+                    onChange={() => toggleSelected(resource.id)}
+                  />
+                  <div
+                    data-testid="trash-row-label"
+                    className="workarea-list-item-label flex-1 min-w-0 truncate"
+                  >
+                    {resource.originalName}
+                  </div>
+                  <div data-testid="trash-row-actions" />
+                </div>
               </li>
             ))}
 
@@ -525,25 +557,37 @@ export default function TrashView({
                 data-trash-kind="folder"
                 data-trash-id={folder.id}
                 data-trash-selected={selectedIds.has(folder.id)}
+                className="workarea-list-item !cursor-default flex-col !items-stretch gap-2 mb-2"
               >
-                <input
-                  type="checkbox"
-                  data-testid="trash-row-select"
-                  aria-label={`Select ${folder.originalName}`}
-                  checked={selectedIds.has(folder.id)}
-                  onChange={() => toggleSelected(folder.id)}
-                />
-                <div data-testid="trash-row-label">{folder.originalName}</div>
-                <div data-testid="trash-row-actions" />
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    className="w-[13px] h-[13px] flex-shrink-0"
+                    data-testid="trash-row-select"
+                    aria-label={`Select ${folder.originalName}`}
+                    checked={selectedIds.has(folder.id)}
+                    onChange={() => toggleSelected(folder.id)}
+                  />
+                  <div
+                    data-testid="trash-row-label"
+                    className="workarea-list-item-label flex-1 min-w-0 truncate"
+                  >
+                    {folder.originalName}
+                  </div>
+                  <div data-testid="trash-row-actions" />
+                </div>
 
                 {folder.descendants.length > 0 && (
-                  <ul data-testid="trash-nested-list">
+                  <ul
+                    data-testid="trash-nested-list"
+                    className="flex flex-col gap-1 pl-6"
+                  >
                     {folder.descendants.map((descendant) => (
                       <li
                         key={descendant.id}
                         data-testid="trash-nested-row"
                         data-trash-kind={descendant.kind}
                         data-trash-id={descendant.id}
+                        className="workarea-list-item-meta"
                       >
                         {/* Nested descendants are read-only: no restore/purge
                             control of their own, and — unlike a top-level
