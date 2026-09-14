@@ -896,7 +896,7 @@ trying to reconstruct the added tree nodes from the batch result alone.
 **Depends on:** 21
 **Estimate:** 5
 **POS:** task_9def38a3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Findings 2 & 3 — ref record left on disk after restore, and no record written on a plain single-resource delete
 
@@ -951,7 +951,7 @@ possibly empty) per FR-22.
 **Depends on:** 21
 **Estimate:** 5
 **POS:** task_e5301a72
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Finding 4 — nested items in a trashed folder show raw ids instead of names
 
