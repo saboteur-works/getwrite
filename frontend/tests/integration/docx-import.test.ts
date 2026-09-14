@@ -6,7 +6,7 @@
  * pipeline (Tasks 3-8) against the committed synthetic `.docx` fixtures
  * (Task 2, `frontend/tests/fixtures/docx/`).
  */
-import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import os from "node:os";
@@ -426,6 +426,73 @@ describe("importDocxProject — folder source (FR-3, FR-15)", () => {
     expect(report).toContain("Non-.docx files skipped: 1");
     expect(report).toContain("Word lock files (~$*.docx) skipped: 1");
     expect(report).toContain("Hidden/dot files or directories skipped: 2");
+  });
+});
+
+describe("importDocxProject — no diagnostics on a successful import (FR-19)", () => {
+  // Measured cause (Task 21): `sidecar.ts`'s `readSidecar` unconditionally
+  // logged `console.warn("sidecar not found for", resourceId, "at",
+  // filePath)` on every `ENOENT`, and `writeSidecar` (called from
+  // `resource-persistence.ts:200`'s `writeResourceToFile`) called
+  // `readSidecar` to capture a "previous" sidecar before every resource's
+  // very first write — which, for a brand-new resource, always misses. This
+  // fired once per resource `importDocxProject` created (confirmed via a
+  // stack trace captured on a real run: `readSidecar` (sidecar.ts) <-
+  // `writeSidecar` (sidecar.ts) <- `writeResourceToFile`
+  // (resource-persistence.ts:200) <- `createAndWriteDocxResource`
+  // (import-docx-project.ts:396) <- `writeSingleFileSections`/
+  // `writeFolderEntries`), not from `importDocxProject`'s own final
+  // `rebuildIndexes` step, whose own `readSidecar` calls (import-docx-
+  // project.ts:716) never missed by the time they ran, since every
+  // resource's sidecar had already been written by then, and never covered
+  // folder resources at all (`listResourceIds` only reads the `resources/`
+  // directory, which folder resources never occupy).
+
+  async function runImportSilently(
+    options: Parameters<typeof importDocxProject>[0],
+  ): Promise<{ warnCalls: unknown[][]; errorCalls: unknown[][] }> {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await importDocxProject(options);
+      await flushIndexer();
+    } finally {
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+    return { warnCalls: warnSpy.mock.calls, errorCalls: errorSpy.mock.calls };
+  }
+
+  it("prints no console.warn/console.error diagnostic for a single-file source", async () => {
+    const projectRoot = await mkTempProjectRoot(
+      "getwrite-docx-import-no-diagnostics-file-",
+    );
+    try {
+      const { warnCalls, errorCalls } = await runImportSilently({
+        sourcePath: path.join(FIXTURES_DIR, "core-properties.docx"),
+        projectRoot,
+      });
+      expect(warnCalls).toEqual([]);
+      expect(errorCalls).toEqual([]);
+    } finally {
+      await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
+    }
+  });
+
+  it("prints no console.warn/console.error diagnostic for a folder source", async () => {
+    const projectRoot = await mkTempProjectRoot(
+      "getwrite-docx-import-no-diagnostics-folder-",
+    );
+    try {
+      const { warnCalls, errorCalls } = await runImportSilently({
+        sourcePath: path.join(FIXTURES_DIR, "folder-source"),
+        projectRoot,
+      });
+      expect(warnCalls).toEqual([]);
+      expect(errorCalls).toEqual([]);
+    } finally {
+      await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
+    }
   });
 });
 

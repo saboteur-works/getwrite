@@ -250,6 +250,7 @@ describe("getwrite-cli project:import-docx", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let logSpy: ReturnType<typeof vi.spyOn>;
   let errorSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
   let tmpDirs: string[];
 
   beforeEach(() => {
@@ -259,12 +260,14 @@ describe("getwrite-cli project:import-docx", () => {
       .mockImplementation(((code?: number) => undefined) as any);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
   });
 
   afterEach(async () => {
     exitSpy.mockRestore();
     logSpy.mockRestore();
     errorSpy.mockRestore();
+    warnSpy.mockRestore();
     await Promise.all(
       tmpDirs.map((dir) =>
         fs.rm(dir, { recursive: true, force: true, maxRetries: 3 }),
@@ -297,6 +300,12 @@ describe("getwrite-cli project:import-docx", () => {
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining("Imported DOCX project to"),
     );
+    // FR-19 (Task 21): a successful import must print no "sidecar not
+    // found" line, or any other diagnostic, to stdout/stderr — see
+    // `frontend/tests/integration/docx-import.test.ts`'s "no diagnostics"
+    // describe block for the measured cause.
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
 
     const projectJsonRaw = await fs.readFile(
       path.join(projectRoot, "project.json"),
@@ -325,6 +334,9 @@ describe("getwrite-cli project:import-docx", () => {
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining("Imported DOCX project to"),
     );
+    // FR-19 (Task 21): see the single-file-source test above.
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
 
     const projectJsonRaw = await fs.readFile(
       path.join(projectRoot, "project.json"),

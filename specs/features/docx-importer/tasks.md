@@ -831,7 +831,7 @@ getwrite-cli test` both pass.
 **Depends on:** 20
 **Estimate:** 5
 **POS:** task_c6732be6
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: No-heading/preamble resource naming and the Untitled Fallback Names report section
 
