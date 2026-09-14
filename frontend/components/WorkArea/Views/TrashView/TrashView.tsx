@@ -549,9 +549,14 @@ export default function TrashView({
                             control of their own, and — unlike a top-level
                             row above — no `trash-row-actions` slot at all, so
                             no select checkbox or actions can be wired in
-                            here. A manifest entry carries no name, only kind
-                            + id. */}
-                        {descendant.kind} {descendant.id}
+                            here. Task 6's manifest entry itself carries no
+                            name, only kind + id — `name` here is resolved
+                            server-side by `listTrashedItems` (Task 24,
+                            Finding 4) from the descendant's trashed sidecar
+                            (resource) or moved `folder.json` descriptor
+                            (folder), so this renders "resource: <name>" /
+                            "folder: <name>" rather than a raw id. */}
+                        {descendant.kind}: {descendant.name}
                       </li>
                     ))}
                   </ul>

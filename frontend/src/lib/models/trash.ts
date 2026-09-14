@@ -1394,11 +1394,31 @@ export interface TrashedResourceEntry {
 }
 
 /**
+ * One descendant of a trashed folder, as rendered by the Trash view (Task
+ * 24, Finding 4). Widens Task 6's {@link TrashFolderManifestEntry} — which
+ * "carries no name, only kind + id" (the spec's own observed-fact wording) —
+ * with a `name` field resolved at list time: `listTrashedItems` reads it
+ * from the descendant's trashed sidecar (`.trash/meta/resource-<id>.meta.json`)
+ * for a resource descendant, or its moved `folder.json` descriptor (found
+ * among `.trash/folders/`'s already-collected descriptors, since a folder
+ * descendant of a trashed folder is itself moved under `.trash/folders/` by
+ * `softDeleteFolder`'s cascade) for a folder descendant. Falls back to the
+ * descendant's own id — the pre-fix display — only when that lookup itself
+ * comes up empty (an unreadable/missing sidecar or descriptor), never
+ * silently.
+ */
+export interface TrashedFolderDescendant extends TrashFolderManifestEntry {
+  name: string;
+}
+
+/**
  * One trashed top-level folder, listed independently of any ancestor trashed
  * folder it may once have lived under — the same top-level-only rule
  * {@link TrashedResourceEntry} follows. `descendants` mirrors Task 6's
- * manifest verbatim (empty when no manifest exists — a legacy trashed folder
- * predating Task 6, resolved OQ-12's "legacy tolerance" extended to listing).
+ * manifest, widened per-entry with a resolved `name` (see
+ * {@link TrashedFolderDescendant}) — empty when no manifest exists (a legacy
+ * trashed folder predating Task 6, resolved OQ-12's "legacy tolerance"
+ * extended to listing).
  */
 export interface TrashedFolderEntry {
   id: UUID;
@@ -1409,7 +1429,7 @@ export interface TrashedFolderEntry {
   /** When the folder was moved to trash, read from its trashed directory's mtime. */
   deletedAt: string | null;
   /** Every descendant folder/resource recorded in the Task 6 manifest, or `[]` if none. */
-  descendants: TrashFolderManifestEntry[];
+  descendants: TrashedFolderDescendant[];
 }
 
 /**
@@ -1478,24 +1498,36 @@ export async function listTrashedItems(
     }
   }
 
-  const resources: TrashedResourceEntry[] = [];
+  // Read every trashed resource sidecar once, up front, into an id-keyed
+  // map — not just the top-level ones. A descendant resource (excluded from
+  // `resources` below via `descendantResourceIds`) still needs its sidecar
+  // read here so its name can be resolved for the owning folder's
+  // `descendants` entry (Task 24, Finding 4): before this, a folder's
+  // manifest-derived descendant carried only `kind`/`id` (Task 6's
+  // `TrashFolderManifestEntry` has no `name` field at all), which
+  // `TrashView.tsx` rendered verbatim as a raw UUID.
+  const resourceSidecarById = new Map<UUID, Record<string, unknown>>();
   for (const file of resourceSidecarFiles) {
     const resourceId = file
       .replace(/^resource-/, "")
       .replace(/\.meta\.json$/, "");
+    try {
+      const raw = await readFile(path.join(trashMetaDir, file), "utf8");
+      resourceSidecarById.set(
+        resourceId,
+        JSON.parse(raw) as Record<string, unknown>,
+      );
+    } catch {
+      // Malformed or unreadable sidecar — skip, mirroring the pre-existing
+      // per-file tolerance below.
+    }
+  }
+
+  const resources: TrashedResourceEntry[] = [];
+  for (const [resourceId, sidecar] of resourceSidecarById) {
     if (descendantResourceIds.has(resourceId)) continue;
 
-    const filePath = path.join(trashMetaDir, file);
-    let sidecar: Record<string, unknown>;
-    try {
-      sidecar = JSON.parse(await readFile(filePath, "utf8")) as Record<
-        string,
-        unknown
-      >;
-    } catch {
-      continue;
-    }
-
+    const filePath = path.join(trashMetaDir, sidecarFilename(resourceId));
     let deletedAt: string | null = null;
     try {
       deletedAt = (await stat(filePath)).mtime.toISOString();
@@ -1521,8 +1553,26 @@ export async function listTrashedItems(
     });
   }
 
+  // `collectFolderDescriptors` walks `.trash/folders/` recursively, so this
+  // already covers every descendant folder a cascade-trashed folder's own
+  // manifest names, not just top-level trashed folders — reused below to
+  // resolve a folder-kind descendant's name.
   const trashedFolderDescriptors =
     await collectFolderDescriptors(trashFoldersDir);
+  const folderNameById = new Map<UUID, string>();
+  for (const fd of trashedFolderDescriptors) {
+    folderNameById.set(fd.folder.id, fd.folder.name);
+  }
+
+  function resolveDescendantName(entry: TrashFolderManifestEntry): string {
+    if (entry.kind === "resource") {
+      const sidecar = resourceSidecarById.get(entry.id);
+      const name = sidecar?.["name"];
+      return typeof name === "string" ? name : entry.id;
+    }
+    return folderNameById.get(entry.id) ?? entry.id;
+  }
+
   const folders: TrashedFolderEntry[] = [];
   for (const fd of trashedFolderDescriptors) {
     if (descendantFolderIds.has(fd.folder.id)) continue;
@@ -1541,7 +1591,12 @@ export async function listTrashedItems(
       originalName: fd.folder.name,
       originalParentId: fd.folder.parentId ?? null,
       deletedAt,
-      descendants: manifest ? manifest.descendants : [],
+      descendants: manifest
+        ? manifest.descendants.map((entry) => ({
+            ...entry,
+            name: resolveDescendantName(entry),
+          }))
+        : [],
     });
   }
 

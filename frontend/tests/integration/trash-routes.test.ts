@@ -140,6 +140,61 @@ describe("GET /api/project/[project-id]/trash", () => {
     });
   });
 
+  it("resolves each descendant's original name, not only its id (Task 24, Finding 4)", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const folder = createFolderResource({ name: "Outline" });
+      await writeResourceToFile(projectPath, folder);
+
+      const nestedFolder = createFolderResource({
+        name: "Nested Subplot",
+        parentFolderId: folder.id,
+      });
+      await writeResourceToFile(projectPath, nestedFolder);
+
+      const childResource = createTextResource({
+        name: "Synthetic Core Properties Fixture",
+        folderId: folder.id,
+        plainText: "content",
+      });
+      await writeResourceToFile(projectPath, childResource);
+
+      await softDeleteFolder(projectPath, folder.id);
+
+      const { GET } =
+        await import("../../app/api/project/[project-id]/trash/route");
+      const res = await GET(
+        new Request(`http://localhost/api/project/${projectId}/trash`) as never,
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        folders: {
+          id: string;
+          descendants: { id: string; kind: string; name: string }[];
+        }[];
+      };
+
+      const trashedFolder = body.folders.find((f) => f.id === folder.id);
+      expect(trashedFolder).toBeTruthy();
+
+      const resourceDescendant = trashedFolder!.descendants.find(
+        (d) => d.id === childResource.id,
+      );
+      expect(resourceDescendant?.kind).toBe("resource");
+      expect(resourceDescendant?.name).toBe(
+        "Synthetic Core Properties Fixture",
+      );
+
+      const folderDescendant = trashedFolder!.descendants.find(
+        (d) => d.id === nestedFolder.id,
+      );
+      expect(folderDescendant?.kind).toBe("folder");
+      expect(folderDescendant?.name).toBe("Nested Subplot");
+    });
+  });
+
   it("resolves the project directory from projectId and returns 400 on a malformed non-UUID projectId", async () => {
     const { projectsDir } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {

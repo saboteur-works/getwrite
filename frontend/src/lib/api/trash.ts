@@ -37,15 +37,20 @@
 import { createTransport } from "../../store/transport/create-transport";
 import type {
   RestoredReferenceInfo,
+  TrashedFolderDescendant,
   TrashedFolderEntry,
   TrashedResourceEntry,
 } from "../models/trash";
 
 // `RestoredReferenceInfo` is used internally by `RestoreResult` below but,
-// unlike the other two, has no external consumer importing it from this
-// module specifically (callers needing it import it directly from
+// unlike the others, has no external consumer importing it from this module
+// specifically (callers needing it import it directly from
 // `../models/trash`) — so it is not re-exported here.
-export type { TrashedFolderEntry, TrashedResourceEntry };
+export type {
+  TrashedFolderDescendant,
+  TrashedFolderEntry,
+  TrashedResourceEntry,
+};
 
 /** Combined response shape of `GET /api/project/:id/trash`. */
 export interface TrashListing {

@@ -169,12 +169,14 @@ describe("TrashView", () => {
               kind: "resource",
               parentId: "folder-1",
               orderIndex: 0,
+              name: "Synthetic Core Properties Fixture",
             },
             {
               id: "child-2",
               kind: "folder",
               parentId: "folder-1",
               orderIndex: 1,
+              name: "Nested Subfolder",
             },
           ],
         },
@@ -224,6 +226,16 @@ describe("TrashView", () => {
       expect(folderRow!.contains(row)).toBe(true);
       expect(row.querySelector('[data-testid="trash-row-actions"]')).toBeNull();
     });
+
+    // Task 24, Finding 4: a nested descendant's row names the item by its
+    // resolved `name`, not its raw id — `descendant.id` ("child-1") must not
+    // appear anywhere in the rendered text.
+    expect(nestedRows[0]!.textContent).toContain(
+      "resource: Synthetic Core Properties Fixture",
+    );
+    expect(nestedRows[1]!.textContent).toContain("folder: Nested Subfolder");
+    expect(nestedRows[0]!.textContent).not.toContain("child-1");
+    expect(nestedRows[1]!.textContent).not.toContain("child-2");
     // Nested rows are not present as their own top-level `trash-row`.
     expect(
       topLevelRows.some(
@@ -759,12 +771,14 @@ describe("TrashView — Task 22 (Finding 1): resourcesSlice refresh after restor
               kind: "resource",
               parentId: "folder-restored",
               orderIndex: 0,
+              name: "Child One",
             },
             {
               id: "child-res-2",
               kind: "resource",
               parentId: "folder-restored",
               orderIndex: 1,
+              name: "Child Two",
             },
           ],
         },
