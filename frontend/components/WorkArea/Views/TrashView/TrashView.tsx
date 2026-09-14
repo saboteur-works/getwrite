@@ -1,8 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import useAppSelector from "../../../../src/store/hooks";
+import useAppSelector, { useAppDispatch } from "../../../../src/store/hooks";
 import { selectActiveProjectDirectoryId } from "../../../../src/store/projectsSlice";
+import {
+  loadResources,
+  setFolders as setProjectFolders,
+} from "../../../../src/store/resourcesSlice";
+import { openProject } from "../../../../src/lib/api/projects";
 import {
   listTrash,
   purgeTrashItems,
@@ -145,15 +150,33 @@ function buildRestoreNotices(
  * `resourcesSlice` when it was first soft-deleted (the existing
  * `removeResource` dispatch, `:1124-1131`) — trashed content is, by
  * definition, already absent from that slice, so nothing this view does to
- * its own local `resources`/`folders` state touches `resourcesSlice`, and no
- * new open-tab UI is added. The existing "Resource not found." fallback is
- * exercised, unchanged, by whatever stale selection already pointed at the
- * now-trashed (and now purged) resource.
+ * its own local `resources`/`folders` state touches `resourcesSlice`'s
+ * *selection* state, and no new open-tab UI is added. The existing
+ * "Resource not found." fallback is exercised, unchanged, by whatever stale
+ * selection already pointed at the now-trashed (and now purged) resource.
+ *
+ * Gate 6 finding (measured, `specs/features/trash-ui/tasks.md` Task 22):
+ * before this fix, `confirmPendingAction`'s success branch dispatched
+ * nothing to `resourcesSlice` on a successful restore — it only called
+ * `setResources`/`setFolders` on this component's own local state (the
+ * *Trash listing*, a different set of state than `resourcesSlice`'s
+ * project-tree `resources`/`folders`) plus `setSelectedIds`/`setReport`/
+ * `setRestoreNotices`. `resourcesSlice`'s `addResource` reducer — the one
+ * existing action shaped to add a single item back to the tree — was never
+ * called either. So a restored item never reached the sidebar resource tree
+ * until a full reload re-ran `handleOpen`'s own `loadResources`/`setFolders`
+ * dispatch (`app/(app)/page.tsx`). Fixed by having a successful restore
+ * batch (`succeededCount > 0`) refetch the project's current resources/
+ * folders via the same `openProject` call `handleOpen` uses, then dispatch
+ * that pair itself — chosen over reconstructing added nodes from the batch
+ * result because a folder restore's cascade of descendants isn't fully
+ * described by `RestoreItemResult`.
  */
 export default function TrashView({
   className = "",
 }: TrashViewProps): JSX.Element {
   const projectId = useAppSelector((s) => selectActiveProjectDirectoryId(s));
+  const dispatch = useAppDispatch();
 
   const [resources, setResources] = useState<TrashedResourceEntry[]>([]);
   const [folders, setFolders] = useState<TrashedFolderEntry[]>([]);
@@ -271,7 +294,7 @@ export default function TrashView({
         : purgeTrashItems(projectId, action.ids);
 
     void request
-      .then((results) => {
+      .then(async (results) => {
         const succeededIds = new Set(
           results.filter((result) => result.ok).map((result) => result.id),
         );
@@ -300,6 +323,28 @@ export default function TrashView({
             : [],
         );
         setPendingAction(null);
+
+        // A successful restore may have brought back an arbitrarily deep
+        // cascade of descendants (a restored folder's whole subtree) that
+        // `RestoreItemResult` doesn't itself describe in full, so rather
+        // than reconstruct the added tree nodes from the batch result,
+        // refetch the project's current resources/folders — the same
+        // `openProject`-shaped data `app/(app)/page.tsx`'s `handleOpen`
+        // dispatches via `loadResources`/`setFolders` — and dispatch that
+        // pair here too, so the sidebar resource tree reflects the restore
+        // without a reload.
+        if (action.kind === "restore" && succeededCount > 0) {
+          try {
+            const opened = await openProject(projectId);
+            dispatch(loadResources({ resources: opened.resources, projectId }));
+            dispatch(setProjectFolders(opened.folders));
+          } catch {
+            // Best-effort: the restore itself already succeeded and is
+            // reported via `report` above; a failed refetch here only means
+            // the sidebar tree needs a manual reload to catch up, same as
+            // before this fix.
+          }
+        }
       })
       .catch(() => {
         setActionError(
@@ -310,7 +355,7 @@ export default function TrashView({
         setPendingAction(null);
       })
       .finally(() => setIsSubmitting(false));
-  }, [pendingAction, projectId, isSubmitting, resources, folders]);
+  }, [pendingAction, projectId, isSubmitting, resources, folders, dispatch]);
 
   const dialogTitle = !pendingAction
     ? ""

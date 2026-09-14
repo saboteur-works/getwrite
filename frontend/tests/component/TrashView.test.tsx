@@ -23,13 +23,28 @@ import {
   setProject,
   setSelectedProjectId,
 } from "../../src/store/projectsSlice";
-import { setSelectedResourceId } from "../../src/store/resourcesSlice";
+import {
+  loadResources,
+  setSelectedResourceId,
+} from "../../src/store/resourcesSlice";
 import type { TrashListing } from "../../src/lib/api/trash";
+import type { ProjectApiEntry } from "../../src/lib/api/projects";
 
 vi.mock("../../src/lib/api/trash", () => ({
   listTrash: vi.fn(),
   restoreTrashItems: vi.fn(),
   purgeTrashItems: vi.fn(),
+}));
+
+// Task 22 (Finding 1): mocked so the restore-refetch path
+// (`TrashView.tsx`'s `confirmPendingAction`, restore branch) can be driven
+// without a real `/api/project` round trip.
+vi.mock("../../src/lib/api/projects", () => ({
+  openProject: vi.fn(),
+  // `AppShell` (via `SearchBar`) fires a best-effort reindex on mount for
+  // whichever project is active — unrelated to this suite, but needs a
+  // resolved mock now that this module is mocked at all.
+  reindexProject: vi.fn().mockResolvedValue(undefined),
 }));
 
 // AppShell's default "edit" view mounts the real TipTap editor for a text
@@ -46,11 +61,13 @@ import {
   purgeTrashItems,
   restoreTrashItems,
 } from "../../src/lib/api/trash";
+import { openProject } from "../../src/lib/api/projects";
 import AppShell from "../../components/Layout/AppShell";
 
 const mockedListTrash = vi.mocked(listTrash);
 const mockedRestoreTrashItems = vi.mocked(restoreTrashItems);
 const mockedPurgeTrashItems = vi.mocked(purgeTrashItems);
+const mockedOpenProject = vi.mocked(openProject);
 
 const PROJECT_ID = "proj-trash-view";
 
@@ -637,5 +654,194 @@ describe("TrashView + AppShell — FR-21 open-editor-tab boundary (Task 17)", ()
     expect(
       screen.getByText(/Select a file from the resource tree/i).textContent,
     ).toBe(baselineText);
+  });
+});
+
+describe("TrashView — Task 22 (Finding 1): resourcesSlice refresh after restore", () => {
+  it("adds the restored resource to resourcesSlice without a reload", async () => {
+    mockedListTrash.mockResolvedValue({
+      resources: [
+        {
+          id: "res-restored",
+          originalName: "Restored Resource",
+          resourceType: "text",
+          originalParentId: null,
+          deletedAt: "2026-09-01T00:00:00.000Z",
+        },
+      ],
+      folders: [],
+    });
+    mockedRestoreTrashItems.mockResolvedValue([
+      { id: "res-restored", ok: true },
+    ]);
+
+    const existingResource = {
+      id: "res-existing",
+      slug: "res-existing",
+      name: "Existing Resource",
+      type: "text",
+      orderIndex: 0,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const restoredResource = {
+      ...existingResource,
+      id: "res-restored",
+      slug: "res-restored",
+      name: "Restored Resource",
+    };
+
+    const openedProject: ProjectApiEntry = {
+      project: {
+        id: PROJECT_ID,
+        name: "Trash View Project",
+        rootPath: `/tmp/${PROJECT_ID}`,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      } as never,
+      folders: [],
+      resources: [existingResource, restoredResource] as never,
+    };
+    mockedOpenProject.mockResolvedValue(openedProject);
+
+    const store = setupStore();
+    store.dispatch(
+      loadResources({
+        resources: [existingResource] as never,
+        projectId: PROJECT_ID,
+      }),
+    );
+
+    render(
+      <Provider store={store}>
+        <TrashView />
+      </Provider>,
+    );
+
+    await screen.findAllByTestId("trash-row");
+
+    // Before the fix, `resourcesSlice`'s `resources` array would still be
+    // exactly `[existingResource]` here — `confirmPendingAction`'s success
+    // branch only updated this component's own local `resources`/`folders`
+    // state (the Trash listing), never `resourcesSlice`.
+    expect(store.getState().resources.resources).toHaveLength(1);
+
+    selectTrashRow("res-restored");
+    fireEvent.click(screen.getByTestId("trash-restore-selected"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Restore" }));
+
+    await waitFor(() =>
+      expect(mockedOpenProject).toHaveBeenCalledWith(PROJECT_ID),
+    );
+
+    await waitFor(() => {
+      const ids = store
+        .getState()
+        .resources.resources.map((r) => r.id)
+        .sort();
+      expect(ids).toEqual(["res-existing", "res-restored"]);
+    });
+  });
+
+  it("adds a restored folder and its two nested descendant resources to resourcesSlice", async () => {
+    mockedListTrash.mockResolvedValue({
+      resources: [],
+      folders: [
+        {
+          id: "folder-restored",
+          originalName: "Restored Folder",
+          originalParentId: null,
+          deletedAt: "2026-09-01T00:00:00.000Z",
+          descendants: [
+            {
+              id: "child-res-1",
+              kind: "resource",
+              parentId: "folder-restored",
+              orderIndex: 0,
+            },
+            {
+              id: "child-res-2",
+              kind: "resource",
+              parentId: "folder-restored",
+              orderIndex: 1,
+            },
+          ],
+        },
+      ],
+    });
+    mockedRestoreTrashItems.mockResolvedValue([
+      { id: "folder-restored", ok: true },
+    ]);
+
+    const restoredFolder = {
+      id: "folder-restored",
+      slug: "folder-restored",
+      name: "Restored Folder",
+      type: "folder",
+      orderIndex: 0,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const childOne = {
+      id: "child-res-1",
+      slug: "child-res-1",
+      name: "Child One",
+      type: "text",
+      orderIndex: 0,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      folderId: "folder-restored",
+    };
+    const childTwo = {
+      id: "child-res-2",
+      slug: "child-res-2",
+      name: "Child Two",
+      type: "text",
+      orderIndex: 1,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      folderId: "folder-restored",
+    };
+
+    const openedProject: ProjectApiEntry = {
+      project: {
+        id: PROJECT_ID,
+        name: "Trash View Project",
+        rootPath: `/tmp/${PROJECT_ID}`,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      } as never,
+      folders: [restoredFolder] as never,
+      resources: [childOne, childTwo] as never,
+    };
+    mockedOpenProject.mockResolvedValue(openedProject);
+
+    const store = setupStore();
+
+    render(
+      <Provider store={store}>
+        <TrashView />
+      </Provider>,
+    );
+
+    await screen.findAllByTestId("trash-row");
+
+    selectTrashRow("folder-restored");
+    fireEvent.click(screen.getByTestId("trash-restore-selected"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Restore" }));
+
+    await waitFor(() =>
+      expect(mockedOpenProject).toHaveBeenCalledWith(PROJECT_ID),
+    );
+
+    await waitFor(() => {
+      const resourceIds = store
+        .getState()
+        .resources.resources.map((r) => r.id)
+        .sort();
+      expect(resourceIds).toEqual(["child-res-1", "child-res-2"]);
+      const folderIds = store.getState().resources.folders.map((f) => f.id);
+      expect(folderIds).toEqual(["folder-restored"]);
+    });
   });
 });
