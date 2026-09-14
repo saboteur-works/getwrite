@@ -1364,6 +1364,216 @@ export async function purgeFolder(
   }
 }
 
+/**
+ * One trashed resource, listed independently of any trashed folder it may
+ * once have lived under (Task 11, FR-1/FR-11). A resource that is itself a
+ * descendant of a trashed folder (recorded in that folder's Task 6 manifest)
+ * is omitted here — it is surfaced instead via that folder's own
+ * {@link TrashedFolderEntry.descendants}, so it is never listed twice.
+ */
+export interface TrashedResourceEntry {
+  id: UUID;
+  /** The resource's name at the time it was trashed. */
+  originalName: string;
+  /** The resource's type (`"text"`, `"image"`, `"audio"`, etc.) at trash time. */
+  resourceType: string;
+  /** The folder it lived in before being trashed, or `null` for the project root. */
+  originalParentId: UUID | null;
+  /**
+   * When the resource was moved to trash, read from the trashed sidecar
+   * file's own mtime. `null` if that file is unexpectedly unreadable (never
+   * expected in practice, but not treated as fatal to listing).
+   */
+  deletedAt: string | null;
+}
+
+/**
+ * One trashed top-level folder, listed independently of any ancestor trashed
+ * folder it may once have lived under — the same top-level-only rule
+ * {@link TrashedResourceEntry} follows. `descendants` mirrors Task 6's
+ * manifest verbatim (empty when no manifest exists — a legacy trashed folder
+ * predating Task 6, resolved OQ-12's "legacy tolerance" extended to listing).
+ */
+export interface TrashedFolderEntry {
+  id: UUID;
+  /** The folder's name at the time it was trashed. */
+  originalName: string;
+  /** The folder it lived in before being trashed, or `null` for the project root. */
+  originalParentId: UUID | null;
+  /** When the folder was moved to trash, read from its trashed directory's mtime. */
+  deletedAt: string | null;
+  /** Every descendant folder/resource recorded in the Task 6 manifest, or `[]` if none. */
+  descendants: TrashFolderManifestEntry[];
+}
+
+/**
+ * Lists every currently trashed resource and top-level trashed folder in one
+ * combined shape (Task 11, FR-1/FR-2/FR-11, resolved OQ-10 — mirroring how
+ * `GET /api/projects` returns a single combined response rather than two
+ * separate endpoints).
+ *
+ * Walks `.trash/meta/` for both trashed resource sidecars and Task 6 folder
+ * manifests, and `.trash/folders/` for trashed folder descriptors. A resource
+ * or folder recorded as a descendant in another folder's manifest is
+ * excluded from its own top-level entry in this result — it is only
+ * reachable via that ancestor folder's `descendants` field — so cascade-
+ * trashed items are never listed twice.
+ *
+ * Tolerates a legacy item with no ref record and no folder manifest
+ * (resolved OQ-12): a resource sidecar with no corresponding
+ * `.trash/meta/refs-<id>.json` is still listed (ref records are irrelevant
+ * to listing, only to restore's re-linking), and a folder descriptor with no
+ * corresponding `.trash/meta/folder-<id>.json` manifest is still listed,
+ * just with an empty `descendants` array.
+ */
+export async function listTrashedItems(
+  projectRoot: string,
+): Promise<{
+  resources: TrashedResourceEntry[];
+  folders: TrashedFolderEntry[];
+}> {
+  const { trashMetaDir, trashFoldersDir } = trashPaths(projectRoot);
+
+  let metaFiles: string[] = [];
+  try {
+    metaFiles = await readdir(trashMetaDir);
+  } catch (err: unknown) {
+    if (!isEnoent(err)) throw err;
+  }
+
+  const resourceSidecarFiles = metaFiles.filter(
+    (f) => f.startsWith("resource-") && f.endsWith(".meta.json"),
+  );
+  const folderManifestFiles = metaFiles.filter(
+    (f) => f.startsWith("folder-") && f.endsWith(".json"),
+  );
+
+  const manifestsByFolderId = new Map<UUID, TrashFolderManifest>();
+  for (const file of folderManifestFiles) {
+    const folderId = file.replace(/^folder-/, "").replace(/\.json$/, "");
+    try {
+      const raw = await readFile(path.join(trashMetaDir, file), "utf8");
+      manifestsByFolderId.set(
+        folderId,
+        TrashFolderManifestSchema.parse(JSON.parse(raw)),
+      );
+    } catch {
+      // Malformed or unreadable manifest — treat this folder as legacy
+      // (no manifest), rather than failing the whole listing.
+    }
+  }
+
+  const descendantResourceIds = new Set<UUID>();
+  const descendantFolderIds = new Set<UUID>();
+  for (const manifest of manifestsByFolderId.values()) {
+    for (const entry of manifest.descendants) {
+      if (entry.kind === "resource") descendantResourceIds.add(entry.id);
+      else descendantFolderIds.add(entry.id);
+    }
+  }
+
+  const resources: TrashedResourceEntry[] = [];
+  for (const file of resourceSidecarFiles) {
+    const resourceId = file
+      .replace(/^resource-/, "")
+      .replace(/\.meta\.json$/, "");
+    if (descendantResourceIds.has(resourceId)) continue;
+
+    const filePath = path.join(trashMetaDir, file);
+    let sidecar: Record<string, unknown>;
+    try {
+      sidecar = JSON.parse(await readFile(filePath, "utf8")) as Record<
+        string,
+        unknown
+      >;
+    } catch {
+      continue;
+    }
+
+    let deletedAt: string | null = null;
+    try {
+      deletedAt = (await stat(filePath)).mtime.toISOString();
+    } catch {
+      deletedAt = null;
+    }
+
+    resources.push({
+      id: resourceId,
+      originalName:
+        typeof sidecar["name"] === "string"
+          ? (sidecar["name"] as string)
+          : resourceId,
+      resourceType:
+        typeof sidecar["type"] === "string"
+          ? (sidecar["type"] as string)
+          : "text",
+      originalParentId:
+        typeof sidecar["folderId"] === "string"
+          ? (sidecar["folderId"] as string)
+          : null,
+      deletedAt,
+    });
+  }
+
+  const trashedFolderDescriptors =
+    await collectFolderDescriptors(trashFoldersDir);
+  const folders: TrashedFolderEntry[] = [];
+  for (const fd of trashedFolderDescriptors) {
+    if (descendantFolderIds.has(fd.folder.id)) continue;
+
+    let deletedAt: string | null = null;
+    try {
+      deletedAt = (await stat(fd.dirPath)).mtime.toISOString();
+    } catch {
+      deletedAt = null;
+    }
+
+    const manifest = manifestsByFolderId.get(fd.folder.id);
+
+    folders.push({
+      id: fd.folder.id,
+      originalName: fd.folder.name,
+      originalParentId: fd.folder.parentId ?? null,
+      deletedAt,
+      descendants: manifest ? manifest.descendants : [],
+    });
+  }
+
+  return { resources, folders };
+}
+
+/**
+ * Determines whether `id` names a currently trashed resource or a currently
+ * trashed folder (Task 11), so a batch restore/purge route can dispatch to
+ * {@link restoreResource}/{@link restoreFolder} or
+ * {@link purgeResource}/{@link purgeFolder} without the caller having to know
+ * the kind up front.
+ *
+ * Checks, in order: a trashed sidecar file (resource), a Task 6 manifest
+ * (folder — covers a folder mid-purge whose own trashed descriptor was
+ * already removed but whose manifest remains), then a trashed folder
+ * descriptor under `.trash/folders/` (covers a legacy folder trashed with no
+ * manifest, resolved OQ-12). Returns `"unknown"` when none match — the
+ * caller reports this as a per-item failure rather than throwing.
+ */
+export async function resolveTrashedItemKind(
+  projectRoot: string,
+  id: UUID,
+): Promise<"resource" | "folder" | "unknown"> {
+  const { trashMetaDir, trashFoldersDir } = trashPaths(projectRoot);
+
+  const sidecarPath = path.join(trashMetaDir, sidecarFilename(id));
+  if (await pathExists(sidecarPath)) return "resource";
+
+  const manifestPath = trashFolderManifestPath(projectRoot, id);
+  if (await pathExists(manifestPath)) return "folder";
+
+  const descriptors = await collectFolderDescriptors(trashFoldersDir);
+  if (descriptors.some((d) => d.folder.id === id)) return "folder";
+
+  return "unknown";
+}
+
 export default {
   softDeleteResource,
   softDeleteFolder,
@@ -1372,4 +1582,6 @@ export default {
   purgeResource,
   purgeFolder,
   purgeTrashedRevisions,
+  listTrashedItems,
+  resolveTrashedItemKind,
 };

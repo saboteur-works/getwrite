@@ -444,7 +444,7 @@ trash-routes` and `pnpm --filter getwrite-frontend typecheck` pass.
 **Depends on:** 8, 9, 10
 **Estimate:** 8
 **POS:** task_37496a5d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: `lib/api/trash.ts` client via `createTransport`, with a native web stub (FR-11)
 
