@@ -239,7 +239,7 @@ soft-delete-indexing` and `pnpm --filter getwrite-frontend typecheck` pass.
 **Depends on:** 4
 **Estimate:** 5
 **POS:** task_818a7f4e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Folder cascade soft delete plus manifest (FR-3, FR-20)
 

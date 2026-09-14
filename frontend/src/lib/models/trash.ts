@@ -15,6 +15,9 @@ import {
   writeSidecar,
 } from "./sidecar";
 import { revisionsBaseDir } from "./revision";
+import { removeResourceFromIndex } from "./inverted-index";
+import { removeResourceFromBacklinks } from "./backlinks";
+import { removeResourceFromMentionIndex } from "./mention-index";
 import {
   TrashRefRecordSchema,
   type TrashRefRecord,
@@ -280,6 +283,12 @@ export async function softDeleteResource(
 
   await mkdir(trashResourcesDir, { recursive: true });
   await mkdir(trashMetaDir, { recursive: true });
+
+  // Remove the resource from the inverted index, backlinks, and mention
+  // index immediately (FR-16/FR-17, resolved OQ-7) — not deferred to purge.
+  await removeResourceFromIndex(projectRoot, resourceId);
+  await removeResourceFromBacklinks(projectRoot, resourceId);
+  await removeResourceFromMentionIndex(projectRoot, resourceId);
 
   // Move sidecar if present
   const sidecarSrc = sidecarPathForProject(projectRoot, resourceId);
