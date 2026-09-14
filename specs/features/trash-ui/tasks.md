@@ -129,7 +129,7 @@ pass.
 **Depends on:** none
 **Estimate:** 2
 **POS:** task_d0dcce8d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: `TrashFolderManifestSchema` — trashed-folder manifest (FR-20)
 
