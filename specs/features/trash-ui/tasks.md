@@ -478,7 +478,7 @@ asserts the correct route/method/body; a test confirms
 **Depends on:** 11
 **Estimate:** 5
 **POS:** task_ba35c625
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: New folder-delete route and the `page.tsx`/`resources.ts` orphaning-gap fix (FR-3)
 
