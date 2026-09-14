@@ -41,7 +41,21 @@ this:
   knip cleanup may also touch this file's exported-but-unused symbols, but it
   already runs after every other task in this chain (it depends on Task 19,
   which is a descendant of Task 10 via 11 → 12 → 15 → 17 → 18 → 19), so no
-  further dependency is needed there.
+  further dependency is needed there. Task 23 (Gate 6 findings 2/3:
+  ref-record cleanup on restore, plus the single-resource delete ref-record
+  fix's `trash.ts`-side half) also writes this file; Task 20's knip pass
+  conditionally touches `trash.ts` too (its Files list names it explicitly),
+  so Task 23 depends on Task 21 (the descendant of Task 20 in this same
+  chain) to avoid a concurrent edit, even though it has no other functional
+  dependency on Tasks 3-20's own additions — it edits `restoreResource`,
+  already finished code, not a symbol any of them still touch. It shares no
+  other file with Task 22, 24, or 25, so no further sequencing is needed for
+  it beyond that one dependency and its direct `Depends on: 23, 25` edge into
+  Task 26.
+- `frontend/src/lib/models/resource-crud-core.ts` — the other half of Task
+  23's fix (`deleteResourceCore`'s missing `writeTrashRefRecord` call). No
+  other task in this feature touches this file, so no sequencing is needed
+  beyond Task 23 itself.
 - `frontend/src/lib/models/resource-persistence.ts` — read by Task 6 for
   `resolveFolderDir`/folder descriptor shape (read-only reference, not
   expected to change) and written by Task 6 only, if a helper needs
@@ -63,10 +77,25 @@ this:
   (restore notices, a11y pass), and Task 19 (the markup fix for the
   `nested-interactive`/`aria-allowed-role`/`list` violations Gate 5 measured
   in Chromium). Sequenced 15 → 17 → 18 → 19, already expressed via each
-  task's own `Depends on`.
+  task's own `Depends on`. At Gate 6, Tasks 22 (tree-refresh fix, finding 1),
+  24 (nested-item names, finding 4), and 25 (styling, finding 5) all write
+  this same file again; Task 26 (merged confirmation-match verification plus
+  the former Stage 6.5 re-verification) touches it only if verification
+  surfaces a genuine mismatch — no functional change is planned. Task 20's
+  knip pass is a descendant of Task 19 already, so 19 → 22 needs one explicit
+  new edge (added below) and the rest — 22 → 24 → 25 → 26 — are already
+  expressed via each new task's own `Depends on`.
 - `frontend/tests/a11y/trash-view.a11y.test.tsx` — added by Task 18, extended
   by Task 19 to cover the same states the Task 19 stories exercise and to
-  fail on the three axe rules Gate 5 found. Sequenced 18 → 19.
+  fail on the three axe rules Gate 5 found. Sequenced 18 → 19. Task 26
+  confirms these assertions (including the restore-confirmation dialog's
+  keyboard/ARIA behavior) still hold, rather than dropping any; already
+  sequenced as a descendant of Task 19 via 19 → 22 → 24 → 25 → 26.
+- `frontend/stories/WorkArea/TrashView.stories.tsx` — Part A committed under
+  Task 19; Tasks 24 and 25 each touch it again (descendant names and
+  restyling respectively); Task 26 leaves it unchanged after confirming no
+  restore-confirmation mismatch, already sequenced 24 → 25 → 26 via their own
+  `Depends on` for ordering purposes.
 - `frontend/components/WorkArea/ViewSwitcher.tsx` and
   `frontend/src/lib/models/types.ts` (`ViewName` union) — Task 14 only.
 - `frontend/components/Layout/AppShell.tsx` — Task 14 (Trash tab wiring,
@@ -91,6 +120,14 @@ this:
   (`app/api/folder/[folder-id]/delete/route.ts`), not a change to this one.
 - `knip.json` — Task 20 only (final gate cleanup), after every other task's
   exports are settled.
+- `frontend/app/api/project/[project-id]/trash/route.ts` — Task 11 only until
+  Gate 6; Task 24 (finding 4, descendant names on the list response) touches
+  it again. Task 24 depends (transitively, via Task 22 → Task 21) on every
+  task through Task 21, which is a descendant of Task 11, so no further
+  dependency edit is needed.
+- `frontend/src/lib/api/trash.ts` — Task 12 only until Gate 6; Task 24
+  touches it again for the same reason (descendant name field threaded
+  through the client type). Same transitive-descendant relationship applies.
 - No task in this feature adds a new `package.json` dependency — everything
   needed (`zod`, existing `io.ts`/`meta-locks.ts` primitives) is already a
   direct dependency. If implementation discovers a genuine new-package need,
@@ -815,47 +852,326 @@ the one exception, and is expected).
 **POS:** task_9c7d5090
 **Done:** [x]
 
+### Task 22: Finding 1 — resource tree not refreshed after restore
+
+**What:** At Gate 6 the lead measured: after restoring a trashed folder (with
+2 nested resources), and separately after restoring a resource into a name
+collision, the sidebar resource tree in Chromium did not show the restored
+items until a full page reload; delete and purge (which already dispatch
+`removeResource` elsewhere) updated the tree correctly. First step: read
+`TrashView.tsx`'s `confirmPendingAction` success branch and state, as an
+observed fact in the commit message (not a guess, per this repository's
+measurement-vs-hypothesis convention), whether it dispatches anything to
+`resourcesSlice` on a successful restore, or only updates its own local
+`resources`/`folders` component state — `resourcesSlice.ts`'s `addResource`
+reducer (adds one resource or, when `type === "folder"`, one folder) is the
+only existing action shaped to add an item back to the tree, and nothing in
+`TrashView.tsx` currently calls it. Then fix `TrashView.tsx` so a successful
+restore (single item, multi-select, or a restored folder's whole cascade of
+descendants) leaves the sidebar tree correct without a reload — given that a
+folder restore can bring back an arbitrarily deep set of descendant
+resources/folders that the restore route's per-item result does not itself
+describe in full, refetch the project's current resources/folders (the same
+`openProject`-shaped data `app/(app)/page.tsx`'s `handleOpen` dispatches via
+`loadResources`/`setFolders`) after a restore batch completes, rather than
+trying to reconstruct the added tree nodes from the batch result alone.
+**Files:** `frontend/components/WorkArea/Views/TrashView/TrashView.tsx`,
+`frontend/tests/component/TrashView.test.tsx`.
+**Done when:**
+1. The commit message states the observed cause (what `confirmPendingAction`
+   does and doesn't dispatch today) as measured fact.
+2. A new regression test renders `TrashView` with a mocked Redux store
+   holding one resource in `resourcesSlice`, mocks `restoreTrashItems` to
+   succeed for one additional trashed resource id, triggers a restore, and
+   asserts — before the fix — the test fails because `resourcesSlice`'s
+   `resources` array is unchanged; after the fix, the same test asserts the
+   restored resource (or the full refetched set) is present in
+   `resourcesSlice` without any reload.
+3. A second test covers the folder-cascade case: restoring a trashed folder
+   with two nested descendant resources asserts all three (folder + two
+   resources) are present in `resourcesSlice` afterward.
+4. `pnpm --filter getwrite-frontend exec vitest run TrashView`,
+   `pnpm --filter getwrite-frontend typecheck`, and
+   `pnpm --filter getwrite-frontend lint` (0 errors) all pass.
+**Depends on:** 21
+**Estimate:** 5
+**POS:** task_9def38a3
+**Done:** [ ]
+
+### Task 23: Findings 2 & 3 — ref record left on disk after restore, and no record written on a plain single-resource delete
+
+**What:** At Gate 6 the lead measured two related ref-record defects in
+`trash.ts`/`resource-crud-core.ts`: (2) after restoring a trashed folder,
+`.trash/meta/refs-<id>.json` remained on disk for both restored descendant
+resources, even through a later "Empty trash" of a different item — per FR-8's
+clarified requirement (and OQ-5's original resolution) the record must be
+moved or consumed on restore and removed on purge; (3) deleting a single
+resource ("Chapter Two", "Chapter One") produced sidecar/content/revisions
+under `.trash/` but no `.trash/meta/refs-<id>.json` at all, while the
+folder-cascade path always wrote one per descendant resource. First step:
+read `restoreResource` (confirm whether it ever removes
+`trashRefRecordPath`'s file after `readTrashRefRecord`/`relinkResourceRefs`)
+and `resource-crud-core.ts`'s `deleteResourceCore` (confirm whether it
+forwards `nullifyResourceRefs`'s return value to `writeTrashRefRecord`, the
+way `softDeleteFolder`'s per-descendant loop in `trash.ts` already does), and
+state both findings as observed fact in the commit message. Then: (a) make
+`restoreResource` delete the ref record file after processing it (whether or
+not any entries were still re-linkable), so no trace remains post-restore;
+(b) make `deleteResourceCore` call `writeTrashRefRecord` with
+`nullifyResourceRefs`'s returned entries — an empty array when nothing was
+nullified — matching FR-8's clarified spec requirement (see the spec
+clarification added to `trash-ui.md` at Gate 6) so a legacy item (no record
+at all) stays distinguishable from a normal new delete (record present,
+possibly empty) per FR-22.
+**Files:** `frontend/src/lib/models/trash.ts`,
+`frontend/src/lib/models/resource-crud-core.ts`,
+`frontend/tests/unit/trash-ref-record.test.ts`,
+`frontend/tests/integration/trash-restore.test.ts`.
+**Done when:**
+1. The commit message states both observed causes as measured fact.
+2. A new regression test in `trash-ref-record.test.ts` soft-deletes a
+   resource with zero nullifiable references via `deleteResourceCore` and
+   asserts — before the fix, failing — that
+   `.trash/meta/refs-<resourceId>.json` exists with an empty `entries` array
+   (not absent); after the fix it passes.
+3. A new regression test in `trash-restore.test.ts` soft-deletes a resource
+   with at least one nullified reference, restores it via `restoreResource`,
+   and asserts — before the fix, failing — that
+   `.trash/meta/refs-<resourceId>.json` no longer exists afterward; after the
+   fix it passes. A second case restores a resource that had no ref record to
+   begin with (legacy item, OQ-12) and asserts no error is thrown.
+4. Existing legacy-layout assertions in `trash-legacy-layout.test.ts` (Task
+   20) still pass unchanged — a legacy item's continuing lack of a ref record
+   is still what signals "legacy" per FR-22, now that a normal new delete
+   always writes one (possibly empty).
+5. `pnpm --filter getwrite-frontend exec vitest run trash-ref-record
+   trash-restore trash-legacy-layout`,
+   `pnpm --filter getwrite-frontend typecheck`, and
+   `pnpm --filter getwrite-frontend lint` (0 errors) all pass.
+**Depends on:** 21
+**Estimate:** 5
+**POS:** task_e5301a72
+**Done:** [ ]
+
+### Task 24: Finding 4 — nested items in a trashed folder show raw ids instead of names
+
+**What:** At Gate 6 the lead measured: the Trash view listed a trashed
+folder's nested contents as `resource 37f96a86-eb6c-44d5-8b43-e869e0ca6f04`
+instead of a name such as "Synthetic Core Properties Fixture". First step:
+read `TrashView.tsx`'s nested-descendant row (`{descendant.kind}
+{descendant.id}`) and the `TrashedFolderEntry`/manifest-derived
+`descendant` shape it renders from (`lib/api/trash.ts`, the list route, and
+Task 6's `TrashFolderManifestEntry`, which the spec's own evidence already
+notes "carries no name, only kind + id"), and state as observed fact whether
+the name is available anywhere already fetched by the list route or must be
+resolved server-side from the trashed sidecar/folder descriptor. Then fix it
+so FR-4's "contents are shown" requirement means shown by name and type, not
+raw id — resolving each descendant's display name from its trashed sidecar
+(`.trash/meta/resource-<id>.meta.json`) for a resource descendant, or its
+moved `folder.json` descriptor for a folder descendant, on the list route
+(`app/api/project/[project-id]/trash/route.ts`) so `TrashedFolderEntry`'s
+descendant shape carries a `name` field the component can render directly,
+rather than resolving names client-side.
+**Files:** `frontend/app/api/project/[project-id]/trash/route.ts`,
+`frontend/src/lib/api/trash.ts`,
+`frontend/components/WorkArea/Views/TrashView/TrashView.tsx`,
+`frontend/stories/WorkArea/TrashView.stories.tsx`,
+`frontend/tests/integration/trash-routes.test.ts`,
+`frontend/tests/component/TrashView.test.tsx`.
+**Done when:**
+1. The commit message states the observed cause as measured fact.
+2. A regression test in `trash-routes.test.ts` lists a trashed folder with a
+   nested resource descendant and asserts — before the fix, failing — that
+   the returned entry carries the descendant's original name, not only its
+   id; after the fix it passes for both a resource and a folder descendant.
+3. A regression test in `TrashView.test.tsx` renders a folder with nested
+   descendants and asserts the rendered nested row text names the item
+   (e.g. "resource: Synthetic Core Properties Fixture") rather than a raw
+   UUID.
+4. `frontend/stories/WorkArea/TrashView.stories.tsx` is updated so its
+   "Mixed Resources And Folders" (and any other story with nested
+   descendants) story data supplies a descendant name, and every existing
+   story still renders without a raw id visible in its markup.
+5. The lead confirms, outside the sandbox:
+   `pnpm --filter getwrite-frontend test-storybook stories/WorkArea/TrashView`
+   passes under the repo's `a11y.test: "todo"` setting, and again with
+   `a11y.test` temporarily set to `"error"` in `.storybook/preview.tsx`
+   (restored to `"todo"` afterward, not left changed).
+6. `pnpm --filter getwrite-frontend exec vitest run trash-routes TrashView`,
+   `pnpm --filter getwrite-frontend typecheck`, and
+   `pnpm --filter getwrite-frontend lint` (0 errors) all pass.
+**Depends on:** 22
+**Estimate:** 5
+**POS:** task_a8d83811
+**Done:** [ ]
+
+### Task 25: Finding 5 — style `TrashView` with the project's UI primitives
+
+**What:** At Gate 6 the lead measured: `TrashView` renders as bare, unstyled
+text and buttons (a plain `<h2>`, native `<button>`s reading "Restore
+selected / Delete selected permanently / Empty trash", unstyled checkbox
+rows), unlike every sibling Work Area view. First step: read
+`EntityRosterView.tsx` (the nearest sibling project-wide, list-shaped view)
+and the shared primitives it composes — `frontend/components/common/UI/*`,
+per `STYLING.md` and this repository's CLAUDE.md Styling section (brand
+tokens, IBM Plex typography, `Button` variants) — and confirm each prop used
+against the component's own source/stories before using it (never guess a
+prop), per this repository's CLAUDE.md rule on hallucinated props. Then
+restyle `TrashView.tsx` to use those primitives (e.g. `Button` for the batch
+toolbar actions, whatever list/row primitives `EntityRosterView` or a
+similar view already uses for its rows) so the view reads as part of the
+same design system as the rest of the Work Area, without changing any
+`data-testid`, ARIA role, or other behavior Tasks 15/17/18/19's tests already
+assert.
+**Files:** `frontend/components/WorkArea/Views/TrashView/TrashView.tsx`,
+`frontend/stories/WorkArea/TrashView.stories.tsx`,
+`frontend/tests/component/TrashView.test.tsx`.
+**Done when:**
+1. The commit message states, as observed fact, which primitive(s) an
+   equivalent existing view already uses for an analogous role (toolbar
+   button, list row), confirmed by reading that component's own source.
+2. A regression test asserts the batch toolbar's "Restore selected" and
+   "Delete selected permanently" controls are the project's shared
+   `Button` component (e.g. by asserting a brand class token it applies, or
+   by importing and comparing against `Button`'s own rendered output shape)
+   rather than a bare native `<button>` — failing before this task's change,
+   passing after.
+3. Every existing `TrashView.test.tsx`/`trash-view.a11y.test.tsx` assertion
+   (`data-testid`s, ARIA roles, keyboard behavior from Tasks 15/17/18/19)
+   still passes unchanged.
+4. `frontend/stories/WorkArea/TrashView.stories.tsx` renders correctly with
+   the new styling in every existing story.
+5. The lead confirms, outside the sandbox, the same
+   `pnpm --filter getwrite-frontend test-storybook stories/WorkArea/TrashView`
+   pass (both under `a11y.test: "todo"` and temporarily `"error"`, restored
+   after) that Task 24 names.
+6. `pnpm --filter getwrite-frontend exec vitest run TrashView
+   trash-view.a11y`, `pnpm --filter getwrite-frontend typecheck`, and
+   `pnpm --filter getwrite-frontend lint` (0 errors) all pass.
+**Depends on:** 24
+**Estimate:** 8
+**POS:** task_766eeda1
+**Done:** [ ]
+
+### Task 26: Finding 6 — confirm restore/destructive confirmations match spec; Stage 6.5 re-verification of findings 1-5
+
+**What:** At Gate 4 (2026-09-14) the owner decided to keep the restore batch
+confirmation as originally specified. The Gate 6 finding that restore
+confirmation was "not in the spec" was itself wrong — FR-2, Goals, and OQ-9
+required it, and `trash-ui.md`'s Gate 6 "finding 6" clarifications narrowing
+that language have since been reverted. This task therefore does **not**
+remove the restore confirmation dialog (the former Task 26 scope). Instead,
+it confirms — and covers with a test — that the restore batch confirmation,
+the multi-select permanent-delete confirmation, and the "Empty trash"
+confirmation all match FR-2 and FR-13 as originally specified, making no
+behaviour change unless this check turns up a genuine mismatch. Separately,
+it records (already captured in `follow-up-work.md` FU-7, confirmed here
+rather than re-derived) that the red confirm button on all three of these
+`ConfirmDialog` uses comes from the shared `ConfirmDialog`/`Button`
+`variant="destructive"` — an app-wide pattern used identically by
+`RemoveEntityControl.tsx` — and is left unchanged; this repository's CLAUDE.md
+red-reservation rule is a pre-existing, whole-app tension with that shared
+primitive, not something specific to Trash, and is out of scope to fix here.
+Folded into this task is the former Task 27's Stage 6.5 re-verification: the
+lead re-drives the shipped Trash UI in Chromium against a dev server
+(`GETWRITE_PROJECTS_DIR` scratch project), repeating the exact steps that
+produced each of Gate 6's six findings, and confirms each is actually fixed
+rather than only passing its own unit/component/story tests: (1) restoring a
+trashed folder and a name-colliding resource now updates the sidebar tree
+with no reload; (2) `.trash/meta/refs-*.json` no longer remains after a
+restore, checked on disk; (3) a plain single-resource delete now writes a
+`refs-<id>.json` record (empty when nothing was nullified), checked on disk,
+and a genuinely legacy item (no record) is still detected as legacy by
+FR-22's behavior; (4) a trashed folder's nested contents render by name and
+type, not a raw id; (5) the Trash view visually matches the project's other
+Work Area views' styling; (6) "Restore selected", "Delete selected
+permanently", and "Empty trash" each still open their `ConfirmDialog` and
+require an explicit confirm click, matching FR-2/FR-13 as originally
+specified — no dialog was removed.
+**Files:** `frontend/tests/component/TrashView.test.tsx` (a regression test
+confirming the restore confirmation dialog's presence and behavior, if not
+already fully covered by Task 17's own tests), `frontend/tests/a11y/trash-view.a11y.test.tsx`
+(confirm, not drop, the restore dialog's keyboard/ARIA assertions), and
+`frontend/components/WorkArea/Views/TrashView/TrashView.tsx` and
+`frontend/stories/WorkArea/TrashView.stories.tsx` only if this task's
+verification surfaces an actual mismatch against FR-2/FR-13 — no functional
+change is otherwise expected.
+**Done when:**
+1. A test confirms clicking "Restore selected" (with items selected) opens
+   a `ConfirmDialog` and calls `restoreTrashItems` only after an explicit
+   confirm click — matching FR-2/FR-13/OQ-9 as originally specified and
+   Task 17's original implementation, unchanged.
+2. Existing or updated tests confirm "Delete selected permanently" and
+   "Empty trash" each still open a `ConfirmDialog` and require an explicit
+   confirm click before `purgeTrashItems` is called.
+3. `trash-view.a11y.test.tsx` continues to assert the restore, purge, and
+   empty-trash dialogs' keyboard/ARIA behavior — none of these assertions
+   are dropped.
+4. `specs/features/trash-ui/follow-up-work.md`'s FU-7 entry is confirmed to
+   state the shared red-`destructive`-variant tension without claiming the
+   restore dialog is unrequested (no edit needed if it already does).
+5. The lead's Chromium walkthrough, checking disk state after each step
+   exactly as at Gate 6, confirms findings 1-5 are resolved and finding 6 is
+   a non-issue (dialogs present and matching spec, not removed), and records
+   the result (pass/fail per finding) in this task's own commit message or
+   PR description.
+6. `pnpm --filter getwrite-frontend exec vitest run TrashView
+   trash-view.a11y`, `pnpm --filter getwrite-frontend typecheck`,
+   `pnpm --filter getwrite-frontend lint` (0 errors), and
+   `pnpm --filter getwrite-frontend test:ci` all pass; `pnpm knip` filtered
+   to this feature's paths (Task 20's list) shows zero findings.
+**Depends on:** 23, 25
+**Estimate:** 3
+**POS:** task_b4b113c9
+**Done:** [ ]
+
 ## FR coverage map
 
 | FR | Covered by |
 | --- | --- |
-| FR-1 | Task 11, Task 14, Task 15 |
-| FR-2 | Task 11, Task 17 |
+| FR-1 | Task 11, Task 14, Task 15, Task 22 (Gate 6 finding 1: tree refresh after restore), Task 26 (re-verification) |
+| FR-2 | Task 11, Task 17, Task 26 (confirms the restore batch confirmation matches this FR as originally specified, per the Gate 4 revert of the Gate 6 finding 6 narrowing) |
 | FR-3 | Task 6, Task 13, Task 16 |
-| FR-4 | Task 15 |
-| FR-5 | Task 8, Task 9, Task 18 |
+| FR-4 | Task 15, Task 24 (Gate 6 finding 4: nested descendants shown by name/type, not raw id) |
+| FR-5 | Task 8, Task 9, Task 18, Task 22, Task 26 |
 | FR-6 | Task 7, Task 10 |
 | FR-7 | Task 10 |
-| FR-8 | Task 1, Task 4 |
-| FR-9 | Task 8, Task 18 |
+| FR-8 | Task 1, Task 4, Task 23 (Gate 6 findings 2/3: ref record always written, removed on restore) |
+| FR-9 | Task 8, Task 18, Task 22, Task 23, Task 26 |
 | FR-10 | Task 7, Task 10 |
 | FR-11 | Task 12, Task 21 |
 | FR-12 | Task 11 |
-| FR-13 | Task 17 |
-| FR-14 | Task 18, Task 19 |
-| FR-15 | Task 19 |
+| FR-13 | Task 17, Task 26 (confirms all three batch confirmations, including restore's, match this FR as originally specified; the shared, unmodified `ConfirmDialog` `destructive`-variant styling is verified unchanged, per FU-7) |
+| FR-14 | Task 18, Task 19, Task 25 (Gate 6 finding 5: restyled without regressing keyboard/ARIA behavior), Task 26 |
+| FR-15 | Task 19, Task 24, Task 25, Task 26 (Storybook stories confirmed current, no restore-confirmation story removed) |
 | FR-16 | Task 5, Task 8 |
 | FR-17 | Task 5 |
 | FR-18 | Task 7, Task 10 |
 | FR-19 | Task 3 |
 | FR-20 | Task 2, Task 6, Task 9 |
 | FR-21 | Task 17 |
-| FR-22 | Task 8, Task 20 |
+| FR-22 | Task 8, Task 20, Task 23 (Gate 6 finding 3: a same-feature delete now always writes a record, keeping "no record" a reliable legacy signal) |
 | FR-23 | Task 20 (consolidation) plus the per-mechanism unit/integration tests already required by Tasks 3, 4, 6, 8, 9, 10 |
 
 ## Summary
 
-- Total tasks: 21
-- Total estimated effort: 120 points
+- Total tasks: 26
+- Total estimated effort: 146 points
 - Critical path: 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 15 → 17 → 18 →
-  19 → 20 → 21. Tasks 1 and 2 feed into Task 6 (a shorter branch: 1 → 2 → 6)
-  and so are not on the critical path. Task 13 (depends on 6) and Task 14
-  (no dependency, can start immediately) form a shorter UI-wiring branch
-  that joins the critical path at Task 16, which now depends on both Task 13
-  and Task 15 before feeding into Task 17. The single longest chain is the
-  `trash.ts` shared-file sequence in the preamble (3 → 4 → 5 → 6 → 7 → 8 → 9
-  → 10) — eight of this feature's ten model-layer tasks all write the same
-  file and cannot be parallelized once past Task 3.
+  19 → 20 → 21 → 22 → 24 → 25 → 26. Tasks 1 and 2 feed into Task 6 (a
+  shorter branch: 1 → 2 → 6) and so are not on the critical path. Task 13
+  (depends on 6) and Task 14 (no dependency, can start immediately) form a
+  shorter UI-wiring branch that joins the critical path at Task 16, which now
+  depends on both Task 13 and Task 15 before feeding into Task 17. The single
+  longest chain through the original scope is the `trash.ts` shared-file
+  sequence in the preamble (3 → 4 → 5 → 6 → 7 → 8 → 9 → 10) — eight of this
+  feature's ten model-layer tasks all write the same file and cannot be
+  parallelized once past Task 3. At Gate 6, Task 23 (findings 2/3) branches
+  off Task 21 independently and rejoins only at Task 26 (the merged
+  confirmation-match verification and former Stage 6.5 re-verification), so
+  it can run in parallel with the 22 → 24 → 25 → 26 `TrashView.tsx` chain;
+  the critical path above follows the longer of the two branches
+  (22 → 24 → 25 → 26) since Task 26 depends on both.
 - Risks: Task 10 (the ordered, resumable purge sweep) is the single
   highest-leverage task — it is the first point every prior model-layer
   unit (Tasks 3-7, 9) is exercised together under FR-18's strict ordering
@@ -874,7 +1190,16 @@ the one exception, and is expected).
   multi-select UI is the largest single frontend task and, like
   `ImportDocxDialog` in the DOCX importer's own task list, the one most
   likely to blur distinct batch-outcome states into one generic message if
-  rushed.
+  rushed. At Gate 4 (2026-09-14) the owner decided to keep the restore batch
+  confirmation as originally specified, superseding the Gate 6 finding 6
+  narrowing (which read Goals/FR-2/OQ-9 as not requiring it — they did); the
+  former Task 26 (removing the dialog) was replaced before any code changed
+  (its `Done` was still unchecked), so no revert of shipped behavior was
+  needed, only of the spec and this task list. Task 25 (styling) carries the
+  same "confirm every prop against source" risk `EntityRosterView`'s own
+  construction called out, magnified by having to restyle an
+  already-shipped, already-tested component without regressing
+  Task 17/18/19's behavioral assertions.
 
 ## Open Questions
 

@@ -144,7 +144,14 @@ purge" actually means the resource is gone everywhere.
    field key, the array index within that field when the field is
    multi-valued (omitted for a scalar field), and the prior value
    `{ id, name }` before `patchRef` (`trash.ts:30-58`) cleared it (resolved:
-   OQ-5). [US-4]
+   OQ-5). Clarification (Gate 6 finding 3, 2026-09-14): this record MUST be
+   written for every delete that goes through this path — including a
+   single-resource delete that nullified zero references, which MUST still
+   produce a record with an empty `entries` array, not no record at all. A
+   record's total absence is reserved exclusively for a legacy item
+   soft-deleted before this feature existed (FR-22's "no ref record" legacy
+   signal); a same-feature delete that wrote no record would otherwise be
+   indistinguishable from a legacy item by FR-22's own detection rule. [US-4]
 9. FR-9: Restoring a resource MUST use FR-8's record to re-link: every
    recorded reference still in its cleared `{ id: null, name }` state MUST
    be pointed back at the restored resource, and a reference that changed
