@@ -342,7 +342,7 @@ getwrite-frontend typecheck` pass.
 **Depends on:** 4, 5, 6, 7
 **Estimate:** 10
 **POS:** task_7c4c3601
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Whole-folder restore, rebuilt from the manifest (FR-5, FR-20)
 

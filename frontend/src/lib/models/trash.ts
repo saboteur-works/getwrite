@@ -20,6 +20,7 @@ import { removeResourceFromBacklinks } from "./backlinks";
 import { removeResourceFromMentionIndex } from "./mention-index";
 import { getLocalResources } from "./resource-persistence";
 import { getSchema } from "./metadata-schema";
+import { enqueueIndex } from "./indexer-queue";
 import {
   FolderSchema,
   TrashRefRecordSchema,
@@ -29,7 +30,13 @@ import {
   type TrashRefRecord,
   type TrashRefRecordEntry,
 } from "./schemas";
-import type { AnyResource, Folder, MetadataValue, UUID } from "./types";
+import type {
+  AnyResource,
+  Folder,
+  MetadataValue,
+  ResourceRef,
+  UUID,
+} from "./types";
 
 export type {
   TrashFolderManifest,
@@ -556,25 +563,289 @@ export async function softDeleteFolder(
 }
 
 /**
- * Restore resource and sidecar from `.trash/` back to their original locations.
- * If multiple resource filenames exist in the trash, restores the first match.
+ * One reference-relinking outcome, corresponding to a single Task 4 ref
+ * record entry: which referencing resource/field it names.
+ */
+export interface RestoredReferenceInfo {
+  referencingResourceId: UUID;
+  fieldKey: string;
+  arrayIndex?: number;
+}
+
+/**
+ * Structured result of {@link restoreResource} (FR-5/FR-9/FR-16/FR-22),
+ * letting a caller distinguish a plain restore from one that had to relocate
+ * the resource, rename it, or leave some references un-relinked.
+ */
+export interface RestoreResourceResult {
+  /** Name the resource is restored under (after any collision suffix). */
+  restoredName: string;
+  /** True when the resource's original parent folder no longer exists and it landed at the project root instead (resolved OQ-2's fallback). */
+  relocated: boolean;
+  /** True when `restoredName` differs from the resource's original name because of a collision at the destination. */
+  renamed: boolean;
+  /** Every ref-record entry successfully re-linked back to this resource. */
+  referencesRestored: RestoredReferenceInfo[];
+  /**
+   * Every ref-record entry left untouched — either because the referencing
+   * field's value changed since deletion (no longer in its cleared
+   * `{ id: null, name }` state), or `"no-record"` when the resource has no
+   * Task 4 ref record at all (a legacy item soft-deleted before FR-8 existed,
+   * resolved OQ-12).
+   */
+  referencesNotRestored: RestoredReferenceInfo[] | "no-record";
+}
+
+function toReferenceInfo(entry: TrashRefRecordEntry): RestoredReferenceInfo {
+  return entry.arrayIndex !== undefined
+    ? {
+        referencingResourceId: entry.referencingResourceId,
+        fieldKey: entry.fieldKey,
+        arrayIndex: entry.arrayIndex,
+      }
+    : {
+        referencingResourceId: entry.referencingResourceId,
+        fieldKey: entry.fieldKey,
+      };
+}
+
+/**
+ * True when `value` is still the exact cleared marker `nullifyResourceRefs`
+ * left behind for a reference named `name` — i.e. it has not been repointed
+ * to a different resource (or otherwise edited) since the delete that
+ * cleared it.
+ */
+function isStillClearedRef(value: unknown, name: string): boolean {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    (value as Record<string, unknown>)["id"] === null &&
+    (value as Record<string, unknown>)["name"] === name
+  );
+}
+
+/**
+ * Re-links every entry in a Task 4 ref record that is still in its cleared
+ * `{ id: null, name }` state back to the just-restored resource (FR-9). An
+ * entry whose referencing field changed since the delete — repointed to a
+ * different resource, cleared field removed entirely, or the referencing
+ * resource itself gone — is left untouched and reported instead of being
+ * overwritten.
+ *
+ * Groups entries by `referencingResourceId` so each referencing sidecar is
+ * read-modified-written once, mirroring `nullifyResourceRefs`'s own grouping.
+ */
+async function relinkResourceRefs(
+  projectRoot: string,
+  resourceId: UUID,
+  record: TrashRefRecord,
+): Promise<{
+  restored: RestoredReferenceInfo[];
+  notRestored: RestoredReferenceInfo[];
+}> {
+  const restored: RestoredReferenceInfo[] = [];
+  const notRestored: RestoredReferenceInfo[] = [];
+
+  const byReferencingResource = new Map<UUID, TrashRefRecordEntry[]>();
+  for (const entry of record.entries) {
+    const list = byReferencingResource.get(entry.referencingResourceId) ?? [];
+    list.push(entry);
+    byReferencingResource.set(entry.referencingResourceId, list);
+  }
+
+  for (const [referencingResourceId, entries] of byReferencingResource) {
+    const sidecar = await readSidecar(projectRoot, referencingResourceId);
+    const rawMeta = sidecar?.["userMetadata"];
+    const userMetadata =
+      sidecar &&
+      typeof rawMeta === "object" &&
+      rawMeta !== null &&
+      !Array.isArray(rawMeta)
+        ? (rawMeta as Record<string, MetadataValue>)
+        : undefined;
+
+    let isDirty = false;
+
+    for (const entry of entries) {
+      const info = toReferenceInfo(entry);
+      const value = userMetadata?.[entry.fieldKey];
+
+      if (entry.arrayIndex !== undefined) {
+        if (
+          Array.isArray(value) &&
+          isStillClearedRef(value[entry.arrayIndex], entry.priorValue.name)
+        ) {
+          const nextArray = (value as unknown as ResourceRef[]).slice();
+          nextArray[entry.arrayIndex] = {
+            id: resourceId,
+            name: entry.priorValue.name,
+          };
+          userMetadata![entry.fieldKey] = nextArray as MetadataValue;
+          isDirty = true;
+          restored.push(info);
+        } else {
+          notRestored.push(info);
+        }
+        continue;
+      }
+
+      if (isStillClearedRef(value, entry.priorValue.name)) {
+        userMetadata![entry.fieldKey] = {
+          id: resourceId,
+          name: entry.priorValue.name,
+        } as MetadataValue;
+        isDirty = true;
+        restored.push(info);
+      } else {
+        notRestored.push(info);
+      }
+    }
+
+    if (isDirty && sidecar && userMetadata) {
+      sidecar["userMetadata"] = userMetadata as MetadataValue;
+      await writeSidecar(projectRoot, referencingResourceId, sidecar);
+    }
+  }
+
+  return { restored, notRestored };
+}
+
+/**
+ * Whether a folder with id `folderId` still exists under `folders/` (i.e.
+ * has not itself been soft-deleted or otherwise removed).
+ */
+async function folderExists(
+  projectRoot: string,
+  folderId: UUID,
+): Promise<boolean> {
+  const foldersRoot = path.join(projectRoot, "folders");
+  const descriptors = await collectFolderDescriptors(foldersRoot);
+  return descriptors.some((d) => d.folder.id === folderId);
+}
+
+/**
+ * Resolves a free name for the restored resource at `destinationFolderId`,
+ * applying resolved OQ-2's suffix rule on a collision with a sibling
+ * resource already at that destination: `"<name> (restored)"`, then
+ * `"<name> (restored 2)"`, `"<name> (restored 3)"`, ... until free.
+ */
+async function resolveRestoreName(
+  projectRoot: string,
+  destinationFolderId: UUID | null,
+  originalName: string,
+): Promise<{ name: string; renamed: boolean }> {
+  const siblings = await getLocalResources(projectRoot);
+  const siblingNames = new Set(
+    siblings
+      .filter((r) => (r.folderId ?? null) === destinationFolderId)
+      .map((r) => r.name),
+  );
+
+  if (!siblingNames.has(originalName)) {
+    return { name: originalName, renamed: false };
+  }
+
+  let n = 1;
+  for (;;) {
+    const candidate =
+      n === 1
+        ? `${originalName} (restored)`
+        : `${originalName} (restored ${n})`;
+    if (!siblingNames.has(candidate)) {
+      return { name: candidate, renamed: true };
+    }
+    n += 1;
+  }
+}
+
+/**
+ * Restore resource and sidecar from `.trash/` back to their original
+ * location, applying the FR-5/FR-9/FR-22 rules for a parent folder that no
+ * longer exists (falls back to the project root) and a name collision at the
+ * destination (resolved OQ-2's `" (restored)"`/`" (restored N)"` suffix).
+ *
+ * Re-indexes the restored resource through `indexer-queue.ts`'s
+ * `enqueueIndex` (FR-16 — inverted index, then backlinks, then mentions, in
+ * that order inside one task), and re-links every reference still in its
+ * Task 4 cleared `{ id: null, name }` state back to the restored resource
+ * (FR-9), leaving alone — and reporting — any reference that changed since
+ * deletion. A legacy item with no ref record at all (resolved OQ-12) gets no
+ * re-linking, reported as `referencesNotRestored: "no-record"`.
+ *
+ * If multiple resource filenames exist in the trash, restores the first
+ * match for each.
  */
 export async function restoreResource(
   projectRoot: string,
   resourceId: UUID,
-): Promise<void> {
+): Promise<RestoreResourceResult> {
   const { trashResourcesDir, trashMetaDir } = trashPaths(projectRoot);
 
-  // Restore sidecar
+  // Read the trashed sidecar (if any) so we can resolve destination folder
+  // and name before writing it back — its path doesn't encode either, so
+  // this is safe to do ahead of any file move.
   const sidecarName = sidecarFilename(resourceId);
   const sidecarSrc = path.join(trashMetaDir, sidecarName);
   const sidecarDest = sidecarPathForProject(projectRoot, resourceId);
+
+  let trashedSidecar: Record<string, MetadataValue> | null = null;
   try {
-    await mkdir(path.dirname(sidecarDest), { recursive: true });
-    await rename(sidecarSrc, sidecarDest);
+    trashedSidecar = JSON.parse(await readFile(sidecarSrc, "utf8")) as Record<
+      string,
+      MetadataValue
+    >;
   } catch (err: unknown) {
-    // sidecar not present in trash
     if (!isEnoent(err)) throw err;
+  }
+
+  let isRelocated = false;
+  let isRenamed = false;
+  let restoredName = "";
+
+  if (trashedSidecar) {
+    const originalFolderId =
+      typeof trashedSidecar["folderId"] === "string"
+        ? (trashedSidecar["folderId"] as string)
+        : null;
+    const originalName =
+      typeof trashedSidecar["name"] === "string"
+        ? (trashedSidecar["name"] as string)
+        : resourceId;
+
+    let destinationFolderId: UUID | null = originalFolderId;
+    if (originalFolderId !== null) {
+      const isFolderStillPresent = await folderExists(
+        projectRoot,
+        originalFolderId,
+      );
+      if (!isFolderStillPresent) {
+        destinationFolderId = null;
+        isRelocated = true;
+      }
+    }
+
+    const resolvedName = await resolveRestoreName(
+      projectRoot,
+      destinationFolderId,
+      originalName,
+    );
+    restoredName = resolvedName.name;
+    isRenamed = resolvedName.renamed;
+
+    const updatedSidecar: Record<string, MetadataValue> = {
+      ...trashedSidecar,
+      name: restoredName,
+      folderId: destinationFolderId,
+    };
+
+    await mkdir(path.dirname(sidecarDest), { recursive: true });
+    await atomicWriteFile(
+      sidecarDest,
+      JSON.stringify(updatedSidecar, null, 2),
+      "utf8",
+    );
+    await rm(sidecarSrc, { force: true });
   }
 
   // Restore resource files
@@ -600,14 +871,36 @@ export async function restoreResource(
   const trashedRevisionsDir = trashRevisionsBaseDir(projectRoot, resourceId);
   try {
     await stat(trashedRevisionsDir);
+    const revisionsDest = revisionsBaseDir(projectRoot, resourceId);
+    await mkdir(path.dirname(revisionsDest), { recursive: true });
+    await rename(trashedRevisionsDir, revisionsDest);
   } catch (err: unknown) {
     if (!isEnoent(err)) throw err;
-    return;
   }
 
-  const revisionsDest = revisionsBaseDir(projectRoot, resourceId);
-  await mkdir(path.dirname(revisionsDest), { recursive: true });
-  await rename(trashedRevisionsDir, revisionsDest);
+  // Re-index the restored resource (FR-16): inverted index, then backlinks,
+  // then mentions, all inside one `enqueueIndex` task.
+  await enqueueIndex(projectRoot, resourceId);
+
+  // Re-link references still in their Task 4 cleared state (FR-9), or report
+  // the legacy "no ref record at all" case (resolved OQ-12).
+  const record = await readTrashRefRecord(projectRoot, resourceId);
+  let referencesRestored: RestoredReferenceInfo[] = [];
+  let referencesNotRestored: RestoredReferenceInfo[] | "no-record" =
+    "no-record";
+  if (record) {
+    const relinked = await relinkResourceRefs(projectRoot, resourceId, record);
+    referencesRestored = relinked.restored;
+    referencesNotRestored = relinked.notRestored;
+  }
+
+  return {
+    restoredName,
+    relocated: isRelocated,
+    renamed: isRenamed,
+    referencesRestored,
+    referencesNotRestored,
+  };
 }
 
 /**
