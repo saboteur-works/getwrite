@@ -1,5 +1,41 @@
-import type { AnyResource, TipTapDocument } from "../models/types";
+import type { AnyResource, Folder, TipTapDocument } from "../models/types";
 import { createTransport } from "../../store/transport/create-transport";
+
+/**
+ * Computes the id of `folderId` plus every folder/resource nested beneath it
+ * (transitively), given a project's already-loaded flat `folders`/`resources`
+ * arrays. Pure and client-side — no filesystem or network access — so
+ * `handleResourceAction`'s `"delete"` branch (`app/(app)/page.tsx`) can use
+ * it to remove a whole deleted folder subtree from local + Redux state in
+ * one pass, matching what `softDeleteFolder` does on disk (Feature 26
+ * trash-ui, FR-3, Task 13).
+ */
+export function collectFolderDescendantIds(
+  folders: Folder[],
+  resources: AnyResource[],
+  folderId: string,
+): Set<string> {
+  const idsToRemove = new Set<string>([folderId]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const f of folders) {
+      const parentId = f.parentId ?? null;
+      if (parentId && idsToRemove.has(parentId) && !idsToRemove.has(f.id)) {
+        idsToRemove.add(f.id);
+        added = true;
+      }
+    }
+    for (const r of resources) {
+      const parentId = r.folderId ?? null;
+      if (parentId && idsToRemove.has(parentId) && !idsToRemove.has(r.id)) {
+        idsToRemove.add(r.id);
+        added = true;
+      }
+    }
+  }
+  return idsToRemove;
+}
 
 export interface ResourceContentResponse {
   resourceContent?: {
@@ -335,6 +371,29 @@ export async function deleteResource(
 ): Promise<void> {
   const transport = await resolveResourcesTransport();
   await transport.remove(resourceId, projectId);
+}
+
+/**
+ * Deletes (soft-deletes) a folder and its entire descendant subtree.
+ *
+ * `projectId` must be the project's on-disk directory basename (see
+ * `selectActiveProjectDirectoryId` in `projectsSlice.ts`), not
+ * `StoredProject.id` — `/api/folder/[folder-id]/delete` resolves it via
+ * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
+ *
+ * Unlike {@link deleteResource}, this is not yet part of the
+ * `ResourcesTransport`/`createTransport` collapse (Feature 26 trash-ui,
+ * Task 13 is web/desktop-only) — it POSTs directly via `fetch`.
+ */
+export async function deleteFolder(
+  folderId: string,
+  projectId: string,
+): Promise<void> {
+  await fetch(`/api/folder/${folderId}/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectId }),
+  });
 }
 
 /**

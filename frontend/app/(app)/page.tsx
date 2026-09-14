@@ -51,6 +51,8 @@ import {
   createResource,
   copyResource,
   deleteResource,
+  deleteFolder,
+  collectFolderDescendantIds,
   updateSidecar,
   uploadMediaResource,
 } from "../../src/lib/api/resources";
@@ -650,6 +652,55 @@ export default function Home(): JSX.Element {
 
     if (action === "delete") {
       if (!resourceId) return;
+
+      const deletedFolder = selectedProject.folders.find(
+        (f) => f.id === resourceId,
+      );
+
+      if (deletedFolder) {
+        // Deleting a folder cascades to every descendant folder/resource
+        // (Task 6's `softDeleteFolder`); compute that same descendant set
+        // client-side so local + Redux state no longer shows orphaned
+        // children after the delete (FR-3, Task 13).
+        const idsToRemove = collectFolderDescendantIds(
+          selectedProject.folders,
+          selectedProject.resources,
+          resourceId,
+        );
+
+        await deleteFolder(resourceId, projectId);
+
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.project.id === selectedProject.id
+              ? {
+                  ...p,
+                  folders: p.folders.filter((f) => !idsToRemove.has(f.id)),
+                  resources: p.resources.filter((r) => !idsToRemove.has(r.id)),
+                }
+              : p,
+          ),
+        );
+        setSelectedProject((prev) =>
+          prev
+            ? {
+                ...prev,
+                folders: prev.folders.filter((f) => !idsToRemove.has(f.id)),
+                resources: prev.resources.filter((r) => !idsToRemove.has(r.id)),
+                updatedAt: new Date().toISOString(),
+              }
+            : prev,
+        );
+        for (const id of idsToRemove) {
+          dispatch(
+            removeResource({ projectId: selectedProject.id, resourceId: id }),
+          );
+          dispatch(removeResourceFromStore(id));
+        }
+        toastService.success("Folder deleted", deletedFolder.name);
+        return;
+      }
+
       await deleteResource(resourceId, projectId);
       setProjects((prev) =>
         prev.map((p) =>

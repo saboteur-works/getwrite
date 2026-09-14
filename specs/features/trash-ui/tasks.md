@@ -526,7 +526,7 @@ typecheck` pass.
 **Depends on:** 6
 **Estimate:** 5
 **POS:** task_5f2e7b67
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: "Trash" tab in `ViewSwitcher.tsx` and `AppShell.tsx` wiring (FR-1)
 
