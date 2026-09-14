@@ -20,6 +20,8 @@ import { Provider } from "react-redux";
 import StartPage from "../../components/Start/StartPage";
 import { makeStore } from "../../src/store/store";
 import type {
+  DocxImportOutcome,
+  DocxSourceChoice,
   ScrivenerImportOutcome,
   ScrivenerSourceChoice,
 } from "../../src/lib/desktop-bridge";
@@ -34,6 +36,9 @@ import type {
 function installBridge(overrides: {
   chooseScrivenerSource?: ReturnType<typeof vi.fn>;
   startScrivenerImport?: ReturnType<typeof vi.fn>;
+  chooseDocxFile?: ReturnType<typeof vi.fn>;
+  chooseDocxFolder?: ReturnType<typeof vi.fn>;
+  startDocxImport?: ReturnType<typeof vi.fn>;
 }) {
   const chooseScrivenerSource =
     overrides.chooseScrivenerSource ??
@@ -57,14 +62,53 @@ function installBridge(overrides: {
         report: "Report body",
       }),
     );
+  const chooseDocxFile =
+    overrides.chooseDocxFile ??
+    vi.fn(
+      async (): Promise<DocxSourceChoice> => ({
+        ok: true,
+        handle: "docx-handle-1",
+        displayName: "My Manuscript",
+      }),
+    );
+  const chooseDocxFolder =
+    overrides.chooseDocxFolder ??
+    vi.fn(
+      async (): Promise<DocxSourceChoice> => ({
+        ok: true,
+        handle: "docx-handle-1",
+        displayName: "My Manuscript",
+      }),
+    );
+  const startDocxImport =
+    overrides.startDocxImport ??
+    vi.fn(
+      async (): Promise<DocxImportOutcome> => ({
+        kind: "success",
+        projectId: "proj-docx-imported",
+        projectRoot: "/tmp/proj-docx-imported",
+        folderCount: 1,
+        resourceCount: 1,
+        report: "Report body",
+      }),
+    );
   (window as unknown as Record<string, unknown>).getwriteDesktop = {
     getWorkspaceDir: vi.fn(async () => "/tmp"),
     chooseWorkspaceDir: vi.fn(async () => ({ ok: false, cancelled: true })),
     restart: vi.fn(async () => {}),
     chooseScrivenerSource,
     startScrivenerImport,
+    chooseDocxFile,
+    chooseDocxFolder,
+    startDocxImport,
   };
-  return { chooseScrivenerSource, startScrivenerImport };
+  return {
+    chooseScrivenerSource,
+    startScrivenerImport,
+    chooseDocxFile,
+    chooseDocxFolder,
+    startDocxImport,
+  };
 }
 
 /** Renders `StartPage` inside a fresh Redux store, as `start.test.tsx` does. */
@@ -176,5 +220,74 @@ describe("StartPage — Scrivener import launcher", () => {
         screen.getByRole("button", { name: /Import from Scrivener/i }),
       ).toBeInTheDocument();
     });
+  });
+});
+
+describe("StartPage — DOCX import launcher (Task 17)", () => {
+  it("renders no Import Word Document control when there is no desktop bridge", () => {
+    renderStartPage();
+
+    expect(
+      screen.queryByRole("button", { name: /Import Word Document/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders an Import Word Document control alongside the Scrivener control when a desktop bridge is present", () => {
+    installBridge({});
+    renderStartPage();
+
+    expect(
+      screen.getByRole("button", { name: /Import from Scrivener/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Import Word Document/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens ImportDocxDialog in choose-source without calling chooseDocxFile/chooseDocxFolder itself", async () => {
+    const { chooseDocxFile, chooseDocxFolder } = installBridge({});
+    renderStartPage();
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: /Import Word Document/i }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /Import from Word/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Choose document…/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Choose folder…/i }),
+    ).toBeInTheDocument();
+    expect(chooseDocxFile).not.toHaveBeenCalled();
+    expect(chooseDocxFolder).not.toHaveBeenCalled();
+  });
+
+  it("calls onImportComplete with the new project id once the DOCX dialog reports success", async () => {
+    installBridge({});
+    const onImportComplete = vi.fn();
+    renderStartPage({ onImportComplete });
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: /Import Word Document/i }),
+    );
+    await user.click(screen.getByRole("button", { name: /Choose document…/i }));
+    await screen.findByLabelText(/Name/i);
+    await user.click(screen.getByRole("button", { name: /^Start$/i }));
+
+    const openButton = await screen.findByRole("button", {
+      name: /Open Project/i,
+    });
+    await user.click(openButton);
+
+    expect(onImportComplete).toHaveBeenCalledWith("proj-docx-imported");
+    // The dialog closes itself once the callback has fired.
+    expect(
+      screen.queryByRole("heading", { name: /Import from Word/i }),
+    ).not.toBeInTheDocument();
   });
 });

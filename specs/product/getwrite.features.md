@@ -510,8 +510,10 @@ so unlocked readers never see a partial file (PR #197, `600094f5`,
 2026-09-12). This feature replaces the former combined "Scrivener/Word
 project importer" entry that previously held this ID — split 2026-09-11
 (owner decision) once Scrivener import became committed, current work (FR-42)
-distinct from Word/DOCX import, which stays an unscheduled Later requirement
-(now Feature 45). Scoped to Scrivener 3, Mac-authored projects only (resolved
+distinct from Word/DOCX import (now Feature 45). FR-33 moved from Later
+Requirements into In Progress Requirements on 2026-09-13, when Feature 45
+itself moved to Not Started — see the Feature 45 entry below for current
+status. Scoped to Scrivener 3, Mac-authored projects only (resolved
 OQ-16 in the parent spec); Scrivener 2 projects and Windows-authored projects
 are an explicit, documented gap, not rejected outright — see the parent
 spec's Out of Scope (Deferred). Widened 2026-09-11 at this feature's own
@@ -1144,24 +1146,37 @@ are one-shot only. Deferred, not scheduled against a fixed date.
 
 ### Feature 45: Word/DOCX project importer — Not started
 **Value:** A novelist migrating from Word imports their existing DOCX
-project structure into GetWrite instead of manually re-creating it.
-**Vertical slice:** A DOCX parser, mapping from Word document structure to
-GetWrite's project-type/resource-tree model, and an import flow (UI or CLI)
-that runs the conversion.
+project structure into GetWrite instead of manually re-creating it, from
+either a single `.docx` file or a folder of them, without touching the
+command line.
+**Vertical slice:** A DOCX parser (both source kinds auto-detected: a
+single `.docx`, split into multiple GetWrite resources at Heading 1 by
+default with the split level configurable, or a folder of `.docx` files
+imported one resource per file with subdirectories mirrored as GetWrite
+folders), a DOCX-specific skip-and-report mechanism for unconvertible
+content, and a CLI command plus an Electron desktop UI shipped together —
+the UI following Feature 43's native-main-process-picker pattern — as a
+one-shot conversion into a fresh project of a writer-chosen project type.
 **Requirements covered:** FR-33
 **User stories:** US-18
-**Depends on:** Feature 2
+**Depends on:** Feature 2, Feature 31, and Feature 43
 **Branch suggestion:** feat/docx-importer
-**Notes:** Not started. Later milestone, unscheduled — this is a real,
-planned feature, not out of scope. This feature carries the ID previously
-held together with Scrivener import under the old combined Feature 31
-entry; split 2026-09-11 (owner decision) once Scrivener import became
-committed, current work (now Features 31/43/44) distinct from Word/DOCX
-import, which remains an unscheduled Later requirement. Feature 31 (the
-Scrivener CLI importer) and Feature 43 (its desktop UI wrapper) have since
-shipped, so Scrivener import is no longer limited to command-line writers;
-no import path exists today from Word/DOCX, which remains the known
-adoption gap called out in the parent spec's Constraints.
+**Notes:** Not started; no code exists yet. Owner decision (2026-09-13):
+FR-33 moved from Later Requirements into In Progress Requirements in the
+parent spec and is being carried forward through the pipeline as this
+feature. Its scope is settled by the parent spec's resolved OQ-19 through
+OQ-23 (source-kind auto-detection and split rule; content fidelity bar;
+CLI+UI delivery on Electron only; DOCX-specific skip-and-report; one-shot
+import with a writer-chosen project type). This feature carries the ID
+previously held together with Scrivener import under the old combined
+Feature 31 entry; split 2026-09-11 (owner decision) once Scrivener import
+became committed, current work (then FR-42, now Features 31/43/44)
+distinct from Word/DOCX import. Feature 31 (the Scrivener CLI importer)
+and Feature 43 (its desktop UI wrapper) have since shipped; per resolved
+OQ-21, this feature's UI follows Feature 43's native-picker pattern and its
+CLI follows Feature 31's command-registration precedent, though DOCX
+parsing itself is new work with no equivalent Scrivener conversion logic to
+reuse.
 
 ### Feature 46: Scrivener UI import on hosted web — Not started
 **Value:** A novelist using GetWrite's hosted web product imports their
@@ -1312,8 +1327,11 @@ directory-picker design and no on-device staging design exist yet.
   needs 31's one-shot conversion to already exist before a re-run/merge
   strategy can build on it and has not started. 43 and 44 did not depend on
   each other and could be built in either order once 31 had shipped.
-  45 (Word/DOCX importer) only depends on the already-shipped
-  Feature 2, independently of the Scrivener chain. 32 (joining search and
+  45 (Word/DOCX importer), now carried forward through the pipeline (owner
+  decision, 2026-09-13; parent spec FR-33), depends on the already-shipped
+  Feature 2 and, for its UI and CLI delivery pattern, the already-shipped
+  Features 31 and 43 — though its own DOCX parsing is new work with no
+  Scrivener conversion logic to reuse. 32 (joining search and
   query predicates) depends on the already-shipped Features 8 and 9. 42
   (removing an entity declaration) has shipped, having depended on the
   already-shipped Features 33 and 38 — 33 for the entity declaration it
@@ -1338,8 +1356,11 @@ directory-picker design and no on-device staging design exist yet.
   (`specs/features/scrivener-cli-importer.md`'s OQ-4: bold/italic control
   words appeared in the majority of files, Unicode escapes in under half,
   and no file exercised underline, tables, images, strikethrough, or a
-  Scrivener-specific link/annotation control word). Feature 45 still carries
-  the equivalent format-parsing risk unmeasured for DOCX. Feature 43 has
+  Scrivener-specific link/annotation control word). Feature 45, now carried
+  forward through the pipeline (owner decision, 2026-09-13; parent spec
+  FR-33), still carries the equivalent format-parsing risk unmeasured for
+  DOCX — no real `.docx` sample has been surveyed the way
+  `import-inputs/The SF Sideshow.scriv` grounded Feature 31's OQ-4. Feature 43 has
   since shipped: it depended on Feature 31 and did not carry Feature 31's
   former unmeasured-format risk by inheritance, since it was a UI wrapper,
   per FR-43, around already-shipped conversion logic — its own risk was

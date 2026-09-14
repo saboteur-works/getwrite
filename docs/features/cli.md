@@ -1,6 +1,6 @@
 # GetWrite CLI
 
-The GetWrite CLI (`getwrite-cli`) is a Node.js command-line tool for project management, Scrivener import, template operations, revision pruning, integrity checks, screenshot capture, and a developer-facing agentic QA harness.
+The GetWrite CLI (`getwrite-cli`) is a Node.js command-line tool for project management, Scrivener and Word (DOCX) import, template operations, revision pruning, integrity checks, screenshot capture, and a developer-facing agentic QA harness.
 
 It lives in its own pnpm workspace package, **`cli/`**, separate from the Next.js frontend. It consumes the framework-free model layer through the single `@gw/core` barrel (`frontend/src/lib/core.ts`), which esbuild bundles at build time. See [ADR-016](../architecture/ADRs/adr-016-cli-extraction-and-deferred-core-package.md) for the rationale and the deferred follow-up (promoting `@gw/core` to a standalone package).
 
@@ -115,6 +115,47 @@ node cli/dist/bin/getwrite-cli.cjs project import-scrivener ./MyNovel.scriv ./my
 # Imported Scrivener project to: ./my-novel
 # Folders: 4, Resources: 12, Tags: 6
 # Report written to: ./my-novel/scrivener-import-report.txt
+```
+
+---
+
+### `project import-docx`
+
+Imports a single `.docx` file or a folder of `.docx` files into a new, complete GetWrite project (Feature 45). One-shot, never writes to the source. The desktop app also exposes this pipeline as an "Import Word Document" flow on the Start Page, alongside the existing Scrivener "Import" button.
+
+```sh
+getwrite-cli project import-docx <source> [projectRoot] [--name <name>] [-s, --split-level <1-6|none>] [-t, --project-type <id>]
+```
+
+**Arguments:**
+
+- `source` (required) — path to a single `.docx` file or a directory containing one or more `.docx` files. The two shapes are auto-detected; a directory with no `.docx` file anywhere in its tree is refused before any write.
+- `projectRoot` (optional) — directory to create the destination project in. Defaults to `.` (current directory).
+
+**Options:**
+
+- `-n, --name <name>` (optional) — destination project name. Defaults to the document's own core title (single-file source, when present) or `source`'s basename otherwise.
+- `-s, --split-level <1-6|none>` (optional) — heading level to split a single-file source into one resource per section. Defaults to `1`. `"none"` imports the whole document as a single resource. Refused, before any write, against a folder source — a folder source always creates one resource per file and never splits.
+- `-t, --project-type <id>` (optional) — destination project-type spec id, read from `getwrite-config/templates/project-types/`. Defaults to `blank`. An unrecognized id is refused before any write.
+
+**What it carries over:**
+
+1. For a single-file source: the document converted (`mammoth` → TipTap; bold/italic preserved) and split into one resource per heading at the chosen level, in document order. A split level with no matching heading anywhere is not an error — the whole document imports as one resource instead, named from the document's own core title (falling back to the source filename), and this is noted in the report. Content before the first split-level heading, and any matching heading with no text of its own, is named "Untitled" ("Untitled 2", ... for a second such section), also noted in the report.
+2. For a folder source: one resource per `.docx` file (each independently converted, never split), with subfolders mirrored as GetWrite folders — walked recursively to any depth, non-`.docx` files, Word lock files (`~$*.docx`), and hidden/dot files or folders skipped and tallied, and ordered by case-insensitive natural filename order. Either way, the destination's resource/folder tree always mirrors the source; the chosen project type contributes only its `statuses`/`relationshipTypes` config, never default folders.
+3. Each document's footnotes/endnotes, converted to an inline `"[n]"` reference plus a trailing "Notes" paragraph list (TipTap has no list nodes here, so a numbered list is rendered as plain paragraphs).
+4. Each document's core title/author (`docProps/core.xml`), the author seeding a new `docx-import`/"Imported Fields" metadata group's "Author" field — created only when at least one processed document actually has one.
+5. Rebuilds the destination project's inverted index, backlinks, and entity mention index from scratch (mirroring `reindex`); background indexing is suspended for the whole write phase so this rebuild is the only indexing work the run performs.
+
+**What it never imports:** comments (a package's comment count is still reported) and images/embedded media (their count is still reported). Tracked changes (`w:ins`/`w:del`) are imported accepted-as-shown — insertions kept, deletions dropped — with their count reported, since they are neither skipped nor need a report entry to explain a content difference.
+
+**Exit codes:** `0` = success, `2` = refused source (no `.docx` found, non-empty destination, or unrecognized project type) or unexpected error
+
+**Example:**
+
+```sh
+node cli/dist/bin/getwrite-cli.cjs project import-docx ./Manuscript.docx ./my-novel
+# Imported DOCX project to: ./my-novel
+# Folders: 0, Resources: 8
 ```
 
 ---

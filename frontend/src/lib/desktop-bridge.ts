@@ -72,6 +72,65 @@ export type ScrivenerImportOutcome =
   | ImportRefusalDestinationNotEmptyOutcome
   | ImportFatalOutcome;
 
+/** What choosing a DOCX source (file or folder) can result in (FR-10). */
+export type DocxSourceChoice =
+  | { ok: true; handle: string; displayName: string }
+  | { ok: false; cancelled: true };
+
+/** Options accepted alongside a previously chosen DOCX source handle (FR-10). */
+export interface StartDocxImportOptions {
+  name: string;
+  splitLevel?: number | "none";
+  projectType: string;
+}
+
+/** A successful DOCX import. */
+export interface DocxImportSuccessOutcome {
+  readonly kind: "success";
+  readonly projectId: string;
+  readonly projectRoot: string;
+  readonly folderCount: number;
+  readonly resourceCount: number;
+  readonly report: string;
+}
+
+/** The source contained no `.docx` file anywhere in its tree (FR-1). */
+export interface DocxImportRefusalNoDocxFoundOutcome {
+  readonly kind: "refusal-no-docx-found";
+  readonly message: string;
+}
+
+/** The destination project root already exists and is non-empty (FR-7). */
+export interface DocxImportRefusalDestinationNotEmptyOutcome {
+  readonly kind: "refusal-destination-not-empty";
+  readonly message: string;
+}
+
+/** The requested project type did not match an existing project-type spec (FR-8). */
+export interface DocxImportRefusalUnknownProjectTypeOutcome {
+  readonly kind: "refusal-unknown-project-type";
+  readonly message: string;
+}
+
+/** Any other error raised while importing. */
+export interface DocxImportFatalOutcome {
+  readonly kind: "fatal";
+  readonly message: string;
+}
+
+/**
+ * The five-kind discriminated outcome of a DOCX import (FR-17). Mirrors
+ * `electron/src/docx-import/handle-import-request.ts`'s `ImportOutcome`
+ * byte-for-byte; redeclared here because `frontend` cannot import across the
+ * `electron/src` package boundary.
+ */
+export type DocxImportOutcome =
+  | DocxImportSuccessOutcome
+  | DocxImportRefusalNoDocxFoundOutcome
+  | DocxImportRefusalDestinationNotEmptyOutcome
+  | DocxImportRefusalUnknownProjectTypeOutcome
+  | DocxImportFatalOutcome;
+
 /** The surface `preload.ts` exposes. Mirrors its `GetWriteDesktopBridge`. */
 export interface DesktopBridge {
   getWorkspaceDir(): Promise<string>;
@@ -84,6 +143,15 @@ export interface DesktopBridge {
     handle: string,
     name: string,
   ): Promise<ScrivenerImportOutcome>;
+  /** Opens a native picker for a single `.docx` file source (FR-10). */
+  chooseDocxFile(): Promise<DocxSourceChoice>;
+  /** Opens a native picker for a folder of `.docx` files (FR-10). */
+  chooseDocxFolder(): Promise<DocxSourceChoice>;
+  /** Runs a DOCX import from a previously chosen source. */
+  startDocxImport(
+    handle: string,
+    options: StartDocxImportOptions,
+  ): Promise<DocxImportOutcome>;
 }
 
 /**

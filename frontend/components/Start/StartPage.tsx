@@ -23,6 +23,7 @@ import CreateProjectModal, {
 import ManageProjectMenu from "./ManageProjectMenu";
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import ImportScrivenerDialog from "./ImportScrivenerDialog";
+import ImportDocxDialog from "./ImportDocxDialog";
 import { toastService } from "../../src/lib/toast-service";
 import { downloadFile } from "../../src/lib/compile/download-file";
 import {
@@ -253,6 +254,9 @@ export default function StartPage({
 
   /** Controls the Scrivener import dialog's visibility. */
   const [isImportDialogOpen, setIsImportDialogOpen] = useState<boolean>(false);
+  /** Controls the DOCX import dialog's visibility. */
+  const [isDocxImportDialogOpen, setIsDocxImportDialogOpen] =
+    useState<boolean>(false);
   /**
    * Whether the user chose to carry on without unlocking this session.
    *
@@ -426,6 +430,17 @@ export default function StartPage({
           onClose={() => setIsImportDialogOpen(false)}
           onImported={(projectId) => {
             setIsImportDialogOpen(false);
+            onImportComplete?.(projectId);
+          }}
+        />
+      ) : null}
+
+      {desktopBridge ? (
+        <ImportDocxDialog
+          isOpen={isDocxImportDialogOpen}
+          onClose={() => setIsDocxImportDialogOpen(false)}
+          onImported={(projectId) => {
+            setIsDocxImportDialogOpen(false);
             onImportComplete?.(projectId);
           }}
         />
@@ -648,6 +663,18 @@ export default function StartPage({
                     >
                       <Import size={16} aria-hidden="true" />
                       Import
+                    </Button>
+                  ) : null}
+
+                  {desktopBridge ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => setIsDocxImportDialogOpen(true)}
+                      title="Import Word Document"
+                      aria-label="Import Word Document"
+                    >
+                      <Import size={16} aria-hidden="true" />
+                      Import Word Document
                     </Button>
                   ) : null}
                 </div>

@@ -67,3 +67,19 @@ export {
   type ImportScrivenerProjectOptions,
   type ImportScrivenerProjectResult,
 } from "./models/scrivener/import-scrivener-project";
+
+// DOCX import (CLI's `project import-docx` command)
+export {
+  importDocxProject,
+  UnknownProjectTypeError,
+  DocxDestinationNotEmptyError,
+  type ImportDocxProjectOptions,
+  type ImportDocxProjectResult,
+} from "./models/docx/import-docx-project";
+
+// DOCX source detection (needed by the CLI to refuse --split-level against a
+// directory source before calling the orchestrator).
+export {
+  detectDocxSource,
+  NoDocxFilesFoundError,
+} from "./models/docx/source-detection";

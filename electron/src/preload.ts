@@ -16,6 +16,7 @@
  */
 import { contextBridge, ipcRenderer } from "electron";
 import type { ImportOutcome } from "./scrivener-import/handle-import-request";
+import type { ImportOutcome as DocxImportOutcomeType } from "./docx-import/handle-import-request";
 
 /** What changing the workspace location can result in. */
 export interface WorkspaceChangeResult {
@@ -37,6 +38,21 @@ export type ScrivenerSourceChoice =
 /** The four-kind discriminated outcome of a Scrivener import (FR-12). */
 export type ScrivenerImportOutcome = ImportOutcome;
 
+/** What choosing a DOCX source (file or folder) can result in (FR-10). */
+export type DocxSourceChoice =
+  | { ok: true; handle: string; displayName: string }
+  | { ok: false; cancelled: true };
+
+/** Options accepted alongside a previously chosen DOCX source handle (FR-10). */
+export interface StartDocxImportOptions {
+  name: string;
+  splitLevel?: number | "none";
+  projectType: string;
+}
+
+/** The five-kind discriminated outcome of a DOCX import (FR-17). */
+export type DocxImportOutcome = DocxImportOutcomeType;
+
 /** The surface the renderer may call. */
 export interface GetWriteDesktopBridge {
   /** Returns where projects are currently stored. */
@@ -52,6 +68,15 @@ export interface GetWriteDesktopBridge {
     handle: string,
     name: string,
   ): Promise<ScrivenerImportOutcome>;
+  /** Opens a native picker for a single `.docx` file source (FR-10). */
+  chooseDocxFile(): Promise<DocxSourceChoice>;
+  /** Opens a native picker for a folder of `.docx` files (FR-10). */
+  chooseDocxFolder(): Promise<DocxSourceChoice>;
+  /** Runs a DOCX import from a previously chosen source. */
+  startDocxImport(
+    handle: string,
+    options: StartDocxImportOptions,
+  ): Promise<DocxImportOutcome>;
 }
 
 const bridge: GetWriteDesktopBridge = {
@@ -62,6 +87,15 @@ const bridge: GetWriteDesktopBridge = {
     ipcRenderer.invoke("getwrite:scrivener-choose-source"),
   startScrivenerImport: (handle: string, name: string) =>
     ipcRenderer.invoke("getwrite:scrivener-start-import", { handle, name }),
+  chooseDocxFile: () => ipcRenderer.invoke("getwrite:docx-choose-file"),
+  chooseDocxFolder: () => ipcRenderer.invoke("getwrite:docx-choose-folder"),
+  startDocxImport: (handle: string, options: StartDocxImportOptions) =>
+    ipcRenderer.invoke("getwrite:docx-start-import", {
+      handle,
+      name: options.name,
+      splitLevel: options.splitLevel,
+      projectType: options.projectType,
+    }),
 };
 
 contextBridge.exposeInMainWorld("getwriteDesktop", bridge);

@@ -45,6 +45,19 @@ async function bumpMetadataRevision(projectRoot: string): Promise<void> {
  * Read sidecar metadata for a resource from a project root. Returns `null`
  * if the file does not exist.
  *
+ * A missing sidecar is an ordinary, expected outcome — not an error — for
+ * any resource that has never had one written (e.g. `writeSidecar`'s own
+ * pre-write read of the "previous" sidecar for a brand-new resource, or a
+ * folder resource, which never gets one at all, per `resource-persistence.ts`).
+ * This function stays silent on that path (measured: `writeSidecar`, called
+ * from `resource-persistence.ts:200`'s `writeResourceToFile`, read its own
+ * about-to-be-created resource's nonexistent sidecar via this function on
+ * every single resource created anywhere in the app — including every DOCX
+ * import, which triggered it once per resource created — and logged
+ * `console.warn("sidecar not found for", ...)` for a condition that was
+ * never an error) so a caller checking for an existing sidecar isn't
+ * penalized with console noise for the common case of "there isn't one yet".
+ *
  * Throws on filesystem or JSON parse errors so callers can handle them.
  */
 export async function readSidecar(
@@ -56,9 +69,10 @@ export async function readSidecar(
     const raw = await readFile(filePath, "utf8");
     return JSON.parse(raw) as Record<string, MetadataValue>;
   } catch (err: unknown) {
-    // If the file doesn't exist, return null. Otherwise rethrow.
+    // If the file doesn't exist, return null — an ordinary, expected
+    // outcome, not an error condition worth warning about. Otherwise
+    // rethrow.
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      console.warn("sidecar not found for", resourceId, "at", filePath);
       return null;
     }
     throw err;

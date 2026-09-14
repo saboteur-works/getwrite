@@ -20,6 +20,16 @@ const FIXTURE_SCRIV_PATH = path.resolve(
   "../../frontend/tests/fixtures/scrivener/sample.scriv",
 );
 
+const FIXTURE_DOCX_PATH = path.resolve(
+  __dirname,
+  "../../frontend/tests/fixtures/docx/multi-heading.docx",
+);
+
+const FIXTURE_DOCX_FOLDER_PATH = path.resolve(
+  __dirname,
+  "../../frontend/tests/fixtures/docx/folder-source",
+);
+
 describe("getwrite-cli project:create", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let logSpy: ReturnType<typeof vi.spyOn>;
@@ -233,5 +243,231 @@ describe("getwrite-cli project:import-scrivener", () => {
     expect(exitSpy).toHaveBeenCalled();
     const exitCode = exitSpy.mock.calls[0]?.[0];
     expect(exitCode).not.toBe(0);
+  });
+});
+
+describe("getwrite-cli project:import-docx", () => {
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let tmpDirs: string[];
+
+  beforeEach(() => {
+    tmpDirs = [];
+    exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(((code?: number) => undefined) as any);
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+
+  afterEach(async () => {
+    exitSpy.mockRestore();
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+    await Promise.all(
+      tmpDirs.map((dir) =>
+        fs.rm(dir, { recursive: true, force: true, maxRetries: 3 }),
+      ),
+    );
+  });
+
+  async function makeTmpDestDir(prefix: string): Promise<string> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+    tmpDirs.push(dir);
+    return dir;
+  }
+
+  it("imports a single .docx file into a new destination project and exits 0", async () => {
+    const destRoot = await makeTmpDestDir("gw-import-docx-file-ok-");
+    const projectRoot = path.join(destRoot, "dest-project");
+
+    const argv = [
+      "node",
+      "getwrite-cli",
+      "project",
+      "import-docx",
+      FIXTURE_DOCX_PATH,
+      projectRoot,
+    ];
+
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Imported DOCX project to"),
+    );
+    // FR-19 (Task 21): a successful import must print no "sidecar not
+    // found" line, or any other diagnostic, to stdout/stderr — see
+    // `frontend/tests/integration/docx-import.test.ts`'s "no diagnostics"
+    // describe block for the measured cause.
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    const projectJsonRaw = await fs.readFile(
+      path.join(projectRoot, "project.json"),
+      "utf8",
+    );
+    const projectJson = JSON.parse(projectJsonRaw) as Record<string, unknown>;
+    expect(projectJson.id).toBeDefined();
+  });
+
+  it("imports a folder of .docx files into a new destination project and exits 0", async () => {
+    const destRoot = await makeTmpDestDir("gw-import-docx-folder-ok-");
+    const projectRoot = path.join(destRoot, "dest-project");
+
+    const argv = [
+      "node",
+      "getwrite-cli",
+      "project",
+      "import-docx",
+      FIXTURE_DOCX_FOLDER_PATH,
+      projectRoot,
+    ];
+
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Imported DOCX project to"),
+    );
+    // FR-19 (Task 21): see the single-file-source test above.
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    const projectJsonRaw = await fs.readFile(
+      path.join(projectRoot, "project.json"),
+      "utf8",
+    );
+    const projectJson = JSON.parse(projectJsonRaw) as Record<string, unknown>;
+    expect(projectJson.id).toBeDefined();
+  });
+
+  it("refuses --split-level against a folder source, writing nothing to the destination", async () => {
+    const destRoot = await makeTmpDestDir("gw-import-docx-split-folder-");
+    const projectRoot = path.join(destRoot, "dest-project");
+
+    const argv = [
+      "node",
+      "getwrite-cli",
+      "project",
+      "import-docx",
+      FIXTURE_DOCX_FOLDER_PATH,
+      projectRoot,
+      "--split-level",
+      "2",
+    ];
+
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "--split-level cannot be used with a folder source",
+      ),
+    );
+
+    await expect(fs.access(projectRoot)).rejects.toThrow();
+  });
+
+  it("refuses an unknown --project-type id before any write", async () => {
+    const destRoot = await makeTmpDestDir("gw-import-docx-bad-type-");
+    const projectRoot = path.join(destRoot, "dest-project");
+
+    const argv = [
+      "node",
+      "getwrite-cli",
+      "project",
+      "import-docx",
+      FIXTURE_DOCX_PATH,
+      projectRoot,
+      "--project-type",
+      "not-a-real-project-type",
+    ];
+
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("unknown project type"),
+    );
+
+    await expect(fs.access(projectRoot)).rejects.toThrow();
+  });
+
+  it("rejects an invalid --split-level value before any write", async () => {
+    const destRoot = await makeTmpDestDir("gw-import-docx-bad-split-");
+    const projectRoot = path.join(destRoot, "dest-project");
+
+    const argv = [
+      "node",
+      "getwrite-cli",
+      "project",
+      "import-docx",
+      FIXTURE_DOCX_PATH,
+      projectRoot,
+      "--split-level",
+      "7",
+    ];
+
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Invalid --split-level value"),
+    );
+
+    await expect(fs.access(projectRoot)).rejects.toThrow();
+  });
+
+  it("errors out when source is missing", async () => {
+    const argv = ["node", "getwrite-cli", "project", "import-docx"];
+
+    // Commander itself rejects a missing required positional argument
+    // before the action handler ever runs, reporting the error to stderr
+    // and exiting non-zero (process.exit is mocked, so this resolves
+    // rather than actually terminating the test process).
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalled();
+    const exitCode = exitSpy.mock.calls[0]?.[0];
+    expect(exitCode).not.toBe(0);
+  });
+
+  it("refuses a non-empty pre-existing destination up front with DOCX-specific wording, writing nothing new to it (Stage 6.5)", async () => {
+    const destRoot = await makeTmpDestDir("gw-import-docx-nonempty-");
+    await fs.writeFile(
+      path.join(destRoot, "pre-existing-file.txt"),
+      "already here",
+      "utf8",
+    );
+
+    const argv = [
+      "node",
+      "getwrite-cli",
+      "project",
+      "import-docx",
+      FIXTURE_DOCX_PATH,
+      destRoot,
+    ];
+
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("already exists and is not empty"),
+    );
+    const [refusalMessage] = errorSpy.mock.calls.find(
+      ([message]: [unknown]) =>
+        typeof message === "string" &&
+        message.includes("already exists and is not empty"),
+    ) as [string];
+    expect(refusalMessage).not.toContain("Scrivener");
+
+    const entries = await fs.readdir(destRoot);
+    expect(entries).toEqual(["pre-existing-file.txt"]);
   });
 });
