@@ -56,6 +56,17 @@ this:
   through this file specifically (Task 10 already depends directly on
   Task 4, so no further edit was needed here), in addition to whatever
   functional dependency each already has.
+- `frontend/components/WorkArea/Views/TrashView/TrashView.tsx` (confirmed
+  path — a single file under a `TrashView/` subdirectory, not a bare
+  `TrashView.tsx` sibling as Task 15's original Files list stated) — written
+  by Task 15 (container), Task 17 (multi-select/batch controls), Task 18
+  (restore notices, a11y pass), and Task 19 (the markup fix for the
+  `nested-interactive`/`aria-allowed-role`/`list` violations Gate 5 measured
+  in Chromium). Sequenced 15 → 17 → 18 → 19, already expressed via each
+  task's own `Depends on`.
+- `frontend/tests/a11y/trash-view.a11y.test.tsx` — added by Task 18, extended
+  by Task 19 to cover the same states the Task 19 stories exercise and to
+  fail on the three axe rules Gate 5 found. Sequenced 18 → 19.
 - `frontend/components/WorkArea/ViewSwitcher.tsx` and
   `frontend/src/lib/models/types.ts` (`ViewName` union) — Task 14 only.
 - `frontend/components/Layout/AppShell.tsx` — Task 14 (Trash tab wiring,
@@ -665,27 +676,77 @@ trash-view.a11y` and `pnpm --filter getwrite-frontend typecheck` pass.
 **POS:** task_b2814e1d
 **Done:** [x]
 
-### Task 19: Storybook stories for every new component (FR-15)
+### Task 19: Storybook stories for every new component, plus an a11y fix surfaced by them (FR-14, FR-15)
 
-**What:** Adds stories per `docs/standards/storybook-implementation.md` for
-every component this feature adds: `TrashView` (empty state, mixed
-resource/folder list, multi-select active, batch-report state, restore
-notice variants) — mirroring `ConfirmDialog`'s own existing story
-convention for the shared confirmation dialogs (no new stories needed for
-`ConfirmDialog` itself, since it is reused unmodified).
-**Files:** `frontend/stories/WorkArea/TrashView.stories.tsx`.
-**Done when:** stories exist for: empty Trash; a mixed list with a
-standalone resource and a folder with nested (display-only) children;
-multi-select active with a partial selection; a batch-report state showing
-a mixed success/failure count; and each restore-notice variant (relocated,
-renamed, references-not-restored) from Task 18. All stories render without
-error in Storybook and pass the `@storybook/addon-a11y` check with no new
-violation, run via `pnpm storybook` (port 6006) then `pnpm test-storybook`
-— both run by the lead **outside the Bash command sandbox**, per this
-project's recorded `sandbox-breaks-device-and-watcher-tools` note; this task
-itself only needs to confirm the story files exist and pass
-`pnpm --filter getwrite-frontend typecheck`/a lint pass, not to run
-Storybook's own Playwright suite inside the sandbox.
+**What:** Two parts. Part A (done, committed as `e81a9d28`): stories per
+`docs/standards/storybook-implementation.md` for every component this
+feature adds — `TrashView` (empty state, mixed resource/folder list,
+multi-select active, batch-report state, restore notice variants) —
+mirroring `ConfirmDialog`'s own existing story convention for the shared
+confirmation dialogs (no new stories needed for `ConfirmDialog` itself,
+since it is reused unmodified).
+
+Part B (added at Gate 5, 2026-09-14, before this task can be marked done):
+at Gate 5 the lead ran these stories in Chromium outside the sandbox. With
+the repo's `.storybook/preview.tsx` `a11y.test: "todo"`,
+`pnpm --filter getwrite-frontend test-storybook stories/WorkArea/TrashView`
+passed 7/7. With `a11y.test` temporarily set to `"error"`, 6 of 7 failed on
+axe rules the new component introduces: `nested-interactive` (Mixed
+Resources And Folders ×2, Multi Select Partial ×3, Batch Report Mixed
+Outcome ×1, and each of the three Restore Notice stories — Relocated,
+Renamed, References Not Restored — ×2 each), plus `aria-allowed-role` ×1 and
+`list` ×1 (each of the three Restore Notice stories). Task 18's jsdom test
+`frontend/tests/a11y/trash-view.a11y.test.tsx` passes despite these
+violations existing in Chromium; why has not yet been investigated. The
+owner decided to fix the underlying markup, and the jsdom test's blind
+spot, before ticking this task.
+
+First step: find out why `trash-view.a11y.test.tsx` currently passes
+despite these three axe rules firing in Chromium — for example, an axe rule
+disabled in the jsdom run's configuration, or the specific states that
+trigger these violations (nested list/folder rows, restore-notice variants)
+not actually being rendered in that test. State the finding in the commit
+message as an observed fact, not a guess, per this repository's
+measurement-vs-hypothesis convention.
+
+Then fix `TrashView`'s markup so no story reports `nested-interactive`,
+`aria-allowed-role`, or `list` violations, and extend
+`trash-view.a11y.test.tsx` so it exercises the same states the stories cover
+and fails if any of these three rules regress.
+**Files:** `frontend/components/WorkArea/Views/TrashView/TrashView.tsx`
+(confirmed path — a single file, no separate subcomponent files exist under
+`TrashView/` today; add one only if the markup fix genuinely needs it),
+`frontend/tests/a11y/trash-view.a11y.test.tsx`,
+`frontend/tests/component/TrashView.test.tsx` (only if a behavioral
+assertion needs updating alongside the markup change),
+`frontend/stories/WorkArea/TrashView.stories.tsx` (Part A, already
+committed; touched again only if a story needs adjusting to keep matching
+the fixed markup). These files are shared with Tasks 15, 17, 18, and 20 (see
+the preamble's shared-file list) — confirmed already sequenced: Task 18 is
+an ancestor of this task (18 → 19) and Task 20 a descendant (19 → 20), so no
+further dependency edit is needed there.
+**Done when:**
+1. `trash-view.a11y.test.tsx` asserts zero `nested-interactive`,
+   `aria-allowed-role`, and `list` violations across the states the stories
+   cover (mixed resources/folders, multi-select partial, batch-report mixed
+   outcome, and each restore-notice variant) and passes:
+   `pnpm --filter getwrite-frontend exec vitest run trash-view.a11y`.
+2. `pnpm --filter getwrite-frontend exec vitest run TrashView`,
+   `pnpm --filter getwrite-frontend typecheck`, and
+   `pnpm --filter getwrite-frontend lint` all pass.
+3. The keyboard and screen-reader behavior FR-14 requires still holds after
+   the markup fix: multi-select, restore, and delete controls remain
+   keyboard-reachable and labelled (re-verified by the existing keyboard/ARIA
+   assertions in `trash-view.a11y.test.tsx` and `TrashView.test.tsx`, not
+   dropped or weakened by this fix).
+4. The lead then runs, outside the sandbox, with `a11y.test` temporarily set
+   to `"error"` in `.storybook/preview.tsx` (then restored to the repo's
+   `"todo"` setting afterward — the implementor must not change this
+   setting): `pnpm --filter getwrite-frontend test-storybook
+   stories/WorkArea/TrashView`. It must show no `nested-interactive`,
+   `aria-allowed-role`, or `list` findings.
+5. Stories still pass 7/7 under the repo's own `a11y.test: "todo"` setting:
+   `pnpm --filter getwrite-frontend test-storybook stories/WorkArea/TrashView`.
 **Depends on:** 18
 **Estimate:** 5
 **POS:** task_b22c0115
@@ -771,7 +832,7 @@ the one exception, and is expected).
 | FR-11 | Task 12, Task 21 |
 | FR-12 | Task 11 |
 | FR-13 | Task 17 |
-| FR-14 | Task 18 |
+| FR-14 | Task 18, Task 19 |
 | FR-15 | Task 19 |
 | FR-16 | Task 5, Task 8 |
 | FR-17 | Task 5 |
