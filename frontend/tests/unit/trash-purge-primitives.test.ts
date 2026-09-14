@@ -203,11 +203,11 @@ describe("purgeTrashedRevisions (FR-6/FR-18 step 3)", () => {
 
       await purgeTrashedRevisions(tmp, RESOURCE_ID);
 
-      const stillExists = await fs
+      const isStillPresent = await fs
         .stat(path.join(tmp, ".trash", "revisions", RESOURCE_ID))
         .then(() => true)
         .catch(() => false);
-      expect(stillExists).toBe(false);
+      expect(isStillPresent).toBe(false);
     } finally {
       await removeDirRetry(tmp);
     }
@@ -221,19 +221,19 @@ describe("purgeTrashedRevisions (FR-6/FR-18 step 3)", () => {
       // top-level `revisions/<resourceId>/` path.
       await writeRevision(tmp, RESOURCE_ID, 1, "legacy content");
       const legacyDir = revisionsBaseDir(tmp, RESOURCE_ID);
-      const existedBefore = await fs
+      const didExistBefore = await fs
         .stat(legacyDir)
         .then(() => true)
         .catch(() => false);
-      expect(existedBefore).toBe(true);
+      expect(didExistBefore).toBe(true);
 
       await purgeTrashedRevisions(tmp, RESOURCE_ID);
 
-      const stillExists = await fs
+      const isStillPresent = await fs
         .stat(legacyDir)
         .then(() => true)
         .catch(() => false);
-      expect(stillExists).toBe(false);
+      expect(isStillPresent).toBe(false);
     } finally {
       await removeDirRetry(tmp);
     }
