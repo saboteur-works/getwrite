@@ -30,6 +30,13 @@ export { readFolderTree, renameFolderById } from "./models/folder-utils";
 // Sidecars
 export { readSidecar, writeSidecar } from "./models/sidecar";
 
+// Trash — FR-8 nullified-reference record
+export {
+  writeTrashRefRecord,
+  readTrashRefRecord,
+  type TrashRefRecord,
+} from "./models/trash";
+
 // Revisions (pruning)
 export { runCli as runPruneCli } from "./models/pruneExecutor";
 

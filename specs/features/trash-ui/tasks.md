@@ -201,7 +201,7 @@ getwrite-frontend typecheck` pass.
 **Depends on:** 1, 3
 **Estimate:** 5
 **POS:** task_e0f28b8c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Single-resource removal in `backlinks.ts` and `mention-index.ts`, wired into soft delete (FR-16, FR-17)
 

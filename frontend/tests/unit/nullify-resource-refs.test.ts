@@ -179,7 +179,7 @@ describe("nullifyResourceRefs (Task 8)", () => {
       await fs.rmdir(path.join(dir, "meta"));
       await expect(
         nullifyResourceRefs(dir, "aaaa-aaaa", "Alice", ["pov"]),
-      ).resolves.toBeUndefined();
+      ).resolves.toEqual([]);
     } finally {
       await removeDirRetry(dir);
     }

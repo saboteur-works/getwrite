@@ -1,4 +1,12 @@
-import { mkdir, readdir, rename, rm, stat } from "./io";
+import {
+  atomicWriteFile,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  stat,
+} from "./io";
 import path from "node:path";
 import {
   sidecarPathForProject,
@@ -7,7 +15,14 @@ import {
   writeSidecar,
 } from "./sidecar";
 import { revisionsBaseDir } from "./revision";
+import {
+  TrashRefRecordSchema,
+  type TrashRefRecord,
+  type TrashRefRecordEntry,
+} from "./schemas";
 import type { MetadataValue, UUID } from "./types";
+
+export type { TrashRefRecord, TrashRefRecordEntry };
 
 function isEnoent(err: unknown): boolean {
   return (
@@ -37,36 +52,65 @@ function trashRevisionsBaseDir(projectRoot: string, resourceId: UUID): string {
 }
 
 /**
+ * Shape of a single cleared-value observation `patchRef` reports back, prior
+ * to the `referencingResourceId` being known to it (the caller, iterating
+ * sidecars, attaches that). `arrayIndex` is present only when the cleared
+ * value lived inside a multi-valued (array) `resource-ref` field, mirroring
+ * `TrashRefRecordEntrySchema`'s own omitted-not-undefined convention.
+ */
+type PatchRefEntry = Omit<TrashRefRecordEntry, "referencingResourceId">;
+
+/**
  * Recursively patches a value: if it is a ResourceRef object whose `id`
  * matches `deletedId`, replaces `id` with `null`. Handles arrays of
  * ResourceRef objects (resource-ref fields with `multiple: true`).
  * Works in `unknown` space so callers need not narrow the value first.
+ *
+ * Also reports, via `entries`, every cleared value it found — each shaped
+ * per Task 1's `TrashRefRecordEntrySchema` (minus `referencingResourceId`,
+ * which the sidecar-iterating caller attaches) — so `nullifyResourceRefs`
+ * can persist the FR-8 ref record alongside performing the patch.
  */
 function patchRef(
   raw: unknown,
   deletedId: UUID,
-): { changed: boolean; value: unknown } {
+  fieldKey: string,
+  arrayIndex?: number,
+): { changed: boolean; value: unknown; entries: PatchRefEntry[] } {
   if (raw !== null && typeof raw === "object" && !Array.isArray(raw)) {
     const obj = raw as Record<string, unknown>;
     if (obj["id"] === deletedId && typeof obj["name"] === "string") {
-      return { changed: true, value: { id: null, name: obj["name"] } };
+      const priorValue = { id: obj["id"] as string, name: obj["name"] };
+      const entry: PatchRefEntry =
+        arrayIndex !== undefined
+          ? { fieldKey, arrayIndex, priorValue }
+          : { fieldKey, priorValue };
+      return {
+        changed: true,
+        value: { id: null, name: obj["name"] },
+        entries: [entry],
+      };
     }
-    return { changed: false, value: raw };
+    return { changed: false, value: raw, entries: [] };
   }
 
   if (Array.isArray(raw)) {
     let isAnyChanged = false;
-    const patched = raw.map((el: unknown) => {
-      const r = patchRef(el, deletedId);
-      if (r.changed) isAnyChanged = true;
+    const entries: PatchRefEntry[] = [];
+    const patched = raw.map((el: unknown, idx: number) => {
+      const r = patchRef(el, deletedId, fieldKey, idx);
+      if (r.changed) {
+        isAnyChanged = true;
+        entries.push(...r.entries);
+      }
       return r.value;
     });
     return isAnyChanged
-      ? { changed: true, value: patched }
-      : { changed: false, value: raw };
+      ? { changed: true, value: patched, entries }
+      : { changed: false, value: raw, entries: [] };
   }
 
-  return { changed: false, value: raw };
+  return { changed: false, value: raw, entries: [] };
 }
 
 /**
@@ -82,21 +126,25 @@ function patchRef(
  *
  * Uses `writeSidecar` for each patched file, which serialises concurrent writes
  * via the meta-lock.
+ *
+ * Returns every entry it cleared, each shaped per Task 1's
+ * `TrashRefRecordEntrySchema` (FR-8) — the raw material a caller persists via
+ * {@link writeTrashRefRecord} so a later restore can re-link these fields.
  */
 export async function nullifyResourceRefs(
   projectRoot: string,
   deletedResourceId: UUID,
   deletedResourceName: string,
   resourceRefFieldKeys: string[],
-): Promise<void> {
-  if (resourceRefFieldKeys.length === 0) return;
+): Promise<TrashRefRecordEntry[]> {
+  if (resourceRefFieldKeys.length === 0) return [];
 
   const metaDir = path.join(projectRoot, "meta");
   let entries: string[];
   try {
     entries = await readdir(metaDir);
   } catch (err: unknown) {
-    if (isEnoent(err)) return;
+    if (isEnoent(err)) return [];
     throw err;
   }
 
@@ -106,6 +154,8 @@ export async function nullifyResourceRefs(
       e.endsWith(".meta.json") &&
       !e.includes(deletedResourceId),
   );
+
+  const clearedEntries: TrashRefRecordEntry[] = [];
 
   for (const entry of sidecarEntries) {
     const resourceId = entry
@@ -131,10 +181,16 @@ export async function nullifyResourceRefs(
       const value = userMetadata[fieldKey];
       if (value === undefined) continue;
 
-      const result = patchRef(value, deletedResourceId);
+      const result = patchRef(value, deletedResourceId, fieldKey);
       if (result.changed) {
         userMetadata[fieldKey] = result.value as MetadataValue;
         isDirty = true;
+        for (const patchEntry of result.entries) {
+          clearedEntries.push({
+            referencingResourceId: resourceId,
+            ...patchEntry,
+          });
+        }
       }
     }
 
@@ -142,6 +198,72 @@ export async function nullifyResourceRefs(
       sidecar["userMetadata"] = userMetadata;
       await writeSidecar(projectRoot, resourceId, sidecar);
     }
+  }
+
+  return clearedEntries;
+}
+
+/**
+ * Compute the trash-side path for a resource's FR-8 nullified-reference
+ * record: `.trash/meta/refs-<resourceId>.json`.
+ */
+function trashRefRecordPath(projectRoot: string, resourceId: UUID): string {
+  return path.join(
+    trashPaths(projectRoot).trashMetaDir,
+    `refs-${resourceId}.json`,
+  );
+}
+
+/**
+ * Persist the FR-8 nullified-reference record for a just-trashed resource:
+ * every referencing sidecar field {@link nullifyResourceRefs} cleared, so a
+ * later restore can re-link fields still in their cleared state.
+ *
+ * Validates the record against Task 1's `TrashRefRecordSchema` before
+ * writing. Writes via `io.ts` (not `node:fs`), matching every other
+ * filesystem access in this module.
+ */
+export async function writeTrashRefRecord(
+  projectRoot: string,
+  resourceId: UUID,
+  entries: TrashRefRecordEntry[],
+): Promise<void> {
+  const record: TrashRefRecord = TrashRefRecordSchema.parse({
+    resourceId,
+    entries,
+  });
+
+  const { trashMetaDir } = trashPaths(projectRoot);
+  await mkdir(trashMetaDir, { recursive: true });
+  await atomicWriteFile(
+    trashRefRecordPath(projectRoot, resourceId),
+    JSON.stringify(record, null, 2),
+    "utf8",
+  );
+}
+
+/**
+ * Read a resource's FR-8 nullified-reference record from
+ * `.trash/meta/refs-<resourceId>.json`.
+ *
+ * Returns `undefined` — not a thrown error — when no ref record file exists:
+ * this is the ordinary, expected case for any resource trashed before this
+ * feature existed (resolved OQ-12, "legacy tolerance"), not an error
+ * condition.
+ */
+export async function readTrashRefRecord(
+  projectRoot: string,
+  resourceId: UUID,
+): Promise<TrashRefRecord | undefined> {
+  try {
+    const raw = await readFile(
+      trashRefRecordPath(projectRoot, resourceId),
+      "utf8",
+    );
+    return TrashRefRecordSchema.parse(JSON.parse(raw));
+  } catch (err: unknown) {
+    if (isEnoent(err)) return undefined;
+    throw err;
   }
 }
 
