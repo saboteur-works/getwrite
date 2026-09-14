@@ -663,7 +663,7 @@ trash-view.a11y` and `pnpm --filter getwrite-frontend typecheck` pass.
 **Depends on:** 17
 **Estimate:** 5
 **POS:** task_b2814e1d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Storybook stories for every new component (FR-15)
 

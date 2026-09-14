@@ -9,6 +9,7 @@ import {
   restoreTrashItems,
 } from "../../../../src/lib/api/trash";
 import type {
+  RestoreItemResult,
   TrashedFolderEntry,
   TrashedResourceEntry,
 } from "../../../../src/lib/api/trash";
@@ -33,6 +34,87 @@ export interface TrashViewProps {
 type PendingBatchAction =
   | { kind: "restore"; ids: string[] }
   | { kind: "purge"; ids: string[]; isEmptyTrash: boolean };
+
+/**
+ * One distinct, per-item notice surfaced after a restore batch completes
+ * (Task 18, FR-5/FR-9/FR-14) — a relocation-to-project-root, a rename-on-
+ * collision, or a set of references that could not be relinked. These are
+ * kept separate from `report`'s generic "N of M restored" batch count
+ * (Task 17) rather than folded into it, because each is actionable
+ * information about a *specific* item, not a count.
+ *
+ * `renamed` notices state the item was restored as `"<name> (restored)"` —
+ * `restoreTrashItems`'s per-item result only carries a `renamed: boolean`
+ * flag, not the actual resolved name (a second/third collision on the same
+ * name is suffixed `" (restored 2)"`, `" (restored 3)"`, ... by
+ * `models/trash.ts`'s `resolveRestoreCollisionName`), so this notice names
+ * the first-collision convention rather than the item's true final name.
+ * Widening `RestoreItemResult` to also carry the resolved name is out of
+ * this task's file scope (`TrashView.tsx` + its tests only) — see the
+ * Task 18 follow-up recorded in `specs/features/trash-ui/follow-up-work.md`.
+ */
+interface RestoreNotice {
+  id: string;
+  kind: "relocated" | "renamed" | "references";
+  text: string;
+}
+
+/**
+ * Builds the Task 18 per-item restore notices from a batch of successful
+ * `restoreTrashItems` results (FR-5/FR-9/FR-14). A failed item (`ok: false`)
+ * contributes no notice — its failure is already covered by the generic
+ * batch report. `referencesNotRestored === "no-record"` (a legacy item with
+ * no Task 4 ref record at all) is not itself a notice-worthy outcome and is
+ * skipped, distinct from a non-empty array of actually-unrelinked
+ * references.
+ */
+function buildRestoreNotices(
+  results: RestoreItemResult[],
+  namesById: Map<string, string>,
+): RestoreNotice[] {
+  const notices: RestoreNotice[] = [];
+
+  for (const result of results) {
+    if (!result.ok) continue;
+    const name = namesById.get(result.id) ?? result.id;
+
+    if (result.relocated) {
+      notices.push({
+        id: result.id,
+        kind: "relocated",
+        text: `"${name}" was moved to project root because its original folder no longer exists.`,
+      });
+    }
+
+    if (result.renamed) {
+      notices.push({
+        id: result.id,
+        kind: "renamed",
+        text: `"${name}" was restored as "${name} (restored)" because another item already has that name.`,
+      });
+    }
+
+    if (
+      Array.isArray(result.referencesNotRestored) &&
+      result.referencesNotRestored.length > 0
+    ) {
+      const refDescriptions = result.referencesNotRestored
+        .map((ref) =>
+          ref.arrayIndex !== undefined
+            ? `"${ref.fieldKey}"[${ref.arrayIndex}] on resource ${ref.referencingResourceId}`
+            : `"${ref.fieldKey}" on resource ${ref.referencingResourceId}`,
+        )
+        .join(", ");
+      notices.push({
+        id: result.id,
+        kind: "references",
+        text: `"${name}": these references could not be restored automatically — ${refDescriptions}.`,
+      });
+    }
+  }
+
+  return notices;
+}
 
 /**
  * `TrashView` is the project-wide Trash tab (`specs/features/trash-ui.md`
@@ -85,6 +167,7 @@ export default function TrashView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [restoreNotices, setRestoreNotices] = useState<RestoreNotice[]>([]);
 
   const refetch = useCallback(() => {
     if (!projectId) {
@@ -137,6 +220,7 @@ export default function TrashView({
     if (selectedIds.size === 0) return;
     setReport(null);
     setActionError(null);
+    setRestoreNotices([]);
     setPendingAction({ kind: "restore", ids: Array.from(selectedIds) });
   }, [selectedIds]);
 
@@ -144,6 +228,7 @@ export default function TrashView({
     if (selectedIds.size === 0) return;
     setReport(null);
     setActionError(null);
+    setRestoreNotices([]);
     setPendingAction({
       kind: "purge",
       ids: Array.from(selectedIds),
@@ -155,6 +240,7 @@ export default function TrashView({
     if (allTopLevelIds.length === 0) return;
     setReport(null);
     setActionError(null);
+    setRestoreNotices([]);
     setPendingAction({
       kind: "purge",
       ids: allTopLevelIds,
@@ -171,6 +257,13 @@ export default function TrashView({
     if (!pendingAction || !projectId || isSubmitting) return;
     const action = pendingAction;
     setIsSubmitting(true);
+
+    // Snapshotted before the request fires, so the notices built below can
+    // still name an item after it's been filtered out of `resources`/
+    // `folders` on success.
+    const namesById = new Map<string, string>();
+    resources.forEach((r) => namesById.set(r.id, r.originalName));
+    folders.forEach((f) => namesById.set(f.id, f.originalName));
 
     const request =
       action.kind === "restore"
@@ -201,6 +294,11 @@ export default function TrashView({
             ? `${succeededCount} of ${total} ${verb}; ${failedCount} failed.`
             : `${succeededCount} of ${total} ${verb}.`,
         );
+        setRestoreNotices(
+          action.kind === "restore"
+            ? buildRestoreNotices(results as RestoreItemResult[], namesById)
+            : [],
+        );
         setPendingAction(null);
       })
       .catch(() => {
@@ -212,7 +310,7 @@ export default function TrashView({
         setPendingAction(null);
       })
       .finally(() => setIsSubmitting(false));
-  }, [pendingAction, projectId, isSubmitting]);
+  }, [pendingAction, projectId, isSubmitting, resources, folders]);
 
   const dialogTitle = !pendingAction
     ? ""
@@ -269,10 +367,40 @@ export default function TrashView({
         </p>
       )}
 
+      {/* Task 18 (FR-5/FR-9/FR-14): one distinct notice per relocation,
+          rename, or unrelinked-reference outcome a restore batch produced —
+          kept separate from `report`'s generic count above rather than
+          folded into it, since each names a specific item and a specific
+          reason, not a tally. Lives outside the `!isEmpty` gate for the same
+          reason `report` does (see above). */}
+      {restoreNotices.length > 0 && (
+        <ul data-testid="trash-restore-notices">
+          {restoreNotices.map((notice, index) => (
+            <li
+              key={`${notice.id}-${notice.kind}-${index}`}
+              role="status"
+              data-testid="trash-restore-notice"
+              data-trash-restore-notice-kind={notice.kind}
+            >
+              {notice.text}
+            </li>
+          ))}
+        </ul>
+      )}
+
       {isEmpty && <p data-testid="trash-empty-state">Trash is empty.</p>}
 
       {!isLoading && !error && !isEmpty && (
         <>
+          <div
+            role="status"
+            aria-live="polite"
+            className="sr-only"
+            data-testid="trash-selection-count"
+          >
+            {selectedIds.size} of {allTopLevelIds.length} item
+            {allTopLevelIds.length === 1 ? "" : "s"} selected
+          </div>
           <div data-testid="trash-batch-toolbar" className="flex gap-2 mb-2">
             <button
               type="button"
@@ -300,13 +428,31 @@ export default function TrashView({
             </button>
           </div>
 
-          <ul data-testid="trash-list">
+          {/* `role="listbox"`/`aria-multiselectable` + each top-level row's
+              `role="option"`/`aria-selected` expose the multi-select state
+              to assistive tech (Task 18). The actual toggle control stays
+              the native `<input type="checkbox">` inside each row — Tab
+              reaches it directly and Space toggles it natively — rather than
+              making the `<li>` itself the roving-tabindex focus stop a
+              from-scratch listbox would need; that keeps every action
+              reachable by keyboard without hand-rolling arrow-key
+              navigation for a list whose real interaction model is
+              per-row checkboxes plus page-level buttons, not option
+              selection. */}
+          <ul
+            data-testid="trash-list"
+            role="listbox"
+            aria-multiselectable="true"
+            aria-label="Trash items"
+          >
             {resources.map((resource) => (
               <li
                 key={resource.id}
                 data-testid="trash-row"
                 data-trash-kind="resource"
                 data-trash-id={resource.id}
+                role="option"
+                aria-selected={selectedIds.has(resource.id)}
               >
                 <input
                   type="checkbox"
@@ -326,6 +472,8 @@ export default function TrashView({
                 data-testid="trash-row"
                 data-trash-kind="folder"
                 data-trash-id={folder.id}
+                role="option"
+                aria-selected={selectedIds.has(folder.id)}
               >
                 <input
                   type="checkbox"

@@ -376,6 +376,141 @@ describe("TrashView — batch restore/purge/Empty trash controls (Task 17)", () 
   });
 });
 
+describe("TrashView — Task 18 per-item restore notices (FR-5/FR-9/FR-14)", () => {
+  it("renders a distinct notice when a restored item was relocated to the project root", async () => {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+    mockedRestoreTrashItems.mockResolvedValue([
+      { id: "res-1", ok: true, relocated: true, renamed: false },
+    ]);
+
+    const store = setupStore();
+
+    render(
+      <Provider store={store}>
+        <TrashView />
+      </Provider>,
+    );
+
+    await screen.findAllByTestId("trash-row");
+    selectTrashRow("res-1");
+    fireEvent.click(screen.getByTestId("trash-restore-selected"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Restore" }));
+
+    await waitFor(() => {
+      const notices = screen.getAllByTestId("trash-restore-notice");
+      expect(notices).toHaveLength(1);
+      expect(notices[0].textContent).toMatch(
+        /moved to project root because its original folder no longer exists/i,
+      );
+    });
+
+    // Distinct from (and in addition to) the generic batch count.
+    expect(screen.getByTestId("trash-batch-report").textContent).toMatch(
+      /1 of 1 restored/i,
+    );
+  });
+
+  it("renders a distinct notice naming the ' (restored)' name when a restored item was renamed on collision", async () => {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+    mockedRestoreTrashItems.mockResolvedValue([
+      { id: "res-1", ok: true, relocated: false, renamed: true },
+    ]);
+
+    const store = setupStore();
+
+    render(
+      <Provider store={store}>
+        <TrashView />
+      </Provider>,
+    );
+
+    await screen.findAllByTestId("trash-row");
+    selectTrashRow("res-1");
+    fireEvent.click(screen.getByTestId("trash-restore-selected"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Restore" }));
+
+    await waitFor(() => {
+      const notices = screen.getAllByTestId("trash-restore-notice");
+      expect(notices).toHaveLength(1);
+      expect(notices[0].textContent).toContain("Resource One (restored)");
+      expect(notices[0].textContent).toMatch(/already has that name/i);
+    });
+  });
+
+  it("renders a distinct notice naming which references couldn't be restored", async () => {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+    mockedRestoreTrashItems.mockResolvedValue([
+      {
+        id: "res-1",
+        ok: true,
+        relocated: false,
+        renamed: false,
+        referencesNotRestored: [
+          { referencingResourceId: "res-9", fieldKey: "relatedTo" },
+        ],
+      },
+    ]);
+
+    const store = setupStore();
+
+    render(
+      <Provider store={store}>
+        <TrashView />
+      </Provider>,
+    );
+
+    await screen.findAllByTestId("trash-row");
+    selectTrashRow("res-1");
+    fireEvent.click(screen.getByTestId("trash-restore-selected"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Restore" }));
+
+    await waitFor(() => {
+      const notices = screen.getAllByTestId("trash-restore-notice");
+      expect(notices).toHaveLength(1);
+      expect(notices[0].textContent).toMatch(
+        /could not be restored automatically/i,
+      );
+      expect(notices[0].textContent).toContain("relatedTo");
+      expect(notices[0].textContent).toContain("res-9");
+    });
+  });
+
+  it("renders no restore notices for a plain restore with no relocation/rename/reference issues", async () => {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+    mockedRestoreTrashItems.mockResolvedValue([
+      { id: "res-1", ok: true, relocated: false, renamed: false },
+    ]);
+
+    const store = setupStore();
+
+    render(
+      <Provider store={store}>
+        <TrashView />
+      </Provider>,
+    );
+
+    await screen.findAllByTestId("trash-row");
+    selectTrashRow("res-1");
+    fireEvent.click(screen.getByTestId("trash-restore-selected"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Restore" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("trash-batch-report").textContent).toMatch(
+        /1 of 1 restored/i,
+      ),
+    );
+    expect(screen.queryByTestId("trash-restore-notice")).toBeNull();
+  });
+});
+
 describe("TrashView + AppShell — FR-21 open-editor-tab boundary (Task 17)", () => {
   /**
    * FR-21/OQ-11: no new open-editor-tab behavior is added for a resource
