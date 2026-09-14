@@ -1051,7 +1051,7 @@ assert.
 **Depends on:** 24
 **Estimate:** 8
 **POS:** task_766eeda1
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Finding 6 — confirm restore/destructive confirmations match spec; Stage 6.5 re-verification of findings 1-5
 
