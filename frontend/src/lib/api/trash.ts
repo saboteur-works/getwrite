@@ -41,7 +41,11 @@ import type {
   TrashedResourceEntry,
 } from "../models/trash";
 
-export type { RestoredReferenceInfo, TrashedFolderEntry, TrashedResourceEntry };
+// `RestoredReferenceInfo` is used internally by `RestoreResult` below but,
+// unlike the other two, has no external consumer importing it from this
+// module specifically (callers needing it import it directly from
+// `../models/trash`) — so it is not re-exported here.
+export type { TrashedFolderEntry, TrashedResourceEntry };
 
 /** Combined response shape of `GET /api/project/:id/trash`. */
 export interface TrashListing {

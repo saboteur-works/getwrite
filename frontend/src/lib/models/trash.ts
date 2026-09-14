@@ -39,12 +39,11 @@ import type {
   UUID,
 } from "./types";
 
-export type {
-  TrashFolderManifest,
-  TrashFolderManifestEntry,
-  TrashRefRecord,
-  TrashRefRecordEntry,
-};
+// `TrashFolderManifest`/`TrashFolderManifestEntry` are consumed directly from
+// `./schemas` by every external caller (e.g. the test suites building
+// manifest fixtures) — this module only re-exports the two types that
+// `core.ts`'s barrel actually names (`TrashRefRecord`/`TrashRefRecordEntry`).
+export type { TrashRefRecord, TrashRefRecordEntry };
 
 function isEnoent(err: unknown): boolean {
   return (
@@ -1573,15 +1572,3 @@ export async function resolveTrashedItemKind(
 
   return "unknown";
 }
-
-export default {
-  softDeleteResource,
-  softDeleteFolder,
-  restoreResource,
-  restoreFolder,
-  purgeResource,
-  purgeFolder,
-  purgeTrashedRevisions,
-  listTrashedItems,
-  resolveTrashedItemKind,
-};

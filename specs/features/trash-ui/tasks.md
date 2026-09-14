@@ -789,7 +789,7 @@ running `pnpm knip` and filtering its output to
 **Depends on:** 19
 **Estimate:** 5
 **POS:** task_d959616a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Full gate verification pass
 
