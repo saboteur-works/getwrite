@@ -213,7 +213,8 @@ export type ViewName =
   | "diff"
   | "timeline"
   | "entityRoster"
-  | "entityGraph";
+  | "entityGraph"
+  | "trash";
 
 /** Input types for metadata collection. */
 export type MetadataInputType = "text" | "multiselect" | "autocomplete";

@@ -6,7 +6,15 @@
     // frontend/tests/fixtures/docx/generate-docx-fixtures.ts: a one-off
     // script run by hand (see its own header comment) to regenerate the
     // committed synthetic .docx fixtures — not dead code.
-    "frontend/tests/fixtures/docx/generate-docx-fixtures.ts"
+    "frontend/tests/fixtures/docx/generate-docx-fixtures.ts",
+    // frontend/src/store/transport/native-trash-backend.web-stub.ts: a
+    // Turbopack-only build-time substitute resolved solely via
+    // next.config.mjs's turbopack.resolveAlias string-literal rule — never
+    // imported by a static `import` statement, so knip cannot see its one
+    // real reference. Mirrors every other native-*-backend.web-stub.ts file
+    // in this directory (all pre-existing, un-ignored baseline findings
+    // outside this feature's own scope).
+    "frontend/src/store/transport/native-trash-backend.web-stub.ts"
   ],
   "workspaces": {
     ".": { "paths": { "@gw/core": ["frontend/src/lib/core.ts"] } },

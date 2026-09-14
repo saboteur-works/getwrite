@@ -20,9 +20,9 @@ Whether cleanup happens automatically is controlled by the **auto-prune** settin
 
 ## Deleting and recovering resources (Trash)
 
-When you delete a resource, it isn't erased immediately. GetWrite moves it to a hidden **Trash** area inside the project folder, preserving its content and metadata.
+When you delete a resource or a folder, it isn't erased immediately. GetWrite moves it to a **Trash** area inside the project folder, preserving its content, metadata, and revision history. Deleting a folder moves its entire contents — every resource and sub-folder inside it — to Trash together.
 
-There is currently no in-app trash bin for restoring deleted resources. If you need to recover one, you can move its files out of the project's `.trash/` folder manually. An in-app recovery UI is planned.
+The **Trash** tab (alongside Edit, Data, Timeline, Entities, and Graph) lists everything currently trashed in the project and lets you restore or permanently delete items, individually or in a batch, including an "Empty trash" action for everything at once. Restoring an item puts it back where it was; if its original folder no longer exists, it's restored to the project root instead, and a name collision with something already there is resolved by appending "(restored)" to the name. Any other resource's fields that referenced a since-deleted resource are automatically re-linked on restore, where possible. Permanently deleting an item from Trash cannot be undone. Trash is available on web and desktop; it is not yet available on the Android app.
 
 > **Power users:** the `getwrite` CLI includes a `prune` command for cleaning up revisions across an entire project from the command line. See the [CLI reference](../features/cli.md).
 

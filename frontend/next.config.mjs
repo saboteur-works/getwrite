@@ -229,6 +229,12 @@ const nextConfig = {
           // same rule as above.
           "../../store/transport/native-entity-relationships-backend":
             "./src/store/transport/native-entity-relationships-backend.web-stub",
+          // trash-ui Task 12: lib/api/trash.ts also lives in src/lib/api/,
+          // so its dynamic import's literal specifier is
+          // "../../store/transport/native-trash-backend" — same rule as
+          // above.
+          "../../store/transport/native-trash-backend":
+            "./src/store/transport/native-trash-backend.web-stub",
         },
   },
 };

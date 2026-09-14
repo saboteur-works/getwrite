@@ -428,6 +428,46 @@ lost work.
   3/Mac-only support. Scoped to the Electron desktop build only; hosted web
   and native Android UI import remain deferred (resolved: OQ-18; see Out of
   Scope (Deferred)). [US-4]
+- FR-33: The product SHOULD offer an importer for existing Word/DOCX
+  projects, converting them into a GetWrite project structure. Split
+  2026-09-11 (owner decision) from the Scrivener half of this requirement —
+  see FR-42, which has since shipped (2026-09-12). Owner decision
+  (2026-09-13): FR-33 moved from Later Requirements into In Progress
+  Requirements, carried forward through the pipeline as Feature 45. Shipped:
+  merged to main 2026-09-13 as `15d77139` ("Merge pull request #199 from
+  saboteur-works/feat/docx-importer"). Its feature spec,
+  `specs/features/docx-importer.md`, is the authoritative record of the
+  shipped scope. The importer auto-detects and supports both a single
+  `.docx` file and a folder of `.docx` files as its source (resolved:
+  OQ-19). A single `.docx` is split into multiple GetWrite resources at
+  Heading 1 by default, with the split level configurable to another
+  heading level or to no split at all; a document with no headings at the
+  chosen level imports as a single resource, and the import report says so
+  (resolved: OQ-19). A folder of `.docx` files imports one resource per
+  file, with the folder's subdirectory structure mirrored as GetWrite
+  folders (resolved: OQ-19). Imported content includes text,
+  heading/paragraph structure, and bold/italic — matching FR-42's fidelity
+  bar — plus footnotes and basic document properties (title, author);
+  comments, tracked changes, and images/embedded media are deferred
+  (resolved: OQ-20; see Out of Scope (Deferred)). The importer ships a CLI
+  command and an Electron desktop UI together in this first delivery, not
+  CLI-first as FR-42/FR-43 sequenced (resolved: OQ-21). The desktop UI
+  follows FR-43's pattern: a native OS picker running in the Electron main
+  process, with the source path never crossing into the renderer or
+  reaching a Next API route (`docs/standards/security.md` §2, "Never Trust a
+  Client-Supplied Path") (resolved: OQ-21). Hosted web and native Android
+  DOCX import are deferred (resolved: OQ-21; see Out of Scope (Deferred)).
+  When the importer encounters content it cannot convert, it skips that
+  item, continues importing the rest of the project, and produces a
+  DOCX-specific import report a writer can read after the import, whose
+  sections reflect DOCX content rather than reusing Scrivener's
+  eight-section report as-is (resolved: OQ-22). Import is one-shot: each run
+  creates a fresh GetWrite project and refuses a non-empty destination,
+  mirroring FR-42/FR-43's resolved OQ-12; repeatable DOCX import is out of
+  scope (resolved: OQ-23; see Out of Scope (Deferred)). The writer chooses
+  the destination project's project type at import time — a CLI flag and a
+  UI choice — from the existing project types, with a default (resolved:
+  OQ-23). [US-18]
 
 ### In Progress Requirements
 
@@ -440,48 +480,39 @@ lost work.
   field) is a separate per-project setting that already ships. [US-7]
 - FR-27: Desktop builds MUST be signed and installable without an OS
   security warning on macOS and Windows. [US-8]
-- FR-33: The product SHOULD offer an importer for existing Word/DOCX
-  projects, converting them into a GetWrite project structure. Split
-  2026-09-11 (owner decision) from the Scrivener half of this requirement —
-  see FR-42, which has since shipped (2026-09-12). Owner decision
-  (2026-09-13): FR-33 moves from Later Requirements into In Progress
-  Requirements; it is being carried forward through the pipeline as
-  Feature 45. The importer MUST auto-detect and support both a single
-  `.docx` file and a folder of `.docx` files as its source (resolved:
-  OQ-19). A single `.docx` MUST be split into multiple GetWrite resources
-  at Heading 1 by default, with the split level configurable to another
-  heading level or to no split at all; a document with no headings at the
-  chosen level MUST import as a single resource, and the import report
-  MUST say so (resolved: OQ-19). A folder of `.docx` files MUST import one
-  resource per file, with the folder's subdirectory structure mirrored as
-  GetWrite folders (resolved: OQ-19). Imported content MUST include text,
-  heading/paragraph structure, and bold/italic — matching FR-42's fidelity
-  bar — plus footnotes and basic document properties (title, author);
-  comments, tracked changes, and images/embedded media are deferred
-  (resolved: OQ-20; see Out of Scope (Deferred)). Where footnotes and
-  document properties land in GetWrite's data model is a feature-spec
-  decision, not decided here (resolved: OQ-20). The importer SHOULD ship a
-  CLI command and an Electron desktop UI together in its first delivery,
-  not CLI-first as FR-42/FR-43 sequenced (resolved: OQ-21). The desktop UI
-  MUST follow FR-43's pattern: a native OS picker running in the Electron
-  main process, and the source path MUST NOT cross into the renderer or
-  reach a Next API route (`docs/standards/security.md` §2, "Never Trust a
-  Client-Supplied Path") (resolved: OQ-21). Hosted web and native Android
-  DOCX import are deferred (resolved: OQ-21; see Out of Scope (Deferred)).
-  When the importer encounters content it cannot convert, it MUST skip that
-  item, continue importing the rest of the project, and produce a
-  DOCX-specific import report a writer can read after the import, whose
-  sections reflect DOCX content rather than reusing Scrivener's
-  eight-section report as-is (resolved: OQ-22); whether the report-writing
-  code is shared with `import-report.ts` is a feature-spec decision, not
-  decided here (resolved: OQ-22). Import is one-shot: each run MUST create
-  a fresh GetWrite project and MUST refuse a non-empty destination,
-  mirroring FR-42/FR-43's resolved OQ-12; repeatable DOCX import is out of
-  scope (resolved: OQ-23; see Out of Scope (Deferred)). The writer MUST
-  choose the destination project's project type at import time — a CLI
-  flag and a UI choice — from the existing project types, with one of them
-  as a default; which type is the default is a feature-spec decision, not
-  decided here (resolved: OQ-23). [US-18]
+- FR-28: Users MUST be able to browse, restore, and permanently purge
+  soft-deleted resources through a dedicated Trash UI (the soft-delete,
+  restore, and purge model exists in part today; FR-28 extends it). Owner
+  decision (2026-09-14): FR-28
+  moves from Next Requirements into In Progress Requirements; it is being
+  carried forward through the pipeline as Feature 26. Owner decisions
+  (2026-09-14, OQ-24 through OQ-30) fix its scope: the Trash view is scoped
+  to the currently open project only, with no workspace-wide aggregation
+  (resolved: OQ-24). The UI MUST support multi-select restore, multi-select
+  permanent delete, and "Empty trash"; there is no automatic retention or
+  auto-purge (resolved: OQ-25). Deleting a folder MUST cascade-soft-delete
+  the folder and everything beneath it into Trash as a restorable/purgeable
+  unit, rather than orphaning its contents as today (resolved: OQ-26).
+  Restore MUST never block: a missing original parent folder falls back to
+  the project root, a name collision at the destination gets a suffix, and
+  the UI MUST tell the writer when an item was relocated or renamed
+  (resolved: OQ-27). Permanent delete MUST require explicit confirmation
+  (one confirmation for a whole batch on Empty Trash or multi-select
+  delete) and MUST remove the trashed resource's files, its sidecar, all
+  its revisions, and its entries in the inverted index, backlinks, the
+  mention index, and any authored relationship edges naming it as source or
+  target, including when the resource was an entity (resolved: OQ-28). FR-28
+  ships on hosted web and Electron desktop, which share the Next API
+  routes; native Android transport parity is deferred, not rejected
+  (resolved: OQ-29). Restore MUST re-link references: the product MUST
+  record exactly which other sidecars' `ResourceRef` fields a deletion
+  nullified, and restoring the resource MUST point every still-nullified
+  recorded reference back at it, leaving and reporting to the writer any
+  reference that changed in the meantime (resolved: OQ-30). Where in the
+  project UI the Trash view lives, its restore-collision suffix wording,
+  whether an item inside a trashed folder can be restored individually,
+  where revisions live while trashed, and where the nullified-reference
+  record is stored are feature-spec decisions. [US-11]
 
 ### Next Requirements
 
@@ -588,9 +619,6 @@ lost work.
   choice may delete), and FR-38 (the roster, whose listing drops the entity
   once this action completes). It rides the existing per-project `entities`
   feature flag (FR-35) and MUST NOT introduce a flag of its own. [US-3]
-- FR-28: Users MUST be able to browse, restore, and permanently purge
-  soft-deleted resources through a dedicated Trash UI (the underlying
-  restore/purge model already exists). [US-11]
 - FR-29: Search MUST become able to find matches across all retained
   revisions of a resource, not only its canonical revision (today only the
   canonical revision is indexed and searched — see Constraints); when a
@@ -643,10 +671,12 @@ lost work.
   no account.
 - A CLI import path from Scrivener (`.scriv`) now exists (FR-42, shipped
   2026-09-12), and a writer-facing UI import path for the Electron desktop
-  build has since shipped alongside it (FR-43, shipped 2026-09-13); no
-  import path exists from Word/DOCX projects (FR-33, In Progress), and hosted web
-  and native Android still have no UI import path of their own — FR-43 is
-  scoped to the Electron desktop build only (see Out of Scope (Deferred)).
+  build has since shipped alongside it (FR-43, shipped 2026-09-13); a CLI
+  and Electron desktop UI import path from Word/DOCX projects now exists too
+  (FR-33, shipped 2026-09-13), and hosted web and native Android still have
+  no UI import path of their own for either source format — both FR-43 and
+  FR-33 are scoped to the Electron desktop build only (see Out of Scope
+  (Deferred)).
 - Compile is export-only and must never mutate revisions or project state.
 - Full-text search indexes and searches only each resource's canonical
   revision today; retained revisions remain browsable and diffable but are
@@ -1109,6 +1139,181 @@ project (one-shot); `getwrite-config/templates/project-types/*.json` is the
 existing project-type mechanism FR-33 would need to select from, or extend,
 for a Word/DOCX-sourced project.
 
+**OQ-24: Is the Trash UI (FR-28) scoped to the currently open project, or
+does it browse deleted resources across every project workspace-wide, and
+where does it live in the app?**
+**Resolution (owner decision, 2026-09-14):** Trash is per project. A Trash
+view lives inside an open project and shows only that project's `.trash/`.
+There is no workspace-wide aggregation. Exactly where it appears in the
+project UI is a feature-spec decision.
+**Impact:** `trash.ts`'s `trashPaths` is keyed by a single `projectRoot`; a
+per-project surface is a straightforward list view reachable from within an
+open project (e.g. alongside the resource tree or Start-page project
+actions), while a workspace-wide surface would need a new cross-project
+registry that reads every project's `.trash/` directory and nothing like
+that exists today. This decides the surface's information architecture
+before a feature spec can lay it out.
+**Owner:** Product owner.
+**Evidence:** `frontend/src/lib/models/trash.ts`'s `trashPaths(projectRoot)`
+computes `.trash/resources` and `.trash/meta` relative to one project root
+only; no code anywhere aggregates trash state across more than one project.
+
+**OQ-25: Does the Trash UI (FR-28) offer bulk actions — "empty trash"/
+purge-all, multi-select restore or purge — and is there any automatic
+retention window or auto-purge?**
+**Resolution (owner decision, 2026-09-14):** Bulk actions are in:
+multi-select restore, multi-select permanent delete, and "Empty trash".
+There is no automatic retention or auto-purge; nothing in Trash is ever
+deleted without an explicit writer action.
+**Impact:** Today's model layer has no bulk primitive at all: a writer
+recovering from an accidental multi-resource delete, or wanting to clear
+trash entirely, would need one action per resource unless a feature spec
+adds a bulk operation. Whether trashed items expire on their own also
+determines whether "permanently purge" in FR-28's own wording is the only
+way anything ever leaves trash.
+**Owner:** Product owner.
+**Evidence:** `frontend/src/lib/models/trash.ts`'s `purgeResource` takes one
+`resourceId` at a time; no `purgeAll`/`emptyTrash` function exists.
+`pruneExecutor.ts` (the one existing automatic-deletion mechanism in the
+product) prunes old non-canonical *revisions*, not trashed resources — there
+is no analogous auto-purge job for `.trash/` anywhere in the codebase.
+
+**OQ-26: What does the product promise when a writer deletes a folder — are
+its contents cascade-soft-deleted into Trash along with it, or does today's
+gap (folders aren't soft-deleted at all) stay as-is until a separate
+requirement addresses it?**
+**Resolution (owner decision, 2026-09-14):** Fix folder deletion inside
+FR-28. Deleting a folder MUST soft-delete the folder and everything
+beneath it (nested folders and resources) into the project's Trash instead
+of orphaning the contents. Trash MUST represent a deleted folder with its
+contents so it can be restored as a unit, and it MUST be possible to
+restore or permanently delete that folder together with its contents.
+Whether individual items inside a trashed folder can be restored on their
+own is a feature-spec decision.
+**Impact:** This determines whether FR-28's Trash UI needs to represent
+deleted folders as a first-class trash entry (with their former contents
+nested under them for restore) or whether folder deletion remains entirely
+outside this requirement's scope, leaving today's gap unaddressed.
+**Owner:** Product owner.
+**Evidence:** The only client-side delete function,
+`frontend/src/lib/api/resources.ts`'s `deleteResource`, and the only
+delete route, `frontend/app/api/resource/[resource-id]/delete/route.ts`, are
+both resource-shaped — the route reads a sidecar for the given id and calls
+`softDeleteResource`, which moves a sidecar from `meta/` and files under
+`resources/` whose name contains the id. Folders live in a separate
+`folders/`-tree structure that `trash.ts` never touches, so invoking the
+existing "delete" context-menu action (`ResourceContextMenu.tsx`,
+`AppShell.tsx`'s `handleResourceAction`) on a folder id finds no matching
+sidecar or `resources/` entries to move and instead only removes the folder
+from Redux/on-disk folder-tree state — its contained resources are not
+cascade-soft-deleted, moved to `.trash/`, or reported anywhere. This is a
+real, pre-existing gap: `getwrite-cli doctor` (`cli/src/commands/doctor.ts`)
+exists specifically to detect "orphaned resources/folders" left over from
+exactly this kind of gap.
+
+**OQ-27: What must the Trash UI (FR-28) do about a restore whose original
+parent folder no longer exists, or whose restore destination collides with
+an existing resource of the same name?**
+**Resolution (owner decision, 2026-09-14):** A restore never blocks. If the
+original parent folder no longer exists, the item goes to the project root.
+If the name collides at the destination, it gets a suffix; the exact suffix
+wording is a feature-spec decision. The UI MUST tell the writer when an item
+was relocated or renamed on restore.
+**Impact:** Restore either needs a defined fallback (e.g. restore to
+project root, or block with a writer-facing choice) for a missing parent
+folder, and a defined collision policy (overwrite, rename, or refuse) for a
+same-name clash — neither exists today, so a feature spec would otherwise
+invent both silently.
+**Owner:** Product owner.
+**Evidence:** `restoreResource`'s own doc comment: "If multiple resource
+filenames exist in the trash, restores the first match" — the function does
+not check whether the resource's original parent folder id still exists in
+the current folder tree, and performs no check for a same-named entry
+already occupying the restore destination before calling `rename()`.
+
+**OQ-28: Beyond deleting the resource's own trashed content and sidecar,
+what should "permanently purge" (FR-28) actually remove, and does it need a
+confirmation step?**
+**Resolution (owner decision, 2026-09-14):** A permanent delete MUST
+require explicit confirmation and MUST remove everything associated with
+the resource: the trashed resource files, its sidecar, all its revisions,
+and its entries in the inverted index, backlinks, the mention index, and
+any authored relationship edges naming it (as source or target). A resource
+that was an entity is covered by the same sweep. Emptying Trash and
+multi-select delete confirm once for the whole batch. Today
+`softDeleteResource` doesn't move revisions to `.trash/`; where revisions
+live while trashed is a feature-spec decision, but the purge sweep MUST end
+with none remaining.
+**Impact:** A writer reasonably expects "permanently purge" to mean the
+resource is gone everywhere, but today it is not: `purgeResource` only
+`rm`s the sidecar and resource files already sitting in `.trash/`. It never
+touches the resource's revision history, its entries in the inverted index,
+backlinks, or the entity mention index, or any authored relationship edges
+naming it — all of which persist on disk indefinitely, unreferenced, after
+a purge. A feature spec needs a decision on whether purge should also sweep
+these, which changes its blast radius and whether a confirmation dialog
+(as FR-41's Remove Entity action uses) is warranted.
+**Owner:** Product owner.
+**Evidence:** `frontend/src/lib/models/trash.ts`'s `purgeResource` deletes
+only `<projectRoot>/.trash/meta/resource-<id>.meta.json` and
+`<projectRoot>/.trash/resources/<id>-*` — it never calls into
+`revision-manager.ts`, `indexer-queue.ts`, `backlinks.ts`,
+`mention-index.ts`, or `entity-relationships.ts`. Revisions under
+`revisions/<resourceId>/v-<N>/` are not moved to `.trash/` by
+`softDeleteResource` in the first place, so they remain at their original
+path, still keyed to the deleted resource's id, both before and after
+purge.
+
+**OQ-29: Which platform(s) does the Trash UI (FR-28) ship on at first
+delivery — hosted web, Electron desktop, native Android, or all three —
+and what transport parity (ADR-021) does that require?**
+**Resolution (owner decision, 2026-09-14):** FR-28 ships on hosted web and
+Electron desktop, which share the Next API routes. Native Android parity (a
+`createTransport` + `native-*-backend.ts` pair per ADR-021) is deferred,
+not rejected.
+**Impact:** No restore or purge transport exists on any platform today, so
+this decides real scope: a desktop-first slice needs only a local HTTP
+route (or direct model call) plus UI, while day-one parity across all three
+platforms means designing native `createTransport`/`native-*-backend.ts`
+counterparts for restore and purge alongside the UI, following the pattern
+Feature 33 and later features already established for other entity/mention
+reads.
+**Owner:** Product owner.
+**Evidence:** Across `frontend/src/lib/api/*`, `frontend/src/store/
+transport/*`, and `frontend/app/api/*`, the only trash-related code in the
+entire tree is the single delete route
+(`app/api/resource/[resource-id]/delete/route.ts`); there is no HTTP route,
+`lib/api/trash.ts`, or `native-*-backend.ts` for `restoreResource` or
+`purgeResource` — both model functions are reachable today only from tests,
+not from any client, on any platform.
+
+**OQ-30: When a resource is restored from Trash, should the product also
+restore other resources' `ResourceRef` fields that were nullified when it
+was deleted, or leave them permanently null?**
+**Resolution (owner decision, 2026-09-14):** Restore MUST re-link
+references. At delete time the product MUST persist a record of exactly
+which other sidecars and fields `nullifyResourceRefs` cleared. On restore,
+every recorded reference that is still in its cleared `{ id: null, name }`
+state MUST be pointed back at the restored resource. A reference that has
+changed since MUST be left alone and reported to the writer. That record is
+purged with the resource. Where the record is stored is a feature-spec
+decision.
+**Impact:** Today, deleting a resource nullifies every other resource's
+reference to it (`{id: null, name}` retained in place) but restoring it does
+not reverse that nullification — a writer who deletes and then restores a
+resource would find it back in the tree with its own content intact, but
+every place that used to point to it still shows a broken/nulled reference.
+Whether restore should re-link those references, and how it would even find
+them (nothing records which references were nullified by which deletion),
+is undecided.
+**Owner:** Product owner.
+**Evidence:** `frontend/src/lib/models/trash.ts`'s `nullifyResourceRefs` is
+called from the delete route before `softDeleteResource`, patching every
+sidecar's `ResourceRef` values that match the deleted id to `{id: null,
+name}`; `restoreResource` contains no corresponding re-link step, and no
+record of which sidecars were patched by a given deletion is persisted
+anywhere for a later restore to consult.
+
 ## Out of Scope (Deferred)
 
 - A keyboard-operable equivalent for dragging a node on the entity
@@ -1149,6 +1354,11 @@ for a Word/DOCX-sourced project.
   refresh an already-imported GetWrite project (FR-33, resolved: OQ-23).
   Import is one-shot only, mirroring FR-42/FR-43's resolved OQ-12 and
   FR-44's Scrivener-scoped precedent.
+- Native Android transport parity for the Trash UI (FR-28, resolved:
+  OQ-29). FR-28 ships on hosted web and Electron desktop, which share the
+  Next API routes; a `createTransport` + `native-*-backend.ts` pair for
+  restore/purge (per ADR-021) would be needed for native Android and is
+  deferred, not rejected.
 - [Later] Hosted multi-tenant access and cross-device sync as a shipped,
   user-facing product (foundations exist per ADR-017–ADR-022; not shipped).
 - [Later] Native Android packaging, signing, and distribution as a shipped

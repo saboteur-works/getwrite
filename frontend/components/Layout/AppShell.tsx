@@ -61,6 +61,7 @@ import DataView from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/Views/TimelineView";
 import EntityRosterView from "../WorkArea/Views/EntityRosterView/EntityRosterView";
 import EntityRelationshipGraphView from "../WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
+import TrashView from "../WorkArea/Views/TrashView/TrashView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import {
@@ -1298,7 +1299,8 @@ export default function AppShell({
                       {(selectedResource && combined) ||
                       view === "data" ||
                       view === "entityRoster" ||
-                      view === "entityGraph"
+                      view === "entityGraph" ||
+                      view === "trash"
                         ? (() => {
                             if (view === "data") {
                               const queryResources = activeSmartFolderId
@@ -1433,6 +1435,19 @@ export default function AppShell({
                                   }}
                                 />
                               ) : null;
+                            }
+
+                            // Same reachability concern as the roster/graph
+                            // above: Trash is project-wide (it reads across
+                            // every soft-deleted resource, not the current
+                            // selection) and, per FR-1, is never gated
+                            // behind a feature flag or a selection, so it is
+                            // handled here, before the `!selectedResource`
+                            // guard below. `TrashView` (Feature 26 Task 15)
+                            // owns its own `listTrash` fetch and replaces
+                            // the earlier routing-only placeholder.
+                            if (view === "trash") {
+                              return <TrashView />;
                             }
 
                             if (!selectedResource)

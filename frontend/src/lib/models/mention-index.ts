@@ -78,9 +78,28 @@ export function invertMentionIndex(
   return byEntity;
 }
 
+/**
+ * Remove a resource from the persisted mention index: deletes its own key
+ * only. Under this index's shape (`Record<resourceId, MentionRecord[]>`), a
+ * resource can only be the mentioning side, never the mentioned side, so no
+ * cross-entry scan is needed — mirrors `inverted-index.ts`'s
+ * `removeResourceFromIndex` (load, modify, persist, inside one
+ * `withMetaLock` call via `persistMentionIndex`'s own lock).
+ */
+export async function removeResourceFromMentionIndex(
+  projectRoot: string,
+  resourceId: string,
+): Promise<void> {
+  const index = await loadMentionIndex(projectRoot);
+  if (!(resourceId in index)) return;
+  delete index[resourceId];
+  await persistMentionIndex(projectRoot, index);
+}
+
 const mentionIndex = {
   loadMentionIndex,
   persistMentionIndex,
   invertMentionIndex,
+  removeResourceFromMentionIndex,
 };
 export default mentionIndex;

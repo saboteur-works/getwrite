@@ -62,4 +62,27 @@ describe("ViewSwitcher", () => {
     const timelineTab = screen.getByRole("tab", { name: /Timeline/i });
     expect(timelineTab.closest("[data-tooltip-content]")).toBeNull();
   });
+
+  it("renders the Trash tab unconditionally, unlike Entities/Graph", () => {
+    // No `disabledViews`/`disabledReasons` mocked either way — the Trash tab
+    // must be present and enabled regardless, per FR-1 (it is deliberately
+    // never added to AppShell.tsx's `disabledViews` computation).
+    render(<ViewSwitcher view="edit" onChange={vi.fn()} />);
+
+    const trashTab = screen.getByRole("tab", { name: /Trash/i });
+    expect(trashTab).toBeTruthy();
+    expect(trashTab).not.toBeDisabled();
+  });
+
+  it("selecting the Trash tab does not require a selectedResource", () => {
+    // ViewSwitcher itself carries no notion of a selected resource — this
+    // confirms the tab is clickable and fires onChange from a plain render,
+    // with no selection-related props supplied at all.
+    const onChange = vi.fn();
+    render(<ViewSwitcher view="edit" onChange={onChange} />);
+
+    const trashTab = screen.getByRole("tab", { name: /Trash/i });
+    fireEvent.click(trashTab);
+    expect(onChange).toHaveBeenCalledWith("trash");
+  });
 });

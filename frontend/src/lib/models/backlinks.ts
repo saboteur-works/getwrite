@@ -264,10 +264,29 @@ export async function loadBacklinks(
   }
 }
 
+/**
+ * Remove a resource from the persisted backlinks index: deletes its own key
+ * and strips it from every other resource's array of referenced ids.
+ * Mirrors `inverted-index.ts`'s `removeResourceFromIndex` — load, modify,
+ * persist, inside one `withMetaLock` call (via `persistBacklinks`'s own lock).
+ */
+export async function removeResourceFromBacklinks(
+  projectRoot: string,
+  resourceId: string,
+): Promise<void> {
+  const index = await loadBacklinks(projectRoot);
+  delete index[resourceId];
+  for (const [id, refs] of Object.entries(index)) {
+    index[id] = refs.filter((refId) => refId !== resourceId);
+  }
+  await persistBacklinks(projectRoot, index);
+}
+
 const backlinks = {
   listResourceIds,
   computeBacklinks,
   persistBacklinks,
   loadBacklinks,
+  removeResourceFromBacklinks,
 };
 export default backlinks;

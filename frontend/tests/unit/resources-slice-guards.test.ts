@@ -24,7 +24,7 @@ function makeTextResource(
   } as unknown as AnyResource;
 }
 
-function makeFolder(id: string): Folder {
+function makeFolder(id: string, parentId: string | null = null): Folder {
   return {
     id,
     name: `Folder ${id}`,
@@ -33,7 +33,12 @@ function makeFolder(id: string): Folder {
     orderIndex: 0,
     createdAt: new Date().toISOString(),
     folderId: null,
+    parentId,
   } as unknown as Folder;
+}
+
+function makeTextResourceInFolder(id: string, folderId: string): AnyResource {
+  return { ...makeTextResource(id), folderId } as AnyResource;
 }
 
 describe("store/resourcesSlice — cross-slice renameMetadataFieldKey coupling (T008-R)", () => {
@@ -152,5 +157,32 @@ describe("store/resourcesSlice — removeResource removes from both resources an
 
     expect(state.resources).toHaveLength(0);
     expect(state.folders.map((f) => f.id)).toEqual(["folder-only"]);
+  });
+
+  it("cascades folder removal to every descendant folder and resource (FR-3, Task 16)", () => {
+    // Mirrors the tree shape Task 6's on-disk cascade delete produces:
+    // top folder -> child folder, plus two resources directly under the
+    // top folder.
+    let state = resourcesReducer(
+      undefined,
+      setFolders([
+        makeFolder("top"),
+        makeFolder("child", "top"),
+        makeFolder("unrelated"),
+      ]),
+    );
+    state = resourcesReducer(
+      state,
+      setResources([
+        makeTextResourceInFolder("r1", "top"),
+        makeTextResourceInFolder("r2", "top"),
+        makeTextResourceInFolder("r3", "unrelated"),
+      ]),
+    );
+
+    state = resourcesReducer(state, removeResource("top"));
+
+    expect(state.folders.map((f) => f.id)).toEqual(["unrelated"]);
+    expect(state.resources.map((r) => r.id)).toEqual(["r3"]);
   });
 });

@@ -425,6 +425,81 @@ export const ResourceTemplateSchema = z.object({
 });
 
 /**
+ * Single entry in a trash ref record (FR-8), capturing one nullified
+ * `resource-ref` field value cleared by `nullifyResourceRefs` at soft-delete
+ * time.
+ *
+ * `arrayIndex` is present only when the cleared field was a multi-valued
+ * (array) `resource-ref` field; it is omitted entirely (not `undefined`) for
+ * a scalar field, matching how the value is captured on disk.
+ */
+export const TrashRefRecordEntrySchema = z.object({
+  referencingResourceId: UUID,
+  fieldKey: z.string(),
+  arrayIndex: z.number().int().nonnegative().optional(),
+  priorValue: ResourceRefValueSchema,
+});
+
+/**
+ * Trash ref record schema persisted at
+ * `.trash/meta/refs-<resourceId>.json` (FR-8, resolved OQ-5): every
+ * referencing sidecar field `nullifyResourceRefs` cleared for a deleted
+ * resource, so a later restore (FR-9) can re-link fields still in their
+ * cleared state.
+ */
+export const TrashRefRecordSchema = z.object({
+  resourceId: UUID,
+  entries: z.array(TrashRefRecordEntrySchema),
+});
+
+/**
+ * Inferred TypeScript shape of a single trash ref record entry.
+ */
+export type TrashRefRecordEntry = z.infer<typeof TrashRefRecordEntrySchema>;
+
+/**
+ * Inferred TypeScript shape of a trash ref record.
+ */
+export type TrashRefRecord = z.infer<typeof TrashRefRecordSchema>;
+
+/**
+ * Single descendant entry in a trash folder manifest (FR-20, resolved
+ * OQ-6): one folder or resource that lived beneath the trashed folder at
+ * delete time, capturing the `parentId`/`orderIndex` pair restore needs to
+ * rebuild the tree.
+ */
+export const TrashFolderManifestEntrySchema = z.object({
+  id: UUID,
+  kind: z.enum(["resource", "folder"]),
+  parentId: UUID.nullable(),
+  orderIndex: z.number(),
+});
+
+/**
+ * Trash folder manifest schema persisted at
+ * `.trash/meta/folder-<folderId>.json` (FR-20, resolved OQ-6): the trashed
+ * folder's own descriptor plus every descendant folder and resource id
+ * together with its `parentId` and order index at delete time, so restore
+ * can rebuild the tree.
+ */
+export const TrashFolderManifestSchema = z.object({
+  folder: FolderSchema,
+  descendants: z.array(TrashFolderManifestEntrySchema),
+});
+
+/**
+ * Inferred TypeScript shape of a single trash folder manifest entry.
+ */
+export type TrashFolderManifestEntry = z.infer<
+  typeof TrashFolderManifestEntrySchema
+>;
+
+/**
+ * Inferred TypeScript shape of a trash folder manifest.
+ */
+export type TrashFolderManifest = z.infer<typeof TrashFolderManifestSchema>;
+
+/**
  * Convenience object bundling core model schemas.
  *
  * Prefer named imports for tree-shaking in runtime bundles.
@@ -451,6 +526,10 @@ export const Schemas = {
   TipTapDocumentSchema,
   TipTapNodeSchema,
   QueryASTSchema,
+  TrashRefRecordEntrySchema,
+  TrashRefRecordSchema,
+  TrashFolderManifestEntrySchema,
+  TrashFolderManifestSchema,
 };
 
 /**
