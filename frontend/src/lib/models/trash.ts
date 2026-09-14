@@ -18,7 +18,7 @@ import { revisionsBaseDir } from "./revision";
 import { removeResourceFromIndex } from "./inverted-index";
 import { removeResourceFromBacklinks } from "./backlinks";
 import { removeResourceFromMentionIndex } from "./mention-index";
-import { getLocalResources } from "./resource-persistence";
+import { getLocalResources, writeResourceToFile } from "./resource-persistence";
 import { getSchema } from "./metadata-schema";
 import { enqueueIndex } from "./indexer-queue";
 import {
@@ -904,6 +904,174 @@ export async function restoreResource(
 }
 
 /**
+ * Resolves a free name for the restored folder at `destinationParentId`,
+ * applying the same resolved OQ-2 suffix rule {@link resolveRestoreName}
+ * applies to a restored resource: `"<name> (restored)"`, then
+ * `"<name> (restored 2)"`, ... until free among sibling folders already
+ * living at that parent.
+ */
+async function resolveRestoreFolderName(
+  projectRoot: string,
+  destinationParentId: UUID | null,
+  originalName: string,
+): Promise<{ name: string; renamed: boolean }> {
+  const foldersRoot = path.join(projectRoot, "folders");
+  const siblings = await collectFolderDescriptors(foldersRoot);
+  const siblingNames = new Set(
+    siblings
+      .filter((fd) => (fd.folder.parentId ?? null) === destinationParentId)
+      .map((fd) => fd.folder.name),
+  );
+
+  if (!siblingNames.has(originalName)) {
+    return { name: originalName, renamed: false };
+  }
+
+  let n = 1;
+  for (;;) {
+    const candidate =
+      n === 1
+        ? `${originalName} (restored)`
+        : `${originalName} (restored ${n})`;
+    if (!siblingNames.has(candidate)) {
+      return { name: candidate, renamed: true };
+    }
+    n += 1;
+  }
+}
+
+/**
+ * Structured result of {@link restoreFolder} (FR-5/FR-20), mirroring
+ * {@link RestoreResourceResult}'s `relocated`/`renamed` reporting for the
+ * top-level folder itself.
+ */
+export interface RestoreFolderResult {
+  /** Name the top-level folder is restored under (after any collision suffix). */
+  restoredName: string;
+  /** True when the folder's original parent folder no longer exists and it landed at the project root instead. */
+  relocated: boolean;
+  /** True when `restoredName` differs from the folder's original name because of a collision at the destination. */
+  renamed: boolean;
+  /** Every descendant resource id restored (via {@link restoreResource}) as part of this cascade. */
+  restoredDescendantResourceIds: UUID[];
+  /** Every descendant folder id restored as part of this cascade. */
+  restoredDescendantFolderIds: UUID[];
+}
+
+/**
+ * Restores a trashed folder and its whole descendant tree from Task 6's
+ * manifest (`.trash/meta/folder-<folderId>.json`), rebuilding it at each
+ * descendant's originally recorded `parentId`/`orderIndex` (FR-5/FR-20).
+ *
+ * The top-level folder itself gets the same FR-5 treatment a restored
+ * resource gets ({@link restoreResource}): if its original parent folder no
+ * longer exists, it falls back to the project root (`relocated: true`); if
+ * its name collides with a sibling already at the destination, it is
+ * suffixed `" (restored)"`, `" (restored 2)"`, ... (`renamed: true`).
+ *
+ * Every descendant folder is restored verbatim at its manifest-recorded
+ * `parentId`/`orderIndex` — no relocation or rename logic is applied to a
+ * descendant folder, only to the top-level one — and every descendant
+ * resource is restored via {@link restoreResource}, reusing its own
+ * root-fallback/collision-suffix/re-linking/re-indexing behavior. The
+ * manifest's own entry order is a pre-order walk (a folder always precedes
+ * its own descendants), so processing it in order guarantees every
+ * descendant folder's parent already exists in the live tree by the time it
+ * is restored.
+ *
+ * Throws if no Task 6 manifest exists for `folderId`.
+ */
+export async function restoreFolder(
+  projectRoot: string,
+  folderId: UUID,
+): Promise<RestoreFolderResult> {
+  const { trashFoldersDir } = trashPaths(projectRoot);
+
+  let manifest: TrashFolderManifest;
+  try {
+    const raw = await readFile(
+      trashFolderManifestPath(projectRoot, folderId),
+      "utf8",
+    );
+    manifest = TrashFolderManifestSchema.parse(JSON.parse(raw));
+  } catch (err: unknown) {
+    if (isEnoent(err)) {
+      throw new Error(`No trash manifest found for folder: ${folderId}`);
+    }
+    throw err;
+  }
+
+  const trashedDescriptors = await collectFolderDescriptors(trashFoldersDir);
+  const trashedByFolderId = new Map(
+    trashedDescriptors.map((fd) => [fd.folder.id, fd]),
+  );
+
+  // Restore the top-level folder's own descriptor, applying the same
+  // root-fallback and collision-suffix rules Task 8 applies to a restored
+  // resource.
+  const originalParentId = manifest.folder.parentId ?? null;
+  let destinationParentId: UUID | null = originalParentId;
+  let isRelocated = false;
+  if (originalParentId !== null) {
+    const isParentStillPresent = await folderExists(
+      projectRoot,
+      originalParentId,
+    );
+    if (!isParentStillPresent) {
+      destinationParentId = null;
+      isRelocated = true;
+    }
+  }
+
+  const resolvedName = await resolveRestoreFolderName(
+    projectRoot,
+    destinationParentId,
+    manifest.folder.name,
+  );
+
+  const restoredTopFolder: Folder = {
+    ...manifest.folder,
+    parentId: destinationParentId,
+    name: resolvedName.name,
+  };
+  await writeResourceToFile(projectRoot, restoredTopFolder);
+
+  const topTrashedDir = trashedByFolderId.get(folderId)?.dirPath;
+  if (topTrashedDir) {
+    await rm(topTrashedDir, { recursive: true, force: true });
+  }
+
+  // Restore every descendant, in manifest order (a pre-order walk — a
+  // folder's own entry always precedes its descendants' entries), so each
+  // descendant folder's parent already exists by the time it is processed.
+  const restoredDescendantResourceIds: UUID[] = [];
+  const restoredDescendantFolderIds: UUID[] = [];
+
+  for (const entry of manifest.descendants) {
+    if (entry.kind === "folder") {
+      const descriptor = trashedByFolderId.get(entry.id);
+      if (!descriptor) continue;
+      await writeResourceToFile(projectRoot, descriptor.folder);
+      await rm(descriptor.dirPath, { recursive: true, force: true });
+      restoredDescendantFolderIds.push(entry.id);
+    } else {
+      await restoreResource(projectRoot, entry.id);
+      restoredDescendantResourceIds.push(entry.id);
+    }
+  }
+
+  await rm(trashFolderManifestPath(projectRoot, folderId), { force: true });
+
+  return {
+    restoredName: resolvedName.name,
+    relocated: isRelocated,
+    renamed: resolvedName.renamed,
+    restoredDescendantResourceIds,
+    restoredDescendantFolderIds,
+  };
+}
+
+/**
  * Permanently removes a resource's trashed revisions (FR-6/FR-18 step 3 of
  * the ordered purge sweep).
  *
@@ -978,6 +1146,7 @@ export default {
   softDeleteResource,
   softDeleteFolder,
   restoreResource,
+  restoreFolder,
   purgeResource,
   purgeTrashedRevisions,
 };

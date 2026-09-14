@@ -366,7 +366,7 @@ trash-folder-restore` and `pnpm --filter getwrite-frontend typecheck` pass.
 **Depends on:** 6, 8
 **Estimate:** 8
 **POS:** task_fe07f8be
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: The FR-18 ordered, resumable purge sweep (FR-6, FR-7, FR-10, FR-18)
 
