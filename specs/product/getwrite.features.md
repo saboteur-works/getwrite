@@ -397,17 +397,37 @@ is outstanding (tracked separately in the user's Electron Distribution TODO).
 
 ### Feature 26: Trash UI — browse, restore, purge — Not started
 **Value:** A writer on deadline recovers an accidentally deleted resource
-from within the app, with no filesystem detour.
-**Vertical slice:** Trash UI surface (list, restore action, purge action),
-wiring to the existing restore/purge model functions.
+from within the app, with no filesystem detour, and can trust that
+permanently emptying Trash actually removes everything it should.
+**Vertical slice:** A per-project Trash view listing soft-deleted items;
+bulk restore, bulk permanent delete, and "Empty trash," each requiring
+explicit confirmation; folder delete cascading into Trash as a single
+restorable/purgeable unit; non-blocking restore (falls back to the project
+root and applies a name-collision suffix, with a notice to the writer when
+that happens); a confirmed full purge sweep that removes a resource's
+files, sidecar, revisions, and its entries in the inverted index,
+backlinks, the mention index, and any authored relationship edges naming
+it; and a record of references nullified by deletion that re-links on
+restore, reporting any still-dangling reference. Ships on hosted web and
+Electron desktop; native Android transport parity is deferred.
 **Requirements covered:** FR-28
 **User stories:** US-11
 **Depends on:** Feature 1
 **Branch suggestion:** feat/trash-ui
-**Notes:** Not started as a shipped, user-facing feature. The underlying
-soft-delete model (`trash.ts`, `.trash/` directory, restore/purge functions)
-already exists and is not itself gated by this feature — only the UI is
-missing.
+**Notes:** Not started as a shipped, user-facing feature. Scope fixed by
+owner decisions (2026-09-14, resolving OQ-24 through OQ-30): project-scoped
+Trash view, no workspace-wide aggregation (OQ-24); multi-select
+restore/delete and "Empty trash," no auto-purge (OQ-25); folder-delete
+cascade into Trash (OQ-26); non-blocking restore with relocation/rename
+notice (OQ-27); confirmed purge removing files, sidecar, revisions,
+inverted index, backlinks, mention index, and authored relationship edges
+(OQ-28); hosted web and Electron desktop at first ship, Android deferred
+(OQ-29); restore re-links nullified references and reports any still
+outstanding (OQ-30). Not formally listed as a dependency (this feature
+list's ordering ties "Depends on" to build order, and Feature 26 sits
+before Feature 38), but the purge sweep relies on already-shipped Feature
+38's `removeEntityRelationshipsForEntity` (`entity-relationships.ts`) to
+remove relationship edges naming a purged entity.
 
 ### Feature 27: Search across all retained revisions — Not started
 **Value:** A plain-file writer finds a match that exists in an older
@@ -1144,7 +1164,7 @@ prior import's identity and a diff/merge strategy that neither of [FR-42 nor
 FR-43] defines." Split 2026-09-11 (owner decision) from FR-42/FR-43, which
 are one-shot only. Deferred, not scheduled against a fixed date.
 
-### Feature 45: Word/DOCX project importer — Not started
+### Feature 45: Word/DOCX project importer — Shipped
 **Value:** A novelist migrating from Word imports their existing DOCX
 project structure into GetWrite instead of manually re-creating it, from
 either a single `.docx` file or a folder of them, without touching the
@@ -1161,22 +1181,26 @@ one-shot conversion into a fresh project of a writer-chosen project type.
 **User stories:** US-18
 **Depends on:** Feature 2, Feature 31, and Feature 43
 **Branch suggestion:** feat/docx-importer
-**Notes:** Not started; no code exists yet. Owner decision (2026-09-13):
-FR-33 moved from Later Requirements into In Progress Requirements in the
-parent spec and is being carried forward through the pipeline as this
-feature. Its scope is settled by the parent spec's resolved OQ-19 through
-OQ-23 (source-kind auto-detection and split rule; content fidelity bar;
-CLI+UI delivery on Electron only; DOCX-specific skip-and-report; one-shot
-import with a writer-chosen project type). This feature carries the ID
-previously held together with Scrivener import under the old combined
-Feature 31 entry; split 2026-09-11 (owner decision) once Scrivener import
-became committed, current work (then FR-42, now Features 31/43/44)
-distinct from Word/DOCX import. Feature 31 (the Scrivener CLI importer)
-and Feature 43 (its desktop UI wrapper) have since shipped; per resolved
-OQ-21, this feature's UI follows Feature 43's native-picker pattern and its
-CLI follows Feature 31's command-registration precedent, though DOCX
-parsing itself is new work with no equivalent Scrivener conversion logic to
-reuse.
+**Notes:** Shipped. Merged to `main` on 2026-09-13 as merge commit
+`15d77139` ("Merge pull request #199 from
+saboteur-works/feat/docx-importer"). Its feature spec,
+`specs/features/docx-importer.md`, is the authoritative record of the
+shipped scope. Owner decision (2026-09-13): FR-33 moved from Later
+Requirements into In Progress Requirements in the parent spec and was
+carried forward through the pipeline as this feature, which has since
+shipped from there. Its scope is settled by the parent spec's resolved
+OQ-19 through OQ-23 (source-kind auto-detection and split rule; content
+fidelity bar; CLI+UI delivery on Electron only; DOCX-specific
+skip-and-report; one-shot import with a writer-chosen project type). This
+feature carries the ID previously held together with Scrivener import
+under the old combined Feature 31 entry; split 2026-09-11 (owner decision)
+once Scrivener import became committed, current work (then FR-42, now
+Features 31/43/44) distinct from Word/DOCX import. Feature 31 (the
+Scrivener CLI importer) and Feature 43 (its desktop UI wrapper) shipped
+first; per resolved OQ-21, this feature's UI follows Feature 43's
+native-picker pattern and its CLI follows Feature 31's
+command-registration precedent — DOCX parsing itself was new work with no
+equivalent Scrivener conversion logic to reuse.
 
 ### Feature 46: Scrivener UI import on hosted web — Not started
 **Value:** A novelist using GetWrite's hosted web product imports their
@@ -1327,11 +1351,11 @@ directory-picker design and no on-device staging design exist yet.
   needs 31's one-shot conversion to already exist before a re-run/merge
   strategy can build on it and has not started. 43 and 44 did not depend on
   each other and could be built in either order once 31 had shipped.
-  45 (Word/DOCX importer), now carried forward through the pipeline (owner
-  decision, 2026-09-13; parent spec FR-33), depends on the already-shipped
-  Feature 2 and, for its UI and CLI delivery pattern, the already-shipped
-  Features 31 and 43 — though its own DOCX parsing is new work with no
-  Scrivener conversion logic to reuse. 32 (joining search and
+  45 (Word/DOCX importer) has shipped, carried forward through the pipeline
+  (owner decision, 2026-09-13; parent spec FR-33) and depending on the
+  already-shipped Feature 2 and, for its UI and CLI delivery pattern, the
+  already-shipped Features 31 and 43 — its own DOCX parsing was new work
+  with no Scrivener conversion logic to reuse. 32 (joining search and
   query predicates) depends on the already-shipped Features 8 and 9. 42
   (removing an entity declaration) has shipped, having depended on the
   already-shipped Features 33 and 38 — 33 for the entity declaration it
@@ -1342,7 +1366,7 @@ directory-picker design and no on-device staging design exist yet.
   with an unmet hard dependency; Feature 31 and Feature 43 have both since
   shipped, so 44's former dependency on 31 and 46/47's former dependency on
   43 are now satisfied)
-- Not yet built: 24, 26, 27, 28, 29, 30, 32, 44, 45, 46, 47.
+- Not yet built: 24, 26, 27, 28, 29, 30, 32, 44, 46, 47.
   Everything else in this list has shipped.
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
@@ -1356,11 +1380,13 @@ directory-picker design and no on-device staging design exist yet.
   (`specs/features/scrivener-cli-importer.md`'s OQ-4: bold/italic control
   words appeared in the majority of files, Unicode escapes in under half,
   and no file exercised underline, tables, images, strikethrough, or a
-  Scrivener-specific link/annotation control word). Feature 45, now carried
-  forward through the pipeline (owner decision, 2026-09-13; parent spec
-  FR-33), still carries the equivalent format-parsing risk unmeasured for
-  DOCX — no real `.docx` sample has been surveyed the way
-  `import-inputs/The SF Sideshow.scriv` grounded Feature 31's OQ-4. Feature 43 has
+  Scrivener-specific link/annotation control word). Feature 45 has shipped
+  (carried forward through the pipeline, owner decision, 2026-09-13; parent
+  spec FR-33), and its feature spec (`specs/features/docx-importer.md`)
+  records that the equivalent format-parsing risk went unmeasured for
+  DOCX at ship time — no real `.docx` sample was surveyed the way
+  `import-inputs/The SF Sideshow.scriv` grounded Feature 31's OQ-4; testing
+  relied on synthetic fixtures instead. Feature 43 has
   since shipped: it depended on Feature 31 and did not carry Feature 31's
   former unmeasured-format risk by inheritance, since it was a UI wrapper,
   per FR-43, around already-shipped conversion logic — its own risk was
