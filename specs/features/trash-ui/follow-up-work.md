@@ -139,3 +139,68 @@ design-system decision beyond one feature's fix.
 **Raised:** 2026-09-14
 **Resolved:** [ ]
 **Resolved on:**
+
+**Update (2026-09-14):** Task 25's styling pass also applied
+`variant="destructive"` styling to the Trash toolbar's "Delete selected
+permanently" and "Empty trash" buttons, extending the same red-confirm-button
+tension from `ConfirmDialog` to these two toolbar buttons. A lead re-check
+against a dev server at HEAD `204611b7` measured the toolbar's
+`button[data-testid="trash-empty-trash"]` foreground at `#d44040` on
+background `#f5f4f0`, a contrast ratio of 4.14 at the button's ~10px text
+size (WCAG AA requires 4.5:1 at that size). See FU-9 for the full contrast
+measurement, which also covers a second, unrelated failure in the same
+component. No cause for either is established beyond the styling and color
+values reported here.
+
+### FU-8: Trash view doesn't refetch on a delete elsewhere while its own tab stays selected
+
+**What:** A lead re-check on 2026-09-14 (real-app walkthrough in Chromium
+against a dev server at HEAD `204611b7`) measured the following sequence:
+with the Trash tab already selected and showing "2 of 2 restored. Trash is
+empty.", deleting "Chapter Two" from the resource tree's row menu did not
+update the Trash view — it continued to show the prior empty-trash state
+even though `.trash/` on disk held the newly deleted resource. Clicking the
+Trash tab again (while already selected) did not trigger a refetch either.
+Switching to the Data tab and back to Trash did show the item. No cause for
+this has been investigated or established.
+
+**Why deferred:** Owner decision at the Gate 6 re-check (2026-09-14): record
+as a follow-up rather than fix in this run.
+
+**Relates to:** TrashView.tsx (general)
+**Raised:** 2026-09-14
+**Resolved:** [ ]
+**Resolved on:**
+
+### FU-9: Two color-contrast failures under a strict (non-`"todo"`) axe run of `TrashView` stories, introduced between Gate 5 and Task 25
+
+**What:** `pnpm --filter getwrite-frontend test-storybook stories/WorkArea/TrashView` passes 7/7 as committed, because the repo's Storybook a11y
+config sets `a11y.test: "todo"` for these stories. A lead re-check on
+2026-09-14, run outside the Bash sandbox with `a11y.test` temporarily
+overridden to `"error"`, measured 6 of 7 `TrashView` stories failing on
+`color-contrast` only — no structural rule failures were observed in that
+run. The two failing elements were:
+
+- `button[data-testid="trash-empty-trash"]`: foreground `#d44040` on
+  background `#f5f4f0`, contrast ratio 4.14 at ~10px text (WCAG AA requires
+  4.5:1 at that size).
+- Nested-row metadata text (`li.workarea-list-item-meta`): foreground
+  `#7a7870` on background `#f5f4f0`, contrast ratio 4.01 at ~10px text.
+
+The same strict run passed 7/7 before Task 25's styling changes landed, so
+the regression is bounded to that commit's styling work, though no specific
+mechanism within it has been verified as the cause. The `#d44040` value
+matches `Button.tsx`'s `destructive` variant (see FU-7, which the "Empty
+trash" and "Delete selected permanently" toolbar buttons also use); the
+`#7a7870` value comes from the shared `workarea-list-item-meta` class, used
+outside the Trash view as well.
+
+**Why deferred:** Owner decision at the Gate 6 re-check (2026-09-14): record
+as a follow-up rather than fix in this run. The repo's stories already ship
+with `a11y.test: "todo"`, so this finding is not currently blocking the
+default (non-strict) Storybook a11y run Task 19's own gate relied on.
+
+**Relates to:** Task 25, FU-7
+**Raised:** 2026-09-14
+**Resolved:** [ ]
+**Resolved on:**
