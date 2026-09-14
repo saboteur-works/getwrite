@@ -274,7 +274,7 @@ typecheck` pass.
 **Depends on:** 2, 3, 4, 5
 **Estimate:** 8
 **POS:** task_0dc2c852
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Purge-sweep primitives — relationship edges, revisions, idempotent index removal (FR-6, FR-10, FR-18 steps 1-3)
 
