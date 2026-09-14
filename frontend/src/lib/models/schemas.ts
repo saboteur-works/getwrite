@@ -463,6 +463,43 @@ export type TrashRefRecordEntry = z.infer<typeof TrashRefRecordEntrySchema>;
 export type TrashRefRecord = z.infer<typeof TrashRefRecordSchema>;
 
 /**
+ * Single descendant entry in a trash folder manifest (FR-20, resolved
+ * OQ-6): one folder or resource that lived beneath the trashed folder at
+ * delete time, capturing the `parentId`/`orderIndex` pair restore needs to
+ * rebuild the tree.
+ */
+export const TrashFolderManifestEntrySchema = z.object({
+  id: UUID,
+  kind: z.enum(["resource", "folder"]),
+  parentId: UUID.nullable(),
+  orderIndex: z.number(),
+});
+
+/**
+ * Trash folder manifest schema persisted at
+ * `.trash/meta/folder-<folderId>.json` (FR-20, resolved OQ-6): the trashed
+ * folder's own descriptor plus every descendant folder and resource id
+ * together with its `parentId` and order index at delete time, so restore
+ * can rebuild the tree.
+ */
+export const TrashFolderManifestSchema = z.object({
+  folder: FolderSchema,
+  descendants: z.array(TrashFolderManifestEntrySchema),
+});
+
+/**
+ * Inferred TypeScript shape of a single trash folder manifest entry.
+ */
+export type TrashFolderManifestEntry = z.infer<
+  typeof TrashFolderManifestEntrySchema
+>;
+
+/**
+ * Inferred TypeScript shape of a trash folder manifest.
+ */
+export type TrashFolderManifest = z.infer<typeof TrashFolderManifestSchema>;
+
+/**
  * Convenience object bundling core model schemas.
  *
  * Prefer named imports for tree-shaking in runtime bundles.
@@ -491,6 +528,8 @@ export const Schemas = {
   QueryASTSchema,
   TrashRefRecordEntrySchema,
   TrashRefRecordSchema,
+  TrashFolderManifestEntrySchema,
+  TrashFolderManifestSchema,
 };
 
 /**

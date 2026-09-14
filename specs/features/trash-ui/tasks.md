@@ -149,7 +149,7 @@ getwrite-frontend exec vitest run trash-folder-manifest-schema` and `pnpm
 **Depends on:** 1
 **Estimate:** 2
 **POS:** task_07aab304
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Move revisions into/out of `.trash/` at delete and restore time (FR-19)
 
