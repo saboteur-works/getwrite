@@ -173,7 +173,7 @@ getwrite-frontend typecheck` pass.
 **Depends on:** none
 **Estimate:** 5
 **POS:** task_d1270a92
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Persist and restore the FR-8 nullified-reference record
 

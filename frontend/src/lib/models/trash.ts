@@ -1,4 +1,4 @@
-import { mkdir, readdir, rename, rm } from "./io";
+import { mkdir, readdir, rename, rm, stat } from "./io";
 import path from "node:path";
 import {
   sidecarPathForProject,
@@ -6,6 +6,7 @@ import {
   readSidecar,
   writeSidecar,
 } from "./sidecar";
+import { revisionsBaseDir } from "./revision";
 import type { MetadataValue, UUID } from "./types";
 
 function isEnoent(err: unknown): boolean {
@@ -23,7 +24,16 @@ function trashPaths(projectRoot: string) {
     trashRoot,
     trashResourcesDir: path.join(trashRoot, "resources"),
     trashMetaDir: path.join(trashRoot, "meta"),
+    trashRevisionsDir: path.join(trashRoot, "revisions"),
   };
+}
+
+/**
+ * Returns the trash-side directory holding all revisions for a resource,
+ * mirroring `revision.ts`'s `revisionsBaseDir` layout under `.trash/`.
+ */
+function trashRevisionsBaseDir(projectRoot: string, resourceId: UUID): string {
+  return path.join(trashPaths(projectRoot).trashRevisionsDir, resourceId);
 }
 
 /**
@@ -176,6 +186,19 @@ export async function softDeleteResource(
     if (!isEnoent(err)) throw err;
   }
 
+  // Move revisions, if any, to `.trash/revisions/<resourceId>/`.
+  const revisionsSrc = revisionsBaseDir(projectRoot, resourceId);
+  try {
+    await stat(revisionsSrc);
+  } catch (err: unknown) {
+    if (!isEnoent(err)) throw err;
+    return trashRoot;
+  }
+
+  const revisionsDest = trashRevisionsBaseDir(projectRoot, resourceId);
+  await mkdir(path.dirname(revisionsDest), { recursive: true });
+  await rename(revisionsSrc, revisionsDest);
+
   return trashRoot;
 }
 
@@ -219,6 +242,19 @@ export async function restoreResource(
     // nothing to restore
     if (!isEnoent(err)) throw err;
   }
+
+  // Restore revisions, if any, from `.trash/revisions/<resourceId>/`.
+  const trashedRevisionsDir = trashRevisionsBaseDir(projectRoot, resourceId);
+  try {
+    await stat(trashedRevisionsDir);
+  } catch (err: unknown) {
+    if (!isEnoent(err)) throw err;
+    return;
+  }
+
+  const revisionsDest = revisionsBaseDir(projectRoot, resourceId);
+  await mkdir(path.dirname(revisionsDest), { recursive: true });
+  await rename(trashedRevisionsDir, revisionsDest);
 }
 
 /**
