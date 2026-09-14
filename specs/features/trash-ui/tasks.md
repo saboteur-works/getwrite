@@ -304,7 +304,7 @@ trash-purge-primitives` and `pnpm --filter getwrite-frontend typecheck` pass.
 **Depends on:** 5, 6
 **Estimate:** 5
 **POS:** task_d5f5a15b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Restore — root fallback, collision suffix, re-linking, legacy tolerance (FR-5, FR-9, FR-16, FR-22)
 

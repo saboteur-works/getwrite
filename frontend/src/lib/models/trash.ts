@@ -611,6 +611,45 @@ export async function restoreResource(
 }
 
 /**
+ * Permanently removes a resource's trashed revisions (FR-6/FR-18 step 3 of
+ * the ordered purge sweep).
+ *
+ * Prefers the current-layout path `.trash/revisions/<resourceId>/` (where
+ * {@link softDeleteResource} moves revisions as of Task 3). When that path is
+ * absent, falls back to the legacy path `revisions/<resourceId>/` directly
+ * under the project root (resolved OQ-12): a resource soft-deleted before
+ * Task 3 existed never had its revisions moved into `.trash/` at all, so a
+ * later purge must still find and delete them from where they were left.
+ *
+ * Idempotent: removing an already-absent directory at either path is a
+ * silent no-op (`rm`'s `force: true`), matching the idempotency FR-6/FR-18
+ * require of every purge-sweep step.
+ */
+export async function purgeTrashedRevisions(
+  projectRoot: string,
+  resourceId: UUID,
+): Promise<void> {
+  const trashedRevisionsDir = trashRevisionsBaseDir(projectRoot, resourceId);
+  if (await pathExists(trashedRevisionsDir)) {
+    await rm(trashedRevisionsDir, { recursive: true, force: true });
+    return;
+  }
+
+  const legacyRevisionsDir = revisionsBaseDir(projectRoot, resourceId);
+  await rm(legacyRevisionsDir, { recursive: true, force: true });
+}
+
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await stat(p);
+    return true;
+  } catch (err: unknown) {
+    if (isEnoent(err)) return false;
+    throw err;
+  }
+}
+
+/**
  * Permanently remove resource and sidecar from the trash area.
  */
 export async function purgeResource(
@@ -647,4 +686,5 @@ export default {
   softDeleteFolder,
   restoreResource,
   purgeResource,
+  purgeTrashedRevisions,
 };
