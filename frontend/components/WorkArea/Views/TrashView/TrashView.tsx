@@ -372,17 +372,24 @@ export default function TrashView({
           kept separate from `report`'s generic count above rather than
           folded into it, since each names a specific item and a specific
           reason, not a tally. Lives outside the `!isEmpty` gate for the same
-          reason `report` does (see above). */}
+          reason `report` does (see above).
+
+          Task 19 Part B: `role="status"` lives on the inner `<span>`, not the
+          `<li>` itself — `status` isn't an ARIA-allowed role for `<li>`
+          (axe's `aria-allowed-role`), and overriding an `<li>`'s implicit
+          `listitem` role away from `listitem` also breaks `<ul>`'s
+          direct-children contract (axe's `list`). The `<span>` still carries
+          the full notice text, so `getByRole("status")` finds the same
+          accessible content as before. */}
       {restoreNotices.length > 0 && (
         <ul data-testid="trash-restore-notices">
           {restoreNotices.map((notice, index) => (
             <li
               key={`${notice.id}-${notice.kind}-${index}`}
-              role="status"
               data-testid="trash-restore-notice"
               data-trash-restore-notice-kind={notice.kind}
             >
-              {notice.text}
+              <span role="status">{notice.text}</span>
             </li>
           ))}
         </ul>
@@ -428,31 +435,31 @@ export default function TrashView({
             </button>
           </div>
 
-          {/* `role="listbox"`/`aria-multiselectable` + each top-level row's
-              `role="option"`/`aria-selected` expose the multi-select state
-              to assistive tech (Task 18). The actual toggle control stays
-              the native `<input type="checkbox">` inside each row — Tab
-              reaches it directly and Space toggles it natively — rather than
-              making the `<li>` itself the roving-tabindex focus stop a
-              from-scratch listbox would need; that keeps every action
-              reachable by keyboard without hand-rolling arrow-key
-              navigation for a list whose real interaction model is
-              per-row checkboxes plus page-level buttons, not option
-              selection. */}
-          <ul
-            data-testid="trash-list"
-            role="listbox"
-            aria-multiselectable="true"
-            aria-label="Trash items"
-          >
+          {/* Task 19 Part B: this list previously carried `role="listbox"`/
+              `aria-multiselectable` on the `<ul>` and `role="option"`/
+              `aria-selected` on each row, layered on top of the native
+              `<input type="checkbox">` already inside each row. That
+              combination is an invalid ARIA pattern — a listbox `option`
+              must not contain a focusable descendant, and axe's
+              `nested-interactive` rule flags exactly that (a real,
+              independently-focusable checkbox nested inside an element with
+              an interactive `option` role). The multi-select state doesn't
+              need a redundant listbox/option layer to be exposed to
+              assistive tech: each row's own `<input type="checkbox">`
+              already exposes checked/unchecked natively, and the
+              `trash-selection-count` live region below announces the
+              running total — both untouched by this change. Dropping the
+              listbox/option roles also resolves axe's `list` rule (a `<ul>`
+              with a `role` override elsewhere in this file previously took
+              its children out of the plain listitem contract). */}
+          <ul data-testid="trash-list" aria-label="Trash items">
             {resources.map((resource) => (
               <li
                 key={resource.id}
                 data-testid="trash-row"
                 data-trash-kind="resource"
                 data-trash-id={resource.id}
-                role="option"
-                aria-selected={selectedIds.has(resource.id)}
+                data-trash-selected={selectedIds.has(resource.id)}
               >
                 <input
                   type="checkbox"
@@ -472,8 +479,7 @@ export default function TrashView({
                 data-testid="trash-row"
                 data-trash-kind="folder"
                 data-trash-id={folder.id}
-                role="option"
-                aria-selected={selectedIds.has(folder.id)}
+                data-trash-selected={selectedIds.has(folder.id)}
               >
                 <input
                   type="checkbox"
