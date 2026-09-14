@@ -61,6 +61,7 @@ import DataView from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/Views/TimelineView";
 import EntityRosterView from "../WorkArea/Views/EntityRosterView/EntityRosterView";
 import EntityRelationshipGraphView from "../WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
+import TrashView from "../WorkArea/Views/TrashView/TrashView";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import {
@@ -1437,23 +1438,16 @@ export default function AppShell({
                             }
 
                             // Same reachability concern as the roster/graph
-                            // above: Trash is project-wide (it will read
-                            // across every soft-deleted resource, not the
-                            // current selection) and, per FR-1, is never
-                            // gated behind a feature flag or a selection, so
-                            // it is handled here, before the
-                            // `!selectedResource` guard below. The real
-                            // trash-content container is built in a later
-                            // task (Feature 26 Task 15); this renders a
-                            // placeholder just to prove the routing works.
+                            // above: Trash is project-wide (it reads across
+                            // every soft-deleted resource, not the current
+                            // selection) and, per FR-1, is never gated
+                            // behind a feature flag or a selection, so it is
+                            // handled here, before the `!selectedResource`
+                            // guard below. `TrashView` (Feature 26 Task 15)
+                            // owns its own `listTrash` fetch and replaces
+                            // the earlier routing-only placeholder.
                             if (view === "trash") {
-                              return (
-                                <div>
-                                  <h2 className="workarea-section-title">
-                                    Trash
-                                  </h2>
-                                </div>
-                              );
+                              return <TrashView />;
                             }
 
                             if (!selectedResource)

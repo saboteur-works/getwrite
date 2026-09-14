@@ -571,7 +571,7 @@ TrashView` and `pnpm --filter getwrite-frontend typecheck` pass.
 **Depends on:** 12, 14
 **Estimate:** 8
 **POS:** task_d1fadcdf
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: `resourcesSlice` folder-cascade removal fix (FR-3)
 
