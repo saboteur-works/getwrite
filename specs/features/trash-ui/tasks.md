@@ -750,7 +750,7 @@ further dependency edit is needed there.
 **Depends on:** 18
 **Estimate:** 5
 **POS:** task_b22c0115
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Legacy-layout test coverage and knip cleanup gate (FR-22, FR-23)
 

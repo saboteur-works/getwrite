@@ -16,21 +16,21 @@ export function collectFolderDescendantIds(
   folderId: string,
 ): Set<string> {
   const idsToRemove = new Set<string>([folderId]);
-  let added = true;
-  while (added) {
-    added = false;
+  let didAddId = true;
+  while (didAddId) {
+    didAddId = false;
     for (const f of folders) {
       const parentId = f.parentId ?? null;
       if (parentId && idsToRemove.has(parentId) && !idsToRemove.has(f.id)) {
         idsToRemove.add(f.id);
-        added = true;
+        didAddId = true;
       }
     }
     for (const r of resources) {
       const parentId = r.folderId ?? null;
       if (parentId && idsToRemove.has(parentId) && !idsToRemove.has(r.id)) {
         idsToRemove.add(r.id);
-        added = true;
+        didAddId = true;
       }
     }
   }
