@@ -37,7 +37,6 @@
 import { createTransport } from "../../store/transport/create-transport";
 import type {
   RestoredReferenceInfo,
-  TrashedFolderDescendant,
   TrashedFolderEntry,
   TrashedResourceEntry,
 } from "../models/trash";
@@ -45,12 +44,13 @@ import type {
 // `RestoredReferenceInfo` is used internally by `RestoreResult` below but,
 // unlike the others, has no external consumer importing it from this module
 // specifically (callers needing it import it directly from
-// `../models/trash`) — so it is not re-exported here.
-export type {
-  TrashedFolderDescendant,
-  TrashedFolderEntry,
-  TrashedResourceEntry,
-};
+// `../models/trash`) — so it is not re-exported here. Task 26 (knip cleanup):
+// `TrashedFolderDescendant` was previously re-exported here too but, like
+// `RestoredReferenceInfo`, has no consumer importing it from this module
+// specifically (`TrashedFolderEntry.descendants` already carries its shape
+// through `TrashedFolderEntry`'s own re-export below) — dropped for the same
+// reason.
+export type { TrashedFolderEntry, TrashedResourceEntry };
 
 /** Combined response shape of `GET /api/project/:id/trash`. */
 export interface TrashListing {

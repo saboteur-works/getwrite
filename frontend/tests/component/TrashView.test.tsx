@@ -139,6 +139,14 @@ beforeEach(() => {
     json: async () => ({}),
     text: async () => "",
   })) as unknown as typeof globalThis.fetch;
+
+  // Task 26: `vi.restoreAllMocks()` below only restores real `vi.spyOn`
+  // spies — it leaves a plain `vi.fn()` mock's own call history (`mock.calls`)
+  // intact across tests, so a `not.toHaveBeenCalled()` regression assertion
+  // in a later test would otherwise see an earlier test's call. Clear the
+  // trash API mocks' call history explicitly at the start of every test.
+  mockedRestoreTrashItems.mockClear();
+  mockedPurgeTrashItems.mockClear();
 });
 
 afterEach(() => {
@@ -302,6 +310,10 @@ describe("TrashView — batch restore/purge/Empty trash controls (Task 17)", () 
     fireEvent.click(screen.getByTestId("trash-restore-selected"));
 
     const dialog = await screen.findByRole("dialog");
+    // Task 26 (FR-2/FR-13/OQ-9 regression): clicking "Restore selected" opens
+    // the confirmation dialog but must not itself call `restoreTrashItems` —
+    // only an explicit confirm click inside the dialog may.
+    expect(mockedRestoreTrashItems).not.toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole("button", { name: "Restore" }));
 
     await waitFor(() =>
@@ -345,6 +357,10 @@ describe("TrashView — batch restore/purge/Empty trash controls (Task 17)", () 
     fireEvent.click(screen.getByTestId("trash-empty-trash"));
 
     const dialog = await screen.findByRole("dialog");
+    // Task 26 (FR-2/FR-13 regression): clicking "Empty trash" opens the
+    // confirmation dialog but must not itself call `purgeTrashItems` — only
+    // an explicit confirm click inside the dialog may.
+    expect(mockedPurgeTrashItems).not.toHaveBeenCalled();
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Delete permanently" }),
     );
@@ -386,6 +402,11 @@ describe("TrashView — batch restore/purge/Empty trash controls (Task 17)", () 
     fireEvent.click(screen.getByTestId("trash-delete-selected"));
 
     const dialog = await screen.findByRole("dialog");
+    // Task 26 (FR-2/FR-13 regression): clicking "Delete selected permanently"
+    // opens the confirmation dialog but must not itself call
+    // `purgeTrashItems` — only an explicit confirm click inside the dialog
+    // may.
+    expect(mockedPurgeTrashItems).not.toHaveBeenCalled();
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Delete permanently" }),
     );

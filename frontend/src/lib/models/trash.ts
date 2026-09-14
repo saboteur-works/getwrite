@@ -1407,7 +1407,12 @@ export interface TrashedResourceEntry {
  * comes up empty (an unreadable/missing sidecar or descriptor), never
  * silently.
  */
-export interface TrashedFolderDescendant extends TrashFolderManifestEntry {
+// Task 26 (knip cleanup): not `export`ed — nothing outside this file imports
+// it by name (`TrashedFolderEntry.descendants` below already carries this
+// shape through its own exported field type without a caller needing to name
+// it directly), and `lib/api/trash.ts`'s prior re-export of it was itself
+// unused for the same reason.
+interface TrashedFolderDescendant extends TrashFolderManifestEntry {
   name: string;
 }
 
