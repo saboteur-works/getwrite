@@ -279,4 +279,73 @@ describe("restoreResource (Task 8, FR-5/FR-9/FR-16/FR-22)", () => {
       await removeDirRetry(projectRoot);
     }
   });
+
+  it("removes the ref record file (Task 23, FR-8 clarified) once a nullified reference has been processed on restore", async () => {
+    const projectRoot = await makeProjectRoot();
+    try {
+      const target = createTextResource({ name: "Alice", plainText: "" });
+      await writeResourceToFile(projectRoot, target);
+
+      const referencing = createTextResource({
+        name: "Referencing",
+        plainText: "",
+        userMetadata: { pov: { id: target.id, name: "Alice" } },
+      });
+      await writeResourceToFile(projectRoot, referencing);
+
+      const entries = await nullifyResourceRefs(
+        projectRoot,
+        target.id,
+        "Alice",
+        ["pov"],
+      );
+      await writeTrashRefRecord(projectRoot, target.id, entries);
+
+      await softDeleteResource(projectRoot, target.id);
+
+      const refRecordPath = path.join(
+        projectRoot,
+        ".trash",
+        "meta",
+        `refs-${target.id}.json`,
+      );
+      expect(
+        await fs
+          .stat(refRecordPath)
+          .then(() => true)
+          .catch(() => false),
+      ).toBe(true);
+
+      await restoreResource(projectRoot, target.id);
+
+      expect(
+        await fs
+          .stat(refRecordPath)
+          .then(() => true)
+          .catch(() => false),
+      ).toBe(false);
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
+  it("does not throw when restoring a legacy item that had no ref record to begin with (resolved OQ-12)", async () => {
+    const projectRoot = await makeProjectRoot();
+    try {
+      const resource = createTextResource({
+        name: "Legacy Item",
+        plainText: "",
+      });
+      await writeResourceToFile(projectRoot, resource);
+
+      // Soft-delete directly, skipping nullifyResourceRefs/writeTrashRefRecord
+      // — simulating a resource trashed before FR-8 existed.
+      await softDeleteResource(projectRoot, resource.id);
+
+      const result = await restoreResource(projectRoot, resource.id);
+      expect(result.referencesNotRestored).toBe("no-record");
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
 });

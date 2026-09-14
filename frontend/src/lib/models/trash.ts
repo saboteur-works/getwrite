@@ -892,6 +892,13 @@ export async function restoreResource(
     const relinked = await relinkResourceRefs(projectRoot, resourceId, record);
     referencesRestored = relinked.restored;
     referencesNotRestored = relinked.notRestored;
+
+    // FR-8 (clarified at Gate 6): once a ref record has been processed on
+    // restore — whether or not any of its entries were still re-linkable —
+    // it is consumed and removed, so no trace remains post-restore. A
+    // legacy item with no record at all (the `else` branch, "no-record")
+    // has nothing to remove here.
+    await rm(trashRefRecordPath(projectRoot, resourceId), { force: true });
   }
 
   return {

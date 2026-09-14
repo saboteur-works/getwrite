@@ -59,7 +59,11 @@ import { resolveInitialRevisionName } from "./resource-revision";
 import { readSidecar, writeSidecar } from "./sidecar";
 import { renameFolderById } from "./folder-utils";
 import { getSchema } from "./metadata-schema";
-import { nullifyResourceRefs, softDeleteResource } from "./trash";
+import {
+  nullifyResourceRefs,
+  softDeleteResource,
+  writeTrashRefRecord,
+} from "./trash";
 import { generateUUID } from "./uuid";
 import type {
   AnyResource,
@@ -310,12 +314,19 @@ export async function deleteResourceCore(
     // Schema unreadable — proceed without nullification
   }
 
-  await nullifyResourceRefs(
+  const clearedEntries = await nullifyResourceRefs(
     projectRoot,
     resourceId,
     deletedName,
     resourceRefKeys,
   );
+
+  // FR-8 (clarified at Gate 6): every delete going through this path writes
+  // a ref record, even one with an empty `entries` array when nothing was
+  // nullified — mirroring `softDeleteFolder`'s per-descendant loop in
+  // `trash.ts`, which already did this. Total record absence is reserved
+  // exclusively for legacy items (FR-22).
+  await writeTrashRefRecord(projectRoot, resourceId, clearedEntries);
 
   await softDeleteResource(projectRoot, resourceId);
 }

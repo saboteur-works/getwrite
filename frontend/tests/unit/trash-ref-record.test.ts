@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -9,6 +9,9 @@ import {
   readTrashRefRecord,
 } from "../../src/lib/models/trash";
 import { readSidecar } from "../../src/lib/models/sidecar";
+import { deleteResourceCore } from "../../src/lib/models/resource-crud-core";
+import { createTextResource } from "../../src/lib/models/resource-factory";
+import { writeResourceToFile } from "../../src/lib/models/resource-persistence";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 async function makeProjectDir(): Promise<string> {
@@ -171,5 +174,71 @@ describe("writeTrashRefRecord / readTrashRefRecord (Task 4, FR-8, resolved OQ-12
     } finally {
       await removeDirRetry(dir);
     }
+  });
+});
+
+describe("deleteResourceCore — always writes a ref record (Task 23, FR-8 clarified)", () => {
+  const tmpDirs: string[] = [];
+
+  afterEach(async () => {
+    while (tmpDirs.length > 0) {
+      const dir = tmpDirs.pop();
+      if (dir) await removeDirRetry(dir);
+    }
+  });
+
+  async function withProjectsDirEnv<T>(
+    projectsDir: string,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    try {
+      return await fn();
+    } finally {
+      process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+    }
+  }
+
+  it("soft-deleting a resource with zero nullifiable references still writes an empty-entries ref record, not no record at all", async () => {
+    const projectsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-trash-ref-record-delete-core-"),
+    );
+    tmpDirs.push(projectsDir);
+
+    const resource = createTextResource({ name: "Chapter One", plainText: "" });
+    const projectId = crypto.randomUUID();
+    const projectPath = path.join(projectsDir, projectId);
+    await fs.mkdir(projectPath, { recursive: true });
+    await fs.writeFile(
+      path.join(projectPath, "project.json"),
+      JSON.stringify({ config: {} }, null, 2),
+      "utf8",
+    );
+    await writeResourceToFile(projectPath, resource);
+    await fs.mkdir(path.join(projectPath, "meta"), { recursive: true });
+    await fs.writeFile(
+      path.join(projectPath, "meta", `resource-${resource.id}.meta.json`),
+      JSON.stringify({ name: "Chapter One" }, null, 2),
+      "utf8",
+    );
+
+    await withProjectsDirEnv(projectsDir, async () => {
+      await deleteResourceCore(projectId, resource.id);
+    });
+
+    const refRecordPath = path.join(
+      projectPath,
+      ".trash",
+      "meta",
+      `refs-${resource.id}.json`,
+    );
+    const raw = await fs.readFile(refRecordPath, "utf8");
+    const parsed = JSON.parse(raw) as {
+      resourceId: string;
+      entries: unknown[];
+    };
+    expect(parsed.resourceId).toBe(resource.id);
+    expect(parsed.entries).toEqual([]);
   });
 });
