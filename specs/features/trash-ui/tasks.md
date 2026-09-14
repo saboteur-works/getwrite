@@ -549,7 +549,7 @@ viewSwitcher` and `pnpm --filter getwrite-frontend typecheck` pass.
 **Depends on:** none
 **Estimate:** 3
 **POS:** task_b6038f71
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: `TrashView` container — list, nested folder display (FR-1, FR-4)
 

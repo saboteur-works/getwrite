@@ -1298,7 +1298,8 @@ export default function AppShell({
                       {(selectedResource && combined) ||
                       view === "data" ||
                       view === "entityRoster" ||
-                      view === "entityGraph"
+                      view === "entityGraph" ||
+                      view === "trash"
                         ? (() => {
                             if (view === "data") {
                               const queryResources = activeSmartFolderId
@@ -1433,6 +1434,26 @@ export default function AppShell({
                                   }}
                                 />
                               ) : null;
+                            }
+
+                            // Same reachability concern as the roster/graph
+                            // above: Trash is project-wide (it will read
+                            // across every soft-deleted resource, not the
+                            // current selection) and, per FR-1, is never
+                            // gated behind a feature flag or a selection, so
+                            // it is handled here, before the
+                            // `!selectedResource` guard below. The real
+                            // trash-content container is built in a later
+                            // task (Feature 26 Task 15); this renders a
+                            // placeholder just to prove the routing works.
+                            if (view === "trash") {
+                              return (
+                                <div>
+                                  <h2 className="workarea-section-title">
+                                    Trash
+                                  </h2>
+                                </div>
+                              );
                             }
 
                             if (!selectedResource)
