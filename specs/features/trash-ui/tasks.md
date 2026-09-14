@@ -1003,7 +1003,7 @@ rather than resolving names client-side.
 **Depends on:** 22
 **Estimate:** 5
 **POS:** task_a8d83811
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Finding 5 — style `TrashView` with the project's UI primitives
 
