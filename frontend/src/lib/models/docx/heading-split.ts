@@ -103,7 +103,7 @@ export const UNTITLED_SECTION_TITLE = "Untitled";
  * {@link UNTITLED_SECTION_TITLE}-based placeholder. Task 9's orchestrator
  * uses this to decide the FR-14 no-heading/preamble naming rule and the
  * FR-6(h) report. */
-export type DocxSectionTitleSource = "heading" | "auto";
+type DocxSectionTitleSource = "heading" | "auto";
 
 /**
  * One heading-delimited (or, under `"none"`/`noHeadingFound`, whole-document)

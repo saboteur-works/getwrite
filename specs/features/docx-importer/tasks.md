@@ -891,7 +891,7 @@ shows **zero** findings.
 **Depends on:** 20, 21, 22
 **Estimate:** 3
 **POS:** task_a2a2219c
-**Done:** [ ]
+**Done:** [x]
 
 ## FR coverage map
 

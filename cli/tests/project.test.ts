@@ -461,7 +461,7 @@ describe("getwrite-cli project:import-docx", () => {
       expect.stringContaining("already exists and is not empty"),
     );
     const [refusalMessage] = errorSpy.mock.calls.find(
-      ([message]) =>
+      ([message]: [unknown]) =>
         typeof message === "string" &&
         message.includes("already exists and is not empty"),
     ) as [string];
