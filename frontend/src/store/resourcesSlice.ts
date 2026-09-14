@@ -6,7 +6,11 @@ import {
 } from "@reduxjs/toolkit";
 import { AnyResource, Folder } from "../lib/models";
 import { renameMetadataFieldKey } from "./projectsSlice";
-import { reorderResources, ReorderPayload } from "../lib/api/resources";
+import {
+  collectFolderDescendantIds,
+  reorderResources,
+  ReorderPayload,
+} from "../lib/api/resources";
 import { fetchEntityAliasTable } from "./entityAliasTableSlice";
 
 interface ResourcesState {
@@ -152,9 +156,24 @@ const resourcesSlice = createSlice({
       state.folders = Array.from(folderMap.values());
       return state;
     },
+    /**
+     * Removes a resource or folder — plus, when the target is a folder,
+     * every descendant folder/resource beneath it — from client state.
+     *
+     * Deleting a folder cascades on disk (`softDeleteFolder`, Task 6); this
+     * mirrors that cascade client-side using the same `collectFolderDescendantIds`
+     * helper `app/(app)/page.tsx`'s delete handler already uses, so a
+     * deleted folder's descendants no longer linger in the tree until the
+     * next full reload (FR-3, Task 16).
+     */
     removeResource(state, action: PayloadAction<string>) {
-      state.resources = state.resources.filter((r) => r.id !== action.payload);
-      state.folders = state.folders.filter((f) => f.id !== action.payload);
+      const targetId = action.payload;
+      const isFolder = state.folders.some((f) => f.id === targetId);
+      const idsToRemove = isFolder
+        ? collectFolderDescendantIds(state.folders, state.resources, targetId)
+        : new Set([targetId]);
+      state.resources = state.resources.filter((r) => !idsToRemove.has(r.id));
+      state.folders = state.folders.filter((f) => !idsToRemove.has(f.id));
       return state;
     },
   },

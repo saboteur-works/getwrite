@@ -599,7 +599,7 @@ vitest run resourcesSlice` passes.
 **Depends on:** 13, 15
 **Estimate:** 5
 **POS:** task_bdadf61f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Multi-select restore/purge/"Empty trash" controls, `ConfirmDialog`, batch report (FR-2, FR-13, FR-21)
 
