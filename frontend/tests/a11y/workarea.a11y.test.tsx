@@ -50,8 +50,8 @@ describe("a11y: WorkArea view switcher keyboard navigation (T036)", () => {
     );
 
     await user.keyboard("{End}");
-    expect(screen.getByRole("tab", { name: /Graph/i })).toHaveFocus();
-    expect(screen.getByRole("tab", { name: /Graph/i })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: /Trash/i })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: /Trash/i })).toHaveAttribute(
       "aria-selected",
       "true",
     );
