@@ -215,7 +215,7 @@ Licence: MPL-2.0. This supersedes the Gate 3-approved `vitest-axe` pick per
 the owner's Gate 4 decision recorded in Task 1 and in the spec's OQ-2
 amendment.
 **POS:** task_e9426456
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Diff and sync `saboteur-base.css`, repoint the secondary-text tokens (FR-5, FR-6, FR-15, FR-16, FR-17)
 
