@@ -395,7 +395,7 @@ Windows code-signing, electron-builder packaging config changes.
 **Notes:** Partial — build and packaging already ship; signing/notarization
 is outstanding (tracked separately in the user's Electron Distribution TODO).
 
-### Feature 26: Trash UI — browse, restore, purge — Not started
+### Feature 26: Trash UI — browse, restore, purge — Shipped
 **Value:** A writer on deadline recovers an accidentally deleted resource
 from within the app, with no filesystem detour, and can trust that
 permanently emptying Trash actually removes everything it should.
@@ -414,20 +414,25 @@ Electron desktop; native Android transport parity is deferred.
 **User stories:** US-11
 **Depends on:** Feature 1
 **Branch suggestion:** feat/trash-ui
-**Notes:** Not started as a shipped, user-facing feature. Scope fixed by
-owner decisions (2026-09-14, resolving OQ-24 through OQ-30): project-scoped
-Trash view, no workspace-wide aggregation (OQ-24); multi-select
-restore/delete and "Empty trash," no auto-purge (OQ-25); folder-delete
-cascade into Trash (OQ-26); non-blocking restore with relocation/rename
-notice (OQ-27); confirmed purge removing files, sidecar, revisions,
-inverted index, backlinks, mention index, and authored relationship edges
-(OQ-28); hosted web and Electron desktop at first ship, Android deferred
-(OQ-29); restore re-links nullified references and reports any still
-outstanding (OQ-30). Not formally listed as a dependency (this feature
-list's ordering ties "Depends on" to build order, and Feature 26 sits
-before Feature 38), but the purge sweep relies on already-shipped Feature
-38's `removeEntityRelationshipsForEntity` (`entity-relationships.ts`) to
-remove relationship edges naming a purged entity.
+**Notes:** Shipped. Merged to `main` on 2026-09-14 as merge commit
+`2f180cd5` ("Merge pull request #200 from saboteur-works/feat/trash-ui").
+Its feature spec, `specs/features/trash-ui.md`, is the authoritative record
+of the shipped scope. Scope fixed by owner decisions (2026-09-14, resolving
+OQ-24 through OQ-30): project-scoped Trash view, no workspace-wide
+aggregation (OQ-24); multi-select restore/delete and "Empty trash," no
+auto-purge (OQ-25); folder-delete cascade into Trash (OQ-26); non-blocking
+restore with relocation/rename notice (OQ-27); confirmed purge removing
+files, sidecar, revisions, inverted index, backlinks, mention index, and
+authored relationship edges (OQ-28); hosted web and Electron desktop at
+first ship, Android deferred (OQ-29); restore re-links nullified
+references and reports any still outstanding (OQ-30). Not formally listed
+as a dependency (this feature list's ordering ties "Depends on" to build
+order, and Feature 26 sits before Feature 38), but the purge sweep relies
+on already-shipped Feature 38's `removeEntityRelationshipsForEntity`
+(`entity-relationships.ts`) to remove relationship edges naming a purged
+entity. A set of follow-up refinements identified after the merge is
+tracked in `specs/features/trash-ui/follow-up-work.md` and addressed by
+`specs/features/trash-ui-followups.md`.
 
 ### Feature 27: Search across all retained revisions — Not started
 **Value:** A plain-file writer finds a match that exists in an older
@@ -1337,8 +1342,11 @@ directory-picker design and no on-device staging design exist yet.
   edges 39 draws, and adds nothing else. 41 (node dragging) also depends on
   39, since it repositions nodes 39 draws, and can be built in either order
   relative to 40 — the two are independent refinements on top of the same
-  parent feature. Of the remaining pre-existing work: 24 (Organizer
-  filters), 25 (signed installers), 26 (Trash UI), and 27 (search across
+  parent feature. 26 (Trash UI) has shipped (merged 2026-09-14 as
+  `2f180cd5`), depending only on the already-shipped Feature 1; a set of
+  post-merge follow-up refinements is tracked separately (see Feature 26's
+  own Notes). Of the remaining pre-existing work: 24 (Organizer filters),
+  25 (signed installers), and 27 (search across
   revisions) are independently startable now. 28 (hosted multi-device
   access) must land before 30 (its conflict-resolution model, which depends
   on it). 29 (durable search backend) is contingent on demonstrated need

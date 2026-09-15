@@ -11,6 +11,8 @@
 **Resolved:** [ ]
 **Resolved on:**
 
+**Addressed by** `specs/features/trash-ui-followups.md` (FR-1).
+
 ### FU-2: Existing folder-delete confirmation still describes a folder as "the resource"
 
 **What:** The existing soft-delete confirmation dialog's wording says "This
@@ -28,6 +30,10 @@ recording require").
 **Raised:** 2026-09-14
 **Resolved:** [ ]
 **Resolved on:**
+
+**Addressed by** `specs/features/trash-ui-followups.md` (FR-2, resolved:
+OQ-5 — folder wording is "This will move the folder and everything in it
+to Trash. Proceed?"; resource wording unchanged).
 
 ### FU-3: `deleteFolder`/`remove` in `resources.ts` bypass `createTransport` and don't check response status
 
@@ -48,6 +54,9 @@ Trash-view-specific bug.
 **Resolved:** [ ]
 **Resolved on:**
 
+**Addressed by** `specs/features/trash-ui-followups.md` (FR-3, FR-4, FR-5,
+resolved: OQ-1).
+
 ### FU-4: The purge route's "Resource not found." fallback path isn't reachable via TrashView under the default Edit view
 
 **What:** Task 17's commit note records that the "Resource not found."
@@ -64,8 +73,23 @@ for FR-21 specifically at Task 17's own gate.
 
 **Relates to:** Task 17
 **Raised:** 2026-09-14
-**Resolved:** [ ]
-**Resolved on:**
+**Resolved:** [x]
+**Resolved on:** 2026-09-14
+
+**Resolution:** Closed by a live check, not a code fix. The lead ran the
+check in Chromium against a dev server on `feat/trash-ui-followups` (code
+equal to `main` at `2f180cd5`) on 2026-09-14: with "Chapter One" open in
+the editor, deleting it from the tree cleared the selection — the Work
+Area showed the project landing page ("Select a file from the resource
+tree, or create a new resource to continue.") with a "Resource deleted —
+Chapter One" toast, not "Resource not found." Purging Chapter One from the
+Trash tab then left no open resource; the Edit tab was disabled (nothing
+selected), with no stale state shown. The FR-21 "Resource not found."
+fallback is therefore not reachable through delete-then-purge, because
+soft delete already clears the selection before purge is ever possible.
+Owner decision at Gate 3 (2026-09-14): decide after the check — nothing
+was found, so this closes with no implementation task. See
+`specs/features/trash-ui-followups.md` (FR-8, resolved: OQ-3).
 
 ### FU-5: `trash-view.a11y.test.tsx` is a hand-written approximation, not a real axe run
 
@@ -106,8 +130,22 @@ beyond what OQ-12 resolved.
 
 **Relates to:** Task 20
 **Raised:** 2026-09-14
-**Resolved:** [ ]
-**Resolved on:**
+**Resolved:** [x]
+**Resolved on:** 2026-09-14
+
+**Resolution:** Closed by evidence, not a code fix. The lead ran
+`git show` at `15d77139`, the last commit before Feature 26 merged:
+`trash.ts` contained no reference to folders; `page.tsx`'s delete branch
+(line 651) called `deleteResource` unconditionally and filtered only the
+flat `resources` array, never `folders`; the resource delete route called
+only `softDeleteResource`; the only other files mentioning `.trash` were
+the Scrivener and DOCX import reports. No pre-Feature-26 code path could
+put a folder into `.trash/`, confirming the claim that pre-Feature-26
+folder "deletion" never moved anything into `.trash/` and only removed the
+folder from client-visible state. Owner decision at Gate 3 (2026-09-14):
+accept this closure with no further hardening of `trash-ui.md`'s resolved
+OQ-12/FR-22 manifest-less-folder handling. See
+`specs/features/trash-ui-followups.md` (FR-9, resolved: OQ-4).
 
 ### FU-7: `ConfirmDialog`'s confirm button is always the brand-red `destructive` `Button` variant, app-wide
 
@@ -171,6 +209,11 @@ as a follow-up rather than fix in this run.
 **Raised:** 2026-09-14
 **Resolved:** [ ]
 **Resolved on:**
+
+**Addressed by** `specs/features/trash-ui-followups.md` (FR-10, resolved:
+OQ-2 — `TrashView` selects a cheap `resourcesSlice` value that changes on
+every `removeResource` dispatch and refetches while mounted; no new
+context, provider, or action).
 
 ### FU-9: Two color-contrast failures under a strict (non-`"todo"`) axe run of `TrashView` stories, introduced between Gate 5 and Task 25
 
