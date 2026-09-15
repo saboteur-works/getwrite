@@ -118,6 +118,8 @@ export interface ResourcesTransport {
   ): Promise<{ resource: AnyResource }>;
   /** Deletes (soft-deletes) a resource. */
   remove(resourceId: string, projectId: string): Promise<void>;
+  /** Deletes (soft-deletes) a folder and its entire descendant subtree. */
+  deleteFolder(folderId: string, projectId: string): Promise<void>;
   /**
    * Persists an updated sidecar (metadata) file for a resource.
    *
@@ -218,6 +220,14 @@ export const httpResourcesTransport: ResourcesTransport = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "delete", projectId }),
+    });
+  },
+
+  async deleteFolder(folderId, projectId) {
+    await fetch(`/api/folder/${folderId}/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId }),
     });
   },
 
@@ -381,19 +391,17 @@ export async function deleteResource(
  * `StoredProject.id` — `/api/folder/[folder-id]/delete` resolves it via
  * `resolveProjectsDir()/<projectId>` (ADR-017/018 tenant-route migration).
  *
- * Unlike {@link deleteResource}, this is not yet part of the
- * `ResourcesTransport`/`createTransport` collapse (Feature 26 trash-ui,
- * Task 13 is web/desktop-only) — it POSTs directly via `fetch`.
+ * As of Trash UI follow-ups Task 3, this is part of the
+ * `ResourcesTransport`/`createTransport` collapse like every other function
+ * in this file — it resolves through {@link resolveResourcesTransport}
+ * rather than POSTing directly via `fetch`.
  */
 export async function deleteFolder(
   folderId: string,
   projectId: string,
 ): Promise<void> {
-  await fetch(`/api/folder/${folderId}/delete`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ projectId }),
-  });
+  const transport = await resolveResourcesTransport();
+  await transport.deleteFolder(folderId, projectId);
 }
 
 /**

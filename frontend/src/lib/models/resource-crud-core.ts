@@ -61,6 +61,7 @@ import { renameFolderById } from "./folder-utils";
 import { getSchema } from "./metadata-schema";
 import {
   nullifyResourceRefs,
+  softDeleteFolder,
   softDeleteResource,
   writeTrashRefRecord,
 } from "./trash";
@@ -452,6 +453,24 @@ export async function renameFolderCore(
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
   const foldersDir = path.join(projectRoot, "folders");
   return renameFolderById(foldersDir, resourceId, newName);
+}
+
+/**
+ * Soft-deletes a folder and its entire descendant subtree.
+ *
+ * A thin wrap — per resolved OQ-1 (Feature 26 trash-ui follow-ups, FR-3,
+ * Task 3) — mirroring {@link renameFolderCore}'s own shape: resolve the
+ * project root, then delegate the actual cascade (nullifying inbound
+ * `resource-ref` fields, writing the FR-20 manifest, and moving every
+ * descendant resource/folder into `.trash/`) to `trash.ts`'s existing
+ * `softDeleteFolder`, unchanged.
+ */
+export async function softDeleteFolderCore(
+  projectId: string,
+  folderId: string,
+): Promise<void> {
+  const projectRoot = resolveResourceProjectRootOrThrow(projectId);
+  await softDeleteFolder(projectRoot, folderId);
 }
 
 /**

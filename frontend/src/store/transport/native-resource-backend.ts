@@ -47,6 +47,7 @@ import {
   renameFolderCore,
   renameResourceSidecarCore,
   reorderResourcesCore,
+  softDeleteFolderCore,
   updateSidecarCore,
   uploadMediaResourceCore,
 } from "../../lib/models/resource-crud-core";
@@ -113,6 +114,12 @@ export function createNativeResourcesTransport(
     async remove(resourceId, projectId) {
       await run(async () => {
         await deleteResourceCore(projectId, resourceId);
+      });
+    },
+
+    async deleteFolder(folderId, projectId) {
+      await run(async () => {
+        await softDeleteFolderCore(projectId, folderId);
       });
     },
 

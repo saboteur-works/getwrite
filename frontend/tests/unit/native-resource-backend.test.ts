@@ -72,6 +72,64 @@ describe("native resources transport — in-process backend reuses the shared re
     fetchMock.restore();
   });
 
+  it("deletes a folder and its nested resource via softDeleteFolderCore, with no HTTP (Trash UI follow-ups, Task 3)", async () => {
+    const fetchMock = guardAgainstFetch();
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = await makeProject(fs);
+    const adapter = capacitorFsAdapter(fs);
+
+    const transport = createNativeResourcesTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    const createdFolder = await transport.create(projectId, {
+      type: "folder",
+      name: "Chapter One",
+    });
+    const folderId = createdFolder.resource.id;
+
+    const createdNested = await transport.create(projectId, {
+      type: "text",
+      name: "Scene One",
+      folderId,
+      text: { plainText: "content" },
+    });
+
+    await transport.deleteFolder(folderId, projectId);
+
+    const projectRoot = path.join(PROJECTS_DIR, projectId);
+    const folderSlug =
+      (createdFolder.resource as { slug?: string }).slug ?? folderId;
+
+    // Removed from the live project tree.
+    await expect(
+      adapter.stat(path.join(projectRoot, "folders", folderSlug)),
+    ).rejects.toThrow();
+    await expect(
+      adapter.stat(
+        path.join(projectRoot, "resources", createdNested.resource.id),
+      ),
+    ).rejects.toThrow();
+
+    // Landed in .trash/.
+    await expect(
+      adapter.stat(path.join(projectRoot, ".trash", "folders", folderSlug)),
+    ).resolves.toBeDefined();
+    await expect(
+      adapter.stat(
+        path.join(
+          projectRoot,
+          ".trash",
+          "meta",
+          `resource-${createdNested.resource.id}.meta.json`,
+        ),
+      ),
+    ).resolves.toBeDefined();
+
+    fetchMock.restore();
+  });
+
   it("copies and renames a resource with no HTTP", async () => {
     const fs = createFakeCapacitorFilesystem();
     const projectId = await makeProject(fs);

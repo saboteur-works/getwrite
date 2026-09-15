@@ -228,7 +228,7 @@ already does. A new native-path implementation is added to
 **Depends on:** none
 **Estimate:** 5
 **POS:** task_7bb54199
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Non-2xx rejection for HTTP `remove` and `deleteFolder` (FR-4)
 
