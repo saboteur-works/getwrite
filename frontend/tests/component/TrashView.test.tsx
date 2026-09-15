@@ -26,6 +26,8 @@ import {
 } from "../../src/store/projectsSlice";
 import {
   loadResources,
+  removeResource,
+  setResources,
   setSelectedResourceId,
 } from "../../src/store/resourcesSlice";
 import type { TrashListing } from "../../src/lib/api/trash";
@@ -147,6 +149,9 @@ beforeEach(() => {
   // trash API mocks' call history explicitly at the start of every test.
   mockedRestoreTrashItems.mockClear();
   mockedPurgeTrashItems.mockClear();
+  // Task 6: same leak as above, but for `listTrash` — needed for this
+  // suite's new `toHaveBeenCalledTimes` assertions on it.
+  mockedListTrash.mockClear();
 });
 
 afterEach(() => {
@@ -765,6 +770,78 @@ describe("TrashView + AppShell — FR-21 open-editor-tab boundary (Task 17)", ()
     expect(
       screen.getByText(/Select a file from the resource tree/i).textContent,
     ).toBe(baselineText);
+  });
+});
+
+describe("TrashView — Task 6 (FR-10): refetch on a resourcesSlice delete made elsewhere", () => {
+  it("refetches listTrash and shows the newly-implied trashed item when removeResource is dispatched against the store directly", async () => {
+    mockedListTrash
+      .mockResolvedValueOnce({ resources: [], folders: [] })
+      .mockResolvedValueOnce(THREE_RESOURCE_LISTING);
+
+    const store = setupStore();
+    // Plain, synchronous action — unlike `loadResources` (an async thunk
+    // that also kicks off a `fetchEntityAliasTable` fetch), so the initial
+    // `resourcesSliceCount` this test asserts against is settled before the
+    // first render rather than changing again on a later microtask.
+    store.dispatch(
+      setResources([
+        {
+          id: "res-1",
+          slug: "res-1",
+          name: "Resource One",
+          type: "text",
+          orderIndex: 0,
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ] as never),
+    );
+
+    render(
+      <Provider store={store}>
+        <TrashView />
+      </Provider>,
+    );
+
+    await waitFor(() => expect(mockedListTrash).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId("trash-empty-state")).toBeTruthy();
+
+    // Simulate a delete made elsewhere (e.g. the resource tree), which
+    // dispatches `removeResource` against `resourcesSlice` directly — this
+    // is the same action `page.tsx`'s `handleResourceAction` dispatches.
+    store.dispatch(removeResource("res-1"));
+
+    await waitFor(() => expect(mockedListTrash).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryAllByTestId("trash-row")).toHaveLength(3),
+    );
+  });
+
+  it("does not refetch listTrash on a re-render with no change to the derived resources/folders count", async () => {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+
+    const store = setupStore();
+
+    const { rerender } = render(
+      <Provider store={store}>
+        <TrashView className="a" />
+      </Provider>,
+    );
+
+    await waitFor(() => expect(mockedListTrash).toHaveBeenCalledTimes(1));
+    await screen.findAllByTestId("trash-row");
+
+    // Re-render with a changed prop (so React actually re-renders the
+    // component) but no change to resourcesSlice's resources/folders count.
+    rerender(
+      <Provider store={store}>
+        <TrashView className="b" />
+      </Provider>,
+    );
+
+    // Give any stray effect a tick to fire, then assert no extra call.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mockedListTrash).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -349,7 +349,7 @@ the tab.
 **Depends on:** 1
 **Estimate:** 3
 **POS:** task_205ac241
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Full gate verification, plus the FR-11 real-app re-check
 
