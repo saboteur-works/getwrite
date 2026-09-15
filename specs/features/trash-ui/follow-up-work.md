@@ -8,10 +8,15 @@
 
 **Relates to:** Task 18
 **Raised:** 2026-09-14
-**Resolved:** [ ]
-**Resolved on:**
+**Resolved:** [x]
+**Resolved on:** 2026-09-15
 
-**Addressed by** `specs/features/trash-ui-followups.md` (FR-1).
+**Resolution:** Addressed by `specs/features/trash-ui-followups.md` (FR-1),
+commit `79c9ea11`. A lead real-app re-check on 2026-09-15 measured: with
+both "Chapter One" and "Chapter One (restored)" already existing at the
+root, restoring "Chapter One" produced "Chapter One (restored 2)" on disk,
+and the rename notice read "Chapter One" was restored as "Chapter One
+(restored 2)".
 
 ### FU-2: Existing folder-delete confirmation still describes a folder as "the resource"
 
@@ -28,12 +33,14 @@ recording require").
 
 **Relates to:** Task 13 (folder-delete route), general
 **Raised:** 2026-09-14
-**Resolved:** [ ]
-**Resolved on:**
+**Resolved:** [x]
+**Resolved on:** 2026-09-15
 
-**Addressed by** `specs/features/trash-ui-followups.md` (FR-2, resolved:
-OQ-5 — folder wording is "This will move the folder and everything in it
-to Trash. Proceed?"; resource wording unchanged).
+**Resolution:** Addressed by `specs/features/trash-ui-followups.md` (FR-2,
+resolved: OQ-5), commit `403b60d9`. A lead real-app re-check on 2026-09-15
+measured: the folder delete dialog read "This will move the folder and
+everything in it to Trash. Proceed?"; the resource dialog still reads
+"This will remove the resource. Proceed?".
 
 ### FU-3: `deleteFolder`/`remove` in `resources.ts` bypass `createTransport` and don't check response status
 
@@ -51,11 +58,20 @@ Trash-view-specific bug.
 
 **Relates to:** general (`lib/api/resources.ts`)
 **Raised:** 2026-09-14
-**Resolved:** [ ]
-**Resolved on:**
+**Resolved:** [x]
+**Resolved on:** 2026-09-15
 
-**Addressed by** `specs/features/trash-ui-followups.md` (FR-3, FR-4, FR-5,
-resolved: OQ-1).
+**Resolution:** Addressed by `specs/features/trash-ui-followups.md` (FR-3,
+FR-4, FR-5, resolved: OQ-1), commits `87112b7b`, `31f048be`, `01ffa3e6`.
+`deleteFolder` now goes through `createTransport` (native backend calls
+`softDeleteFolderCore`); HTTP `remove` and `deleteFolder` reject on a
+non-2xx response; a failed delete leaves state unchanged with an error
+toast. A lead real-app re-check on 2026-09-15 measured the live success
+path: deleting a folder moved the folder, its manifest, and both
+resources (content, sidecars, ref records, revisions) into `.trash/`. The
+failure path is verified only by
+`frontend/tests/component/page-delete-failure.test.tsx`, not by a live
+re-check.
 
 ### FU-4: The purge route's "Resource not found." fallback path isn't reachable via TrashView under the default Edit view
 
@@ -207,13 +223,16 @@ as a follow-up rather than fix in this run.
 
 **Relates to:** TrashView.tsx (general)
 **Raised:** 2026-09-14
-**Resolved:** [ ]
-**Resolved on:**
+**Resolved:** [x]
+**Resolved on:** 2026-09-15
 
-**Addressed by** `specs/features/trash-ui-followups.md` (FR-10, resolved:
-OQ-2 — `TrashView` selects a cheap `resourcesSlice` value that changes on
-every `removeResource` dispatch and refetches while mounted; no new
-context, provider, or action).
+**Resolution:** Addressed by `specs/features/trash-ui-followups.md` (FR-10,
+resolved: OQ-2), commit `126cfdff`. `TrashView` selects a cheap
+`resourcesSlice` value that changes on every `removeResource` dispatch and
+refetches while mounted; no new context, provider, or action. A lead
+real-app re-check on 2026-09-15 measured: with the Trash tab open,
+deleting the "Research" folder from the tree made it appear in the Trash
+list without switching tabs.
 
 ### FU-9: Two color-contrast failures under a strict (non-`"todo"`) axe run of `TrashView` stories, introduced between Gate 5 and Task 25
 
