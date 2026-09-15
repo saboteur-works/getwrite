@@ -260,7 +260,7 @@ elsewhere in this codebase.
 **Depends on:** 3
 **Estimate:** 3
 **POS:** task_1cf310b1
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: `page.tsx`'s delete branch — no state change on failure, tell the writer (FR-5)
 

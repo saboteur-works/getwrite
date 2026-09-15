@@ -216,19 +216,25 @@ export const httpResourcesTransport: ResourcesTransport = {
   },
 
   async remove(resourceId, projectId) {
-    await fetch(`/api/resource/${resourceId}`, {
+    const response = await fetch(`/api/resource/${resourceId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "delete", projectId }),
     });
+    if (!response.ok) {
+      throw new Error(`Failed to delete resource (${response.status})`);
+    }
   },
 
   async deleteFolder(folderId, projectId) {
-    await fetch(`/api/folder/${folderId}/delete`, {
+    const response = await fetch(`/api/folder/${folderId}/delete`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId }),
     });
+    if (!response.ok) {
+      throw new Error(`Failed to delete folder (${response.status})`);
+    }
   },
 
   async updateSidecar(resourceId, projectId, updatedResource, clearKeys) {

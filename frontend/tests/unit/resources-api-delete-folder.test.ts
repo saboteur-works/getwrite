@@ -20,8 +20,8 @@ import {
 const directoryUuid = "aaaaaaaa-1111-4111-8111-111111111111";
 const folderId = "folder-1";
 
-function jsonResponse(body: unknown, ok = true): Response {
-  return { ok, json: async () => body } as Response;
+function jsonResponse(body: unknown, ok = true, status = 200): Response {
+  return { ok, status, json: async () => body } as Response;
 }
 
 describe("resources.ts deleteFolder", () => {
@@ -47,6 +47,17 @@ describe("resources.ts deleteFolder", () => {
     expect(body.projectId).toBe(directoryUuid);
     expect(body).not.toHaveProperty("projectPath");
     expect(body).not.toHaveProperty("projectRoot");
+  });
+});
+
+describe("resources.ts deleteFolder — non-2xx rejection (Trash UI follow-ups, Task 4)", () => {
+  it("rejects when fetch resolves with a non-2xx response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({}, false, 500));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(deleteFolder(folderId, directoryUuid)).rejects.toThrow();
+
+    vi.unstubAllGlobals();
   });
 });
 
