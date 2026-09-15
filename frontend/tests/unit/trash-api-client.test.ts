@@ -121,6 +121,26 @@ describe("trash transport — web runtime — restoreTrashItems", () => {
     expect(result).toEqual(results);
   });
 
+  it("preserves a restoredName field from the response (Task 1, FR-1)", async () => {
+    const results: RestoreItemResult[] = [
+      {
+        id: "resource-1",
+        ok: true,
+        relocated: false,
+        renamed: true,
+        restoredName: "Draft (restored 2)",
+      },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ results }),
+    } as Response);
+
+    const result = await restoreTrashItems("project-1", ["resource-1"]);
+
+    expect(result[0]?.restoredName).toBe("Draft (restored 2)");
+  });
+
   it("REJECTS on a non-2xx response, rather than synthesizing per-item failures", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,

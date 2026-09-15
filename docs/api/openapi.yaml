@@ -1285,6 +1285,9 @@ paths:
                           type: boolean
                         renamed:
                           type: boolean
+                        restoredName:
+                          type: string
+                          description: The item's name as actually restored, after any collision suffix (present whenever `ok` is true), e.g. "Chapter One (restored 2)"
                         referencesNotRestored:
                           description: Array of un-relinked reference entries, or the string "no-record" for a legacy item
                         error:

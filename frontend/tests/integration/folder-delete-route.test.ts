@@ -9,7 +9,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateUUID } from "../../src/lib/models/uuid";
 import {
   createFolderResource,
@@ -17,10 +17,12 @@ import {
   writeResourceToFile,
 } from "../../src/lib/models/resource";
 import { removeDirRetry } from "../unit/helpers/fs-utils";
+import * as resourceCrudCore from "../../src/lib/models/resource-crud-core";
 
 const tmpDirs: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   while (tmpDirs.length > 0) {
     const dir = tmpDirs.pop();
     if (dir) await removeDirRetry(dir);
@@ -162,6 +164,26 @@ describe("POST /api/folder/[folder-id]/delete (projectId-based)", () => {
       });
 
       expect(res.status).toBe(404);
+    });
+  });
+
+  it("calls softDeleteFolderCore rather than softDeleteFolder directly (Trash UI follow-ups, Task 3)", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const folderId = generateUUID();
+      const spy = vi
+        .spyOn(resourceCrudCore, "softDeleteFolderCore")
+        .mockResolvedValue(undefined);
+
+      const { POST } =
+        await import("../../app/api/folder/[folder-id]/delete/route");
+      const res = await POST(deleteRequest(folderId, { projectId }) as never, {
+        params: Promise.resolve({ "folder-id": folderId }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith(projectId, folderId);
     });
   });
 });

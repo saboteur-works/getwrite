@@ -29,8 +29,8 @@ import type { AnyResource } from "../../src/lib/models/types";
 const directoryUuid = "aaaaaaaa-1111-4111-8111-111111111111";
 const resourceId = "resource-1";
 
-function jsonResponse(body: unknown, ok = true): Response {
-  return { ok, json: async () => body } as Response;
+function jsonResponse(body: unknown, ok = true, status = 200): Response {
+  return { ok, status, json: async () => body } as Response;
 }
 
 describe("resources.ts CRUD functions (T9c regression)", () => {
@@ -94,6 +94,12 @@ describe("resources.ts CRUD functions (T9c regression)", () => {
     expect(body.projectId).toBe(directoryUuid);
     expect(body).not.toHaveProperty("projectPath");
     expect(body).not.toHaveProperty("projectRoot");
+  });
+
+  it("deleteResource rejects when fetch resolves with a non-2xx response (Trash UI follow-ups, Task 4)", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}, false, 500));
+
+    await expect(deleteResource(resourceId, directoryUuid)).rejects.toThrow();
   });
 
   it("updateSidecar sends projectId in the POST body, with no projectRoot field", async () => {

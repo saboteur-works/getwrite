@@ -468,6 +468,40 @@ lost work.
   the destination project's project type at import time — a CLI flag and a
   UI choice — from the existing project types, with a default (resolved:
   OQ-23). [US-18]
+- FR-28: Users MUST be able to browse, restore, and permanently purge
+  soft-deleted resources through a dedicated Trash UI (the soft-delete,
+  restore, and purge model existed in part beforehand; FR-28 extended it).
+  Owner decision (2026-09-14): FR-28 moved from Next Requirements into In
+  Progress Requirements, carried forward through the pipeline as Feature 26.
+  Shipped: merged to main 2026-09-14 as `2f180cd5` ("Merge pull request #200
+  from saboteur-works/feat/trash-ui"). Its feature spec,
+  `specs/features/trash-ui.md`, is the authoritative record of the shipped
+  scope. Owner decisions (2026-09-14, OQ-24 through OQ-30) fixed its scope:
+  the Trash view is scoped to the currently open project only, with no
+  workspace-wide aggregation (resolved: OQ-24). The UI supports
+  multi-select restore, multi-select permanent delete, and "Empty trash";
+  there is no automatic retention or auto-purge (resolved: OQ-25). Deleting
+  a folder cascade-soft-deletes the folder and everything beneath it into
+  Trash as a restorable/purgeable unit, rather than orphaning its contents
+  as before (resolved: OQ-26). Restore never blocks: a missing original
+  parent folder falls back to the project root, a name collision at the
+  destination gets a suffix, and the UI tells the writer when an item was
+  relocated or renamed (resolved: OQ-27). Permanent delete requires
+  explicit confirmation (one confirmation for a whole batch on Empty Trash
+  or multi-select delete) and removes the trashed resource's files, its
+  sidecar, all its revisions, and its entries in the inverted index,
+  backlinks, the mention index, and any authored relationship edges naming
+  it as source or target, including when the resource was an entity
+  (resolved: OQ-28). FR-28 ships on hosted web and Electron desktop, which
+  share the Next API routes; native Android transport parity is deferred,
+  not rejected (resolved: OQ-29). Restore re-links references: the product
+  records exactly which other sidecars' `ResourceRef` fields a deletion
+  nullified, and restoring the resource points every still-nullified
+  recorded reference back at it, leaving and reporting to the writer any
+  reference that changed in the meantime (resolved: OQ-30). A set of
+  follow-up refinements identified after the merge is tracked separately in
+  `specs/features/trash-ui/follow-up-work.md` and addressed by
+  `specs/features/trash-ui-followups.md`. [US-11]
 
 ### In Progress Requirements
 
@@ -480,39 +514,6 @@ lost work.
   field) is a separate per-project setting that already ships. [US-7]
 - FR-27: Desktop builds MUST be signed and installable without an OS
   security warning on macOS and Windows. [US-8]
-- FR-28: Users MUST be able to browse, restore, and permanently purge
-  soft-deleted resources through a dedicated Trash UI (the soft-delete,
-  restore, and purge model exists in part today; FR-28 extends it). Owner
-  decision (2026-09-14): FR-28
-  moves from Next Requirements into In Progress Requirements; it is being
-  carried forward through the pipeline as Feature 26. Owner decisions
-  (2026-09-14, OQ-24 through OQ-30) fix its scope: the Trash view is scoped
-  to the currently open project only, with no workspace-wide aggregation
-  (resolved: OQ-24). The UI MUST support multi-select restore, multi-select
-  permanent delete, and "Empty trash"; there is no automatic retention or
-  auto-purge (resolved: OQ-25). Deleting a folder MUST cascade-soft-delete
-  the folder and everything beneath it into Trash as a restorable/purgeable
-  unit, rather than orphaning its contents as today (resolved: OQ-26).
-  Restore MUST never block: a missing original parent folder falls back to
-  the project root, a name collision at the destination gets a suffix, and
-  the UI MUST tell the writer when an item was relocated or renamed
-  (resolved: OQ-27). Permanent delete MUST require explicit confirmation
-  (one confirmation for a whole batch on Empty Trash or multi-select
-  delete) and MUST remove the trashed resource's files, its sidecar, all
-  its revisions, and its entries in the inverted index, backlinks, the
-  mention index, and any authored relationship edges naming it as source or
-  target, including when the resource was an entity (resolved: OQ-28). FR-28
-  ships on hosted web and Electron desktop, which share the Next API
-  routes; native Android transport parity is deferred, not rejected
-  (resolved: OQ-29). Restore MUST re-link references: the product MUST
-  record exactly which other sidecars' `ResourceRef` fields a deletion
-  nullified, and restoring the resource MUST point every still-nullified
-  recorded reference back at it, leaving and reporting to the writer any
-  reference that changed in the meantime (resolved: OQ-30). Where in the
-  project UI the Trash view lives, its restore-collision suffix wording,
-  whether an item inside a trashed folder can be restored individually,
-  where revisions live while trashed, and where the nullified-reference
-  record is stored are feature-spec decisions. [US-11]
 
 ### Next Requirements
 

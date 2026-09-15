@@ -94,10 +94,11 @@ function buildRestoreNotices(
     }
 
     if (result.renamed) {
+      const restoredName = result.restoredName ?? `${name} (restored)`;
       notices.push({
         id: result.id,
         kind: "renamed",
-        text: `"${name}" was restored as "${name} (restored)" because another item already has that name.`,
+        text: `"${name}" was restored as "${restoredName}" because another item already has that name.`,
       });
     }
 
@@ -199,6 +200,18 @@ export default function TrashView({
   const projectId = useAppSelector((s) => selectActiveProjectDirectoryId(s));
   const dispatch = useAppDispatch();
 
+  // FR-10/OQ-2: a delete made elsewhere (e.g. the resource tree, via
+  // `page.tsx`'s `handleResourceAction` dispatching `removeResource`) doesn't
+  // touch this view's own local `resources`/`folders` state, so without this
+  // the Trash listing wouldn't show the newly-trashed item until the writer
+  // left and returned to the tab. `resources.length + folders.length` is a
+  // cheap derived value that changes on every `resourcesSlice` add/remove
+  // (including a folder's cascaded descendants) — the effect below refetches
+  // `listTrash` when it changes, not on every render.
+  const resourcesSliceCount = useAppSelector(
+    (s) => s.resources.resources.length + s.resources.folders.length,
+  );
+
   const [resources, setResources] = useState<TrashedResourceEntry[]>([]);
   const [folders, setFolders] = useState<TrashedFolderEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -238,7 +251,11 @@ export default function TrashView({
 
   useEffect(() => {
     refetch();
-  }, [refetch]);
+    // `resourcesSliceCount` is included so a `resourcesSlice` add/remove
+    // made elsewhere (FR-10/OQ-2) refetches the Trash listing while this
+    // view stays mounted, in addition to the existing mount/`projectId`-
+    // change refetch `refetch`'s own identity already covers.
+  }, [refetch, resourcesSliceCount]);
 
   const isEmpty =
     !isLoading && !error && resources.length === 0 && folders.length === 0;
