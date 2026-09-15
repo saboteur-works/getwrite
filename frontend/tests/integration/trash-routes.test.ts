@@ -254,6 +254,57 @@ describe("POST /api/project/[project-id]/trash/restore", () => {
       expect(restoredSidecar.name).toBe("Draft");
     });
   });
+
+  it("reports the actual resolved restoredName on a collision, chaining across repeated restores (Task 1, FR-1)", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const kept = createTextResource({ name: "Draft", plainText: "kept" });
+      await writeResourceToFile(projectPath, kept);
+
+      const trashed1 = createTextResource({
+        name: "Draft",
+        plainText: "first",
+      });
+      await writeResourceToFile(projectPath, trashed1);
+      await softDeleteResource(projectPath, trashed1.id);
+
+      const { POST } =
+        await import("../../app/api/project/[project-id]/trash/restore/route");
+
+      const res1 = await POST(
+        jsonRequest(`http://localhost/api/project/${projectId}/trash/restore`, {
+          ids: [trashed1.id],
+        }) as never,
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+      const body1 = (await res1.json()) as {
+        results: { id: string; ok: boolean; restoredName?: string }[];
+      };
+      const result1 = body1.results.find((r) => r.id === trashed1.id);
+      expect(result1?.ok).toBe(true);
+      expect(result1?.restoredName).toBe("Draft (restored)");
+
+      const trashed2 = createTextResource({
+        name: "Draft",
+        plainText: "second",
+      });
+      await writeResourceToFile(projectPath, trashed2);
+      await softDeleteResource(projectPath, trashed2.id);
+
+      const res2 = await POST(
+        jsonRequest(`http://localhost/api/project/${projectId}/trash/restore`, {
+          ids: [trashed2.id],
+        }) as never,
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+      const body2 = (await res2.json()) as {
+        results: { id: string; ok: boolean; restoredName?: string }[];
+      };
+      const result2 = body2.results.find((r) => r.id === trashed2.id);
+      expect(result2?.ok).toBe(true);
+      expect(result2?.restoredName).toBe("Draft (restored 2)");
+    });
+  });
 });
 
 describe("POST /api/project/[project-id]/trash/purge", () => {

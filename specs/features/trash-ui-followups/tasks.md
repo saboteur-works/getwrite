@@ -136,7 +136,7 @@ first-collision suffix even when `models/trash.ts`'s
 **Depends on:** none
 **Estimate:** 3
 **POS:** task_c6228e07
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Folder-specific delete confirmation wording (FR-2)
 

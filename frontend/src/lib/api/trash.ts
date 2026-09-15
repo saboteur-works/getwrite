@@ -64,6 +64,7 @@ export interface RestoreItemResult {
   ok: boolean;
   relocated?: boolean;
   renamed?: boolean;
+  restoredName?: string;
   referencesNotRestored?: RestoredReferenceInfo[] | "no-record";
   error?: string;
 }

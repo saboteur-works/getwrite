@@ -94,10 +94,11 @@ function buildRestoreNotices(
     }
 
     if (result.renamed) {
+      const restoredName = result.restoredName ?? `${name} (restored)`;
       notices.push({
         id: result.id,
         kind: "renamed",
-        text: `"${name}" was restored as "${name} (restored)" because another item already has that name.`,
+        text: `"${name}" was restored as "${restoredName}" because another item already has that name.`,
       });
     }
 

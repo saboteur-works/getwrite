@@ -41,6 +41,7 @@ interface RestoreItemResult {
   ok: boolean;
   relocated?: boolean;
   renamed?: boolean;
+  restoredName?: string;
   referencesNotRestored?: RestoredReferenceInfo[] | "no-record";
   error?: string;
 }
@@ -63,6 +64,7 @@ async function restoreOne(
         ok: true,
         relocated: result.relocated,
         renamed: result.renamed,
+        restoredName: result.restoredName,
         referencesNotRestored: result.referencesNotRestored,
       };
     }
@@ -74,6 +76,7 @@ async function restoreOne(
         ok: true,
         relocated: result.relocated,
         renamed: result.renamed,
+        restoredName: result.restoredName,
       };
     }
 

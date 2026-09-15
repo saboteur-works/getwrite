@@ -535,6 +535,40 @@ describe("TrashView — Task 18 per-item restore notices (FR-5/FR-9/FR-14)", () 
     });
   });
 
+  it("renders the actual resolved restoredName from the result, not a hardcoded ' (restored)' suffix (Task 1, FR-1)", async () => {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+    mockedRestoreTrashItems.mockResolvedValue([
+      {
+        id: "res-1",
+        ok: true,
+        relocated: false,
+        renamed: true,
+        restoredName: "Resource One (restored 2)",
+      },
+    ]);
+
+    const store = setupStore();
+
+    render(
+      <Provider store={store}>
+        <TrashView />
+      </Provider>,
+    );
+
+    await screen.findAllByTestId("trash-row");
+    selectTrashRow("res-1");
+    fireEvent.click(screen.getByTestId("trash-restore-selected"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Restore" }));
+
+    await waitFor(() => {
+      const notices = screen.getAllByTestId("trash-restore-notice");
+      expect(notices).toHaveLength(1);
+      expect(notices[0].textContent).toContain("Resource One (restored 2)");
+    });
+  });
+
   it("renders a distinct notice naming which references couldn't be restored", async () => {
     mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
     mockedRestoreTrashItems.mockResolvedValue([
