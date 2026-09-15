@@ -345,7 +345,7 @@ reading it first).
 **Depends on:** none
 **Estimate:** 2
 **POS:** task_af2622dc
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Update STYLING.md's Destructive spec and CLAUDE.md's Styling section (FR-3, FR-4, FR-14)
 

@@ -50,11 +50,23 @@ describe("a11y: Button primitive", () => {
     expect(btn.className).toContain("text-gw-primary");
   });
 
-  it("destructive variant renders with red border token class", () => {
+  it("destructive variant renders identically to secondary, with no red token", () => {
     render(<Button variant="destructive">Delete</Button>);
-    const btn = screen.getByRole("button", { name: "Delete" });
-    expect(btn.className).toContain("border-gw-red-border");
-    expect(btn.className).toContain("text-gw-red");
+    const destructiveBtn = screen.getByRole("button", { name: "Delete" });
+
+    render(<Button variant="secondary">Delete</Button>);
+    const secondaryBtns = screen.getAllByRole("button", { name: "Delete" });
+    const secondaryBtn = secondaryBtns[secondaryBtns.length - 1];
+
+    // FR-1/FR-2: destructive is aliased to secondary — same rendered class
+    // string, no distinct visual cue. Danger is conveyed by label and
+    // confirmation dialog only.
+    expect(destructiveBtn.className).toBe(secondaryBtn.className);
+
+    expect(destructiveBtn.className).not.toContain("text-gw-red");
+    expect(destructiveBtn.className).not.toContain("border-gw-red-border");
+    expect(destructiveBtn.className).not.toMatch(/#[0-9a-fA-F]{3,6}\b/);
+    expect(destructiveBtn.className).not.toMatch(/red/i);
   });
 
   it("ghost variant has no border, renders with secondary text token", () => {
