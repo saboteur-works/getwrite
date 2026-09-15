@@ -311,7 +311,7 @@ enumerated in this task's Notes once found.
 behavioral regression (not just a snapshot value), it becomes a blocker to
 report, not something to silently patch around.
 **POS:** task_567c46a2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Alias the `destructive` Button variant to `secondary` (FR-1, FR-2)
 
