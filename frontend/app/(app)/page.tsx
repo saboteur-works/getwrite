@@ -668,7 +668,15 @@ export default function Home(): JSX.Element {
           resourceId,
         );
 
-        await deleteFolder(resourceId, projectId);
+        try {
+          await deleteFolder(resourceId, projectId);
+        } catch {
+          toastService.error(
+            "Folder not deleted",
+            `Failed to delete ${deletedFolder.name}`,
+          );
+          return;
+        }
 
         setProjects((prev) =>
           prev.map((p) =>
@@ -701,7 +709,20 @@ export default function Home(): JSX.Element {
         return;
       }
 
-      await deleteResource(resourceId, projectId);
+      const resourceName =
+        selectedProject.resources.find((r) => r.id === resourceId)?.name ??
+        "Resource";
+
+      try {
+        await deleteResource(resourceId, projectId);
+      } catch {
+        toastService.error(
+          "Resource not deleted",
+          `Failed to delete ${resourceName}`,
+        );
+        return;
+      }
+
       setProjects((prev) =>
         prev.map((p) =>
           p.project.id === selectedProject.id
@@ -724,9 +745,6 @@ export default function Home(): JSX.Element {
       // update redux store
       dispatch(removeResource({ projectId: selectedProject.id, resourceId }));
       dispatch(removeResourceFromStore(resourceId));
-      const resourceName =
-        selectedProject.resources.find((r) => r.id === resourceId)?.name ??
-        "Resource";
       toastService.success("Resource deleted", resourceName);
       return;
     }

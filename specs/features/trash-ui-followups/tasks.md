@@ -317,7 +317,7 @@ path before writing the test).
 **Depends on:** 4
 **Estimate:** 5
 **POS:** task_96624fcc
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: `TrashView` refetches on a `resourcesSlice` delete made elsewhere (FR-10)
 
