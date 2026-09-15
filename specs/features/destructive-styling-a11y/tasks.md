@@ -421,7 +421,7 @@ list writes either file.
 **Depends on:** 2
 **Estimate:** 3
 **POS:** task_13c25bf8
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: `TrashView.stories.tsx` strict-axe override (FR-18)
 
