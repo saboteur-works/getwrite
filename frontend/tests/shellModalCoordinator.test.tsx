@@ -11,6 +11,7 @@ import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
 import type { StoredProject } from "../src/store/projectsSlice";
+import type { Folder } from "../src/lib/models/types";
 
 function makeStore() {
   return configureStore({
@@ -116,6 +117,57 @@ describe("ShellModalCoordinator — project settings dialog", () => {
       />,
     );
     expect(screen.queryByText("Project Settings")).toBeNull();
+  });
+});
+
+describe("ShellModalCoordinator — delete confirm dialog wording (FR-2)", () => {
+  const folderFixture: Folder = {
+    id: "folder-1",
+    slug: "folder-1",
+    name: "Folder One",
+    type: "folder",
+    orderIndex: 0,
+    createdAt: "",
+    updatedAt: "",
+    userMetadata: {},
+  };
+
+  it("renders the folder-specific description when the target id belongs to a folder", () => {
+    render(
+      <ShellModalCoordinator
+        {...makeDefaultProps({
+          contextAction: {
+            open: true,
+            action: "delete",
+            resourceId: "folder-1",
+          },
+          folders: [folderFixture],
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "This will move the folder and everything in it to Trash. Proceed?",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("keeps the resource wording when the target id is not among the folders", () => {
+    render(
+      <ShellModalCoordinator
+        {...makeDefaultProps({
+          contextAction: {
+            open: true,
+            action: "delete",
+            resourceId: "resource-1",
+          },
+          folders: [],
+        })}
+      />,
+    );
+    expect(
+      screen.getByText("This will remove the resource. Proceed?"),
+    ).toBeTruthy();
   });
 });
 

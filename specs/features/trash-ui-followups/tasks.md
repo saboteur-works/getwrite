@@ -169,7 +169,7 @@ keeping the existing resource wording otherwise. This mirrors the same
 **Depends on:** none
 **Estimate:** 2
 **POS:** task_8c23ba89
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: `softDeleteFolderCore`, native backend, and `deleteFolder` through `ResourcesTransport`/`createTransport` (FR-3)
 

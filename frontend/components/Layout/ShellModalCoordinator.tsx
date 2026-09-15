@@ -199,7 +199,11 @@ export default function ShellModalCoordinator({
             ? `Delete ${contextAction.resourceTitle}`
             : "Delete resource"
         }
-        description={"This will remove the resource. Proceed?"}
+        description={
+          folders?.some((f) => f.id === contextAction.resourceId)
+            ? "This will move the folder and everything in it to Trash. Proceed?"
+            : "This will remove the resource. Proceed?"
+        }
         confirmLabel="Delete"
         cancelLabel="Cancel"
         onConfirm={async () => {
