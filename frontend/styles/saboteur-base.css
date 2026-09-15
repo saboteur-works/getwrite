@@ -15,11 +15,21 @@
   --color-brand-black: #0a0a0a; /* bg-brand-black  | Primary background */
   --color-brand-white: #f5f4f0; /* bg-brand-white  | Primary text, light bg. Warm — not pure white. */
   --color-brand-red: #d44040; /* bg-brand-red    | Signal Red. Structure and interaction only. */
-  --color-brand-mid: #6a6864; /* bg-brand-mid    | Secondary text, muted labels */
+  --color-brand-mid: #6a6864; /* bg-brand-mid    | Structural grey. Swatches, dividers, decorative. NEVER text — use fg-* below. */
   --color-brand-dim: #2e2e2c; /* bg-brand-dim    | Borders, rules */
   --color-brand-rule: #1a1a18; /* bg-brand-rule   | Divider lines */
   --color-brand-surface: #111110; /* bg-brand-surface  | Raised dark surfaces */
   --color-brand-surface2: #161614; /* bg-brand-surface2 | Deeper dark surfaces */
+
+  /* ── FOREGROUND (TEXT) TOKENS — partial sync from saboteur-styles ──
+   * Only the two tokens this feature needs are synced here
+   * (`--color-fg-tertiary` / `--color-fg-inv-tertiary`, FR-15/FR-5/FR-6).
+   * The brand repo's fuller foreground scale (fg-primary/secondary/faint,
+   * fg-inv-primary/secondary/faint, and the BRAND INTERACTIVE section) is
+   * intentionally NOT synced — not yet justified for adoption in this repo.
+   */
+  --color-fg-tertiary: #888680; /* text-fg-tertiary     | 5.5:1 on brand-black — AA Normal. Captions, small mono metadata on dark surfaces. */
+  --color-fg-inv-tertiary: #636160; /* text-fg-inv-tertiary | 5.6:1 on brand-white — AA Normal. Captions, metadata on light surfaces. */
 
   /* ── BRAND TYPOGRAPHY ── */
   --font-display:

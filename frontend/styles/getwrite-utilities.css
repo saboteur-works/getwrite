@@ -24,7 +24,9 @@
   --color-gw-chrome2: var(--color-gw-chrome2-light);
   --color-gw-chrome3: var(--color-gw-chrome3-light);
   --color-gw-primary: #0a0a0a;
-  --color-gw-secondary: var(--color-gw-secondary-light);
+  --color-gw-secondary: var(
+    --color-fg-inv-tertiary
+  ); /* was var(--color-gw-secondary-light) = #7a7870 (fails AA); repointed FR-5/FR-6 */
   --color-gw-border: var(--color-gw-border-light);
   --color-gw-border-md: #b0ada8;
   --color-gw-rule: var(--color-gw-rule-light);
@@ -79,7 +81,9 @@
   --color-gw-chrome2: #161614;
   --color-gw-chrome3: #1a1a18;
   --color-gw-primary: #f5f4f0;
-  --color-gw-secondary: #6a6864;
+  --color-gw-secondary: var(
+    --color-fg-tertiary
+  ); /* was #6a6864 (fails AA); repointed FR-5/FR-6 */
   --color-gw-border: #2e2e2c;
   --color-gw-border-md: #3a3a38;
   --color-gw-rule: #1a1a18;
@@ -117,7 +121,9 @@ html.gw-theme-light {
   --color-gw-chrome2: var(--color-gw-chrome2-light);
   --color-gw-chrome3: var(--color-gw-chrome3-light);
   --color-gw-primary: #0a0a0a;
-  --color-gw-secondary: var(--color-gw-secondary-light);
+  --color-gw-secondary: var(
+    --color-fg-inv-tertiary
+  ); /* was var(--color-gw-secondary-light) = #7a7870 (fails AA); repointed FR-5/FR-6 */
   --color-gw-border: var(--color-gw-border-light);
   --color-gw-border-md: #b0ada8;
   --color-gw-rule: var(--color-gw-rule-light);
@@ -134,7 +140,9 @@ html.gw-theme-dark {
   --color-gw-chrome2: #161614;
   --color-gw-chrome3: #1a1a18;
   --color-gw-primary: #f5f4f0;
-  --color-gw-secondary: #6a6864;
+  --color-gw-secondary: var(
+    --color-fg-tertiary
+  ); /* was #6a6864 (fails AA); repointed FR-5/FR-6 */
   --color-gw-border: #2e2e2c;
   --color-gw-border-md: #3a3a38;
   --color-gw-rule: #1a1a18;

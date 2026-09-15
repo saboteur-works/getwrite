@@ -281,7 +281,7 @@ lead's Chromium run, not a unit test). This task's own verification is
 therefore a hand computation from the committed hex values plus the
 FR-15 diff record, not an automated contrast test.
 **POS:** task_98bb9023
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Re-verify every FR-7 consumer renders unchanged apart from the fixed contrast (FR-7)
 

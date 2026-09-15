@@ -1,0 +1,4 @@
+frontend/app/(app)/page.tsx
+frontend/app/login/page.tsx
+frontend/app/reset-password/page.tsx
+frontend/app/verify-email/page.tsx
