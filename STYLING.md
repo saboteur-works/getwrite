@@ -279,12 +279,21 @@ GetWrite does not use red-fill buttons. All primary actions use outlined or ghos
 
 **Destructive:**
 
-- Border: `1px solid #D44040`
-- Text: `#D44040`
-- Background: transparent
-- Never fill with red
+The `destructive` button variant renders identically to Secondary / ghost
+above — same border, background, text colour, and hover state, with no red
+and no distinct visual cue of any kind:
 
-The reason GetWrite avoids red CTAs: a writer should never feel like the tool is demanding their attention. The workspace recedes; the work advances.
+- Border: `1px solid` token `gw-border` (Tailwind `border` utility default width)
+- Text: token `gw-secondary`
+- Background: transparent
+- Hover: border token `gw-border-md`, text token `gw-primary`
+- Never fill with red; no red border or text in any state
+
+Danger is conveyed by the button's label (e.g. "Delete") and by a
+confirmation dialog before the action runs — never by styling. A writer
+should never feel like the tool is demanding their attention with colour;
+the workspace recedes, and the confirmation step is what actually protects
+against an accidental destructive action.
 
 ### Revision control component
 

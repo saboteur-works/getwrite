@@ -377,7 +377,7 @@ values from Task 3, so CLAUDE.md matches the implemented tokens exactly
 **Depends on:** 3, 5
 **Estimate:** 2
 **POS:** task_37054ac0
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Rewrite `trash-view.a11y.test.tsx` with a direct-`axe-core` helper (FR-8)
 
