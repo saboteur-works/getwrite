@@ -220,6 +220,9 @@ async function selectAllRows(canvasElement: HTMLElement): Promise<void> {
 const meta = {
   title: "WorkArea/TrashView",
   component: TrashView,
+  // FR-18 (resolved OQ-4): strict-axe override scoped to this file only — the
+  // global `a11y.test` setting in `.storybook/preview.tsx` stays `"todo"`.
+  parameters: { a11y: { test: "error" } },
 } satisfies Meta<typeof TrashView>;
 
 export default meta;
