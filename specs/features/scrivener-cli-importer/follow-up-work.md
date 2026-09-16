@@ -24,5 +24,20 @@ doesn't log, or check existence without going through the logging
 file this task cannot modify.
 **Relates to:** Task 19 (FR-23)
 **Raised:** 2026-09-11
-**Resolved:** [ ]
-**Resolved on:**
+**Resolved:** [x]
+**Resolved on:** 2026-09-13
+
+**Resolution:** Fixed by commit `5c4216d6` (2026-09-13), during the DOCX
+importer work rather than by any Scrivener-side task — the same warning fired
+once per resource created on every DOCX import, which is where it was picked
+up again. The fix was made in `readSidecar` itself rather than in
+`writeSidecar`'s pre-write check: the `ENOENT` branch now returns `null`
+silently, and the function's doc comment records that a missing sidecar is an
+ordinary expected outcome for a brand-new resource's first write and for a
+folder resource, which never gets one at all. `writeSidecar`'s pre-write
+`readSidecar` call is unchanged and still tolerates a read failure without
+blocking the write.
+
+Confirmed on 2026-09-16: `frontend/src/lib/models/sidecar.ts` contains no
+`console.warn` call; the only remaining occurrence of the string is inside
+that explanatory comment.
