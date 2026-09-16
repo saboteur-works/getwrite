@@ -40,7 +40,7 @@ export const Reorderable: Story = {
           .map(
             (it) =>
               it
-                .querySelector("button.resource-tree-button")
+                .querySelector('[role="treeitem"].resource-tree-button')
                 ?.textContent?.trim() || "",
           )
           .filter(Boolean);

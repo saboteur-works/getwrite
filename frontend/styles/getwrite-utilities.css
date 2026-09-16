@@ -824,7 +824,11 @@ html.gw-theme-dark {
     background: none;
     border: none;
     cursor: pointer;
-    padding: 0 8px;
+    /* Horizontal inset moved off this element and onto the row/kebab below:
+       the expand chevron and the row menu now render inside it (see
+       ResourceTree.tsx), and keeping the padding here would have indented
+       folder rows 8px further than file rows. */
+    padding: 0;
     text-align: left;
     color: var(--color-gw-secondary);
     font-family: var(--font-sans);
@@ -851,7 +855,10 @@ html.gw-theme-dark {
     align-items: center;
     gap: 6px;
     min-width: 0;
-    width: 100%;
+    /* flex, not width:100%: this row now shares the treeitem with the expand
+       chevron and the row menu and must yield space to them. */
+    flex: 1;
+    padding-left: 8px;
   }
 
   .resource-tree-item-row--drag-target {
@@ -864,6 +871,7 @@ html.gw-theme-dark {
   .resource-tree-kebab {
     opacity: 1;
     transition: opacity 120ms ease;
+    margin-right: 8px;
   }
 
   @media (hover: hover) {

@@ -359,37 +359,51 @@ export default function ResourceTree({
             }}
             className={`resource-tree-item ${item.isSelected() ? "resource-tree-item--selected" : ""}`}
           >
-            {item.isFolder() && (
-              <button
-                className="resource-tree-icon-button"
-                onClick={item.isExpanded() ? item.collapse : item.expand}
-              >
-                {renderExpandableStateIcon(item)}
-              </button>
-            )}
-            <button
+            {/* The expand chevron and the row (kebab) menu are rendered
+                INSIDE the treeitem, not as siblings of it. `role="tree"`
+                allows only `treeitem`/`group` children, so a sibling
+                <button> made the tree fail axe-core's
+                `aria-required-children` ("Element has children which are
+                not allowed: button[aria-controls]"). They cannot nest
+                inside a <button>, so the treeitem itself is a <div>
+                carrying the role from `item.getProps()`; keyboard
+                navigation is bound by `tree.getContainerProps()` on the
+                container, not by this element's tag. */}
+            <div
               {...item.getProps()}
               key={item.getId()}
               onClick={(e) => handleClick(e, item)}
               className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""} ${item.isFolder() ? "text-gw-label text-gw-secondary" : ""}`}
             >
+              {item.isFolder() && (
+                <button
+                  className="resource-tree-icon-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (item.isExpanded()) item.collapse();
+                    else item.expand();
+                  }}
+                >
+                  {renderExpandableStateIcon(item)}
+                </button>
+              )}
               <div
                 className={`resource-tree-item-row ${item.isDragTarget() ? "resource-tree-item-row--drag-target" : ""}`}
               >
                 {renderResourceIcon(item)}
                 <div className="truncate">{item.getItemName()}</div>
               </div>
-            </button>
-            <ResourceRowMenu
-              resourceId={item.getId()}
-              resourceName={item.getItemName()}
-              onAction={(action, resourceId) =>
-                onResourceAction?.(action, resourceId, item.getItemName())
-              }
-              onMove={(resourceId) =>
-                setMoveTarget({ id: resourceId, name: item.getItemName() })
-              }
-            />
+              <ResourceRowMenu
+                resourceId={item.getId()}
+                resourceName={item.getItemName()}
+                onAction={(action, resourceId) =>
+                  onResourceAction?.(action, resourceId, item.getItemName())
+                }
+                onMove={(resourceId) =>
+                  setMoveTarget({ id: resourceId, name: item.getItemName() })
+                }
+              />
+            </div>
           </div>
         </ResourceContextMenu>
       ))}
