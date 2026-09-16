@@ -120,3 +120,34 @@ four theme blocks and an existing `background-color` precedent at
 the change. The rendered appearance of the now-visible resize handle and the
 two excluded-item text styles has not been checked in the real app; that check
 is outstanding.
+
+**Update (2026-09-16) — 11 of the 13 residual findings fixed; 2 deferred by the
+owner.**
+
+Every fix removes the `opacity` and changes no colour, so each is verifiable
+from the arithmetic above rather than needing a re-measurement to interpret:
+
+- `.diff-pane-placeholder` (x5) — `opacity: 0.6` removed. It already declares
+  `var(--color-gw-secondary)`, which undimmed measures 5.60 on light chrome
+  (`#f5f4f0`) and 5.19 on dark (`#111110`).
+- `.diff-removed` (x3) — `opacity: 0.7` removed, and deliberately **no** colour
+  declared in its place. The span inherits its colour, and the identically
+  coloured `.diff-unchanged` text beside it was never flagged, so undimming it
+  makes it exactly as legible as its neighbour. This also sidesteps the
+  unresolved question above of which inherited value axe was reporting: the
+  answer stops mattering once the compositing is gone. Removal is still
+  signalled by the line-through and the tinted background.
+- SchemaManager `.opacity-50` (x3) — removed from the field-key span
+  (`SchemaManager.tsx:906`). Arithmetic confirms the same mechanism here:
+  0.5 x `#636160` + 0.5 x `#f5f4f0` = `#acaba8`, exactly the value axe reported
+  at 2.08. The sibling key-edit-error span already used the token undimmed.
+
+**Deferred (owner decision, 2026-09-16):** `.revision-control-badge` (x2).
+Removing its `opacity: 0.8` leaves it at 4.14, which still fails AA at its 9px
+size, so unlike the other three this needs a colour or type-size change to a
+badge whose red is a sanctioned canonical-state marker. Not attempted.
+
+**Outstanding:** none of these four rules has been looked at in the real app
+since the change. Undimming is a visible change to the diff panes, the diff's
+removed-text runs, and the schema field keys, and the contrast arithmetic says
+nothing about whether the result still reads as de-emphasised.

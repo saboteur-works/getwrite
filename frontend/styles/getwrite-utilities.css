@@ -766,7 +766,13 @@ html.gw-theme-dark {
     border-radius: 2px;
     text-decoration: line-through;
     text-decoration-color: currentColor;
-    opacity: 0.7;
+    /* `opacity: 0.7` removed (destructive-styling-a11y FU-1). It composited
+       this span's inherited text colour toward its own background, which axe
+       measured at 2.62 — while the identically-coloured `.diff-unchanged`
+       text beside it was never flagged. No colour is declared here on
+       purpose: without the opacity this renders at exactly the prose colour
+       the surrounding unchanged text already uses. Removal is still signalled
+       by the line-through and the tinted background. */
   }
 
   .diff-unchanged {
@@ -780,7 +786,11 @@ html.gw-theme-dark {
     color: var(--color-gw-secondary);
     padding: 24px 0;
     text-align: center;
-    opacity: 0.6;
+    /* `opacity: 0.6` removed (destructive-styling-a11y FU-1): it composited
+       gw-secondary toward the pane background, measured at 2.49. Undimmed the
+       same token measures 5.60 on light chrome and 5.19 on dark, and it is
+       already the calibrated muted-text token, so the placeholder stays
+       visually secondary without the compositing penalty. */
   }
 
   /* ── EDITVIEW DOC HEADER ── */
