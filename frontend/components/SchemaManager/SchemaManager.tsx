@@ -500,7 +500,12 @@ export default function SchemaManager({
 
   return (
     <>
-      <div className="flex w-full flex-col gap-6">
+      {/* <section>, not <div>: the panel's own <header> below maps to the
+          `banner` landmark unless it sits inside sectioning content, and this
+          panel renders inside ProjectSettingsDialog alongside the app top bar
+          — which axe-core flags as `landmark-no-duplicate-banner`. Matches
+          EncryptionSettings.tsx, the one panel that already did this. */}
+      <section className="flex w-full flex-col gap-6">
         <header className="flex flex-col gap-1 border-b border-gw-border pb-4">
           <h2 className="text-lg font-semibold text-gw-primary">
             Metadata Fields
@@ -1089,7 +1094,7 @@ export default function SchemaManager({
             Add Group
           </Button>
         </div>
-      </div>
+      </section>
 
       {/* Type change migration preview */}
       {typeChangeRequest !== null &&

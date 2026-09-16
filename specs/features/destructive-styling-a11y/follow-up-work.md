@@ -217,3 +217,41 @@ attempted; recorded so they are not lost.
 **Raised:** 2026-09-16
 **Resolved:** [ ]
 **Resolved on:**
+
+### FU-5: `landmark-no-duplicate-banner` was only partly fixed by removing ProjectSettingsDialog's own `<header>`
+
+**What:** The first attempt at FU-1's `ProjectSettingsDialog`
+(`landmark-no-duplicate-banner`) finding changed that dialog's own title-row
+`<header>` to a `<div>`, verified only in jsdom. A lead real-app check on
+2026-09-16 (dev server on :3999 against a scratch projects dir, Chromium via
+Playwright) measured that this was **not sufficient**: with the dialog open,
+`document.querySelectorAll('header')` returned 7 elements, of which **6 mapped
+to the `banner` landmark** — the app top bar plus five settings-panel headers,
+each rendered with no sectioning-content ancestor:
+
+| Panel | File |
+|---|---|
+| Heading Styles | `components/preferences/HeadingSettingsModal.tsx` |
+| Body Text Styles | `components/preferences/BodySettingsModal.tsx` |
+| Default Revision Name | `components/preferences/DefaultRevisionNameModal.tsx` |
+| Manage Tags | `components/common/TagsManagerModal.tsx` |
+| Metadata Fields | `components/SchemaManager/SchemaManager.tsx` |
+
+The sixth panel, Encryption (`components/preferences/EncryptionSettings.tsx`),
+was already correct: its `<header>` sits inside a `<section>`, so it maps to a
+section header rather than a banner. That existing panel is what the fix
+copies.
+
+The jsdom check could not have caught this, because it rendered the dialog
+alone — a duplicate-banner rule needs the top bar present in the same tree.
+
+**Resolution:** each of the five panels' outer wrapper changed from `<div>` to
+`<section>`, leaving their `<header>`s in place. Re-measured in the same live
+session with the dialog open: 7 `<header>` elements, **1 mapping to `banner`**
+(`appshell-topbar`), all six panel headers now reporting a `SECTION`
+sectioning ancestor.
+
+**Relates to:** destructive-styling-a11y FU-1 (ProjectSettingsDialog entry)
+**Raised:** 2026-09-16
+**Resolved:** [x]
+**Resolved on:** 2026-09-16
