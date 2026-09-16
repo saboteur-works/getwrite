@@ -456,7 +456,7 @@ known to fail inside this repo's Bash sandbox (per prior session record);
 step 2 and step 3 above must be run by the lead outside the sandbox, not
 attempted here.
 **POS:** task_87f1b3a2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Full gate — lint/typecheck/test:ci/knip/CLI/Electron, then the lead's Chromium and real-app checks (FR-10, FR-11, FR-12, FR-13, FR-16)
 
