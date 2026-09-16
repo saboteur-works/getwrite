@@ -374,15 +374,18 @@ passed (7) under `parameters.a11y.test: "error"`.
 
 **Survey (2026-09-16), sizing the residual below:** no module under
 `frontend/src/lib/api/` uses `zod`, `.parse`, or `.safeParse` to validate a
-response body. A small number of call sites do perform hand-rolled shape
-checks — `frontend/src/lib/api/trash.ts` and `entity-relationships.ts`'s
-`listOrThrow` narrow the parsed body with `typeof`/`Array.isArray` guards and
-throw on a malformed shape before casting — but 31 of the 39 `response.json()`
-calls across the 16 modules that make requests are returned via a bare `as`
-cast to a declared TypeScript type with no runtime check. `openProject`'s own
-transport is line 82 of `projects.ts`:
-`return (await response.json()) as ProjectApiEntry;`. Status-code checking is
-uneven too — `projects.ts` makes 6 `.json()` calls behind 3 `.ok` checks.
+response body. Of the 39 `response.json()` calls across the 16 modules that
+make requests: 26 cast straight to a declared type on the success path with
+no runtime check — this is the real gap; 5 already use the safe idiom —
+`frontend/src/lib/api/trash.ts` (3) and `entity-relationships.ts` (2) narrow
+the parsed body with `typeof`/`Array.isArray` guards and throw on a
+malformed shape before casting, and are not part of the gap; 3 cast an
+error-body read (`encryption.ts:44`, `preferences.ts:63`,
+`resources.ts:201`); and 5 read an error body with no cast (`projects.ts`
+x3, `editor-config.ts` x2). `openProject`'s own transport is line 82 of
+`projects.ts`: `return (await response.json()) as ProjectApiEntry;`.
+Status-code checking is uneven too — `projects.ts` makes 6 `.json()` calls
+behind 3 `.ok` checks.
 
 The gap is specific to the HTTP boundary: CLAUDE.md records that Zod validators
 gate data crossing the *filesystem* boundary (`schemas.ts`), and they do.

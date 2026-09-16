@@ -1272,6 +1272,63 @@ scope only as an Out of Scope (Deferred) bullet, not a requirement, and this
 entry does not invent one. The mechanism is entirely unproven: no
 directory-picker design and no on-device staging design exist yet.
 
+### Feature 48: Transport response-body validation — Not started
+**Value:** A writer whose UI receives a malformed response body from a
+GetWrite server — e.g. after a project restore, the failure that motivated
+this feature — sees the app degrade or report an error the way the module
+already handles a bad input, instead of an unvalidated `undefined` reaching
+the Redux store and crashing a downstream view.
+**Vertical slice:** Runtime validation of the response body at the call
+sites in scope for this feature (owner decision, Gate 2, 2026-09-16): Tier 1
+plus the four named Tier 2 shapes, about 9 sites across 5 modules —
+`resources.ts` x3, `project-types.ts` x1, `projects.ts` x3
+(`ProjectApiEntry` — the shape behind the motivating FU-10 crash),
+`entity-relationships.ts` x1 (`EntityRelationshipEdge`),
+`entity-alias-table.ts` x1 (`EntityAliasTable`); `trash.ts` needs no change,
+already guarded. Validation uses the module's existing Zod schemas
+(`frontend/src/lib/models/schemas.ts`) where one exists, and a newly
+authored schema for each of the four named Tier 2 shapes, the same way the
+filesystem persistence boundary already validates, following the in-repo
+precedent `trash.ts` and `entity-relationships.ts`'s `listOrThrow` already
+set with `typeof`/`Array.isArray` guards. Each site keeps its existing
+reject-or-degrade contract on a validation failure, but a failure is now
+always surfaced via a new shared helper — e.g. `reportTransportValidationFailure()`,
+importable by `lib/api/` modules — that logs now and gives a single seam to
+later wire a toast or hosted telemetry to; this helper is new
+infrastructure and part of this feature's scope. The remaining ~17 sites
+across 9 further modules with no existing schema (`tags`, `mentions`,
+`compile`, `export`, `encryption`, `preferences`, `entity-cooccurrence`,
+`entity-mention-counts`, `resource-excerpts`) are explicitly deferred to a
+tracked follow-up, not silently omitted. Scoped to the current HTTP
+transport only (parent spec OQ-31) — this includes the hosted path, since
+hosted is itself HTTP: a future sync transport is explicitly deferred, and
+ADR-021's in-process native transport crosses no serialization boundary and
+is unaffected.
+**Requirements covered:** None of its own — this derives from the parent
+spec's Constraints section (the transport-boundary validation invariant),
+not from a functional requirement; see this feature list's Open Questions
+and the parent spec's Open Questions for the owner decisions that scope it.
+**User stories:** None
+**Depends on:** None
+**Branch suggestion:** feat/transport-response-validation
+**Notes:** Not started. Motivated by a measured gap (of 39
+`response.json()` calls across 17 modules in `frontend/src/lib/api/`, 26
+return a parsed body via a bare `as` cast with no runtime check; 5 already
+use the safe narrow-then-throw idiom, `trash.ts` and
+`entity-relationships.ts`, which is the in-repo precedent this feature
+follows) and a real failure it caused: `openProject`
+(`frontend/src/lib/api/projects.ts:82`) returned a malformed body as
+`ProjectApiEntry` via a bare cast, writing `undefined` into the Redux store
+and crashing `TrashView` after a successful restore (see
+`specs/features/trash-ui/follow-up-work.md` FU-10). The owner's Gate 2
+decision (2026-09-16) scopes this feature to Tier 1 plus the four named
+Tier 2 shapes and settles the surfacing mechanism as a new shared helper
+rather than bare `console.*` per module (developer-only, invisible to
+users and hosted operators) or routing through the existing `AppToaster`
+(transports cannot currently reach it without a circular dependency on
+UI/store code, and it leaves no developer record); both open questions this
+feature list previously raised are resolved by that decision.
+
 ---
 
 ## Coverage check
@@ -1327,7 +1384,7 @@ directory-picker design and no on-device staging design exist yet.
 
 ## Summary
 
-- Total features: 47
+- Total features: 48
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -1368,13 +1425,16 @@ directory-picker design and no on-device staging design exist yet.
   (removing an entity declaration) has shipped, having depended on the
   already-shipped Features 33 and 38 — 33 for the entity declaration it
   reverses, 38 for the authored edges its keep/delete-edges choice acted on.
+  48 (transport response-body validation) has no dependency on any other
+  feature — it is cross-cutting work over the existing `frontend/src/lib/api/`
+  call sites — and can start any time.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-  36, 37, 38, 39, 40, 41, 42, 43, 44, 45 (30 and 28 are the only pair left
+  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48 (30 and 28 are the only pair left
   with an unmet hard dependency; Feature 31 and Feature 43 have both since
   shipped, so 44's former dependency on 31 and 46/47's former dependency on
   43 are now satisfied)
-- Not yet built: 24, 26, 27, 28, 29, 30, 32, 44, 46, 47.
+- Not yet built: 24, 26, 27, 28, 29, 30, 32, 44, 46, 47, 48.
   Everything else in this list has shipped.
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
@@ -1591,3 +1651,24 @@ FR-42 split (this document's own scoping call, 2026-09-11):
   identity is recorded and linked back to its `.scriv` source — is
   genuinely undesigned and left open, consistent with the parent spec's own
   framing of FR-44 as a MAY-level requirement with no defined mechanism yet.
+- **Resolved (owner decision, Gate 2 review, 2026-09-16): Feature 48 is not
+  split into two features.** It ships as one feature scoped to Tier 1 plus
+  the four named Tier 2 shapes (`ProjectApiEntry`, `EntityRelationshipEdge`,
+  `TrashedResourceEntry`/`TrashedFolderEntry`, `EntityAliasTable`) — about 9
+  sites across 5 modules. The much larger remainder of Tier 2 — about 17
+  further sites across 9 modules with no existing schema (`tags`,
+  `mentions`, `compile`, `export`, `encryption`, `preferences`,
+  `entity-cooccurrence`, `entity-mention-counts`, `resource-excerpts`) — is
+  explicitly deferred to a tracked follow-up rather than folded into this
+  feature or silently dropped. Previously open here as whether Tier 1 and
+  Tier 2 should ship as one feature or split into two.
+- **Resolved (owner decision, Gate 2 review, 2026-09-16): Feature 48's
+  "always surface" plumbing is a new shared helper** — e.g.
+  `reportTransportValidationFailure()`, importable by `lib/api/` modules —
+  that logs now and provides a single seam to wire a toast or hosted
+  telemetry to later. This is new infrastructure and part of Feature 48's
+  scope. Rejected alternatives: bare `console.*` per module (developer-only,
+  invisible to users and hosted operators) and routing through the existing
+  `AppToaster` (transports cannot currently reach it without a circular
+  dependency on UI/store code, and it leaves no developer record).
+  Previously open here as what that plumbing should be.

@@ -1366,22 +1366,38 @@ vs. its siblings).
 **OQ-33: Is the transport-boundary validation invariant retroactive over
 the 39 existing `response.json()` call sites in `frontend/src/lib/api/`, or
 forward-only for new code?**
-**Resolution (owner decision, 2026-09-16):** Staged by cost. Call sites
-whose response shapes already have a reusable Zod schema in
-`frontend/src/lib/models/schemas.ts` are remediated first. Sites whose
-shapes are API-only and would need new schemas authored — `ProjectApiEntry`,
-`EntityRelationshipEdge`, `TrashedResourceEntry`/`TrashedFolderEntry`,
-`EntityAliasTable` — are tracked as a separately scheduled follow-up. This
-is a deliberate two-tier rollout, so the invariant is understood as not yet
-fully true of the codebase while tier two is outstanding.
-**Impact:** A retroactive reading implies remediation work across 17
-existing modules before the invariant can be said to hold; a forward-only
-reading leaves the concrete failure already observed (`openProject`)
-unaddressed unless it is separately scheduled.
+**Resolution (owner decision, 2026-09-16):** Staged by cost. Tier 1 — call
+sites whose response shapes already have a reusable Zod schema in
+`frontend/src/lib/models/schemas.ts` — is remediated first: about 4 sites
+across 2 modules (`resources.ts` x3, `project-types.ts` x1). Tier 2 — sites
+whose shapes are API-only with no existing schema — is larger than
+originally framed: about 22 sites across 12 modules, of which only about 5
+sites (the four shapes named below) are scheduled now; the remaining ~17
+sites across 9 further modules (`tags`, `mentions`, `compile`, `export`,
+`encryption`, `preferences`, `entity-cooccurrence`,
+`entity-mention-counts`, `resource-excerpts`) are tracked as a separately
+scheduled follow-up beyond that. The four named Tier 2 shapes scheduled now
+are `ProjectApiEntry`, `EntityRelationshipEdge`,
+`TrashedResourceEntry`/`TrashedFolderEntry`, `EntityAliasTable`; note that
+`TrashedResourceEntry`/`TrashedFolderEntry` contributes zero unchecked call
+sites in practice, since `trash.ts` already guards all three of its call
+sites with a narrow-then-throw check. This is a deliberate staged rollout,
+so the invariant is understood as not yet fully true of the codebase while
+the deferred remainder is outstanding.
+**Impact:** A retroactive reading implies remediation work across 12
+existing Tier-2 modules (plus the 2 Tier-1 modules) before the invariant
+can be said to hold; a forward-only reading leaves the concrete failure
+already observed (`openProject`) unaddressed unless it is separately
+scheduled.
 **Owner:** Product owner.
-**Evidence:** Measured at 2026-09-16: 31 of 39 `response.json()` calls
-across the 17 modules in `frontend/src/lib/api/` return their parsed body
-via a bare `as` cast with no runtime check.
+**Evidence:** Measured at 2026-09-16: of 39 `response.json()` calls across
+the 17 modules in `frontend/src/lib/api/`, 26 return their parsed body via
+a bare `as` cast with no runtime check on the success path; 5 (`trash.ts`
+x3, `entity-relationships.ts` x2) already narrow the parsed body with
+`typeof`/`Array.isArray` guards and throw on a malformed shape before
+casting; 3 cast an error-body read (`encryption.ts:44`, `preferences.ts:63`,
+`resources.ts:201`); 5 read an error body with no cast (`projects.ts` x3,
+`editor-config.ts` x2).
 
 ## Out of Scope (Deferred)
 
