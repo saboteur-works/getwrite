@@ -1,4 +1,11 @@
 /**
+ * @vitest-environment jsdom
+ *
+ * This file needs a real DOM (the suite's default project is `node` — see
+ * vitest.config.ts). Without this docblock it fails with `document is not
+ * defined`.
+ */
+/**
  * Covers the runtime-aware download seam (`src/lib/compile/download-file.ts`)
  * and its native backend.
  *

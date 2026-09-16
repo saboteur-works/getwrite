@@ -37,6 +37,7 @@ import {
   requireSessionKeyring,
 } from "./keyring-session";
 import { setProjectName } from "./name-index";
+import type { Argon2Params } from "./primitives";
 import { assertEncryptionAvailable } from "./encryption-availability";
 
 /** Options accepted by {@link enableProjectEncryption}. */
@@ -58,6 +59,16 @@ export interface EnableEncryptionOptions {
   adapter?: StorageAdapter;
   /** Reports sweep progress so the UI can show something during the wait. */
   onProgress?: (progress: { done: number; total: number }) => void;
+  /**
+   * Argon2id cost parameters for a keyring created by this call; ignored when
+   * `passphrase` is `null`, since that path reuses the unlocked session.
+   *
+   * Defaults to `DEFAULT_ARGON2_PARAMS`. Exposed so tests can derive at a cost
+   * they can afford — the production profile measures ~383ms per derivation by
+   * design. Lowering it is always explicit at the call site; nothing reads it
+   * from the environment.
+   */
+  params?: Argon2Params;
 }
 
 /**
@@ -81,7 +92,12 @@ export async function enableProjectEncryption(
   const workspaceRoot = options.workspaceRoot ?? resolveProjectsDir();
 
   const keyring = passphrase
-    ? await createWorkspaceKeyring(passphrase, workspaceRoot, adapter)
+    ? await createWorkspaceKeyring(
+        passphrase,
+        workspaceRoot,
+        adapter,
+        options.params,
+      )
     : requireSessionKeyring();
 
   // Persist the key before sealing anything: ciphertext without a stored key is

@@ -1,3 +1,10 @@
+/**
+ * @vitest-environment jsdom
+ *
+ * This file needs a real DOM (the suite's default project is `node` — see
+ * vitest.config.ts). Without this docblock it fails with `document is not
+ * defined`.
+ */
 // Integration test for the entity-scoped compile feature
 // (specs/features/entity-scoped-compile.md), exercising three properties
 // against one fixture project built with the in-memory storage adapter:

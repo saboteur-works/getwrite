@@ -1,3 +1,10 @@
+/**
+ * @vitest-environment jsdom
+ *
+ * This file needs a real DOM (the suite's default project is `node` — see
+ * vitest.config.ts). Without this docblock it fails with `document is not
+ * defined`.
+ */
 import { describe, it, expect } from "vitest";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — renderHook exists at runtime but TS can't resolve it due to react-dom/test-utils having no types in React 19

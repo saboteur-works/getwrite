@@ -7,6 +7,7 @@ import type { StorageAdapter } from "../../src/lib/models/io";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
 import { encryptingAdapter } from "../../src/lib/models/encryptingAdapter";
 import { createKeyring } from "../../src/lib/models/crypto/keyring";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 import {
   EnvelopeFormatError,
   EnvelopeIntegrityError,
@@ -23,7 +24,7 @@ let keyB: CryptoKey;
 const previous = io.getStorageAdapter();
 
 beforeEach(async () => {
-  const keyring = await createKeyring(PASS);
+  const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
   await keyring.addProject(PROJECT_A);
   await keyring.addProject(PROJECT_B);
   keyA = keyring.projectKey(PROJECT_A);

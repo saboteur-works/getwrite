@@ -13,6 +13,7 @@ import { isEnvelope } from "../../src/lib/models/crypto/envelope";
 import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
 import { convertProject } from "../../src/lib/models/crypto/convert-project";
 import { __resetWriteBarriersForTests } from "../../src/lib/models/write-barrier";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 import {
   MissingProjectKeyError,
   ProjectLockedError,
@@ -46,7 +47,10 @@ beforeEach(async () => {
     await base.mkdir(root, { recursive: true });
   }
 
-  keyring = await createKeyring("correct horse battery staple");
+  keyring = await createKeyring(
+    "correct horse battery staple",
+    TEST_ARGON2_PARAMS,
+  );
   await keyring.addProject(SEALED_ID);
   await keyring.addProject(OTHER_ID);
 

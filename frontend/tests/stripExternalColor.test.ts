@@ -1,3 +1,10 @@
+/**
+ * @vitest-environment jsdom
+ *
+ * This file needs a real DOM (the suite's default project is `node` — see
+ * vitest.config.ts). Without this docblock it fails with `document is not
+ * defined`.
+ */
 import { describe, expect, it } from "vitest";
 import { stripExternalColor } from "../components/Editor/Extensions/StripExternalPasteColor";
 
