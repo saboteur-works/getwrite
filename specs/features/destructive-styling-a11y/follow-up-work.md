@@ -151,3 +151,69 @@ badge whose red is a sanctioned canonical-state marker. Not attempted.
 since the change. Undimming is a visible change to the diff panes, the diff's
 removed-text runs, and the schema field keys, and the contrast arithmetic says
 nothing about whether the result still reads as de-emphasised.
+
+### FU-3: AppShell's `heading-order` finding does not reproduce outside the browser
+
+**What:** FU-1 records `AppShell` (`heading-order`) among five story files with
+findings in the 2026-09-15 Chromium strict-axe sweep. An attempt to fix it on
+2026-09-16 could not reproduce it.
+
+Measured: rendering `AppShell` in jsdom with axe-core, in two shapes — the
+full shell with a project and a selected text resource, and the shell with
+story-style children — produced the identical heading sequence both times, with
+no level skip and no `heading-order` violation:
+
+```
+<h2> "Scene A"            (workarea doc header)
+<h2> "Revision Control"
+<h3> "Scene A"
+```
+
+Static reading agrees: `AppShell.tsx`'s own headings are `h2` x4, `h3`, `h2`,
+and `MetadataSidebar.tsx`'s are `h3` then `h4` — no skip in either.
+
+**Hypothesis, not established:** the jsdom runs mock out TipTap
+(`vi.mock("../components/TipTapEditor")` — the real editor does not mount in
+jsdom), so no heading the *document content* contains is rendered. In Chromium
+the editor mounts and TipTap renders the resource's own `h1`/`h2`/`h3` nodes
+inside the shell, which could produce a skip against the shell's chrome
+headings. If that is the cause, the finding is content-dependent rather than a
+defect in `AppShell`'s markup, and the fix is different in kind.
+
+**Experiment that would settle it:** run the Chromium strict-axe sweep over
+`stories/AppShell` with `a11y.test` temporarily `"error"`, and read the
+violation's own target selector — whether it names an element inside the TipTap
+editor or one of the shell's own headings decides it. Nothing short of a
+rendered run answers this.
+
+**Relates to:** destructive-styling-a11y FU-1 (the sweep that raised it)
+**Raised:** 2026-09-16
+**Resolved:** [ ]
+**Resolved on:**
+
+### FU-4: Three further axe findings on AppShell, measured while chasing FU-3
+
+**What:** The jsdom axe runs above surfaced three violations that FU-1's sweep
+did not list for `AppShell`. Two look real; one is an artifact of the test
+harness and is recorded only so it is not re-chased:
+
+- `landmark-complementary-is-top-level` — `<aside class="metadata-sidebar-root"
+  aria-label="metadata-sidebar">` is nested inside another landmark.
+- `landmark-unique` — `<aside class="hidden md:flex appshell-sidebar border-r">`
+  has no `aria-label`/`aria-labelledby`/`title` distinguishing it from the other
+  complementary landmark.
+- `aria-valid-attr-value` — the work-area tabs' `aria-controls` names a panel id
+  that is not in the DOM, because only the selected tab's panel is rendered.
+  Seen in the full-shell shape only. Whether this is real or a jsdom artifact is
+  not established; axe evaluates `aria-controls` against the live DOM, so a real
+  browser would flag it too if the unselected panels are genuinely absent there.
+- (Artifact, not a finding: `label` on a bare `<textarea>` — that is the
+  `TipTapEditor` mock the jsdom tests substitute, not app markup.)
+
+**Why deferred:** outside the four findings this run was asked to clear. Not
+attempted; recorded so they are not lost.
+
+**Relates to:** destructive-styling-a11y FU-1, FU-3
+**Raised:** 2026-09-16
+**Resolved:** [ ]
+**Resolved on:**
