@@ -25,6 +25,50 @@ The correlation between "carries an opacity" and "still fails" is exact across a
 **Raised:** 2026-09-15
 **Resolved:** [ ]
 
+**Update (2026-09-16) — the cause is now settled, by computation rather than
+by the browser experiment proposed above.**
+
+Alpha compositing is deterministic: an element with `opacity: a` over a
+backdrop renders at `a x foreground + (1 - a) x backdrop` per channel. Feeding
+each rule's own declared colour, its backdrop, and its own opacity through that
+formula reproduces the exact byte values axe reported:
+
+| Rule | Declared | Backdrop | Opacity | Predicted | axe reported |
+|---|---|---|---|---|---|
+| `.diff-pane-placeholder` | `#636160` | `#f5f4f0` | 0.6 | `#9d9c9a` | `#9d9c9a` |
+| `.revision-control-badge` | `#d44040` | `#f5f4f0` | 0.8 | `#db6463` | `#db6463` |
+| `.diff-removed` (background) | `rgba(80,130,180,0.18)` | `#f5f4f0` | 0.7 | `#e0e6e8` | `#e0e6e8` |
+
+Three exact matches, and the derived contrast ratios agree with axe's to within
+rounding (2.50 vs 2.49; 3.18 vs 3.17). This discriminates the opacity
+hypothesis from the alternative that the token values themselves are at fault:
+the measured colours are not the token values, they are the token values
+composited by these rules' own `opacity`. No browser run was needed.
+
+**What that implies for the fix — it is not uniform across the three:**
+
+- `.diff-pane-placeholder` measures **5.60 without the opacity** and 2.50 with
+  it. Dropping `opacity: 0.6` alone clears it, because FR-5/FR-6 already
+  repointed its token at an AA-calibrated value.
+- `.revision-control-badge` measures **4.14 without the opacity** and 3.18 with
+  it. Dropping the opacity is *not sufficient* — 4.14 is the same figure
+  `destructive-styling-a11y`'s own Gate 3 table recorded as failing for
+  `#d44040` at small sizes. This one needs a decision, not just an opacity
+  removal: the badge is red because it marks canonical/position state, which is
+  the one use CLAUDE.md and STYLING.md reserve red for, so the options are to
+  raise its 9px text size, darken the red, or accept the finding for a
+  non-text-critical badge. That call is the owner's.
+- `.diff-removed` declares no `color` of its own and inherits one; its
+  *background* composite matched exactly, but neither `--color-gw-secondary`
+  (predicts `#868788`) nor the editor ink `#1a1916` (predicts `#535554`)
+  reproduces axe's reported `#8f8d8b`, so the inherited colour in that context
+  has not yet been identified. The mechanism is established; the specific
+  inherited value still needs to be read off the rendered tree.
+
+SchemaManager's `.opacity-50` findings follow the same mechanism but were not
+recomputed here, since the Tailwind utility's backdrop was not recorded at
+measurement time.
+
 ### FU-2: `var(--color-gw-mid)` was referenced by three declarations and defined nowhere
 
 **What:** `--color-gw-mid` had no definition anywhere in `frontend/styles/` or
