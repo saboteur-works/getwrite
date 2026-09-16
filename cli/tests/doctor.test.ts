@@ -58,3 +58,30 @@ test("doctor flags a folder whose parent is missing", async () => {
     expect(await runDoctor(root)).toBe(1);
   });
 });
+
+test("doctor refuses an encrypted project with exit 3 rather than crashing", async () => {
+  await withTmp(async (root) => {
+    // A real project's files, plus the plaintext opt-in marker that says they
+    // are sealed. Before this case, doctor read straight through the plain
+    // adapter and died on the first JSON.parse of an envelope with
+    // `Unexpected token 'G', "GWE ..."` — a message about corruption, not
+    // encryption. Measured against a real encrypted project on 2026-09-16.
+    const folder = createFolderResource({ name: "Episode 1" });
+    await writeResourceToFile(root, folder);
+
+    await fs.writeFile(
+      path.join(root, ".encrypted.json"),
+      JSON.stringify({
+        version: 1,
+        encrypted: true,
+        encryptedAt: new Date().toISOString(),
+      }),
+      "utf-8",
+    );
+
+    // 3, not 0 and not 1: the project is unexamined, so reporting it as either
+    // clean or problem-bearing would state something untrue about its
+    // integrity.
+    expect(await runDoctor(root)).toBe(3);
+  });
+});

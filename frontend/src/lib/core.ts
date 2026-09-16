@@ -30,6 +30,12 @@ export { readFolderTree, renameFolderById } from "./models/folder-utils";
 // Sidecars
 export { readSidecar, writeSidecar } from "./models/sidecar";
 
+// Encryption — the plaintext opt-in marker. Exported so CLI commands that read
+// project files with the plain adapter can tell "this project is sealed" apart
+// from "this file is corrupt": without it, `JSON.parse` on an envelope reports
+// a syntax error naming the envelope's own magic bytes.
+export { isProjectEncrypted } from "./models/crypto/project-marker";
+
 // Trash — FR-8 nullified-reference record
 export {
   writeTrashRefRecord,
