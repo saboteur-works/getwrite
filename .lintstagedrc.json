@@ -1,1 +1,6 @@
-{ "*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml,css}": "prettier --write" }
+{
+  "*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml,css}": [
+    "prettier --write",
+    "pnpm --filter getwrite-frontend check:no-hex"
+  ]
+}
