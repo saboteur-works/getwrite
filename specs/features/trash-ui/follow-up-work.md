@@ -373,10 +373,13 @@ After the fix, `pnpm test-storybook stories/WorkArea/TrashView` reports 7
 passed (7) under `parameters.a11y.test: "error"`.
 
 **Survey (2026-09-16), sizing the residual below:** no module under
-`frontend/src/lib/api/` validates any response body. Across the 16 modules that
-make requests there are **39 `response.json()` calls, 31 of them returned via a
-bare `as` cast** to a declared TypeScript type, and **0 uses of `zod`,
-`.parse`, or `.safeParse`** anywhere in that directory. `openProject`'s own
+`frontend/src/lib/api/` uses `zod`, `.parse`, or `.safeParse` to validate a
+response body. A small number of call sites do perform hand-rolled shape
+checks — `frontend/src/lib/api/trash.ts` and `entity-relationships.ts`'s
+`listOrThrow` narrow the parsed body with `typeof`/`Array.isArray` guards and
+throw on a malformed shape before casting — but 31 of the 39 `response.json()`
+calls across the 16 modules that make requests are returned via a bare `as`
+cast to a declared TypeScript type with no runtime check. `openProject`'s own
 transport is line 82 of `projects.ts`:
 `return (await response.json()) as ProjectApiEntry;`. Status-code checking is
 uneven too — `projects.ts` makes 6 `.json()` calls behind 3 `.ok` checks.
