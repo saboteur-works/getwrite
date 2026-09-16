@@ -911,10 +911,11 @@ export default function SchemaManager({
                               {/* `opacity-50` removed (destructive-styling-a11y
                                   FU-1): it composited text-gw-secondary toward
                                   the panel background, which axe measured at
-                                  2.08 — exactly 0.5 x #636160 + 0.5 x #f5f4f0.
-                                  The token is already the calibrated muted-text
-                                  colour, and the sibling key-edit error span
-                                  above uses it undimmed. */}
+                                  2.08 — the exact half-and-half composite of
+                                  the two, derived in that follow-up. The token
+                                  is already the calibrated muted-text colour,
+                                  and the sibling key-edit error span above uses
+                                  it undimmed. */}
                               <span className="font-mono text-[10px] text-gw-secondary">
                                 {field.key}
                               </span>
