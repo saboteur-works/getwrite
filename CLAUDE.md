@@ -270,8 +270,8 @@ Key standards (read these before making significant changes):
 
 Brand name: **GetWrite** (one word, camelCase). Parent brand: **Saboteur LLC**.
 
-- **Color tokens**: `black`, `white`, `red` (#D44040), `mid`, and `surface` variants
-- **Red is reserved** for position/canonical state indicators only — never for actions or alerts
+- **Color tokens**: `black`, `white`, `red` (#D44040), `mid`, `surface` variants, and `fg-tertiary`/`fg-inv-tertiary` (AA-contrast secondary text — `mid` is structural/decorative only, never text)
+- **Red is reserved** for position/canonical state indicators only — never for actions or alerts. The `destructive` Button variant is styled identically to `secondary` (no red); danger is conveyed by label and confirmation dialog only
 - **Typography**: IBM Plex Sans (UI), IBM Plex Mono (code), IBM Plex Serif (editor body only)
 - **Editor line height**: 1.8+ minimum — this is essential for writers
 - Dark/light mode support via CSS tokens defined in `styles/`
@@ -282,5 +282,5 @@ Detailed styling guidance exists in STYLING.md
 ## Testing & Storybook
 
 - Unit / integration / component / a11y tests live in `tests/`; prefer TDD and add to an existing test file before creating a new one.
-- E2E tests (`e2e/`, Playwright, Chromium only) run against Storybook — start `pnpm storybook` (port 6006) first. Screenshots/video/trace are captured on failure. A11y tests use `@storybook/addon-a11y`.
+- E2E tests (`e2e/`, Playwright, Chromium only) run against Storybook — start `pnpm storybook` (port 6006) first. Screenshots/video/trace are captured on failure. Storybook stories run `@storybook/addon-a11y` (global setting `"todo"`, opt-in per story via `parameters: { a11y: { test: "error" } }`); some `*.a11y.test.tsx` unit tests additionally run a real `axe-core` check via the `frontend/tests/a11y/helpers/axe.ts` wrapper (see `docs/standards/accessibility.md`).
 - **Never hallucinate component props.** Before using any prop on an in-project component, open its source under `frontend/components/...` and matching `*.stories.tsx` to confirm it exists. Story names may not match prop names — verify against the TypeScript props or a story's args. If undocumented, ask rather than guess.

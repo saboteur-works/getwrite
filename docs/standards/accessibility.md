@@ -58,8 +58,24 @@ readable type are the product.
 
 - Component-level accessibility tests live in `frontend/tests/a11y/` and are named
   `*.a11y.test.tsx` (see `docs/standards/testing.md`).
+- Where a real rule-engine check is warranted, use the in-repo `axe-core`
+  wrapper at `frontend/tests/a11y/helpers/axe.ts` (`runAxe(container)`) rather
+  than a hand-written jsdom approximation or a `vitest-axe` wrapper. It runs
+  the actual `axe-core` package against jsdom-rendered output, with
+  `color-contrast` disabled (jsdom cannot compute rendered color) and
+  `aria-hidden-focus` disabled (a known false positive against Radix
+  `Dialog`'s `hideOthers()`, documented in the helper) — contrast is
+  verified separately (see below).
 - Storybook runs `@storybook/addon-a11y`; a new component's story is expected to
-  be clean under it.
+  be clean under it. The global `a11y.test` setting in `.storybook/preview.tsx`
+  is `"todo"` (non-blocking); an individual story file may opt into strict
+  enforcement with a file-scoped `parameters: { a11y: { test: "error" } }`
+  (e.g. `frontend/stories/WorkArea/TrashView.stories.tsx`).
+- Contrast is checked by hand against the token values, not by an automated
+  jsdom test: `frontend/tests/a11y/helpers/axe.ts`'s `color-contrast` rule is
+  disabled for the reason above, so a real contrast check needs a browser —
+  run a strict-axe Storybook pass in Chromium over the affected stories, or
+  compute the ratio directly from the CSS tokens in `STYLING.md`.
 - Editor-specific behaviour is covered by `frontend/e2e/editor-accessibility.e2e.spec.ts`.
 - A new shared primitive under `components/common/UI/` should arrive with an
   a11y test, matching the fourteen that already exist.

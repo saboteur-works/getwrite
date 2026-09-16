@@ -374,8 +374,24 @@ export default function TrashView({
         if (action.kind === "restore" && succeededCount > 0) {
           try {
             const opened = await openProject(projectId);
-            dispatch(loadResources({ resources: opened.resources, projectId }));
-            dispatch(setProjectFolders(opened.folders));
+            // `openProject` is typed as `ProjectApiEntry`, but its HTTP
+            // transport does not validate the response body against that
+            // type, so `opened.resources`/`opened.folders` can be
+            // `undefined` at runtime. Dispatching that straight into
+            // `loadResources`/`setProjectFolders` doesn't throw here (this
+            // `try` wouldn't catch it anyway), it writes `undefined` into
+            // the store, which then crashes the `resourcesSliceCount`
+            // selector above on the next render. Guard each field
+            // independently so a malformed response degrades to "the
+            // sidebar tree needs a manual reload" instead.
+            if (Array.isArray(opened.resources)) {
+              dispatch(
+                loadResources({ resources: opened.resources, projectId }),
+              );
+            }
+            if (Array.isArray(opened.folders)) {
+              dispatch(setProjectFolders(opened.folders));
+            }
           } catch {
             // Best-effort: the restore itself already succeeded and is
             // reported via `report` above; a failed refetch here only means

@@ -6,19 +6,14 @@
  * Mirrors `tests/component/TrashView.test.tsx`'s own setup rather than
  * introducing a new one.
  *
- * Task 19 Part B adds `assertNoStructuralAxeViolations` below, asserting
- * zero violations of axe-core's `nested-interactive`, `aria-allowed-role`,
- * and `list` rules. This project has no `axe-core`/`jest-axe` dependency
- * installed in `frontend/node_modules` (it isn't a direct dependency of
- * `getwrite-frontend`; only `@storybook/addon-a11y` pulls a copy in
- * transitively, for the Storybook Chromium `test-storybook` run, which is
- * out of this Vitest suite's reach), and adding one is out of this task's
- * scope (no network-dependent `pnpm install` may run here). The helper
- * below is a small, targeted reimplementation of exactly those three rules'
- * checks — not a general axe substitute — so this suite can still assert
- * the specific regression this task fixes without a new dependency. It errs
- * toward under-flagging (skipping a check its rule doesn't unambiguously
- * cover) rather than over-flagging valid markup.
+ * Per resolved OQ-2 (amended at Gate 4, `specs/features/
+ * destructive-styling-a11y.md` FR-8), the "Task 19 Part B" describe block
+ * that previously reimplemented a hand-written subset of axe-core's
+ * `nested-interactive`/`aria-allowed-role`/`list` rules (because no
+ * `axe-core` dependency existed yet) has been replaced below with a real
+ * `axe-core` run via `./helpers/axe`'s `runAxe`, against TrashView's
+ * default listing, empty state, multi-select active, and restore/purge
+ * confirm dialog states.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,149 +33,7 @@ import {
   setSelectedProjectId,
 } from "../../src/store/projectsSlice";
 import type { RestoreItemResult, TrashListing } from "../../src/lib/api/trash";
-
-/**
- * ARIA roles axe-core's `aria-allowed-role` rule treats as "interactive
- * widget" roles for the purpose of `nested-interactive` (an interactive
- * element/role must not contain another one).
- */
-const INTERACTIVE_ROLES = new Set([
-  "button",
-  "checkbox",
-  "radio",
-  "switch",
-  "option",
-  "tab",
-  "menuitem",
-  "menuitemcheckbox",
-  "menuitemradio",
-  "combobox",
-  "listbox",
-  "link",
-  "textbox",
-  "slider",
-  "spinbutton",
-  "searchbox",
-]);
-
-const NATIVE_INTERACTIVE_TAGS = new Set([
-  "button",
-  "input",
-  "select",
-  "textarea",
-]);
-
-function isInteractive(el: Element): boolean {
-  const role = el.getAttribute("role");
-  if (role && INTERACTIVE_ROLES.has(role)) return true;
-  const tag = el.tagName.toLowerCase();
-  if (NATIVE_INTERACTIVE_TAGS.has(tag)) return true;
-  if (tag === "a" && el.hasAttribute("href")) return true;
-  return false;
-}
-
-/**
- * axe's `nested-interactive`: an interactive element/role must not have
- * another interactive element/role as a descendant.
- */
-function findNestedInteractiveViolations(root: HTMLElement): Element[] {
-  const violations: Element[] = [];
-  const interactiveEls = Array.from(root.querySelectorAll("*")).filter(
-    isInteractive,
-  );
-  for (const el of interactiveEls) {
-    const nestedInteractive = Array.from(el.querySelectorAll("*")).find(
-      isInteractive,
-    );
-    if (nestedInteractive) violations.push(el);
-  }
-  return violations;
-}
-
-/**
- * axe's `aria-allowed-role`, scoped to the one host element this suite's
- * markup actually gives an explicit `role` that could plausibly be
- * disallowed: `<li>`. (ARIA in HTML's allowed-roles list for `li` includes
- * `listitem` (implicit), `option`, `menuitemcheckbox`, `menuitemradio`,
- * `radio`, `separator`, `tab`, `treeitem`, `presentation`/`none` — not
- * live-region roles like `status`.)
- */
-const LI_ALLOWED_ROLES = new Set([
-  "listitem",
-  "option",
-  "menuitemcheckbox",
-  "menuitemradio",
-  "radio",
-  "separator",
-  "tab",
-  "treeitem",
-  "presentation",
-  "none",
-]);
-
-function findAriaAllowedRoleViolations(root: HTMLElement): Element[] {
-  const violations: Element[] = [];
-  root.querySelectorAll("li[role]").forEach((li) => {
-    const role = li.getAttribute("role");
-    if (role && !LI_ALLOWED_ROLES.has(role)) violations.push(li);
-  });
-  return violations;
-}
-
-/**
- * axe's `list`: a `<ul>`/`<ol>` element's direct children must all be
- * `<li>` (default `listitem` role, or explicitly `role="listitem"`),
- * `<script>`, or `<template>`.
- */
-function findListStructureViolations(root: HTMLElement): Element[] {
-  const violations: Element[] = [];
-  root.querySelectorAll("ul, ol").forEach((list) => {
-    Array.from(list.children).forEach((child) => {
-      const tag = child.tagName.toLowerCase();
-      if (tag === "script" || tag === "template") return;
-      const role = child.getAttribute("role");
-      if (tag === "li" && (!role || role === "listitem")) return;
-      violations.push(child);
-    });
-  });
-  return violations;
-}
-
-function describeElement(el: Element): string {
-  const testId = el.getAttribute("data-testid");
-  const role = el.getAttribute("role");
-  return `<${el.tagName.toLowerCase()}${testId ? ` data-testid="${testId}"` : ""}${
-    role ? ` role="${role}"` : ""
-  }>`;
-}
-
-/**
- * Asserts zero violations of axe-core's `nested-interactive`,
- * `aria-allowed-role`, and `list` rules within `container` — see this
- * file's header comment for why this is a targeted reimplementation rather
- * than a real `axe(...)` call.
- */
-function assertNoStructuralAxeViolations(container: HTMLElement): void {
-  const nested = findNestedInteractiveViolations(container);
-  expect(
-    nested,
-    `nested-interactive violations: ${nested.map(describeElement).join(", ")}`,
-  ).toHaveLength(0);
-
-  const allowedRole = findAriaAllowedRoleViolations(container);
-  expect(
-    allowedRole,
-    `aria-allowed-role violations: ${allowedRole
-      .map(describeElement)
-      .join(", ")}`,
-  ).toHaveLength(0);
-
-  const list = findListStructureViolations(container);
-  expect(
-    list,
-    `list violations: ${list.map(describeElement).join(", ")}`,
-  ).toHaveLength(0);
-}
+import { runAxe } from "./helpers/axe";
 
 vi.mock("../../src/lib/api/trash", () => ({
   listTrash: vi.fn(),
@@ -451,21 +304,16 @@ describe("a11y: TrashView selection and batch controls (Task 18)", () => {
 });
 
 /**
- * Task 19 Part B: `trash-view.a11y.test.tsx` previously never ran anything
- * resembling an accessibility-tree structural check — every assertion in
- * the describe block above reads specific roles/attributes off individual
- * elements (`getByRole("checkbox", ...)`, `toHaveAttribute("aria-selected",
- * ...)`, etc.), which only inspects the elements the test already names.
- * None of those assertions walk the rendered tree looking for a `<ul>`'s
- * disallowed children, an element's disallowed `role`, or an interactive
- * element nested inside another one — so the `nested-interactive`,
- * `aria-allowed-role`, and `list` violations the now-removed
- * `role="listbox"`/`role="option"` markup and the restore-notice
- * `role="status"` `<li>` produced were never exercised by anything in this
- * file. This block closes that gap across every state the Storybook
- * stories (`stories/WorkArea/TrashView.stories.tsx`) cover.
+ * Real `axe-core` runs (FR-8) against every TrashView rendered state the
+ * spec calls out — default listing, empty state, multi-select active, and
+ * the restore/purge confirm dialogs open — replacing the prior hand-written
+ * `nested-interactive`/`aria-allowed-role`/`list` reimplementation now that
+ * `axe-core` is a direct devDependency (Task 2). `runAxe` (`./helpers/axe`)
+ * covers everything the hand-written checker asserted (it ran the real
+ * rules those checks approximated, plus axe-core's full default rule set
+ * minus `color-contrast`), so no hand-written assertion is kept alongside.
  */
-describe("a11y: TrashView structural axe rules (Task 19 Part B)", () => {
+describe("a11y: TrashView axe-core checks (FR-8)", () => {
   const MIXED_LISTING: TrashListing = {
     resources: [
       {
@@ -529,7 +377,9 @@ describe("a11y: TrashView structural axe rules (Task 19 Part B)", () => {
     folders: [],
   };
 
-  it("mixed resources/folders list", async () => {
+  const EMPTY_LISTING: TrashListing = { resources: [], folders: [] };
+
+  it("default listing (mixed resources/folders)", async () => {
     mockedListTrash.mockResolvedValue(MIXED_LISTING);
     const { container } = render(
       <Provider store={setupStore()}>
@@ -538,10 +388,22 @@ describe("a11y: TrashView structural axe rules (Task 19 Part B)", () => {
     );
 
     await screen.findAllByTestId("trash-row");
-    assertNoStructuralAxeViolations(container);
+    await runAxe(container);
   });
 
-  it("multi-select partial selection", async () => {
+  it("empty state", async () => {
+    mockedListTrash.mockResolvedValue(EMPTY_LISTING);
+    const { container } = render(
+      <Provider store={setupStore()}>
+        <TrashView />
+      </Provider>,
+    );
+
+    await screen.findByTestId("trash-empty-state");
+    await runAxe(container);
+  });
+
+  it("multi-select active (partial selection)", async () => {
     mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
     const { container } = render(
       <Provider store={setupStore()}>
@@ -553,7 +415,53 @@ describe("a11y: TrashView structural axe rules (Task 19 Part B)", () => {
     fireEvent.click(within(rows[0]).getByTestId("trash-row-select"));
     fireEvent.click(within(rows[1]).getByTestId("trash-row-select"));
 
-    assertNoStructuralAxeViolations(container);
+    await runAxe(container);
+  });
+
+  it("restore confirm dialog open", async () => {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+    const { container } = render(
+      <Provider store={setupStore()}>
+        <TrashView />
+      </Provider>,
+    );
+
+    const rows = await screen.findAllByTestId("trash-row");
+    fireEvent.click(within(rows[0]).getByTestId("trash-row-select"));
+    fireEvent.click(screen.getByRole("button", { name: "Restore selected" }));
+    const dialog = await screen.findByRole("dialog");
+    // Radix's `FocusScope` moves focus into the dialog via
+    // `requestAnimationFrame`, one macrotask after the dialog (and its
+    // `aria-hidden` background) commit — wait for that to actually land
+    // before checking `aria-hidden-focus`, or the still-focused trigger
+    // button (now under an `aria-hidden` ancestor) reads as a violation.
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+
+    await runAxe(container);
+  });
+
+  it("purge confirm dialog open", async () => {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+    const { container } = render(
+      <Provider store={setupStore()}>
+        <TrashView />
+      </Provider>,
+    );
+
+    const rows = await screen.findAllByTestId("trash-row");
+    fireEvent.click(within(rows[0]).getByTestId("trash-row-select"));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete selected permanently" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    // See the restore-dialog test above for why this wait is needed.
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+
+    await runAxe(container);
   });
 
   it("batch-report mixed-outcome state", async () => {
@@ -582,7 +490,7 @@ describe("a11y: TrashView structural axe rules (Task 19 Part B)", () => {
     );
     await screen.findByTestId("trash-batch-report");
 
-    assertNoStructuralAxeViolations(container);
+    await runAxe(container);
   });
 
   it.each([
@@ -626,6 +534,6 @@ describe("a11y: TrashView structural axe rules (Task 19 Part B)", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Restore" }));
     await screen.findByTestId("trash-restore-notices");
 
-    assertNoStructuralAxeViolations(container);
+    await runAxe(container);
   });
 });

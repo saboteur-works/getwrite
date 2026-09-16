@@ -266,3 +266,75 @@ default (non-strict) Storybook a11y run Task 19's own gate relied on.
 **Raised:** 2026-09-14
 **Resolved:** [ ]
 **Resolved on:**
+
+### FU-10: Post-restore refetch dispatched an unvalidated `openProject` response, crashing `TrashView` after a successful restore
+
+**What:** `TrashView.tsx`'s post-restore refetch dispatched an unvalidated
+`openProject` response into the Redux store, crashing the view immediately
+after a *successful* restore.
+
+The chain, all three links introduced by the merged Trash UI follow-ups PR
+(#201):
+
+1. Task 6 added a post-restore `openProject` refetch in
+   `confirmPendingAction`'s restore branch, dispatching
+   `loadResources({ resources: opened.resources, projectId })` and
+   `setProjectFolders(opened.folders)`.
+2. `openProject` is typed `Promise<ProjectApiEntry>`, but its HTTP transport
+   (`frontend/src/lib/api/projects.ts`) does not validate the response body
+   against that type, so those two fields can be `undefined` at runtime.
+   Neither dispatch throws in that case (`loadResources` is a
+   `createAsyncThunk`), so the surrounding `try/catch` never fires —
+   `undefined` is written into the store instead (`loadResources.fulfilled`
+   sets `state.resources = action.payload`; `setFolders` sets
+   `state.folders = action.payload`).
+3. Task 6 also added the selector
+   `(s) => s.resources.resources.length + s.resources.folders.length` at
+   `TrashView.tsx:211`, which then throws
+   `TypeError: Cannot read properties of undefined (reading 'length')` on the
+   next render, unmounting `TrashView` along with its restore notices and
+   batch report.
+
+**How it was found and confirmed:** the three `RestoreNotice*` stories in
+`frontend/stories/WorkArea/TrashView.stories.tsx` failed under the
+destructive-styling-a11y run's strict-axe check — not on any a11y rule, but
+with `TestingLibraryElementError: Unable to find an element by:
+[data-testid="trash-restore-notices"]`. Those stories stub `globalThis.fetch`
+with a catch-all returning `{}`, which is exactly the malformed `openProject`
+body above. Two measurements discriminated the cause: (a) checking out the
+pre-#201 `TrashView.tsx` (`2f180cd5`) made all 7 stories pass, and restoring
+HEAD's copy reproduced the 3 failures; (b) a component test with
+`openProject` mocked to resolve `{}` reproduced the exact `TypeError` at
+`TrashView.tsx:212`.
+
+**Why deferred:** Not deferred — fixed in the destructive-styling-a11y run
+because it blocked that run's Task 8 verification.
+
+**Context:** The two dispatches are now each guarded by an independent
+`Array.isArray` runtime check on the corresponding field, so a malformed
+response degrades to "the sidebar resource tree needs a manual reload" — the
+outcome the existing `catch` comment already names as acceptable — instead of
+poisoning the store.
+
+**Relates to:** `specs/features/trash-ui-followups.md` Task 6 / FR-10;
+destructive-styling-a11y Task 8
+**Raised:** 2026-09-15
+**Resolved:** [x]
+**Resolved on:** 2026-09-15
+
+**Resolution:** The two dispatches in `TrashView.tsx`'s `confirmPendingAction`
+restore branch are now each guarded by an independent `Array.isArray` runtime
+check on the corresponding field before dispatch, so a malformed `openProject`
+response degrades to "the sidebar resource tree needs a manual reload" instead
+of poisoning the store with `undefined`. A regression test in
+`frontend/tests/component/TrashView.test.tsx` (in the Task 18 restore-notices
+describe block) mocks `openProject` to resolve `{}` and asserts the notice
+still renders; it fails with that `TypeError` before the fix and passes after.
+After the fix, `pnpm test-storybook stories/WorkArea/TrashView` reports 7
+passed (7) under `parameters.a11y.test: "error"`.
+
+Still open: only the one call site was hardened. The root cause is
+untouched — `openProject`'s HTTP transport still performs no runtime
+validation of its response body, and `loadResources`/`setFolders` still trust
+their payloads unconditionally, so another dispatch site could poison the
+store the same way. That broader hardening is not in this run's scope.

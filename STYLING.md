@@ -34,11 +34,20 @@ These are the only colors in the system. Do not introduce new colors without exp
 --color-black:    #0A0A0A   /* primary background, dark UI surfaces */
 --color-white:    #F5F4F0   /* primary text, light UI background — warm, not pure white */
 --color-red:      #D44040   /* Signal Red — brand accent, position marker */
---color-mid:      #6A6864   /* secondary text, muted labels */
+--color-mid:      #6A6864   /* structural grey — swatches, dividers, decorative. NEVER text */
 --color-surface:  #111110   /* raised dark surfaces */
 --color-surface2: #161614   /* deeper surface, nested elements */
 --color-dim:      #2E2E2C   /* borders, rules */
 --color-rule:     #1A1A18   /* divider lines */
+```
+
+`--color-mid` is a structural/decorative token, not a text color — a color
+this dark (#6A6864 on the dark surfaces above) fails WCAG 2.1 AA for text.
+Secondary text and muted labels use the foreground tokens below instead:
+
+```
+--color-fg-tertiary:      #888680   /* secondary text, muted labels — dark surfaces. 5.19:1 measured against #111110 */
+--color-fg-inv-tertiary:  #636160   /* secondary text, muted labels — light surfaces. 5.60:1 measured against #f5f4f0 */
 ```
 
 ### GetWrite-specific surface tokens
@@ -88,7 +97,7 @@ GetWrite supports both modes with equal priority — many writers prefer light m
 --color-surface2: #E4E1DA
 --color-dim:      #D0CEC8
 --color-rule:     #D8D5CE
---color-mid:      #7A7870   /* slightly adjusted for light contrast */
+--color-mid:      #6A6864   /* unchanged — structural/decorative only, not text (see above) */
 ```
 
 Editor surface and ink are handled by `--color-editor-light` and `--color-ink` respectively — these do not invert with the chrome, they have dedicated light-mode values.
@@ -279,12 +288,21 @@ GetWrite does not use red-fill buttons. All primary actions use outlined or ghos
 
 **Destructive:**
 
-- Border: `1px solid #D44040`
-- Text: `#D44040`
-- Background: transparent
-- Never fill with red
+The `destructive` button variant renders identically to Secondary / ghost
+above — same border, background, text colour, and hover state, with no red
+and no distinct visual cue of any kind:
 
-The reason GetWrite avoids red CTAs: a writer should never feel like the tool is demanding their attention. The workspace recedes; the work advances.
+- Border: `1px solid` token `gw-border` (Tailwind `border` utility default width)
+- Text: token `gw-secondary`
+- Background: transparent
+- Hover: border token `gw-border-md`, text token `gw-primary`
+- Never fill with red; no red border or text in any state
+
+Danger is conveyed by the button's label (e.g. "Delete") and by a
+confirmation dialog before the action runs — never by styling. A writer
+should never feel like the tool is demanding their attention with colour;
+the workspace recedes, and the confirmation step is what actually protects
+against an accidental destructive action.
 
 ### Revision control component
 
