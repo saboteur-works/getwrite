@@ -25,6 +25,7 @@ import type { StorageAdapter } from "../io";
 import { getPlainStorageAdapter } from "../io";
 import { runInStorageContext } from "../storage-context";
 import { createKeyring, unlockKeyring, type Keyring } from "./keyring";
+import { DEFAULT_ARGON2_PARAMS, type Argon2Params } from "./primitives";
 import { readWrappedKeyring, writeWrappedKeyring } from "./keyring-store";
 
 /** Raised when the workspace has no keyring — encryption was never set up. */
@@ -128,6 +129,7 @@ export async function createWorkspaceKeyring(
   passphrase: string,
   workspaceRoot?: string,
   adapter: StorageAdapter = getPlainStorageAdapter(),
+  params: Argon2Params = DEFAULT_ARGON2_PARAMS,
 ): Promise<Keyring> {
   if (await workspaceHasKeyring(workspaceRoot, adapter)) {
     throw new Error(
@@ -135,7 +137,7 @@ export async function createWorkspaceKeyring(
     );
   }
 
-  const keyring = await createKeyring(passphrase);
+  const keyring = await createKeyring(passphrase, params);
   await runVia(workspaceRoot, adapter, () =>
     writeWrappedKeyring(keyring.snapshot(), workspaceRoot),
   );

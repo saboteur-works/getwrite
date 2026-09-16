@@ -15,6 +15,7 @@ import {
   requireSessionKeyring,
 } from "../../src/lib/models/crypto/keyring-session";
 import type { Keyring } from "../../src/lib/models/crypto/keyring";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 
 const WORKSPACE = "/ws";
 const SEALED_ID = "11111111-1111-4111-8111-111111111111";
@@ -48,7 +49,7 @@ beforeEach(async () => {
   for (const id of [SEALED_ID, PLAIN_ID]) {
     await base.mkdir(`${WORKSPACE}/${id}/resources`, { recursive: true });
   }
-  await createWorkspaceKeyring(PASS, WORKSPACE, base);
+  await createWorkspaceKeyring(PASS, WORKSPACE, base, TEST_ARGON2_PARAMS);
   await registerProject(SEALED_ID, WORKSPACE, base);
   keyring = requireSessionKeyring();
 });

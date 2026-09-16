@@ -9,6 +9,7 @@ import { listProjectsCore } from "../../src/lib/models/project-crud-core";
 import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
 import { runInProjectContext } from "../../src/lib/models/crypto/adapter-selection";
 import { setProjectName } from "../../src/lib/models/crypto/name-index";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 import {
   __resetKeyringSessionForTests,
   createWorkspaceKeyring,
@@ -61,7 +62,7 @@ afterEach(() => {
 /** Encrypts SEALED_ID in place and leaves the workspace unlocked. */
 async function encryptSecondProject(): Promise<void> {
   const root = `${WORKSPACE}/${SEALED_ID}`;
-  await createWorkspaceKeyring(PASS, WORKSPACE, adapter);
+  await createWorkspaceKeyring(PASS, WORKSPACE, adapter, TEST_ARGON2_PARAMS);
   const key = await registerProject(SEALED_ID, WORKSPACE, adapter);
 
   // Seal the manifest the way a conversion would, then mark the project.

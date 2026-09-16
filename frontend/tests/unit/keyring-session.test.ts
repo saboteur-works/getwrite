@@ -5,6 +5,7 @@ import * as io from "../../src/lib/models/io";
 import type { StorageAdapter } from "../../src/lib/models/io";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
 import { WrongPassphraseError } from "../../src/lib/models/crypto/keyring";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 import {
   KEYRING_FILENAME,
   readWrappedKeyring,
@@ -66,7 +67,7 @@ describe("keyring session — a workspace with no keyring", () => {
 
 describe("keyring session — creating a workspace keyring", () => {
   it("persists it and leaves the session unlocked", async () => {
-    await createWorkspaceKeyring(PASS, WORKSPACE, adapter);
+    await createWorkspaceKeyring(PASS, WORKSPACE, adapter, TEST_ARGON2_PARAMS);
 
     expect(isSessionUnlocked()).toBe(true);
     expect(await workspaceHasKeyring(WORKSPACE, adapter)).toBe(true);
@@ -74,17 +75,22 @@ describe("keyring session — creating a workspace keyring", () => {
   });
 
   it("refuses to overwrite an existing keyring", async () => {
-    await createWorkspaceKeyring(PASS, WORKSPACE, adapter);
+    await createWorkspaceKeyring(PASS, WORKSPACE, adapter, TEST_ARGON2_PARAMS);
     // Overwriting would orphan every existing project's data key.
     await expect(
-      createWorkspaceKeyring("another passphrase", WORKSPACE, adapter),
+      createWorkspaceKeyring(
+        "another passphrase",
+        WORKSPACE,
+        adapter,
+        TEST_ARGON2_PARAMS,
+      ),
     ).rejects.toThrow(/already/i);
   });
 });
 
 describe("keyring session — unlocking", () => {
   beforeEach(async () => {
-    await createWorkspaceKeyring(PASS, WORKSPACE, adapter);
+    await createWorkspaceKeyring(PASS, WORKSPACE, adapter, TEST_ARGON2_PARAMS);
     await registerProject(PROJECT_A, WORKSPACE, adapter);
     await registerProject(PROJECT_B, WORKSPACE, adapter);
     lockSession();
@@ -122,7 +128,7 @@ describe("keyring session — unlocking", () => {
 
 describe("keyring session — locking", () => {
   beforeEach(async () => {
-    await createWorkspaceKeyring(PASS, WORKSPACE, adapter);
+    await createWorkspaceKeyring(PASS, WORKSPACE, adapter, TEST_ARGON2_PARAMS);
     await registerProject(PROJECT_A, WORKSPACE, adapter);
   });
 
@@ -158,7 +164,7 @@ describe("keyring session — locking", () => {
 
 describe("keyring session — key material never leaves memory", () => {
   it("writes no passphrase or unwrapped key to disk", async () => {
-    await createWorkspaceKeyring(PASS, WORKSPACE, adapter);
+    await createWorkspaceKeyring(PASS, WORKSPACE, adapter, TEST_ARGON2_PARAMS);
     await registerProject(PROJECT_A, WORKSPACE, adapter);
 
     const onDisk = await io.readFile(

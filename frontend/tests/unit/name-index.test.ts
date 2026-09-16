@@ -8,6 +8,7 @@ import {
   type Keyring,
 } from "../../src/lib/models/crypto/keyring";
 import { isEnvelope } from "../../src/lib/models/crypto/envelope";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 import {
   NAME_INDEX_FILENAME,
   NameIndexFormatError,
@@ -28,7 +29,10 @@ let key: CryptoKey;
 beforeEach(async () => {
   adapter = createMemoryAdapter();
   await adapter.mkdir(WORKSPACE, { recursive: true });
-  keyring = await createKeyring("correct horse battery staple");
+  keyring = await createKeyring(
+    "correct horse battery staple",
+    TEST_ARGON2_PARAMS,
+  );
   key = keyring.workspaceKey();
 });
 
@@ -160,7 +164,7 @@ describe("name index — names never touch the disk in the clear", () => {
       adapter,
     );
     const otherKey = (
-      await createKeyring("a different passphrase")
+      await createKeyring("a different passphrase", TEST_ARGON2_PARAMS)
     ).workspaceKey();
 
     await expect(readNameIndex(otherKey, WORKSPACE, adapter)).rejects.toThrow();

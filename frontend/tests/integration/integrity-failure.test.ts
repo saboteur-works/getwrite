@@ -17,6 +17,7 @@ import {
   requireSessionKeyring,
 } from "../../src/lib/models/crypto/keyring-session";
 import { enableProjectEncryption } from "../../src/lib/models/crypto/enable-encryption";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 
 const WORKSPACE = "/ws";
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
@@ -61,6 +62,7 @@ beforeEach(async () => {
       projectId: PROJECT_ID,
       projectName: "The Whistleblower",
       passphrase: PASS,
+      params: TEST_ARGON2_PARAMS,
       workspaceRoot: WORKSPACE,
       adapter,
     }),

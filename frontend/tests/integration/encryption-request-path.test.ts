@@ -40,6 +40,7 @@ import {
 import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
 import { enableProjectEncryption } from "../../src/lib/models/crypto/enable-encryption";
 import { readConversionMarker } from "../../src/lib/models/crypto/convert-project";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 
 const WORKSPACE = "/ws";
 const FIRST = "11111111-1111-4111-8111-111111111111";
@@ -110,6 +111,7 @@ describe("enabling encryption through the request adapter", () => {
         projectId: FIRST,
         projectName: "The Whistleblower",
         passphrase: PASS,
+        params: TEST_ARGON2_PARAMS,
         workspaceRoot: WORKSPACE,
       }),
     );
@@ -152,6 +154,7 @@ describe("enabling encryption through the request adapter", () => {
         projectId: FIRST,
         projectName: "The Whistleblower",
         passphrase: PASS,
+        params: TEST_ARGON2_PARAMS,
         workspaceRoot: WORKSPACE,
       }),
     );
@@ -228,6 +231,7 @@ describe("a half-converted project", () => {
         projectId: FIRST,
         projectName: "The Whistleblower",
         passphrase: PASS,
+        params: TEST_ARGON2_PARAMS,
         workspaceRoot: WORKSPACE,
       }),
     );
@@ -262,6 +266,7 @@ describe("a half-converted project", () => {
         projectId: FIRST,
         projectName: "The Whistleblower",
         passphrase: PASS,
+        params: TEST_ARGON2_PARAMS,
         workspaceRoot: WORKSPACE,
       }),
     );
@@ -285,6 +290,7 @@ describe("registerProject when the keyring cannot be persisted", () => {
         projectId: FIRST,
         projectName: "The Whistleblower",
         passphrase: PASS,
+        params: TEST_ARGON2_PARAMS,
         workspaceRoot: WORKSPACE,
       }),
     );

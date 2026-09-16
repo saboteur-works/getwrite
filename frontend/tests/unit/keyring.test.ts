@@ -25,6 +25,7 @@ import {
   seal,
 } from "../../src/lib/models/crypto/envelope";
 import { KEY_BYTES } from "../../src/lib/models/crypto/primitives";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 
 const PASS = "correct horse battery staple";
 const PROJECT_A = "11111111-1111-4111-8111-111111111111";
@@ -36,7 +37,7 @@ const text = (b: Uint8Array): string => new TextDecoder().decode(b);
 
 describe("keyring — creation", () => {
   it("produces a wrapped keyring with no projects", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     const snapshot = keyring.snapshot();
 
     expect(snapshot.version).toBe(1);
@@ -54,8 +55,8 @@ describe("keyring — creation", () => {
   });
 
   it("uses a fresh random salt per workspace", async () => {
-    const a = (await createKeyring(PASS)).snapshot();
-    const b = (await createKeyring(PASS)).snapshot();
+    const a = (await createKeyring(PASS, TEST_ARGON2_PARAMS)).snapshot();
+    const b = (await createKeyring(PASS, TEST_ARGON2_PARAMS)).snapshot();
     expect(a.kdf.salt).not.toBe(b.kdf.salt);
     expect(a.verifier).not.toBe(b.verifier);
   });
@@ -63,25 +64,25 @@ describe("keyring — creation", () => {
 
 describe("keyring — unlocking", () => {
   it("unlocks with the correct passphrase", async () => {
-    const snapshot = (await createKeyring(PASS)).snapshot();
+    const snapshot = (await createKeyring(PASS, TEST_ARGON2_PARAMS)).snapshot();
     const reopened = await unlockKeyring(snapshot, PASS);
     expect(reopened.isLocked()).toBe(false);
   });
 
   it("rejects a wrong passphrase", async () => {
-    const snapshot = (await createKeyring(PASS)).snapshot();
+    const snapshot = (await createKeyring(PASS, TEST_ARGON2_PARAMS)).snapshot();
     await expect(
       unlockKeyring(snapshot, "wrong passphrase"),
     ).rejects.toBeInstanceOf(WrongPassphraseError);
   });
 
   it("rejects an empty passphrase", async () => {
-    const snapshot = (await createKeyring(PASS)).snapshot();
+    const snapshot = (await createKeyring(PASS, TEST_ARGON2_PARAMS)).snapshot();
     await expect(unlockKeyring(snapshot, "")).rejects.toThrow();
   });
 
   it("rejects a tampered verifier", async () => {
-    const snapshot = (await createKeyring(PASS)).snapshot();
+    const snapshot = (await createKeyring(PASS, TEST_ARGON2_PARAMS)).snapshot();
     const tampered: WrappedKeyring = {
       ...snapshot,
       verifier: snapshot.verifier.slice(0, -4) + "AAAA",
@@ -90,7 +91,7 @@ describe("keyring — unlocking", () => {
   });
 
   it("rejects an unknown keyring version", async () => {
-    const snapshot = (await createKeyring(PASS)).snapshot();
+    const snapshot = (await createKeyring(PASS, TEST_ARGON2_PARAMS)).snapshot();
     await expect(
       unlockKeyring(
         { ...snapshot, version: 99 } as unknown as WrappedKeyring,
@@ -108,7 +109,7 @@ describe("keyring — unlocking", () => {
 
 describe("keyring — per-project data keys", () => {
   it("registers a project and returns an updated snapshot", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     const snapshot = await keyring.addProject(PROJECT_A);
 
     expect(keyring.hasProject(PROJECT_A)).toBe(true);
@@ -117,7 +118,7 @@ describe("keyring — per-project data keys", () => {
   });
 
   it("returns a usable key for a registered project", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
 
     const sealed = await seal(
@@ -130,7 +131,7 @@ describe("keyring — per-project data keys", () => {
   });
 
   it("generates independent keys per project", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
     const snapshot = await keyring.addProject(PROJECT_B);
 
@@ -147,18 +148,18 @@ describe("keyring — per-project data keys", () => {
   });
 
   it("refuses to register the same project twice", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
     await expect(keyring.addProject(PROJECT_A)).rejects.toThrow(/already/i);
   });
 
   it("raises a typed error for an unregistered project", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     expect(() => keyring.projectKey(PROJECT_A)).toThrow(UnknownProjectError);
   });
 
   it("exposes a workspace key distinct from any project key", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
 
     // Used to seal workspace-scoped artefacts (the name index, FR21). It must
@@ -171,13 +172,13 @@ describe("keyring — per-project data keys", () => {
   });
 
   it("denies the workspace key once locked", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     keyring.lock();
     expect(() => keyring.workspaceKey()).toThrow(KeyringLockedError);
   });
 
   it("forgets a project on removal", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
     const snapshot = keyring.removeProject(PROJECT_A);
 
@@ -187,7 +188,7 @@ describe("keyring — per-project data keys", () => {
   });
 
   it("survives a persistence round trip", async () => {
-    const original = await createKeyring(PASS);
+    const original = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await original.addProject(PROJECT_A);
     const sealed = await seal(
       original.projectKey(PROJECT_A),
@@ -204,7 +205,7 @@ describe("keyring — per-project data keys", () => {
 
 describe("keyring — no unwrapped key material is ever persisted", () => {
   it("stores each data key as a sealed envelope, never as raw bytes", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     const snapshot = await keyring.addProject(PROJECT_A);
 
     const wrapped = Uint8Array.from(atob(snapshot.projects[PROJECT_A]), (c) =>
@@ -217,7 +218,7 @@ describe("keyring — no unwrapped key material is ever persisted", () => {
   });
 
   it("serialises to exactly the documented fields", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     const snapshot = await keyring.addProject(PROJECT_A);
     expect(Object.keys(snapshot).sort()).toEqual([
       "kdf",
@@ -235,7 +236,7 @@ describe("keyring — no unwrapped key material is ever persisted", () => {
   });
 
   it("never writes the passphrase into the serialised form", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
     expect(JSON.stringify(keyring.snapshot())).not.toContain(PASS);
   });
@@ -243,7 +244,7 @@ describe("keyring — no unwrapped key material is ever persisted", () => {
 
 describe("keyring — locking", () => {
   it("denies key access once locked", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
     keyring.lock();
 
@@ -252,7 +253,7 @@ describe("keyring — locking", () => {
   });
 
   it("still exposes wrapped material after locking", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
     keyring.lock();
     // Wrapped material is not secret — persistence must still work post-lock.
@@ -260,7 +261,7 @@ describe("keyring — locking", () => {
   });
 
   it("refuses to register a project while locked", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     keyring.lock();
     await expect(keyring.addProject(PROJECT_A)).rejects.toBeInstanceOf(
       KeyringLockedError,
@@ -268,7 +269,7 @@ describe("keyring — locking", () => {
   });
 
   it("can be reopened from its snapshot after locking", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
     const snapshot = keyring.snapshot();
     keyring.lock();
@@ -280,7 +281,7 @@ describe("keyring — locking", () => {
 
 describe("keyring — changing the passphrase", () => {
   it("rewraps without touching file-level data", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
     // Sealed before the change; must still open after it. This is the property
     // that makes a passphrase change a rewrap rather than a data migration.
@@ -298,7 +299,7 @@ describe("keyring — changing the passphrase", () => {
   });
 
   it("invalidates the old passphrase", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     const rewrapped = await keyring.changePassphrase("a brand new passphrase");
     await expect(unlockKeyring(rewrapped, PASS)).rejects.toBeInstanceOf(
       WrongPassphraseError,
@@ -306,7 +307,7 @@ describe("keyring — changing the passphrase", () => {
   });
 
   it("uses a fresh salt and re-seals every wrapped key", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     const before = await keyring.addProject(PROJECT_A);
     const beforeSalt = before.kdf.salt;
     const beforeWrapped = before.projects[PROJECT_A];
@@ -318,7 +319,7 @@ describe("keyring — changing the passphrase", () => {
   });
 
   it("refuses while locked", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     keyring.lock();
     await expect(keyring.changePassphrase("another")).rejects.toBeInstanceOf(
       KeyringLockedError,
@@ -343,7 +344,7 @@ describe("keyring store — persistence", () => {
   });
 
   it("round-trips a keyring through the filesystem", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
     await writeWrappedKeyring(keyring.snapshot(), "/ws");
 
@@ -356,13 +357,16 @@ describe("keyring store — persistence", () => {
   });
 
   it("writes the keyring at the workspace root, outside any project", async () => {
-    await writeWrappedKeyring((await createKeyring(PASS)).snapshot(), "/ws");
+    await writeWrappedKeyring(
+      (await createKeyring(PASS, TEST_ARGON2_PARAMS)).snapshot(),
+      "/ws",
+    );
     const raw = await io.readFile(`/ws/${KEYRING_FILENAME}`, "utf-8");
     expect(JSON.parse(raw).version).toBe(1);
   });
 
   it("writes no unwrapped key material to disk", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await keyring.addProject(PROJECT_A);
     await writeWrappedKeyring(keyring.snapshot(), "/ws");
 
@@ -391,7 +395,7 @@ describe("keyring store — persistence", () => {
   });
 
   it("overwrites an existing keyring on rewrap", async () => {
-    const keyring = await createKeyring(PASS);
+    const keyring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
     await writeWrappedKeyring(keyring.snapshot(), "/ws");
     const rewrapped = await keyring.changePassphrase("a brand new passphrase");
     await writeWrappedKeyring(rewrapped, "/ws");
