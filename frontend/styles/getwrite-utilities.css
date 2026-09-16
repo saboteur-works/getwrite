@@ -1009,8 +1009,12 @@ html.gw-theme-dark {
     cursor: default;
   }
 
+  /* was var(--color-gw-mid) — never defined, so the declaration was dropped
+     and this inherited. Not repointed at the brand mid grey: that token is
+     structural-only ("NEVER text", saboteur-base.css) and its value is the
+     same one destructive-styling-a11y FR-5 measured failing AA in dark mode. */
   .entity-compile-list-name-excluded {
-    color: var(--color-gw-mid);
+    color: var(--color-gw-secondary);
   }
 
   .entity-compile-list-excluded-label {
@@ -1019,7 +1023,8 @@ html.gw-theme-dark {
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--color-gw-mid);
+    /* was var(--color-gw-mid); see the note above on the sibling rule. */
+    color: var(--color-gw-secondary);
     white-space: nowrap;
   }
 

@@ -24,3 +24,55 @@ The correlation between "carries an opacity" and "still fails" is exact across a
 **Relates to:** destructive-styling-a11y FR-5/FR-6 (token repoint), FR-9 / Task 9; trash-ui FU-9.
 **Raised:** 2026-09-15
 **Resolved:** [ ]
+
+### FU-2: `var(--color-gw-mid)` was referenced by three declarations and defined nowhere
+
+**What:** `--color-gw-mid` had no definition anywhere in `frontend/styles/` or
+`frontend/app/` — `grep -rn -- "--color-gw-mid\s*:"` returned nothing — while
+three declarations referenced it, so all three were dropped by the CSS parser
+and had no effect:
+
+- `frontend/styles/editor.css:200` — `.column-resize-handle`'s
+  `background-color`. This is a live selector: TipTap's column-resize plugin
+  adds the class itself and `components/Editor/editorExtensions.ts:70`
+  configures `TableKit` with `table: { resizable: true }`, so the handle was
+  rendering with no background at all.
+- `frontend/styles/getwrite-utilities.css:1013` —
+  `.entity-compile-list-name-excluded`'s `color`.
+- `frontend/styles/getwrite-utilities.css:1022` —
+  `.entity-compile-list-excluded-label`'s `color`.
+  Both are used by `components/common/EntityCompileResourceList.tsx` and were
+  inheriting their colour instead.
+
+**Why deferred:** `destructive-styling-a11y.md` FR-17 and its Non-goals put
+this explicitly out of that feature's scope and required it be recorded as a
+separate follow-up. That record was never actually written at the time; this
+entry is it, written retroactively alongside the fix.
+
+**Relates to:** destructive-styling-a11y FR-17
+**Raised:** 2026-09-15
+**Resolved:** [x]
+**Resolved on:** 2026-09-16
+
+**Resolution:** Fixed by removing the undefined token rather than defining it;
+no `--color-gw-mid` reference remains outside explanatory comments.
+
+The two text uses were **not** repointed at the brand mid grey. `--color-brand-mid`
+(`saboteur-base.css:18`) carries the comment "Structural grey. Swatches,
+dividers, decorative. NEVER text — use fg-* below", and its value `#6a6864` is
+the same one `destructive-styling-a11y` FR-5 measured at 3.56/3.40/3.26 against
+the three dark chrome surfaces — failing AA. Defining `--color-gw-mid` and
+leaving those two declarations pointed at it would therefore have shipped both
+a documented styling-rule violation and a known contrast failure. They now use
+`var(--color-gw-secondary)`, the calibrated de-emphasis text token FR-5/FR-6
+repointed at `var(--color-fg-tertiary)` / `var(--color-fg-inv-tertiary)`.
+
+`.column-resize-handle` now uses `var(--color-gw-border-md)`, an existing
+hover/emphasis divider token with light and dark reassignments already in all
+four theme blocks and an existing `background-color` precedent at
+`getwrite-utilities.css:2083`.
+
+`node frontend/scripts/check-no-hardcoded-hex.mjs` reports no violations after
+the change. The rendered appearance of the now-visible resize handle and the
+two excluded-item text styles has not been checked in the real app; that check
+is outstanding.
