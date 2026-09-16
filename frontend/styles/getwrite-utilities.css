@@ -766,7 +766,13 @@ html.gw-theme-dark {
     border-radius: 2px;
     text-decoration: line-through;
     text-decoration-color: currentColor;
-    opacity: 0.7;
+    /* `opacity: 0.7` removed (destructive-styling-a11y FU-1). It composited
+       this span's inherited text colour toward its own background, which axe
+       measured at 2.62 — while the identically-coloured `.diff-unchanged`
+       text beside it was never flagged. No colour is declared here on
+       purpose: without the opacity this renders at exactly the prose colour
+       the surrounding unchanged text already uses. Removal is still signalled
+       by the line-through and the tinted background. */
   }
 
   .diff-unchanged {
@@ -780,7 +786,11 @@ html.gw-theme-dark {
     color: var(--color-gw-secondary);
     padding: 24px 0;
     text-align: center;
-    opacity: 0.6;
+    /* `opacity: 0.6` removed (destructive-styling-a11y FU-1): it composited
+       gw-secondary toward the pane background, measured at 2.49. Undimmed the
+       same token measures 5.60 on light chrome and 5.19 on dark, and it is
+       already the calibrated muted-text token, so the placeholder stays
+       visually secondary without the compositing penalty. */
   }
 
   /* ── EDITVIEW DOC HEADER ── */
@@ -824,7 +834,11 @@ html.gw-theme-dark {
     background: none;
     border: none;
     cursor: pointer;
-    padding: 0 8px;
+    /* Horizontal inset moved off this element and onto the row/kebab below:
+       the expand chevron and the row menu now render inside it (see
+       ResourceTree.tsx), and keeping the padding here would have indented
+       folder rows 8px further than file rows. */
+    padding: 0;
     text-align: left;
     color: var(--color-gw-secondary);
     font-family: var(--font-sans);
@@ -851,7 +865,10 @@ html.gw-theme-dark {
     align-items: center;
     gap: 6px;
     min-width: 0;
-    width: 100%;
+    /* flex, not width:100%: this row now shares the treeitem with the expand
+       chevron and the row menu and must yield space to them. */
+    flex: 1;
+    padding-left: 8px;
   }
 
   .resource-tree-item-row--drag-target {
@@ -864,6 +881,7 @@ html.gw-theme-dark {
   .resource-tree-kebab {
     opacity: 1;
     transition: opacity 120ms ease;
+    margin-right: 8px;
   }
 
   @media (hover: hover) {
@@ -1009,8 +1027,12 @@ html.gw-theme-dark {
     cursor: default;
   }
 
+  /* was var(--color-gw-mid) — never defined, so the declaration was dropped
+     and this inherited. Not repointed at the brand mid grey: that token is
+     structural-only ("NEVER text", saboteur-base.css) and its value is the
+     same one destructive-styling-a11y FR-5 measured failing AA in dark mode. */
   .entity-compile-list-name-excluded {
-    color: var(--color-gw-mid);
+    color: var(--color-gw-secondary);
   }
 
   .entity-compile-list-excluded-label {
@@ -1019,7 +1041,8 @@ html.gw-theme-dark {
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--color-gw-mid);
+    /* was var(--color-gw-mid); see the note above on the sibling rule. */
+    color: var(--color-gw-secondary);
     white-space: nowrap;
   }
 

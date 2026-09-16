@@ -53,7 +53,10 @@ describe("ResourceTree context menu", () => {
 
     // Expand the root so child nodes are rendered, then right-click the resource title to open the context menu
     const rootNode = screen.getByText("Root");
-    const rootBtn = rootNode.closest("button");
+    // The tree row is a <div role="treeitem">, not a <button>: the expand
+    // chevron and row menu are buttons rendered inside it, and role="tree"
+    // allows only treeitem/group children (see ResourceTree.tsx).
+    const rootBtn = rootNode.closest('[role="treeitem"]');
     expect(rootBtn).toBeTruthy();
     fireEvent.click(rootBtn as HTMLElement);
 

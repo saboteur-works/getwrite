@@ -24,3 +24,234 @@ The correlation between "carries an opacity" and "still fails" is exact across a
 **Relates to:** destructive-styling-a11y FR-5/FR-6 (token repoint), FR-9 / Task 9; trash-ui FU-9.
 **Raised:** 2026-09-15
 **Resolved:** [ ]
+
+**Update (2026-09-16) — the cause is now settled, by computation rather than
+by the browser experiment proposed above.**
+
+Alpha compositing is deterministic: an element with `opacity: a` over a
+backdrop renders at `a x foreground + (1 - a) x backdrop` per channel. Feeding
+each rule's own declared colour, its backdrop, and its own opacity through that
+formula reproduces the exact byte values axe reported:
+
+| Rule | Declared | Backdrop | Opacity | Predicted | axe reported |
+|---|---|---|---|---|---|
+| `.diff-pane-placeholder` | `#636160` | `#f5f4f0` | 0.6 | `#9d9c9a` | `#9d9c9a` |
+| `.revision-control-badge` | `#d44040` | `#f5f4f0` | 0.8 | `#db6463` | `#db6463` |
+| `.diff-removed` (background) | `rgba(80,130,180,0.18)` | `#f5f4f0` | 0.7 | `#e0e6e8` | `#e0e6e8` |
+
+Three exact matches, and the derived contrast ratios agree with axe's to within
+rounding (2.50 vs 2.49; 3.18 vs 3.17). This discriminates the opacity
+hypothesis from the alternative that the token values themselves are at fault:
+the measured colours are not the token values, they are the token values
+composited by these rules' own `opacity`. No browser run was needed.
+
+**What that implies for the fix — it is not uniform across the three:**
+
+- `.diff-pane-placeholder` measures **5.60 without the opacity** and 2.50 with
+  it. Dropping `opacity: 0.6` alone clears it, because FR-5/FR-6 already
+  repointed its token at an AA-calibrated value.
+- `.revision-control-badge` measures **4.14 without the opacity** and 3.18 with
+  it. Dropping the opacity is *not sufficient* — 4.14 is the same figure
+  `destructive-styling-a11y`'s own Gate 3 table recorded as failing for
+  `#d44040` at small sizes. This one needs a decision, not just an opacity
+  removal: the badge is red because it marks canonical/position state, which is
+  the one use CLAUDE.md and STYLING.md reserve red for, so the options are to
+  raise its 9px text size, darken the red, or accept the finding for a
+  non-text-critical badge. That call is the owner's.
+- `.diff-removed` declares no `color` of its own and inherits one; its
+  *background* composite matched exactly, but neither `--color-gw-secondary`
+  (predicts `#868788`) nor the editor ink `#1a1916` (predicts `#535554`)
+  reproduces axe's reported `#8f8d8b`, so the inherited colour in that context
+  has not yet been identified. The mechanism is established; the specific
+  inherited value still needs to be read off the rendered tree.
+
+SchemaManager's `.opacity-50` findings follow the same mechanism but were not
+recomputed here, since the Tailwind utility's backdrop was not recorded at
+measurement time.
+
+### FU-2: `var(--color-gw-mid)` was referenced by three declarations and defined nowhere
+
+**What:** `--color-gw-mid` had no definition anywhere in `frontend/styles/` or
+`frontend/app/` — `grep -rn -- "--color-gw-mid\s*:"` returned nothing — while
+three declarations referenced it, so all three were dropped by the CSS parser
+and had no effect:
+
+- `frontend/styles/editor.css:200` — `.column-resize-handle`'s
+  `background-color`. This is a live selector: TipTap's column-resize plugin
+  adds the class itself and `components/Editor/editorExtensions.ts:70`
+  configures `TableKit` with `table: { resizable: true }`, so the handle was
+  rendering with no background at all.
+- `frontend/styles/getwrite-utilities.css:1013` —
+  `.entity-compile-list-name-excluded`'s `color`.
+- `frontend/styles/getwrite-utilities.css:1022` —
+  `.entity-compile-list-excluded-label`'s `color`.
+  Both are used by `components/common/EntityCompileResourceList.tsx` and were
+  inheriting their colour instead.
+
+**Why deferred:** `destructive-styling-a11y.md` FR-17 and its Non-goals put
+this explicitly out of that feature's scope and required it be recorded as a
+separate follow-up. That record was never actually written at the time; this
+entry is it, written retroactively alongside the fix.
+
+**Relates to:** destructive-styling-a11y FR-17
+**Raised:** 2026-09-15
+**Resolved:** [x]
+**Resolved on:** 2026-09-16
+
+**Resolution:** Fixed by removing the undefined token rather than defining it;
+no `--color-gw-mid` reference remains outside explanatory comments.
+
+The two text uses were **not** repointed at the brand mid grey. `--color-brand-mid`
+(`saboteur-base.css:18`) carries the comment "Structural grey. Swatches,
+dividers, decorative. NEVER text — use fg-* below", and its value `#6a6864` is
+the same one `destructive-styling-a11y` FR-5 measured at 3.56/3.40/3.26 against
+the three dark chrome surfaces — failing AA. Defining `--color-gw-mid` and
+leaving those two declarations pointed at it would therefore have shipped both
+a documented styling-rule violation and a known contrast failure. They now use
+`var(--color-gw-secondary)`, the calibrated de-emphasis text token FR-5/FR-6
+repointed at `var(--color-fg-tertiary)` / `var(--color-fg-inv-tertiary)`.
+
+`.column-resize-handle` now uses `var(--color-gw-border-md)`, an existing
+hover/emphasis divider token with light and dark reassignments already in all
+four theme blocks and an existing `background-color` precedent at
+`getwrite-utilities.css:2083`.
+
+`node frontend/scripts/check-no-hardcoded-hex.mjs` reports no violations after
+the change. The rendered appearance of the now-visible resize handle and the
+two excluded-item text styles has not been checked in the real app; that check
+is outstanding.
+
+**Update (2026-09-16) — 11 of the 13 residual findings fixed; 2 deferred by the
+owner.**
+
+Every fix removes the `opacity` and changes no colour, so each is verifiable
+from the arithmetic above rather than needing a re-measurement to interpret:
+
+- `.diff-pane-placeholder` (x5) — `opacity: 0.6` removed. It already declares
+  `var(--color-gw-secondary)`, which undimmed measures 5.60 on light chrome
+  (`#f5f4f0`) and 5.19 on dark (`#111110`).
+- `.diff-removed` (x3) — `opacity: 0.7` removed, and deliberately **no** colour
+  declared in its place. The span inherits its colour, and the identically
+  coloured `.diff-unchanged` text beside it was never flagged, so undimming it
+  makes it exactly as legible as its neighbour. This also sidesteps the
+  unresolved question above of which inherited value axe was reporting: the
+  answer stops mattering once the compositing is gone. Removal is still
+  signalled by the line-through and the tinted background.
+- SchemaManager `.opacity-50` (x3) — removed from the field-key span
+  (`SchemaManager.tsx:906`). Arithmetic confirms the same mechanism here:
+  0.5 x `#636160` + 0.5 x `#f5f4f0` = `#acaba8`, exactly the value axe reported
+  at 2.08. The sibling key-edit-error span already used the token undimmed.
+
+**Deferred (owner decision, 2026-09-16):** `.revision-control-badge` (x2).
+Removing its `opacity: 0.8` leaves it at 4.14, which still fails AA at its 9px
+size, so unlike the other three this needs a colour or type-size change to a
+badge whose red is a sanctioned canonical-state marker. Not attempted.
+
+**Outstanding:** none of these four rules has been looked at in the real app
+since the change. Undimming is a visible change to the diff panes, the diff's
+removed-text runs, and the schema field keys, and the contrast arithmetic says
+nothing about whether the result still reads as de-emphasised.
+
+### FU-3: AppShell's `heading-order` finding does not reproduce outside the browser
+
+**What:** FU-1 records `AppShell` (`heading-order`) among five story files with
+findings in the 2026-09-15 Chromium strict-axe sweep. An attempt to fix it on
+2026-09-16 could not reproduce it.
+
+Measured: rendering `AppShell` in jsdom with axe-core, in two shapes — the
+full shell with a project and a selected text resource, and the shell with
+story-style children — produced the identical heading sequence both times, with
+no level skip and no `heading-order` violation:
+
+```
+<h2> "Scene A"            (workarea doc header)
+<h2> "Revision Control"
+<h3> "Scene A"
+```
+
+Static reading agrees: `AppShell.tsx`'s own headings are `h2` x4, `h3`, `h2`,
+and `MetadataSidebar.tsx`'s are `h3` then `h4` — no skip in either.
+
+**Hypothesis, not established:** the jsdom runs mock out TipTap
+(`vi.mock("../components/TipTapEditor")` — the real editor does not mount in
+jsdom), so no heading the *document content* contains is rendered. In Chromium
+the editor mounts and TipTap renders the resource's own `h1`/`h2`/`h3` nodes
+inside the shell, which could produce a skip against the shell's chrome
+headings. If that is the cause, the finding is content-dependent rather than a
+defect in `AppShell`'s markup, and the fix is different in kind.
+
+**Experiment that would settle it:** run the Chromium strict-axe sweep over
+`stories/AppShell` with `a11y.test` temporarily `"error"`, and read the
+violation's own target selector — whether it names an element inside the TipTap
+editor or one of the shell's own headings decides it. Nothing short of a
+rendered run answers this.
+
+**Relates to:** destructive-styling-a11y FU-1 (the sweep that raised it)
+**Raised:** 2026-09-16
+**Resolved:** [ ]
+**Resolved on:**
+
+### FU-4: Three further axe findings on AppShell, measured while chasing FU-3
+
+**What:** The jsdom axe runs above surfaced three violations that FU-1's sweep
+did not list for `AppShell`. Two look real; one is an artifact of the test
+harness and is recorded only so it is not re-chased:
+
+- `landmark-complementary-is-top-level` — `<aside class="metadata-sidebar-root"
+  aria-label="metadata-sidebar">` is nested inside another landmark.
+- `landmark-unique` — `<aside class="hidden md:flex appshell-sidebar border-r">`
+  has no `aria-label`/`aria-labelledby`/`title` distinguishing it from the other
+  complementary landmark.
+- `aria-valid-attr-value` — the work-area tabs' `aria-controls` names a panel id
+  that is not in the DOM, because only the selected tab's panel is rendered.
+  Seen in the full-shell shape only. Whether this is real or a jsdom artifact is
+  not established; axe evaluates `aria-controls` against the live DOM, so a real
+  browser would flag it too if the unselected panels are genuinely absent there.
+- (Artifact, not a finding: `label` on a bare `<textarea>` — that is the
+  `TipTapEditor` mock the jsdom tests substitute, not app markup.)
+
+**Why deferred:** outside the four findings this run was asked to clear. Not
+attempted; recorded so they are not lost.
+
+**Relates to:** destructive-styling-a11y FU-1, FU-3
+**Raised:** 2026-09-16
+**Resolved:** [ ]
+**Resolved on:**
+
+### FU-5: `landmark-no-duplicate-banner` was only partly fixed by removing ProjectSettingsDialog's own `<header>`
+
+**What:** The first attempt at FU-1's `ProjectSettingsDialog`
+(`landmark-no-duplicate-banner`) finding changed that dialog's own title-row
+`<header>` to a `<div>`, verified only in jsdom. A lead real-app check on
+2026-09-16 (dev server on :3999 against a scratch projects dir, Chromium via
+Playwright) measured that this was **not sufficient**: with the dialog open,
+`document.querySelectorAll('header')` returned 7 elements, of which **6 mapped
+to the `banner` landmark** — the app top bar plus five settings-panel headers,
+each rendered with no sectioning-content ancestor:
+
+| Panel | File |
+|---|---|
+| Heading Styles | `components/preferences/HeadingSettingsModal.tsx` |
+| Body Text Styles | `components/preferences/BodySettingsModal.tsx` |
+| Default Revision Name | `components/preferences/DefaultRevisionNameModal.tsx` |
+| Manage Tags | `components/common/TagsManagerModal.tsx` |
+| Metadata Fields | `components/SchemaManager/SchemaManager.tsx` |
+
+The sixth panel, Encryption (`components/preferences/EncryptionSettings.tsx`),
+was already correct: its `<header>` sits inside a `<section>`, so it maps to a
+section header rather than a banner. That existing panel is what the fix
+copies.
+
+The jsdom check could not have caught this, because it rendered the dialog
+alone — a duplicate-banner rule needs the top bar present in the same tree.
+
+**Resolution:** each of the five panels' outer wrapper changed from `<div>` to
+`<section>`, leaving their `<header>`s in place. Re-measured in the same live
+session with the dialog open: 7 `<header>` elements, **1 mapping to `banner`**
+(`appshell-topbar`), all six panel headers now reporting a `SECTION`
+sectioning ancestor.
+
+**Relates to:** destructive-styling-a11y FU-1 (ProjectSettingsDialog entry)
+**Raised:** 2026-09-16
+**Resolved:** [x]
+**Resolved on:** 2026-09-16

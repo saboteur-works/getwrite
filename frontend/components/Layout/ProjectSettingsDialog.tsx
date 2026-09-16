@@ -103,7 +103,14 @@ export default function ProjectSettingsDialog({
     >
       <DialogContent maxWidth="max-w-[900px]" aria-describedby={undefined}>
         <div className="flex h-[85vh] flex-col gap-6 p-6 lg:p-8">
-          <header className="flex items-start justify-between gap-4">
+          {/* A plain div, not <header>: a <header> that is not inside
+              sectioning content maps to the `banner` landmark, and
+              role="dialog" is not sectioning content — so this title row
+              became a second banner alongside the app top bar
+              (ShellSettingsMenu.tsx's .appshell-topbar), which axe-core
+              flags as `landmark-no-duplicate-banner`. The dialog is already
+              named by its DialogTitle. */}
+          <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <DialogTitle className="text-2xl font-semibold text-gw-primary">
                 Project Settings
@@ -120,7 +127,7 @@ export default function ProjectSettingsDialog({
             >
               Close
             </button>
-          </header>
+          </div>
 
           <Tabs
             value={activeTab}

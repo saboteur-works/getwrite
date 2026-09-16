@@ -3,6 +3,7 @@
 import React, {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -93,6 +94,10 @@ export default function AddFieldForm({
   const [error, setError] = useState("");
 
   const nameInputRef = useRef<HTMLInputElement>(null);
+  // Ties the name input to its suggestion listbox for the combobox pattern
+  // below. `aria-controls` may only name an element that exists, so it is set
+  // only while the listbox is actually rendered.
+  const suggestionsListboxId = useId();
   const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -225,11 +230,23 @@ export default function AddFieldForm({
                 autoComplete="off"
                 placeholder="e.g. tension"
                 aria-label="field-name"
+                // `aria-expanded` is not allowed on the implicit `textbox`
+                // role of a plain text input, which axe-core flags as
+                // `aria-allowed-attr`. The input genuinely is a combobox —
+                // it owns the suggestion listbox below — so it takes that
+                // role explicitly rather than dropping the attribute.
+                role="combobox"
                 aria-autocomplete="list"
                 aria-expanded={isShowingSuggestions && suggestions.length > 0}
+                aria-controls={
+                  isShowingSuggestions && suggestions.length > 0
+                    ? suggestionsListboxId
+                    : undefined
+                }
               />
               {isShowingSuggestions && suggestions.length > 0 && (
                 <div
+                  id={suggestionsListboxId}
                   className="absolute left-0 top-full mt-0.5 w-full bg-gw-chrome2 border border-gw-border-md rounded-sm z-50 max-h-36 overflow-y-auto shadow-sm"
                   role="listbox"
                   aria-label="Existing fields"

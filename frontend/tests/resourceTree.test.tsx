@@ -53,7 +53,10 @@ describe("ResourceTree", () => {
     const folderNode = screen.getByText("Folder A");
     expect(folderNode).toBeTruthy();
 
-    const folderBtn = folderNode.closest("button");
+    // The tree row is a <div role="treeitem">, not a <button>: the expand
+    // chevron and row menu are buttons rendered inside it, and role="tree"
+    // allows only treeitem/group children (see ResourceTree.tsx).
+    const folderBtn = folderNode.closest('[role="treeitem"]');
     expect(folderBtn).toBeTruthy();
     fireEvent.click(folderBtn as HTMLElement);
 

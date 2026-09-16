@@ -62,7 +62,13 @@ export default function BodySettingsModal({
   };
 
   return (
-    <div className="flex w-full flex-col gap-6">
+    <section className="flex w-full flex-col gap-6">
+      {/* This wrapper is a <section> so the <header> below is a section
+          header rather than the `banner` landmark: a <header> outside
+          sectioning content maps to `banner`, and this panel renders inside
+          ProjectSettingsDialog alongside the app top bar, which axe-core
+          flags as `landmark-no-duplicate-banner`. EncryptionSettings.tsx
+          already used this shape. */}
       <header className="flex flex-col gap-1 border-b border-gw-border pb-4">
         <h2 className="text-lg font-semibold text-gw-primary">
           Body Text Styles
@@ -145,6 +151,6 @@ export default function BodySettingsModal({
           {isSaving ? "Saving…" : "Save Changes"}
         </Button>
       </footer>
-    </div>
+    </section>
   );
 }

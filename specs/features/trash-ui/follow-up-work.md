@@ -125,8 +125,17 @@ this Gate 6 review's six findings.
 
 **Relates to:** Task 18, Task 19
 **Raised:** 2026-09-14
-**Resolved:** [ ]
-**Resolved on:**
+**Resolved:** [x]
+**Resolved on:** 2026-09-15
+
+**Resolution:** Addressed by `specs/features/destructive-styling-a11y.md`
+(FR-8, FR-9), commits `0b8f5b18` (adds `axe-core@4.11.4` as a frontend
+devDependency) and `dd9eddba`. `frontend/tests/a11y/trash-view.a11y.test.tsx`
+now runs a real `axe-core` pass over TrashView's rendered states through a new
+typed in-repo helper, `frontend/tests/a11y/helpers/axe.ts`, in place of the
+hand-written ARIA assertions. The `color-contrast` rule is disabled in that
+run because jsdom cannot compute composited colour; per FR-10 the Chromium
+strict-axe Storybook run remains the contrast check of record.
 
 ### FU-6: A legacy folder with no manifest can't be restored or purged as a single unit
 
@@ -191,8 +200,8 @@ design-system decision beyond one feature's fix.
 
 **Relates to:** Task 26
 **Raised:** 2026-09-14
-**Resolved:** [ ]
-**Resolved on:**
+**Resolved:** [x]
+**Resolved on:** 2026-09-15
 
 **Update (2026-09-14):** Task 25's styling pass also applied
 `variant="destructive"` styling to the Trash toolbar's "Delete selected
@@ -205,6 +214,18 @@ size (WCAG AA requires 4.5:1 at that size). See FU-9 for the full contrast
 measurement, which also covers a second, unrelated failure in the same
 component. No cause for either is established beyond the styling and color
 values reported here.
+
+**Resolution:** Addressed by `specs/features/destructive-styling-a11y.md`
+(FR-1, FR-3, FR-4), commits `f72904ff` and `9d675f62`. `Button.tsx`'s
+`destructive` variant now aliases `secondary`'s exact class string through a
+shared constant and uses no red token or hex value in any state, so all three
+`ConfirmDialog` call sites and the two Trash toolbar buttons named in the
+update above render without red; danger is conveyed by label and confirmation
+only. STYLING.md's "Buttons, Destructive" spec was rewritten to match,
+removing its contradiction with STYLING.md's own "Red is NOT used for: Any
+button" rule and CLAUDE.md's Styling section. A lead real-app check on
+2026-09-15 (FR-12) covered every `variant="destructive"` consumer in both
+light and dark mode.
 
 ### FU-8: Trash view doesn't refetch on a delete elsewhere while its own tab stays selected
 
@@ -264,8 +285,26 @@ default (non-strict) Storybook a11y run Task 19's own gate relied on.
 
 **Relates to:** Task 25, FU-7
 **Raised:** 2026-09-14
-**Resolved:** [ ]
-**Resolved on:**
+**Resolved:** [x]
+**Resolved on:** 2026-09-15
+
+**Resolution:** Addressed by `specs/features/destructive-styling-a11y.md`
+(FR-1, FR-5, FR-6), commits `f72904ff` and `1674686f`. Both measured elements
+were cleared: the `#d44040` "Empty trash" button by removing red from the
+`destructive` variant (see FU-7), and the `#7a7870` metadata text by
+repointing the failing tokens at the brand `fg-*`/`fg-inv-*` scale — dark
+`--color-gw-secondary` to `var(--color-fg-tertiary)` `#888680` (5.44/5.19/4.98
+against `#0a0a0a`/`#111110`/`#161614`) and light `--color-gw-secondary-light`
+to `var(--color-fg-inv-tertiary)` `#636160` (5.60/5.12/4.72 against
+`#f5f4f0`/`#eceae3`/`#e4e1da`). After the fix, `pnpm test-storybook
+stories/WorkArea/TrashView` reported 7 passed (7) with
+`parameters.a11y.test: "error"` committed on those stories (FR-18).
+
+This closes FU-9's own two findings only. A wider lead strict-axe sweep on
+2026-09-15 measured 13 residual `color-contrast` findings elsewhere in the app
+(DiffView x10, SchemaManager x3), every one on an element carrying a CSS
+`opacity`; those are tracked separately as `destructive-styling-a11y` FU-1 and
+are not part of this entry.
 
 ### FU-10: Post-restore refetch dispatched an unvalidated `openProject` response, crashing `TrashView` after a successful restore
 
@@ -332,6 +371,28 @@ describe block) mocks `openProject` to resolve `{}` and asserts the notice
 still renders; it fails with that `TypeError` before the fix and passes after.
 After the fix, `pnpm test-storybook stories/WorkArea/TrashView` reports 7
 passed (7) under `parameters.a11y.test: "error"`.
+
+**Survey (2026-09-16), sizing the residual below:** no module under
+`frontend/src/lib/api/` validates any response body. Across the 16 modules that
+make requests there are **39 `response.json()` calls, 31 of them returned via a
+bare `as` cast** to a declared TypeScript type, and **0 uses of `zod`,
+`.parse`, or `.safeParse`** anywhere in that directory. `openProject`'s own
+transport is line 82 of `projects.ts`:
+`return (await response.json()) as ProjectApiEntry;`. Status-code checking is
+uneven too — `projects.ts` makes 6 `.json()` calls behind 3 `.ok` checks.
+
+The gap is specific to the HTTP boundary: CLAUDE.md records that Zod validators
+gate data crossing the *filesystem* boundary (`schemas.ts`), and they do.
+Nothing plays that role for a response body, so a route returning a shape the
+client's type says is impossible is accepted silently — the chain FU-10
+documents.
+
+Closing it is feature-sized, not a patch: it needs a decision on where
+validation lives (reuse `schemas.ts`'s validators, or response-specific
+schemas), a decision on the error contract per call site (reject, as
+`lib/api/trash.ts` deliberately does, versus degrade, as several others
+deliberately do), and a pass over all 39 sites. The native `createTransport`
+path returns in-process objects and is unaffected.
 
 Still open: only the one call site was hardened. The root cause is
 untouched — `openProject`'s HTTP transport still performs no runtime
