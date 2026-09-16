@@ -642,6 +642,46 @@ describe("TrashView — Task 18 per-item restore notices (FR-5/FR-9/FR-14)", () 
     );
     expect(screen.queryByTestId("trash-restore-notice")).toBeNull();
   });
+
+  it("keeps the restore notice visible when the post-restore openProject refetch returns a malformed body (crash-on-restore regression)", async () => {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+    mockedRestoreTrashItems.mockResolvedValue([
+      { id: "res-1", ok: true, relocated: true, renamed: false },
+    ]);
+    // `openProject`'s HTTP transport does not validate its response body
+    // against `ProjectApiEntry`, so a body with no `resources`/`folders`
+    // (e.g. `{}`) is a realistic runtime shape even though the type says
+    // otherwise.
+    mockedOpenProject.mockResolvedValue({} as never);
+
+    const store = setupStore();
+
+    render(
+      <Provider store={store}>
+        <TrashView />
+      </Provider>,
+    );
+
+    await screen.findAllByTestId("trash-row");
+    selectTrashRow("res-1");
+    fireEvent.click(screen.getByTestId("trash-restore-selected"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Restore" }));
+
+    await waitFor(() =>
+      expect(mockedOpenProject).toHaveBeenCalledWith(PROJECT_ID),
+    );
+
+    // Before the fix, the malformed refetch response reached
+    // `loadResources`/`setProjectFolders` as `undefined`, which crashed the
+    // `resourcesSliceCount` selector on the next render and unmounted
+    // `TrashView` along with its restore notice.
+    await waitFor(() => {
+      const notices = screen.getAllByTestId("trash-restore-notice");
+      expect(notices).toHaveLength(1);
+    });
+  });
 });
 
 describe("TrashView + AppShell — FR-21 open-editor-tab boundary (Task 17)", () => {
