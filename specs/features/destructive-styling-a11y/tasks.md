@@ -514,7 +514,7 @@ if a gate failure surfaces.
 **Depends on:** 4, 6, 7, 8
 **Estimate:** 3
 **POS:** task_d8a82575
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 
