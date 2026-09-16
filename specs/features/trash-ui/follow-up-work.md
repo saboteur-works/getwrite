@@ -372,6 +372,28 @@ still renders; it fails with that `TypeError` before the fix and passes after.
 After the fix, `pnpm test-storybook stories/WorkArea/TrashView` reports 7
 passed (7) under `parameters.a11y.test: "error"`.
 
+**Survey (2026-09-16), sizing the residual below:** no module under
+`frontend/src/lib/api/` validates any response body. Across the 16 modules that
+make requests there are **39 `response.json()` calls, 31 of them returned via a
+bare `as` cast** to a declared TypeScript type, and **0 uses of `zod`,
+`.parse`, or `.safeParse`** anywhere in that directory. `openProject`'s own
+transport is line 82 of `projects.ts`:
+`return (await response.json()) as ProjectApiEntry;`. Status-code checking is
+uneven too — `projects.ts` makes 6 `.json()` calls behind 3 `.ok` checks.
+
+The gap is specific to the HTTP boundary: CLAUDE.md records that Zod validators
+gate data crossing the *filesystem* boundary (`schemas.ts`), and they do.
+Nothing plays that role for a response body, so a route returning a shape the
+client's type says is impossible is accepted silently — the chain FU-10
+documents.
+
+Closing it is feature-sized, not a patch: it needs a decision on where
+validation lives (reuse `schemas.ts`'s validators, or response-specific
+schemas), a decision on the error contract per call site (reject, as
+`lib/api/trash.ts` deliberately does, versus degrade, as several others
+deliberately do), and a pass over all 39 sites. The native `createTransport`
+path returns in-process objects and is unaffected.
+
 Still open: only the one call site was hardened. The root cause is
 untouched — `openProject`'s HTTP transport still performs no runtime
 validation of its response body, and `loadResources`/`setFolders` still trust
