@@ -18,6 +18,11 @@
  * - `0`  — no problems found.
  * - `1`  — one or more integrity problems found.
  * - `2`  — unexpected error during the check (details logged to stderr).
+ * - `3`  — the project is encrypted, so it could not be checked.
+ *
+ * Exit code 3 is deliberately distinct from both 0 and 1: an encrypted project
+ * is not "clean" and is not "has problems" — it is unexamined. Reporting it as
+ * either would be a false statement about the project's integrity.
  *
  * When the environment variable `GETWRITE_CLI_TESTING` is set, `process.exit`
  * is suppressed so the command can be exercised in tests without terminating
@@ -25,7 +30,12 @@
  */
 import path from "node:path";
 import { Command } from "commander";
-import { readFolderTree, getLocalResources, runForTenant } from "@gw/core";
+import {
+  readFolderTree,
+  getLocalResources,
+  runForTenant,
+  isProjectEncrypted,
+} from "@gw/core";
 
 interface FolderLike {
   id?: unknown;
@@ -41,6 +51,23 @@ function folderParentId(folder: FolderLike): string | null | undefined {
 }
 
 export async function runDoctor(root: string): Promise<number> {
+  // Check this before reading anything. `doctor` reads through the plain
+  // adapter, so on an encrypted project every file it opens is an envelope and
+  // the first `JSON.parse` throws `Unexpected token 'G', "GWE ..."` — a message
+  // that points a reader at file corruption rather than at encryption.
+  // Measured 2026-09-16 against a real encrypted project.
+  if (await isProjectEncrypted(root)) {
+    console.error(
+      `[doctor] Cannot check ${root}: this project is encrypted.\n` +
+        "Its files are sealed on disk, so the folder associations this command " +
+        "inspects are not readable without the workspace passphrase.\n" +
+        "Export a plaintext copy (Project Settings -> Encryption) and run " +
+        "doctor against that, or unlock and re-run once doctor supports a " +
+        "passphrase.",
+    );
+    return 3;
+  }
+
   const folders = (await readFolderTree(
     path.join(root, "folders"),
   )) as FolderLike[];
