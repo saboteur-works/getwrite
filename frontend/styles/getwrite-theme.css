@@ -50,15 +50,13 @@
   --color-gw-chrome3-light: #e4e1da; /* bg-gw-chrome3-light   | Deepest light chrome */
   --color-gw-border-light: #d0cec8; /* border-gw-border-light */
   --color-gw-rule-light: #d8d5ce; /* border-gw-rule-light  */
-  --color-gw-secondary-light: var(
-    --color-fg-inv-tertiary
-  ); /* text-gw-secondary-light | was #7a7870 (fails AA); repointed FR-5/FR-6 */
+  /* text-gw-secondary-light | was #7a7870 (fails AA); repointed FR-5/FR-6 */
+  --color-gw-secondary-light: var(--color-fg-inv-tertiary);
 
   /* ── TEXT COLORS ── */
   --color-gw-primary: #f5f4f0; /* text-gw-primary   | Primary UI text */
-  --color-gw-secondary: var(
-    --color-fg-tertiary
-  ); /* text-gw-secondary | Muted labels, panel headers | was #6a6864 (fails AA); repointed FR-5/FR-6 */
+  /* text-gw-secondary | Muted labels, panel headers | was #6a6864 (fails AA); repointed FR-5/FR-6 */
+  --color-gw-secondary: var(--color-fg-tertiary);
   --color-gw-dim: #3a3a38; /* text-gw-dim       | Near-invisible — folder items */
   --color-gw-red: #d44040; /* text-gw-red       | Signal Red — position marker */
 
