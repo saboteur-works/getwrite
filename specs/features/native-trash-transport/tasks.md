@@ -47,7 +47,7 @@ step failure via the route's HTTP surface, mirroring how
 `trash-purge-sweep.test.ts` induces the failure at the model layer but now
 observed through `POST .../trash/purge`'s JSON response.
 **POS:** task_ef8ce343
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Cross-.trash-subtree rename smoke check against the Capacitor fake
 
@@ -73,7 +73,7 @@ caught before Task 9's larger parity test is built on the same assumption —
 if it fails, the parity harness choice (in-memory Capacitor fake for the
 native half) needs revisiting before Task 9, not after.
 **POS:** task_ffe51e33
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Create `trash-core.ts` with the three single-item functions plus `purgeBatchCore`
 
@@ -108,7 +108,7 @@ restore's loop over ids has no `{ all: true }` resolution step, so there is
 no duplication of substance to extract, and both the HTTP restore route and
 the later native backend keep their own trivial loop over `restoreOneCore`.
 **POS:** task_b39a7034
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Rewire the three HTTP routes onto `trash-core.ts`
 
@@ -131,7 +131,7 @@ route's request/response contract changes.
 **Depends on:** Task 3
 **Estimate:** 3
 **POS:** task_955ff7e4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Verify Step 1's full regression net and close it out
 
@@ -149,7 +149,7 @@ and `lint` are clean, and this is recorded as the closing evidence for Step
 **Depends on:** Task 4
 **Estimate:** 2
 **POS:** task_6a458825
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Replace the native-trash-backend.ts stub with a real implementation
 
@@ -186,7 +186,7 @@ decision and violate FR-7's per-id re-entry requirement. Loop over
 `purgeOneCore` directly in the native backend, exactly as this task
 describes.
 **POS:** task_9fa4bf05
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Implement the failure taxonomy (FR-8/9/10) in the native backend
 
@@ -212,7 +212,7 @@ because one item's core call threw.
 **Depends on:** Task 6
 **Estimate:** 5
 **POS:** task_993464ff
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Native/web parity test
 
@@ -236,7 +236,7 @@ confirmation that the fake's `rename` behaves as trash.ts needs — if Task 2
 had failed, this task's harness choice would need to change first)
 **Estimate:** 5
 **POS:** task_b842fffa
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Web-bundle exclusion test
 
@@ -256,7 +256,7 @@ sibling's five `it` blocks) pass against the real implementation from Task
 **Depends on:** Task 6
 **Estimate:** 2
 **POS:** task_e913d19e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Full-suite verification and FR-13 closing evidence
 
@@ -273,7 +273,7 @@ green.
 **Depends on:** Task 5, Task 8, Task 9
 **Estimate:** 2
 **POS:** task_9f6300ab
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
