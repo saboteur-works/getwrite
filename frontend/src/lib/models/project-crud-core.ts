@@ -30,6 +30,7 @@
 import path from "node:path";
 import { readFile, readdir, writeFile, rm } from "./io";
 import { readProjectMarker } from "./crypto/project-marker";
+import { isLockedAccessError } from "./locked-access";
 import { getSessionKeyring } from "./crypto/keyring-session";
 import { runInProjectContext } from "./crypto/adapter-selection";
 import {
@@ -538,7 +539,12 @@ export async function findProjectRootByInternalId(
       const raw = await readFile(path.join(candidate, "project.json"), "utf8");
       const parsed = JSON.parse(raw) as { id?: string };
       if (parsed?.id === projectId) return candidate;
-    } catch {
+    } catch (error) {
+      // A locked/inaccessible encrypted project must fail closed rather than
+      // being silently skipped as if it were merely unreadable — skipping it
+      // here would let the scan fall through to "not found" instead of
+      // surfacing that the project exists but cannot be read right now.
+      if (isLockedAccessError(error)) throw error;
       // skip unreadable or non-project directories
     }
   }

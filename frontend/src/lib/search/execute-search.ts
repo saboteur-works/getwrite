@@ -25,6 +25,7 @@ import type { MetadataValue, Project } from "../models/types";
 import { getCanonicalRevision, revisionDir } from "../models/revision";
 import { extractSnippet } from "../models/search-snippet";
 import { tiptapToPlainText } from "../tiptap-utils";
+import { isLockedAccessError } from "../models/locked-access";
 
 const SNIPPET_MAX_LEN = 160;
 // Maximum candidates scored for proximity before applying filters + limit.
@@ -79,7 +80,12 @@ export async function findProjectRoot(
       const raw = await readFile(path.join(candidate, "project.json"), "utf8");
       const parsed = JSON.parse(raw) as { id?: string };
       if (parsed?.id === projectId) return candidate;
-    } catch {
+    } catch (error) {
+      // A locked/inaccessible encrypted project must fail closed rather than
+      // being silently skipped as if it were merely unreadable — skipping it
+      // here would let the scan fall through to "not found" instead of
+      // surfacing that the project exists but cannot be read right now.
+      if (isLockedAccessError(error)) throw error;
       // skip unreadable or non-project directories
     }
   }
