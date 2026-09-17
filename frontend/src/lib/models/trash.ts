@@ -22,6 +22,7 @@ import { getLocalResources, writeResourceToFile } from "./resource-persistence";
 import { getSchema } from "./metadata-schema";
 import { enqueueIndex } from "./indexer-queue";
 import { removeEntityRelationshipsForEntity } from "./entity-relationships";
+import { isLockedAccessError } from "./locked-access";
 import {
   FolderSchema,
   TrashRefRecordSchema,
@@ -407,7 +408,8 @@ async function collectFolderDescriptors(
       const raw = await readFile(path.join(subDir, "folder.json"), "utf8");
       const folder = FolderSchema.parse(JSON.parse(raw)) as Folder;
       result.push({ folder, dirPath: subDir });
-    } catch {
+    } catch (err: unknown) {
+      if (isLockedAccessError(err)) throw err;
       // no folder.json, or it failed validation — skip descriptor, still recurse
     }
 
@@ -1488,7 +1490,8 @@ export async function listTrashedItems(
         folderId,
         TrashFolderManifestSchema.parse(JSON.parse(raw)),
       );
-    } catch {
+    } catch (err: unknown) {
+      if (isLockedAccessError(err)) throw err;
       // Malformed or unreadable manifest — treat this folder as legacy
       // (no manifest), rather than failing the whole listing.
     }
@@ -1522,7 +1525,8 @@ export async function listTrashedItems(
         resourceId,
         JSON.parse(raw) as Record<string, unknown>,
       );
-    } catch {
+    } catch (err: unknown) {
+      if (isLockedAccessError(err)) throw err;
       // Malformed or unreadable sidecar — skip, mirroring the pre-existing
       // per-file tolerance below.
     }
