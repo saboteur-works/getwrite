@@ -12,7 +12,12 @@ import {
   removeEntityRelationship,
   removeEntityRelationshipsForEntity,
 } from "../../src/lib/api/entity-relationships";
+import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 import type { EntityRelationshipEdge } from "../../src/lib/models/entity-relationships";
+
+vi.mock("../../src/lib/api/transport-validation", () => ({
+  reportTransportValidationFailure: vi.fn(),
+}));
 
 const RUNTIME_ENV = "NEXT_PUBLIC_GETWRITE_RUNTIME";
 const originalRuntime = process.env[RUNTIME_ENV];
@@ -205,6 +210,26 @@ describe("entity relationships transport — web runtime — create", () => {
       createEntityRelationship("project-1", "entity-1", "entity-2", "ally of"),
     ).resolves.toBeNull();
   });
+
+  it("resolves null and reports the failure when the body fails EntityRelationshipEdgeSchema", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...SAMPLE_EDGE, sourceEntityId: "" }),
+    } as Response);
+
+    const result = await createEntityRelationship(
+      "project-1",
+      "entity-1",
+      "entity-2",
+      "ally of",
+    );
+
+    expect(result).toBeNull();
+    expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+      "entity-relationships.create",
+      expect.any(Array),
+    );
+  });
 });
 
 describe("entity relationships transport — web runtime — remove", () => {
@@ -260,6 +285,21 @@ describe("entity relationships transport — web runtime — remove", () => {
 
     await expect(removeEntityRelationship("project-1", "edge-1")).resolves.toBe(
       false,
+    );
+  });
+
+  it("returns false and reports the failure when the body fails EntityRelationshipRemovedResponseSchema", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ removed: "yes" }),
+    } as Response);
+
+    const didRemove = await removeEntityRelationship("project-1", "edge-1");
+
+    expect(didRemove).toBe(false);
+    expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+      "entity-relationships.remove",
+      expect.any(Array),
     );
   });
 });
@@ -321,6 +361,24 @@ describe("entity relationships transport — web runtime — removeByEntity", ()
     await expect(
       removeEntityRelationshipsForEntity("project-1", "entity-1"),
     ).resolves.toBe(0);
+  });
+
+  it("resolves to 0 and reports the failure when removedCount fails EntityRelationshipRemovedCountResponseSchema", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ removedCount: "3" }),
+    } as Response);
+
+    const removedCount = await removeEntityRelationshipsForEntity(
+      "project-1",
+      "entity-1",
+    );
+
+    expect(removedCount).toBe(0);
+    expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+      "entity-relationships.removeByEntity",
+      expect.any(Array),
+    );
   });
 });
 
