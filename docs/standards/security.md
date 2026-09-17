@@ -53,11 +53,15 @@ If you cannot determine that an operation is permitted, deny it.
   `console.*` call — its signature accepts only a call-site identifier and the
   Zod issue list, never the raw body, because an in-scope response can carry
   server-decrypted user prose on an encrypted project, and rule 5's "never log
-  decrypted content" applies here too. As of Feature 48 this covers 9 call
-  sites across 5 modules (`projects`, `resources`, `project-types`,
-  `entity-relationships`, `entity-alias-table`); most `lib/api/` response
-  sites are not yet validated — check whether the module you're touching has
-  been covered before assuming it has.
+  decrypted content" applies here too. The helper also raises a generic,
+  deduplicated user-visible toast alongside its console report, still without
+  ever receiving or logging the raw body. As of Feature 50 this covers 21 call
+  sites across 10 modules (`projects`, `resources`, `project-types`,
+  `entity-relationships`, `entity-alias-table`, `tags`, `mentions`,
+  `entity-cooccurrence`, `entity-mention-counts`, `resource-excerpts`); 9
+  sites across 6 modules (`resources`, `compile`, `export`, `encryption`,
+  `editor-config`, `preferences`) remain unvalidated — check whether the
+  module you're touching has been covered before assuming it has.
 
 ---
 
