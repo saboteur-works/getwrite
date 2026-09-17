@@ -195,7 +195,16 @@ describe("Task 9d: projectId-based client transports", () => {
   describe("projects.ts", () => {
     it("openProject sends projectId, not projectPath", async () => {
       fetchMock.mockResolvedValue(
-        jsonResponse({ project: {}, folders: [], resources: [] }),
+        jsonResponse({
+          project: {
+            id: directoryUuid,
+            name: "Test Project",
+            createdAt: "2024-01-01T00:00:00.000Z",
+            config: { editorConfig: {} },
+          },
+          folders: [],
+          resources: [],
+        }),
       );
       await openProject(directoryUuid);
       const [url, init] = fetchMock.mock.calls[0];
