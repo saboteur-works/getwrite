@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
-import { setStorageAdapter } from "../../src/lib/models/io";
+import { setStorageAdapter, getStorageAdapter } from "../../src/lib/models/io";
 import { createTextResource } from "../../src/lib/models/resource";
 import { writeSidecar } from "../../src/lib/models/sidecar";
 import {
@@ -18,6 +18,11 @@ import {
   removeResourceFromIndex,
   reindexMissingResources,
 } from "../../src/lib/models/inverted-index";
+import { createKeyring } from "../../src/lib/models/crypto/keyring";
+import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
+import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 
 describe("inverted index (T025)", () => {
   beforeEach(() => {
@@ -290,5 +295,55 @@ describe("reindexMissingResources", () => {
     // Second call — resource is now indexed
     const second = await reindexMissingResources(projectRoot);
     expect(second).toBe(0);
+  });
+});
+
+// Feature 54, Task 4: loadIndex must not degrade a locked/inaccessible
+// encrypted project to an empty index — that would hide real content from
+// search instead of surfacing the lock.
+describe("inverted index — locked access (Feature 54)", () => {
+  const TENANT_ROOT = "/ws-locked-idx";
+  const PROJECT_ID = "55555555-5555-4555-8555-555555555555";
+  const PROJECT_ROOT = `${TENANT_ROOT}/${PROJECT_ID}`;
+
+  const previousAdapter = getStorageAdapter();
+
+  afterEach(() => {
+    setStorageAdapter(previousAdapter);
+  });
+
+  it("rejects rather than returning an empty index when the project is locked", async () => {
+    const base = createMemoryAdapter();
+    await base.mkdir(PROJECT_ROOT, { recursive: true });
+
+    const keyring = await createKeyring(
+      "correct horse battery staple",
+      TEST_ARGON2_PARAMS,
+    );
+    await keyring.addProject(PROJECT_ID);
+    await writeProjectMarker(PROJECT_ROOT, base);
+
+    // Lock the workspace — the marker is present (this project opted into
+    // encryption) but there is no unlocked keyring to resolve its key with.
+    keyring.lock();
+
+    setStorageAdapter(workspaceEncryptionAdapter(base, TENANT_ROOT, keyring));
+
+    // `search` calls `loadIndex` directly with nothing else in between, so a
+    // rejection here can only originate from `loadIndex`'s own catch block.
+    await expect(search(PROJECT_ROOT, "anything")).rejects.toBeInstanceOf(
+      ProjectLockedError,
+    );
+  });
+
+  it("still degrades to an empty index for an ordinary missing-file error", async () => {
+    // Sanity check: an unencrypted project with no index file yet must keep
+    // its existing "no index" behavior — only a locked-access error rethrows.
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-idx-unlocked-"),
+    );
+    setStorageAdapter(createMemoryAdapter());
+
+    await expect(search(projectRoot, "anything")).resolves.toEqual([]);
   });
 });

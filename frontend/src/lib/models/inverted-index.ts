@@ -3,6 +3,7 @@ import { atomicWriteFile, mkdir, readFile, readdir } from "./io";
 import { withMetaLock } from "./meta-locks";
 import type { TextResource } from "./types";
 import { tiptapToPlainText, loadResourceContent } from "../tiptap-utils";
+import { isLockedAccessError } from "./locked-access";
 
 export type InvertedIndex = Record<string, Record<string, number>>;
 
@@ -69,7 +70,14 @@ async function loadIndex(projectRoot: string): Promise<InvertedIndex> {
   try {
     const raw = await readFile(p, "utf8");
     return JSON.parse(raw) as InvertedIndex;
-  } catch {
+  } catch (error) {
+    // A locked or otherwise inaccessible encrypted project must not be
+    // reported as "no index yet" — that degrades to an empty result set
+    // instead of surfacing the lock, hiding real content from search
+    // (FR15/FR26). Every other failure (most commonly a missing index file
+    // on a brand-new or never-indexed project) keeps degrading to an empty
+    // index, as before.
+    if (isLockedAccessError(error)) throw error;
     return {};
   }
 }
