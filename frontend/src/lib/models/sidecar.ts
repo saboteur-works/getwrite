@@ -3,6 +3,7 @@ import path from "node:path";
 import type { UUID, MetadataValue } from "./types";
 import { withMetaLock } from "./meta-locks";
 import { PROJECT_FILENAME } from "./project-config";
+import { isLockedAccessError } from "./locked-access";
 
 /**
  * Compute the canonical sidecar filename for a resource id.
@@ -153,11 +154,15 @@ export async function writeSidecar(
   // Read the pre-write sidecar (if any) so we can detect an entity's
   // name/aliases/entityKind changing across this write, below. A failure
   // reading it (as opposed to it simply not existing, which readSidecar
-  // already reports as `null`) must not block the write itself.
+  // already reports as `null`) must not block the write itself — except a
+  // locked-access failure (encrypted project, workspace locked, or no key
+  // for it), which is not "no prior sidecar exists" and must propagate
+  // rather than let the write proceed as if this were a brand-new resource.
   let previous: Record<string, MetadataValue> | null = null;
   try {
     previous = await readSidecar(projectRoot, resourceId);
-  } catch {
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
     previous = null;
   }
 
