@@ -186,7 +186,7 @@ decision and violate FR-7's per-id re-entry requirement. Loop over
 `purgeOneCore` directly in the native backend, exactly as this task
 describes.
 **POS:** task_9fa4bf05
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Implement the failure taxonomy (FR-8/9/10) in the native backend
 
@@ -212,7 +212,7 @@ because one item's core call threw.
 **Depends on:** Task 6
 **Estimate:** 5
 **POS:** task_993464ff
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Native/web parity test
 
@@ -236,7 +236,7 @@ confirmation that the fake's `rename` behaves as trash.ts needs — if Task 2
 had failed, this task's harness choice would need to change first)
 **Estimate:** 5
 **POS:** task_b842fffa
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Web-bundle exclusion test
 
@@ -256,7 +256,7 @@ sibling's five `it` blocks) pass against the real implementation from Task
 **Depends on:** Task 6
 **Estimate:** 2
 **POS:** task_e913d19e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Full-suite verification and FR-13 closing evidence
 
@@ -273,7 +273,7 @@ green.
 **Depends on:** Task 5, Task 8, Task 9
 **Estimate:** 2
 **POS:** task_9f6300ab
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
