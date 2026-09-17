@@ -68,6 +68,28 @@ describe("entity alias table transport — web runtime", () => {
       claimedBy: {},
     });
   });
+
+  it("getEntityAliasTable resolves to the empty table on a malformed 2xx body", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entities: {
+          "entity-1": {
+            entityId: "entity-1",
+            entityKind: "character",
+            name: "Elowen",
+            // missing `aliases` and `terms`
+          },
+        },
+        claimedBy: "not-a-record",
+      }),
+    } as Response);
+
+    await expect(getEntityAliasTable("project-1")).resolves.toEqual({
+      entities: {},
+      claimedBy: {},
+    });
+  });
 });
 
 describe("httpEntityAliasTableTransport", () => {
