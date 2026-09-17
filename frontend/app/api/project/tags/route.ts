@@ -24,6 +24,7 @@ import {
   resolveTagsProjectRootOrThrow,
 } from "../../../../src/lib/models/tags-crud-core";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface ListTagsRequest {
@@ -97,6 +98,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
       { status: 400 },
     );
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     return NextResponse.json(
       { error: "Tags operation failed", details: (error as Error).message },
       { status: 500 },

@@ -6,6 +6,7 @@ import {
   uploadMediaResourceCore,
 } from "../../../../src/lib/models/resource-crud-core";
 import { validateMediaFile } from "../../../../src/lib/models/media-validation";
+import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 /**
@@ -78,6 +79,9 @@ async function handlePost(req: Request): Promise<Response> {
       throw error;
     }
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     return NextResponse.json(
       {
         error: "Failed to upload media",

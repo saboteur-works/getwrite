@@ -13,10 +13,30 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { removeDirRetry } from "./helpers/fs-utils";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { generateUUID } from "../../src/lib/models/uuid";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+
+// Feature 54, Task 14: a partial mock of metadata-schema-dispatch-core so
+// individual tests can force `dispatchMetadataSchemaAction`/`fetchFieldValues`
+// to reject with a locked-access error, while every other test in this file
+// keeps exercising the real implementation.
+vi.mock("../../src/lib/models/metadata-schema-dispatch-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/metadata-schema-dispatch-core")
+  >("../../src/lib/models/metadata-schema-dispatch-core");
+  return {
+    ...actual,
+    dispatchMetadataSchemaAction: vi.fn(actual.dispatchMetadataSchemaAction),
+    fetchFieldValues: vi.fn(actual.fetchFieldValues),
+  };
+});
+import {
+  dispatchMetadataSchemaAction,
+  fetchFieldValues,
+} from "../../src/lib/models/metadata-schema-dispatch-core";
 import {
   addField,
   removeField,
@@ -555,5 +575,84 @@ describe("updateRefProperties action", () => {
     await expect(
       updateRefProperties(dir, GROUP_ID, "ghost", { refFolder: "x" }),
     ).rejects.toThrow(/Field not found/);
+  });
+});
+
+describe("POST/GET /api/project/metadata-schema — locked-access rethrow (Feature 54, Task 14, FR-14)", () => {
+  async function makeTmpProjectsDirRoute(): Promise<{
+    projectsDir: string;
+    projectId: string;
+  }> {
+    const projectsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-mschema-locked-"),
+    );
+    const projectId = generateUUID();
+    const projectPath = path.join(projectsDir, projectId);
+    await fs.mkdir(projectPath, { recursive: true });
+    const proj = createProject({ name: "route-test" });
+    const projWithSchema = {
+      ...proj,
+      config: { ...proj.config, metadataSchema: baseSchema() },
+    };
+    await fs.writeFile(
+      path.join(projectPath, PROJECT_FILENAME),
+      JSON.stringify(projWithSchema, null, 2),
+      "utf8",
+    );
+    return { projectsDir, projectId };
+  }
+
+  it("POST: maps a ProjectLockedError from dispatchMetadataSchemaAction to 401 instead of the route's fixed 500 shape", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDirRoute();
+    const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    try {
+      vi.mocked(dispatchMetadataSchemaAction).mockRejectedValueOnce(
+        new ProjectLockedError("11111111-1111-4111-8111-111111111111"),
+      );
+
+      const { POST } =
+        await import("../../app/api/project/metadata-schema/route");
+      const res = await POST(
+        new Request("http://localhost/api/project/metadata-schema", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "add-field",
+            projectId,
+            groupId: GROUP_ID,
+            field: { key: "route-field", label: "Route Field", type: "text" },
+          }),
+        }) as never,
+      );
+      expect(res.status).toBe(401);
+    } finally {
+      process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+      await removeDirRetry(projectsDir);
+    }
+  });
+
+  it("GET: maps a ProjectLockedError from fetchFieldValues to 401 instead of the route's fixed 500 shape", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDirRoute();
+    const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    try {
+      vi.mocked(fetchFieldValues).mockRejectedValueOnce(
+        new ProjectLockedError("11111111-1111-4111-8111-111111111111"),
+      );
+
+      const { GET } =
+        await import("../../app/api/project/metadata-schema/route");
+      const { NextRequest } = await import("next/server");
+      const res = await GET(
+        new NextRequest(
+          `http://localhost/api/project/metadata-schema?projectId=${projectId}&fieldKey=status`,
+        ),
+      );
+      expect(res.status).toBe(401);
+    } finally {
+      process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+      await removeDirRetry(projectsDir);
+    }
   });
 });

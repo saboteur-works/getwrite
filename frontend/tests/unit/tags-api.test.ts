@@ -28,10 +28,22 @@ import { generateUUID } from "../../src/lib/models/uuid";
 import type { Project, Tag } from "../../src/lib/models/types";
 import { httpTagsTransport } from "../../src/lib/api/tags";
 import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
   reportTransportValidationFailure: vi.fn(),
 }));
+
+// Feature 54, Task 14: a partial mock of tags-crud-core so a single test can
+// force `listTagsCore` to reject with a locked-access error, while every
+// other test in this file keeps exercising the real implementation.
+vi.mock("../../src/lib/models/tags-crud-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/tags-crud-core")
+  >("../../src/lib/models/tags-crud-core");
+  return { ...actual, listTagsCore: vi.fn(actual.listTagsCore) };
+});
+import { listTagsCore } from "../../src/lib/models/tags-crud-core";
 
 function jsonResponse(body: unknown, ok = true): Response {
   return { ok, json: async () => body } as Response;
@@ -316,6 +328,30 @@ describe("POST /api/project/tags/assign (projectId-based)", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
+    });
+  });
+});
+
+describe("POST /api/project/tags — locked-access rethrow (Feature 54, Task 14, FR-14)", () => {
+  it("maps a ProjectLockedError from listTagsCore to 401 instead of the route's fixed 500 shape", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      vi.mocked(listTagsCore).mockRejectedValueOnce(
+        new ProjectLockedError("11111111-1111-4111-8111-111111111111"),
+      );
+
+      const { POST } = await import("../../app/api/project/tags/route");
+      const res = await POST(
+        new Request("http://localhost/api/project/tags", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "list", projectId }),
+        }) as never,
+      );
+
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.error).not.toBe("Tags operation failed");
     });
   });
 });

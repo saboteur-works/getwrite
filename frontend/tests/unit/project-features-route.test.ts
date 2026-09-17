@@ -12,9 +12,22 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Feature 54, Task 14: a partial mock of project-features so a single test
+// can force `updateFeatureConfig` to reject with a locked-access error,
+// while every other test in this file keeps exercising the real
+// implementation.
+vi.mock("../../src/lib/models/project-features", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/project-features")
+  >("../../src/lib/models/project-features");
+  return { ...actual, updateFeatureConfig: vi.fn(actual.updateFeatureConfig) };
+});
 
 import { POST } from "../../app/api/project/features/route";
+import { updateFeatureConfig } from "../../src/lib/models/project-features";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { generateUUID } from "../../src/lib/models/uuid";
@@ -159,5 +172,25 @@ describe("POST /api/project/features", () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe("Invalid projectId");
+  });
+});
+
+describe("POST /api/project/features — locked-access rethrow (Feature 54, Task 14, FR-14)", () => {
+  it("maps a ProjectLockedError from updateFeatureConfig to 401 instead of the route's fixed 500 shape", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    await writeProject(projectsDir, projectId);
+
+    vi.mocked(updateFeatureConfig).mockRejectedValueOnce(
+      new ProjectLockedError("11111111-1111-4111-8111-111111111111"),
+    );
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        featuresRequest({ projectId, features: { timeline: true } }) as never,
+      ),
+    );
+
+    expect(res.status).toBe(401);
   });
 });

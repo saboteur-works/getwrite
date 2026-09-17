@@ -24,6 +24,18 @@ import {
   isEncryptionAvailable,
 } from "../../src/lib/models/crypto/encryption-availability";
 import { enableProjectEncryption } from "../../src/lib/models/crypto/enable-encryption";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+
+// Feature 54, Task 14: a partial mock of keyring-session so a single test can
+// force `unlockSession` to reject with a locked-access error, while every
+// other test in this file keeps exercising the real implementation.
+vi.mock("../../src/lib/models/crypto/keyring-session", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/crypto/keyring-session")
+  >("../../src/lib/models/crypto/keyring-session");
+  return { ...actual, unlockSession: vi.fn(actual.unlockSession) };
+});
+import { unlockSession } from "../../src/lib/models/crypto/keyring-session";
 
 const HOSTED_ENV = [
   "DATABASE_URL",
@@ -121,4 +133,33 @@ describe("POST /api/encryption fails closed on hosted", () => {
       expect((await response.json()).error).toMatch(/not available/i);
     });
   }
+});
+
+describe("POST /api/encryption — locked-access rethrow (Feature 54, Task 14, FR-14)", () => {
+  it("maps a ProjectLockedError from unlockSession to 401 instead of toErrorResponse's generic 400 fallback", async () => {
+    // Hosted auth deliberately left inactive here so `assertEncryptionAvailable()`
+    // passes and the handler actually reaches `unlockSession`.
+    vi.mocked(unlockSession).mockRejectedValueOnce(
+      new ProjectLockedError("11111111-1111-4111-8111-111111111111"),
+    );
+
+    const { POST } = await import("../../app/api/encryption/route");
+    const response = await POST(
+      new Request("http://localhost/api/encryption", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "unlock",
+          passphrase: "correct horse battery staple",
+        }),
+        headers: {
+          "content-type": "application/json",
+          origin: "http://localhost",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.error).not.toBe("Encryption request failed.");
+  });
 });

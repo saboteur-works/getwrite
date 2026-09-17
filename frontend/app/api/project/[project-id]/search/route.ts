@@ -20,6 +20,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "../../../../../src/lib/models/io";
 import { resolveProjectsDir } from "../../../../../src/lib/models/projects-dir";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
+import { isLockedAccessError } from "../../../../../src/lib/models/locked-access";
 import { getUserPreferencesFromProjectMetadata } from "../../../../../src/lib/user-preferences";
 import type { Project } from "../../../../../src/lib/models/types";
 import {
@@ -98,6 +99,9 @@ async function handleSearch(
     );
     return NextResponse.json(results, { status: 200 });
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     const message = error instanceof Error ? error.message : "Search failed.";
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -25,6 +25,7 @@ import type {
   OrganizerCardBodyConfig,
 } from "../../../../src/lib/models/types";
 import { resolveProjectPath } from "../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateFeaturesBody {
@@ -72,6 +73,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
       }),
     );
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     // Zod validation failures and malformed input map to 400; everything else
     // (e.g. read/write failures) maps to 500.
     const isZodError =

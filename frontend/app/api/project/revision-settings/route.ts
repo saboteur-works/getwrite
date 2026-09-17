@@ -18,6 +18,7 @@ import {
   saveRevisionSettingsCore,
 } from "../../../../src/lib/models/project-preferences-core";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateRevisionSettingsBody {
@@ -61,6 +62,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     );
     return NextResponse.json({ defaultRevisionName: saved });
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     const message =
       error instanceof Error
         ? error.message
