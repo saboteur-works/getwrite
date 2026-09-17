@@ -1629,6 +1629,265 @@ each site — a candidate discriminant is presence of `error` vs. presence of
 document's own instructions not to resolve open questions raised by a
 breakdown.
 
+### Feature 54: Fail-closed locked-access gate — Not started
+
+**Value:** A writer whose workspace keyring is locked or absent never has a
+sealed project's real content silently swapped for ciphertext — an app crash
+they can retry after unlocking, or plaintext written into their encrypted
+project destroying the ciphertext it replaced — because every read and write
+that would otherwise reach a sealed project's files while locked now fails
+with a typed, catchable signal instead.
+**Vertical slice:** A single change point covering both directions at once,
+since one function serves both: `adapterFor`
+(`frontend/src/lib/models/crypto/workspace-adapter.ts:84`) currently returns
+the plain, non-decrypting `inner` adapter unconditionally whenever
+`!keyring || keyring.isLocked()`, and every mutating wrapper
+(`mutatingAdapter`, `io.ts:227-229`) and every read wrapper (`currentAdapter`,
+same file) resolves through this one function for any path that names an
+actual project. Making that branch throw `ProjectLockedError` /
+`MissingProjectKeyError` (`frontend/src/lib/models/crypto/adapter-selection.ts:50-74`
+— already defined and already used correctly one module over in
+`adapter-selection.ts:107`, per this document's parent spec's resolved
+OQ-36) for a path that resolves to a real project id, while preserving the
+`!projectId` branch immediately after it
+(`workspace-adapter.ts:86-87`) returning `inner` unconditionally so
+workspace-level files (the keyring, the sealed name index) stay reachable
+locked, closes the gap at its root for every HTTP route
+`with-storage-context.ts` wraps. The API route layer catches the new error
+and returns a clean 4xx in place of today's opaque JSON-parse 500 (OQ-36's
+resolution, part (b)).
+
+Measured 2026-09-17 (a static call-graph trace, not yet exercised) that the
+gate alone does not collapse the read side the way this feature previously
+assumed. Only four of the routed adapter's methods — `readFile`,
+`readFileBuffer`, `writeFile`, `appendFile`
+(`workspace-adapter.ts:141-156`) — resolve through `adapterFor` at all;
+`readdir`, `stat`, `mkdir`, `rm`, `rename`, `copyFile`, and `cp` call `inner`
+directly (`workspace-adapter.ts:160-172`), per an in-code comment there
+stating path and directory semantics never differ between projects. A
+`readdir`-first traversal therefore proceeds normally locked and only trips
+the gate on a per-file read — and every one of the fifteen read sites this
+feature traced catches with an **untyped** `catch`, so each one swallows the
+new `ProjectLockedError` exactly as it swallows today's `SyntaxError` from
+parsing ciphertext (verified example: `inverted-index.ts:72-74`,
+`} catch { return {}; }`). Breakdown of the fifteen traced sites:
+
+- **4 sites surface the error** (their catch either doesn't cover the read,
+  or rethrows non-ENOENT already): `resource-persistence.ts:240` (word
+  counts), the query path (throws earlier at `readSidecar`,
+  `query-evaluate-core.ts:161`, rethrowing non-ENOENT per `sidecar.ts:71-79`),
+  `project-loader.ts:76`, and the sidecar **write**
+  (`resource-crud-core.ts:409-430` → `sidecar.ts:167` →
+  `io.ts`'s `atomicWriteFile`).
+- **10 sites throw but are swallowed**, becoming silent missing data instead
+  of silent wrong data: `loadResourceContent`
+  (`frontend/src/lib/tiptap-utils.ts:55-61`), `loadIndex`
+  (`inverted-index.ts:72-74`), `loadBacklinks` (`backlinks.ts:262-264`),
+  `loadMentionIndex` (`mention-index.ts:42-44`), `loadPreview`
+  (`previews.ts:55-57`), `loadRedirects` (`backlinks.ts:109-111`), `search`
+  (via `loadIndex`), `listTrashedItems` (`trash.ts:1487-1490`,
+  `:1521-1524`), `collectFolderDescriptors` (`trash.ts:410-412`), and
+  `findProjectRootByInternalId` / `findProjectRoot`
+  (`project-crud-core.ts:539-545`, `execute-search.ts:81-84`). Also the
+  swallowed read halves of `resource-crud-core.ts:409` and
+  `sidecar.ts:156-160`, and `rescanEntityAcrossProject`, whose write is
+  blocked but only logged (`indexer-queue.ts:371-373`).
+- **The write half of the original claim holds:** all three confirmed
+  destructive plaintext writes are genuinely blocked and surfaced —
+  `io.ts:212-216` documents that the mutating wrappers are `async` so a
+  refused write surfaces as a rejection rather than escaping a caller's
+  `.catch()`.
+
+Ciphertext-as-prose is visibly broken; an empty trash view, zero search
+results, and "project not found" all look like ordinary, legitimate states.
+Shipping the gate without also fixing the ten swallowed catch sites converts
+the failure class from loud-and-wrong to silent-and-missing — worse for a
+locked-but-otherwise-healthy read, not better. This feature's vertical slice
+is therefore the gate **plus** typed re-raises at all ten swallowed catch
+sites (each must distinguish `ProjectLockedError`/`MissingProjectKeyError`
+from an ordinary ENOENT/parse failure and rethrow it rather than degrading
+to `{}`/`null`/`[]`), not the gate alone as a first cut with the catch sites
+deferred — the gate alone is necessary but insufficient, since alone it only
+converts which failure class a locked read produces rather than fixing it.
+This feature's own task list must enumerate the full read-site list from the
+parent spec's locked-access constraint and add a regression test per site,
+since the prior OQ-36 resolution's own confidence limit notes that only
+`loadProjectCore` was measured broken by direct exercise and the rest
+(resource, revision, compile, export, search) were traced, not run. This
+feature must also guard the over-blocking risk the parent spec names: a
+project with no marker and no in-flight conversion must take the identity
+`!projectId`-independent early return in `adapter-selection.ts` (`return
+baseAdapter` before any keyring check) and never be affected by this
+change, so an unencrypted project never sees a spurious lock error.
+
+Two inferences from this measurement remain unexercised and must be settled
+before or during implementation, not assumed:
+- Whether `AsyncLocalStorage` propagates the request's routed adapter into
+  the `setImmediate` callback at `sidecar.ts:178`, which is where
+  `enqueueEntityRescan` captures its adapter (`indexer-queue.ts:364`). If it
+  does not, that site falls outside the gate entirely and its plaintext
+  write continues unchecked. Settle by tracing (or, better, exercising) an
+  `AsyncLocalStorage`-bound context across a `setImmediate` boundary in this
+  codebase's Node version and confirming whether `getStorageContext()` still
+  resolves to the request's adapter inside the callback.
+- Whether any API route's own top-level catch would re-swallow a propagated
+  `ProjectLockedError` into an opaque 500 — unverified because the
+  route-level 4xx mapping this feature adds is not yet implemented. Settle
+  by implementing the mapping and exercising a locked-project request
+  through each route family.
+
+Implementation constraint to carry into the task list, not a design decision
+made here: the routed `writeFile` (`workspace-adapter.ts:143`) is a
+non-async arrow, so implementing the gate as a rejected promise rather than
+a synchronous throw avoids a sync throw escaping a future caller's
+`.catch()`.
+**Requirements covered:** None of its own — this closes a gap in the parent
+spec's Constraints section locked-access invariant ("must fail closed... in
+both directions"), not a functional requirement with its own FR number.
+**User stories:** None
+**Depends on:** Feature 23
+**Branch suggestion:** feat/locked-access-fail-closed-gate
+**Notes:** Not started. This is the single largest lever in this breakdown:
+because reads and writes share the same `adapterFor` resolution, there is no
+architecturally meaningful way to split "fix locked reads" from "fix locked
+writes" into two separate features — one change point serves both. Sized
+against the alternative in Feature 55 (an interim, narrower patch): this
+feature changes behavior for every route through `with-storage-context.ts`
+simultaneously, which is more surface to review and stage than Feature 55's
+handful of named sites, but stops the destructive-write class and the
+ciphertext-read class in one merge rather than requiring a second entry to
+close the read side. **Reduces live data-loss risk: yes** — directly, for
+every one of the three confirmed destructive-write sites reachable via the
+encrypting-adapter path, plus the two near-misses.
+
+All fifteen read/write sites traced above are unreached on two whole
+transports, so neither is fixed by this feature: native binds
+`capacitorFsAdapter` via `setDefaultStorageContext`
+(`frontend/src/lib/models/native-bootstrap.ts:74-77`), and the CLI resolves
+to the module `fs/promises` adapter through `runForTenant`'s default
+(`io.ts:334-336`) — neither path ever reaches `workspace-adapter.ts`'s
+`adapterFor`. See the feature covering native locked-write exposure and the
+feature covering CLI lock enforcement, later in this document.
+
+### Feature 55: Interim guard on the confirmed destructive-write sites — Not started
+
+**Value:** A writer editing a sidecar field, saving after an entity is
+renamed, or having their project reindexed does not have that write silently
+replace their sealed project's ciphertext with plaintext while the broader
+gate in Feature 54 is still being designed, reviewed, or staged — this
+ships a narrow, fast stop on the confirmed live bleed without waiting on a
+change that touches every route at once.
+**Vertical slice:** A local lock check added at each of the three confirmed
+destructive-write call sites individually, rather than one shared
+resolution-layer change: `updateSidecarCore`
+(`frontend/src/lib/models/resource-crud-core.ts:409-430`, whose
+`readSidecar(...).catch(() => null)` at line 409 swallows the ciphertext
+parse failure and merges the update onto `{}`, discarding every existing
+sidecar field); `writeSidecar` (`frontend/src/lib/models/sidecar.ts`, which
+commits the write before the parse failure that should have stopped it is
+even raised); and `rescanEntityAcrossProject`
+(`frontend/src/lib/models/indexer-queue.ts:310-341`, which persists `{}`
+over the mention index when reading the sealed index throws). Each site
+gets an explicit, project-scoped lock check ahead of its write — reusing
+`adapter-selection.ts`'s existing `ProjectLockedError`/
+`MissingProjectKeyError` convention rather than inventing a fourth — so the
+call throws before touching disk instead of writing over ciphertext. The
+two near-miss sites this document's survey names (`runTask`,
+`indexer-queue.ts:175-237`, and `createRevision`, `revision-core.ts:219-249`)
+are held back only by incidental ordering today; this feature's task list
+must decide whether to guard them too as defence in depth, given they are
+one refactor away from becoming live.
+**Requirements covered:** None of its own — the same Constraints-section
+locked-access invariant the sibling fail-closed gate entry above covers,
+addressed here as a narrower interim measure rather than the root cause.
+**User stories:** None
+**Depends on:** Feature 23
+**Branch suggestion:** feat/locked-write-interim-guard
+**Notes:** Not started. This entry and Feature 54 are alternatives sized for
+the same choice, not a sequenced pair: shipping this first buys the
+destructive-write stop sooner and with less surface to review, at the cost
+of three (or five, if the near-misses are included) separately-maintained
+checks that Feature 54's single resolution-layer fix would make redundant
+once it lands — a real duplication-then-supersession cost the owner should
+weigh against the smaller, faster win. This entry does nothing for the
+silent-ciphertext-as-data read sites; only Feature 54 addresses those.
+**Reduces live data-loss risk: yes** — directly and narrowly, for exactly
+the three confirmed sites (plus, if the task list chooses to add them, the
+two near-misses).
+
+### Feature 56: Lock enforcement for CLI writes against an encrypted project — Not started
+
+**Value:** A writer who runs `getwrite-cli reindex` (or any other CLI write
+command) against a project they have encrypted does not get a plaintext
+inverted index written over the sealed one, the way `doctor` already
+protects its own read path today.
+**Vertical slice:** Neither Feature 54 nor Feature 55 reaches this gap: the
+CLI binds no encrypting adapter at all — encryption appears in `cli/src`
+only in `doctor.ts`'s own independent `isProjectEncrypted` check
+(`cli/src/commands/doctor.ts:52-68`), confirmed by re-reading
+`cli/src/commands/reindex.ts` (150 lines) end to end and finding no
+encryption or keyring reference anywhere in it. This feature adds the same
+`isProjectEncrypted` pre-check `doctor` already uses to `reindex` and any
+other CLI command found to write into a project directory, refusing before
+any write with an explanatory exit rather than writing plaintext over
+ciphertext — mirroring `doctor`'s existing pattern rather than routing
+through `adapterFor`/`mutatingAdapter`, since the CLI process has no keyring
+session to unlock against in the first place (a CLI command cannot decrypt
+even if it wanted to, so "refuse encrypted projects outright" is the only
+correct behavior here, not "gate on lock state").
+**Requirements covered:** None of its own — the same Constraints-section
+locked-access invariant, addressed here for the CLI transport specifically
+per the parent spec's open question on locked-write scope.
+**User stories:** None
+**Depends on:** Feature 23
+**Branch suggestion:** feat/cli-encrypted-project-write-guard
+**Notes:** Not started. Independent of Feature 54 and Feature 55: neither
+touches the CLI, since both act inside the encrypting-adapter layer the CLI
+never binds. This feature's task list should audit `cli/src/commands/` for
+every command that writes into a project directory (`reindex` is the one
+this survey named; `prune`, `templates`, and the importers may or may not
+also qualify and were not checked here) rather than covering only
+`reindex`. **Reduces live data-loss risk: yes** — directly, for the one CLI
+write path this survey confirmed has no encryption check at all.
+
+### Feature 57: Native locked-write exposure — measurement — Not started
+
+**Value:** Before any fix is designed for a native (Capacitor/Android)
+locked-write gap, this establishes whether one exists at all — the parent
+spec's OQ-37 leaves this open, and no code fix should be sized against an
+unmeasured exposure.
+**Vertical slice:** A measurement-only pass, producing no behavior change:
+(1) determine whether encryption can actually be *enabled* on native today,
+given `native-bootstrap.ts:77` binds the raw `capacitorFsAdapter` with no
+encryption-wrapping decorator anywhere in its startup path, and no native
+transport backend was found to import anything under `crypto/`, while
+`encryption-availability.ts:8`'s own comment documents encryption as a
+"desktop and native-Android feature (FR23)" and `isEncryptionAvailable()`
+returns `true` on native regardless — these two facts are in tension and
+neither settles the question on its own, since the keyring is documented
+elsewhere as server-side; (2) if native has no live path to an encrypted
+project at all today, this is a documentation/`isEncryptionAvailable()`
+correctness question, not a locked-write data-loss risk, and should be
+reported back as such; (3) if a live path is found, trace whether native's
+write path resolves through the same `adapterFor`/`mutatingAdapter`
+machinery Feature 54 fixes, or through an entirely separate route with its
+own exposure requiring its own fix. Output is a written finding (where in
+this document or the parent spec it should be recorded is left to whoever
+picks this up), not a merged code change.
+**Requirements covered:** None of its own — this is a measurement task
+scoped by the parent spec's open question on locked-write scope, not a
+functional requirement.
+**User stories:** None
+**Depends on:** Feature 23
+**Branch suggestion:** n/a — measurement only, no feature branch expected
+**Notes:** Not started. **Reduces live data-loss risk: not directly** — no
+code changes here — but may surface a real gap that would need its own
+future feature to close, or may close OQ-37's native half as "not currently
+reachable" if encryption turns out to have no live enablement path on
+native. This is the lowest-cost entry in this batch and a reasonable
+first pick if the owner wants to scope Feature 54/55/56 more precisely
+before committing engineering time to any of them.
+
 ---
 
 ## Coverage check
@@ -1684,7 +1943,7 @@ breakdown.
 
 ## Summary
 
-- Total features: 53
+- Total features: 57
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -1748,18 +2007,27 @@ breakdown.
   one another, and can be built in any order or in parallel; the product
   owner has chosen Feature 50 to carry forward this run, leaving 51, 52,
   and 53 as remaining work each needing its own future pass through the
-  pipeline.
+  pipeline. 54, 55, 56, and 57 (the locked-access survey's breakdown, added
+  2026-09-17 per the parent spec's locked-access constraint and its OQ-36/
+  OQ-37) each depend only on the already-shipped Feature 23 and not on one
+  another, but 54 and 55 are sized as alternatives for the same choice
+  rather than a sequenced pair — see each entry's Notes for the trade-off —
+  so at most one of that pair is expected to be picked before the other is
+  reconsidered. 56 (CLI) and 57 (native measurement) are independent of
+  both 54 and 55 and of each other, since neither the resolution-layer gate
+  nor its interim alternative reaches the CLI or native transport.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53 (30 and 28
-  are the only pair left with an unmet hard dependency; Feature 31 and
-  Feature 43 have both since shipped, so 44's former dependency on 31 and
-  46/47's former dependency on 43 are now satisfied)
-- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 50, 51, 52, 53.
-  Everything else in this list has shipped (Feature 26 shipped on hosted
-  web and Electron desktop; its native Android gap shipped separately as
-  Feature 49; Feature 48's own deferred remainder is tracked separately as
-  Features 50-53).
+  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
+  57 (30 and 28 are the only pair left with an unmet hard dependency;
+  Feature 31 and Feature 43 have both since shipped, so 44's former
+  dependency on 31 and 46/47's former dependency on 43 are now satisfied)
+- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 50, 51, 52, 53, 54, 55,
+  56, 57. Everything else in this list has shipped (Feature 26 shipped on
+  hosted web and Electron desktop; its native Android gap shipped
+  separately as Feature 49; Feature 48's own deferred remainder is tracked
+  separately as Features 50-53; the locked-access gap is tracked as
+  Features 54-57).
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
   design decision before implementation tasks can be written. Feature 28 is
@@ -2047,3 +2315,43 @@ FR-42 split (this document's own scoping call, 2026-09-11):
   body from a success body at each site, a candidate discriminant being
   presence of `error` vs. presence of `editorConfig` (or the module's
   analogous success field) / `defaultRevisionName`.
+- Resolved by measurement, 2026-09-17: Feature 54's prior expectation that
+  its single `adapterFor` change would collapse most of the survey's ~12
+  silent-ciphertext-as-data read sites is disproved. A static call-graph
+  trace of all fifteen sites (the ~12 read sites plus the write sites) found
+  4 surface the new error, 10 are swallowed by an untyped `catch` and become
+  silent missing data instead of silent wrong data, and the write half of
+  the original claim holds (all three confirmed destructive writes are
+  blocked and surface). See Feature 54's Vertical slice for the full
+  breakdown and citations. This was a static trace, not an exercised
+  measurement, and it surfaced two further unexercised inferences Feature
+  54's own task list must settle before or during implementation: (1)
+  whether `AsyncLocalStorage` propagates the routed adapter into the
+  `setImmediate` callback `enqueueEntityRescan` runs in
+  (`indexer-queue.ts:364`, capturing an adapter set up at `sidecar.ts:178`)
+  — if not, that site sits outside the gate entirely; and (2) whether an API
+  route's own top-level catch would re-swallow a propagated
+  `ProjectLockedError` into an opaque 500, unverified because the
+  route-level 4xx mapping this feature adds does not exist yet. Also open:
+  whether any read site outside the traced fifteen bypasses
+  `io.ts`/`currentAdapter()` entirely (the way `convert-project.ts`'s own
+  conversion logic deliberately calls `getPlainStorageAdapter()` directly
+  rather than going through `adapterFor`) — this document did not survey for
+  that pattern beyond the fifteen sites named.
+- New: whether Feature 54 and Feature 55 are genuinely mutually exclusive as
+  drafted, or whether the owner could choose to run Feature 55 as a
+  short-lived stopgap merged and then explicitly superseded by Feature 54
+  shortly after — this document frames them as alternatives for one gate
+  choice per this skill's instruction to size candidates so the choice is
+  meaningful, but does not rule out a sequenced use of both if the owner
+  decides the interim risk window is worth the later duplication cost.
+- New: Feature 56's audit scope is provisional — only `reindex` was
+  confirmed to write into a project directory with no encryption check;
+  whether `prune`, `templates`, or either importer command also need the
+  same guard was not checked by this survey and is left to that feature's
+  own task list.
+- New: Feature 57 is scoped as measurement-only with no merged code change
+  expected, which is an unusual shape for an entry in this document — its
+  Branch suggestion field is `n/a` rather than a real branch name for this
+  reason; if the resulting finding shows a live gap, a follow-on feature
+  (not yet named here) would carry the fix.
