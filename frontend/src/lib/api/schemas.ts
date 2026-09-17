@@ -24,7 +24,7 @@
  *   wrapper shape.
  */
 import { z } from "zod";
-import { AnyResourceSchema } from "../models/schemas";
+import { AnyResourceSchema, TipTapDocumentSchema } from "../models/schemas";
 
 // ---------------------------------------------------------------------------
 // Shared metadata-value schema
@@ -142,7 +142,7 @@ const ApiOrganizerCardBodyConfigSchema = z.object({
   excerptLength: z.number().int().positive().optional(),
 });
 
-const ApiTagSchema = z.object({
+export const ApiTagSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string().optional(),
@@ -252,3 +252,126 @@ export const EntityAliasTableSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const ResourceResponseSchema = z.object({ resource: AnyResourceSchema });
+
+// ---------------------------------------------------------------------------
+// ResourceContentResponseSchema — matches `ResourceContentResponse`
+// (`./resources.ts`): `{ resourceContent?: { tipTapContent?: TipTapDocument
+// | null; plaintextContent?: string | null }; revisions?: Array<{ id:
+// string; isCanonical: boolean }> }`. Reuses the persistence-boundary
+// `TipTapDocumentSchema` for the nested TipTap document, since a resource's
+// TipTap content is expected to be identical to the persisted shape.
+// ---------------------------------------------------------------------------
+
+export const ResourceContentResponseSchema = z.object({
+  resourceContent: z
+    .object({
+      tipTapContent: TipTapDocumentSchema.nullable().optional(),
+      plaintextContent: z.string().nullable().optional(),
+    })
+    .optional(),
+  revisions: z
+    .array(z.object({ id: z.string(), isCanonical: z.boolean() }))
+    .optional(),
+});
+
+// ---------------------------------------------------------------------------
+// ResourceRevisionContentResponseSchema — matches the `{ content?: unknown
+// }` payload read at `./resources.ts:300` for a single revision's content.
+// `content` is deliberately `unknown` here, mirroring the source site: its
+// shape varies by resource type and is not narrowed further at this
+// boundary.
+// ---------------------------------------------------------------------------
+
+export const ResourceRevisionContentResponseSchema = z.object({
+  content: z.unknown().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// EntityRelationshipRemovedResponseSchema /
+// EntityRelationshipRemovedCountResponseSchema — match the two response
+// shapes read in `./entity-relationships.ts`: `{ removed?: boolean }` for a
+// single-edge removal and `{ removedCount?: number }` for a bulk removal.
+// ---------------------------------------------------------------------------
+
+export const EntityRelationshipRemovedResponseSchema = z.object({
+  removed: z.boolean().optional(),
+});
+
+export const EntityRelationshipRemovedCountResponseSchema = z.object({
+  removedCount: z.number().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// TagAssignmentsResponseSchema — matches the `{ tagIds?: string[] }`
+// response read in `./tags.ts`.
+// ---------------------------------------------------------------------------
+
+export const TagAssignmentsResponseSchema = z.object({
+  tagIds: z.array(z.string()).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// ResourceMentionsResponseSchema / EntityMentionedInResponseSchema /
+// EntityCooccurrenceResponseSchema / EntityMentionCountsResponseSchema —
+// match the read shapes over `../models/mentions-core.ts`'s exported types:
+//
+// - `ResourceMention` — `{ entityId: string; name: string }` (FR-9).
+// - `EntityMentionedIn` — `{ resourceId: string; name: string; snippets:
+//   string[]; isLinked: boolean; isMentioned: boolean; ambiguousWith:
+//   string[][] }` (FR-10/FR-12/FR-14). None of these fields are optional in
+//   the source type.
+// - `EntityCooccurrenceEntry` — `{ entityId: string; count: number;
+//   resourceIds: string[] }`, keyed per-entity in a `Record<string,
+//   EntityCooccurrenceEntry[]>`.
+// - `EntityMentionCounts` — `{ mentions: number; resources: number }`,
+//   keyed per-entity in a `Record<string, EntityMentionCounts>`.
+// ---------------------------------------------------------------------------
+
+export const ResourceMentionsResponseSchema = z.object({
+  mentions: z
+    .array(z.object({ entityId: z.string(), name: z.string() }))
+    .optional(),
+});
+
+const EntityMentionedInSchema = z.object({
+  resourceId: z.string(),
+  name: z.string(),
+  snippets: z.array(z.string()),
+  isLinked: z.boolean(),
+  isMentioned: z.boolean(),
+  ambiguousWith: z.array(z.array(z.string())),
+});
+
+export const EntityMentionedInResponseSchema = z.object({
+  mentionedIn: z.array(EntityMentionedInSchema).optional(),
+});
+
+const EntityCooccurrenceEntrySchema = z.object({
+  entityId: z.string(),
+  count: z.number(),
+  resourceIds: z.array(z.string()),
+});
+
+export const EntityCooccurrenceResponseSchema = z.record(
+  z.string(),
+  z.array(EntityCooccurrenceEntrySchema),
+);
+
+const EntityMentionCountsSchema = z.object({
+  mentions: z.number(),
+  resources: z.number(),
+});
+
+export const EntityMentionCountsResponseSchema = z.record(
+  z.string(),
+  EntityMentionCountsSchema,
+);
+
+// ---------------------------------------------------------------------------
+// ResourceExcerptsResponseSchema — matches the `{ excerpts?: Record<string,
+// string> }` response read in `./resource-excerpts.ts`.
+// ---------------------------------------------------------------------------
+
+export const ResourceExcerptsResponseSchema = z.object({
+  excerpts: z.record(z.string(), z.string()).optional(),
+});
