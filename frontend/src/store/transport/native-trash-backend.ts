@@ -1,44 +1,116 @@
 /**
  * @module store/transport/native-trash-backend
  *
- * **trash-ui later-task seam, created early (Task 12).** Reserves the
- * literal dynamic-import specifier `lib/api/trash.ts`'s
- * `resolveTrashTransport` uses, for the same reason
- * `native-entity-relationships-backend.ts` was created ahead of its own
- * implementing task: Turbopack/Vite resolve a dynamic `import()`'s literal
- * specifier into the module graph regardless of whether the runtime branch
- * that reaches it is ever taken, so `vitest` and `tsc --noEmit` both need a
- * real module at this path to resolve at all.
+ * The in-process implementation of {@link TrashTransport} for a native
+ * (Capacitor) build: instead of hitting the Trash HTTP routes, it invokes
+ * the same transport-agnostic core the routes themselves call
+ * (`lib/models/trash-core.ts`). There is no server and no HTTP — the exact
+ * same business logic runs directly in the WebView process. Mirrors
+ * `native-entity-relationships-backend.ts`'s structure.
  *
- * The real in-process native implementation of {@link TrashTransport} —
- * mirroring the model-layer functions in `lib/models/trash.ts` the way
- * `native-entity-relationships-backend.ts` mirrors
- * `lib/models/entity-relationships.ts` — is explicitly OUT OF SCOPE for this
- * task and deferred to a later one. Every method here rejects with a clear
- * "not supported on this platform" error instead.
+ * **Project root resolution.** Like `native-entity-relationships-backend.ts`,
+ * this backend resolves `projectId` -> project root itself via the shared
+ * `resolveProjectRoot()` (`project-root-resolver.ts`), since `trash-core.ts`'s
+ * functions take a project root/path rather than a `projectId`.
+ *
+ * **Per-id `run()` re-entry.** `restore` and `purge` each invoke `run(...)`
+ * once *per id* rather than once for the whole batch. This is deliberate: a
+ * later task (per-item failure taxonomy) depends on that per-id boundary to
+ * catch and report a single item's failure without one bad id aborting the
+ * whole batch's storage-context binding. `purge`'s `{ all: true }` selection
+ * is resolved to a concrete id list first (mirroring `trash-core.ts`'s own
+ * `purgeBatchCore` resolution), then each id is purged through its own
+ * `run()` call — `purgeBatchCore` itself is not used here, since its internal
+ * loop calls `purgeOneCore` directly without re-entering `run()` per
+ * iteration.
+ *
+ * This module is imported *only* on the native path (see `lib/api/trash.ts`'s
+ * dynamic import), because it pulls in the server-side model layer and
+ * storage layer, which must never enter the web client bundle.
  */
-import type { TrashTransport } from "../../lib/api/trash";
-
-const NOT_SUPPORTED_MESSAGE =
-  "Trash is not supported on this platform yet: the native trash transport " +
-  "has not been implemented (deferred follow-up work — see " +
-  "native-trash-backend.ts's module doc).";
+import { createNativeRunner, type NativeBackendDeps } from "./native-runner";
+import { resolveProjectRoot } from "../../lib/models/project-root-resolver";
+import {
+  listTrashCore,
+  purgeOneCore,
+  restoreOneCore,
+} from "../../lib/models/trash-core";
+import type {
+  PurgeItemResult,
+  PurgeSelection,
+  RestoreItemResult,
+  TrashListing,
+  TrashTransport,
+} from "../../lib/api/trash";
 
 /**
- * Builds the (currently stubbed) in-process trash transport for a native
- * build. Every method rejects; there is no working native trash support
- * yet.
+ * Builds the in-process trash transport for a native build.
+ *
+ * @param deps - Test/injection seam; omit in production.
  */
-export function createNativeTrashTransport(): TrashTransport {
+export function createNativeTrashTransport(
+  deps: NativeBackendDeps = {},
+): TrashTransport {
+  const run = createNativeRunner(deps);
+
   return {
-    list() {
-      return Promise.reject(new Error(NOT_SUPPORTED_MESSAGE));
+    async list(projectId): Promise<TrashListing> {
+      return run(async () => {
+        const projectRoot = resolveProjectRoot(projectId);
+        if (!projectRoot) {
+          throw new Error(`Invalid projectId: ${projectId}`);
+        }
+        return listTrashCore(projectRoot);
+      });
     },
-    restore() {
-      return Promise.reject(new Error(NOT_SUPPORTED_MESSAGE));
+
+    async restore(projectId, ids): Promise<RestoreItemResult[]> {
+      const results: RestoreItemResult[] = [];
+      for (const id of ids) {
+        const result = await run(async () => {
+          const projectRoot = resolveProjectRoot(projectId);
+          if (!projectRoot) {
+            throw new Error(`Invalid projectId: ${projectId}`);
+          }
+          return restoreOneCore(projectRoot, id);
+        });
+        results.push(result);
+      }
+      return results;
     },
-    purge() {
-      return Promise.reject(new Error(NOT_SUPPORTED_MESSAGE));
+
+    async purge(projectId, selection): Promise<PurgeItemResult[]> {
+      const ids = await run(async () => {
+        const projectRoot = resolveProjectRoot(projectId);
+        if (!projectRoot) {
+          throw new Error(`Invalid projectId: ${projectId}`);
+        }
+        if (
+          !Array.isArray(selection) &&
+          "all" in selection &&
+          selection.all === true
+        ) {
+          const trashed = await listTrashCore(projectRoot);
+          return [
+            ...trashed.resources.map((r) => r.id),
+            ...trashed.folders.map((f) => f.id),
+          ];
+        }
+        return selection as string[];
+      });
+
+      const results: PurgeItemResult[] = [];
+      for (const id of ids) {
+        const result = await run(async () => {
+          const projectRoot = resolveProjectRoot(projectId);
+          if (!projectRoot) {
+            throw new Error(`Invalid projectId: ${projectId}`);
+          }
+          return purgeOneCore(projectRoot, id);
+        });
+        results.push(result);
+      }
+      return results;
     },
   };
 }
