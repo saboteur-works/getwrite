@@ -22,7 +22,9 @@ describe("CreateProjectModal - types load error and retry", () => {
       .mockImplementationOnce(() =>
         Promise.resolve({
           ok: true,
-          json: async () => [{ id: "novel", name: "Novel" }],
+          json: async () => [
+            { id: "novel", name: "Novel", folders: [{ name: "Manuscript" }] },
+          ],
         }),
       );
 
