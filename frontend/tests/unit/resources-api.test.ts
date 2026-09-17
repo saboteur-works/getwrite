@@ -33,11 +33,26 @@ function jsonResponse(body: unknown, ok = true, status = 200): Response {
   return { ok, status, json: async () => body } as Response;
 }
 
+/**
+ * A minimal, schema-valid `AnyResource` (text subtype) fixture — satisfies
+ * `ResourceResponseSchema` (`src/lib/api/schemas.ts`) so tests that don't
+ * exercise validation failure aren't tripped up by it.
+ */
+const validResource = {
+  id: "bbbbbbbb-2222-4222-8222-222222222222",
+  slug: "untitled",
+  name: "Untitled",
+  type: "text",
+  createdAt: "2024-01-01T00:00:00.000Z",
+};
+
 describe("resources.ts CRUD functions (T9c regression)", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    fetchMock = vi.fn().mockResolvedValue(jsonResponse({ resource: {} }));
+    fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ resource: validResource }));
     vi.stubGlobal("fetch", fetchMock);
   });
 
@@ -58,7 +73,7 @@ describe("resources.ts CRUD functions (T9c regression)", () => {
   });
 
   it("uploadMediaResource sends a projectId form field, with no projectPath field", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ resource: {} }));
+    fetchMock.mockResolvedValue(jsonResponse({ resource: validResource }));
     const file = new File(["x"], "photo.png", { type: "image/png" });
 
     await uploadMediaResource(directoryUuid, file);
@@ -70,6 +85,35 @@ describe("resources.ts CRUD functions (T9c regression)", () => {
     expect(form.get("projectId")).toBe(directoryUuid);
     expect(form.has("projectPath")).toBe(false);
     expect(form.has("projectRoot")).toBe(false);
+  });
+
+  it("createResource rejects when the response body doesn't match ResourceResponseSchema", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ resource: { id: "not-a-uuid" } }),
+    );
+
+    await expect(
+      createResource(directoryUuid, { type: "text", name: "Untitled" }),
+    ).rejects.toThrow();
+  });
+
+  it("uploadMediaResource rejects when the response body doesn't match ResourceResponseSchema", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ resource: { id: "not-a-uuid" } }),
+    );
+    const file = new File(["x"], "photo.png", { type: "image/png" });
+
+    await expect(uploadMediaResource(directoryUuid, file)).rejects.toThrow();
+  });
+
+  it("copyResource rejects when the response body doesn't match ResourceResponseSchema", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ resource: { id: "not-a-uuid" } }),
+    );
+
+    await expect(
+      copyResource(resourceId, "Copy of thing", directoryUuid),
+    ).rejects.toThrow();
   });
 
   it("copyResource sends projectId in the POST body, with no projectRoot field", async () => {
