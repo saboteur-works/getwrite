@@ -24,66 +24,14 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import {
-  resolveTrashedItemKind,
-  restoreFolder,
-  restoreResource,
-  type RestoredReferenceInfo,
-} from "../../../../../../src/lib/models/trash";
+  restoreOneCore,
+  type RestoreItemResult,
+} from "../../../../../../src/lib/models/trash-core";
 import { resolveProjectPath } from "../../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../../_tenant/with-storage-context";
 
 interface RestoreBatchBody {
   ids?: string[];
-}
-
-interface RestoreItemResult {
-  id: string;
-  ok: boolean;
-  relocated?: boolean;
-  renamed?: boolean;
-  restoredName?: string;
-  referencesNotRestored?: RestoredReferenceInfo[] | "no-record";
-  error?: string;
-}
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
-async function restoreOne(
-  projectPath: string,
-  id: string,
-): Promise<RestoreItemResult> {
-  try {
-    const kind = await resolveTrashedItemKind(projectPath, id);
-
-    if (kind === "resource") {
-      const result = await restoreResource(projectPath, id);
-      return {
-        id,
-        ok: true,
-        relocated: result.relocated,
-        renamed: result.renamed,
-        restoredName: result.restoredName,
-        referencesNotRestored: result.referencesNotRestored,
-      };
-    }
-
-    if (kind === "folder") {
-      const result = await restoreFolder(projectPath, id);
-      return {
-        id,
-        ok: true,
-        relocated: result.relocated,
-        renamed: result.renamed,
-        restoredName: result.restoredName,
-      };
-    }
-
-    return { id, ok: false, error: "Not found in trash" };
-  } catch (err: unknown) {
-    return { id, ok: false, error: errorMessage(err) };
-  }
 }
 
 async function handlePost(
@@ -118,7 +66,7 @@ async function handlePost(
 
   const results: RestoreItemResult[] = [];
   for (const id of body.ids) {
-    results.push(await restoreOne(projectPath, id));
+    results.push(await restoreOneCore(projectPath, id));
   }
 
   return NextResponse.json({ results }, { status: 200 });

@@ -28,50 +28,15 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import {
-  listTrashedItems,
-  purgeFolder,
-  purgeResource,
-  resolveTrashedItemKind,
-} from "../../../../../../src/lib/models/trash";
+  purgeBatchCore,
+  type PurgeSelection,
+} from "../../../../../../src/lib/models/trash-core";
 import { resolveProjectPath } from "../../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../../_tenant/with-storage-context";
 
 interface PurgeBatchBody {
   ids?: string[];
   all?: boolean;
-}
-
-interface PurgeItemResult {
-  id: string;
-  ok: boolean;
-  error?: string;
-}
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
-async function purgeOne(
-  projectPath: string,
-  id: string,
-): Promise<PurgeItemResult> {
-  try {
-    const kind = await resolveTrashedItemKind(projectPath, id);
-
-    if (kind === "resource") {
-      await purgeResource(projectPath, id);
-      return { id, ok: true };
-    }
-
-    if (kind === "folder") {
-      await purgeFolder(projectPath, id);
-      return { id, ok: true };
-    }
-
-    return { id, ok: false, error: "Not found in trash" };
-  } catch (err: unknown) {
-    return { id, ok: false, error: errorMessage(err) };
-  }
 }
 
 async function handlePost(
@@ -94,18 +59,14 @@ async function handlePost(
     );
   }
 
-  let ids: string[];
+  let selection: PurgeSelection;
   if (body.all === true) {
-    const trashed = await listTrashedItems(projectPath);
-    ids = [
-      ...trashed.resources.map((r) => r.id),
-      ...trashed.folders.map((f) => f.id),
-    ];
+    selection = { all: true };
   } else if (
     Array.isArray(body.ids) &&
     body.ids.every((id) => typeof id === "string")
   ) {
-    ids = body.ids;
+    selection = { ids: body.ids };
   } else {
     return NextResponse.json(
       {
@@ -116,10 +77,7 @@ async function handlePost(
     );
   }
 
-  const results: PurgeItemResult[] = [];
-  for (const id of ids) {
-    results.push(await purgeOne(projectPath, id));
-  }
+  const results = await purgeBatchCore(projectPath, selection);
 
   return NextResponse.json({ results }, { status: 200 });
 }

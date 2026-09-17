@@ -19,7 +19,7 @@
  * here.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { listTrashedItems } from "../../../../../src/lib/models/trash";
+import { listTrashCore } from "../../../../../src/lib/models/trash-core";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
@@ -33,7 +33,7 @@ async function handleGet(
   if (resolved instanceof Response) return resolved;
   const { projectPath } = resolved;
 
-  const trashed = await listTrashedItems(projectPath);
+  const trashed = await listTrashCore(projectPath);
   return NextResponse.json(trashed, { status: 200 });
 }
 
