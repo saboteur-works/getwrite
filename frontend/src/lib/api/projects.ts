@@ -1,5 +1,8 @@
+import { z } from "zod";
 import type { Project, Folder, AnyResource } from "../models/types";
 import { createTransport } from "../../store/transport/create-transport";
+import { ProjectApiEntrySchema } from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 export interface ProjectApiEntry {
   project: Project;
@@ -66,7 +69,13 @@ export const httpProjectsTransport: ProjectsTransport = {
       const body = await response.json().catch(() => null);
       throw apiError(body, response.status);
     }
-    return (await response.json()) as ProjectApiEntry[];
+    const body: unknown = await response.json();
+    const result = z.array(ProjectApiEntrySchema).safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure("projects.list", result.error.issues);
+      throw new Error("projects.list: response failed validation");
+    }
+    return result.data as ProjectApiEntry[];
   },
 
   async open(projectId) {
@@ -79,7 +88,13 @@ export const httpProjectsTransport: ProjectsTransport = {
       const body = await response.json().catch(() => null);
       throw apiError(body, response.status);
     }
-    return (await response.json()) as ProjectApiEntry;
+    const body: unknown = await response.json();
+    const result = ProjectApiEntrySchema.safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure("projects.open", result.error.issues);
+      throw new Error("projects.open: response failed validation");
+    }
+    return result.data as ProjectApiEntry;
   },
 
   async create(name, projectType) {
@@ -92,7 +107,13 @@ export const httpProjectsTransport: ProjectsTransport = {
       const body = await response.json().catch(() => null);
       throw apiError(body, response.status);
     }
-    return (await response.json()) as ProjectApiEntry;
+    const body: unknown = await response.json();
+    const result = ProjectApiEntrySchema.safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure("projects.create", result.error.issues);
+      throw new Error("projects.create: response failed validation");
+    }
+    return result.data as ProjectApiEntry;
   },
 
   async reindex(projectId) {

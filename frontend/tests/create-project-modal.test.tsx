@@ -49,7 +49,12 @@ describe("Create project flow (integration) - modal calls API and adds project",
           return Promise.resolve({
             ok: true,
             json: async () => ({
-              project: { id: "proj_new", name: "My Novel", resources: [] },
+              project: {
+                id: "proj_new",
+                name: "My Novel",
+                createdAt: "2024-01-01T00:00:00.000Z",
+                config: { editorConfig: {} },
+              },
               folders: [],
               resources: [],
             }),

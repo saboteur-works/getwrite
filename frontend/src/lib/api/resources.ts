@@ -1,5 +1,7 @@
 import type { AnyResource, Folder, TipTapDocument } from "../models/types";
 import { createTransport } from "../../store/transport/create-transport";
+import { ResourceResponseSchema } from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 /**
  * Computes the id of `folderId` plus every folder/resource nested beneath it
@@ -179,7 +181,13 @@ export const httpResourcesTransport: ResourcesTransport = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resourceData, projectId }),
     });
-    return (await response.json()) as { resource: AnyResource };
+    const body: unknown = await response.json();
+    const result = ResourceResponseSchema.safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure("resources.create", result.error.issues);
+      throw new Error("Invalid response from resource create");
+    }
+    return { resource: result.data.resource as AnyResource };
   },
 
   async uploadMedia(projectId, input) {
@@ -203,7 +211,16 @@ export const httpResourcesTransport: ResourcesTransport = {
       };
       throw new Error(payload.error ?? `Upload failed (${response.status})`);
     }
-    return (await response.json()) as { resource: AnyResource };
+    const body: unknown = await response.json();
+    const result = ResourceResponseSchema.safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure(
+        "resources.uploadMedia",
+        result.error.issues,
+      );
+      throw new Error("Invalid response from resource upload");
+    }
+    return { resource: result.data.resource as AnyResource };
   },
 
   async copy(resourceId, newName, projectId) {
@@ -212,7 +229,13 @@ export const httpResourcesTransport: ResourcesTransport = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "copy", newName, projectId }),
     });
-    return (await response.json()) as { resource: AnyResource };
+    const body: unknown = await response.json();
+    const result = ResourceResponseSchema.safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure("resources.copy", result.error.issues);
+      throw new Error("Invalid response from resource copy");
+    }
+    return { resource: result.data.resource as AnyResource };
   },
 
   async remove(resourceId, projectId) {

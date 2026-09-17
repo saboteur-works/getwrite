@@ -43,6 +43,21 @@ If you cannot determine that an operation is permitted, deny it.
 - Uploads are checked for **type and size** before they are written
   (`models/media-validation.ts`: 100 MB cap, explicit extension allowlist).
   Allowlist, never denylist.
+- Data crossing the HTTP transport boundary — a response body an `lib/api/*.ts`
+  module parses — is a separate boundary from filesystem persistence and gets
+  its own schemas, `lib/api/schemas.ts`, rather than reusing
+  `models/schemas.ts`. When adding a new `lib/api/` call site or extending an
+  existing one, validate the response against a schema there (or add one) and
+  report a validation failure through `lib/api/transport-validation.ts`'s
+  `reportTransportValidationFailure(callSite, issues)` rather than a bare
+  `console.*` call — its signature accepts only a call-site identifier and the
+  Zod issue list, never the raw body, because an in-scope response can carry
+  server-decrypted user prose on an encrypted project, and rule 5's "never log
+  decrypted content" applies here too. As of Feature 48 this covers 9 call
+  sites across 5 modules (`projects`, `resources`, `project-types`,
+  `entity-relationships`, `entity-alias-table`); most `lib/api/` response
+  sites are not yet validated — check whether the module you're touching has
+  been covered before assuming it has.
 
 ---
 

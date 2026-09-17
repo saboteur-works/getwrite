@@ -668,6 +668,12 @@ lost work.
   revision.
 - Resource identity must remain independent of on-disk path for the life of
   the project; no feature may rely on path as identity.
+- Data crossing the HTTP/transport boundary must be validated before the
+  rest of the app trusts it, as Zod schemas already do at the filesystem
+  persistence boundary (`frontend/src/lib/models/schemas.ts`); scope,
+  failure semantics, and rollout are settled in OQ-31/32/33, and the
+  measured gap and the crash it caused are recorded in
+  `specs/features/trash-ui/follow-up-work.md` FU-10.
 - The desktop build must remain fully functional with no network access and
   no account.
 - A CLI import path from Scrivener (`.scriv`) now exists (FR-42, shipped
@@ -1314,6 +1320,84 @@ sidecar's `ResourceRef` values that match the deleted id to `{id: null,
 name}`; `restoreResource` contains no corresponding re-link step, and no
 record of which sidecars were patched by a given deletion is persisted
 anywhere for a later restore to consult.
+
+**OQ-31: Does the transport-boundary validation invariant bind only the
+current HTTP transport, or every transport that crosses a serialization
+boundary — including a future sync transport and the hosted path?**
+**Resolution (owner decision, 2026-09-16):** The invariant binds the current
+HTTP transport only. The hosted path is already covered because it is itself
+HTTP. A future sync transport is explicitly named as deferred and out of
+scope, not silently unbound. ADR-021's in-process native transport crosses no
+serialization boundary and is unaffected either way.
+**Impact:** Determines whether the invariant is written narrowly (HTTP
+only) or broadly (any serialization boundary). A narrow reading could leave
+a future sync transport unvalidated by default; a broad reading commits
+work not yet designed to a guarantee before its shape is known.
+**Owner:** Product owner.
+**Evidence:** ADR-021's `createTransport` collapse means every client→server
+call already resolves HTTP-vs-native through one seam; the native path
+returns in-process objects and crosses no serialization boundary, so it is
+unaffected either way. No sync transport exists yet to test either reading
+against.
+
+**OQ-32: Under this invariant, is a validation failure always a rejection,
+or do the existing per-module degrade-by-design contracts in
+`frontend/src/lib/api/` survive unchanged?**
+**Resolution (owner decision, 2026-09-16):** A validation failure follows the
+module's existing contract — reject where the module already rejects,
+degrade where it already degrades — but is always surfaced (logged/reported)
+so malformed data never propagates silently. This deliberately preserves the
+existing per-module UX distinctions — e.g. `lib/api/trash.ts` rejects because
+a degrade-to-empty listing would be indistinguishable from a real empty
+trash, while other modules degrade so one failed section does not take down
+a view. The always-surface half requires plumbing that does not exist today.
+**Impact:** `lib/api/trash.ts` rejects on any transport failure by design,
+since a degrade-to-empty listing would be indistinguishable from a real
+empty trash, while several sibling modules degrade by design instead.
+Deciding "validation failure = reject" uniformly would flatten that
+distinction; deciding it per-module leaves the invariant's failure
+semantics as fragmented as today's error handling.
+**Owner:** Product owner.
+**Evidence:** Error-handling contracts already differ deliberately across
+`frontend/src/lib/api/` modules per the codebase's own documented
+conventions (see CLAUDE.md's Store/Transports notes on `lib/api/trash.ts`
+vs. its siblings).
+
+**OQ-33: Is the transport-boundary validation invariant retroactive over
+the 39 existing `response.json()` call sites in `frontend/src/lib/api/`, or
+forward-only for new code?**
+**Resolution (owner decision, 2026-09-16):** Staged by cost. Tier 1 — call
+sites whose response shapes already have a reusable Zod schema in
+`frontend/src/lib/models/schemas.ts` — is remediated first: about 4 sites
+across 2 modules (`resources.ts` x3, `project-types.ts` x1). Tier 2 — sites
+whose shapes are API-only with no existing schema — is larger than
+originally framed: about 22 sites across 12 modules, of which only about 5
+sites (the four shapes named below) are scheduled now; the remaining ~17
+sites across 9 further modules (`tags`, `mentions`, `compile`, `export`,
+`encryption`, `preferences`, `entity-cooccurrence`,
+`entity-mention-counts`, `resource-excerpts`) are tracked as a separately
+scheduled follow-up beyond that. The four named Tier 2 shapes scheduled now
+are `ProjectApiEntry`, `EntityRelationshipEdge`,
+`TrashedResourceEntry`/`TrashedFolderEntry`, `EntityAliasTable`; note that
+`TrashedResourceEntry`/`TrashedFolderEntry` contributes zero unchecked call
+sites in practice, since `trash.ts` already guards all three of its call
+sites with a narrow-then-throw check. This is a deliberate staged rollout,
+so the invariant is understood as not yet fully true of the codebase while
+the deferred remainder is outstanding.
+**Impact:** A retroactive reading implies remediation work across 12
+existing Tier-2 modules (plus the 2 Tier-1 modules) before the invariant
+can be said to hold; a forward-only reading leaves the concrete failure
+already observed (`openProject`) unaddressed unless it is separately
+scheduled.
+**Owner:** Product owner.
+**Evidence:** Measured at 2026-09-16: of 39 `response.json()` calls across
+the 17 modules in `frontend/src/lib/api/`, 26 return their parsed body via
+a bare `as` cast with no runtime check on the success path; 5 (`trash.ts`
+x3, `entity-relationships.ts` x2) already narrow the parsed body with
+`typeof`/`Array.isArray` guards and throw on a malformed shape before
+casting; 3 cast an error-body read (`encryption.ts:44`, `preferences.ts:63`,
+`resources.ts:201`); 5 read an error body with no cast (`projects.ts` x3,
+`editor-config.ts` x2).
 
 ## Out of Scope (Deferred)
 

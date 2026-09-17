@@ -26,8 +26,11 @@
  *   response, or a malformed body), mirroring `remove`'s degrade-on-failure
  *   floor.
  */
+import { z } from "zod";
 import { createTransport } from "../../store/transport/create-transport";
 import type { EntityRelationshipEdge } from "../models/entity-relationships";
+import { EntityRelationshipEdgeSchema } from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 export type { EntityRelationshipEdge };
 
@@ -120,7 +123,16 @@ export const httpEntityRelationshipsTransport: EntityRelationshipsTransport = {
       );
       if (!response.ok) return [];
       const data = (await response.json()) as unknown;
-      return Array.isArray(data) ? (data as EntityRelationshipEdge[]) : [];
+      if (!Array.isArray(data)) return [];
+      const result = z.array(EntityRelationshipEdgeSchema).safeParse(data);
+      if (!result.success) {
+        reportTransportValidationFailure(
+          "entity-relationships.list",
+          result.error.issues,
+        );
+        return [];
+      }
+      return result.data;
     } catch {
       return [];
     }
@@ -139,7 +151,15 @@ export const httpEntityRelationshipsTransport: EntityRelationshipsTransport = {
     if (!Array.isArray(data)) {
       throw new Error("Malformed entity relationships response.");
     }
-    return data as EntityRelationshipEdge[];
+    const result = z.array(EntityRelationshipEdgeSchema).safeParse(data);
+    if (!result.success) {
+      reportTransportValidationFailure(
+        "entity-relationships.listOrThrow",
+        result.error.issues,
+      );
+      throw new Error("Malformed entity relationships response.");
+    }
+    return result.data;
   },
 
   async create(projectId, sourceEntityId, targetEntityId, relationshipType) {

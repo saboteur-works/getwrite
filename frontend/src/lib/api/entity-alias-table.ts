@@ -6,10 +6,15 @@
  * (name + aliases) plus which normalized terms are claimed by more than one
  * entity (FR-14). Degrades gracefully: any failure yields the empty table
  * `{ entities: {}, claimedBy: {} }`, matching how `lib/api/mentions.ts`
- * degrades on read failure.
+ * degrades on read failure. On a 2xx response, the body is additionally
+ * validated against `EntityAliasTableSchema` (`./schemas.ts`) — a shape
+ * mismatch reports via `reportTransportValidationFailure` and degrades to
+ * the same empty table.
  */
 import { createTransport } from "../../store/transport/create-transport";
 import type { EntityAliasTable } from "../models/entity-alias-table";
+import { EntityAliasTableSchema } from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 // ---------------------------------------------------------------------------
 // Transport collapse (ADR-021)
@@ -58,7 +63,16 @@ export const httpEntityAliasTableTransport: EntityAliasTableTransport = {
         `/api/project/${encodeURIComponent(projectId)}/entity-alias-table`,
       );
       if (!response.ok) return EMPTY_ALIAS_TABLE;
-      return (await response.json()) as EntityAliasTable;
+      const body: unknown = await response.json();
+      const result = EntityAliasTableSchema.safeParse(body);
+      if (!result.success) {
+        reportTransportValidationFailure(
+          "entity-alias-table.getEntityAliasTable",
+          result.error.issues,
+        );
+        return EMPTY_ALIAS_TABLE;
+      }
+      return result.data;
     } catch {
       return EMPTY_ALIAS_TABLE;
     }
