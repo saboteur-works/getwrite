@@ -1,6 +1,7 @@
 import path from "node:path";
 import { atomicWriteFile, mkdir, readFile } from "./io";
 import { withMetaLock } from "./meta-locks";
+import { isLockedAccessError } from "./locked-access";
 
 const INDEX_DIR = "meta/index";
 const INDEX_FILE = "mentions.json";
@@ -31,7 +32,14 @@ async function ensureIndexDir(projectRoot: string): Promise<void> {
   await mkdir(path.join(projectRoot, INDEX_DIR), { recursive: true });
 }
 
-/** Load persisted mention index if present; returns an empty index if missing or unreadable. */
+/**
+ * Load persisted mention index if present; returns an empty index if missing
+ * or unreadable. A locked-access failure (the project is encrypted and either
+ * the workspace is locked or the keyring holds no key for it) is rethrown
+ * rather than degraded to the empty-index fallback — silently returning "no
+ * mentions" for a project that is actually inaccessible would misreport a
+ * locked project as one with none.
+ */
 export async function loadMentionIndex(
   projectRoot: string,
 ): Promise<MentionIndex> {
@@ -39,7 +47,10 @@ export async function loadMentionIndex(
   try {
     const raw = await readFile(p, "utf8");
     return JSON.parse(raw) as MentionIndex;
-  } catch {
+  } catch (err) {
+    if (isLockedAccessError(err)) {
+      throw err;
+    }
     return {};
   }
 }
