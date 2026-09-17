@@ -39,7 +39,15 @@ import type { Dirent, Stats } from "node:fs";
 import { encryptingAdapter } from "../encryptingAdapter";
 import { EnvelopeFormatError } from "./envelope";
 import { readConversionMarker } from "./convert-project";
-import type { Keyring } from "./keyring";
+import {
+  readProjectMarker,
+  type ProjectEncryptionMarker,
+} from "./project-marker";
+import {
+  MissingProjectKeyError,
+  ProjectLockedError,
+} from "./adapter-selection";
+import { UnknownProjectError, type Keyring } from "./keyring";
 
 /**
  * Wraps an adapter so each path is handled with its own project's key.
@@ -57,6 +65,13 @@ export function workspaceEncryptionAdapter(
   // One encrypting adapter per project, built on demand. Rebuilding per call
   // would import the key on every read.
   const perProject = new Map<string, StorageAdapter>();
+
+  // The project's marker, read at most once per project id for the lifetime of
+  // this adapter (one request/task). `null` means "read, and confirmed
+  // unencrypted" — distinct from "not yet read" (absent from the map) — so a
+  // marker-less project short-circuits every later call without re-touching
+  // disk or the keyring.
+  const markerCache = new Map<string, ProjectEncryptionMarker | null>();
 
   /**
    * Recovers the project id a path belongs to.
@@ -77,19 +92,68 @@ export function workspaceEncryptionAdapter(
   /**
    * The adapter a given path must be handled with.
    *
+   * Marker-first: whether a project is encrypted at all is a fact on disk
+   * (its `.encrypted.json` marker), not a fact about the keyring, so that is
+   * resolved before any keyring state is consulted. This is what lets an
+   * unencrypted project stay reachable — byte-identical to no encryption at
+   * all — no matter what state the keyring is in, and what makes an encrypted
+   * project fail closed instead of silently falling through to `inner`
+   * whenever the keyring disagrees (locked, or simply missing the project's
+   * key). See `adapter-selection.ts`'s `resolveProjectAdapter`, which this
+   * mirrors exactly, down to the two-error split.
+   *
+   * Declared `async` so a locked-access rejection (`ProjectLockedError`,
+   * `MissingProjectKeyError`) — and an uncaught `ProjectMarkerFormatError`
+   * from a corrupt marker — surfaces as a rejected promise, never a
+   * synchronous throw. `writeFile`/`appendFile`/`readFile`/`readFileBuffer`
+   * below all `await` this before touching the resolved adapter, which is
+   * what keeps that guarantee intact all the way out to their own callers.
+   *
    * @param target - An absolute path.
-   * @returns The project's encrypting adapter, or `inner` when it has no key.
+   * @returns The project's encrypting adapter, or `inner` when it is
+   *   unencrypted.
+   * @throws {ProjectLockedError} When the project is encrypted and no
+   *   unlocked keyring is available.
+   * @throws {MissingProjectKeyError} When the keyring is unlocked but holds
+   *   no key for this project.
+   * @throws {ProjectMarkerFormatError} When the project's marker exists but
+   *   cannot be trusted; propagates uncaught.
    */
-  function adapterFor(target: string): StorageAdapter {
-    if (!keyring || keyring.isLocked()) return inner;
-
+  async function adapterFor(target: string): Promise<StorageAdapter> {
     const projectId = projectIdOf(target);
-    if (!projectId || !keyring.hasProject(projectId)) return inner;
+    if (!projectId) return inner;
+
+    const cachedMarker = markerCache.get(projectId);
+    const marker =
+      cachedMarker !== undefined
+        ? cachedMarker
+        : await (async () => {
+            const read = await readProjectMarker(
+              path.join(tenantRoot, projectId),
+              inner,
+            );
+            markerCache.set(projectId, read);
+            return read;
+          })();
+
+    if (marker === null) return inner;
+
+    if (!keyring || keyring.isLocked()) {
+      throw new ProjectLockedError(projectId);
+    }
 
     const existing = perProject.get(projectId);
     if (existing) return existing;
 
-    const created = encryptingAdapter(inner, keyring.projectKey(projectId));
+    let created: StorageAdapter;
+    try {
+      created = encryptingAdapter(inner, keyring.projectKey(projectId));
+    } catch (error) {
+      if (error instanceof UnknownProjectError) {
+        throw new MissingProjectKeyError(projectId);
+      }
+      throw error;
+    }
     perProject.set(projectId, created);
     return created;
   }
@@ -101,7 +165,8 @@ export function workspaceEncryptionAdapter(
    * stay openable throughout. `encryptingAdapter`'s `tolerant` option exists for
    * exactly this, but it has to be decided per read: whether a conversion is in
    * flight is a fact on disk that can change between requests, and `adapterFor`
-   * is synchronous.
+   * has already committed to whichever adapter it resolved by the time a read
+   * fails.
    *
    * Resolving it here — only after a read has actually failed as "not an
    * envelope" — keeps the downgrade window as narrow as the rule allows. Nothing
@@ -135,20 +200,26 @@ export function workspaceEncryptionAdapter(
   }
 
   const routed: StorageAdapter & { [UNDERLYING_ADAPTER]: StorageAdapter } = {
-    writeFile: (p, d, o) => adapterFor(p).writeFile(p, d, o),
+    // Each method is (or wraps) an `async` function specifically so that
+    // `adapterFor`'s rejection — a locked project, a missing key, a corrupt
+    // marker — surfaces as a rejected promise rather than a synchronous
+    // throw. That matters here because `writeFile` in particular is called
+    // from `io.ts`'s non-`async` arrow wrapper; a synchronous throw there
+    // would escape a caller's `.catch()` instead of being awaitable.
+    writeFile: async (p, d, o) => (await adapterFor(p)).writeFile(p, d, o),
     readFile: (p, e) =>
       readTolerantly(
         p,
-        () => adapterFor(p).readFile(p, e),
+        async () => (await adapterFor(p)).readFile(p, e),
         () => inner.readFile(p, e),
       ),
     readFileBuffer: (p) =>
       readTolerantly(
         p,
-        () => adapterFor(p).readFileBuffer(p),
+        async () => (await adapterFor(p)).readFileBuffer(p),
         () => inner.readFileBuffer(p),
       ),
-    appendFile: (p, d) => adapterFor(p).appendFile(p, d),
+    appendFile: async (p, d) => (await adapterFor(p)).appendFile(p, d),
 
     // Path and directory semantics never differ between projects, so these go
     // straight to the inner adapter rather than through a per-project wrapper.
