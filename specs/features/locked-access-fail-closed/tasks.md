@@ -2,6 +2,15 @@
 
 Source spec: `specs/features/locked-access-fail-closed.md`.
 
+## New-file declaration note — read before starting
+
+Every task that creates a new file — including a new test file, not just new
+source files — MUST declare that file's exact path in its `Files` field. Two
+tasks must never be free to independently choose the same new path: tasks run
+concurrently in isolated worktrees, so an undeclared shared filename becomes
+an add/add conflict at integration that no implementor can see coming (see
+the Task 4 / Task 9 collision recorded under Risks below).
+
 ## Sequencing note — read before starting
 
 This feature has a hazard the task graph below is built to avoid: **the gate
@@ -46,7 +55,8 @@ US-1 exists to prevent. So:
 MissingProjectKeyError` (a type guard, not a plain boolean predicate) and
 re-exporting `ProjectLockedError`/`MissingProjectKeyError` from
 `crypto/adapter-selection.ts`.
-**Files:** `frontend/src/lib/models/locked-access.ts` (new)
+**Files:** `frontend/src/lib/models/locked-access.ts` (new),
+`frontend/tests/unit/locked-access.test.ts` (new)
 **Done when:** The module exists, exports the type guard and the two
 re-exported error classes, is covered by a unit test asserting it returns
 `true` for both error types and `false` for `ProjectMarkerFormatError` and
@@ -132,7 +142,8 @@ error instead of degrading, which is also what makes `execute-search.ts`'s
 existing non-ENOENT rethrow (FR-11, `:105-115`) reachable under lock for the
 first time.
 **Files:** `frontend/src/lib/models/inverted-index.ts` (function at line 67,
-catch block at ~67-74)
+catch block at ~67-74), `frontend/tests/unit/execute-search-locked-access.test.ts`
+(new)
 **Done when:** The catch block rethrows via `isLockedAccessError`. A
 regression test simulates a locked project and asserts `loadIndex` rejects
 rather than returning an empty index, AND a second regression test confirms
@@ -193,7 +204,8 @@ per-file swallows inside `listTrashedItems` (folder-manifest read at
 ~1485-1492, resource-sidecar read at ~1519-1526) and `collectFolderDescriptors`
 (~406-412) — to rethrow a locked-access error instead of treating it as a
 malformed/missing file.
-**Files:** `frontend/src/lib/models/trash.ts`
+**Files:** `frontend/src/lib/models/trash.ts`,
+`frontend/tests/unit/trash-locked-access.test.ts` (new)
 **Done when:** All three catch blocks check `isLockedAccessError` and
 rethrow when true, preserving today's per-file tolerance for a genuinely
 malformed or missing file. Three regression tests (one per catch block)
@@ -216,7 +228,9 @@ need to re-verify every caller.
 to rethrow a locked-access error instead of degrading.
 **Files:** `frontend/src/lib/models/project-crud-core.ts` (function at line
 523, catch block at ~537-542), `frontend/src/lib/search/execute-search.ts`
-(function at line 64, catch block at ~78-84)
+(function at line 64, catch block at ~78-84),
+`frontend/tests/unit/project-crud-core-locked-access.test.ts` (new),
+`frontend/tests/unit/execute-search-project-root-locked-access.test.ts` (new)
 **Done when:** Both catch blocks rethrow via `isLockedAccessError`. Two
 regression tests simulate a locked project and assert each function rejects
 rather than returning `null`/its fallback. `pnpm typecheck`, `pnpm lint`,
@@ -235,7 +249,8 @@ touch that one here; this task only touches the `findProjectRoot` catch at
 a locked-access error instead of treating it as "no prior sidecar".
 **Files:** `frontend/src/lib/models/resource-crud-core.ts` (`updateSidecarCore`
 at line 399, catch at ~409), `frontend/src/lib/models/sidecar.ts`
-(`writeSidecar` at line 145, pre-write read at ~158-162)
+(`writeSidecar` at line 145, pre-write read at ~158-162),
+`frontend/tests/unit/resource-crud-core-locked-sidecar.test.ts` (new)
 **Done when:** Both catch sites rethrow via `isLockedAccessError`, preserving
 today's "no prior sidecar" treatment for a genuine ENOENT. Two regression
 tests simulate a locked project and assert each site rejects rather than
@@ -263,7 +278,8 @@ this test.
 **Files:** `frontend/src/lib/models/indexer-queue.ts` (`rescanEntityAcrossProject`
 at line 310, catch at ~366-373), `frontend/src/lib/models/sidecar.ts`
 (`enqueueEntityRescan`'s `setImmediate` callback at ~178, read-only — this
-task adds a test exercising it, not a code change there)
+task adds a test exercising it, not a code change there),
+`frontend/tests/unit/indexer-queue-locked-access.test.ts` (new)
 **Done when:** The catch in `indexer-queue.ts` checks `isLockedAccessError`
 and propagates when true. A regression test confirms the propagation reaches
 the caller of `rescanEntityAcrossProject` under a locked project. A second,
@@ -423,3 +439,14 @@ silently.
   - **Task 8** (`trash.ts`) touches the file with the most call sites for
     `collectFolderDescriptors`; confirm the regression test's chosen call
     path actually exercises the swallowing catch before marking done.
+  - **Task 4 / Task 9 test-file collision (Stage 5 integration):** both tasks
+    independently created a new test file at
+    `frontend/tests/unit/execute-search-locked-access.test.ts` with genuinely
+    different contents, causing an add/add conflict when cherry-picking Task
+    9 onto the integration branch. Neither task's `Files` field had declared
+    the new test file it would create, so nothing stopped the collision.
+    Resolved by renaming Task 9's file to
+    `frontend/tests/unit/execute-search-project-root-locked-access.test.ts`
+    (not by merging the two files); the full wave then integrated cleanly.
+    This task list's `Files` fields have since been amended to declare every
+    new file each task creates — see the New-file declaration note above.
