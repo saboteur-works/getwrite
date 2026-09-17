@@ -12,6 +12,11 @@ import type {
   ResourceMention,
   EntityMentionedIn,
 } from "../models/mentions-core";
+import {
+  ResourceMentionsResponseSchema,
+  EntityMentionedInResponseSchema,
+} from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 // ---------------------------------------------------------------------------
 // Transport collapse (ADR-021 Phase 2, Task 11)
@@ -68,8 +73,16 @@ export const httpMentionsTransport: MentionsTransport = {
         `/api/resource/${encodeURIComponent(resourceId)}/mentions?projectId=${encodeURIComponent(projectId)}`,
       );
       if (!response.ok) return [];
-      const data = (await response.json()) as { mentions?: ResourceMention[] };
-      return data.mentions ?? [];
+      const data: unknown = await response.json();
+      const result = ResourceMentionsResponseSchema.safeParse(data);
+      if (!result.success) {
+        reportTransportValidationFailure(
+          "mentions.getResourceMentions",
+          result.error.issues,
+        );
+        return [];
+      }
+      return result.data.mentions ?? [];
     } catch {
       return [];
     }
@@ -81,10 +94,16 @@ export const httpMentionsTransport: MentionsTransport = {
         `/api/resource/${encodeURIComponent(entityId)}/mentioned-in?projectId=${encodeURIComponent(projectId)}`,
       );
       if (!response.ok) return [];
-      const data = (await response.json()) as {
-        mentionedIn?: EntityMentionedIn[];
-      };
-      return data.mentionedIn ?? [];
+      const data: unknown = await response.json();
+      const result = EntityMentionedInResponseSchema.safeParse(data);
+      if (!result.success) {
+        reportTransportValidationFailure(
+          "mentions.getEntityMentionedIn",
+          result.error.issues,
+        );
+        return [];
+      }
+      return result.data.mentionedIn ?? [];
     } catch {
       return [];
     }
