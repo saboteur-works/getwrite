@@ -47,7 +47,7 @@ step failure via the route's HTTP surface, mirroring how
 `trash-purge-sweep.test.ts` induces the failure at the model layer but now
 observed through `POST .../trash/purge`'s JSON response.
 **POS:** task_ef8ce343
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Cross-.trash-subtree rename smoke check against the Capacitor fake
 
@@ -73,7 +73,7 @@ caught before Task 9's larger parity test is built on the same assumption —
 if it fails, the parity harness choice (in-memory Capacitor fake for the
 native half) needs revisiting before Task 9, not after.
 **POS:** task_ffe51e33
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Create `trash-core.ts` with the three single-item functions plus `purgeBatchCore`
 
@@ -108,7 +108,7 @@ restore's loop over ids has no `{ all: true }` resolution step, so there is
 no duplication of substance to extract, and both the HTTP restore route and
 the later native backend keep their own trivial loop over `restoreOneCore`.
 **POS:** task_b39a7034
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Rewire the three HTTP routes onto `trash-core.ts`
 
@@ -131,7 +131,7 @@ route's request/response contract changes.
 **Depends on:** Task 3
 **Estimate:** 3
 **POS:** task_955ff7e4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Verify Step 1's full regression net and close it out
 
@@ -149,7 +149,7 @@ and `lint` are clean, and this is recorded as the closing evidence for Step
 **Depends on:** Task 4
 **Estimate:** 2
 **POS:** task_6a458825
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Replace the native-trash-backend.ts stub with a real implementation
 
