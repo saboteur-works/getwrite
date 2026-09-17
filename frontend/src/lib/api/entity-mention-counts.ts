@@ -10,6 +10,8 @@
  */
 import { createTransport } from "../../store/transport/create-transport";
 import type { EntityMentionCounts } from "../models/mentions-core";
+import { EntityMentionCountsResponseSchema } from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 export type { EntityMentionCounts };
 
@@ -62,7 +64,16 @@ export const httpEntityMentionCountsTransport: EntityMentionCountsTransport = {
         `/api/project/${encodeURIComponent(projectId)}/entity-mention-counts`,
       );
       if (!response.ok) return EMPTY_MENTION_COUNTS;
-      return (await response.json()) as Record<string, EntityMentionCounts>;
+      const data: unknown = await response.json();
+      const result = EntityMentionCountsResponseSchema.safeParse(data);
+      if (!result.success) {
+        reportTransportValidationFailure(
+          "entity-mention-counts.getEntityMentionCounts",
+          result.error.issues,
+        );
+        return EMPTY_MENTION_COUNTS;
+      }
+      return result.data;
     } catch {
       return EMPTY_MENTION_COUNTS;
     }

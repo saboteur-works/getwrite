@@ -7,6 +7,11 @@ import {
   getEntityMentionCounts,
   httpEntityMentionCountsTransport,
 } from "../../src/lib/api/entity-mention-counts";
+import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
+
+vi.mock("../../src/lib/api/transport-validation", () => ({
+  reportTransportValidationFailure: vi.fn(),
+}));
 
 const RUNTIME_ENV = "NEXT_PUBLIC_GETWRITE_RUNTIME";
 const originalRuntime = process.env[RUNTIME_ENV];
@@ -15,6 +20,7 @@ afterEach(() => {
   if (originalRuntime === undefined) delete process.env[RUNTIME_ENV];
   else process.env[RUNTIME_ENV] = originalRuntime;
   vi.restoreAllMocks();
+  vi.clearAllMocks();
 });
 
 describe("entity mention counts transport — web runtime", () => {
@@ -23,7 +29,10 @@ describe("entity mention counts transport — web runtime", () => {
   });
 
   it("getEntityMentionCounts calls fetch('/api/project/:id/entity-mention-counts') and returns the parsed counts", async () => {
-    const counts = { "entity-1": 3, "entity-2": 1 };
+    const counts = {
+      "entity-1": { mentions: 3, resources: 2 },
+      "entity-2": { mentions: 1, resources: 1 },
+    };
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue({ ok: true, json: async () => counts } as Response);
@@ -35,6 +44,7 @@ describe("entity mention counts transport — web runtime", () => {
       "/api/project/project-1/entity-mention-counts",
     );
     expect(result).toEqual(counts);
+    expect(reportTransportValidationFailure).not.toHaveBeenCalled();
   });
 
   it("getEntityMentionCounts resolves to {} on a non-ok response", async () => {
@@ -61,6 +71,36 @@ describe("entity mention counts transport — web runtime", () => {
     } as unknown as Response);
 
     await expect(getEntityMentionCounts("project-1")).resolves.toEqual({});
+  });
+
+  it("getEntityMentionCounts resolves to {} and reports a validation failure when a mapped entry's `mentions` field is missing", async () => {
+    const malformed = { "entity-1": { resources: 2 } };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => malformed,
+    } as Response);
+
+    await expect(getEntityMentionCounts("project-1")).resolves.toEqual({});
+    expect(reportTransportValidationFailure).toHaveBeenCalledTimes(1);
+    expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+      "entity-mention-counts.getEntityMentionCounts",
+      expect.any(Array),
+    );
+  });
+
+  it("getEntityMentionCounts resolves to {} and reports a validation failure when a mapped entry's `resources` field is non-numeric", async () => {
+    const malformed = { "entity-1": { mentions: 3, resources: "two" } };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => malformed,
+    } as Response);
+
+    await expect(getEntityMentionCounts("project-1")).resolves.toEqual({});
+    expect(reportTransportValidationFailure).toHaveBeenCalledTimes(1);
+    expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+      "entity-mention-counts.getEntityMentionCounts",
+      expect.any(Array),
+    );
   });
 });
 
