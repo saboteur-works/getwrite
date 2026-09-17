@@ -1,5 +1,12 @@
+import { z } from "zod";
 import type { Tag } from "../models/types";
 import { createTransport } from "../../store/transport/create-transport";
+import { ApiTagSchema, TagAssignmentsResponseSchema } from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
+
+const TagsListResponseSchema = z.object({
+  tags: z.array(ApiTagSchema).optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Transport collapse (ADR-021 Phase 2, Task 4)
@@ -57,8 +64,13 @@ export const httpTagsTransport: TagsTransport = {
       body: JSON.stringify({ action: "list", projectId }),
     });
     if (!response.ok) return [];
-    const data = (await response.json()) as { tags?: Tag[] };
-    return data.tags ?? [];
+    const data = (await response.json()) as unknown;
+    const result = TagsListResponseSchema.safeParse(data);
+    if (!result.success) {
+      reportTransportValidationFailure("tags.list", result.error.issues);
+      return [];
+    }
+    return result.data.tags ?? [];
   },
 
   async listAssignments(projectId, resourceId) {
@@ -68,8 +80,16 @@ export const httpTagsTransport: TagsTransport = {
       body: JSON.stringify({ action: "assignments", projectId, resourceId }),
     });
     if (!response.ok) return [];
-    const data = (await response.json()) as { tagIds?: string[] };
-    return data.tagIds ?? [];
+    const data = (await response.json()) as unknown;
+    const result = TagAssignmentsResponseSchema.safeParse(data);
+    if (!result.success) {
+      reportTransportValidationFailure(
+        "tags.listAssignments",
+        result.error.issues,
+      );
+      return [];
+    }
+    return result.data.tagIds ?? [];
   },
 
   async create(projectId, name, color) {

@@ -14,7 +14,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { removeDirRetry } from "./helpers/fs-utils";
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { createProject } from "../../src/lib/models/project";
 import {
   listTags,
@@ -26,6 +26,16 @@ import {
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { generateUUID } from "../../src/lib/models/uuid";
 import type { Project, Tag } from "../../src/lib/models/types";
+import { httpTagsTransport } from "../../src/lib/api/tags";
+import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
+
+vi.mock("../../src/lib/api/transport-validation", () => ({
+  reportTransportValidationFailure: vi.fn(),
+}));
+
+function jsonResponse(body: unknown, ok = true): Response {
+  return { ok, json: async () => body } as Response;
+}
 
 async function makeTmpProject() {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-tags-api-"));
@@ -46,6 +56,46 @@ async function readAssignments(
   const project = JSON.parse(raw) as Project;
   return project.config?.tagAssignments?.[resourceId] ?? [];
 }
+
+describe("httpTagsTransport response validation (Feature 50, Task 4)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it("list: returns [] and reports validation failure when a tag is missing required fields", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ tags: [{ color: "#fff" }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await httpTagsTransport.list("project-1");
+
+    expect(result).toEqual([]);
+    expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+      "tags.list",
+      expect.any(Array),
+    );
+  });
+
+  it("listAssignments: returns [] and reports validation failure when tagIds contains a non-string element", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ tagIds: ["tag-1", 42] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await httpTagsTransport.listAssignments(
+      "project-1",
+      "resource-1",
+    );
+
+    expect(result).toEqual([]);
+    expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+      "tags.listAssignments",
+      expect.any(Array),
+    );
+  });
+});
 
 describe("tags API route — list action", () => {
   it("returns empty array for a project with no tags", async () => {
