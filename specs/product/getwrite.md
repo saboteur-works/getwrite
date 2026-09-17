@@ -1278,6 +1278,13 @@ and what transport parity (ADR-021) does that require?**
 Electron desktop, which share the Next API routes. Native Android parity (a
 `createTransport` + `native-*-backend.ts` pair per ADR-021) is deferred,
 not rejected.
+**Update (2026-09-16):** The deferred native Android parity work is now
+underway. `native-trash-backend.ts` exists today only as a stub whose
+`list`/`restore`/`purge` each reject as not supported on this platform; the
+seam around it (`native-trash-backend.web-stub.ts`, the
+`turbopack.resolveAlias` entries) is already in place. This does not
+reverse the 2026-09-14 decision — it is the deferred work being taken up,
+not a new decision.
 **Impact:** No restore or purge transport exists on any platform today, so
 this decides real scope: a desktop-first slice needs only a local HTTP
 route (or direct model call) plus UI, while day-one parity across all three
@@ -1399,6 +1406,94 @@ casting; 3 cast an error-body read (`encryption.ts:44`, `preferences.ts:63`,
 `resources.ts:201`); 5 read an error body with no cast (`projects.ts` x3,
 `editor-config.ts` x2).
 
+**OQ-34: Does replacing the native Trash stub (OQ-29's deferred work)
+belong in the same unit of work as extracting the shared `*Core` module
+the HTTP restore/purge routes currently lack, or is the extraction a
+separable step done first?**
+**Resolution (owner decision, 2026-09-16):** The `trash-core.ts` extraction
+and the native backend both live under the one feature spec, but the
+extraction is its own independently-mergeable task, landing first. This
+splits the bisect risk — a regression in the two shipped web/desktop routes
+stays separable from new native code — while keeping the two from drifting
+apart or being separately deprioritised. Supporting measurements taken
+during triage: the extraction is thin, not a refactor — in
+`app/api/project/[project-id]/trash/restore/route.ts` (129 lines), roughly
+57 lines are already transport-agnostic (`restoreOne(projectPath: string,
+id: string)` takes no `NextRequest`/`NextResponse` and does no HTTP work),
+with only ~40 lines of genuine HTTP glue (body parsing, `NextResponse`
+wrapping, `withStorageContext`); `.../purge/route.ts` has the identical
+shape; `.../trash/route.ts` (42 lines) holds roughly 5 lines of real logic.
+Existing coverage of the routes a lift would touch:
+`frontend/tests/integration/trash-routes.test.ts` (7 cases across all three
+routes) and `frontend/tests/integration/trash-legacy-layout.test.ts` (6
+cases) — structural coverage only; whether it exercises the branchier paths
+(relocated/renamed restores, the ordered purge sweep's retry path) was not
+confirmed. This decision deliberately diverges from the repo's own
+precedent: both comparable ADR-021 Phase 2 core lifts landed in the same
+commit as their native backends — `resource-crud-core.ts` in `d8570063`
+("feat(task-3): native transport for resources + resource-excerpts"),
+alongside `native-resource-backend.ts`; and `project-crud-core.ts` in
+`61eb52bb` ("feat(task-2): native transport for projects +
+project-actions-controller"), alongside `native-project-backend.ts`. The
+owner chose to separate them here anyway, to keep a refactor of two
+shipped, working platforms bisectable from new-platform work.
+**Impact:** The restore and purge orchestration (iterate requested ids,
+resolve each to a resource or folder, dispatch to the matching
+restore/purge function, assemble a per-item results array) lives only in
+`app/api/project/[project-id]/trash/restore/route.ts` and
+`.../trash/purge/route.ts` today, unlike every comparable native backend in
+this codebase, which shares a `*Core` module with its HTTP route. Writing
+the native backend directly against `lib/models/trash.ts` would duplicate
+that orchestration; lifting it into a shared core touches the two routes
+that already work in production on web and desktop. Bundling both changes
+into one unit of work carries regression risk for two platforms that
+currently function, in service of adding a third that does not yet work at
+all; treating them as separable steps changes sequencing and review scope
+for whoever picks up the feature spec and task list.
+**Owner:** Product owner.
+**Evidence:** `app/api/project/[project-id]/trash/route.ts` (42 lines),
+`.../trash/restore/route.ts` (129 lines), and `.../trash/purge/route.ts`
+(129 lines) contain the per-item dispatch logic directly; no
+`trash-core.ts` exists in `frontend/src/lib/models/`.
+
+**OQ-35: Should the native Trash backend, once implemented, match the
+"reject on any transport failure" contract `lib/api/trash.ts` already
+declares for its web/desktop siblings, or does native's current stub
+behavior (rejecting every call) set a different expectation worth
+preserving?**
+**Resolution (owner decision, 2026-09-16):** The native backend adopts the
+same all-reject contract as `lib/api/trash.ts`: `list`/`restore`/`purge` let
+anything outside the per-item catch propagate as a rejected promise, while
+per-item failures continue to produce `{ ok: false, error }` entries exactly
+as the HTTP path does. This is not the obvious reasoning transferred
+unchanged — `lib/api/trash.ts`'s rejection rule is about result-shape
+ambiguity, not HTTP semantics: a caller cannot distinguish "the batch never
+ran" from "it ran and every item failed," and a degrade-to-empty listing is
+indistinguishable from a genuinely empty trash. That argument transfers to
+an in-process call unchanged. It is also the repo's established convention
+that a native backend mirrors its HTTP sibling per-method, evidenced by
+`native-entity-relationships-backend.ts`'s `listOrThrow`, which propagates
+precisely because its HTTP sibling does, while its sibling methods degrade
+because theirs do. The owner attached a condition: the feature spec (rung 4)
+MUST enumerate native's actual failure taxonomy against this contract
+before implementation — at minimum a missing project root, a Capacitor
+filesystem-bridge error, and a `PurgeSweepError` raised mid-sweep — since
+nobody has yet checked that an all-reject contract behaves sensibly for
+each. The stub's current unconditional reject is an artifact of being
+unimplemented (its own module doc says the real implementation is out of
+scope) and is not evidence of an intended contract.
+**Impact:** `lib/api/trash.ts`'s `list`/`restore`/`purge` all reject rather
+than degrade, on the reasoning that a degraded result (an empty list, a
+synthesized failure) would be indistinguishable from a real empty trash or
+a real per-item failure. A native implementation needs the same contract
+decided for it explicitly, rather than inheriting it by default from the
+stub it replaces.
+**Owner:** Product owner.
+**Evidence:** `frontend/src/store/transport/native-trash-backend.ts` (44
+lines) rejects unconditionally today, described in this document's Store
+section as "a deliberate stub," not an implementation of the eventual
+contract.
+
 ## Out of Scope (Deferred)
 
 - A keyboard-operable equivalent for dragging a node on the entity
@@ -1443,7 +1538,8 @@ casting; 3 cast an error-body read (`encryption.ts:44`, `preferences.ts:63`,
   OQ-29). FR-28 ships on hosted web and Electron desktop, which share the
   Next API routes; a `createTransport` + `native-*-backend.ts` pair for
   restore/purge (per ADR-021) would be needed for native Android and is
-  deferred, not rejected.
+  deferred, not rejected. As of 2026-09-16 this deferred work is underway
+  (see OQ-29's update); it moves out of this list once shipped.
 - [Later] Hosted multi-tenant access and cross-device sync as a shipped,
   user-facing product (foundations exist per ADR-017–ADR-022; not shipped).
 - [Later] Native Android packaging, signing, and distribution as a shipped

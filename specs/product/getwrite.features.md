@@ -409,7 +409,8 @@ files, sidecar, revisions, and its entries in the inverted index,
 backlinks, the mention index, and any authored relationship edges naming
 it; and a record of references nullified by deletion that re-links on
 restore, reporting any still-dangling reference. Ships on hosted web and
-Electron desktop; native Android transport parity is deferred.
+Electron desktop; native Android transport parity is deferred (tracked as
+Feature 49).
 **Requirements covered:** FR-28
 **User stories:** US-11
 **Depends on:** Feature 1
@@ -1329,6 +1330,59 @@ users and hosted operators) or routing through the existing `AppToaster`
 UI/store code, and it leaves no developer record); both open questions this
 feature list previously raised are resolved by that decision.
 
+### Feature 49: Native Trash transport — Not started
+**Value:** A writer using GetWrite's native Android app can browse, restore,
+and purge deleted items the same way a writer on hosted web or Electron
+desktop already can, instead of hitting a Trash tab that silently does
+nothing on their platform.
+**Vertical slice:** Two independently-mergeable steps, landing in order.
+First, a `trash-core.ts` extraction lifting the transport-agnostic
+orchestration already sitting in the two shipped HTTP routes (list, and the
+~57 already-transport-agnostic lines of each of restore and purge) out of
+route-glue code and into shared core functions, with no behavior change to
+the shipped web/desktop paths — this step lands and merges on its own so a
+regression in either shipped route stays bisectable from the native work
+that follows. Second, a real `native-trash-backend.ts` implementation
+replacing the current stub (whose `list`/`restore`/`purge` each
+unconditionally reject with "not supported on this platform"), built on top
+of the extracted core and wired through the already-existing
+`native-trash-backend.web-stub.ts` seam and `next.config.mjs`
+`resolveAlias` entries — no new seam plumbing needed, only a real
+implementation behind the existing one. The native backend mirrors
+`lib/api/trash.ts`'s all-reject contract: `list`, `restore`, and `purge`
+each propagate anything outside a per-item catch — a missing project root,
+a Capacitor filesystem-bridge error, and a purge sweep failure raised
+mid-sweep are named as the minimum failure taxonomy the feature spec must
+enumerate against that contract — while a per-item failure inside a batch
+restore or purge still yields a per-item `{ ok: false, error }` result
+rather than failing the whole call. Test bar matches the sibling native
+backends already shipped for the entity layer: a
+`native-trash-backend-native-web-parity.test.ts` demonstrating the native
+and HTTP paths agree over the same fixtures, and a
+`native-trash-backend-web-exclusion.test.ts` demonstrating no native-only
+import leaks into the web/desktop bundle.
+**Requirements covered:** None of its own — this is deferred native platform
+parity for the already-covered Trash browse/restore/purge requirement (see
+that feature's Notes and this document's Open Questions); no dedicated
+requirement exists for this scope in the product spec.
+**User stories:** US-11
+**Depends on:** Feature 26
+**Branch suggestion:** feat/native-trash-transport
+**Notes:** Not started. Takes up the native Android gap Feature 26 shipped
+with deferred (parent spec's resolved OQ-29: "deferred, not rejected").
+`native-trash-backend.ts` is currently a 44-line stub; the surrounding seam
+(`native-trash-backend.web-stub.ts`, the `next.config.mjs` alias entries) is
+already wired and needs no change. The extraction-lands-first sequencing and
+the all-reject contract (including the condition that the feature spec
+enumerate native's failure taxonomy before implementation) are owner
+decisions already settled and are not reopened here — see this document's
+Open Questions for what those decisions were and are not. Existing route
+test coverage (`trash-routes.test.ts`, `trash-legacy-layout.test.ts`) covers
+the shipped HTTP paths; whether it already exercises the relocated/renamed
+restore paths and the ordered purge sweep's retry path closely enough to
+carry over as the extraction's regression check, or needs augmenting first,
+is left to this feature's own task breakdown.
+
 ---
 
 ## Coverage check
@@ -1384,7 +1438,7 @@ feature list previously raised are resolved by that decision.
 
 ## Summary
 
-- Total features: 48
+- Total features: 49
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -1428,14 +1482,20 @@ feature list previously raised are resolved by that decision.
   48 (transport response-body validation) has no dependency on any other
   feature — it is cross-cutting work over the existing `frontend/src/lib/api/`
   call sites — and can start any time.
+  49 (native Trash transport) depends on the already-shipped Feature 26,
+  whose native gap it fills; its own two steps — the `trash-core.ts`
+  extraction, then the native backend built on it — are sequenced within the
+  feature rather than split across features, with the extraction landing and
+  merging first.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48 (30 and 28 are the only pair left
-  with an unmet hard dependency; Feature 31 and Feature 43 have both since
-  shipped, so 44's former dependency on 31 and 46/47's former dependency on
-  43 are now satisfied)
-- Not yet built: 24, 26, 27, 28, 29, 30, 32, 44, 46, 47, 48.
-  Everything else in this list has shipped.
+  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49 (30 and 28 are the only pair
+  left with an unmet hard dependency; Feature 31 and Feature 43 have both
+  since shipped, so 44's former dependency on 31 and 46/47's former
+  dependency on 43 are now satisfied)
+- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 48, 49. Everything else
+  in this list has shipped (Feature 26 shipped on hosted web and Electron
+  desktop; its native Android gap is tracked separately as Feature 49).
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
   design decision before implementation tasks can be written. Feature 28 is
