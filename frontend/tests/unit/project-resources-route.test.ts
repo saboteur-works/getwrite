@@ -10,10 +10,33 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { removeDirRetry } from "./helpers/fs-utils";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { generateUUID } from "../../src/lib/models/uuid";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+
+// Feature 54, Task 16: partial mocks so a single test per route can force its
+// underlying core function to reject with a locked-access error, while every
+// other test in this file keeps exercising the real implementation.
+vi.mock("../../src/lib/models/resource-crud-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/resource-crud-core")
+  >("../../src/lib/models/resource-crud-core");
+  return {
+    ...actual,
+    fetchResourceContentCore: vi.fn(actual.fetchResourceContentCore),
+  };
+});
+vi.mock("../../src/lib/models/resource-excerpts-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/resource-excerpts-core")
+  >("../../src/lib/models/resource-excerpts-core");
+  return {
+    ...actual,
+    fetchResourceExcerptsCore: vi.fn(actual.fetchResourceExcerptsCore),
+  };
+});
 
 async function makeTmpProjectsDir(): Promise<{
   projectsDir: string;
@@ -105,6 +128,27 @@ describe("POST /api/project-resources (projectId-based)", () => {
       expect(json.error).toBe("Invalid projectId");
     });
   });
+
+  it("maps a ProjectLockedError from fetchResourceContentCore to 401 instead of the route's fixed 404 shape (Feature 54, Task 16)", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const { fetchResourceContentCore } =
+        await import("../../src/lib/models/resource-crud-core");
+      vi.mocked(fetchResourceContentCore).mockRejectedValueOnce(
+        new ProjectLockedError(projectId),
+      );
+
+      const { POST } = await import("../../app/api/project-resources/route");
+      const res = await POST(
+        new Request("http://localhost/api/project-resources", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, resourceId: "res-route" }),
+        }) as never,
+      );
+      expect(res.status).toBe(401);
+    });
+  });
 });
 
 describe("POST /api/project-resources/excerpts (projectId-based)", () => {
@@ -148,6 +192,28 @@ describe("POST /api/project-resources/excerpts (projectId-based)", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
+    });
+  });
+
+  it("maps a ProjectLockedError from fetchResourceExcerptsCore to 401 instead of the route's fixed 500 shape (Feature 54, Task 16)", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const { fetchResourceExcerptsCore } =
+        await import("../../src/lib/models/resource-excerpts-core");
+      vi.mocked(fetchResourceExcerptsCore).mockRejectedValueOnce(
+        new ProjectLockedError(projectId),
+      );
+
+      const { POST } =
+        await import("../../app/api/project-resources/excerpts/route");
+      const res = await POST(
+        new Request("http://localhost/api/project-resources/excerpts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, resourceIds: ["res-a"] }),
+        }) as never,
+      );
+      expect(res.status).toBe(401);
     });
   });
 });

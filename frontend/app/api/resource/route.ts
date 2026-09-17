@@ -5,6 +5,7 @@ import {
   createResourceCore,
 } from "../../../src/lib/models/resource-crud-core";
 import { respondInvalidProjectId } from "../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../src/lib/models/locked-access";
 import { withStorageContext } from "../_tenant/with-storage-context";
 
 interface SaveResourceBody {
@@ -30,6 +31,9 @@ async function handlePost(req: Request): Promise<Response> {
     );
     return NextResponse.json({ success: true, resource });
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     if (error instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
     }

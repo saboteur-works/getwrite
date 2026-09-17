@@ -12,9 +12,21 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Feature 54, Task 16: a partial mock of project-crud-core so a single test
+// can force `loadProjectCore` to reject with a locked-access error, while
+// every other test in this file keeps exercising the real implementation.
+vi.mock("../../src/lib/models/project-crud-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/project-crud-core")
+  >("../../src/lib/models/project-crud-core");
+  return { ...actual, loadProjectCore: vi.fn(actual.loadProjectCore) };
+});
 
 import { POST } from "../../app/api/project/route";
+import { loadProjectCore } from "../../src/lib/models/project-crud-core";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { generateUUID } from "../../src/lib/models/uuid";
@@ -96,5 +108,21 @@ describe("POST /api/project", () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe("Invalid projectId");
+  });
+
+  it("maps a ProjectLockedError from loadProjectCore to 401 instead of the route's fixed 500 shape (Feature 54, Task 16)", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    await writeProject(projectsDir, projectId);
+
+    vi.mocked(loadProjectCore).mockRejectedValueOnce(
+      new ProjectLockedError(projectId),
+    );
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(loadRequest({ projectId }) as never),
+    );
+
+    expect(res.status).toBe(401);
   });
 });

@@ -15,6 +15,7 @@ import {
   deleteTagCore,
 } from "../../../../../src/lib/models/tags-crud-core";
 import { respondInvalidProjectId } from "../../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface DeleteTagRequestBody {
@@ -37,6 +38,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     const didDelete = await deleteTagCore(body.projectId, body.tagId);
     return NextResponse.json({ deleted: didDelete });
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     if (error instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
     }

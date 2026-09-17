@@ -19,6 +19,7 @@ import {
 } from "../../../../../src/lib/models/resource-crud-core";
 import type { MetadataValue } from "../../../../../src/lib/models/types";
 import { respondInvalidProjectId } from "../../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface RenameResourceBody {
@@ -70,6 +71,9 @@ async function handlePost(
         resource: updated as Record<string, MetadataValue>,
       });
     } catch (error) {
+      if (isLockedAccessError(error)) {
+        throw error;
+      }
       if (error instanceof InvalidProjectIdCoreError) {
         return respondInvalidProjectId();
       }
@@ -96,6 +100,9 @@ async function handlePost(
 
     return NextResponse.json({ resource: updatedData });
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     if (error instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
     }

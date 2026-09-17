@@ -32,6 +32,7 @@ import {
 } from "../../../../../src/lib/models/query-evaluator";
 import { executeEvaluate } from "../../../../../src/lib/models/query-evaluate-core";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 export { executeEvaluate };
@@ -85,6 +86,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     );
     return NextResponse.json({ ids });
   } catch (err: unknown) {
+    if (isLockedAccessError(err)) {
+      throw err;
+    }
     if (err instanceof EvaluatorNotImplementedError) {
       return NextResponse.json(
         { error: "Query feature not implemented", details: err.message },

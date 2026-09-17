@@ -5,7 +5,7 @@
  * `GETWRITE_PROJECTS_DIR`), per the 29-route tenant enforcement feature (see
  * `tags-api.test.ts` for the canonical pattern).
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -17,6 +17,32 @@ import { writeRevision, listRevisions } from "../../src/lib/models/revision";
 import { loadResourceContent } from "../../src/lib/tiptap-utils";
 import type { TipTapDocument } from "../../src/lib/models";
 import { removeDirRetry } from "./helpers/fs-utils";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+
+// Feature 54, Task 16: a partial mock of revision-core so a single test per
+// handler can force its underlying core function to reject with a
+// locked-access error, while every other test in this file keeps exercising
+// the real implementation.
+vi.mock("../../src/lib/models/revision-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/revision-core")
+  >("../../src/lib/models/revision-core");
+  return {
+    ...actual,
+    readRevision: vi.fn(actual.readRevision),
+    createRevision: vi.fn(actual.createRevision),
+    deleteRevision: vi.fn(actual.deleteRevision),
+    setCanonicalRevision: vi.fn(actual.setCanonicalRevision),
+    updateRevisionInPlace: vi.fn(actual.updateRevisionInPlace),
+  };
+});
+
+import {
+  readRevision,
+  createRevision,
+  deleteRevision,
+  setCanonicalRevision,
+} from "../../src/lib/models/revision-core";
 import {
   GET,
   POST,
@@ -396,6 +422,104 @@ describe("revision route — derived content sync on canonical PATCH", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
+    });
+  });
+});
+
+describe("revision route — locked-access rethrow (Feature 54, Task 16)", () => {
+  beforeEach(() => {
+    setStorageAdapter(createMemoryAdapter());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("maps a ProjectLockedError from readRevision to 401 instead of the route's fixed 404/500 shape (handleGet)", async () => {
+    const projectsDir = "/projects-" + generateUUID();
+    const projectId = generateUUID();
+    const resourceId = generateUUID();
+
+    await withProjectsDirEnv(projectsDir, async () => {
+      vi.mocked(readRevision).mockRejectedValueOnce(
+        new ProjectLockedError(projectId),
+      );
+
+      const url = new URL(
+        `http://localhost/api/resource/revision/${resourceId}?projectId=${projectId}&revisionId=${generateUUID()}`,
+      );
+      const res = await GET(new NextRequest(url.toString()), {
+        params: Promise.resolve({ "resource-id": resourceId }),
+      });
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  it("maps a ProjectLockedError from createRevision to 401 instead of the route's fixed 500 shape (handlePost)", async () => {
+    const projectsDir = "/projects-" + generateUUID();
+    const projectId = generateUUID();
+    const resourceId = generateUUID();
+
+    await withProjectsDirEnv(projectsDir, async () => {
+      vi.mocked(createRevision).mockRejectedValueOnce(
+        new ProjectLockedError(projectId),
+      );
+
+      const req = makeRequest("POST", {
+        projectId,
+        content: "second",
+        isCanonical: true,
+      });
+      const res = await POST(req, {
+        params: Promise.resolve({ "resource-id": resourceId }),
+      });
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  it("maps a ProjectLockedError from deleteRevision to 401 instead of the route's fixed 404/500 shape (handleDelete)", async () => {
+    const projectsDir = "/projects-" + generateUUID();
+    const projectId = generateUUID();
+    const resourceId = generateUUID();
+
+    await withProjectsDirEnv(projectsDir, async () => {
+      vi.mocked(deleteRevision).mockRejectedValueOnce(
+        new ProjectLockedError(projectId),
+      );
+
+      const req = makeRequest("DELETE", {
+        projectId,
+        revisionId: generateUUID(),
+      });
+      const res = await DELETE(req, {
+        params: Promise.resolve({ "resource-id": resourceId }),
+      });
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  it("maps a ProjectLockedError from setCanonicalRevision to 401 instead of the route's fixed 404/500 shape (handlePatch)", async () => {
+    const projectsDir = "/projects-" + generateUUID();
+    const projectId = generateUUID();
+    const resourceId = generateUUID();
+
+    await withProjectsDirEnv(projectsDir, async () => {
+      vi.mocked(setCanonicalRevision).mockRejectedValueOnce(
+        new ProjectLockedError(projectId),
+      );
+
+      const req = makeRequest("PATCH", {
+        projectId,
+        revisionId: generateUUID(),
+      });
+      const res = await PATCH(req, {
+        params: Promise.resolve({ "resource-id": resourceId }),
+      });
+
+      expect(res.status).toBe(401);
     });
   });
 });

@@ -8,14 +8,17 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { writeSidecar } from "../../src/lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+import * as resourceCrudCore from "../../src/lib/models/resource-crud-core";
 
 const tmpDirs: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   while (tmpDirs.length > 0) {
     const dir = tmpDirs.pop();
     if (dir) await removeDirRetry(dir);
@@ -99,6 +102,48 @@ describe("POST /api/resource/[resource-id]/rename (projectId-based)", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
+    });
+  });
+
+  it("maps a ProjectLockedError from renameResourceSidecarCore to 401 instead of the route's fixed 500 shape (Feature 54, Task 16)", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      vi.spyOn(resourceCrudCore, "renameResourceSidecarCore").mockRejectedValue(
+        new ProjectLockedError(projectId),
+      );
+
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/rename/route");
+      const res = await POST(
+        renameRequest(resourceId, { projectId, newName: "New Name" }) as never,
+        { params: Promise.resolve({ "resource-id": resourceId }) },
+      );
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  it("maps a ProjectLockedError from renameFolderCore to 401 instead of the route's fixed 500 shape (Feature 54, Task 16)", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const folderId = generateUUID();
+      vi.spyOn(resourceCrudCore, "renameFolderCore").mockRejectedValue(
+        new ProjectLockedError(projectId),
+      );
+
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/rename/route");
+      const res = await POST(
+        renameRequest(folderId, {
+          projectId,
+          newName: "New Folder Name",
+          resourceType: "folder",
+        }) as never,
+        { params: Promise.resolve({ "resource-id": folderId }) },
+      );
+
+      expect(res.status).toBe(401);
     });
   });
 });

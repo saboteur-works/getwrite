@@ -8,13 +8,16 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+import * as resourceCrudCore from "../../src/lib/models/resource-crud-core";
 
 const tmpDirs: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   while (tmpDirs.length > 0) {
     const dir = tmpDirs.pop();
     if (dir) await removeDirRetry(dir);
@@ -103,6 +106,33 @@ describe("POST /api/resource (projectId-based)", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
+    });
+  });
+
+  it("maps a ProjectLockedError from createResourceCore to 401 instead of the route's fixed 500 shape (Feature 54, Task 16)", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      vi.spyOn(resourceCrudCore, "createResourceCore").mockRejectedValue(
+        new ProjectLockedError(projectId),
+      );
+
+      const { POST } = await import("../../app/api/resource/route");
+      const res = await POST(
+        new Request("http://localhost/api/resource", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId,
+            resourceData: {
+              name: "New Scene",
+              type: "text",
+              text: { plainText: "Once upon a time" },
+            },
+          }),
+        }) as never,
+      );
+
+      expect(res.status).toBe(401);
     });
   });
 });

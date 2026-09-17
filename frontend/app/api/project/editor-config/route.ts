@@ -12,6 +12,7 @@ import {
 import type { EditorHeadingMap } from "../../../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../../../src/lib/editor-body-settings";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateProjectEditorConfigBody {
@@ -35,6 +36,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     });
     return NextResponse.json(result);
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     if (error instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
     }

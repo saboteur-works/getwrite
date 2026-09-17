@@ -35,6 +35,7 @@ import {
 } from "../../../../../src/lib/models/revision-core";
 import type { Revision } from "../../../../../src/lib/models/types";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface GetRevisionResponse {
@@ -140,6 +141,9 @@ async function handleGet(
     const responseBody: GetRevisionResponse = { revision, content };
     return NextResponse.json(responseBody, { status: 200 });
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     return errorResponse(error, "Failed to retrieve revision.");
   }
 }
@@ -174,6 +178,9 @@ async function handlePost(
 
     return NextResponse.json(revision, { status: 201 });
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     return errorResponse(error, "Failed to save revision.", 500);
   }
 }
@@ -199,6 +206,9 @@ async function handleDelete(
     const deleted = await deleteRevision(projectPath, resourceId, revisionId);
     return NextResponse.json(deleted, { status: 200 });
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     if (
       error instanceof Error &&
       error.message === `Revision ${revisionId} not found.`
@@ -251,6 +261,9 @@ async function handlePatch(
     );
     return NextResponse.json(canonicalRevision, { status: 200 });
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     if (
       error instanceof Error &&
       error.message === `Revision ${revisionId} not found.`

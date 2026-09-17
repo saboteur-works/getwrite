@@ -18,6 +18,7 @@ import {
 } from "../../src/lib/models/resource";
 import { removeDirRetry } from "../unit/helpers/fs-utils";
 import * as resourceCrudCore from "../../src/lib/models/resource-crud-core";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 
 const tmpDirs: string[] = [];
 
@@ -184,6 +185,24 @@ describe("POST /api/folder/[folder-id]/delete (projectId-based)", () => {
       expect(res.status).toBe(200);
       expect(spy).toHaveBeenCalledTimes(1);
       expect(spy).toHaveBeenCalledWith(projectId, folderId);
+    });
+  });
+
+  it("maps a ProjectLockedError from softDeleteFolderCore to 401 instead of the route's fixed 404 shape (Feature 54, Task 16)", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const folderId = generateUUID();
+      vi.spyOn(resourceCrudCore, "softDeleteFolderCore").mockRejectedValue(
+        new ProjectLockedError(projectId),
+      );
+
+      const { POST } =
+        await import("../../app/api/folder/[folder-id]/delete/route");
+      const res = await POST(deleteRequest(folderId, { projectId }) as never, {
+        params: Promise.resolve({ "folder-id": folderId }),
+      });
+
+      expect(res.status).toBe(401);
     });
   });
 });

@@ -12,9 +12,25 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Feature 54, Task 16: a partial mock of editor-config-core so a single test
+// can force `updateEditorConfigCore` to reject with a locked-access error,
+// while every other test in this file keeps exercising the real
+// implementation.
+vi.mock("../../src/lib/models/editor-config-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/editor-config-core")
+  >("../../src/lib/models/editor-config-core");
+  return {
+    ...actual,
+    updateEditorConfigCore: vi.fn(actual.updateEditorConfigCore),
+  };
+});
 
 import { POST } from "../../app/api/project/editor-config/route";
+import { updateEditorConfigCore } from "../../src/lib/models/editor-config-core";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { generateUUID } from "../../src/lib/models/uuid";
@@ -107,5 +123,26 @@ describe("POST /api/project/editor-config", () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe("Invalid projectId");
+  });
+
+  it("maps a ProjectLockedError from updateEditorConfigCore to 401 instead of the route's fixed 500 shape (Feature 54, Task 16)", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    await writeProject(projectsDir, projectId);
+
+    vi.mocked(updateEditorConfigCore).mockRejectedValueOnce(
+      new ProjectLockedError(projectId),
+    );
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        editorConfigRequest({
+          projectId,
+          headings: { h1: { fontSize: "42px" } },
+        }) as never,
+      ),
+    );
+
+    expect(res.status).toBe(401);
   });
 });
