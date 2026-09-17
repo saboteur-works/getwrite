@@ -39,7 +39,11 @@ import StartPage, {
   type StartPageCreateResult,
 } from "../../components/Start/StartPage";
 import type { Folder, AnyResource, TextResource } from "../../src/lib/models";
-import type { MetadataValue, ResourceRef } from "../../src/lib/models/types";
+import type {
+  MetadataValue,
+  Project,
+  ResourceRef,
+} from "../../src/lib/models/types";
 import { buildProjectView } from "../../src/lib/models/project-view";
 import { listProjects, openProject } from "../../src/lib/api/projects";
 import {
@@ -168,9 +172,14 @@ export default function Home(): JSX.Element {
       // buildProjectView expects TextResource[] and returns UIResource[]; the original
       // code cast through `any` (p: any) to bypass both constraints. We preserve that
       // runtime behaviour with a targeted cast rather than a blanket any.
+      //
+      // `p.project` is cast to `Project` too: a locked entry's project is only
+      // `{ id, createdAt }` (`ProjectListApiEntry`'s locked variant, FR20), which
+      // `buildProjectView` tolerates at runtime — it only reads `project.id` —
+      // but does not statically satisfy `Project`'s required `name`.
       const data = entries.map((p) => ({
         ...buildProjectView({
-          project: p.project,
+          project: p.project as Project,
           folders: p.folders,
           resources: p.resources as unknown as TextResource[],
         }),
@@ -178,8 +187,8 @@ export default function Home(): JSX.Element {
         // project/folders/resources, so without this the Start screen cannot
         // tell an encrypted project from an ordinary one and renders a locked
         // entry as "Untitled Project · 0 resources · 0 folders".
-        isEncrypted: (p as { isEncrypted?: boolean }).isEncrypted,
-        isLocked: (p as { isLocked?: boolean }).isLocked,
+        isEncrypted: p.isEncrypted,
+        isLocked: p.isLocked,
       })) as unknown as StartPageProjectEntry[];
       if (Array.isArray(data)) {
         dispatch(setProjectsInStore(data));

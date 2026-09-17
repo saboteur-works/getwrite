@@ -1,14 +1,42 @@
 import { z } from "zod";
 import type { Project, Folder, AnyResource } from "../models/types";
 import { createTransport } from "../../store/transport/create-transport";
-import { ProjectApiEntrySchema } from "./schemas";
+import { ProjectApiEntrySchema, ProjectListEntrySchema } from "./schemas";
 import { reportTransportValidationFailure } from "./transport-validation";
 
 export interface ProjectApiEntry {
   project: Project;
   folders: Folder[];
   resources: AnyResource[];
+  /** `false`/absent for a normal entry; see `LockedProjectApiEntry` for `true`. */
+  isLocked?: false;
+  /** Present and `true` for an encrypted project, locked or not. */
+  isEncrypted?: boolean;
 }
+
+/**
+ * The reduced entry `GET /api/projects` returns for an encrypted project
+ * whose workspace is locked (FR20, `project-crud-core.ts`'s
+ * `ProjectListEntry`): only the project's `id` and the time it was
+ * encrypted — no `name`, no resources, no folders, since nothing inside it
+ * can be read while locked. Only a `list()` response can contain this
+ * shape; `open`/`create` never return it (see `ProjectsTransport`).
+ */
+export interface LockedProjectApiEntry {
+  project: { id: string; createdAt: string };
+  folders: Folder[];
+  resources: AnyResource[];
+  isLocked: true;
+  isEncrypted: true;
+}
+
+/**
+ * The full response shape of a `list()` entry — a normal entry, or the
+ * reduced locked entry above. `open`/`create` keep returning the narrower,
+ * always-fully-populated `ProjectApiEntry`, since neither can return a
+ * locked entry.
+ */
+export type ProjectListApiEntry = ProjectApiEntry | LockedProjectApiEntry;
 
 function apiError(body: unknown, status: number): Error {
   const message =
@@ -45,7 +73,7 @@ function apiError(body: unknown, status: number): Error {
  */
 export interface ProjectsTransport {
   /** Lists every project under the projects directory. */
-  list(): Promise<ProjectApiEntry[]>;
+  list(): Promise<ProjectListApiEntry[]>;
   /** Opens (loads) a project by its on-disk directory id. */
   open(projectId: string): Promise<ProjectApiEntry>;
   /** Creates a new project from a project-type template. */
@@ -70,12 +98,12 @@ export const httpProjectsTransport: ProjectsTransport = {
       throw apiError(body, response.status);
     }
     const body: unknown = await response.json();
-    const result = z.array(ProjectApiEntrySchema).safeParse(body);
+    const result = z.array(ProjectListEntrySchema).safeParse(body);
     if (!result.success) {
       reportTransportValidationFailure("projects.list", result.error.issues);
       throw new Error("projects.list: response failed validation");
     }
-    return result.data as ProjectApiEntry[];
+    return result.data as ProjectListApiEntry[];
   },
 
   async open(projectId) {
@@ -136,7 +164,7 @@ export const resolveProjectsTransport: () => Promise<ProjectsTransport> =
     ),
   );
 
-export async function listProjects(): Promise<ProjectApiEntry[]> {
+export async function listProjects(): Promise<ProjectListApiEntry[]> {
   const transport = await resolveProjectsTransport();
   return transport.list();
 }

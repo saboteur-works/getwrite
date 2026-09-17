@@ -48,6 +48,7 @@ import {
 } from "../../lib/models/project-crud-core";
 import type {
   ProjectApiEntry,
+  ProjectListApiEntry,
   ProjectsTransport,
 } from "../../lib/api/projects";
 
@@ -65,7 +66,7 @@ export function createNativeProjectsTransport(
     async list() {
       return run(async () => {
         const entries = await listProjectsCore();
-        return entries as unknown as ProjectApiEntry[];
+        return entries as unknown as ProjectListApiEntry[];
       });
     },
 

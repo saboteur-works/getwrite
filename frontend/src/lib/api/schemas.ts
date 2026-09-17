@@ -14,7 +14,13 @@
  * Each schema here matches an existing TypeScript type already declared in
  * its owning `lib/api/*.ts` (or underlying `lib/models/*.ts`) module:
  *
- * - `ProjectApiEntrySchema` — `ProjectApiEntry` (`./projects.ts`)
+ * - `ProjectApiEntrySchema` — `ProjectApiEntry` (`./projects.ts`); the
+ *   locked-entry variant a `GET /api/projects` list response can also
+ *   contain is modeled separately by `LockedProjectListEntrySchema` and
+ *   unioned into `ProjectListEntrySchema` (`ProjectListApiEntry`,
+ *   `./projects.ts`) — `open`/`create` never return that shape, so their
+ *   response validation keeps using the plain, fully-strict
+ *   `ProjectApiEntrySchema`.
  * - `EntityRelationshipEdgeSchema` — `EntityRelationshipEdge`
  *   (`../models/entity-relationships.ts`, re-exported from
  *   `./entity-relationships.ts`)
@@ -206,12 +212,51 @@ export const FolderSchema = z.object({
  * concrete resource (per `AnyResourceSchema`) or a `Folder`, mirroring
  * `AnyResource`'s union in `../models/types.ts`, which includes `Folder`
  * alongside the text/image/audio resource types.
+ *
+ * `isLocked`/`isEncrypted` are optional here for the unlocked-encrypted list
+ * entry (`listEncryptedProject`, `project-crud-core.ts`), which sets
+ * `isEncrypted: true`/`isLocked: false` but otherwise carries a full
+ * `{ id, name, createdAt }` project object that satisfies `ProjectSchema` (its
+ * only other required field, `createdAt`, is also present). The *locked*
+ * variant — no `name` at all — does not satisfy this schema; it is modeled
+ * separately by {@link LockedProjectListEntrySchema}.
  */
 export const ProjectApiEntrySchema = z.object({
   project: ProjectSchema,
   folders: z.array(FolderSchema),
   resources: z.array(z.union([AnyResourceSchema, FolderSchema])),
+  isLocked: z.literal(false).optional(),
+  isEncrypted: z.boolean().optional(),
 });
+
+/**
+ * The reduced list entry `listProjectsCore` (`project-crud-core.ts`) returns
+ * for an encrypted project whose workspace is locked (FR20): the project
+ * carries only its `id` and the time it was encrypted (`createdAt`, mirroring
+ * the marker's `encryptedAt`) — no `name`, and `resources`/`folders` are
+ * always empty since nothing inside a locked project is readable. Only
+ * `listProjectsCore`'s `GET /api/projects` response can contain this shape;
+ * `open`/`create` never return it, so their response schema stays the plain,
+ * fully-strict `ProjectApiEntrySchema` above.
+ */
+export const LockedProjectListEntrySchema = z.object({
+  project: z.object({ id: z.string(), createdAt: z.string() }),
+  folders: z.array(FolderSchema),
+  resources: z.array(z.union([AnyResourceSchema, FolderSchema])),
+  isLocked: z.literal(true),
+  isEncrypted: z.literal(true),
+});
+
+/**
+ * The full response shape of a `GET /api/projects` list entry: a normal,
+ * fully-populated project entry, or the reduced locked entry above. `open`
+ * and `create` responses validate against `ProjectApiEntrySchema` directly,
+ * since neither route can return a locked entry.
+ */
+export const ProjectListEntrySchema = z.union([
+  LockedProjectListEntrySchema,
+  ProjectApiEntrySchema,
+]);
 
 // ---------------------------------------------------------------------------
 // EntityRelationshipEdgeSchema — matches `EntityRelationshipEdge`

@@ -125,6 +125,63 @@ describe("projects.ts transport-boundary validation (FU-10 regression)", () => {
       expect(result).toHaveLength(1);
       expect(mockedReport).not.toHaveBeenCalled();
     });
+
+    // FR20: `listProjectsCore` (`lib/models/project-crud-core.ts`) returns a
+    // reduced entry for an encrypted project whose workspace is locked — only
+    // `project.id`/`project.createdAt`, no `name`, and empty
+    // resources/folders, plus `isLocked`/`isEncrypted: true`. Before this
+    // schema modeled that shape as a real variant, this entry failed
+    // `ProjectApiEntrySchema` (missing required `name`) and rejected the
+    // *entire* list — the one locked project made every other project
+    // disappear from the Start screen.
+    it("resolves a locked-encrypted entry (no name, empty resources/folders) rather than rejecting the whole list", async () => {
+      const lockedEntry = {
+        project: {
+          id: "bbbbbbbb-2222-4222-8222-222222222222",
+          createdAt: "2026-08-03T23:27:04.118Z",
+        },
+        resources: [],
+        folders: [],
+        isLocked: true,
+        isEncrypted: true,
+      };
+      fetchMock.mockResolvedValue(
+        jsonResponse([
+          { project: validProject, folders: [], resources: [] },
+          lockedEntry,
+        ]),
+      );
+
+      const result = await listProjects();
+
+      expect(mockedReport).not.toHaveBeenCalled();
+      expect(result).toHaveLength(2);
+      const locked = result[1];
+      expect(locked.isLocked).toBe(true);
+      expect(locked.isEncrypted).toBe(true);
+      expect(locked.project).toEqual(lockedEntry.project);
+      expect(locked.resources).toEqual([]);
+      expect(locked.folders).toEqual([]);
+      // Never present on the locked variant.
+      expect((locked.project as { name?: unknown }).name).toBeUndefined();
+    });
+
+    it("still REJECTS a genuinely malformed locked-shaped entry (isLocked true but missing project.id)", async () => {
+      const malformedLockedEntry = {
+        project: { createdAt: "2026-08-03T23:27:04.118Z" },
+        resources: [],
+        folders: [],
+        isLocked: true,
+        isEncrypted: true,
+      };
+      fetchMock.mockResolvedValue(jsonResponse([malformedLockedEntry]));
+
+      await expect(listProjects()).rejects.toThrow();
+      expect(mockedReport).toHaveBeenCalledWith(
+        "projects.list",
+        expect.any(Array),
+      );
+    });
   });
 
   describe("createProject", () => {
