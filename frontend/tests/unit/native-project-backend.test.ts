@@ -23,9 +23,17 @@ describe("native projects transport — in-process backend reuses the shared pro
 
     const list = await transport.list();
     expect(list).toHaveLength(1);
-    expect(list[0].project.name).toBe("My Blank Project");
+    // Native projects are never encrypted/locked, so this entry is always
+    // the full-shaped variant of `ProjectListApiEntry` — asserted, not just
+    // cast, so a real regression into the locked shape still fails loudly.
+    expect(list[0].isLocked).toBeFalsy();
+    const [listedEntry] = list;
+    if (listedEntry.isLocked) {
+      throw new Error("expected a non-locked project entry");
+    }
+    expect(listedEntry.project.name).toBe("My Blank Project");
 
-    const projectId = list[0].project.rootPath?.split("/").pop();
+    const projectId = listedEntry.project.rootPath?.split("/").pop();
     expect(projectId).toBeDefined();
 
     const opened = await transport.open(String(projectId));

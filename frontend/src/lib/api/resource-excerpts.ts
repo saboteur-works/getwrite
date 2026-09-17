@@ -6,6 +6,8 @@
  * any failure yields an empty map, so cards simply show no excerpt body.
  */
 import { createTransport } from "../../store/transport/create-transport";
+import { ResourceExcerptsResponseSchema } from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 // ---------------------------------------------------------------------------
 // Transport collapse (ADR-021 Phase 2, Task 3)
@@ -56,10 +58,16 @@ export const httpResourceExcerptsTransport: ResourceExcerptsTransport = {
         body: JSON.stringify({ projectId, resourceIds, maxChars }),
       });
       if (!response.ok) return {};
-      const data = (await response.json()) as {
-        excerpts?: Record<string, string>;
-      };
-      return data.excerpts ?? {};
+      const data: unknown = await response.json();
+      const result = ResourceExcerptsResponseSchema.safeParse(data);
+      if (!result.success) {
+        reportTransportValidationFailure(
+          "resource-excerpts.fetch",
+          result.error.issues,
+        );
+        return {};
+      }
+      return result.data.excerpts ?? {};
     } catch {
       return {};
     }

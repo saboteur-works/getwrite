@@ -29,7 +29,11 @@
 import { z } from "zod";
 import { createTransport } from "../../store/transport/create-transport";
 import type { EntityRelationshipEdge } from "../models/entity-relationships";
-import { EntityRelationshipEdgeSchema } from "./schemas";
+import {
+  EntityRelationshipEdgeSchema,
+  EntityRelationshipRemovedCountResponseSchema,
+  EntityRelationshipRemovedResponseSchema,
+} from "./schemas";
 import { reportTransportValidationFailure } from "./transport-validation";
 
 export type { EntityRelationshipEdge };
@@ -177,8 +181,16 @@ export const httpEntityRelationshipsTransport: EntityRelationshipsTransport = {
         },
       );
       if (!response.ok) return null;
-      const data = (await response.json()) as EntityRelationshipEdge;
-      return data ?? null;
+      const data = (await response.json()) as unknown;
+      const result = EntityRelationshipEdgeSchema.safeParse(data);
+      if (!result.success) {
+        reportTransportValidationFailure(
+          "entity-relationships.create",
+          result.error.issues,
+        );
+        return null;
+      }
+      return result.data;
     } catch {
       return null;
     }
@@ -195,8 +207,16 @@ export const httpEntityRelationshipsTransport: EntityRelationshipsTransport = {
         },
       );
       if (!response.ok) return false;
-      const data = (await response.json()) as { removed?: boolean };
-      return data.removed === true;
+      const data = (await response.json()) as unknown;
+      const result = EntityRelationshipRemovedResponseSchema.safeParse(data);
+      if (!result.success) {
+        reportTransportValidationFailure(
+          "entity-relationships.remove",
+          result.error.issues,
+        );
+        return false;
+      }
+      return result.data.removed === true;
     } catch {
       return false;
     }
@@ -213,8 +233,19 @@ export const httpEntityRelationshipsTransport: EntityRelationshipsTransport = {
         },
       );
       if (!response.ok) return 0;
-      const data = (await response.json()) as { removedCount?: number };
-      return typeof data.removedCount === "number" ? data.removedCount : 0;
+      const data = (await response.json()) as unknown;
+      const result =
+        EntityRelationshipRemovedCountResponseSchema.safeParse(data);
+      if (!result.success) {
+        reportTransportValidationFailure(
+          "entity-relationships.removeByEntity",
+          result.error.issues,
+        );
+        return 0;
+      }
+      return typeof result.data.removedCount === "number"
+        ? result.data.removedCount
+        : 0;
     } catch {
       return 0;
     }

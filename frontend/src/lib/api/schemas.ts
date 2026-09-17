@@ -14,7 +14,13 @@
  * Each schema here matches an existing TypeScript type already declared in
  * its owning `lib/api/*.ts` (or underlying `lib/models/*.ts`) module:
  *
- * - `ProjectApiEntrySchema` — `ProjectApiEntry` (`./projects.ts`)
+ * - `ProjectApiEntrySchema` — `ProjectApiEntry` (`./projects.ts`); the
+ *   locked-entry variant a `GET /api/projects` list response can also
+ *   contain is modeled separately by `LockedProjectListEntrySchema` and
+ *   unioned into `ProjectListEntrySchema` (`ProjectListApiEntry`,
+ *   `./projects.ts`) — `open`/`create` never return that shape, so their
+ *   response validation keeps using the plain, fully-strict
+ *   `ProjectApiEntrySchema`.
  * - `EntityRelationshipEdgeSchema` — `EntityRelationshipEdge`
  *   (`../models/entity-relationships.ts`, re-exported from
  *   `./entity-relationships.ts`)
@@ -24,7 +30,7 @@
  *   wrapper shape.
  */
 import { z } from "zod";
-import { AnyResourceSchema } from "../models/schemas";
+import { AnyResourceSchema, TipTapDocumentSchema } from "../models/schemas";
 
 // ---------------------------------------------------------------------------
 // Shared metadata-value schema
@@ -142,7 +148,7 @@ const ApiOrganizerCardBodyConfigSchema = z.object({
   excerptLength: z.number().int().positive().optional(),
 });
 
-const ApiTagSchema = z.object({
+export const ApiTagSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string().optional(),
@@ -206,12 +212,51 @@ export const FolderSchema = z.object({
  * concrete resource (per `AnyResourceSchema`) or a `Folder`, mirroring
  * `AnyResource`'s union in `../models/types.ts`, which includes `Folder`
  * alongside the text/image/audio resource types.
+ *
+ * `isLocked`/`isEncrypted` are optional here for the unlocked-encrypted list
+ * entry (`listEncryptedProject`, `project-crud-core.ts`), which sets
+ * `isEncrypted: true`/`isLocked: false` but otherwise carries a full
+ * `{ id, name, createdAt }` project object that satisfies `ProjectSchema` (its
+ * only other required field, `createdAt`, is also present). The *locked*
+ * variant — no `name` at all — does not satisfy this schema; it is modeled
+ * separately by {@link LockedProjectListEntrySchema}.
  */
 export const ProjectApiEntrySchema = z.object({
   project: ProjectSchema,
   folders: z.array(FolderSchema),
   resources: z.array(z.union([AnyResourceSchema, FolderSchema])),
+  isLocked: z.literal(false).optional(),
+  isEncrypted: z.boolean().optional(),
 });
+
+/**
+ * The reduced list entry `listProjectsCore` (`project-crud-core.ts`) returns
+ * for an encrypted project whose workspace is locked (FR20): the project
+ * carries only its `id` and the time it was encrypted (`createdAt`, mirroring
+ * the marker's `encryptedAt`) — no `name`, and `resources`/`folders` are
+ * always empty since nothing inside a locked project is readable. Only
+ * `listProjectsCore`'s `GET /api/projects` response can contain this shape;
+ * `open`/`create` never return it, so their response schema stays the plain,
+ * fully-strict `ProjectApiEntrySchema` above.
+ */
+export const LockedProjectListEntrySchema = z.object({
+  project: z.object({ id: z.string(), createdAt: z.string() }),
+  folders: z.array(FolderSchema),
+  resources: z.array(z.union([AnyResourceSchema, FolderSchema])),
+  isLocked: z.literal(true),
+  isEncrypted: z.literal(true),
+});
+
+/**
+ * The full response shape of a `GET /api/projects` list entry: a normal,
+ * fully-populated project entry, or the reduced locked entry above. `open`
+ * and `create` responses validate against `ProjectApiEntrySchema` directly,
+ * since neither route can return a locked entry.
+ */
+export const ProjectListEntrySchema = z.union([
+  LockedProjectListEntrySchema,
+  ProjectApiEntrySchema,
+]);
 
 // ---------------------------------------------------------------------------
 // EntityRelationshipEdgeSchema — matches `EntityRelationshipEdge`
@@ -252,3 +297,126 @@ export const EntityAliasTableSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const ResourceResponseSchema = z.object({ resource: AnyResourceSchema });
+
+// ---------------------------------------------------------------------------
+// ResourceContentResponseSchema — matches `ResourceContentResponse`
+// (`./resources.ts`): `{ resourceContent?: { tipTapContent?: TipTapDocument
+// | null; plaintextContent?: string | null }; revisions?: Array<{ id:
+// string; isCanonical: boolean }> }`. Reuses the persistence-boundary
+// `TipTapDocumentSchema` for the nested TipTap document, since a resource's
+// TipTap content is expected to be identical to the persisted shape.
+// ---------------------------------------------------------------------------
+
+export const ResourceContentResponseSchema = z.object({
+  resourceContent: z
+    .object({
+      tipTapContent: TipTapDocumentSchema.nullable().optional(),
+      plaintextContent: z.string().nullable().optional(),
+    })
+    .optional(),
+  revisions: z
+    .array(z.object({ id: z.string(), isCanonical: z.boolean() }))
+    .optional(),
+});
+
+// ---------------------------------------------------------------------------
+// ResourceRevisionContentResponseSchema — matches the `{ content?: unknown
+// }` payload read at `./resources.ts:300` for a single revision's content.
+// `content` is deliberately `unknown` here, mirroring the source site: its
+// shape varies by resource type and is not narrowed further at this
+// boundary.
+// ---------------------------------------------------------------------------
+
+export const ResourceRevisionContentResponseSchema = z.object({
+  content: z.unknown().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// EntityRelationshipRemovedResponseSchema /
+// EntityRelationshipRemovedCountResponseSchema — match the two response
+// shapes read in `./entity-relationships.ts`: `{ removed?: boolean }` for a
+// single-edge removal and `{ removedCount?: number }` for a bulk removal.
+// ---------------------------------------------------------------------------
+
+export const EntityRelationshipRemovedResponseSchema = z.object({
+  removed: z.boolean().optional(),
+});
+
+export const EntityRelationshipRemovedCountResponseSchema = z.object({
+  removedCount: z.number().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// TagAssignmentsResponseSchema — matches the `{ tagIds?: string[] }`
+// response read in `./tags.ts`.
+// ---------------------------------------------------------------------------
+
+export const TagAssignmentsResponseSchema = z.object({
+  tagIds: z.array(z.string()).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// ResourceMentionsResponseSchema / EntityMentionedInResponseSchema /
+// EntityCooccurrenceResponseSchema / EntityMentionCountsResponseSchema —
+// match the read shapes over `../models/mentions-core.ts`'s exported types:
+//
+// - `ResourceMention` — `{ entityId: string; name: string }` (FR-9).
+// - `EntityMentionedIn` — `{ resourceId: string; name: string; snippets:
+//   string[]; isLinked: boolean; isMentioned: boolean; ambiguousWith:
+//   string[][] }` (FR-10/FR-12/FR-14). None of these fields are optional in
+//   the source type.
+// - `EntityCooccurrenceEntry` — `{ entityId: string; count: number;
+//   resourceIds: string[] }`, keyed per-entity in a `Record<string,
+//   EntityCooccurrenceEntry[]>`.
+// - `EntityMentionCounts` — `{ mentions: number; resources: number }`,
+//   keyed per-entity in a `Record<string, EntityMentionCounts>`.
+// ---------------------------------------------------------------------------
+
+export const ResourceMentionsResponseSchema = z.object({
+  mentions: z
+    .array(z.object({ entityId: z.string(), name: z.string() }))
+    .optional(),
+});
+
+const EntityMentionedInSchema = z.object({
+  resourceId: z.string(),
+  name: z.string(),
+  snippets: z.array(z.string()),
+  isLinked: z.boolean(),
+  isMentioned: z.boolean(),
+  ambiguousWith: z.array(z.array(z.string())),
+});
+
+export const EntityMentionedInResponseSchema = z.object({
+  mentionedIn: z.array(EntityMentionedInSchema).optional(),
+});
+
+const EntityCooccurrenceEntrySchema = z.object({
+  entityId: z.string(),
+  count: z.number(),
+  resourceIds: z.array(z.string()),
+});
+
+export const EntityCooccurrenceResponseSchema = z.record(
+  z.string(),
+  z.array(EntityCooccurrenceEntrySchema),
+);
+
+const EntityMentionCountsSchema = z.object({
+  mentions: z.number(),
+  resources: z.number(),
+});
+
+export const EntityMentionCountsResponseSchema = z.record(
+  z.string(),
+  EntityMentionCountsSchema,
+);
+
+// ---------------------------------------------------------------------------
+// ResourceExcerptsResponseSchema — matches the `{ excerpts?: Record<string,
+// string> }` response read in `./resource-excerpts.ts`.
+// ---------------------------------------------------------------------------
+
+export const ResourceExcerptsResponseSchema = z.object({
+  excerpts: z.record(z.string(), z.string()).optional(),
+});

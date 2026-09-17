@@ -1273,7 +1273,7 @@ scope only as an Out of Scope (Deferred) bullet, not a requirement, and this
 entry does not invent one. The mechanism is entirely unproven: no
 directory-picker design and no on-device staging design exist yet.
 
-### Feature 48: Transport response-body validation — Not started
+### Feature 48: Transport response-body validation — Shipped
 **Value:** A writer whose UI receives a malformed response body from a
 GetWrite server — e.g. after a project restore, the failure that motivated
 this feature — sees the app degrade or report an error the way the module
@@ -1296,11 +1296,15 @@ reject-or-degrade contract on a validation failure, but a failure is now
 always surfaced via a new shared helper — e.g. `reportTransportValidationFailure()`,
 importable by `lib/api/` modules — that logs now and gives a single seam to
 later wire a toast or hosted telemetry to; this helper is new
-infrastructure and part of this feature's scope. The remaining ~17 sites
-across 9 further modules with no existing schema (`tags`, `mentions`,
-`compile`, `export`, `encryption`, `preferences`, `entity-cooccurrence`,
-`entity-mention-counts`, `resource-excerpts`) are explicitly deferred to a
-tracked follow-up, not silently omitted. Scoped to the current HTTP
+infrastructure and part of this feature's scope. The remaining deferred
+remainder — re-measured 2026-09-17 at 21 unvalidated success-path sites
+across 12 modules (`resources.ts` x3, `entity-relationships.ts` x3,
+`editor-config.ts` x2, `tags.ts` x2, `mentions.ts` x2, `compile.ts` x2,
+`export.ts` x2, `encryption.ts` x1, `preferences.ts` x1,
+`entity-cooccurrence.ts` x1, `entity-mention-counts.ts` x1,
+`resource-excerpts.ts` x1; see the parent spec's OQ-33 and this document's
+Features 50-53) — is explicitly deferred to tracked follow-up, not silently
+omitted. Scoped to the current HTTP
 transport only (parent spec OQ-31) — this includes the hosted path, since
 hosted is itself HTTP: a future sync transport is explicitly deferred, and
 ADR-021's in-process native transport crosses no serialization boundary and
@@ -1312,7 +1316,12 @@ and the parent spec's Open Questions for the owner decisions that scope it.
 **User stories:** None
 **Depends on:** None
 **Branch suggestion:** feat/transport-response-validation
-**Notes:** Not started. Motivated by a measured gap (of 39
+**Notes:** Shipped. Merged to `main` on 2026-09-16 as merge commit
+`5aea44c3` ("Merge pull request #207 from
+saboteur-works/feat/transport-response-validation"), landing
+`frontend/src/lib/api/schemas.ts` and `frontend/src/lib/api/transport-validation.ts`
+plus validation at the 9 sites across 5 modules named in the Vertical slice
+above. Motivated by a measured gap (of 39
 `response.json()` calls across 17 modules in `frontend/src/lib/api/`, 26
 return a parsed body via a bare `as` cast with no runtime check; 5 already
 use the safe narrow-then-throw idiom, `trash.ts` and
@@ -1330,7 +1339,30 @@ users and hosted operators) or routing through the existing `AppToaster`
 UI/store code, and it leaves no developer record); both open questions this
 feature list previously raised are resolved by that decision.
 
-### Feature 49: Native Trash transport — Not started
+**Correction (2026-09-17):** The Gate 2 premise above — that "transports
+cannot currently reach [`AppToaster`] without a circular dependency on
+UI/store code" — was measured false. `frontend/src/lib/toast-service.ts` is a
+plain module whose only import is `react-hot-toast` (line 14); it pulls in no
+React context and no Redux store code. `frontend/src/lib/compile/run-compile-and-download.ts:23`
+— a non-component `src/lib/` module, sibling in kind to `lib/api/` — already
+imports `toastService` and calls it, which is existing, shipped practice, not
+a proposal. That module's test, `frontend/tests/unit/runCompileAndDownload.test.ts`,
+runs in the node vitest project (confirmed via `vitest --reporter=verbose`,
+which prefixes each case `|node|`) and all 9 cases pass, so the
+node-environment import concern does not arise either; `react-hot-toast`
+itself imports cleanly in bare node. The decision to use a shared log helper
+is unaffected and stands on its own merits — the helper is the right seam
+regardless. What was wrong is this one stated reason for ruling out the
+toaster: a user-visible surface was reachable from a transport module all
+along. Feature 50 (Task 9) now adds one by having `reportTransportValidationFailure`
+also raise a toast, with no contract change at any call site. Why the false
+premise was believed at the time is not established; one untested hypothesis
+is that the toaster was assumed to mean the `AppToaster` React component
+itself rather than the plain `toastService` module it renders — reviewing
+what was actually inspected during the 2026-09-16 decision would settle
+this.
+
+### Feature 49: Native Trash transport — Shipped
 **Value:** A writer using GetWrite's native Android app can browse, restore,
 and purge deleted items the same way a writer on hosted web or Electron
 desktop already can, instead of hitting a Trash tab that silently does
@@ -1368,20 +1400,234 @@ requirement exists for this scope in the product spec.
 **User stories:** US-11
 **Depends on:** Feature 26
 **Branch suggestion:** feat/native-trash-transport
-**Notes:** Not started. Takes up the native Android gap Feature 26 shipped
-with deferred (parent spec's resolved OQ-29: "deferred, not rejected").
-`native-trash-backend.ts` is currently a 44-line stub; the surrounding seam
-(`native-trash-backend.web-stub.ts`, the `next.config.mjs` alias entries) is
-already wired and needs no change. The extraction-lands-first sequencing and
-the all-reject contract (including the condition that the feature spec
-enumerate native's failure taxonomy before implementation) are owner
-decisions already settled and are not reopened here — see this document's
-Open Questions for what those decisions were and are not. Existing route
-test coverage (`trash-routes.test.ts`, `trash-legacy-layout.test.ts`) covers
-the shipped HTTP paths; whether it already exercises the relocated/renamed
-restore paths and the ordered purge sweep's retry path closely enough to
-carry over as the extraction's regression check, or needs augmenting first,
-is left to this feature's own task breakdown.
+**Notes:** Shipped, in two merged steps. First,
+`frontend/src/lib/models/trash-core.ts` (the extraction), merged to `main`
+on 2026-09-17 as merge commit `2c7395a0` ("Merge pull request #208 from
+saboteur-works/feat/native-trash-transport"). Second, the real
+`frontend/src/store/transport/native-trash-backend.ts` implementation
+replacing the prior rejecting stub, merged to `main` on 2026-09-17 as merge
+commit `35353595` ("Merge pull request #209 from
+saboteur-works/feat/native-trash-backend"). Took up the native Android gap
+Feature 26 shipped with deferred (parent spec's resolved OQ-29: "deferred,
+not rejected"). The all-reject contract and the native failure taxonomy
+(missing project root, Capacitor filesystem-bridge error, mid-sweep purge
+failure) enumerated in the feature spec before implementation are the owner
+decisions already settled — see this document's Open Questions for what
+those decisions were and are not. Caveat that survives the shipped status:
+this native Trash transport is real, in-process code, verified by
+`native-trash-backend-native-web-parity.test.ts` and
+`native-trash-backend-web-exclusion.test.ts`, but it has **not yet been
+exercised on a physical device** — the same caveat Feature 26's own Notes
+and the CLAUDE.md glossary entry for Trash carry for the rest of the native
+transport layer.
+
+### Feature 50: Transport response-body validation — degrade-to-fallback sites — Not started
+
+**Value:** A writer using a card excerpt, a tag list, an entity mention
+list, an entity co-occurrence/roster count, or a resource's fetched content
+that silently degrades to an empty or null fallback on a malformed response
+gets that degrade path validated and reported through Feature 48's shared
+helper, instead of a bad response body being cast unchecked and only
+accidentally behaving like the fallback already in place.
+**Vertical slice:** Runtime validation, using the Feature 48 mechanism
+(`reportTransportValidationFailure()`, `frontend/src/lib/api/schemas.ts`)
+verbatim — no new plumbing — at the 12 sites across 7 modules that share one
+contract shape: `!response.ok`, or a caught exception, is handled by
+returning a fallback value rather than throwing, and every one of these
+sites already sits inside that degrade path today. `frontend/src/lib/api/resources.ts`'s
+`fetchContent` (degrades to `null` on `!response.ok`, casts the parsed body
+unchecked on success) and `fetchRevisionContent` (same degrade-to-`null`
+shape); `frontend/src/lib/api/entity-relationships.ts`'s `create` (degrades
+to `null`), `remove` (degrades to `false`), and `removeByEntity` (degrades
+to `0`) — all three already inside a `try { … } catch { return <fallback>; }`
+block; `frontend/src/lib/api/tags.ts`'s `list` and `listAssignments` (2
+sites, degrade to `[]`); `frontend/src/lib/api/mentions.ts`'s
+`getResourceMentions` and `getEntityMentionedIn` (2 sites, already inside a
+degrade-gracefully `try`/`catch`); `frontend/src/lib/api/entity-cooccurrence.ts`'s
+one site; `frontend/src/lib/api/entity-mention-counts.ts`'s one site; and
+`frontend/src/lib/api/resource-excerpts.ts`'s one site (the last three
+already inside a degrade-gracefully `try`/`catch`, following the same
+pattern `mentions.ts`'s module doc comment cites as precedent). Each site
+keeps its own existing degrade contract exactly, per the Feature 48
+precedent; a new schema is authored per shape where none of the four Tier 2
+shapes already covers it (`ResourceContentResponse`, the revision-content
+string wrapper, `{ removed?: boolean }`, `{ removedCount?: number }`, the
+tag/assignment list shapes, the mention/co-occurrence/mention-count record
+shapes, the excerpt shape — `EntityRelationshipEdge` already has a schema
+from Feature 48's own `list`/`listOrThrow` validation and is reused as-is
+for `create`'s return shape).
+**Requirements covered:** None of its own — this derives from the parent
+spec's Constraints section transport-boundary validation invariant, the
+same basis the shipped transport response-body validation feature covers
+no requirement on, not a functional requirement.
+**User stories:** None
+**Depends on:** Feature 48
+**Branch suggestion:** feat/transport-validation-degrade-sites
+**Notes:** Not started. **This is the group the product owner chose to
+carry forward this run (Gate 2, 2026-09-17).** Grouped by transport
+mechanism (degrade-on-failure), not by content severity or by which module
+Feature 48 previously touched — the owner rejected the severity framing
+this document's earlier draft used, since it forced `encryption.ts` and
+`patchRevisionContent` into awkward placements neither fit cleanly (see the
+resolved Open Questions entries below). `resources.ts` and
+`entity-relationships.ts` were named in Feature 48's own Vertical slice as
+partially validated; their three bare sites apiece are folded in here by
+mechanism rather than kept as a separate "finish the partial module" entry.
+Verified against the tree (2026-09-17) at these line numbers:
+`resources.ts:291` (`fetchContent`), `resources.ts:300`
+(`fetchRevisionContent`), `entity-relationships.ts:180` (`create`),
+`entity-relationships.ts:198` (`remove`), `entity-relationships.ts:216`
+(`removeByEntity`), `tags.ts:60` and `tags.ts:71`, `mentions.ts:71` and
+`mentions.ts:84`, `entity-cooccurrence.ts:72`, `entity-mention-counts.ts:65`,
+and `resource-excerpts.ts:59` — 12 sites across 7 modules in total.
+`patchRevisionContent`, `resources.ts`'s one reject-contract site, moves
+with Feature 51 instead, since it does not share this group's
+degrade-on-failure mechanism.
+
+### Feature 51: Transport response-body validation — status-only reject, unchecked success cast — Not started
+
+**Value:** A writer compiling or exporting a manuscript, or saving a
+revision's content, and receiving a malformed 200 response body gets that
+failure surfaced through Feature 48's shared helper before it reaches the
+Redux store or a downloaded file, instead of a silent bad cast into content
+the writer might not notice is wrong until they open the exported file or
+see a stale timestamp.
+**Vertical slice:** Runtime validation, using the Feature 48 mechanism
+verbatim, at the 5 sites across 3 modules that share one mechanism: they
+reject (throw) on `!response.ok` using the status code alone, with no error
+body read, and then cast the success body unchecked with no further guard.
+`frontend/src/lib/api/resources.ts`'s `patchRevisionContent` (`:313`;
+throws `Failed to persist revision (${response.status})` on `!response.ok`,
+then casts `{ updatedAt?: string }` unchecked on success);
+`frontend/src/lib/api/compile.ts`'s `text` and `markdown` (2 sites; `pdf`
+and `docx` return raw `ArrayBuffer`s via `response.arrayBuffer()`, not
+JSON, and are out of scope for this JSON-body mechanism); and
+`frontend/src/lib/api/export.ts`'s `text` and `markdown` (2 sites, same
+`ArrayBuffer`-methods-excluded caveat). A new schema is authored per shape
+(`{ updatedAt?: string }` plus the compile/export result shapes); each
+site's existing reject-and-cast contract is preserved, subject to the
+`patchRevisionContent` contract question flagged below.
+**Requirements covered:** None of its own — the same Constraints-section
+basis the shipped transport response-body validation feature covers no
+requirement on, not a functional requirement.
+**User stories:** None
+**Depends on:** Feature 48
+**Branch suggestion:** feat/transport-validation-status-only-reject
+**Notes:** Not started. Verified against the tree (2026-09-17):
+`compile.ts` and `export.ts`'s JSON-returning methods throw via a shared
+`postCompileRequest`/`postExportRequest` helper on `!response.ok` (status
+code only, no body parse for the error message) and then cast the success
+body unchecked; `resources.ts:313`'s `patchRevisionContent` follows the
+identical status-only-reject, unchecked-success-cast mechanism, which is
+why it is grouped here rather than with Feature 50's degrade sites or
+Feature 52's separate-error-body reject site. **Flagged decision for this
+feature's own gate — not decided here:** `patchRevisionContent` currently
+casts its success body as `{ updatedAt?: string }` and substitutes
+`new Date().toISOString()` when the field is absent, so a schema-validation
+guard applying Feature 48's "each site keeps its existing contract" rule
+literally would preserve that fallback and make validation a no-op at this
+specific site — a malformed 200 body would still silently produce a
+client-clock timestamp instead of being rejected. Measured facts bearing on
+that decision, not a claim it is a live defect: the server's
+`updateRevisionInPlace` (`frontend/src/lib/models/revision-core.ts:267`)
+declares its return type as `Revision & { updatedAt: string }`, so the
+field is present on the real server path today and this fallback is
+defensive, not currently firing — it is latent, not observed to fail. Its
+single caller is `frontend/components/WorkArea/useCanonicalAutosave.ts:75`,
+which dispatches the value into the Redux store as the resource's
+`updatedAt`; were the fallback ever to fire, the resource tree and Timeline
+would show client clock time rather than the persisted timestamp, with the
+content itself safely saved regardless. This feature's own spec must
+decide whether to change this site's contract (e.g. remove the fallback and
+throw instead) rather than validate around it unchanged.
+
+### Feature 52: Transport response-body validation — separate error-body parse (encryption.ts) — Not started
+
+**Value:** A writer reading the workspace's encryption lock state and
+receiving a malformed response body — on either the error or the success
+path — gets that failure surfaced through Feature 48's shared helper,
+instead of a silent bad cast into security-relevant state.
+**Vertical slice:** Runtime validation, using the Feature 48 mechanism
+verbatim, at the 1 site in 1 module that is the only one in this remainder
+to parse two separate response bodies for the two outcomes rather than one
+shared parse: `frontend/src/lib/api/encryption.ts`'s `request()` helper
+(`:49`, backing every encryption status read) checks `!response.ok` and
+throws from a separately-parsed error body (`response.json().catch(() => ({}))`
+cast to `{ error?: string }`), then, on the success path, parses and casts
+the success body afresh in a second, unrelated `response.json()` call cast
+to `EncryptionStatus`. A schema is authored for each of the two body
+shapes; the existing reject-and-cast contract is preserved.
+**Requirements covered:** None of its own — the same Constraints-section
+basis the shipped transport response-body validation feature covers no
+requirement on, not a functional requirement.
+**User stories:** None
+**Depends on:** Feature 48
+**Branch suggestion:** feat/transport-validation-separate-error-body
+**Notes:** Not started. Verified against the tree (2026-09-17):
+`encryption.ts:49` is the only site in this 21-site remainder with two
+independent `response.json()` calls, one per outcome, rather than one
+parse consulted for both — distinct from Feature 51's status-only-reject
+sites (no error body read at all) and from Feature 53's dual-purpose-body
+sites (one parse serving both outcomes). Given its own entry on mechanism
+grounds, per the owner's Gate 2 decision to regroup by transport mechanism
+rather than by severity — this document's earlier draft had instead placed
+`encryption.ts` with `compile.ts`/`export.ts` on a substantial-content/
+security-relevant severity judgment, which the owner's decision replaces.
+
+### Feature 53: Transport response-body validation — one body serving both error and success (editor-config.ts, preferences.ts) — Not started
+
+**Value:** A writer whose editor-heading/body settings save, or whose
+default-revision-name preference save, gets a response the UI cannot parse
+sees the same explicit failure surfacing Feature 48 already gives every
+other validated write, instead of these three call sites' unusual shape —
+the same parsed body doubling as both the error message source and the
+success return value — being skipped over because no existing tier
+assigned it a home.
+**Vertical slice:** Runtime validation, using the Feature 48 mechanism
+verbatim, at the 3 sites across 2 modules that share one shape not seen
+elsewhere in this remainder: the response body is parsed once
+(`.catch(() => null)`), then consulted twice — for `body?.error` if
+`!response.ok`, and cast as the success payload otherwise.
+`frontend/src/lib/api/editor-config.ts`'s `saveHeadings` (`:59`) and
+`saveBody` (`:74`) (both parse to `EditorConfigResponse | null` and throw
+`body?.error ?? "<fallback message>"` on failure); and
+`frontend/src/lib/api/preferences.ts`'s `saveRevisionSettings` (`:63`,
+parses to `{ defaultRevisionName?: string; error?: string } | null`, same
+throw-with-body-message-on-failure shape). A schema for each response shape
+must validate leniently enough that a legitimate error body (which lacks
+the success fields) does not itself get flagged as a validation failure —
+this is the specific design question that made these three sites a poor
+fit for Feature 48's existing tiers, and the feature spec for this entry
+must settle it explicitly rather than reusing a success-only schema
+verbatim.
+**Requirements covered:** None of its own — the same Constraints-section
+basis the shipped transport response-body validation feature covers no
+requirement on, not a functional requirement.
+**User stories:** None
+**Depends on:** Feature 48
+**Branch suggestion:** feat/transport-validation-dual-purpose-bodies
+**Notes:** Not started. `editor-config.ts` is the module OQ-33 flags as
+"never assigned to any tier"; verified against the tree (2026-09-17) that
+its two sites do share the dual-purpose error/success body pattern the
+parent spec describes. That same verification found `preferences.ts`'s one
+remaining site (`saveRevisionSettings`) uses the identical pattern — a fact
+not called out in OQ-33 itself — so this entry groups the two modules
+together by shape rather than treating `editor-config.ts` as sole owner of
+that problem. `preferences.ts`'s other method, `savePreferences`, is
+fire-and-forget (no response body read at all) and contributes none of
+this module's one counted site. **Open design question for this feature's
+own spec, not decided here:** all three bodies here are already typed
+all-optional today (`EditorConfigResponse | null` and the preferences
+inline type both make every field optional), so a fully-optional lenient
+schema would validate very little beyond confirming the body parsed as an
+object — it would mostly add the reporting seam rather than catch a
+malformed field. A discriminated union would validate more, but first
+requires deciding what distinguishes an error body from a success body at
+each site — a candidate discriminant is presence of `error` vs. presence of
+`editorConfig` (or the module's analogous success field) /
+`defaultRevisionName`. This document does not resolve it, per this
+document's own instructions not to resolve open questions raised by a
+breakdown.
 
 ---
 
@@ -1438,7 +1684,7 @@ is left to this feature's own task breakdown.
 
 ## Summary
 
-- Total features: 49
+- Total features: 53
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -1479,23 +1725,41 @@ is left to this feature's own task breakdown.
   (removing an entity declaration) has shipped, having depended on the
   already-shipped Features 33 and 38 — 33 for the entity declaration it
   reverses, 38 for the authored edges its keep/delete-edges choice acted on.
-  48 (transport response-body validation) has no dependency on any other
-  feature — it is cross-cutting work over the existing `frontend/src/lib/api/`
-  call sites — and can start any time.
-  49 (native Trash transport) depends on the already-shipped Feature 26,
-  whose native gap it fills; its own two steps — the `trash-core.ts`
-  extraction, then the native backend built on it — are sequenced within the
-  feature rather than split across features, with the extraction landing and
-  merging first.
+  48 (transport response-body validation) has shipped, having had no
+  dependency on any other feature — it was cross-cutting work over the
+  existing `frontend/src/lib/api/` call sites. 49 (native Trash transport)
+  has shipped, having depended on the already-shipped Feature 26, whose
+  native gap it fills; its own two steps — the `trash-core.ts` extraction,
+  then the native backend built on it — landed as two separately merged
+  pull requests, extraction first. 50, 51, 52, and 53 (the deferred
+  remainder of Feature 48's transport-boundary validation, re-measured at
+  21 sites across 12 modules — see the parent spec's OQ-33) were regrouped
+  by transport mechanism at Gate 2 review, 2026-09-17 (owner decision — see
+  this document's Open Questions): 50 covers the 12 degrade-to-fallback
+  sites across 7 modules (`resources.ts`, `entity-relationships.ts`,
+  `tags.ts`, `mentions.ts`, `entity-cooccurrence.ts`,
+  `entity-mention-counts.ts`, `resource-excerpts.ts`); 51 covers the 5
+  status-only-reject, unchecked-success-cast sites across 3 modules
+  (`resources.ts`'s `patchRevisionContent`, `compile.ts`, `export.ts`); 52
+  covers the 1 separate-error-body-parse site (`encryption.ts`); and 53
+  covers the 3 one-body-serves-both-outcomes sites across 2 modules
+  (`editor-config.ts`, `preferences.ts`). Each still depends only on the
+  already-shipped Feature 48 for its shared validation mechanism, not on
+  one another, and can be built in any order or in parallel; the product
+  owner has chosen Feature 50 to carry forward this run, leaving 51, 52,
+  and 53 as remaining work each needing its own future pass through the
+  pipeline.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49 (30 and 28 are the only pair
-  left with an unmet hard dependency; Feature 31 and Feature 43 have both
-  since shipped, so 44's former dependency on 31 and 46/47's former
-  dependency on 43 are now satisfied)
-- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 48, 49. Everything else
-  in this list has shipped (Feature 26 shipped on hosted web and Electron
-  desktop; its native Android gap is tracked separately as Feature 49).
+  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53 (30 and 28
+  are the only pair left with an unmet hard dependency; Feature 31 and
+  Feature 43 have both since shipped, so 44's former dependency on 31 and
+  46/47's former dependency on 43 are now satisfied)
+- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 50, 51, 52, 53.
+  Everything else in this list has shipped (Feature 26 shipped on hosted
+  web and Electron desktop; its native Android gap shipped separately as
+  Feature 49; Feature 48's own deferred remainder is tracked separately as
+  Features 50-53).
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
   design decision before implementation tasks can be written. Feature 28 is
@@ -1715,13 +1979,17 @@ FR-42 split (this document's own scoping call, 2026-09-11):
   split into two features.** It ships as one feature scoped to Tier 1 plus
   the four named Tier 2 shapes (`ProjectApiEntry`, `EntityRelationshipEdge`,
   `TrashedResourceEntry`/`TrashedFolderEntry`, `EntityAliasTable`) — about 9
-  sites across 5 modules. The much larger remainder of Tier 2 — about 17
-  further sites across 9 modules with no existing schema (`tags`,
-  `mentions`, `compile`, `export`, `encryption`, `preferences`,
-  `entity-cooccurrence`, `entity-mention-counts`, `resource-excerpts`) — is
-  explicitly deferred to a tracked follow-up rather than folded into this
-  feature or silently dropped. Previously open here as whether Tier 1 and
-  Tier 2 should ship as one feature or split into two.
+  sites across 5 modules. The much larger remainder of Tier 2 was estimated
+  at this 2026-09-16 decision point as about 17 further sites across 9
+  modules with no existing schema (`tags`, `mentions`, `compile`, `export`,
+  `encryption`, `preferences`, `entity-cooccurrence`,
+  `entity-mention-counts`, `resource-excerpts`); re-measured 2026-09-17 at
+  21 sites across 12 modules (see the parent spec's OQ-33 and this
+  document's Features 50-53, which add `resources.ts`,
+  `entity-relationships.ts`, and `editor-config.ts` to that list). Either
+  figure is explicitly deferred to a tracked follow-up rather than folded
+  into this feature or silently dropped. Previously open here as whether
+  Tier 1 and Tier 2 should ship as one feature or split into two.
 - **Resolved (owner decision, Gate 2 review, 2026-09-16): Feature 48's
   "always surface" plumbing is a new shared helper** — e.g.
   `reportTransportValidationFailure()`, importable by `lib/api/` modules —
@@ -1731,4 +1999,51 @@ FR-42 split (this document's own scoping call, 2026-09-11):
   invisible to users and hosted operators) and routing through the existing
   `AppToaster` (transports cannot currently reach it without a circular
   dependency on UI/store code, and it leaves no developer record).
-  Previously open here as what that plumbing should be.
+  Previously open here as what that plumbing should be. **Correction
+  (2026-09-17):** the "circular dependency" premise for rejecting
+  `AppToaster` was measured false — see the Correction note under Feature
+  48 above for the evidence (`toast-service.ts`'s single, plain
+  `react-hot-toast` import; `run-compile-and-download.ts`'s existing,
+  shipped `toastService` usage from a non-component `lib/` module; that
+  module's test passing in the node vitest project). The shared-helper
+  decision itself stands; only this one stated reason for ruling out the
+  toaster was wrong.
+- **Resolved (owner decision, Gate 2 review, 2026-09-17): Features 50-53
+  regroup Feature 48's deferred 21-site/12-module remainder by transport
+  mechanism, not by content severity.** Previously open here as two
+  severity-framing judgment calls: (1) whether `resources.ts`'s and
+  `entity-relationships.ts`'s degrade-contract sites should fold into the
+  contract-shape grouping rather than staying with a "finish the partial
+  module" entry, and (2) whether `encryption.ts` belongs with
+  `compile.ts`/`export.ts` on a substantial-content/security-relevant
+  severity judgment or as its own entry. Both are answered by the same
+  decision: the severity framing is dropped entirely, since it forced
+  `encryption.ts` and `patchRevisionContent` into placements neither fit
+  cleanly. The four groups are now mechanism-defined and partition all 21
+  sites with no overlaps and no leftovers: Feature 50 (12 sites, 7
+  modules) degrades to a fallback on failure — this answers (1) yes, since
+  `resources.ts`'s and `entity-relationships.ts`'s degrade-contract sites
+  now sit in the same group as `tags.ts`/`mentions.ts`/etc. by mechanism;
+  Feature 51 (5 sites, 3 modules) rejects on status alone with an unchecked
+  success cast; Feature 52 (1 site, 1 module) parses a separate error body
+  — this answers (2), giving `encryption.ts` its own entry on mechanism
+  grounds, not severity; and Feature 53 (3 sites, 2 modules) has one body
+  serving both the error and success path. The product owner has chosen
+  Feature 50 to carry forward this run; Features 51-53 remain candidates
+  for a future pass.
+- Feature 53 (`editor-config.ts` + `preferences.ts`'s one body serving
+  both the error and success path) needs a concrete schema-validation
+  strategy decided in its own feature spec before implementation: whether
+  the two response shapes are validated as a discriminated union (error
+  variant vs. success variant) or as one lenient schema with every field
+  optional. This document does not resolve it, per this document's own
+  instructions not to resolve open questions raised by a breakdown. A
+  substantive finding bears on that decision without resolving it: all
+  three of Feature 53's bodies are already typed all-optional today, so a
+  fully lenient schema would validate very little — mostly confirming the
+  body parsed as an object — and would mostly add the reporting seam
+  rather than catch a malformed field; a discriminated union would
+  validate more, but first requires deciding what distinguishes an error
+  body from a success body at each site, a candidate discriminant being
+  presence of `error` vs. presence of `editorConfig` (or the module's
+  analogous success field) / `defaultRevisionName`.

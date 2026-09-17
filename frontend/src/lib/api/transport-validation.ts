@@ -14,18 +14,32 @@
  * signature only accepts a call-site identifier and the Zod issue list, so
  * it is structurally incapable of being handed a raw body.
  *
- * Synchronous and side-effect-free beyond the console call itself: no
- * `Promise`, no `await`, no network or filesystem I/O. Deliberately has no
- * import from `frontend/src/store/` or any React/UI module, so it can be
+ * Synchronous and side-effect-free beyond the console call and raising a
+ * generic toast: no `Promise`, no `await`, no network or filesystem I/O.
+ * Deliberately has no import from `frontend/src/store/` or any React module
+ * (`toastService` is a plain `lib/` module, not React/store), so it can be
  * imported by every `lib/api/*.ts` module without pulling those in.
+ *
+ * The toast raised here is intentionally generic — it never names the call
+ * site or repeats an issue's `path`/`message`/`code`, since those are for
+ * the console only. It uses a fixed, stable id so many simultaneous
+ * validation failures collapse into a single visible toast instead of
+ * stacking.
  */
 
 import type { z } from "zod";
+import { toastService } from "../toast-service";
+
+const TRANSPORT_VALIDATION_TOAST_ID = "transport-validation-error";
+const TRANSPORT_VALIDATION_TOAST_MESSAGE =
+  "Some data couldn't be loaded correctly.";
 
 /**
  * Reports a transport response validation failure. Logs only the call-site
  * identifier and each issue's own `path`/`message`/`code` — never a raw or
  * unvalidated response body, which must not be passed to this function.
+ * Also raises a generic, user-visible toast (deduped by a fixed id) that
+ * carries none of that detail.
  */
 export function reportTransportValidationFailure(
   callSite: string,
@@ -39,4 +53,7 @@ export function reportTransportValidationFailure(
       code: issue.code,
     })),
   );
+  toastService.error(TRANSPORT_VALIDATION_TOAST_MESSAGE, undefined, {
+    id: TRANSPORT_VALIDATION_TOAST_ID,
+  });
 }

@@ -6,10 +6,16 @@
  * that shares at least one resource with another declared entity's detected
  * mention, the set of entities it co-occurs with and how much. Degrades
  * gracefully: any failure yields the empty co-occurrence map `{}`, matching
- * how `lib/api/entity-mention-counts.ts` degrades on read failure.
+ * how `lib/api/entity-mention-counts.ts` degrades on read failure. On a 2xx
+ * response, the body is additionally validated against
+ * `EntityCooccurrenceResponseSchema` (`./schemas.ts`) — a shape mismatch
+ * reports via `reportTransportValidationFailure` and degrades to the same
+ * empty map.
  */
 import { createTransport } from "../../store/transport/create-transport";
 import type { EntityCooccurrenceEntry } from "../models/mentions-core";
+import { EntityCooccurrenceResponseSchema } from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 export type { EntityCooccurrenceEntry };
 
@@ -69,10 +75,16 @@ export const httpEntityCooccurrenceTransport: EntityCooccurrenceTransport = {
         `/api/project/${encodeURIComponent(projectId)}/entity-cooccurrence`,
       );
       if (!response.ok) return EMPTY_COOCCURRENCE;
-      return (await response.json()) as Record<
-        string,
-        EntityCooccurrenceEntry[]
-      >;
+      const body: unknown = await response.json();
+      const result = EntityCooccurrenceResponseSchema.safeParse(body);
+      if (!result.success) {
+        reportTransportValidationFailure(
+          "entity-cooccurrence.getEntityCooccurrence",
+          result.error.issues,
+        );
+        return EMPTY_COOCCURRENCE;
+      }
+      return result.data;
     } catch {
       return EMPTY_COOCCURRENCE;
     }

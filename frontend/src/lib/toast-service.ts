@@ -38,15 +38,26 @@ export const toastService = {
    *
    * @param message - Primary error message.
    * @param description - Optional detailed error description.
+   * @param options - Optional extra toast options (e.g. a stable `id` so
+   *   repeated calls collapse into a single visible toast instead of
+   *   stacking).
    *
    * @example
    * ```tsx
    * toastService.error("Failed to delete", "Resource is locked");
    * ```
    */
-  error: (message: string, description?: string): string => {
+  error: (
+    message: string,
+    description?: string,
+    options?: { id?: string },
+  ): string => {
     const content = description ? `${message}\n${description}` : message;
-    return toast.error(content, { duration: 4000, position: "bottom-right" });
+    return toast.error(content, {
+      duration: 4000,
+      position: "bottom-right",
+      ...options,
+    });
   },
 
   /**

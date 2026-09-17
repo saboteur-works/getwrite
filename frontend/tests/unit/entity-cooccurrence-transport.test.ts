@@ -8,7 +8,12 @@ import {
   getEntityCooccurrence,
   httpEntityCooccurrenceTransport,
 } from "../../src/lib/api/entity-cooccurrence";
+import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 import type { EntityCooccurrenceEntry } from "../../src/lib/models/mentions-core";
+
+vi.mock("../../src/lib/api/transport-validation", () => ({
+  reportTransportValidationFailure: vi.fn(),
+}));
 
 const RUNTIME_ENV = "NEXT_PUBLIC_GETWRITE_RUNTIME";
 const originalRuntime = process.env[RUNTIME_ENV];
@@ -69,6 +74,24 @@ describe("entity cooccurrence transport — web runtime", () => {
     } as unknown as Response);
 
     await expect(getEntityCooccurrence("project-1")).resolves.toEqual({});
+  });
+
+  it("getEntityCooccurrence resolves to {} and reports via reportTransportValidationFailure when a mapped entry's count is not a number", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        "entity-1": [
+          { entityId: "entity-2", count: "two", resourceIds: ["r-1"] },
+        ],
+      }),
+    } as Response);
+
+    await expect(getEntityCooccurrence("project-1")).resolves.toEqual({});
+    expect(reportTransportValidationFailure).toHaveBeenCalledTimes(1);
+    expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+      "entity-cooccurrence.getEntityCooccurrence",
+      expect.any(Array),
+    );
   });
 });
 
