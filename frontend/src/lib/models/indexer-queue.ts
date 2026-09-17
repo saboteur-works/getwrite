@@ -1,5 +1,6 @@
 import { indexResource } from "./inverted-index";
 import { readSidecar } from "./sidecar";
+import { isLockedAccessError } from "./locked-access";
 import { listRevisions } from "./revision";
 import {
   getStorageAdapter,
@@ -352,9 +353,14 @@ async function rescanEntityAcrossProject(
  * resource-indexing queue: it is a project-wide, single-entity operation
  * triggered by an entity's own metadata changing, not by a resource's
  * content being saved. Returns a Promise that resolves once the rescan
- * completes; failures are logged, not thrown, matching `runTask`'s error
- * handling so a rescan failure can never surface as an unhandled rejection
- * from a fire-and-forget sidecar write.
+ * completes; most failures are logged, not thrown, matching `runTask`'s
+ * error handling so a rescan failure can never surface as an unhandled
+ * rejection from a fire-and-forget sidecar write. A locked-access failure
+ * (`ProjectLockedError`/`MissingProjectKeyError` — see `locked-access.ts`)
+ * is the one exception: it is rethrown rather than logged, since it means
+ * the rescan silently ran against — or failed to run against — an
+ * encrypted project this request cannot currently open, which a caller
+ * needs to be able to tell apart from "rescan attempted and failed".
  */
 export async function enqueueEntityRescan(
   projectRoot: string,
@@ -370,6 +376,7 @@ export async function enqueueEntityRescan(
       adapter,
     );
   } catch (err) {
+    if (isLockedAccessError(err)) throw err;
     console.error("[indexer-queue] entity rescan failed:", err);
   } finally {
     pendingEntityRescans -= 1;
