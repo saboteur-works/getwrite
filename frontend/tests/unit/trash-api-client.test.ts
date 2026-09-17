@@ -264,18 +264,32 @@ describe("trash transport — native runtime", () => {
     process.env[RUNTIME_ENV] = "native";
   });
 
-  it("resolveTrashTransport resolves to a transport whose methods reject ('not supported on this platform')", async () => {
-    const { resolveTrashTransport } = await import("../../src/lib/api/trash");
-    const transport = await resolveTrashTransport();
+  it("the native in-process transport rejects the whole call for an unresolvable projectId", async () => {
+    // Exercises `native-trash-backend.ts` directly (with an injected fake
+    // filesystem, mirroring `native-entity-relationships-backend.test.ts`'s
+    // pattern) rather than through `resolveTrashTransport()`, since the
+    // latter's production path awaits the real device bootstrap and isn't
+    // meaningful in this DOM-less unit test environment.
+    const { createNativeTrashTransport } =
+      await import("../../src/store/transport/native-trash-backend");
+    const { createFakeCapacitorFilesystem } =
+      await import("../../src/lib/models/capacitor-filesystem");
+    const transport = createNativeTrashTransport({
+      fs: createFakeCapacitorFilesystem(),
+      projectsDir: "/projects",
+    });
 
-    await expect(transport.list("project-1")).rejects.toThrow(
-      /not supported on this platform/,
+    // `native-trash-backend.ts`'s failure taxonomy (Case 1): an invalid
+    // projectId that `resolveProjectRoot` cannot resolve rejects the whole
+    // call, before any per-item core call is attempted.
+    await expect(transport.list("not-a-valid-project-id")).rejects.toThrow(
+      /Invalid projectId/,
     );
-    await expect(transport.restore("project-1", ["id-1"])).rejects.toThrow(
-      /not supported on this platform/,
-    );
-    await expect(transport.purge("project-1", ["id-1"])).rejects.toThrow(
-      /not supported on this platform/,
-    );
+    await expect(
+      transport.restore("not-a-valid-project-id", ["id-1"]),
+    ).rejects.toThrow(/Invalid projectId/);
+    await expect(
+      transport.purge("not-a-valid-project-id", ["id-1"]),
+    ).rejects.toThrow(/Invalid projectId/);
   });
 });

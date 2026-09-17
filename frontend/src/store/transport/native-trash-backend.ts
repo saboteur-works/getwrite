@@ -27,6 +27,27 @@
  * This module is imported *only* on the native path (see `lib/api/trash.ts`'s
  * dynamic import), because it pulls in the server-side model layer and
  * storage layer, which must never enter the web client bundle.
+ *
+ * **Failure taxonomy (FR-8/FR-9/FR-10).** There are exactly three cases:
+ *
+ * 1. An invalid/unresolvable `projectId` (`resolveProjectRoot` returns
+ *    `null`) rejects the *whole* `list`/`restore`/`purge` call, before any
+ *    per-item `restoreOneCore`/`purgeOneCore` call is even attempted — there
+ *    is no project root to operate against. For `restore`/`purge` this
+ *    project-root resolution happens exactly once, up front, outside and
+ *    before the per-id loop (and, for `purge`'s `{ all: true }` selection,
+ *    before `listTrashCore` is even called to resolve it to an id list).
+ * 2. `list` never catches internally: a `listTrashCore` throw (e.g. a
+ *    Capacitor filesystem-bridge error) always propagates as a rejected
+ *    promise rather than degrading to an empty/partial listing.
+ * 3. Inside `restore`/`purge`'s per-id loop (once the project root is
+ *    already known valid), any error thrown for a single id — a bridge
+ *    error, or a `PurgeSweepError` mid-sweep — is caught at the per-item
+ *    boundary and turned into that id's `{ id, ok: false, error }` result,
+ *    with the rest of the batch continuing. `restoreOneCore`/`purgeOneCore`
+ *    already swallow their own internal errors into such a result, so this
+ *    per-item catch exists to cover anything that could escape *around*
+ *    those calls (e.g. a bridge error surfacing through `run()` itself).
  */
 import { createNativeRunner, type NativeBackendDeps } from "./native-runner";
 import { resolveProjectRoot } from "../../lib/models/project-root-resolver";
@@ -42,6 +63,10 @@ import type {
   TrashListing,
   TrashTransport,
 } from "../../lib/api/trash";
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
 
 /**
  * Builds the in-process trash transport for a native build.
@@ -65,26 +90,37 @@ export function createNativeTrashTransport(
     },
 
     async restore(projectId, ids): Promise<RestoreItemResult[]> {
+      // Case 1: resolve the project root once, up front. An invalid id
+      // rejects the whole call without attempting any per-id restore.
+      const projectRoot = resolveProjectRoot(projectId);
+      if (!projectRoot) {
+        throw new Error(`Invalid projectId: ${projectId}`);
+      }
+
       const results: RestoreItemResult[] = [];
       for (const id of ids) {
-        const result = await run(async () => {
-          const projectRoot = resolveProjectRoot(projectId);
-          if (!projectRoot) {
-            throw new Error(`Invalid projectId: ${projectId}`);
-          }
-          return restoreOneCore(projectRoot, id);
-        });
-        results.push(result);
+        try {
+          const result = await run(() => restoreOneCore(projectRoot, id));
+          results.push(result);
+        } catch (err: unknown) {
+          // Case 2/3: a per-item failure is caught here and reported for
+          // this id only; the batch continues to the next id.
+          results.push({ id, ok: false, error: errorMessage(err) });
+        }
       }
       return results;
     },
 
     async purge(projectId, selection): Promise<PurgeItemResult[]> {
+      // Case 1: resolve the project root once, up front — before even
+      // resolving `{ all: true }` to a concrete id list. An invalid id
+      // rejects the whole call without attempting any per-id purge.
+      const projectRoot = resolveProjectRoot(projectId);
+      if (!projectRoot) {
+        throw new Error(`Invalid projectId: ${projectId}`);
+      }
+
       const ids = await run(async () => {
-        const projectRoot = resolveProjectRoot(projectId);
-        if (!projectRoot) {
-          throw new Error(`Invalid projectId: ${projectId}`);
-        }
         if (
           !Array.isArray(selection) &&
           "all" in selection &&
@@ -101,14 +137,15 @@ export function createNativeTrashTransport(
 
       const results: PurgeItemResult[] = [];
       for (const id of ids) {
-        const result = await run(async () => {
-          const projectRoot = resolveProjectRoot(projectId);
-          if (!projectRoot) {
-            throw new Error(`Invalid projectId: ${projectId}`);
-          }
-          return purgeOneCore(projectRoot, id);
-        });
-        results.push(result);
+        try {
+          const result = await run(() => purgeOneCore(projectRoot, id));
+          results.push(result);
+        } catch (err: unknown) {
+          // Case 2/3: a per-item failure (including a `PurgeSweepError`
+          // that somehow escaped `purgeOneCore`'s own internal catch) is
+          // caught here and reported for this id only; the batch continues.
+          results.push({ id, ok: false, error: errorMessage(err) });
+        }
       }
       return results;
     },
