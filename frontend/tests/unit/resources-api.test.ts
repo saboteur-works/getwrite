@@ -16,15 +16,23 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("../../src/lib/api/transport-validation", () => ({
+  reportTransportValidationFailure: vi.fn(),
+}));
+
 import {
   copyResource,
   createResource,
   deleteResource,
+  httpResourcesTransport,
   renameResource,
   updateSidecar,
   uploadMediaResource,
 } from "../../src/lib/api/resources";
+import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 import type { AnyResource } from "../../src/lib/models/types";
+
+const mockedReport = vi.mocked(reportTransportValidationFailure);
 
 const directoryUuid = "aaaaaaaa-1111-4111-8111-111111111111";
 const resourceId = "resource-1";
@@ -197,5 +205,147 @@ describe("resources.ts CRUD functions (T9c regression)", () => {
     expect(body.projectId).toBe(directoryUuid);
     expect(body).not.toHaveProperty("projectPath");
     expect(body).not.toHaveProperty("projectRoot");
+  });
+});
+
+/**
+ * Task 2 (Feature 50): `httpResourcesTransport.fetchContent` and
+ * `.fetchRevisionContent` validate their response body against
+ * `ResourceContentResponseSchema`/`ResourceRevisionContentResponseSchema`
+ * before returning it, reporting through the mocked
+ * `reportTransportValidationFailure` (never logging the raw body — these
+ * bodies can carry server-decrypted user prose on an encrypted project) and
+ * falling back to their pre-existing `null` result on failure, exactly as on
+ * a non-ok HTTP response.
+ */
+describe("resources.ts transport-boundary validation (Feature 50, Task 2)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    mockedReport.mockClear();
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    consoleWarnSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
+  describe("fetchContent", () => {
+    it("returns null and reports validation failure with a Zod issues array when the body fails ResourceContentResponseSchema", async () => {
+      const rawSecretProse = "server-decrypted prose that must never leak";
+      fetchMock.mockResolvedValue(
+        jsonResponse({ resourceContent: { tipTapContent: rawSecretProse } }),
+      );
+
+      const result = await httpResourcesTransport.fetchContent(
+        directoryUuid,
+        resourceId,
+      );
+
+      expect(result).toBeNull();
+      expect(mockedReport).toHaveBeenCalledTimes(1);
+      const [callSite, issues] = mockedReport.mock.calls[0];
+      expect(callSite).toBe("resources.fetchContent");
+      expect(Array.isArray(issues)).toBe(true);
+
+      // Hard security requirement: the raw body must never reach the
+      // reporter (only Zod issues) or any console output.
+      expect(JSON.stringify(issues)).not.toContain(rawSecretProse);
+      expect(consoleWarnSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining(rawSecretProse),
+      );
+      expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining(rawSecretProse),
+      );
+    });
+
+    it("resolves normally with a well-formed body", async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse({
+          resourceContent: {
+            tipTapContent: { type: "doc", content: [] },
+            plaintextContent: "hello",
+          },
+          revisions: [{ id: "rev-1", isCanonical: true }],
+        }),
+      );
+
+      const result = await httpResourcesTransport.fetchContent(
+        directoryUuid,
+        resourceId,
+      );
+
+      expect(result).toEqual({
+        resourceContent: {
+          tipTapContent: { type: "doc", content: [] },
+          plaintextContent: "hello",
+        },
+        revisions: [{ id: "rev-1", isCanonical: true }],
+      });
+      expect(mockedReport).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("fetchRevisionContent", () => {
+    // `ResourceRevisionContentResponseSchema`'s `content` field is
+    // deliberately `z.unknown().optional()` (see `schemas.ts`'s doc
+    // comment) — a wrongly-typed `content` value (e.g. a number) is
+    // intentionally accepted by the schema itself and instead falls through
+    // to the existing `typeof result.data.content === "string"` narrowing,
+    // which already returns `null` for it without ever calling the
+    // reporter — unchanged pre-existing behavior. To exercise an actual
+    // schema *rejection*, the response envelope itself must not be a plain
+    // object at all.
+    it("returns null and reports validation failure with a Zod issues array when the response body isn't an object the schema accepts", async () => {
+      fetchMock.mockResolvedValue(jsonResponse(["not", "an", "object"]));
+
+      const result = await httpResourcesTransport.fetchRevisionContent(
+        resourceId,
+        directoryUuid,
+        "rev-1",
+      );
+
+      expect(result).toBeNull();
+      expect(mockedReport).toHaveBeenCalledTimes(1);
+      const [callSite, issues] = mockedReport.mock.calls[0];
+      expect(callSite).toBe("resources.fetchRevisionContent");
+      expect(Array.isArray(issues)).toBe(true);
+      expect(JSON.stringify(issues)).not.toContain("not an object");
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    it("returns null (matching the pre-existing typeof-narrowing fallback, without reporting) when content is a well-formed-per-schema but non-string value", async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ content: 12345 }));
+
+      const result = await httpResourcesTransport.fetchRevisionContent(
+        resourceId,
+        directoryUuid,
+        "rev-1",
+      );
+
+      expect(result).toBeNull();
+      expect(mockedReport).not.toHaveBeenCalled();
+    });
+
+    it("resolves normally with a well-formed string content body", async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ content: "revision text" }));
+
+      const result = await httpResourcesTransport.fetchRevisionContent(
+        resourceId,
+        directoryUuid,
+        "rev-1",
+      );
+
+      expect(result).toBe("revision text");
+      expect(mockedReport).not.toHaveBeenCalled();
+    });
   });
 });

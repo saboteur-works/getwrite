@@ -1,6 +1,10 @@
 import type { AnyResource, Folder, TipTapDocument } from "../models/types";
 import { createTransport } from "../../store/transport/create-transport";
-import { ResourceResponseSchema } from "./schemas";
+import {
+  ResourceContentResponseSchema,
+  ResourceResponseSchema,
+  ResourceRevisionContentResponseSchema,
+} from "./schemas";
 import { reportTransportValidationFailure } from "./transport-validation";
 
 /**
@@ -288,7 +292,16 @@ export const httpResourcesTransport: ResourcesTransport = {
       body: JSON.stringify({ projectId, resourceId }),
     });
     if (!response.ok) return null;
-    return (await response.json()) as ResourceContentResponse;
+    const body = await response.json();
+    const result = ResourceContentResponseSchema.safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure(
+        "resources.fetchContent",
+        result.error.issues,
+      );
+      return null;
+    }
+    return result.data as ResourceContentResponse;
   },
 
   async fetchRevisionContent(resourceId, projectId, revisionId) {
@@ -297,8 +310,16 @@ export const httpResourcesTransport: ResourcesTransport = {
       `/api/resource/revision/${resourceId}?${params.toString()}`,
     );
     if (!response.ok) return null;
-    const payload = (await response.json()) as { content?: unknown };
-    return typeof payload.content === "string" ? payload.content : null;
+    const body = await response.json();
+    const result = ResourceRevisionContentResponseSchema.safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure(
+        "resources.fetchRevisionContent",
+        result.error.issues,
+      );
+      return null;
+    }
+    return typeof result.data.content === "string" ? result.data.content : null;
   },
 
   async patchRevisionContent(resourceId, projectId, revisionId, content) {
