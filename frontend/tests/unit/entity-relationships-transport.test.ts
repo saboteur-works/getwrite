@@ -76,6 +76,15 @@ describe("entity relationships transport — web runtime — list", () => {
 
     await expect(listEntityRelationships("project-1")).resolves.toEqual([]);
   });
+
+  it("resolves to [] when an array element violates the schema (e.g. relationshipType is a number)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [{ ...SAMPLE_EDGE, relationshipType: 42 }],
+    } as Response);
+
+    await expect(listEntityRelationships("project-1")).resolves.toEqual([]);
+  });
 });
 
 describe("entity relationships transport — web runtime — listOrThrow (FR-26)", () => {
@@ -122,6 +131,15 @@ describe("entity relationships transport — web runtime — listOrThrow (FR-26)
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ not: "an array" }),
+    } as Response);
+
+    await expect(listEntityRelationshipsOrThrow("project-1")).rejects.toThrow();
+  });
+
+  it("REJECTS when an array element violates the schema (e.g. relationshipType is a number)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [{ ...SAMPLE_EDGE, relationshipType: 42 }],
     } as Response);
 
     await expect(listEntityRelationshipsOrThrow("project-1")).rejects.toThrow();
