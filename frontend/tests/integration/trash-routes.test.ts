@@ -21,6 +21,7 @@ import {
 } from "../../src/lib/models/resource-factory";
 import { writeResourceToFile } from "../../src/lib/models/resource-persistence";
 import {
+  PurgeSweepError,
   purgeResourceSteps,
   softDeleteFolder,
   softDeleteResource,
@@ -373,6 +374,108 @@ describe("POST /api/project/[project-id]/trash/purge", () => {
 
         // ...but the failed item's trashed sidecar remains, since its sweep
         // failed before reaching that step.
+        expect(
+          await fs
+            .stat(
+              path.join(
+                projectPath,
+                ".trash",
+                "meta",
+                `resource-${broken.id}.meta.json`,
+              ),
+            )
+            .then(
+              () => true,
+              () => false,
+            ),
+        ).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  });
+
+  it("surfaces a mid-sweep PurgeSweepError as that item's { ok: false, error } entry, continuing the rest of the batch", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const good = createTextResource({ name: "Keep Gone", plainText: "x" });
+      await writeResourceToFile(projectPath, good);
+      await softDeleteResource(projectPath, good.id);
+
+      const broken = createTextResource({
+        name: "Broken Mid-Sweep",
+        plainText: "x",
+      });
+      await writeResourceToFile(projectPath, broken);
+      await softDeleteResource(projectPath, broken.id);
+
+      // Mirror trash-purge-sweep.test.ts's own vi.spyOn substitution on the
+      // exported purgeResourceSteps object, but at a later step
+      // ("purgeRevisions") than trash-routes.test.ts's other purge test uses,
+      // so purgeResource throws an actual PurgeSweepError (rather than the
+      // plain Error a mocked step directly throwing would produce) out
+      // through the real POST route handler.
+      const spy = vi
+        .spyOn(purgeResourceSteps, "purgeRevisions")
+        .mockImplementation(async (_projectRoot, resourceId) => {
+          if (resourceId === broken.id) {
+            throw new Error("simulated mid-sweep failure");
+          }
+        });
+
+      try {
+        const { POST } =
+          await import("../../app/api/project/[project-id]/trash/purge/route");
+        const res = await POST(
+          jsonRequest(`http://localhost/api/project/${projectId}/trash/purge`, {
+            ids: [good.id, broken.id],
+          }) as never,
+          { params: Promise.resolve({ "project-id": projectId }) },
+        );
+
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as {
+          results: { id: string; ok: boolean; error?: string }[];
+        };
+        expect(body.results).toHaveLength(2);
+
+        // The rest of the batch completes: `good`'s purge succeeds despite
+        // `broken`'s sweep failing.
+        const goodResult = body.results.find((r) => r.id === good.id);
+        expect(goodResult?.ok).toBe(true);
+        expect(goodResult?.error).toBeUndefined();
+
+        // `broken`'s entry surfaces the actual PurgeSweepError's message —
+        // naming the failed step and the item — not a generic failure.
+        const brokenResult = body.results.find((r) => r.id === broken.id);
+        expect(brokenResult?.ok).toBe(false);
+        const expectedMessage = new PurgeSweepError(
+          "revisions",
+          broken.id,
+          new Error("simulated mid-sweep failure"),
+        ).message;
+        expect(brokenResult?.error).toBe(expectedMessage);
+
+        // The successful item is gone from trash...
+        expect(
+          await fs
+            .stat(
+              path.join(
+                projectPath,
+                ".trash",
+                "meta",
+                `resource-${good.id}.meta.json`,
+              ),
+            )
+            .then(
+              () => true,
+              () => false,
+            ),
+        ).toBe(false);
+
+        // ...but the failed item's trashed sidecar remains, since its sweep
+        // stopped before reaching the sidecar-removal step, and it stays
+        // available for a retried purge (FR-18).
         expect(
           await fs
             .stat(
