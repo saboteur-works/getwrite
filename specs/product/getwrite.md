@@ -1379,32 +1379,61 @@ sites whose response shapes already have a reusable Zod schema in
 across 2 modules (`resources.ts` x3, `project-types.ts` x1). Tier 2 — sites
 whose shapes are API-only with no existing schema — is larger than
 originally framed: about 22 sites across 12 modules, of which only about 5
-sites (the four shapes named below) are scheduled now; the remaining ~17
-sites across 9 further modules (`tags`, `mentions`, `compile`, `export`,
-`encryption`, `preferences`, `entity-cooccurrence`,
-`entity-mention-counts`, `resource-excerpts`) are tracked as a separately
-scheduled follow-up beyond that. The four named Tier 2 shapes scheduled now
-are `ProjectApiEntry`, `EntityRelationshipEdge`,
+sites (the four shapes named below) are scheduled now. The remaining
+deferred remainder was re-measured on 2026-09-17 (see Evidence) at 21
+unvalidated success-path sites across 12 modules: `resources.ts` (3),
+`entity-relationships.ts` (3), `editor-config.ts` (2), `tags.ts` (2),
+`mentions.ts` (2), `compile.ts` (2), `export.ts` (2), `encryption.ts` (1),
+`preferences.ts` (1), `entity-cooccurrence.ts` (1),
+`entity-mention-counts.ts` (1), `resource-excerpts.ts` (1). Three of these
+modules — `resources.ts`, `entity-relationships.ts`, `editor-config.ts` —
+were not named in the original 2026-09-16 deferred list above; of those,
+`resources.ts` and `entity-relationships.ts` are modules Feature 48 itself
+partially validated (it validated `resources.ts`'s create/uploadMedia/copy
+paths and left its three read paths bare, and validated
+`entity-relationships.ts`'s `list`/`listOrThrow` and left its three write
+paths bare). This remainder is tracked as a separately scheduled follow-up
+beyond the four Tier 2 shapes scheduled now. The four named Tier 2 shapes
+scheduled now are `ProjectApiEntry`, `EntityRelationshipEdge`,
 `TrashedResourceEntry`/`TrashedFolderEntry`, `EntityAliasTable`; note that
 `TrashedResourceEntry`/`TrashedFolderEntry` contributes zero unchecked call
 sites in practice, since `trash.ts` already guards all three of its call
 sites with a narrow-then-throw check. This is a deliberate staged rollout,
 so the invariant is understood as not yet fully true of the codebase while
-the deferred remainder is outstanding.
+the deferred remainder is outstanding. One untested hypothesis for why the
+2026-09-16 deferred-list count (~17 sites/9 modules) differed from the
+2026-09-17 re-measurement (21 sites/12 modules): the original pass may have
+counted modules lacking an existing Zod schema rather than sites lacking a
+runtime check, which would miss a module like `editor-config.ts` that was
+never assigned to either tier. Re-running the original grep against the
+pre-Feature-48 tree would settle which explanation is correct.
 **Impact:** A retroactive reading implies remediation work across 12
 existing Tier-2 modules (plus the 2 Tier-1 modules) before the invariant
 can be said to hold; a forward-only reading leaves the concrete failure
 already observed (`openProject`) unaddressed unless it is separately
 scheduled.
 **Owner:** Product owner.
-**Evidence:** Measured at 2026-09-16: of 39 `response.json()` calls across
-the 17 modules in `frontend/src/lib/api/`, 26 return their parsed body via
-a bare `as` cast with no runtime check on the success path; 5 (`trash.ts`
-x3, `entity-relationships.ts` x2) already narrow the parsed body with
-`typeof`/`Array.isArray` guards and throw on a malformed shape before
-casting; 3 cast an error-body read (`encryption.ts:44`, `preferences.ts:63`,
-`resources.ts:201`); 5 read an error body with no cast (`projects.ts` x3,
-`editor-config.ts` x2).
+**Evidence:** Measured at 2026-09-16 (pre-Feature-48): of 39
+`response.json()` calls across the 17 modules in `frontend/src/lib/api/`,
+26 return their parsed body via a bare `as` cast with no runtime check on
+the success path; 5 (`trash.ts` x3, `entity-relationships.ts` x2) already
+narrow the parsed body with `typeof`/`Array.isArray` guards and throw on a
+malformed shape before casting; 3 cast an error-body read
+(`encryption.ts:44`, `preferences.ts:63`, `resources.ts:201`); 5 read an
+error body with no cast (`projects.ts` x3, `editor-config.ts` x2).
+Re-measured at 2026-09-17, on `main` at commit 35353595, after Feature 48
+shipped: every `.json()` call site in `frontend/src/lib/api/` was
+enumerated and classified by whether its success path returns a cast body
+with no runtime check. The remaining unvalidated success-path sites total
+21 across 12 modules: `resources.ts` (3: `:291`, `:300`, `:313`),
+`entity-relationships.ts` (3: `:180`, `:198`, `:216`), `editor-config.ts`
+(2: `:59`, `:74`), `tags.ts` (2), `mentions.ts` (2), `compile.ts` (2),
+`export.ts` (2), `encryption.ts` (1: `:49`), `preferences.ts` (1),
+`entity-cooccurrence.ts` (1), `entity-mention-counts.ts` (1),
+`resource-excerpts.ts` (1). Separately, and not part of the 21, three
+error-body casts remain: `encryption.ts:44`, `resources.ts:209`, and
+`preferences.ts:63` (a dual-purpose read whose success return is counted
+in the 21 above).
 
 **OQ-34: Does replacing the native Trash stub (OQ-29's deferred work)
 belong in the same unit of work as extracting the shared `*Core` module
