@@ -317,7 +317,7 @@ Task 2 and Tasks 3-11 together, not as separately mergeable units.
 vice versa) converts today's silent-wrong-data bug into a silent-missing-data
 bug across ten call sites — see the Sequencing note at the top of this
 document. Do not skip this gate under time pressure.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 13: Centralised route mapping (`with-storage-context.ts`)
 **What:** Catch a propagated `ProjectLockedError`/`MissingProjectKeyError`
@@ -343,7 +343,7 @@ guarantee (a route hitting the *routed* `workspace-adapter.ts` path under
 lock returns 4xx) is only observable once Task 2 (and ideally Task 12) has
 landed. Land this task's code change whenever convenient; treat its
 end-to-end verification as blocked on Task 12.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 14: Fix the nine confirmed-swallowing routes (FR-14)
 **What:** Fix each of the nine routes already confirmed (2026-09-17) to
@@ -373,7 +373,7 @@ catch for `WrongPassphraseError`/`NoKeyringError`/`EncryptionUnavailableError`
 that this task adds a branch to, not replaces). `GET /api/projects` is
 among these nine and is the app's first request — treat it as the
 highest-priority file in this task if it must be split.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 15: Classify the remaining ~9 unclassified routes (FR-15)
 **What:** Investigation task: for each of the roughly nine route files under
@@ -396,7 +396,7 @@ review already enumerated all 36 route files with certainty, this task may
 turn out to have a shorter list to check than "~9" — reconcile the actual
 count against the spec's total of 36 (18 clean + 9 confirmed-swallowing +
 ~9 unclassified) before reporting done.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 16: Fix any routes found swallowing in Task 15
 **What:** Apply the same `isLockedAccessError` rethrow fix (as Task 14) to
@@ -416,7 +416,7 @@ must not be treated as a bug in the estimate.
 observed between Task 14's confirmed set and the total surveyed so far; if
 Task 15 finds more, re-estimate before starting rather than absorbing scope
 silently.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ## Summary
 - Total tasks: 16
