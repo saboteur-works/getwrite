@@ -28,7 +28,7 @@ or import the models schema file except for the one named type. FR-2's
 `ProjectTypeSchema` is reused as-is from `models/schemas.ts` and is NOT
 redefined here (see Task 4).
 **POS:** task_4acbe145
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Add the shared transport-validation-failure helper
 **What:** Adds a new synchronous helper (e.g.
@@ -52,7 +52,7 @@ resembling the input issues' data payload (only paths/messages) is worth
 adding alongside this task, though the full call-site regression coverage
 lands with Tasks 3-8.
 **POS:** task_8618bc70
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Validate `resources.ts`'s create/uploadMedia/copy against the composed resource schema (FR-1, FR-8, FR-9)
 **What:** Adds runtime validation of the parsed response body in
@@ -79,7 +79,7 @@ this task adds the new failure mode without touching the non-ok path. Tests
 stay in the `node` vitest project per OQ-6 (no `@vitest-environment jsdom`
 docblock needed).
 **POS:** task_0cf10ff9
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Validate `project-types.ts`'s list against `ProjectTypeSchema` (FR-2, FR-8, FR-9)
 **What:** Adds runtime validation of `httpProjectTypesTransport.list`'s
@@ -102,7 +102,7 @@ not a false-rejection risk here since the server already round-trips
 through this same schema before responding — do not relax or copy the
 schema.
 **POS:** task_940301b3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Validate `projects.ts`'s list/open/create against the new `ProjectApiEntry` schema (FR-3, FR-8, FR-9)
 **What:** Adds runtime validation of `httpProjectsTransport.list`,
@@ -125,7 +125,7 @@ call rejects rather than resolving with a malformed value, and
 **Notes:** This is the task carrying the FU-10 regression test called out
 in the assignment — do not fold that regression test into Task 3 or Task 4.
 **POS:** task_85329a43
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Validate `entity-relationships.ts`'s list and listOrThrow against the new `EntityRelationshipEdge[]` schema (FR-4, FR-5, FR-8, FR-9)
 **What:** Adds runtime validation of `httpEntityRelationshipsTransport.list`
@@ -153,7 +153,7 @@ and `pnpm --filter getwrite-frontend test:ci`/`typecheck`/`lint` pass.
 **Notes:** Only `list` and `listOrThrow` are in scope per FR-4/FR-5 — do
 not touch `create`, `remove`, or `removeForEntity` in this task.
 **POS:** task_41411e90
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Validate `entity-alias-table.ts`'s getEntityAliasTable against the new `EntityAliasTable` schema (FR-6, FR-8, FR-9)
 **What:** Adds runtime validation of
@@ -173,7 +173,7 @@ degraded fallback is returned, and
 **Estimate:** 3
 **Notes:** None.
 **POS:** task_a2ca12e0
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Confirm `trash.ts` is untouched and native backends carry no validation logic (FR-7, FR-10)
 **What:** A verification-only task closing FR-7 and FR-10: confirms
@@ -200,7 +200,7 @@ the other tasks land, not implemented standalone. If either check fails,
 the fix belongs in whichever of Tasks 3-7 introduced the regression, not
 in this task.
 **POS:** task_eb8558ad
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Full-suite gate check
 **What:** Runs the repository's three-part gate
@@ -221,7 +221,7 @@ Tasks 3-7.
 **Estimate:** 1
 **Notes:** None.
 **POS:** task_06e18f16
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 9
