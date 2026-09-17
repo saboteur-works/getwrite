@@ -1,5 +1,9 @@
+import { z } from "zod";
+
 import type { ProjectTypeDefinition } from "../../types/project-types";
+import { ProjectTypeSchema } from "../models/schemas";
 import { createTransport } from "../../store/transport/create-transport";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 // ---------------------------------------------------------------------------
 // Transport collapse (ADR-021 Phase 2, Task 5)
@@ -42,7 +46,16 @@ export const httpProjectTypesTransport: ProjectTypesTransport = {
     if (!response.ok) {
       throw new Error(`Failed to load project types (${response.status})`);
     }
-    return (await response.json()) as ProjectTypeDefinition[];
+    const body: unknown = await response.json();
+    const result = z.array(ProjectTypeSchema).safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure(
+        "project-types.list",
+        result.error.issues,
+      );
+      throw new Error("Invalid project types response shape");
+    }
+    return result.data as ProjectTypeDefinition[];
   },
 };
 
