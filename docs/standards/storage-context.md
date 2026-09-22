@@ -89,6 +89,16 @@ As of ADR-018, the `tenantRoot` `withStorageContext` binds is not a hardcoded
   and `frontend/src/lib/models/tenant-path.ts` for the validation/derivation
   logic.
 
+**Locked-access mapping.** As of Feature 54, `withStorageContext` also maps a
+handler's propagated `ProjectLockedError`/`MissingProjectKeyError`
+(`models/locked-access.ts`) to a 401/409 JSON response rather than letting it
+escape as an unhandled rejection or a generic 500 — see
+`docs/standards/security.md`'s Fail Closed section. A route author does not
+need to catch these itself; a model-layer function that already rethrows one
+(per that standard) gets the mapping for free as long as the route is wrapped
+in `withStorageContext`. Any other error, including a corrupt-marker
+`ProjectMarkerFormatError`, still propagates unchanged — there is no catch-all.
+
 Identity itself comes from the pluggable `IdentitySource` interface
 (`frontend/app/api/_tenant/identity-source.ts`), selected via
 `getIdentitySource()` — the single swap point for the auth provider. As of

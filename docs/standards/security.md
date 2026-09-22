@@ -21,6 +21,15 @@ refuses rather than degrades. Follow it.
   deployment (`crypto/encryption-availability.ts`). A client-only gate hides UI
   while leaving the code path reachable — that is not a gate.
 - An invalid `projectId` is rejected, not coerced (`models/project-path.ts`).
+- A locked or keyless encrypted project fails closed rather than degrading. A
+  read or write reaching an encrypted project with no usable key throws
+  `ProjectLockedError`/`MissingProjectKeyError` (`models/crypto/adapter-selection.ts`,
+  `models/workspace-adapter.ts`'s marker-first `adapterFor`) instead of
+  returning raw ciphertext or writing plaintext into a sealed project. A
+  model-layer catch site that would otherwise degrade to `{}`/`null`/`[]`
+  must test `models/locked-access.ts`'s `isLockedAccessError(error)` first and
+  rethrow rather than swallow; `with-storage-context.ts` maps the two errors
+  to HTTP 401/409 respectively at the route boundary.
 
 If you cannot determine that an operation is permitted, deny it.
 
