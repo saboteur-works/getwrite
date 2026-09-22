@@ -1,5 +1,10 @@
 import type { MarkdownConstructWarning } from "../export/types";
 import { createTransport } from "../../store/transport/create-transport";
+import {
+  MarkdownCompileResultSchema,
+  TextCompileResultSchema,
+} from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 export interface CompileBody {
   /**
@@ -118,12 +123,24 @@ export const httpCompileTransport: CompileTransport = {
 
   async text(body) {
     const response = await postCompileRequest("text", body);
-    return (await response.json()) as TextCompileResult;
+    const json: unknown = await response.json();
+    const parsed = TextCompileResultSchema.safeParse(json);
+    if (!parsed.success) {
+      reportTransportValidationFailure("compile.text", parsed.error.issues);
+      throw new Error("Compile failed: malformed response");
+    }
+    return parsed.data;
   },
 
   async markdown(body) {
     const response = await postCompileRequest("markdown", body);
-    return (await response.json()) as MarkdownCompileResult;
+    const json: unknown = await response.json();
+    const parsed = MarkdownCompileResultSchema.safeParse(json);
+    if (!parsed.success) {
+      reportTransportValidationFailure("compile.markdown", parsed.error.issues);
+      throw new Error("Compile failed: malformed response");
+    }
+    return parsed.data;
   },
 };
 
