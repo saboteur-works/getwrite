@@ -11,6 +11,7 @@ import {
   exportPlaintextCopy,
   lockWorkspace,
 } from "../../src/store/cryptoSlice";
+import { resolveRuntime } from "../../src/store/transport/runtime";
 import EncryptionSettings from "./EncryptionSettings";
 
 /**
@@ -24,6 +25,20 @@ import EncryptionSettings from "./EncryptionSettings";
  * Renders nothing until lock state is known, when the deployment cannot offer
  * encryption (FR23), or when no project is open — there is nothing to encrypt in
  * any of those cases.
+ *
+ * Also renders nothing on the native runtime, deliberately. Before this gate,
+ * the panel's absence there was an accident of two other things: the native
+ * build strips `/api/encryption`, so `checkWorkspaceLock`'s fetch always
+ * rejects, and `cryptoSlice.ts` has no `.rejected` case for that thunk, so
+ * `lockStatus` stayed stuck at its initial `"unknown"` — which happens to also
+ * be one of this panel's own null-render states. Native has no encrypting
+ * storage adapter wired in anywhere (`native-bootstrap.ts` binds the raw
+ * `capacitorFsAdapter`, no native transport backend implements an encryption
+ * path, and `lib/api/encryption.ts` does not go through `createTransport`).
+ * If that native storage support is ever wired up, this gate must be
+ * reconsidered as part of that work — not simply deleted — since removing it
+ * without native encrypt/decrypt support in place would let a user encrypt a
+ * project on-device with no way to unlock or recover it.
  */
 export default function ProjectEncryptionPanel(): JSX.Element | null {
   const dispatch = useAppDispatch();
@@ -54,6 +69,7 @@ export default function ProjectEncryptionPanel(): JSX.Element | null {
   // A second fetch here would fire on every settings render, and would make this
   // panel a network dependency of every screen that hosts it.
   if (
+    resolveRuntime() === "native" ||
     lockStatus === "unknown" ||
     lockStatus === "unavailable" ||
     !directoryId
