@@ -21,6 +21,11 @@ import {
 import { getEntityMentionedIn } from "../../src/lib/models/mentions-core";
 import { generateUUID } from "../../src/lib/models/uuid";
 import type { TipTapDocument } from "../../src/lib/models/types";
+import { createKeyring } from "../../src/lib/models/crypto/keyring";
+import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
+import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
+import { isLockedAccessError } from "../../src/lib/models/locked-access";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 
 const emptyDoc = (): TipTapDocument => ({
   type: "doc",
@@ -156,5 +161,48 @@ describe("isLinked via getEntityMentionedIn — nested userMetadata refs (backli
       isLinked: true,
       isMentioned: false,
     });
+  });
+});
+
+describe("loadMentionIndex — locked-access fail-closed (Feature 54, Task 6)", () => {
+  const previousAdapter = () => setStorageAdapter(createMemoryAdapter());
+
+  afterEach(() => {
+    previousAdapter();
+  });
+
+  it("rejects with a locked-access error instead of degrading to the empty-index fallback when the project is locked", async () => {
+    const base = createMemoryAdapter();
+    const tenantRoot = "/ws";
+    const projectId = "55555555-5555-4555-8555-555555555555";
+    const projectRoot = `${tenantRoot}/${projectId}`;
+    await base.mkdir(projectRoot, { recursive: true });
+
+    const keyring = await createKeyring(
+      "correct horse battery staple",
+      TEST_ARGON2_PARAMS,
+    );
+    await keyring.addProject(projectId);
+    await writeProjectMarker(projectRoot, base);
+
+    // The project is encrypted (marker present) but the keyring is locked —
+    // exactly the state a real locked project is in on disk.
+    keyring.lock();
+
+    setStorageAdapter(workspaceEncryptionAdapter(base, tenantRoot, keyring));
+
+    const rejection = loadMentionIndex(projectRoot);
+    await expect(rejection).rejects.toBeTruthy();
+    await rejection.catch((err: unknown) => {
+      expect(isLockedAccessError(err)).toBe(true);
+    });
+  });
+
+  it("still degrades to the empty index when the mentions file is simply missing (unencrypted project)", async () => {
+    const base = createMemoryAdapter();
+    setStorageAdapter(base);
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-mi-lock-"));
+
+    await expect(loadMentionIndex(projectRoot)).resolves.toEqual({});
   });
 });

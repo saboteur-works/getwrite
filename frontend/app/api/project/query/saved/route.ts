@@ -27,6 +27,7 @@ import {
   UnknownSavedQueryActionError,
 } from "../../../../../src/lib/models/saved-query-dispatch-core";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 // ─── Request shapes ───────────────────────────────────────────────────────────
@@ -81,6 +82,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     const result = await dispatchSavedQueryAction(projectPath, body);
     return NextResponse.json(result);
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     if (error instanceof UnknownSavedQueryActionError) {
       return NextResponse.json(
         {

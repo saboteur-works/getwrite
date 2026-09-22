@@ -11,13 +11,29 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { updateDefaultRevisionName } from "../../src/lib/models/revision-settings";
 import { generateUUID } from "../../src/lib/models/uuid";
 import type { Project } from "../../src/lib/models/types";
 import { removeDirRetry } from "./helpers/fs-utils";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+
+// Feature 54, Task 14: a partial mock of project-preferences-core so a single
+// test can force `saveRevisionSettingsCore` to reject with a locked-access
+// error, while every other test in this file keeps exercising the real
+// implementation.
+vi.mock("../../src/lib/models/project-preferences-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/project-preferences-core")
+  >("../../src/lib/models/project-preferences-core");
+  return {
+    ...actual,
+    saveRevisionSettingsCore: vi.fn(actual.saveRevisionSettingsCore),
+  };
+});
+import { saveRevisionSettingsCore } from "../../src/lib/models/project-preferences-core";
 
 async function makeTmpProject() {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-rev-settings-"));
@@ -198,6 +214,48 @@ describe("POST /api/project/revision-settings (projectId-based)", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
+    } finally {
+      process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+      await removeDirRetry(projectsDir);
+    }
+  });
+});
+
+describe("POST /api/project/revision-settings — locked-access rethrow (Feature 54, Task 14, FR-14)", () => {
+  it("maps a ProjectLockedError from saveRevisionSettingsCore to 401 instead of the route's fixed 400 shape", async () => {
+    const projectsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-rev-settings-locked-"),
+    );
+    const projectId = generateUUID();
+    const projectPath = path.join(projectsDir, projectId);
+    await fs.mkdir(projectPath, { recursive: true });
+    const proj = createProject({ name: "route-test" });
+    await fs.writeFile(
+      path.join(projectPath, PROJECT_FILENAME),
+      JSON.stringify(proj, null, 2),
+      "utf8",
+    );
+
+    vi.mocked(saveRevisionSettingsCore).mockRejectedValueOnce(
+      new ProjectLockedError("11111111-1111-4111-8111-111111111111"),
+    );
+
+    const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    try {
+      const { POST } =
+        await import("../../app/api/project/revision-settings/route");
+      const res = await POST(
+        new Request("http://localhost/api/project/revision-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId,
+            defaultRevisionName: "Route Draft",
+          }),
+        }) as never,
+      );
+      expect(res.status).toBe(401);
     } finally {
       process.env.GETWRITE_PROJECTS_DIR = originalEnv;
       await removeDirRetry(projectsDir);

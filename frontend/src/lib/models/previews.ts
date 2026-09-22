@@ -2,6 +2,7 @@ import path from "node:path";
 import type { UUID, TextResource, ImageResource, AudioResource } from "./types";
 import { mkdir, readFile, writeFile } from "./io";
 import { withMetaLock } from "./meta-locks";
+import { isLockedAccessError } from "./locked-access";
 
 export type ImagePreview = {
   type: "image";
@@ -53,7 +54,8 @@ export async function loadPreview(
   try {
     const raw = await readFile(p, "utf8");
     return JSON.parse(raw) as Preview;
-  } catch {
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
     return null;
   }
 }

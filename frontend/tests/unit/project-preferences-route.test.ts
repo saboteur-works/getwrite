@@ -12,9 +12,25 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Feature 54, Task 16: a partial mock of project-preferences-core so a single
+// test can force `saveProjectPreferencesCore` to reject with a locked-access
+// error, while every other test in this file keeps exercising the real
+// implementation.
+vi.mock("../../src/lib/models/project-preferences-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/project-preferences-core")
+  >("../../src/lib/models/project-preferences-core");
+  return {
+    ...actual,
+    saveProjectPreferencesCore: vi.fn(actual.saveProjectPreferencesCore),
+  };
+});
 
 import { POST } from "../../app/api/project/preferences/route";
+import { saveProjectPreferencesCore } from "../../src/lib/models/project-preferences-core";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { generateUUID } from "../../src/lib/models/uuid";
@@ -106,5 +122,26 @@ describe("POST /api/project/preferences", () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe("Invalid projectId");
+  });
+
+  it("maps a ProjectLockedError from saveProjectPreferencesCore to 401 instead of the route's fixed 500 shape (Feature 54, Task 16)", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    await writeProject(projectsDir, projectId);
+
+    vi.mocked(saveProjectPreferencesCore).mockRejectedValueOnce(
+      new ProjectLockedError(projectId),
+    );
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        preferencesRequest({
+          projectId,
+          preferences: { colorMode: "dark" },
+        }) as never,
+      ),
+    );
+
+    expect(res.status).toBe(401);
   });
 });

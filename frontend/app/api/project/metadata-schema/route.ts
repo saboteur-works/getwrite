@@ -33,6 +33,7 @@ import type {
   MetadataSchema,
 } from "../../../../src/lib/models/types";
 import { resolveProjectPath } from "../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 // ---------------------------------------------------------------------------
@@ -227,6 +228,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     const schema = await dispatchMetadataSchemaAction(projectPath, body);
     return okSchema(schema);
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     if (error instanceof InvalidFieldKeyError) {
       return invalidFieldKey(error.key);
     }
@@ -280,6 +284,9 @@ async function handleGet(request: NextRequest): Promise<Response> {
     const result = await fetchFieldValues(projectPath, fieldKey);
     return NextResponse.json(result);
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     return NextResponse.json(
       {
         error: "Failed to enumerate field values",

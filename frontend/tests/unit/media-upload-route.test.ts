@@ -15,9 +15,25 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Feature 54, Task 14: a partial mock of resource-crud-core so a single test
+// can force `uploadMediaResourceCore` to reject with a locked-access error,
+// while every other test in this file keeps exercising the real
+// implementation.
+vi.mock("../../src/lib/models/resource-crud-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/resource-crud-core")
+  >("../../src/lib/models/resource-crud-core");
+  return {
+    ...actual,
+    uploadMediaResourceCore: vi.fn(actual.uploadMediaResourceCore),
+  };
+});
 
 import { POST } from "../../app/api/resource/upload/route";
+import { uploadMediaResourceCore } from "../../src/lib/models/resource-crud-core";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 import { generateUUID } from "../../src/lib/models/uuid";
 import type { AnyResource } from "../../src/lib/models/types";
 import { removeDirRetry } from "./helpers/fs-utils";
@@ -224,6 +240,29 @@ describe("POST /api/resource/upload (projectId-based)", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
+    });
+  });
+});
+
+describe("POST /api/resource/upload — locked-access rethrow (Feature 54, Task 14, FR-14)", () => {
+  it("maps a ProjectLockedError from uploadMediaResourceCore to 401 instead of the route's fixed 500 shape", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      vi.mocked(uploadMediaResourceCore).mockRejectedValueOnce(
+        new ProjectLockedError("11111111-1111-4111-8111-111111111111"),
+      );
+
+      const form = new FormData();
+      form.append(
+        "file",
+        new File([ONE_PX_PNG], "cover.png", { type: "image/png" }),
+      );
+      form.append("projectId", projectId);
+
+      const res = await POST(uploadRequest(form));
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.error).not.toBe("Failed to upload media");
     });
   });
 });

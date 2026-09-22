@@ -5,6 +5,7 @@ import {
   MissingProjectFieldsError,
   ProjectTypeNotFoundError,
 } from "../../../src/lib/models/project-crud-core";
+import { isLockedAccessError } from "../../../src/lib/models/locked-access";
 import { withStorageContext } from "../_tenant/with-storage-context";
 
 /**
@@ -15,6 +16,12 @@ async function getProjects() {
     const projects = await listProjectsCore();
     return NextResponse.json(projects);
   } catch (err) {
+    // A locked-access error must propagate uncaught so `withStorageContext`'s
+    // centralised mapping (Task 13) can turn it into a 401/409, rather than
+    // being swallowed into this route's generic 500 shape (FR-14).
+    if (isLockedAccessError(err)) {
+      throw err;
+    }
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -32,6 +39,9 @@ async function createProject(req: Request) {
 
     return NextResponse.json(result);
   } catch (err) {
+    if (isLockedAccessError(err)) {
+      throw err;
+    }
     if (err instanceof MissingProjectFieldsError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }

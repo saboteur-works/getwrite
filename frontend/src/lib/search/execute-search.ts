@@ -25,6 +25,7 @@ import type { MetadataValue, Project } from "../models/types";
 import { getCanonicalRevision, revisionDir } from "../models/revision";
 import { extractSnippet } from "../models/search-snippet";
 import { tiptapToPlainText } from "../tiptap-utils";
+import { isLockedAccessError } from "../models/locked-access";
 
 const SNIPPET_MAX_LEN = 160;
 // Maximum candidates scored for proximity before applying filters + limit.
@@ -72,6 +73,16 @@ export async function findProjectRoot(
     return null;
   }
 
+  // The locked-access fail-closed check below is scan-local: a locked entry
+  // can only rule *itself* out as the match, since its `id` couldn't be read.
+  // It must not abort the whole scan, or one locked, unrelated project would
+  // make every other (unencrypted) project unfindable. So a locked entry is
+  // skipped like any other unreadable directory, but the first such error is
+  // retained and rethrown if the scan finds no match — this preserves the
+  // original property that "not found because a project is locked" stays
+  // distinguishable from "genuinely not found" (`null`).
+  let lockedAccessError: unknown;
+
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     const candidate = path.join(projectsDir, entry.name);
@@ -79,11 +90,16 @@ export async function findProjectRoot(
       const raw = await readFile(path.join(candidate, "project.json"), "utf8");
       const parsed = JSON.parse(raw) as { id?: string };
       if (parsed?.id === projectId) return candidate;
-    } catch {
+    } catch (error) {
+      if (isLockedAccessError(error)) {
+        lockedAccessError ??= error;
+        continue;
+      }
       // skip unreadable or non-project directories
     }
   }
 
+  if (lockedAccessError) throw lockedAccessError;
   return null;
 }
 

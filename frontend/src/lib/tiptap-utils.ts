@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir } from "./models/io";
 import { TipTapDocument } from "./models";
 import { tiptapToPlainText, plainTextToTiptap } from "./tiptap-text";
+import { isLockedAccessError } from "./models/locked-access";
 export { tiptapToPlainText, plainTextToTiptap };
 
 /**
@@ -49,12 +50,18 @@ export async function loadResourceContent(
   try {
     const raw = await readFile(tiptapPath, "utf8");
     result.tiptap = JSON.parse(raw) as TipTapDocument;
-  } catch {
+  } catch (err) {
+    // A locked-access failure (encrypted project: workspace locked, or the
+    // keyring holds no key for it) is not "content missing" — degrading to
+    // the empty-result fallback here would let a caller believe the resource
+    // has no content instead of learning it cannot be read right now.
+    if (isLockedAccessError(err)) throw err;
     // ignore
   }
   try {
     result.plainText = await readFile(plainPath, "utf8");
-  } catch {
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
     // if plain missing but tiptap present, derive
     if (result.tiptap) result.plainText = tiptapToPlainText(result.tiptap);
   }

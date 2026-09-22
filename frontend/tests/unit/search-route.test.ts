@@ -8,7 +8,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { removeDirRetry } from "./helpers/fs-utils";
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
@@ -20,10 +20,23 @@ import {
 import { indexResource } from "../../src/lib/models/inverted-index";
 import { assignTagToResource, createTag } from "../../src/lib/models/tags";
 import { generateUUID } from "../../src/lib/models/uuid";
+
+// Feature 54, Task 14: a partial mock of execute-search so a single test can
+// force `executeSearch` to reject with a locked-access error, while every
+// other test in this file keeps exercising the real implementation
+// (including `findProjectRoot`, left untouched).
+vi.mock("../../src/lib/search/execute-search", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/search/execute-search")
+  >("../../src/lib/search/execute-search");
+  return { ...actual, executeSearch: vi.fn(actual.executeSearch) };
+});
+
 import {
   executeSearch,
   GET,
 } from "../../app/api/project/[project-id]/search/route";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 import type { Project } from "../../src/lib/models/types";
 
 // ---- Test project helpers -----------------------------------------------
@@ -518,6 +531,31 @@ describe("GET handler — validation", () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as unknown[];
       expect(body).toHaveLength(1);
+    } finally {
+      process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+    }
+  });
+});
+
+describe("GET /api/project/[project-id]/search — locked-access rethrow (Feature 54, Task 14, FR-14)", () => {
+  it("maps a ProjectLockedError from executeSearch to 401 instead of the route's fixed 500 shape", async () => {
+    const projectsDir = await makeTmpProjectsDir();
+    const { projectId } = await createTestProject(projectsDir);
+
+    vi.mocked(executeSearch).mockRejectedValueOnce(
+      new ProjectLockedError("11111111-1111-4111-8111-111111111111"),
+    );
+
+    const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    try {
+      const req = new NextRequest(
+        `http://localhost/api/project/${projectId}/search?q=anything`,
+      );
+      const res = await GET(req, {
+        params: Promise.resolve({ "project-id": projectId }),
+      });
+      expect(res.status).toBe(401);
     } finally {
       process.env.GETWRITE_PROJECTS_DIR = originalEnv;
     }

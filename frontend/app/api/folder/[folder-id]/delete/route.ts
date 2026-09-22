@@ -4,6 +4,7 @@ import {
   softDeleteFolderCore,
 } from "../../../../../src/lib/models/resource-crud-core";
 import { respondInvalidProjectId } from "../../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface DeleteFolderBody {
@@ -41,6 +42,9 @@ async function handlePost(
   try {
     await softDeleteFolderCore(body.projectId, folderId);
   } catch (err) {
+    if (isLockedAccessError(err)) {
+      throw err;
+    }
     if (err instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
     }

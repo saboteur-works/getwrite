@@ -57,6 +57,11 @@ import { defaultProjectsDir } from "../../../src/lib/models/projects-dir";
 import { resolveTenant } from "./resolve-tenant";
 import { resolveBackendAdapter } from "./storage-backend";
 import { isHostedAuthActive } from "../../../src/lib/auth/auth-config";
+import {
+  isLockedAccessError,
+  MissingProjectKeyError,
+  ProjectLockedError,
+} from "../../../src/lib/models/locked-access";
 
 /** HTTP methods this wrapper treats as state-changing for the CSRF check (FR18). */
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -82,6 +87,52 @@ function forbiddenCsrfResponse(): Response {
     { error: "Cross-site request rejected" },
     { status: 403 },
   );
+}
+
+/**
+ * Builds the response returned when a handler's project-scoped read/write
+ * fails because the project is locked-access — mirrors
+ * `app/api/encryption/route.ts`'s `toErrorResponse` split (`WrongPassphraseError`
+ * → 401, `NoKeyringError` → 409): a {@link ProjectLockedError} (the workspace
+ * itself is locked) maps to 401, and a {@link MissingProjectKeyError} (the
+ * workspace is unlocked but holds no key for this specific project) maps to
+ * 409.
+ *
+ * @param error - A locked-access error, as identified by {@link isLockedAccessError}.
+ * @returns A JSON error response with the mapped status code.
+ */
+function lockedAccessResponse(
+  error: ProjectLockedError | MissingProjectKeyError,
+): Response {
+  const status = error instanceof ProjectLockedError ? 401 : 409;
+  return Response.json({ error: error.message }, { status });
+}
+
+/**
+ * Runs `handler` inside the given storage context, mapping a propagated
+ * locked-access failure ({@link ProjectLockedError}/{@link MissingProjectKeyError})
+ * to its HTTP response instead of letting it escape as an unhandled
+ * rejection. `runInStorageContext`'s own lifecycle (context setup/teardown)
+ * is untouched — this only wraps the awaited result of the handler call it
+ * already makes.
+ *
+ * Every other error — including `ProjectMarkerFormatError`, deliberately
+ * excluded from {@link isLockedAccessError} because a corrupt marker means a
+ * damaged project, not a locked one — continues to propagate unchanged; there
+ * is no catch-all here.
+ */
+async function runHandlerMappingLockedAccess<Return>(
+  context: Parameters<typeof runInStorageContext>[0],
+  handler: () => Return | Promise<Return>,
+): Promise<Return | Response> {
+  try {
+    return await runInStorageContext(context, handler);
+  } catch (error) {
+    if (isLockedAccessError(error)) {
+      return lockedAccessResponse(error);
+    }
+    throw error;
+  }
 }
 
 /**
@@ -218,7 +269,7 @@ export function withStorageContext<
         }
       }
 
-      return await runInStorageContext(
+      return await runHandlerMappingLockedAccess(
         {
           tenantRoot: dataRoot,
           adapter: withWorkspaceEncryption(adapter, dataRoot),
@@ -228,7 +279,7 @@ export function withStorageContext<
     }
 
     const fallbackRoot = defaultProjectsDir();
-    return await runInStorageContext(
+    return await runHandlerMappingLockedAccess(
       {
         tenantRoot: fallbackRoot,
         adapter: withWorkspaceEncryption(resolveBackendAdapter(), fallbackRoot),

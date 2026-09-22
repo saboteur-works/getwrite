@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchResourceExcerptsCore } from "../../../../src/lib/models/resource-excerpts-core";
 import { InvalidProjectIdCoreError } from "../../../../src/lib/models/resource-crud-core";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface ExcerptsBody {
@@ -55,6 +56,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     );
     return NextResponse.json({ excerpts });
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     if (error instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
     }

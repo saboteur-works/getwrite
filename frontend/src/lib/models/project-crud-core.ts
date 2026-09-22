@@ -30,6 +30,7 @@
 import path from "node:path";
 import { readFile, readdir, writeFile, rm } from "./io";
 import { readProjectMarker } from "./crypto/project-marker";
+import { isLockedAccessError } from "./locked-access";
 import { getSessionKeyring } from "./crypto/keyring-session";
 import { runInProjectContext } from "./crypto/adapter-selection";
 import {
@@ -531,6 +532,16 @@ export async function findProjectRootByInternalId(
     return null;
   }
 
+  // The locked-access fail-closed check below is scan-local: a locked entry
+  // can only rule *itself* out as the match, since its `id` couldn't be read.
+  // It must not abort the whole scan, or one locked, unrelated project would
+  // make every other (unencrypted) project unfindable. So a locked entry is
+  // skipped like any other unreadable directory, but the first such error is
+  // retained and rethrown if the scan finds no match — this preserves the
+  // original property that "not found because a project is locked" stays
+  // distinguishable from "genuinely not found" (`null`).
+  let lockedAccessError: unknown;
+
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     const candidate = path.join(projectsDir, entry.name);
@@ -538,11 +549,16 @@ export async function findProjectRootByInternalId(
       const raw = await readFile(path.join(candidate, "project.json"), "utf8");
       const parsed = JSON.parse(raw) as { id?: string };
       if (parsed?.id === projectId) return candidate;
-    } catch {
+    } catch (error) {
+      if (isLockedAccessError(error)) {
+        lockedAccessError ??= error;
+        continue;
+      }
       // skip unreadable or non-project directories
     }
   }
 
+  if (lockedAccessError) throw lockedAccessError;
   return null;
 }
 

@@ -6,6 +6,7 @@ import { loadResourceContent } from "../tiptap-utils";
 import { readSidecar } from "./sidecar";
 import type { ResourceRef, MetadataValue } from "./types";
 import { slugify } from "../utils";
+import { isLockedAccessError } from "./locked-access";
 
 const UUID_REGEX =
   /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi;
@@ -105,7 +106,8 @@ async function loadRedirects(
   try {
     const raw = await readFile(p, "utf8");
     return JSON.parse(raw) as Record<string, string>;
-  } catch {
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
     return {};
   }
 }
@@ -259,7 +261,8 @@ export async function loadBacklinks(
   try {
     const raw = await readFile(p, "utf8");
     return JSON.parse(raw) as BacklinkIndex;
-  } catch {
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
     return {};
   }
 }

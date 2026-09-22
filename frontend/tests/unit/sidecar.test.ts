@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -8,6 +8,7 @@ import {
   writeSidecar,
 } from "../../src/lib/models/sidecar";
 import type { MetadataValue } from "../../src/lib/models/types";
+import * as io from "../../src/lib/models/io";
 import {
   getStorageAdapter,
   runForTenant,
@@ -16,6 +17,15 @@ import {
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
+import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
+import {
+  createKeyring,
+  type Keyring,
+} from "../../src/lib/models/crypto/keyring";
+import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
+import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
+import { isLockedAccessError } from "../../src/lib/models/locked-access";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 
 async function makeProjectJson(dir: string, metadataRevision?: number) {
   const project = {
@@ -173,5 +183,60 @@ describe("models/sidecar — metadataRevision counter", () => {
     ).resolves.toBeUndefined();
     await flushIndexer();
     await removeDirRetry(tmp);
+  });
+});
+
+describe("models/sidecar — writeSidecar's pre-write read under locked access", () => {
+  // Regression coverage for Feature 54 Task 10: `writeSidecar`'s pre-write
+  // read of any existing sidecar must not swallow a locked-access failure
+  // the way it swallows a genuine "no sidecar yet". Built the way
+  // `storage-context-encryption.test.ts` does — an in-memory adapter routed
+  // through the real `workspaceEncryptionAdapter` — never touching the real
+  // `projects/` directory.
+  const WORKSPACE = "/ws";
+  let base: StorageAdapter;
+  let keyring: Keyring;
+  let projectId: string;
+  let projectRoot: string;
+  const previousAdapter = io.getStorageAdapter();
+
+  afterEach(() => {
+    io.setStorageAdapter(previousAdapter);
+  });
+
+  beforeEach(async () => {
+    base = createMemoryAdapter();
+    projectId = generateUUID();
+    projectRoot = `${WORKSPACE}/${projectId}`;
+    await base.mkdir(projectRoot, { recursive: true });
+
+    keyring = await createKeyring(
+      "correct horse battery staple",
+      TEST_ARGON2_PARAMS,
+    );
+    await keyring.addProject(projectId);
+    await writeProjectMarker(projectRoot, base);
+  });
+
+  it("rejects with the locked-access error instead of writing as though no prior sidecar existed", async () => {
+    keyring.lock();
+    io.setStorageAdapter(workspaceEncryptionAdapter(base, WORKSPACE, keyring));
+
+    const resourceId = generateUUID();
+    await expect(
+      writeSidecar(projectRoot, resourceId, { title: "New title" }),
+    ).rejects.toSatisfy((err: unknown) => isLockedAccessError(err));
+  });
+
+  it("still writes normally for an unencrypted project with no prior sidecar", async () => {
+    const plainProjectId = generateUUID();
+    const plainProjectRoot = `${WORKSPACE}/${plainProjectId}`;
+    await base.mkdir(plainProjectRoot, { recursive: true });
+    io.setStorageAdapter(workspaceEncryptionAdapter(base, WORKSPACE, keyring));
+
+    const resourceId = generateUUID();
+    await expect(
+      writeSidecar(plainProjectRoot, resourceId, { title: "New title" }),
+    ).resolves.toBeUndefined();
   });
 });

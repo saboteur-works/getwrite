@@ -34,6 +34,7 @@ import {
   workspaceHasKeyring,
 } from "../../../src/lib/models/crypto/keyring-session";
 import { WrongPassphraseError } from "../../../src/lib/models/crypto/keyring";
+import { isLockedAccessError } from "../../../src/lib/models/locked-access";
 import {
   enableProjectEncryption,
   resumeInterruptedConversions,
@@ -95,6 +96,14 @@ async function readStatus(): Promise<EncryptionStatus> {
  * @returns A JSON error response.
  */
 function toErrorResponse(error: unknown): NextResponse {
+  // A locked-access error must propagate uncaught so `withStorageContext`'s
+  // centralised mapping (Task 13) can turn it into a 401/409, rather than
+  // falling through this function's own instanceof chain into its generic
+  // 400 fallback (FR-14). Checked first, before any of the encryption-
+  // specific error mappings below.
+  if (isLockedAccessError(error)) {
+    throw error;
+  }
   if (error instanceof EncryptionUnavailableError) {
     return NextResponse.json({ error: error.message }, { status: 403 });
   }

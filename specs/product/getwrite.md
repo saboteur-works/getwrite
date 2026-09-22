@@ -720,6 +720,70 @@ lost work.
 - Hosted GetWrite's data model must support multi-device sync for a single
   writer without supporting multi-user collaboration on a shared project;
   see FR-32.
+- Access to an encrypted project's files when no usable key is available for
+  it in this process — no keyring has been established, an established
+  keyring has been explicitly locked, or an established, unlocked keyring
+  simply holds no key for that particular project — must fail closed with a
+  signal the caller can act on, in both directions — never return the
+  undecrypted envelope bytes as though they were readable content, and never
+  let a write land inside a sealed project as plaintext. This makes
+  concrete, for this no-usable-key case specifically, the fail-closed
+  default `docs/standards/security.md` already states; it is not a new
+  principle. The write direction is the more serious of the two: a read with
+  no usable key merely hands back unusable ciphertext bytes, while such a
+  write both exposes plaintext inside a project marked encrypted and
+  destroys the ciphertext it overwrites, with no way back short of
+  restoring from a backup outside this system.
+
+  Measured 2026-09-17 (static reading of source, not exercised): `adapterFor`
+  in `frontend/src/lib/models/crypto/workspace-adapter.ts:84` returns the
+  plain inner adapter whenever `!keyring || keyring.isLocked()`, for every
+  path including a sealed project's files, with no error and no signal that
+  decryption was skipped — this is the read gap. Separately, on the write
+  side, `mutatingAdapter` (`frontend/src/lib/models/io.ts:227-229`) calls
+  `assertWritable(...)` — the mid-conversion write barrier, not a
+  key-availability check — and then `currentAdapter()`, which under a
+  keyring with no usable key resolves through the same pass-through above;
+  no write path checks key availability at all. Four sites confirmed by
+  static reading to reach a sealed project's files this way: `updateSidecarCore`
+  (`frontend/src/lib/models/resource-crud-core.ts:409-430`), whose
+  `readSidecar(...).catch(() => null)` at line 409 swallows the parse error
+  thrown on envelope bytes and merges the update over an empty object,
+  discarding every pre-existing sidecar field in the plaintext write that
+  follows; `writeSidecar` (`frontend/src/lib/models/sidecar.ts:170-171`),
+  whose plaintext write at line 170 commits before `bumpMetadataRevision` at
+  line 171 can throw; `rescanEntityAcrossProject`
+  (`frontend/src/lib/models/indexer-queue.ts:310-341`), whose read failures
+  degrade silently so it persists over `meta/index/mentions.json` at line
+  341; and the CLI's `reindex` command (`cli/src/commands/reindex.ts`, 150
+  lines total), which contains no key-availability check anywhere in the
+  file. Also measured: every non-marker file under a sealed project is an
+  envelope, not only prose content — `listProjectFiles`
+  (`frontend/src/lib/models/crypto/convert-project.ts:270-300`) excludes
+  only the project marker and conversion marker — so an incident with no
+  usable key can corrupt an index, a sidecar, or a manifest as readily as a
+  resource's text.
+
+  Measured 2026-09-17, further
+  (`frontend/src/lib/models/crypto/keyring-session.ts:47-48,58-60,217-220`):
+  `!keyring` is not a rare edge relative to `keyring.isLocked()` in this
+  codebase. The module-level session reference
+  (`let session: Keyring | null = null;`) starts `null`, is assigned only on
+  unlock, and `lockSession()` discards it entirely
+  (`session?.lock(); session = null;`) rather than leaving a locked
+  `Keyring` object in place. `getSessionKeyring()` therefore returns `null`
+  both before any unlock in a given server process and after an explicit
+  lock, so the two most common no-usable-key states in this process are
+  both `!keyring`, not `keyring.isLocked()` on a retained object. This is
+  why the constraint above is framed around "no usable key is available,"
+  which covers `!keyring`, `keyring.isLocked()` on a retained object, and an
+  unlocked keyring with no key for a specific project, rather than around
+  "locked," which names only one of those states — and, per this
+  measurement, the least commonly reached one in this process. None of this
+  establishes why the write path has no key-availability check, or why
+  `lockSession` discards the reference rather than leaving a locked object
+  in place; both are unverified and this spec does not assert intent behind
+  either.
 
 ## Open Questions
 
@@ -1522,6 +1586,109 @@ stub it replaces.
 lines) rejects unconditionally today, described in this document's Store
 section as "a deliberate stub," not an implementation of the eventual
 contract.
+
+**OQ-36: Is `adapterFor`'s pass-through of the plain inner adapter when the
+keyring is absent or locked (`workspace-adapter.ts:84`) deliberate and
+load-bearing for the plaintext-conversion sweep, or an unintended gap in
+the fail-closed default this spec now states as a constraint? Separately,
+what should a failed locked read return to a caller — a typed error, a
+sentinel, or something else — and does each of the three call sites that
+currently compensate for this on their own (`loadProjectCore`,
+`listProjectsCore`, the CLI `doctor` command) then drop its own check, or
+keep it as defence in depth?**
+**Impact:** Every caller that reads a locked project's files today either
+gets an opaque JSON-parse crash (as `loadProjectCore` does, surfaced as an
+HTTP 500) or must carry its own ad hoc compensating check, which is what
+`doctor` and `listProjectsCore` currently do independently of each other
+and of `adapterFor`. Deciding the caller-facing failure shape also decides
+whether these three sites keep their own checks or can retire them.
+**Owner:** Product owner.
+**Evidence:** Measured 2026-09-17: `adapterFor`
+(`frontend/src/lib/models/crypto/workspace-adapter.ts:84`) returns `inner`
+unconditionally when `!keyring || keyring.isLocked()`. The nearby
+`readTolerantly` function (same file, ~line 117) also falls back to a plain
+read, but only after a sealed read fails with `EnvelopeFormatError` and only
+when a conversion marker is present on disk — and that path runs under an
+unlocked keyring, since `adapterFor` already resolved the encrypting adapter
+to get there. That the two mechanisms are distinct is inference from reading
+the code, not a measurement of intent; the experiment that would settle it
+is exercising `convert-project.ts`'s read paths against a locked keyring and
+observing whether anything currently depends on the locked pass-through.
+Confirmed by measurement: `loadProjectCore`
+(`frontend/src/lib/models/project-crud-core.ts:412-416`) calls
+`loadProjectFromDisk` directly with no marker/keyring check, while
+`listProjectsCore` (same file, ~113-136) checks the marker itself and
+branches to `listEncryptedProject`; the CLI `doctor` command
+(`cli/src/commands/doctor.ts:52-68`) independently checks
+`isProjectEncrypted` before reading anything and exits 3 with an explanatory
+message, its own comment recording that reading through the plain adapter
+otherwise throws `Unexpected token 'G', "GWE ..."` on an encrypted project.
+**Resolution (owner decision + measurement, 2026-09-17):** Part (a),
+settled from evidence: the pass-through is **not** load-bearing. Traced
+2026-09-17: `convertProject`
+(`frontend/src/lib/models/crypto/convert-project.ts:164`) defaults to
+`getPlainStorageAdapter()` and never routes through `adapterFor`.
+`enableProjectEncryption`
+(`frontend/src/lib/models/crypto/enable-encryption.ts:94-101`) and
+`resumeInterruptedConversions` (same file, ~143) both require an unlocked
+session keyring before converting. `readTolerantly` only falls back to a
+plain read after a sealed read throws `EnvelopeFormatError`, which
+requires `adapterFor` to have already returned the encrypting adapter —
+i.e. an unlocked keyring; the locked branch at line 84 is never reached by
+this path. `project-marker.ts` and `name-index.ts` call the plain adapter
+directly by design, not via line 84. The real carve-out is not "line 84
+must pass through" but that the `!projectId` branch immediately after it
+(`workspace-adapter.ts:86-87`) must keep returning `inner` unconditionally,
+because workspace-level files — the keyring, the sealed name index,
+dot-prefixed at the tenant root — resolve there. A fix must change line
+84's behaviour only for paths that resolve to an actual project id. This
+risk does not extend to FR22 (`specs/features/end-to-end-encryption.md:146-148`,
+"interrupted conversion leaves the project openable, never
+half-readable"): that guarantee is delivered by `readTolerantly`, which as
+traced above only ever runs under an unlocked keyring, so the encryption
+spec's FR22 says nothing about readability while locked and making line 84
+fail closed cannot break it.
+
+Confidence limit: this was a static call-graph trace, not the live
+experiment the question originally named. Only `loadProjectCore` was
+confirmed broken by measurement; `listProjectsCore` and `doctor`
+short-circuit before reaching the adapter. Other readers — resource,
+revision, compile, export, search — were not checked and may share the
+same opaque-crash shape; a separate measurement of those readers is
+underway and its result is not yet known. Treat this as a known limit of
+the evidence, not a settled all-clear.
+
+Part (b), owner decision: a failed locked read throws a typed error from a
+fail-closed `adapterFor`, reusing the crypto layer's existing convention —
+`ProjectLockedError` / `MissingProjectKeyError`
+(`frontend/src/lib/models/crypto/adapter-selection.ts:50-74`), which exist
+today but are caught by no route or CLI command. The route catches it and
+returns a clean 4xx in place of `loadProjectCore`'s current HTTP 500.
+
+`listProjectsCore` and the CLI `doctor` keep their own existing checks as
+defence in depth rather than dropping them. Accepted trade-off: two
+mechanisms then assert the same fact and could drift apart over time; this
+was accepted deliberately, because each fails earlier and with a friendlier,
+more specific message than a generic locked-read error would give.
+
+**OQ-37: Does the fix for the locked-write gap (see the locked-access
+constraint above) also need to cover the CLI, and does the native
+(Capacitor/Android) transport path share the same exposure?**
+**Impact:** The CLI binds no encrypting adapter at all — `cli/src`
+references encryption only in `doctor.ts` — so a fix implemented solely
+inside the encrypting-adapter layer the web/desktop routes go through may
+not reach `reindex` or any other CLI write path against a sealed project.
+Separately, whether the native transport's own in-process write paths
+resolve through the same `adapterFor`/`mutatingAdapter` machinery, or
+through a different route with its own exposure, was not examined by this
+survey. Scoping the fix without answering either question risks leaving one
+or both write paths unprotected after the encrypting-adapter path is fixed.
+**Owner:** Product owner.
+**Evidence:** Measured 2026-09-17 (static reading, not exercised): the CLI's
+`reindex` command (`cli/src/commands/reindex.ts`) contains no encryption
+check anywhere in its 150 lines. The native transport path was not
+inspected as part of this survey; whether it shares the locked-write
+exposure is unresolved.
 
 ## Out of Scope (Deferred)
 

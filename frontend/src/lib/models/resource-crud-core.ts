@@ -57,6 +57,7 @@ import { loadProjectConfig } from "./project-config";
 import { writeRevision, listRevisions } from "./revision";
 import { resolveInitialRevisionName } from "./resource-revision";
 import { readSidecar, writeSidecar } from "./sidecar";
+import { isLockedAccessError } from "./locked-access";
 import { renameFolderById } from "./folder-utils";
 import { getSchema } from "./metadata-schema";
 import {
@@ -406,7 +407,17 @@ export async function updateSidecarCore(
 
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
 
-  const existing = await readSidecar(projectRoot, resourceId).catch(() => null);
+  const existing = await readSidecar(projectRoot, resourceId).catch(
+    (err: unknown) => {
+      // A locked-access failure (encrypted project, workspace locked, or no
+      // key for it) is not "no prior sidecar exists" — proceeding here would
+      // silently drop the existing sidecar on write. Only a genuine ENOENT
+      // (already resolved to `null` by `readSidecar` itself) reaches this
+      // catch as a non-error.
+      if (isLockedAccessError(err)) throw err;
+      return null;
+    },
+  );
 
   const merged: Record<string, unknown> = {
     ...(existing ?? {}),

@@ -23,6 +23,7 @@ import {
 } from "../../../src/lib/models/project-crud-core";
 import { withStorageContext } from "../_tenant/with-storage-context";
 import { respondInvalidProjectId } from "../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../src/lib/models/locked-access";
 
 /**
  * Loads a project and related entities from the local filesystem.
@@ -37,6 +38,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
 
     return NextResponse.json(await loadProjectCore(projectId));
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     if (error instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
     }

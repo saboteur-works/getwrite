@@ -29,6 +29,10 @@ vi.mock("../../src/lib/auth/auth-config", () => ({
 import { withStorageContext } from "../../app/api/_tenant/with-storage-context";
 import { getStorageContext } from "../../src/lib/models/storage-context";
 import type { StorageAdapter } from "../../src/lib/models/io";
+import {
+  ProjectLockedError,
+  MissingProjectKeyError,
+} from "../../src/lib/models/locked-access";
 
 const fakeAdapter = {} as StorageAdapter;
 
@@ -257,5 +261,135 @@ describe("withStorageContext", () => {
 
     expect(handler).not.toHaveBeenCalled();
     expect(response.status).toBe(403);
+  });
+
+  describe("locked-access error mapping (Task 13)", () => {
+    /** Builds a handler that throws `error` instead of ever returning a `Response`. */
+    function buildThrowingHandler(error: unknown) {
+      return vi.fn(async (_request: Request) => {
+        throw error;
+      });
+    }
+
+    it("hosted-auth-inactive: ProjectLockedError from the handler maps to 401, context is torn down", async () => {
+      isHostedAuthActiveMock.mockReturnValue(false);
+      resolveTenantMock.mockResolvedValue({
+        userId: null,
+        dataRoot: "/legacy/projects",
+        adapter: fakeAdapter,
+      });
+      const handler = buildThrowingHandler(
+        new ProjectLockedError("11111111-1111-1111-1111-111111111111"),
+      );
+      const wrapped = withStorageContext(handler);
+
+      expect(getStorageContext()).toBeUndefined();
+      const response = await wrapped(new Request("http://localhost/api/x"));
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(response.status).toBe(401);
+      const body = await response.json();
+      expect(body.error).toMatch(/locked/i);
+      // The storage context established for the call does not leak past it —
+      // `runInStorageContext`'s own AsyncLocalStorage scoping tore it down
+      // even though the handler threw.
+      expect(getStorageContext()).toBeUndefined();
+    });
+
+    it("hosted-auth-inactive: MissingProjectKeyError from the handler maps to 409, context is torn down", async () => {
+      isHostedAuthActiveMock.mockReturnValue(false);
+      resolveTenantMock.mockResolvedValue({
+        userId: null,
+        dataRoot: "/legacy/projects",
+        adapter: fakeAdapter,
+      });
+      const handler = buildThrowingHandler(
+        new MissingProjectKeyError("22222222-2222-2222-2222-222222222222"),
+      );
+      const wrapped = withStorageContext(handler);
+
+      expect(getStorageContext()).toBeUndefined();
+      const response = await wrapped(new Request("http://localhost/api/x"));
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(response.status).toBe(409);
+      const body = await response.json();
+      expect(body.error).toMatch(/no data key/i);
+      expect(getStorageContext()).toBeUndefined();
+    });
+
+    it("hosted-auth-active, non-null userId: ProjectLockedError from the handler maps to 401", async () => {
+      isHostedAuthActiveMock.mockReturnValue(true);
+      resolveTenantMock.mockResolvedValue({
+        userId: "u-1",
+        dataRoot: "/tenants/u-1",
+        adapter: fakeAdapter,
+      });
+      const handler = buildThrowingHandler(
+        new ProjectLockedError("33333333-3333-3333-3333-333333333333"),
+      );
+      const wrapped = withStorageContext(handler);
+
+      const response = await wrapped(new Request("http://localhost/api/x"));
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(response.status).toBe(401);
+    });
+
+    it("hosted-auth-active, non-null userId: MissingProjectKeyError from the handler maps to 409", async () => {
+      isHostedAuthActiveMock.mockReturnValue(true);
+      resolveTenantMock.mockResolvedValue({
+        userId: "u-1",
+        dataRoot: "/tenants/u-1",
+        adapter: fakeAdapter,
+      });
+      const handler = buildThrowingHandler(
+        new MissingProjectKeyError("44444444-4444-4444-4444-444444444444"),
+      );
+      const wrapped = withStorageContext(handler);
+
+      const response = await wrapped(new Request("http://localhost/api/x"));
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(response.status).toBe(409);
+    });
+
+    it("an unrelated error thrown by the handler is not caught — it still rejects out of withStorageContext", async () => {
+      isHostedAuthActiveMock.mockReturnValue(false);
+      resolveTenantMock.mockResolvedValue({
+        userId: null,
+        dataRoot: "/legacy/projects",
+        adapter: fakeAdapter,
+      });
+      const handler = buildThrowingHandler(new Error("disk full"));
+      const wrapped = withStorageContext(handler);
+
+      await expect(
+        wrapped(new Request("http://localhost/api/x")),
+      ).rejects.toThrow("disk full");
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it("ProjectMarkerFormatError-shaped error thrown by the handler is not caught (deliberately excluded from locked-access mapping)", async () => {
+      isHostedAuthActiveMock.mockReturnValue(false);
+      resolveTenantMock.mockResolvedValue({
+        userId: null,
+        dataRoot: "/legacy/projects",
+        adapter: fakeAdapter,
+      });
+      class ProjectMarkerFormatError extends Error {
+        constructor() {
+          super("Project marker is malformed.");
+          this.name = "ProjectMarkerFormatError";
+        }
+      }
+      const handler = buildThrowingHandler(new ProjectMarkerFormatError());
+      const wrapped = withStorageContext(handler);
+
+      await expect(
+        wrapped(new Request("http://localhost/api/x")),
+      ).rejects.toThrow("Project marker is malformed.");
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
   });
 });

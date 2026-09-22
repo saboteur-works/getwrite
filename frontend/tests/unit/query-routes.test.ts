@@ -10,18 +10,40 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { writeSidecar } from "../../src/lib/models/sidecar";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+
+// Feature 54, Task 16: partial mocks so a single test per route can force its
+// underlying core function to reject with a locked-access error, while every
+// other test in this file keeps exercising the real implementation.
+vi.mock("../../src/lib/models/query-evaluate-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/query-evaluate-core")
+  >("../../src/lib/models/query-evaluate-core");
+  return { ...actual, executeEvaluate: vi.fn(actual.executeEvaluate) };
+});
+vi.mock("../../src/lib/models/saved-query-dispatch-core", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/lib/models/saved-query-dispatch-core")
+  >("../../src/lib/models/saved-query-dispatch-core");
+  return {
+    ...actual,
+    dispatchSavedQueryAction: vi.fn(actual.dispatchSavedQueryAction),
+  };
+});
+
 import {
   executeEvaluate,
   POST as evaluatePOST,
 } from "../../app/api/project/query/evaluate/route";
 import { POST as savedPOST } from "../../app/api/project/query/saved/route";
+import { dispatchSavedQueryAction } from "../../src/lib/models/saved-query-dispatch-core";
 import type { SavedQuery } from "../../src/lib/models/saved-queries";
 
 // ─── Test project helpers ─────────────────────────────────────────────────────
@@ -364,6 +386,29 @@ describe("POST /api/project/query/evaluate — validation", () => {
       expect(body.ids).toHaveLength(1);
     });
   });
+
+  it("maps a ProjectLockedError from executeEvaluate to 401 instead of the route's fixed 500 shape (Feature 54, Task 16)", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDirProject();
+    await withProjectsDirEnv(projectsDir, async () => {
+      vi.mocked(executeEvaluate).mockRejectedValueOnce(
+        new ProjectLockedError(projectId),
+      );
+
+      const req = new NextRequest(
+        "http://localhost/api/project/query/evaluate",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            projectId,
+            definition: { op: "eq", field: "type", value: "text" },
+          }),
+          headers: { "content-type": "application/json" },
+        },
+      );
+      const res = await evaluatePOST(req);
+      expect(res.status).toBe(401);
+    });
+  });
 });
 
 // ─── saved route — POST handler actions ──────────────────────────────────────
@@ -525,5 +570,17 @@ describe("POST /api/project/query/saved — invalid requests", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("Invalid projectId");
+  });
+
+  it("maps a ProjectLockedError from dispatchSavedQueryAction to 401 instead of the route's fixed 500 shape (Feature 54, Task 16)", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDirProject();
+    await withProjectsDirEnv(projectsDir, async () => {
+      vi.mocked(dispatchSavedQueryAction).mockRejectedValueOnce(
+        new ProjectLockedError(projectId),
+      );
+
+      const res = await savedPOST(savedRequest({ action: "list", projectId }));
+      expect(res.status).toBe(401);
+    });
   });
 });

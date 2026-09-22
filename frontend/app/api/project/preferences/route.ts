@@ -11,6 +11,7 @@ import {
 } from "../../../../src/lib/models/project-preferences-core";
 import type { ProjectUserPreferences } from "../../../../src/lib/user-preferences";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
+import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
 interface UpdateProjectPreferencesBody {
@@ -41,6 +42,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     const result = await saveProjectPreferencesCore(projectId, preferences);
     return NextResponse.json(result);
   } catch (error) {
+    if (isLockedAccessError(error)) {
+      throw error;
+    }
     if (error instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
     }
