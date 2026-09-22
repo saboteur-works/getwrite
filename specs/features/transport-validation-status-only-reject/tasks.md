@@ -69,7 +69,7 @@ typecheck` and `pnpm lint` pass for `schemas.ts`.
 never in `frontend/src/lib/models/schemas.ts`. Compile's and export's two
 schemas are intentionally byte-identical in shape but independently declared
 (OQ-1) — do not factor out a shared base type for them.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 2: Validate `compile.ts`'s `text` and `markdown` (FR-1, FR-2, FR-7, FR-9)
 **What:** Validate `httpCompileTransport.text` (`compile.ts:120-122`) and
@@ -108,7 +108,7 @@ rejecting (throwing) on a validation failure and reporting via
 **Notes:** `native-compile-backend.ts` needs no change (FR-9) — it returns
 the compile core's already-typed result directly, crossing no serialization
 boundary; confirm this by inspection before finishing, do not edit that file.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 3: Validate `export.ts`'s `text` and `markdown` (FR-3, FR-4, FR-7, FR-9)
 **What:** Validate `httpExportTransport.text` (`export.ts:84-87`) and
@@ -139,7 +139,7 @@ rejecting (throwing) on a validation failure and reporting via
 **Estimate:** 3
 **Notes:** `native-export-backend.ts` needs no change (FR-9) — same
 reasoning as Task 2; confirm by inspection, do not edit that file.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 4: `patchRevisionContent` — stop fabricating `updatedAt`, widen the type (FR-5, FR-6, FR-7, FR-9)
 **What:** Change `httpResourcesTransport.patchRevisionContent`
@@ -198,7 +198,7 @@ permanent end state: a malformed body leaves the resource tree/word count
 stale until a real save follows) needs no code change in this task — it
 describes existing, already-accepted behavior downstream of the guard, not a
 new requirement.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 5: Full-suite verification and regression check
 **What:** A verification checkpoint, not new code: run the complete
@@ -221,7 +221,7 @@ surfaces of the same `schemas.ts` module Task 1 extended; running the full
 suite once all three have landed is cheaper than trusting each task's
 individual test run to catch a subtle interaction (e.g. an accidental
 schema name collision).
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ## Summary
 - Total tasks: 5
