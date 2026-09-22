@@ -18,6 +18,7 @@ import {
 } from "@testing-library/react";
 import { Provider } from "react-redux";
 import TrashView from "../../components/WorkArea/Views/TrashView/TrashView";
+import TrashRefreshProvider from "../../components/Layout/TrashRefreshContext";
 import { buttonVariants } from "../../components/common/UI/Button";
 import { makeStore } from "../../src/store/store";
 import {
@@ -202,7 +203,9 @@ describe("TrashView", () => {
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -265,7 +268,9 @@ describe("TrashView", () => {
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -282,7 +287,9 @@ describe("TrashView", () => {
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -303,7 +310,9 @@ describe("TrashView — batch restore/purge/Empty trash controls (Task 17)", () 
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -353,7 +362,9 @@ describe("TrashView — batch restore/purge/Empty trash controls (Task 17)", () 
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -395,7 +406,9 @@ describe("TrashView — batch restore/purge/Empty trash controls (Task 17)", () 
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -440,7 +453,9 @@ describe("TrashView — Task 25 (Finding 5): batch toolbar uses the shared Butto
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -486,7 +501,9 @@ describe("TrashView — Task 18 per-item restore notices (FR-5/FR-9/FR-14)", () 
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -521,7 +538,9 @@ describe("TrashView — Task 18 per-item restore notices (FR-5/FR-9/FR-14)", () 
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -556,7 +575,9 @@ describe("TrashView — Task 18 per-item restore notices (FR-5/FR-9/FR-14)", () 
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -592,7 +613,9 @@ describe("TrashView — Task 18 per-item restore notices (FR-5/FR-9/FR-14)", () 
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -624,7 +647,9 @@ describe("TrashView — Task 18 per-item restore notices (FR-5/FR-9/FR-14)", () 
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -658,7 +683,9 @@ describe("TrashView — Task 18 per-item restore notices (FR-5/FR-9/FR-14)", () 
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -754,11 +781,13 @@ describe("TrashView + AppShell — FR-21 open-editor-tab boundary (Task 17)", ()
     // selection, entirely unrelated to Trash.
     const baseline = render(
       <Provider store={store}>
-        <AppShell
-          showSidebars={true}
-          project={project as never}
-          resources={[]}
-        />
+        <TrashRefreshProvider>
+          <AppShell
+            showSidebars={true}
+            project={project as never}
+            resources={[]}
+          />
+        </TrashRefreshProvider>
       </Provider>,
     );
     const baselineText = screen.getByText(
@@ -769,7 +798,9 @@ describe("TrashView + AppShell — FR-21 open-editor-tab boundary (Task 17)", ()
     // Purge the same id via TrashView alone, against the same store.
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
     await screen.findAllByTestId("trash-row");
@@ -800,11 +831,13 @@ describe("TrashView + AppShell — FR-21 open-editor-tab boundary (Task 17)", ()
     // new open-editor-tab behavior of its own (FR-21).
     render(
       <Provider store={store}>
-        <AppShell
-          showSidebars={true}
-          project={project as never}
-          resources={[]}
-        />
+        <TrashRefreshProvider>
+          <AppShell
+            showSidebars={true}
+            project={project as never}
+            resources={[]}
+          />
+        </TrashRefreshProvider>
       </Provider>,
     );
     expect(
@@ -839,7 +872,9 @@ describe("TrashView — Task 6 (FR-10): refetch on a resourcesSlice delete made 
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -864,7 +899,9 @@ describe("TrashView — Task 6 (FR-10): refetch on a resourcesSlice delete made 
 
     const { rerender } = render(
       <Provider store={store}>
-        <TrashView className="a" />
+        <TrashRefreshProvider>
+          <TrashView className="a" />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -875,7 +912,9 @@ describe("TrashView — Task 6 (FR-10): refetch on a resourcesSlice delete made 
     // component) but no change to resourcesSlice's resources/folders count.
     rerender(
       <Provider store={store}>
-        <TrashView className="b" />
+        <TrashRefreshProvider>
+          <TrashView className="b" />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -941,7 +980,9 @@ describe("TrashView — Task 22 (Finding 1): resourcesSlice refresh after restor
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -1048,7 +1089,9 @@ describe("TrashView — Task 22 (Finding 1): resourcesSlice refresh after restor
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 

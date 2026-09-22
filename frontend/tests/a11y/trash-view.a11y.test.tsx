@@ -27,6 +27,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import TrashView from "../../components/WorkArea/Views/TrashView/TrashView";
+import TrashRefreshProvider from "../../components/Layout/TrashRefreshContext";
 import { makeStore } from "../../src/store/store";
 import {
   setProject,
@@ -106,7 +107,9 @@ describe("a11y: TrashView selection and batch controls (Task 18)", () => {
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -144,7 +147,9 @@ describe("a11y: TrashView selection and batch controls (Task 18)", () => {
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -170,7 +175,9 @@ describe("a11y: TrashView selection and batch controls (Task 18)", () => {
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -192,7 +199,9 @@ describe("a11y: TrashView selection and batch controls (Task 18)", () => {
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -244,7 +253,9 @@ describe("a11y: TrashView selection and batch controls (Task 18)", () => {
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -280,7 +291,9 @@ describe("a11y: TrashView selection and batch controls (Task 18)", () => {
 
     render(
       <Provider store={store}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -383,7 +396,9 @@ describe("a11y: TrashView axe-core checks (FR-8)", () => {
     mockedListTrash.mockResolvedValue(MIXED_LISTING);
     const { container } = render(
       <Provider store={setupStore()}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -395,7 +410,9 @@ describe("a11y: TrashView axe-core checks (FR-8)", () => {
     mockedListTrash.mockResolvedValue(EMPTY_LISTING);
     const { container } = render(
       <Provider store={setupStore()}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -407,7 +424,9 @@ describe("a11y: TrashView axe-core checks (FR-8)", () => {
     mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
     const { container } = render(
       <Provider store={setupStore()}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -422,7 +441,9 @@ describe("a11y: TrashView axe-core checks (FR-8)", () => {
     mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
     const { container } = render(
       <Provider store={setupStore()}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -446,7 +467,9 @@ describe("a11y: TrashView axe-core checks (FR-8)", () => {
     mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
     const { container } = render(
       <Provider store={setupStore()}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -473,7 +496,9 @@ describe("a11y: TrashView axe-core checks (FR-8)", () => {
     ]);
     const { container } = render(
       <Provider store={setupStore()}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 
@@ -523,7 +548,9 @@ describe("a11y: TrashView axe-core checks (FR-8)", () => {
     mockedRestoreTrashItems.mockResolvedValue(restoreResults);
     const { container } = render(
       <Provider store={setupStore()}>
-        <TrashView />
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
       </Provider>,
     );
 

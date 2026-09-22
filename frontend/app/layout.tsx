@@ -6,6 +6,7 @@ import ClientProvider from "../src/store/ClientProvider";
 import AppToaster from "../components/notifications/Toaster";
 import AppearanceRuntime from "../components/preferences/AppearanceRuntime";
 import NativeBootstrap from "../components/native/NativeBootstrap";
+import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 
 /** Page metadata for Next.js layout — basic title for dev/storybook. */
 export const metadata: Metadata = { title: `GetWrite` };
@@ -49,10 +50,12 @@ export default function RootLayout({
             <NativeBootstrap />
           ) : null}
           <AppearanceRuntime />
-          <div className="min-h-screen bg-gw-chrome text-gw-primary">
-            {children}
-            <AppToaster />
-          </div>
+          <TrashRefreshProvider>
+            <div className="min-h-screen bg-gw-chrome text-gw-primary">
+              {children}
+              <AppToaster />
+            </div>
+          </TrashRefreshProvider>
         </ClientProvider>
       </body>
     </html>

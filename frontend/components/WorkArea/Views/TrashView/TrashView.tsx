@@ -8,6 +8,7 @@ import {
   setFolders as setProjectFolders,
 } from "../../../../src/store/resourcesSlice";
 import { openProject } from "../../../../src/lib/api/projects";
+import { useTrashRefresh } from "../../../Layout/TrashRefreshContext";
 import {
   listTrash,
   purgeTrashItems,
@@ -199,6 +200,15 @@ export default function TrashView({
 }: TrashViewProps): JSX.Element {
   const projectId = useAppSelector((s) => selectActiveProjectDirectoryId(s));
   const dispatch = useAppDispatch();
+  // Write-signalling sibling channel to the Redux dispatches below (see
+  // `TrashRefreshContext.tsx`'s module doc): `app/(app)/page.tsx`'s `Home`
+  // component mirrors project/resource state into its own local `useState`
+  // (`selectedProject`/`projects`) which Redux dispatches never reach, so a
+  // restore here left that local tree stale — the folder-vs-resource delete
+  // routing bug this fixes. Purge needs no such signal: a purged item was
+  // already soft-deleted (and therefore already absent from `page.tsx`'s
+  // local state, per the FR-21/OQ-11 note above) before it could be purged.
+  const { notifyTrashRestored } = useTrashRefresh();
 
   // FR-10/OQ-2: a delete made elsewhere (e.g. the resource tree, via
   // `page.tsx`'s `handleResourceAction` dispatching `removeResource`) doesn't
@@ -372,6 +382,12 @@ export default function TrashView({
         // pair here too, so the sidebar resource tree reflects the restore
         // without a reload.
         if (action.kind === "restore" && succeededCount > 0) {
+          // Notify before the refetch below, not conditioned on its
+          // success — `page.tsx`'s `Home` performs its own independent
+          // `handleOpen`/`openProject` refetch in response, so it isn't
+          // affected by whether *this* component's own Redux refetch
+          // succeeds.
+          notifyTrashRestored();
           try {
             const opened = await openProject(projectId);
             // `openProject` is typed as `ProjectApiEntry`, but its HTTP
@@ -409,7 +425,15 @@ export default function TrashView({
         setPendingAction(null);
       })
       .finally(() => setIsSubmitting(false));
-  }, [pendingAction, projectId, isSubmitting, resources, folders, dispatch]);
+  }, [
+    pendingAction,
+    projectId,
+    isSubmitting,
+    resources,
+    folders,
+    dispatch,
+    notifyTrashRestored,
+  ]);
 
   const dialogTitle = !pendingAction
     ? ""

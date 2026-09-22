@@ -3,6 +3,7 @@ import { userEvent, within, waitFor } from "storybook/test";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import TrashView from "../../components/WorkArea/Views/TrashView/TrashView";
+import TrashRefreshProvider from "../../components/Layout/TrashRefreshContext";
 import projectsReducer from "../../src/store/projectsSlice";
 import resourcesReducer from "../../src/store/resourcesSlice";
 import revisionsReducer from "../../src/store/revisionsSlice";
@@ -131,7 +132,9 @@ function buildStore() {
 function renderView() {
   return (
     <Provider store={buildStore()}>
-      <TrashView />
+      <TrashRefreshProvider>
+        <TrashView />
+      </TrashRefreshProvider>
     </Provider>
   );
 }

@@ -20,7 +20,7 @@
  * {@link AppShell} with the open project's data otherwise.
  */
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
   setProject,
@@ -74,6 +74,7 @@ import { shallowEqual } from "react-redux";
 import { toastService } from "../../src/lib/toast-service";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import { exportMarkdown, exportText } from "../../src/lib/api/export";
+import { useTrashRefresh } from "../../components/Layout/TrashRefreshContext";
 
 /**
  * Flat representation of a project that has been opened in the current session.
@@ -315,6 +316,45 @@ export default function Home(): JSX.Element {
       config: { wordCountGoal: p.project.config?.wordCountGoal },
     });
   };
+
+  // ── Trash-restore staleness fix ─────────────────────────────────────────
+  // `selectedProject` above is local `useState`, hydrated once by
+  // `handleOpen` and never otherwise kept in sync with a restore performed
+  // from the Trash tab (`TrashView.tsx`), which only dispatches to Redux.
+  // `TrashRefreshContext` (`components/Layout/TrashRefreshContext.tsx`)
+  // carries a monotonic token bumped by `TrashView` after a successful
+  // restore; when it changes here, re-run the same `handleOpen` path used
+  // to open the project in the first place, rather than duplicating its
+  // fetch/dispatch logic.
+  const { refreshToken: trashRefreshToken } = useTrashRefresh();
+  const isFirstTrashRefreshRender = useRef(true);
+  useEffect(() => {
+    // Skip the mount-time run: `refreshToken` starts at 0 and the initial
+    // project load is already handled elsewhere (`handleOpen` is called
+    // explicitly from `StartPage`/`handleImportComplete`), so reacting to
+    // this effect's first invocation would fire a redundant re-open.
+    if (isFirstTrashRefreshRender.current) {
+      isFirstTrashRefreshRender.current = false;
+      return;
+    }
+    // No project open yet (or none was ever opened this session) — nothing
+    // to refresh. Guards against a restore notification arriving while the
+    // writer is on the Start screen.
+    if (!activeProjectDirectoryId) return;
+    void handleOpen(activeProjectDirectoryId).catch((err) => {
+      // Best-effort, mirroring `handleImportComplete`'s degrade: the
+      // restore itself already succeeded and is reported by `TrashView`;
+      // a failed refresh here only means the sidebar/local tree needs a
+      // manual reload to catch up, same as the silent-catch behaviour this
+      // replaces.
+      console.error("Error refreshing project after Trash restore:", err);
+    });
+    // Only `trashRefreshToken` should re-trigger this effect — including
+    // `handleOpen`/`activeProjectDirectoryId` would either recreate the
+    // effect on every render (they're not memoized) or, worse, fire it
+    // whenever the active project changes for unrelated reasons.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trashRefreshToken]);
 
   /**
    * Called by {@link StartPage} after a Scrivener import completes

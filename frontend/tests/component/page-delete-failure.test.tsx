@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { makeStore } from "../../src/store/store";
+import TrashRefreshProvider from "../../components/Layout/TrashRefreshContext";
 import type { Project, Folder, AnyResource } from "../../src/lib/models/types";
 
 /**
@@ -156,7 +157,9 @@ async function renderPageWithOpenProject() {
   const store = makeStore();
   render(
     <Provider store={store}>
-      <Page />
+      <TrashRefreshProvider>
+        <Page />
+      </TrashRefreshProvider>
     </Provider>,
   );
   await waitFor(() => screen.getByTestId("resource-res-1"));
