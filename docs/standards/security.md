@@ -64,13 +64,18 @@ If you cannot determine that an operation is permitted, deny it.
   server-decrypted user prose on an encrypted project, and rule 5's "never log
   decrypted content" applies here too. The helper also raises a generic,
   deduplicated user-visible toast alongside its console report, still without
-  ever receiving or logging the raw body. As of Feature 50 this covers 21 call
-  sites across 10 modules (`projects`, `resources`, `project-types`,
+  ever receiving or logging the raw body. As of Feature 51 this covers 27 call
+  sites across 12 modules (`projects`, `resources`, `project-types`,
   `entity-relationships`, `entity-alias-table`, `tags`, `mentions`,
-  `entity-cooccurrence`, `entity-mention-counts`, `resource-excerpts`); 9
-  sites across 6 modules (`resources`, `compile`, `export`, `encryption`,
+  `entity-cooccurrence`, `entity-mention-counts`, `resource-excerpts`,
+  `compile`, `export`); 4 sites across 3 modules (`encryption`,
   `editor-config`, `preferences`) remain unvalidated — check whether the
-  module you're touching has been covered before assuming it has.
+  module you're touching has been covered before assuming it has. Note that
+  `resources.patchRevisionContent`, one of the newly-covered sites, does not
+  throw on a validation failure the way the other covered sites do: it
+  reports and resolves `{ updatedAt: undefined }`, since the save it's
+  validating has already succeeded server-side by the time the response body
+  is parsed.
 
 ---
 
