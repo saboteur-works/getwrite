@@ -1448,7 +1448,7 @@ attempt — tracked as `task_33a403cb` with full detail in the POS note
 "Deleting a just-restored folder silently does nothing on native (stale
 client state)".
 
-### Feature 50: Transport response-body validation — degrade-to-fallback sites — Not started
+### Feature 50: Transport response-body validation — degrade-to-fallback sites — Shipped
 
 **Value:** A writer using a card excerpt, a tag list, an entity mention
 list, an entity co-occurrence/roster count, or a resource's fetched content
@@ -1490,7 +1490,15 @@ no requirement on, not a functional requirement.
 **User stories:** None
 **Depends on:** Feature 48
 **Branch suggestion:** feat/transport-validation-degrade-sites
-**Notes:** Not started. **This is the group the product owner chose to
+**Notes:** Shipped. Merged to `main` on 2026-09-17 as merge commit
+`2b3d63bd` ("Merge pull request #210 from
+saboteur-works/feat/transport-validation-degrade-sites"), landing nine new
+schemas plus an exported `ApiTagSchema` in `frontend/src/lib/api/schemas.ts`
+and validation at the 12 sites across 7 modules named in the Vertical slice
+above, each keeping its own pre-existing degrade-to-fallback contract
+unchanged; `reportTransportValidationFailure` was also extended to raise a
+generic, deduplicated user-visible toast via `toastService.error`, on top of
+its existing console reporting. **This is the group the product owner chose to
 carry forward this run (Gate 2, 2026-09-17).** Grouped by transport
 mechanism (degrade-on-failure), not by content severity or by which module
 Feature 48 previously touched — the owner rejected the severity framing
@@ -1656,7 +1664,7 @@ each site — a candidate discriminant is presence of `error` vs. presence of
 document's own instructions not to resolve open questions raised by a
 breakdown.
 
-### Feature 54: Fail-closed locked-access gate — Not started
+### Feature 54: Fail-closed locked-access gate — Shipped
 
 **Value:** A writer whose workspace keyring is locked or absent never has a
 sealed project's real content silently swapped for ciphertext — an app crash
@@ -1774,7 +1782,22 @@ both directions"), not a functional requirement with its own FR number.
 **User stories:** None
 **Depends on:** Feature 23
 **Branch suggestion:** feat/locked-access-fail-closed-gate
-**Notes:** Not started. This is the single largest lever in this breakdown:
+**Notes:** Shipped. Merged to `main` on 2026-09-22 as merge commit
+`8bf48d3d` ("Merge pull request #211 from
+saboteur-works/feat/locked-access-fail-closed"). `frontend/src/lib/models/locked-access.ts`
+(`isLockedAccessError`) landed as the shared predicate; `adapterFor` in
+`crypto/workspace-adapter.ts` is now marker-first and fails closed;
+`with-storage-context.ts` maps a locked-access failure to a 401/409; and the
+ten swallowing catch sites this entry's measurement named now rethrow, across
+22 routes. Verification on the same branch found and fixed a
+device-independent scan-local regression in project lookups before merge
+(commit `2d1c5bdf`, "make the locked-access check scan-local in project
+lookups"); the device-verification pass run against the build at this
+entry's own merge commit (`8bf48d3d`, per Feature 49's Notes) also surfaced
+the Trash restore bug fixed separately by commit `0566ae35` ("fix(trash):
+refresh the resource tree after a restore", `task_33a403cb`) — see that
+commit and task for detail rather than duplicating it here. This is the
+single largest lever in this breakdown:
 because reads and writes share the same `adapterFor` resolution, there is no
 architecturally meaningful way to split "fix locked reads" from "fix locked
 writes" into two separate features — one change point serves both. Sized
@@ -1796,7 +1819,7 @@ to the module `fs/promises` adapter through `runForTenant`'s default
 `adapterFor`. See the feature covering native locked-write exposure and the
 feature covering CLI lock enforcement, later in this document.
 
-### Feature 55: Interim guard on the confirmed destructive-write sites — Not started
+### Feature 55: Interim guard on the confirmed destructive-write sites — Superseded, closed (no code change)
 
 **Value:** A writer editing a sidecar field, saving after an entity is
 renamed, or having their project reindexed does not have that write silently
@@ -1830,19 +1853,26 @@ addressed here as a narrower interim measure rather than the root cause.
 **User stories:** None
 **Depends on:** Feature 23
 **Branch suggestion:** feat/locked-write-interim-guard
-**Notes:** Not started. This entry and Feature 54 are alternatives sized for
-the same choice, not a sequenced pair: shipping this first buys the
+**Notes:** Superseded, closed. This entry and Feature 54 were sized as
+alternatives for the same choice, not a sequenced pair (see below); the owner
+picked Feature 54, which shipped 2026-09-22 as merge commit `8bf48d3d` and
+covers this entry's destructive-write sites as part of its single
+resolution-layer fix. This entry is therefore superseded by its sibling, not
+completed — no code from this entry was built, unlike Feature 57, which
+closed as a completed measurement. Retained for the record rather than
+deleted, per this document's convention for a feature that will no longer be
+built. Shipping this first buys the
 destructive-write stop sooner and with less surface to review, at the cost
 of three (or five, if the near-misses are included) separately-maintained
 checks that Feature 54's single resolution-layer fix would make redundant
 once it lands — a real duplication-then-supersession cost the owner should
 weigh against the smaller, faster win. This entry does nothing for the
 silent-ciphertext-as-data read sites; only Feature 54 addresses those.
-**Reduces live data-loss risk: yes** — directly and narrowly, for exactly
-the three confirmed sites (plus, if the task list chooses to add them, the
-two near-misses).
+**Reduces live data-loss risk: no longer applicable** — superseded before
+any of it was built; see Feature 54 for the risk this gap now closes
+against.
 
-### Feature 56: Lock enforcement for CLI writes against an encrypted project — Not started
+### Feature 56: Lock enforcement for CLI writes against an encrypted project — Shipped
 
 **Value:** A writer who runs `getwrite-cli reindex` (or any other CLI write
 command) against a project they have encrypted does not get a plaintext
@@ -1868,14 +1898,18 @@ per the parent spec's open question on locked-write scope.
 **User stories:** None
 **Depends on:** Feature 23
 **Branch suggestion:** feat/cli-encrypted-project-write-guard
-**Notes:** Not started. Independent of Feature 54 and Feature 55: neither
+**Notes:** Shipped. Merged to `main` on 2026-09-22 as merge commit
+`32c0a08a` ("Merge pull request #212 from
+saboteur-works/fix/cli-encrypted-project-guard"). `cli/src/lib/encryption-guard.ts`
+(`guardAgainstEncryptedProject`) landed as the shared check; `doctor`,
+`reindex`, `prune`, and `templates`' `save`/`create`/`duplicate` commands all
+call it and exit with code 3 against an encrypted project. `templates list`
+was deliberately left unguarded — it is a read path that already degrades,
+so the command is guarded non-uniformly by choice, not by omission.
+Independent of Feature 54 and Feature 55: neither
 touches the CLI, since both act inside the encrypting-adapter layer the CLI
-never binds. This feature's task list should audit `cli/src/commands/` for
-every command that writes into a project directory (`reindex` is the one
-this survey named; `prune`, `templates`, and the importers may or may not
-also qualify and were not checked here) rather than covering only
-`reindex`. **Reduces live data-loss risk: yes** — directly, for the one CLI
-write path this survey confirmed has no encryption check at all.
+never binds. **Reduces live data-loss risk: yes** — directly, for the CLI
+write paths this feature covered.
 
 ### Feature 57: Native locked-write exposure — measurement — Measured, closed (no code change)
 
@@ -2048,30 +2082,33 @@ rather than by any pending implementation task.
   covers the 3 one-body-serves-both-outcomes sites across 2 modules
   (`editor-config.ts`, `preferences.ts`). Each still depends only on the
   already-shipped Feature 48 for its shared validation mechanism, not on
-  one another, and can be built in any order or in parallel; the product
-  owner has chosen Feature 50 to carry forward this run, leaving 51, 52,
-  and 53 as remaining work each needing its own future pass through the
-  pipeline. 54, 55, 56, and 57 (the locked-access survey's breakdown, added
-  2026-09-17 per the parent spec's locked-access constraint and its OQ-36/
-  OQ-37) each depend only on the already-shipped Feature 23 and not on one
-  another, but 54 and 55 are sized as alternatives for the same choice
-  rather than a sequenced pair — see each entry's Notes for the trade-off —
-  so at most one of that pair is expected to be picked before the other is
-  reconsidered. 56 (CLI) and 57 (native measurement) are independent of
-  both 54 and 55 and of each other, since neither the resolution-layer gate
-  nor its interim alternative reaches the CLI or native transport.
+  one another, and can be built in any order or in parallel; Feature 50 has
+  since shipped, leaving 51, 52, and 53 as remaining work each needing its
+  own future pass through the pipeline. 54, 55, 56, and 57 (the
+  locked-access survey's breakdown, added 2026-09-17 per the parent spec's
+  locked-access constraint and its OQ-36/OQ-37) each depend only on the
+  already-shipped Feature 23 and not on one another; 54 and 55 were sized as
+  alternatives for the same choice rather than a sequenced pair — see each
+  entry's Notes for the trade-off — and the owner's pick, 54, has since
+  shipped, superseding 55 (closed, not built). 56 (CLI) has also since
+  shipped, and 57 (native measurement) closed as a completed measurement;
+  both were independent of 54 and 55 and of each other, since neither the
+  resolution-layer gate nor its interim alternative reaches the CLI or
+  native transport.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
   57 (30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 50, 51, 52, 53, 54, 55,
-  56, 57. Everything else in this list has shipped (Feature 26 shipped on
+- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 51, 52, 53. Everything
+  else in this list has shipped (Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped
   separately as Feature 49; Feature 48's own deferred remainder is tracked
-  separately as Features 50-53; the locked-access gap is tracked as
-  Features 54-57).
+  separately as Features 50-53, of which 50 has since shipped; the
+  locked-access gap was tracked as Features 54-57, of which 54 and 56 have
+  since shipped, 55 was superseded by 54 and will not be built, and 57
+  closed as a completed measurement).
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
   design decision before implementation tasks can be written. Feature 28 is
@@ -2123,6 +2160,11 @@ rather than by any pending implementation task.
   layout instead of a list — this breakdown does not assume any particular
   answer and expects that feature's task list to measure rather than assert
   it, following Feature 36's precedent.
+- Observed maintenance pattern: this document's statuses are not updated
+  when a PR merges, so entries go stale one at a time until someone
+  cross-checks them against the tree. Features 26, 48, and 49 were corrected
+  earlier in one 2026-09-22 session, then 50, 54, 55, and 56 in the same
+  session — eight stale entries found and fixed in a single pass.
 
 ## Open Questions
 
