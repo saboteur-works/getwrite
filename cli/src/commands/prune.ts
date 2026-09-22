@@ -34,6 +34,7 @@
  */
 import { Command } from "commander";
 import { runPruneCli, runForTenant } from "@gw/core";
+import { guardAgainstEncryptedProject } from "../lib/encryption-guard";
 
 /**
  * Registers the `prune` sub-command on the provided Commander `program`.
@@ -79,6 +80,24 @@ export function registerPrune(program: Command) {
         const root = projectRoot ?? process.cwd();
         const max = Number(options.max ?? 50);
         try {
+          // Check before delegating. `listRevisions` (revision.ts) parses
+          // each metadata.json inside try { … } catch { continue; }, so on
+          // an encrypted project every parse fails, it returns [], nothing
+          // is pruned, and runPruneCli reports success having done nothing —
+          // not destructive, but a false "all clear".
+          const guardCode = await guardAgainstEncryptedProject(
+            root,
+            "prune",
+            "It is not destructive against a sealed project — it cannot see " +
+              "any revisions to delete — but it would report success having " +
+              "pruned nothing, which misrepresents an unreadable project as " +
+              "an already-tidy one.",
+          );
+          if (guardCode !== null) {
+            if (!process.env.GETWRITE_CLI_TESTING) process.exit(guardCode);
+            return;
+          }
+
           const code = await runForTenant(root, () =>
             runPruneCli([process.execPath, "getwrite-cli", root, String(max)]),
           );

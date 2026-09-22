@@ -49,6 +49,7 @@ import {
   duplicateResource,
   runForTenant,
 } from "@gw/core";
+import { guardAgainstEncryptedProject } from "../lib/encryption-guard";
 
 /**
  * Registers the `templates` sub-command group on the provided Commander
@@ -94,6 +95,18 @@ export function registerTemplates(program: Command) {
         name: string,
       ): Promise<void> => {
         try {
+          const guardCode = await guardAgainstEncryptedProject(
+            projectRoot,
+            "templates save",
+            "It would write the new template's JSON straight into " +
+              "meta/templates/, landing as plaintext inside an otherwise " +
+              "sealed project.",
+          );
+          if (guardCode !== null) {
+            process.exit(guardCode);
+            return;
+          }
+
           const template = {
             id: templateId,
             name,
@@ -128,6 +141,18 @@ export function registerTemplates(program: Command) {
         name?: string,
       ): Promise<void> => {
         try {
+          const guardCode = await guardAgainstEncryptedProject(
+            projectRoot,
+            "templates create",
+            "It would write the new resource's content and sidecar straight " +
+              "onto disk, landing as plaintext inside an otherwise sealed " +
+              "project.",
+          );
+          if (guardCode !== null) {
+            process.exit(guardCode);
+            return;
+          }
+
           const created = await runForTenant(projectRoot, () =>
             createResourceFromTemplate(projectRoot, templateId, { name }),
           );
@@ -157,6 +182,18 @@ export function registerTemplates(program: Command) {
     .description("Duplicate an existing resource")
     .action(async (projectRoot: string, resourceId: string): Promise<void> => {
       try {
+        const guardCode = await guardAgainstEncryptedProject(
+          projectRoot,
+          "templates duplicate",
+          "It would write the duplicated resource's content and sidecar " +
+            "straight onto disk, landing as plaintext inside an otherwise " +
+            "sealed project.",
+        );
+        if (guardCode !== null) {
+          process.exit(guardCode);
+          return;
+        }
+
         const res = await runForTenant(projectRoot, () =>
           duplicateResource(projectRoot, resourceId),
         );

@@ -30,12 +30,8 @@
  */
 import path from "node:path";
 import { Command } from "commander";
-import {
-  readFolderTree,
-  getLocalResources,
-  runForTenant,
-  isProjectEncrypted,
-} from "@gw/core";
+import { readFolderTree, getLocalResources, runForTenant } from "@gw/core";
+import { guardAgainstEncryptedProject } from "../lib/encryption-guard";
 
 interface FolderLike {
   id?: unknown;
@@ -56,17 +52,13 @@ export async function runDoctor(root: string): Promise<number> {
   // the first `JSON.parse` throws `Unexpected token 'G', "GWE ..."` — a message
   // that points a reader at file corruption rather than at encryption.
   // Measured 2026-09-16 against a real encrypted project.
-  if (await isProjectEncrypted(root)) {
-    console.error(
-      `[doctor] Cannot check ${root}: this project is encrypted.\n` +
-        "Its files are sealed on disk, so the folder associations this command " +
-        "inspects are not readable without the workspace passphrase.\n" +
-        "Export a plaintext copy (Project Settings -> Encryption) and run " +
-        "doctor against that, or unlock and re-run once doctor supports a " +
-        "passphrase.",
-    );
-    return 3;
-  }
+  const guardCode = await guardAgainstEncryptedProject(
+    root,
+    "doctor",
+    "The folder associations this command inspects are not readable without " +
+      "the workspace passphrase.",
+  );
+  if (guardCode !== null) return guardCode;
 
   const folders = (await readFolderTree(
     path.join(root, "folders"),
