@@ -1671,9 +1671,9 @@ mechanisms then assert the same fact and could drift apart over time; this
 was accepted deliberately, because each fails earlier and with a friendlier,
 more specific message than a generic locked-read error would give.
 
-**OQ-37: Does the fix for the locked-write gap (see the locked-access
-constraint above) also need to cover the CLI, and does the native
-(Capacitor/Android) transport path share the same exposure?**
+**OQ-37 (resolved): Does the fix for the locked-write gap (see the
+locked-access constraint above) also need to cover the CLI, and does the
+native (Capacitor/Android) transport path share the same exposure?**
 **Impact:** The CLI binds no encrypting adapter at all — `cli/src`
 references encryption only in `doctor.ts` — so a fix implemented solely
 inside the encrypting-adapter layer the web/desktop routes go through may
@@ -1689,6 +1689,77 @@ or both write paths unprotected after the encrypting-adapter path is fixed.
 check anywhere in its 150 lines. The native transport path was not
 inspected as part of this survey; whether it shares the locked-write
 exposure is unresolved.
+**Resolution:** Part (a), the CLI half, was already answered by evidence
+recorded elsewhere in this document before this resolution pass: the
+locked-access constraint above (this section, evidence dated 2026-09-17)
+already found that the CLI's `reindex` command contains no
+key-availability check anywhere in its 150 lines and that the CLI binds no
+encrypting adapter at all. A fix scoped only to the encrypting-adapter
+layer the web/desktop routes go through would not reach this path. That
+finding is restated here only to close the question, not re-derived.
+
+Part (b), the native half, measured 2026-09-22 on `main` (HEAD `8bf48d3d`)
+by static call-graph trace, separately from Feature 57 (see
+`getwrite.features.md`), whose scope this measurement completes. Verdict:
+**encryption is unreachable on native today; the gap is theoretical, not
+exercised.**
+
+(1) No enable path. `enableProjectEncryption`
+(`crypto/enable-encryption.ts`) has exactly one non-test caller,
+`frontend/app/api/encryption/route.ts:162`. `frontend/scripts/build-native-static.mjs`
+strips `app/api/**` from the native app tree, and `android/capacitor.config.ts`
+serves a static export with no `server.url` — so that route does not
+exist in the native build.
+(2) No native backend. None of the `frontend/src/store/transport/native-*-backend.ts`
+files implements any encryption path. `frontend/src/lib/api/encryption.ts`
+does not use `createTransport` — its own doc comment (lines 13-15)
+states the native pair is "Task 21's job," which has not landed.
+(3) No unlock path. `unlockSession`/`lockSession` (`crypto/keyring-session.ts`)
+have the same single caller, `app/api/encryption/route.ts`. So
+`getSessionKeyring()` is permanently `null` on native.
+(4) No ingest route. Projects are created on-device; there is no sync
+(ADR-021 Phase 2); both importers are gated on the Electron desktop
+bridge (`frontend/components/Start/StartPage.tsx`). Storage is
+app-private `Directory.Data` (`native-bootstrap.ts`).
+(5) Feature 54 is inert on native. `ProjectLockedError`/`MissingProjectKeyError`
+are constructed only in `crypto/adapter-selection.ts` and
+`crypto/workspace-adapter.ts`, both inside adapters native never binds
+(`native-bootstrap.ts` binds the bare `capacitorFsAdapter`). So no
+locked-access error can be raised on native, and every Feature 54
+rethrow is inert there.
+(6) Native is not wholly unprotected, by a different mechanism:
+`project-crud-core.ts:132` reads the project marker before
+`project.json`, and that is shared core native does run. A copied-in
+encrypted project would list as a locked card with no open action;
+envelope bytes are not rendered as content on that path.
+
+The finding that matters more than the verdict: native safety today rests
+on an accident, not a design — this is an inference from the code
+measured below, not an observed runtime behavior (the app was not run).
+`ProjectEncryptionPanel` is mounted at
+`frontend/components/SchemaManager/SchemaManager.tsx:525` with no runtime
+gate — there is no `NEXT_PUBLIC_GETWRITE_RUNTIME` check or other native
+check anywhere near the encryption UI, `encryption-availability.ts`, or
+`lib/api/encryption.ts`. It is hidden on native only because its `fetch`
+to the absent `/api/encryption` fails, and `frontend/src/store/cryptoSlice.ts`
+has no `.rejected` case for `checkWorkspaceLock` (only `.fulfilled`,
+verified), leaving `lockStatus` at its initial `"unknown"` forever, which
+the panel treats as "render nothing." Two things would make the gap live:
+Task 21 wiring `lib/api/encryption.ts` through `createTransport` — which
+must wrap the native default context (`native-bootstrap.ts`) in the same
+change, not after it, or encryption becomes enableable on-device while the
+raw `capacitorFsAdapter` stays bound, reintroducing "encrypting a project
+made it unopenable" on the one platform with no unlock UI to recover from
+it; or anyone adding a `checkWorkspaceLock.rejected` case that sets a real
+status, which would make the panel appear immediately with an enable
+button that fetches a route that does not exist.
+
+Not established by this measurement: whether native's indexer or
+backlinks-watcher (`indexer-queue.ts`, `backlinks-watcher.ts`) walk into a
+marker-bearing project directory without a marker check of their own.
+Settling this needs reading those two modules' traversal paths directly;
+it is worth doing before Task 21 lands rather than now, since Task 21 is
+the change that would make any such gap live.
 
 ## Out of Scope (Deferred)
 

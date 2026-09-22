@@ -1850,7 +1850,7 @@ also qualify and were not checked here) rather than covering only
 `reindex`. **Reduces live data-loss risk: yes** — directly, for the one CLI
 write path this survey confirmed has no encryption check at all.
 
-### Feature 57: Native locked-write exposure — measurement — Not started
+### Feature 57: Native locked-write exposure — measurement — Measured, closed (no code change)
 
 **Value:** Before any fix is designed for a native (Capacitor/Android)
 locked-write gap, this establishes whether one exists at all — the parent
@@ -1880,13 +1880,30 @@ functional requirement.
 **User stories:** None
 **Depends on:** Feature 23
 **Branch suggestion:** n/a — measurement only, no feature branch expected
-**Notes:** Not started. **Reduces live data-loss risk: not directly** — no
-code changes here — but may surface a real gap that would need its own
-future feature to close, or may close OQ-37's native half as "not currently
-reachable" if encryption turns out to have no live enablement path on
-native. This is the lowest-cost entry in this batch and a reasonable
-first pick if the owner wants to scope Feature 54/55/56 more precisely
-before committing engineering time to any of them.
+**Notes:** Measured 2026-09-22 (static call-graph trace on `main`, HEAD
+`8bf48d3d`), and closed — see the parent spec's now-resolved OQ-37 native
+half (`getwrite.md`) for the full six-point trace and evidence. Verdict:
+encryption is unreachable on native today (no enable path, no native
+transport backend, no unlock path, no ingest route), so the locked-write
+gap is theoretical there, not exercised. Also established: native is not
+wholly unprotected regardless, by an unrelated mechanism (the project
+marker is read before `project.json` in shared core), and that native's
+current safety is best read as an accident of two independent gaps — a
+missing runtime gate on `ProjectEncryptionPanel` and a missing
+`.rejected` case in `cryptoSlice.ts` — rather than a designed protection;
+Task 21 (wiring `lib/api/encryption.ts` through `createTransport`) would
+make the gap live unless it also wraps native's default storage context in
+the same change. One item was explicitly left unestablished: whether
+native's indexer/backlinks-watcher walk into a marker-bearing project
+directory without their own marker check — flagged as worth settling
+before Task 21, not before this feature closes. **Reduces live data-loss
+risk: not directly** — no code changes here — but the measurement itself
+is the outcome; no follow-on fix is currently indicated since the gap this
+feature was scoped to check for was not found live. **Status is unusual
+for this document:** this entry closes as neither "Shipped" (nothing was
+built or merged) nor "Not started" (the work is done) — it is retired as a
+completed measurement, its finding now carried by OQ-37's resolution
+rather than by any pending implementation task.
 
 ---
 
