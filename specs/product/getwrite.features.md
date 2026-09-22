@@ -1413,13 +1413,40 @@ not rejected"). The all-reject contract and the native failure taxonomy
 (missing project root, Capacitor filesystem-bridge error, mid-sweep purge
 failure) enumerated in the feature spec before implementation are the owner
 decisions already settled — see this document's Open Questions for what
-those decisions were and are not. Caveat that survives the shipped status:
-this native Trash transport is real, in-process code, verified by
+those decisions were and are not. This native Trash transport is real, in-process code, verified by
 `native-trash-backend-native-web-parity.test.ts` and
-`native-trash-backend-web-exclusion.test.ts`, but it has **not yet been
-exercised on a physical device** — the same caveat Feature 26's own Notes
-and the CLAUDE.md glossary entry for Trash carry for the rest of the native
-transport layer.
+`native-trash-backend-web-exclusion.test.ts`, and has now also been
+exercised on a physical device: verified 2026-09-22 on a Pixel 7 Pro
+(`cheetah`, serial 29121FDH300EP7), Android 17, running a debug build of
+`main` at commit `8bf48d3d`, installed via `frontend`'s `pnpm build:native`
+→ `cap sync` → `./gradlew installDebug`. Each step was driven through the
+app's UI by a human, and the outcome confirmed by reading app-private
+storage directly (`adb shell run-as works.saboteur.getwrite`), not from the
+UI's own report. All six paths passed: soft-deleting a resource (content
+directory, sidecar, revisions, and the nullified-reference record all
+genuinely moved into `.trash/`, not copied); restoring it (full round-trip,
+`.trash/` left completely empty with no orphaned ref record); purging it
+(target gone from `resources/`, `meta/`, and `revisions/`, `.trash/` swept,
+the surviving resource and other project state untouched); a folder
+soft-delete cascade (manifest written at `.trash/meta/folder-<id>.json` with
+the folder's own descriptor plus its descendant's `id`/`kind`/`parentId`/
+`orderIndex`, both moved); folder restore (tree genuinely rebuilt, descriptor
+restored with `parentId`/`orderIndex`/original `createdAt` intact, and the
+descendant's sidecar `folderId` pointing back at the restored folder); and
+empty trash as a batch operation (all items purged, no partial state, live
+tree intact — exercising `createNativeRunner`'s per-id `run()` re-entry,
+which is why the native backend loops over `purgeOneCore` rather than
+calling `purgeBatchCore`). This mattered because every prior test exercised
+the in-memory fake `CapacitorFilesystemLike`; the cross-directory rename
+soft-delete depends on had never run against the real
+`@capacitor/filesystem` bridge before this run. Device verification also
+surfaced a defect the test suite did not: deleting a just-restored folder is
+a silent no-op until the app reloads. This is a client-state defect, not a
+defect in the native Trash transport this feature delivered — the model
+layer behaved correctly at every step, including during the failed delete
+attempt — tracked as `task_33a403cb` with full detail in the POS note
+"Deleting a just-restored folder silently does nothing on native (stale
+client state)".
 
 ### Feature 50: Transport response-body validation — degrade-to-fallback sites — Not started
 
