@@ -18,10 +18,21 @@ plain, non-decrypting `inner` adapter whenever `!keyring || keyring.isLocked()`,
 for every path including a sealed project's files, with no error and no
 signal that decryption was skipped. This feature makes that branch fail
 closed instead, and — because a gate that throws into an untyped `catch`
-just changes which failure looks silent — also fixes the fourteen call
-sites in the model layer whose existing `catch` blocks would otherwise
-swallow the new error exactly as they swallow today's ciphertext-parse
-`SyntaxError`.
+just changes which failure looks silent — also fixes the fourteen named
+call sites in the model layer whose existing `catch` blocks would
+otherwise swallow the new error exactly as they swallow today's
+ciphertext-parse `SyntaxError`. **Measured 2026-09-22:** those fourteen
+named sites correspond to 15 literal `isLockedAccessError(` call-site
+occurrences in code, not 14 — a named site is not always one code-level
+check. `loadResourceContent` (`frontend/src/lib/tiptap-utils.ts`), for
+example, reads two separate files in two independently-guarded
+try/catch blocks, so it is one named FR-6 site but two checks; similarly
+`listTrashedItems` and `findProjectRootByInternalId` / `findProjectRoot`
+are each one named site spanning two checks apiece, while the "search
+(via loadIndex)" and `sidecar.ts`'s `enqueueEntityRescan` callback
+(FR-13) are named sites that add no check of their own, reusing another
+site's. A named site and a call site are different units of count; the
+spec should not present one number as if it were the other.
 
 Severity is asymmetric and must not be blurred: a locked **read** returns
 unusable ciphertext bytes — wrong output, but nothing is destroyed. A locked
@@ -239,11 +250,12 @@ this system.
   MUST NOT share a memoized marker decision — since that property is what
   makes OQ-7's "no invalidation mechanism needed" resolution correct
   rather than merely assumed.
-- FR-14: Of the 36 route files under `frontend/app/api`, the nine
-  confirmed (2026-09-17) to swallow any error into a fixed-shape response
-  before it can reach the centralised mapping in
-  `with-storage-context.ts` — `projects/route.ts:14-20,34-43`,
-  `project-types/route.ts:38-41`, `project/tags/route.ts:99-104`,
+- FR-14: Of the (estimated 2026-09-17 at 36; **measured 2026-09-22: 50**)
+  route files under `frontend/app/api`, the nine confirmed (2026-09-17) to
+  swallow any error into a fixed-shape response before it can reach the
+  centralised mapping in `with-storage-context.ts` —
+  `projects/route.ts:14-20,34-43`, `project-types/route.ts:38-41`,
+  `project/tags/route.ts:99-104`,
   `project/revision-settings/route.ts:63-68`,
   `project/features/route.ts:74-83`,
   `project/[project-id]/search/route.ts:100-103`,
@@ -253,10 +265,33 @@ this system.
   swallowing it, so FR-12's mapping can actually reach them. Without this,
   FR-12's guarantee is only partly delivered, and `GET /api/projects` —
   the app's first request — is among the currently-broken ones. [US-3]
-- FR-15: The remaining roughly nine route files under `frontend/app/api`
-  not yet classified as clean-rethrow or swallowing MUST be classified as
-  part of this feature, not assumed clean, and any found to swallow a
-  locked-access error MUST be fixed the same way as FR-14's sites. [US-3]
+
+  **Known limitation, measured 2026-09-22:** `project-types/route.ts`'s
+  `GET` handler is not wrapped by `withStorageContext` at all (it reads a
+  fixed template directory via `node:fs` directly, never through a
+  `StorageContext`-scoped adapter). Its FR-14 rethrow is correct but
+  currently unreachable by FR-12's centralised 401/409 mapping — the fix
+  was deliberately not force-fixed by wrapping the route, since
+  `isLockedAccessError` is not expected to ever observe a locked-access
+  error there in practice. This is recorded as a known limitation, not
+  reopened as a defect.
+- FR-15: The remaining (estimated 2026-09-17 at roughly nine; **measured
+  2026-09-22: 41**, i.e. the 50 route files less FR-14's nine) route files
+  under `frontend/app/api` not yet classified as clean-rethrow or
+  swallowing MUST be classified as part of this feature, not assumed
+  clean, and any found to swallow a locked-access error MUST be fixed the
+  same way as FR-14's sites. [US-3]
+
+  **Measured 2026-09-22 (FR-15's classification of these 41 files):** 25
+  already rethrow cleanly, 13 swallow a locked-access error into a
+  fixed-shape response, and 3 are not tenant-scoped at all — `auth-status`,
+  `auth/[...all]`, and `version-check` — none of which are wrapped by
+  `withStorageContext`, so they fall outside this feature's mapping by
+  construction rather than by omission. This requirement's own framing
+  ("~9 remain unclassified, and any found swallowing") left open the
+  possibility that zero of the 41 would turn out to swallow; the
+  measurement contradicts that — 13 did, and FR-15's fix work on them was
+  not a no-op.
 
 ## Decisions carried into implementation
 
