@@ -1,6 +1,7 @@
 import React from "react";
 import { useDispatch } from "react-redux";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { fn } from "storybook/test";
 import EditView, { EditViewProps } from "../../components/WorkArea/EditView";
 import {
   setResources,
@@ -12,6 +13,12 @@ import { setEditorConfig } from "../../src/store/editorConfigSlice";
 const meta: Meta<typeof EditView> = {
   title: "WorkArea/EditView",
   component: EditView,
+  // Storybook infers an implicit action for every `on*` prop and, since v8,
+  // throws while rendering rather than warning: "We detected that you use an
+  // implicit action arg while rendering of your story." That aborted the whole
+  // story, so the editor never mounted and every spec waiting on
+  // `[role="textbox"]` timed out.
+  args: { onUnsavedChange: fn() },
 };
 
 export default meta;
