@@ -173,7 +173,7 @@ export interface ResourcesTransport {
     projectId: string,
     revisionId: string,
     content: string,
-  ): Promise<{ updatedAt?: string }>;
+  ): Promise<{ updatedAt?: string; snapshotCreated?: boolean }>;
   /** Persists a folder/resource reorder for a project. */
   reorder(
     projectId: string,
@@ -374,7 +374,10 @@ export const httpResourcesTransport: ResourcesTransport = {
       );
       return { updatedAt: undefined };
     }
-    return { updatedAt: result.data.updatedAt };
+    return {
+      updatedAt: result.data.updatedAt,
+      snapshotCreated: result.data.snapshotCreated,
+    };
   },
 
   async reorder(projectId, payload, projectRoot) {
@@ -607,7 +610,7 @@ export async function patchRevisionContent(
   projectId: string,
   revisionId: string,
   content: string,
-): Promise<{ updatedAt?: string }> {
+): Promise<{ updatedAt?: string; snapshotCreated?: boolean }> {
   const transport = await resolveResourcesTransport();
   return transport.patchRevisionContent(
     resourceId,

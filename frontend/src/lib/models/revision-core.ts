@@ -31,6 +31,7 @@ import { persistResourceContent, tiptapToPlainText } from "../tiptap-utils";
 import { countWords } from "../word-count";
 import type { TipTapDocument } from "../models";
 import { resolveProjectRoot } from "./project-root-resolver";
+import { isDestructiveContentChange } from "./content-loss";
 
 /**
  * When `content` is omitted, {@link createRevision} reads the resource's
@@ -66,6 +67,13 @@ export const resolveRevisionProjectRoot = resolveProjectRoot;
 // ---------------------------------------------------------------------------
 // Private helpers (lifted verbatim from the route)
 // ---------------------------------------------------------------------------
+
+/**
+ * Name given to a revision minted automatically to preserve content an
+ * autosave was about to destroy. Shown in the revision list exactly like a
+ * writer-named revision, so the way back is where they already look.
+ */
+export const AUTOMATIC_SNAPSHOT_NAME = "Auto-backup before large deletion";
 
 async function findRevisionById(
   projectPath: string,
@@ -251,6 +259,69 @@ export async function createRevision(
 }
 
 /**
+ * Preserves the canonical revision's current content as its own non-canonical
+ * revision when the incoming write would destroy most of it.
+ *
+ * Autosave writes through the canonical revision, so without this a
+ * destructive editor state (undo overshoot, select-all-and-type, paste over a
+ * full selection) overwrites the only copy on disk: the content files are
+ * rewritten from the same document, and a resource with one revision is left
+ * with no undamaged state anywhere (note_68cf31b0).
+ *
+ * Best-effort by design. A resource whose current content cannot be read has
+ * nothing to preserve, and a snapshot that fails to write must not take the
+ * writer's edit down with it — the save is what they are waiting on, so both
+ * cases fall through to the write rather than throwing.
+ *
+ * @returns The snapshot revision written, or `null` when none was needed or
+ *   possible.
+ */
+async function snapshotBeforeDestructiveWrite(
+  projectRoot: string,
+  resourceId: string,
+  versionNumber: number,
+  incomingContent: string,
+): Promise<Revision | null> {
+  let previousContent: string;
+  try {
+    previousContent = await readRevisionContent(
+      projectRoot,
+      resourceId,
+      versionNumber,
+    );
+  } catch {
+    return null;
+  }
+
+  if (!isDestructiveContentChange(previousContent, incomingContent)) {
+    return null;
+  }
+
+  try {
+    const snapshotVersion = await resolveNextVersionNumber(
+      projectRoot,
+      resourceId,
+    );
+    return await writeRevision(
+      projectRoot,
+      resourceId,
+      snapshotVersion,
+      previousContent,
+      {
+        isCanonical: false,
+        metadata: { name: AUTOMATIC_SNAPSHOT_NAME, automaticSnapshot: true },
+      },
+    );
+  } catch (error) {
+    console.error(
+      "Failed to snapshot canonical revision before a destructive write",
+      error,
+    );
+    return null;
+  }
+}
+
+/**
  * Updates the canonical revision's content in place, syncing derived
  * resource content files and bumping the resource sidecar's `updatedAt`.
  *
@@ -264,7 +335,7 @@ export async function updateRevisionInPlace(
   resourceId: string,
   revisionId: string,
   content: string,
-): Promise<Revision & { updatedAt: string }> {
+): Promise<Revision & { updatedAt: string; snapshotCreated: boolean }> {
   const revisions = await listRevisions(projectRoot, resourceId);
   const target = revisions.find((revision) => revision.id === revisionId);
 
@@ -275,6 +346,15 @@ export async function updateRevisionInPlace(
   if (!target.isCanonical) {
     throw new Error("Only the canonical revision can be updated in place.");
   }
+
+  // Preserve what is about to be overwritten when the incoming content would
+  // destroy most of it, so the writer has something to restore from.
+  const snapshot = await snapshotBeforeDestructiveWrite(
+    projectRoot,
+    resourceId,
+    target.versionNumber,
+    content,
+  );
 
   await writeRevisionContent(
     projectRoot,
@@ -305,7 +385,10 @@ export async function updateRevisionInPlace(
     ...(wordCount === undefined ? {} : { wordCount }),
   });
 
-  return { ...target, updatedAt };
+  // Reported back to the caller so the editor can refresh its revision list
+  // and tell the writer a way back exists — a backup nobody knows about is
+  // only half a safety net.
+  return { ...target, updatedAt, snapshotCreated: snapshot !== null };
 }
 
 /**

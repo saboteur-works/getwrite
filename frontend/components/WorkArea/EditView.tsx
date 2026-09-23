@@ -2,9 +2,10 @@ import React, { useEffect } from "react";
 import TipTapEditor from "../TipTapEditor";
 import NodeTypeIndicator from "./NodeTypeIndicator";
 import { TipTapDocument } from "../../src/lib/models";
-import useAppSelector from "../../src/store/hooks";
+import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
 import {
+  loadRevisionsForSelectedResource,
   selectCurrentRevisionContent,
   selectCurrentRevisionId,
   selectVisibleRevisions,
@@ -92,6 +93,17 @@ export default function EditView({
     currentRevisionContent,
   });
 
+  const dispatch = useAppDispatch();
+
+  // An autosave that would have destroyed most of the document preserves the
+  // previous content as a new revision first. Reload the list so the backup is
+  // there when the writer goes looking, rather than only after a reload.
+  const handleSnapshotCreated = React.useCallback(() => {
+    const resourceId = selectedResource?.id;
+    if (!resourceId) return;
+    void dispatch(loadRevisionsForSelectedResource({ resourceId }));
+  }, [dispatch, selectedResource?.id]);
+
   const {
     saveStatus,
     lastSavedAt,
@@ -104,6 +116,7 @@ export default function EditView({
     selectedResourceId: selectedResource?.id ?? null,
     currentRevisionId,
     canonicalRevisionId,
+    onSnapshotCreated: handleSnapshotCreated,
   });
 
   const handleChange = (next: string, doc: TipTapDocument) => {

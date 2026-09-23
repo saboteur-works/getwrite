@@ -42,6 +42,39 @@ if (
   document.elementFromPoint = () => null;
 }
 
+// JSDOM implements no layout, so `getClientRects`/`getBoundingClientRect` are
+// missing on Range and return zeroes on Element. ProseMirror's
+// `scrollToSelection` calls them while dispatching any transaction that moves
+// the selection — including undo — and throws `target.getClientRects is not a
+// function` without them. Only tests that mount a real editor and dispatch
+// through it hit this; the values are never asserted on, they just have to
+// exist. Guarded so the node-environment projects are untouched.
+if (typeof Range !== "undefined") {
+  const emptyRect = {
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    width: 0,
+    height: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  } as DOMRect;
+  const emptyRectList = Object.assign([emptyRect], {
+    item: () => emptyRect,
+  }) as unknown as DOMRectList;
+
+  for (const proto of [Range.prototype, Element.prototype]) {
+    const target = proto as unknown as {
+      getClientRects?: () => DOMRectList;
+      getBoundingClientRect?: () => DOMRect;
+    };
+    target.getClientRects = () => emptyRectList;
+    target.getBoundingClientRect = () => emptyRect;
+  }
+}
+
 // `src/lib/auth/auth-client.ts` calls `createAuthClient()` from
 // `better-auth/react` at module import time. That client's `useSession()` is
 // a nanostores atom hook: nanostores defers store cleanup via `setTimeout`
