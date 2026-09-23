@@ -31,6 +31,7 @@ import debounce from "lodash/debounce";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
 import MarkdownSourceView from "./Editor/MarkdownSourceView";
+import { loadDocumentIntoEditor } from "./Editor/loadDocumentIntoEditor";
 import MarkdownSwitchWarningModal from "./Editor/MarkdownSwitchWarningModal";
 import {
   documentToMarkdown,
@@ -456,7 +457,12 @@ export default function TipTapEditor({
       // canonical autosave and rewrote a document merely because it was
       // opened. Pass the options object so loading stays silent, matching
       // `setContent(doc, { emitUpdate: false })` above.
-      editor.commands.setContent(value || "", { emitUpdate: false });
+      //
+      // The load is also kept out of the undo stack: `emitUpdate: false`
+      // silences `onUpdate`, but does nothing to history, so undo used to
+      // walk past the writer's own first keystroke and empty a document they
+      // had only opened (note_68cf31b0).
+      loadDocumentIntoEditor(editor, (value as Content) || "");
       // The content swap resets the selection; refresh the node-type indicator
       // so it reflects the newly loaded document (resource/revision switch)
       // rather than a stale value carried over from the previous one.
