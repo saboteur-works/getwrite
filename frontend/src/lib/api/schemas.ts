@@ -320,6 +320,28 @@ export const ResourceContentResponseSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// ResourceContentResponseSansTipTapSchema — the same response with
+// `tipTapContent` deliberately undeclared, so Zod strips it.
+//
+// Used only to salvage a body that failed the schema above. `tipTapContent`
+// is the one field a caller can do without: `useRevisionContent` treats an
+// absent document as "fall back to the canonical revision", which is the
+// authoritative source of the document anyway. `revisions` is what it needs
+// to reach that revision, so discarding the whole response over an unusable
+// `tipTapContent` is what turned a seeded template resource into a blank
+// editor — see `httpResourcesTransport.fetchContent`.
+// ---------------------------------------------------------------------------
+
+export const ResourceContentResponseSansTipTapSchema = z.object({
+  resourceContent: z
+    .object({ plaintextContent: z.string().nullable().optional() })
+    .optional(),
+  revisions: z
+    .array(z.object({ id: z.string(), isCanonical: z.boolean() }))
+    .optional(),
+});
+
+// ---------------------------------------------------------------------------
 // ResourceRevisionContentResponseSchema — matches the `{ content?: unknown
 // }` payload read at `./resources.ts:300` for a single revision's content.
 // `content` is deliberately `unknown` here, mirroring the source site: its

@@ -2,6 +2,7 @@ import type { AnyResource, Folder, TipTapDocument } from "../models/types";
 import { createTransport } from "../../store/transport/create-transport";
 import {
   PatchRevisionContentResponseSchema,
+  ResourceContentResponseSansTipTapSchema,
   ResourceContentResponseSchema,
   ResourceResponseSchema,
   ResourceRevisionContentResponseSchema,
@@ -307,7 +308,23 @@ export const httpResourcesTransport: ResourcesTransport = {
         "resources.fetchContent",
         result.error.issues,
       );
-      return null;
+      // An unusable `tipTapContent` must not discard the rest of the body.
+      // `useRevisionContent` returns early on a null result, so it never
+      // reaches the canonical revision — the authoritative source of the
+      // document — and renders a blank editor whose first keystroke autosaves
+      // over the real content. Every project-type seeded resource hit this,
+      // because `content.tiptap.json` was written as `{}`. Salvage the fields
+      // that did validate and report `tipTapContent` as absent; the failure is
+      // still reported above, so this degrades without going silent.
+      const salvaged = ResourceContentResponseSansTipTapSchema.safeParse(body);
+      if (!salvaged.success) return null;
+      return {
+        ...salvaged.data,
+        resourceContent: {
+          ...salvaged.data.resourceContent,
+          tipTapContent: null,
+        },
+      } as ResourceContentResponse;
     }
     return result.data as ResourceContentResponse;
   },

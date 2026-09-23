@@ -94,6 +94,48 @@ describe("models/resource persistence regressions (T007)", () => {
     }
   });
 
+  // Regression: a resource carrying only `plainText` — which is every
+  // project-type `defaultResources` entry, seeded by `project-creator.ts` as
+  // `text: { plainText: template }` — used to have `{}` written to
+  // `content.tiptap.json`. `{}` is not a valid TipTap document: it fails
+  // `TipTapDocumentSchema`, so the transport reading it back discarded the
+  // whole response, and the editor rendered the seeded template as blank.
+  it("derives a valid TipTap document when a text resource supplies only plainText", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-resource-persist-plain-"),
+    );
+
+    try {
+      const resource = createTextResource({
+        name: "Character Profile",
+        folderId,
+        plainText: "# Character Name\n\n- Description",
+      });
+
+      await writeResourceToFile(projectRoot, resource);
+
+      const tiptapPath = path.join(
+        projectRoot,
+        "resources",
+        resource.id,
+        "content.tiptap.json",
+      );
+      const written = JSON.parse(await fs.readFile(tiptapPath, "utf8"));
+
+      expect(written).not.toEqual({});
+      expect(written.type).toBe("doc");
+      // One paragraph per line, so the template's own line breaks survive.
+      expect(written.content).toHaveLength(3);
+      expect(written.content[0]).toEqual({
+        type: "paragraph",
+        content: [{ type: "text", text: "# Character Name" }],
+      });
+      expect(written.content[1]).toEqual({ type: "paragraph", content: [] });
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
   it("ignores ancillary meta files like backlinks.json", async () => {
     const projectRoot = await fs.mkdtemp(
       path.join(os.tmpdir(), "getwrite-meta-filter-"),

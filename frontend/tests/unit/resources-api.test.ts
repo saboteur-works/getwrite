@@ -238,7 +238,7 @@ describe("resources.ts transport-boundary validation (Feature 50, Task 2)", () =
   });
 
   describe("fetchContent", () => {
-    it("returns null and reports validation failure with a Zod issues array when the body fails ResourceContentResponseSchema", async () => {
+    it("reports validation failure with a Zod issues array when the body fails ResourceContentResponseSchema, and never leaks the raw body", async () => {
       const rawSecretProse = "server-decrypted prose that must never leak";
       fetchMock.mockResolvedValue(
         jsonResponse({ resourceContent: { tipTapContent: rawSecretProse } }),
@@ -249,7 +249,10 @@ describe("resources.ts transport-boundary validation (Feature 50, Task 2)", () =
         resourceId,
       );
 
-      expect(result).toBeNull();
+      // The unusable `tipTapContent` is dropped rather than returned, but the
+      // rest of the response survives — see the salvage path's comment.
+      expect(result?.resourceContent?.tipTapContent).toBeNull();
+      expect(JSON.stringify(result)).not.toContain(rawSecretProse);
       expect(mockedReport).toHaveBeenCalledTimes(1);
       const [callSite, issues] = mockedReport.mock.calls[0];
       expect(callSite).toBe("resources.fetchContent");
@@ -264,6 +267,51 @@ describe("resources.ts transport-boundary validation (Feature 50, Task 2)", () =
       expect(consoleErrorSpy).not.toHaveBeenCalledWith(
         expect.stringContaining(rawSecretProse),
       );
+    });
+
+    // Regression: a project-type seeded resource is written with
+    // `content.tiptap.json` = `{}`, so the response's `tipTapContent` fails
+    // `TipTapDocumentSchema`. Returning null for the whole response made
+    // `useRevisionContent` return early, never fetch the canonical revision
+    // that actually holds the seeded template, and render a blank editor whose
+    // first keystroke autosaved over the template on disk.
+    it("keeps revisions and plaintext when only tipTapContent is unusable, so the canonical-revision fallback can still run", async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse({
+          resourceContent: {
+            tipTapContent: {},
+            plaintextContent: "# Character Name\n\n- Description\n",
+          },
+          revisions: [{ id: "rev-1", isCanonical: true }],
+        }),
+      );
+
+      const result = await httpResourcesTransport.fetchContent(
+        directoryUuid,
+        resourceId,
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.revisions).toEqual([{ id: "rev-1", isCanonical: true }]);
+      expect(result?.resourceContent?.plaintextContent).toBe(
+        "# Character Name\n\n- Description\n",
+      );
+      expect(result?.resourceContent?.tipTapContent).toBeNull();
+      // Still reported — the salvage path degrades, it does not go silent.
+      expect(mockedReport).toHaveBeenCalledTimes(1);
+      expect(mockedReport.mock.calls[0][0]).toBe("resources.fetchContent");
+    });
+
+    it("returns null when the response is unusable beyond tipTapContent", async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ revisions: "not-an-array" }));
+
+      const result = await httpResourcesTransport.fetchContent(
+        directoryUuid,
+        resourceId,
+      );
+
+      expect(result).toBeNull();
+      expect(mockedReport).toHaveBeenCalledTimes(1);
     });
 
     it("resolves normally with a well-formed body", async () => {
