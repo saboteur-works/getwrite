@@ -9,7 +9,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** none
 **Estimate:** 2
 **Notes:** This is FR-1 and OQ-3's resolution — the flag lives on `ProjectFeatureFlagsSchema`, never in `editorConfigSlice`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Add the highlighting toggle to project feature settings, gated on `entities`
 **What:** Adds an "Entity highlighting" toggle to `ProjectFeatureToggles.tsx` that reads/writes the Task 1 flag via the existing `updateFeatureConfig` write path, and is hidden (not merely disabled) whenever the project's `entities` flag is off, per FR-8.
@@ -18,7 +18,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 1
 **Estimate:** 2
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Add a project-scoped HTTP route exposing the entity alias table
 **What:** Adds `GET /api/project/[project-id]/entity-alias-table`, following the `[project-id]/search` route's path-param convention and the `resource/[resource-id]/mentions` route's shape (resolve project root, call the model function, return JSON, wrapped in `withStorageContext`), calling the existing server-side `buildEntityAliasTable` (`entity-alias-table.ts`) — no new business logic, only a transport wrapper.
@@ -27,7 +27,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** none
 **Estimate:** 2
 **Notes:** This route exists only for the web/desktop transport (Task 4); the native transport (Task 5) calls `buildEntityAliasTable` in-process and never hits this route.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Add the client transport module for the alias table
 **What:** Adds `frontend/src/lib/api/entity-alias-table.ts` defining an `EntityAliasTableTransport` interface with a single `getEntityAliasTable(projectId)` method, an `httpEntityAliasTableTransport` implementation that fetches the Task 3 route and degrades to `{ entities: {}, claimedBy: {} }` on any failure (matching `lib/api/mentions.ts`'s degrade-gracefully contract), and `resolveEntityAliasTableTransport` built on `createTransport`.
@@ -36,7 +36,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 3
 **Estimate:** 2
 **Notes:** Model directly on `lib/api/mentions.ts` — the closest existing worked example of a read-only, degrade-gracefully, transport-collapsed client module.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Add native transport parity for the alias table
 **What:** Adds `frontend/src/store/transport/native-entity-alias-table-backend.ts` (in-process, calling `buildEntityAliasTable` via `resolveProjectRoot`, mirroring `native-mentions-backend.ts`'s structure and its degrade-to-empty-table parity) and its `.web-stub.ts` counterpart, and registers the substitution in `frontend/next.config.mjs`'s `turbopack.resolveAlias` so the native backend's `node:*`-carrying code never enters the web/desktop bundle.
@@ -45,7 +45,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 4
 **Estimate:** 3
 **Notes:** This is the FR-6 native-parity requirement — a web-only alias-table endpoint would be a regression per the task brief.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Add client-side alias-table caching with the three FR-12 refetch triggers
 **What:** Adds a small client-side cache for the current project's alias table (a Redux slice following the existing `<feature>Slice.ts` + selector pattern, e.g. `entityAliasTableSlice.ts`) that refetches via Task 4's transport on project load, on resource load, and whenever `updateSidecar` resolves for a resource carrying `entityKind`/`aliases` (currently only `EntitySection.tsx`'s save path) in the same client session — with no `metadataRevision`-based push signal, per FR-12/OQ-4.
@@ -54,7 +54,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 4, 5
 **Estimate:** 3
 **Notes:** Concurrent-tab staleness (a second tab's edit not propagating to a first tab's open highlights) is an accepted limitation per OQ-4 — do not add cross-tab sync (e.g. `storage` events) to compensate; that would exceed spec.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Benchmark highlight-rescan latency and select mitigation(s) (OQ-1)
 **What:** Builds a standalone, repeatable benchmark harness that generates synthetic ProseMirror documents at 500, 2,500, and 5,000 words and synthetic alias tables at 50, 200, and 500 declared aliases (9 combinations), measures full-document rescan time using `findMentionOffsets` for each declared term against each document, and profiles the same corpora under three mitigations: (a) a single combined alternation regex across all terms, (b) step-map-scoped rescanning of only the changed range on each transaction, and (c) debouncing the rescan. Produces a written measurement (numbers, not a diagnosis) that fixes FR-9's latency threshold and states which mitigation(s), if any, are needed to stay under it.
@@ -63,7 +63,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** none
 **Estimate:** 5
 **Notes:** This is the measurement task the resolved OQ-1 entry requires before FR-9 can be marked verified. Do not assume a mitigation going in — Task 8 implements only what this task's numbers show are needed, not all three unconditionally.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Build the entity-match decoration core (matching + two visual states)
 **What:** Implements the pure, framework-agnostic core that, given a ProseMirror document, an `EntityAliasTable`, and the `entity-alias-warnings.ts`/`claimedBy` inputs, computes decoration ranges reusing `findMentionOffsets` per declared term (name + aliases, case-insensitive, word-boundary, possessive, simple-plural — no reimplementation of matching), classifying each match into exactly one of two states per FR-10: plain-match, or "needs attention" when the matched term is alias-warning-flagged or is a `claimedBy`-ambiguous term. Applies whichever mitigation(s) Task 7 found necessary.
@@ -72,7 +72,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 7
 **Estimate:** 5
 **Notes:** Keep this file free of TipTap/ProseMirror view imports where possible so it stays independently testable, mirroring how `buildWikiLinkDecorations` in `WikiLinkDecoration.ts` is a plain function called from the plugin's `state.init`/`apply`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Wire the decoration extension into the editor, gated by both flags
 **What:** Adds a TipTap `Extension` (e.g. `EntityHighlightDecoration`) following `WikiLinkDecoration.ts`'s `Plugin`/`PluginKey`/`DecorationSet` structure, registers it via the runtime-configured `.configure(...)` pattern in `TipTapEditor.tsx` (alongside `MediaDropExtension`/`GetWriteImage`, using a ref for the live alias table so the editor isn't re-created on every alias-table refetch), and gates its effect on both `selectEntityHighlightingEnabled` (Task 1) AND `selectEntitiesEnabled` (existing) being true — producing zero decorations and zero matching work when either is false, per FR-1/FR-8.
@@ -81,7 +81,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 1, 6, 8
 **Estimate:** 3
 **Notes:** Decoration-only — must not touch `content.txt`, `content.tiptap.json`, the sidecar, or any index file; a test should assert no write call occurs when toggling highlighting on/off or scrolling/editing under it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Style the two highlight states and add a Storybook story
 **What:** Adds CSS/brand-token-based styling for the plain-match and "needs attention" states (two states only, per FR-10), using tokens other than the reserved `red`/`#D44040`, and without reducing the editor's 1.8 line-height floor, then adds a Storybook story exercising both states in a sample document.
@@ -90,7 +90,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 9
 **Estimate:** 2
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Add hover/title disclosure for the "needs attention" state
 **What:** Implements FR-11: a "needs attention" decoration exposes, via `title` attribute (covering both pointer-hover and non-pointer access), which condition applies — short/common-word alias, ambiguous claim, or both.
@@ -99,7 +99,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 9, 10
 **Estimate:** 2
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Live-update decorations on document edits and alias-table changes
 **What:** Ensures FR-5: the plugin's decoration state recomputes on every `docChanged` transaction (as `WikiLinkDecoration` already does) AND whenever the Task 6 slice's alias table changes for the active project/resource, without a manual refresh or resource reload — e.g. by dispatching a no-op transaction with plugin metadata when the alias table updates, read by the plugin's `apply`.
@@ -108,7 +108,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 9
 **Estimate:** 3
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Unit tests for the decoration core's edge cases
 **What:** Extends test coverage beyond Task 8's baseline to the matching edge cases the spec calls out explicitly: case-insensitivity, word-boundary exclusion (no match inside a larger word), no match across a hyphenated compound, possessive and simple-plural forms, and an entity with zero declared aliases matching on `name` alone.
@@ -117,7 +117,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 8
 **Estimate:** 3
 **Notes:** This task exists separately from Task 8 so the core's happy-path tests (Task 8) aren't blocked on exhaustively enumerating every matching edge case up front.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Integration tests for the toggle, transport, and flag-gating end to end
 **What:** Adds integration-level tests covering: the feature-toggle write round trip (Task 2) end to end through `updateFeatureConfig`; the HTTP transport (Task 4) against a real fixture project via the Task 3 route; and the native transport (Task 5) returning the same shape as the HTTP transport for the same fixture project (parity assertion).
@@ -126,7 +126,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 2, 4, 5, 6
 **Estimate:** 3
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Verify the native (Android) build carries no highlighting-specific gap
 **What:** Runs `frontend`'s native build (`pnpm build:native`) with the new transport wired in and confirms the shadow build tree contains no `node:*`-only code from `native-entity-alias-table-backend.ts` (the web-stub substitution from Task 5 took effect) and that the highlighting extension itself has no native-specific branch or omission.
@@ -135,7 +135,7 @@ Source spec: `specs/features/entity-highlighting.md` (committed `db08c7ee`). Gra
 **Depends on:** 5, 9
 **Estimate:** 2
 **Notes:** This is a build/verification task, not new feature code — if it uncovers a gap, file it back against Task 5 or Task 9 rather than patching ad hoc here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Manual verification pass in the running app
 **What:** Exercises the complete feature by hand in the running desktop/web app (and, if a device is available, Android) to confirm behavior the automated suite cannot fully assert: visual appearance, hover disclosure timing, and true offline operation.

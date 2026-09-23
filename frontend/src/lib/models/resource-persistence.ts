@@ -11,6 +11,7 @@ import path from "node:path";
 
 import { exists, mkdir, readFile, readdir, writeFile } from "./io";
 import { validateResource } from "./resource-factory";
+import { plainTextToTipTapDocument } from "./tiptap-doc";
 import { countWords } from "../word-count";
 import { writeSidecar } from "./sidecar";
 import type {
@@ -136,9 +137,20 @@ export async function writeResourceToFile(
 
     const tiptapPath = `${base}/content.tiptap.json`;
     const plainPath = `${base}/content.txt`;
+    // Derive a document from the plain text rather than writing `{}` when a
+    // caller supplies only `plainText` (every project-type `defaultResources`
+    // entry does — `project-creator.ts` seeds `text: { plainText: template }`).
+    // `{}` is not a valid TipTap document: it fails `TipTapDocumentSchema`, so
+    // the transport that reads it back discards the whole response, and it
+    // fails ProseMirror's own `fromJSON`. The same conversion is already
+    // applied to the first canonical revision at `project-creator.ts:344`.
     await writeFile(
       tiptapPath,
-      JSON.stringify(resource.tiptap ?? {}, null, 2),
+      JSON.stringify(
+        resource.tiptap ?? plainTextToTipTapDocument(resource.plainText ?? ""),
+        null,
+        2,
+      ),
       "utf8",
     );
     await writeFile(plainPath, resource.plainText ?? "", "utf8");

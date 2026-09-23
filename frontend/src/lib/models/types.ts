@@ -299,8 +299,16 @@ export interface TipTapNode {
   text?: string;
   /** Optional attributes for the node (formatting, links, etc.). */
   attrs?: Record<string, MetadataValue>;
+  /** Marks applied to a leaf `text` node (`bold`, `italic`, `link`, ...). */
+  marks?: TipTapMark[];
   /** Child nodes for nested structures. */
   content?: TipTapNode[];
+}
+
+/** A mark applied to a TipTap text node. */
+export interface TipTapMark {
+  type: string;
+  attrs?: Record<string, MetadataValue>;
 }
 
 /** Minimal TipTap document root used for persistence. */

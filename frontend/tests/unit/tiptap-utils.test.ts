@@ -12,6 +12,7 @@ import { generateUUID } from "../../src/lib/models/uuid";
 import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
 import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
 import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+import { TipTapDocumentSchema } from "../../src/lib/models/schemas";
 
 describe("tiptap-utils (T015)", () => {
   beforeEach(() => {
@@ -161,5 +162,42 @@ describe("tiptap-utils (T015)", () => {
         loadResourceContent(projectRoot, resourceId),
       ).rejects.toBeInstanceOf(ProjectLockedError);
     });
+  });
+});
+
+/**
+ * Zod strips undeclared keys rather than rejecting them, so a field missing
+ * from `TipTapNodeSchema` is silently dropped from the parsed result. While
+ * `text` and `marks` were undeclared, parsing a document discarded all of its
+ * prose and formatting — and ProseMirror rejects a text node with no `text` as
+ * `Invalid text node in JSON`.
+ */
+describe("TipTapDocumentSchema preserves node content", () => {
+  it("keeps text and marks through a parse rather than stripping them", () => {
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { id: "p1", textAlign: null },
+          content: [
+            { type: "text", marks: [{ type: "bold" }], text: "Paragraph one." },
+          ],
+        },
+      ],
+    };
+
+    // `TipTapDocumentSchema` is declared `z.ZodTypeAny` (it is recursive), so
+    // `parse` widens to `unknown`; assert against the document type.
+    const parsed = TipTapDocumentSchema.parse(doc) as TipTapDocument;
+    const textNode = parsed.content[0].content?.[0];
+
+    expect(parsed).toEqual(doc);
+    expect(textNode?.text).toBe("Paragraph one.");
+    expect(textNode?.marks).toEqual([{ type: "bold" }]);
+  });
+
+  it("still rejects an empty object, which is not a document", () => {
+    expect(TipTapDocumentSchema.safeParse({}).success).toBe(false);
   });
 });

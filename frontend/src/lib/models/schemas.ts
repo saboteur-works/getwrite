@@ -300,13 +300,34 @@ export const FolderSchema = z.object({
 export const ResourceTypeSchema = z.enum(["text", "image", "audio"]);
 
 /**
+ * A mark applied to a TipTap text node (`bold`, `italic`, `link`, ...).
+ *
+ * Declared so {@link TipTapNodeSchema} can carry `marks` rather than strip
+ * them — see that schema's note on why omitting a field is lossy here.
+ */
+export const TipTapMarkSchema: z.ZodTypeAny = z.object({
+  type: z.string(),
+  attrs: z.record(z.string(), MetadataValue).optional(),
+});
+
+/**
  * Recursive TipTap node schema representing a subset of editor AST nodes.
+ *
+ * `text` and `marks` are declared even though nothing validates on them,
+ * because Zod **strips** undeclared keys rather than rejecting them: while
+ * they were absent, parsing a text node silently discarded its prose and its
+ * formatting — `{ type: "text", text: "..." }` parsed to `{ type: "text" }`,
+ * which ProseMirror then rejects as `Invalid text node in JSON`. Any caller
+ * that used the parsed result instead of the input would have persisted the
+ * stripped document. Keep every field a TipTap node can carry declared here.
  */
 export const TipTapNodeSchema: z.ZodTypeAny = z.lazy(() =>
   z.object({
     type: z.string(),
     attrs: z.record(z.string(), MetadataValue).optional(),
     content: z.array(TipTapNodeSchema).optional(),
+    text: z.string().optional(),
+    marks: z.array(TipTapMarkSchema).optional(),
   }),
 );
 

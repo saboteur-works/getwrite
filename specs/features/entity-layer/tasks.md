@@ -54,7 +54,7 @@ empty string (rejected); `aliases` order preserved through parse.
 
 **Estimate:** 3
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -89,7 +89,7 @@ this module (offline-only, per the spec's non-goals).
 (FR-3/FR-4). Keep the function pure and dependency-free so it stays trivially
 unit-testable; do not fold filesystem or index concerns into it.
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -116,7 +116,7 @@ an entity with no aliases (matches on name only, still included).
 
 **Estimate:** 3
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -150,7 +150,7 @@ multiple resources; load of a missing file returns an empty index (mirrors
 
 **Estimate:** 3
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -189,7 +189,7 @@ touches the same `loadResourceContent`-sourced text `indexer-queue` already
 reads for the inverted index. No numeric performance ceiling is asserted in
 the done condition (FR-7 states none).
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -220,7 +220,7 @@ unchanged/identical object-equal-by-value across the call).
 
 **Estimate:** 3
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -248,7 +248,7 @@ declared entity and a resource mentioning it by alias produces a populated
 
 **Estimate:** 2
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -277,7 +277,7 @@ individually cannot catch.
 
 **Estimate:** 3
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -312,7 +312,7 @@ with a persisted mention record for that entity.
 
 **Estimate:** 3
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -357,7 +357,7 @@ settles. Flagged as a risk: a different, equally valid shape (e.g. one route
 with a direction parameter) would also satisfy the FRs, so this should be
 treated as provisional until reviewed.
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -390,7 +390,7 @@ implementation in a web/desktop-runtime test context (existing tests for
 
 **Estimate:** 3
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -419,7 +419,7 @@ scope.
 
 **Estimate:** 2
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -467,7 +467,7 @@ handled outside the generic metadata-field system rather than by extending
 `MetadataFieldType`. This is a reasonable read of FR-2 but is this task's own
 design choice, not one the spec makes explicit — flagged as a risk.
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -495,7 +495,7 @@ entities.
 
 **Estimate:** 3
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -537,7 +537,7 @@ spelled out mechanically by the spec; the merge/dedup strategy above is this
 task's own design choice built to satisfy FR-10/FR-12/FR-14 together, and
 should be reviewed rather than assumed correct on first pass.
 
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
