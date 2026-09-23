@@ -15,7 +15,7 @@ Verification commands referenced below all run from `frontend/`:
 **Depends on:** none
 **Estimate:** 3
 **Notes:** This task is deliberately the sole editor of `schemas.ts` for this feature — every other task only imports from it, never adds to it — so Tasks 2-8 can run concurrently in separate worktrees without a merge conflict on this shared file. Do not let a later task add a tenth schema here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Validate `resources.ts`'s two response sites (`fetchContent`, `fetchRevisionContent`)
 **What:** Adds validation to `httpResourcesTransport`'s `fetchContent` (`frontend/src/lib/api/resources.ts:291`) against Task 1's `ResourceContentResponseSchema`, and to `fetchRevisionContent` (`:300`) against Task 1's `{ content?: unknown }` schema. Both continue to return `null` on a validation failure, byte-for-byte identical to their existing `!response.ok` fallback (FR-1, FR-2). **Security constraint, must not be gotten wrong:** `fetchContent`'s response can carry server-decrypted, user-authored prose (`tipTapContent`/`plaintextContent`) on an encrypted project. On a validation failure, call `reportTransportValidationFailure("resources.fetchContent", result.error.issues)` — passing only the Zod issue list, never `data`, the raw `await response.json()` result, or any derived string built from response content — then return `null`. `fetchRevisionContent`'s body is narrower (`{ content?: unknown }`) but the same rule applies: report only the issues, never the parsed `content` value itself, at `reportTransportValidationFailure("resources.fetchRevisionContent", result.error.issues)`.
@@ -24,7 +24,7 @@ Verification commands referenced below all run from `frontend/`:
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Do not promote either site to a rejection or add a `*OrThrow` counterpart — both are out of scope (see spec's Non-goals, OQ-4). `patchRevisionContent` (`:304`) is out of scope entirely (Feature 51) and must not be touched.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Validate `entity-relationships.ts`'s three write-path sites (`create`, `remove`, `removeByEntity`)
 **What:** Adds validation to `httpEntityRelationshipsTransport`'s `create` (`frontend/src/lib/api/entity-relationships.ts:180` — its `try` block calling `/entity-relationships` `POST`) against the existing, already-exported `EntityRelationshipEdgeSchema` (FR-3, reused per FR-14 — no new schema authored here); to `remove` (`:198`) against Task 1's `{ removed?: boolean }` schema (FR-4); and to `removeByEntity` (`:216`) against Task 1's `{ removedCount?: number }` schema (FR-5). Each continues to return its exact existing fallback on a validation failure — `null` for `create`, `false` for `remove`, `0` for `removeByEntity` — matching what each already returns on `!response.ok` or a caught exception. Each failure calls `reportTransportValidationFailure` with its own call-site string (e.g. `"entity-relationships.create"`, `"entity-relationships.remove"`, `"entity-relationships.removeByEntity"`, following `list`'s/`listOrThrow`'s existing naming pattern at `:130`/`:154`) and the Zod issues only.
@@ -33,7 +33,7 @@ Verification commands referenced below all run from `frontend/`:
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Per OQ-2 (resolved, accepted as permanent), do NOT add a `*OrThrow` counterpart for these three sites and do not attempt to distinguish "nothing happened" from "malformed body" — that ambiguity is explicitly out of scope. This task only adds validation before the existing fallback path, never changes the fallback value itself. Do not touch `list`/`listOrThrow` (already validated under Feature 48) or re-author `EntityRelationshipEdgeSchema`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Validate `tags.ts`'s two response sites (`list`, `listAssignments`)
 **What:** Adds validation to `httpTagsTransport`'s `list` (`frontend/src/lib/api/tags.ts:60`) against `z.object({ tags: z.array(ApiTagSchema).optional() })`, importing Task 1's newly-exported `ApiTagSchema` from `./schemas` rather than authoring a new `Tag` shape (FR-6, FR-14); and to `listAssignments` (`:71`) against Task 1's `{ tagIds?: string[] }` schema (FR-7). Both continue to return `[]` on a validation failure, exactly matching their existing `!response.ok` fallback.
@@ -42,7 +42,7 @@ Verification commands referenced below all run from `frontend/`:
 **Depends on:** 1
 **Estimate:** 2
 **Notes:** `create`/`remove` and other `tags.ts` methods that don't parse a JSON response body are untouched — this task's scope is exactly FR-6/FR-7.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Validate `mentions.ts`'s two response sites (`getResourceMentions`, `getEntityMentionedIn`)
 **What:** Adds validation to `httpMentionsTransport`'s `getResourceMentions` (`frontend/src/lib/api/mentions.ts:65-75`) against Task 1's `{ mentions?: ResourceMention[] }` schema (FR-8), and to `getEntityMentionedIn` (`:77-90`) against Task 1's `{ mentionedIn?: EntityMentionedIn[] }` schema (FR-9). Both continue to return `[]` on a validation failure, exactly matching their existing `!response.ok`/caught-exception fallback. **Security constraint, must not be gotten wrong:** both responses carry user-authored prose (`ResourceMention`/`EntityMentionedIn` entries can include `snippets` drawn from resource text, server-decrypted on an encrypted project). On a validation failure, call `reportTransportValidationFailure("mentions.getResourceMentions", result.error.issues)` / `reportTransportValidationFailure("mentions.getEntityMentionedIn", result.error.issues)` — passing only the Zod issue list, never `data`, the raw `await response.json()` result, or any snippet/name string derived from it.
@@ -51,7 +51,7 @@ Verification commands referenced below all run from `frontend/`:
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Validate `entity-cooccurrence.ts`'s `getEntityCooccurrence`
 **What:** Adds validation to `httpEntityCooccurrenceTransport`'s `getEntityCooccurrence` (`frontend/src/lib/api/entity-cooccurrence.ts:65-79`) against Task 1's `Record<string, EntityCooccurrenceEntry[]>` schema (FR-10). Continues to return the module's existing `EMPTY_COOCCURRENCE` (`{}`) constant on a validation failure, exactly matching its existing `!response.ok`/caught-exception fallback — return the module's own `EMPTY_COOCCURRENCE` reference, not a freshly-literal `{}`.
@@ -60,7 +60,7 @@ Verification commands referenced below all run from `frontend/`:
 **Depends on:** 1
 **Estimate:** 2
 **Notes:** No prose is carried in this shape (entity ids/counts/resource ids only), so no security-report constraint beyond FR-13's general "never pass the raw body" rule applies here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Validate `entity-mention-counts.ts`'s `getEntityMentionCounts`
 **What:** Adds validation to `httpEntityMentionCountsTransport`'s `getEntityMentionCounts` (`frontend/src/lib/api/entity-mention-counts.ts:58-68`) against Task 1's `Record<string, EntityMentionCounts>` schema (FR-11). Continues to return the module's existing `EMPTY_MENTION_COUNTS` (`{}`) constant on a validation failure, exactly matching its existing `!response.ok`/caught-exception fallback — return the module's own `EMPTY_MENTION_COUNTS` reference, not a freshly-literal `{}`.
@@ -69,7 +69,7 @@ Verification commands referenced below all run from `frontend/`:
 **Depends on:** 1
 **Estimate:** 2
 **Notes:** No prose is carried in this shape (numeric counts only), so no security-report constraint beyond FR-13's general "never pass the raw body" rule applies here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Validate `resource-excerpts.ts`'s `fetch`
 **What:** Adds validation to `httpResourceExcerptsTransport`'s `fetch` (`frontend/src/lib/api/resource-excerpts.ts:51-65`) against Task 1's `{ excerpts?: Record<string, string> }` schema (FR-12). Continues to return `{}` on a validation failure, exactly matching its existing `!response.ok`/caught-exception fallback. **Security constraint, must not be gotten wrong:** the `excerpts` map's values are excerpted user-authored prose, server-decrypted on an encrypted project. On a validation failure, call `reportTransportValidationFailure("resource-excerpts.fetch", result.error.issues)` — passing only the Zod issue list, never `data`, the raw `await response.json()` result, or any excerpt string from it.
@@ -78,7 +78,7 @@ Verification commands referenced below all run from `frontend/`:
 **Depends on:** 1
 **Estimate:** 2
 **Notes:** This is the one module in scope with no pre-existing dedicated transport test file — creating it is part of this task, not a pre-requisite gap to raise separately.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Raise a user-visible toast from `reportTransportValidationFailure`
 **What:** The product owner has decided a validation failure at any of the twelve degrade-to-fallback sites (Tasks 2-8) should surface to the writer, without changing any site's contract. Scope is `frontend/src/lib/api/transport-validation.ts` only, plus `frontend/src/lib/toast-service.ts` for one minimal signature change, plus their tests — no site in Tasks 2-8 changes. `reportTransportValidationFailure(callSite, issues)` keeps its exact existing two-parameter signature and its existing `console.warn` logging unchanged, and additionally calls `toastService.error(...)` (`frontend/src/lib/toast-service.ts`) to raise a generic, user-visible toast. The toast message must not name the call site or repeat any Zod issue's `path`/`message`/`code` — the writer cannot act on a schema violation, and on an encrypted project the surrounding response can carry server-decrypted user prose (`docs/standards/security.md`), so the issues themselves must never reach the toast, only the existing developer-facing `console.warn`. Use wording of the shape "Some data couldn't be loaded correctly", with no description argument. **Measured evidence this is safe (verified against the tree, not assumed):** (1) `frontend/src/lib/compile/run-compile-and-download.ts:23` already imports `toastService` from `../toast-service` — a non-component `src/lib/` module importing the toast service is existing, shipped practice; (2) `frontend/tests/unit/runCompileAndDownload.test.ts` runs under the `|node|` vitest project (confirmed by running `vitest run tests/unit/runCompileAndDownload.test.ts --reporter=verbose`, which prefixes every case with `|node|`) and all 9 of its cases pass — despite the file also carrying a `@vitest-environment jsdom` docblock at its top (`runCompileAndDownload.test.ts:1-7`, needed there because that file also drives `document`/`HTMLAnchorElement` for the download path, not because `toastService` itself needs a DOM). So a `lib/` module transitively importing `toastService`/`react-hot-toast` is proven to work whether or not the individual test file overrides its environment to jsdom; (3) `frontend/tests/unit/transport-validation.test.ts` (the file this task extends) carries no such docblock and so runs in the **node** vitest project today, per `vitest.config.ts`'s `*.test.ts` (node) vs. `*.test.tsx` (jsdom) split — confirming a plain node environment is where this task's own test must keep running; (4) `react-hot-toast` imports cleanly in bare node (`node -e "import('react-hot-toast')"` succeeds), so `toast-service.ts` needs no DOM at import time; (5) `toast-service.ts` imports only `react-hot-toast` — no React context, no Redux store import — so there is no circular dependency from `lib/api/` into UI or store code. **Dedupe:** checked `toastService.error`'s current signature at `toast-service.ts:47-50` — it is `(message: string, description?: string): string`, with no way to pass an `id` through to the underlying `toast.error(...)` call. react-hot-toast collapses a toast into an existing one sharing the same `id` rather than stacking a duplicate, so this task must widen `toastService.error` with a third, optional parameter (e.g. `options?: { id?: string }`) threaded into its existing `toast.error(content, { duration: 4000, position: "bottom-right", ...  })` call, and `reportTransportValidationFailure` must call it with a fixed, stable id (e.g. `"transport-validation-error"`) shared across every call site so many simultaneous failures collapse into one visible toast instead of a stack. `toastService.error`'s two existing call sites (message, description-only) are unaffected since the new parameter is optional.
@@ -87,7 +87,7 @@ Verification commands referenced below all run from `frontend/`:
 **Depends on:** none — Task 1 touches only `frontend/src/lib/api/schemas.ts` (confirmed above), disjoint from this task's `transport-validation.ts`/`toast-service.ts` files, so this task can run concurrently with Task 1 and Tasks 2-8 alike.
 **Estimate:** 2
 **Notes:** Once this task lands, any test for Tasks 2-8 that exercises a validation-failure path without mocking `reportTransportValidationFailure` (or `../toast-service`) will transitively trigger a real `toastService.error` call as a side effect of calling the real, unmocked helper — this is a behavior change those tests will observe, not a regression in this task. Tasks 2-8's own test files are not yet written as of this task list, so this note is the only place that constraint is recorded; an implementor of Tasks 2-8 should mock `../../src/lib/toast-service` the same way `runCompileAndDownload.test.ts` does (or mock `reportTransportValidationFailure` itself, whichever that task's existing mocking style favors) rather than let the real toast fire in a unit test. Do not add a description argument to the new toast call, and do not surface the toast from anywhere other than this shared helper — the whole point is one call site for all twelve degrade-to-fallback sites.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 9

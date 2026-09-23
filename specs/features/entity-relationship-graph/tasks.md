@@ -9,7 +9,7 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Depends on:** none
 **Estimate:** 3
 **Notes:** This is OQ-1's remaining half — the buy/hand-roll split itself is already decided by the spec; only which specific package is undecided. If no headless layout library can be found that satisfies both the layout-only constraint and React 19 compatibility, that is a blocker to report, not a reason to substitute a rendering-capable library or to hand-roll 2D layout as a fallback — both alternatives were explicitly rejected by the spec's Open Questions.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Wire the seventh "Relationship Graph" view into the switcher and shell
 **What:** Adds `"entityGraph"` to `ViewName` (`frontend/src/lib/models/types.ts`) and a corresponding seventh entry to `VIEW_OPTIONS` in `ViewSwitcher.tsx` (a label such as "Graph", an icon distinct from the existing six), adds a branch to `AppShell.tsx` rendering a new, initially minimal `EntityRelationshipGraphView` component under `frontend/components/WorkArea/Views/EntityRelationshipGraphView/`. Per FR-1, this branch MUST be placed in the same pre-`!selectedResource`-guard block `AppShell.tsx` already uses for `data` and `entityRoster` (the block with the comment explaining why: both are project-wide reads independent of any selected resource) — never inside the post-guard `switch (view)`, which is for resource-scoped views only. This is the exact defect class PR #186 fixed for the roster and that remains open for Timeline as POS `task_a7d8581a`; this task must not reintroduce it for the graph view. Extends `AppShell.tsx`'s `disabledViews`/`disabledReasons` computation to push `"entityGraph"` onto `disabled` and supply a `disabledReasons.entityGraph` hover string whenever the project's `entities` feature flag is off, mirroring the `entityRoster`/`isEntitiesEnabled` pattern exactly (same flag, same gating, no new flag per FR-2).
@@ -18,7 +18,7 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Depends on:** none
 **Estimate:** 3
 **Notes:** This is FR-1 and FR-2's entire scope. `EntityRelationshipGraphView` is a structural placeholder at this point (renders nothing or a loading stub) — Task 3 gives it its node/edge data. Safe to build concurrently with Task 1 (no file overlap) and with Task 4 once Task 1 lands.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Assemble the graph's node and edge data
 **What:** Builds `EntityRelationshipGraphView`'s data-assembly logic (no rendering yet): reads the cached alias table from `entityAliasTableSlice` for the node set (every declared entity becomes a node per FR-3, including one with zero edges — no filtering of isolated entities), dispatches `lib/api/entity-cooccurrence.ts`'s `getEntityCooccurrence` and `lib/api/entity-relationships.ts`'s `listEntityRelationships` on mount/project change (the two existing, already-`createTransport`-collapsed reads FR-16 names — no new transport code), and normalizes both into a single typed edge list distinguishing the two kinds without merging same-pair edges of different kinds into one record (FR-4/FR-5): a co-occurrence edge carries its `entityId` pair (unordered, non-reflexive per Feature 37's own guarantee) and shared-resource count; an authored-relationship edge carries its directed `sourceEntityId`/`targetEntityId` and `relationshipType`, one record per authored triple, with no synthesized inverse. Renders the FR-14 non-error empty state (mirroring the roster's FR-11 precedent) when the `entities` flag is on but the alias table has zero declared entities.
@@ -27,7 +27,7 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** This task owns FR-4's "no third edge source, no derived edge" constraint and FR-5's non-conflation constraint together — both are easiest to get wrong at this exact assembly point, before any rendering exists to obscure the mistake.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Build the SVG rendering surface with the selected layout library
 **What:** Wires Task 1's layout library into `EntityRelationshipGraphView` to compute node positions and edge routing from Task 3's assembled node/edge lists, then hand-rolls the actual visual rendering as SVG (per FR-8: the library computes layout and hit-testing only; markup, styling, and theming are custom). Node positions are recomputed on every load/data change and never persisted anywhere (FR-13, OQ-2) — no `localStorage`, no sidecar field, no new persisted state of any kind. Rendering uses brand tokens (`black`/`white`/`red`/`mid`/`surface` variants) for theming with dark/light mode support consistent with the rest of the app, and reserves `red`/`#D44040` for neither edge kind (FR-6).
@@ -36,7 +36,7 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Depends on:** 1, 3
 **Estimate:** 8
 **Notes:** This is FR-8's and FR-13's rendering half. The layout library's own API shape is unknown until Task 1 selects it, so this task's exact hook/wrapper structure is left to the implementor within FR-8's buy-layout/hand-render constraint.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Distinguish the two edge kinds and encode direction and weight
 **What:** Extends `EntityGraphCanvas.tsx`'s rendering to satisfy FR-6/FR-7/FR-12 on the canvas itself: every co-occurrence edge is visually distinguishable from every authored-relationship edge anywhere in the view (not only where both exist on the same pair) via a non-colour cue — line style (e.g. dashed vs. solid), a label, an icon, or an equivalent — never colour alone and never the reserved red token; every authored-relationship edge renders with a directional cue (e.g. an arrowhead) reflecting its `sourceEntityId`→`targetEntityId` direction, while every co-occurrence edge renders undirected (no arrowhead, consistent with Feature 37's own unordered-pair guarantee); every co-occurrence edge's line thickness scales with its shared-resource count (FR-12), and thickness is used for no other purpose — an authored edge's line weight does not vary by anything, since Feature 38 carries no analogous count.
@@ -45,7 +45,7 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Depends on:** 4
 **Estimate:** 5
 **Notes:** This is FR-6, FR-7, and FR-12's canvas-side scope in full. Reuse Task 4's SVG surface; this task adds attributes and markers to it rather than introducing a second rendering path.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Pan, zoom, and node selection interactions
 **What:** Adds pan (click-and-drag on empty canvas space), zoom (scroll wheel, with reasonable min/max bounds), and node-selection (click a node to mark it selected, e.g. a highlight ring) to `EntityGraphCanvas.tsx`, following `Timeline.tsx`'s existing hand-rolled wheel pan/zoom precedent for interaction conventions (event handling shape, not its 1D scroll-anchor math, which does not apply to a 2D canvas). This is baseline canvas interaction only (FR-8); it does not include keyboard-driven graph traversal, which the spec's OQ-4 explicitly rejects as a primary or secondary mechanism for this feature's initial ship.
@@ -54,7 +54,7 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Depends on:** 4
 **Estimate:** 5
 **Notes:** Concurrently runnable with Task 5 once Task 4 lands — both extend `EntityGraphCanvas.tsx` but touch disjoint concerns (edge styling vs. viewport/selection interaction); coordinate on file ownership or merge order to avoid an edit conflict.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Activate a node to navigate to its resource
 **What:** Wires node activation — pointer click and, per FR-9, keyboard activation (Enter/Space) when a node has focus — to `setSelectedResourceId` (`resourcesSlice.ts`) for that entity's id, then switches the work area's `view` back to `"edit"`, following the roster's existing activate-to-navigate convention (`EntityRosterView.tsx`'s `onEntityActivated` callback shape). The canvas exposes no control that edits an entity's declaration, a co-occurrence value, or an authored relationship (FR-9) — activation is the only interaction beyond pan/zoom/selection.
@@ -63,7 +63,7 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Depends on:** 6
 **Estimate:** 3
 **Notes:** This is FR-9's entire scope. Node focus/keyboard-operability here is about the individual node control's own activation, not the keyboard graph-traversal OQ-4 rejects — a focused node responding to Enter/Space is the same minimum every focusable custom control needs, not a traversal mechanism between nodes.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Build the FR-11 synchronized accessible list — nodes and edges
 **What:** Adds a semantic list rendered alongside `EntityGraphCanvas.tsx` (not inside the SVG), generalizing `EntityRosterRow.tsx:70-136`'s `<ul>` of `<li>`-wrapped native `<button type="button">` pattern for the node list, plus an equivalent semantic list of edges. The node list gives every declared entity a reachable, alphabetically-ordered (case-insensitive, per OQ-7 — this ordering applies to this list only, never claimed of canvas placement) row whose activation mirrors Task 7's node activation exactly (same `setSelectedResourceId`/view-switch behavior — one activation path, not two divergent ones). The edge list gives every edge (both kinds) a reachable, non-interactive entry whose text discloses, per FR-11/FR-12: for a co-occurrence edge, both entity names and the literal shared-resource count; for an authored-relationship edge, both entity names, the direction (e.g. "X → Y"), and the `relationshipType`. Non-colour disclosure required by FR-6/FR-7 is folded into this text rather than left canvas-only.
@@ -72,7 +72,7 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** This is FR-10 and FR-11's primary implementation. This task does not depend on Tasks 4-7 (canvas rendering) — it consumes the same Task 3 data directly — so it can proceed concurrently with Tasks 4-7 once Task 3 lands; wiring the list's node-activation to be identical to Task 7's canvas-node-activation (not merely similar) is this task's main integration point with that work and should be reconciled before Task 10.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Storybook stories for the graph view, canvas, and accessible list
 **What:** Adds `EntityRelationshipGraphView.stories.tsx`, `EntityGraphCanvas.stories.tsx`, and `EntityGraphAccessibleList.stories.tsx` covering: a populated graph with a mix of co-occurrence-only pairs, authored-relationship-only pairs, and a pair with both edge kinds present simultaneously (to visually exercise FR-5's non-conflation); an isolated entity with no edges (FR-3); and the FR-14 empty state. Matches the conventions `docs/standards/storybook-implementation.md` and sibling entity-feature stories (e.g. `EntityRosterView.stories.tsx`) establish, mocking `getEntityCooccurrence`/`listEntityRelationships` and the Redux-provided alias table rather than hitting real transports.
@@ -81,7 +81,7 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Depends on:** 5, 6, 7, 8
 **Estimate:** 3
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Integration test — graph fidelity against a real fixture project
 **What:** Adds an integration test against a fixture project with: an entity with no edges at all (isolated node, FR-3), two entities with only a co-occurrence edge, two entities with only an authored relationship edge, two entities with both a co-occurrence edge and one or more authored edges on the same pair (FR-5's non-conflation case), and two entities sharing multiple resources versus two sharing one (to exercise FR-12's thickness-correlates-with-count claim as a rendered-attribute difference, not a performance claim). Confirms the assembled node/edge data (Task 3), the accessible list's disclosed text (Task 8), and — where feasible without asserting pixel-level rendering — the canvas's distinguishing attributes (Task 5) are all consistent with the same fixture's ground truth (the alias table plus `getEntityCooccurrence`/`listEntityRelationships` output) in one run.
@@ -90,7 +90,7 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Depends on:** 3, 5, 8
 **Estimate:** 5
 **Notes:** none
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Verify native (Android) parity for the relationship graph
 **What:** Confirms the graph view has no native-specific gap: `EntityRelationshipGraphView.tsx`, `EntityGraphCanvas.tsx`, and `EntityGraphAccessibleList.tsx` import nothing platform-specific (grep-verified: no `node:*` import, no direct `fetch`/HTTP call bypassing `lib/api/entity-cooccurrence.ts`/`lib/api/entity-relationships.ts`/`entityAliasTableSlice`, no `runtime === "native"` branch), and the feature relies exclusively on the already-shipped native backends for both data sources plus the already-native-parity alias-table transport (FR-16 — no new transport code is introduced by this feature).
@@ -99,7 +99,7 @@ Source spec: `specs/features/entity-relationship-graph.md`. Granularity: story p
 **Depends on:** 8, 9
 **Estimate:** 2
 **Notes:** This is FR-16's coverage. The layout library selected in Task 1 is the one genuinely new risk this task exists to catch — it was vetted for React 19 compatibility, not for native/static-export compatibility, so this is the first point that gap would surface. If a gap is found, file it back against Task 1 or 4 rather than patching ad hoc here, matching `specs/features/entity-roster/tasks.md`'s Task 11 convention.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Manual verification pass in the running app
 **What:** Exercises the complete feature by hand in the running desktop/web app (and, if a device is available, Android) to confirm behavior the automated suite cannot fully assert: visual appearance of the graph, real pan/zoom/navigation behavior, the two edge kinds' visual distinguishability, and true offline operation.

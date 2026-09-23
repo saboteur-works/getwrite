@@ -72,7 +72,7 @@ cycle since `adapter-selection.ts` already imports from `../io`. The guard
 must explicitly NOT cover `ProjectMarkerFormatError` (OQ-4, resolved) — a
 corrupt/unreadable marker is a damaged project, not a locked one, and must
 keep propagating uncaught rather than being folded into the lock predicate.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 2: Marker-first fail-closed rewrite of `adapterFor`
 **What:** Rewrite `adapterFor` in `workspace-adapter.ts` per FR-1 through
@@ -119,7 +119,7 @@ lets `ProjectMarkerFormatError` propagate uncaught.
 with `routed` — confirm no path from the marker read back into `adapterFor`.
 **This task must not be merged to `main` independently of Tasks 3-11** — see
 the Sequencing note above and Task 12.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 3: Catch-site fix — `tiptap-utils.ts`
 **What:** Fix `loadResourceContent`'s catch block to rethrow a locked-access
@@ -134,7 +134,7 @@ locked-access error rather than returning its degraded fallback value.
 `pnpm typecheck`, `pnpm lint`, and this file's test suite pass.
 **Depends on:** 1, 2
 **Estimate:** 2
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 4: Catch-site fix — `inverted-index.ts` (`loadIndex`)
 **What:** Fix `loadIndex`'s catch block (FR-6) to rethrow a locked-access
@@ -157,7 +157,7 @@ file's test suite pass.
 does the right thing and only needs `loadIndex` fixed underneath it to
 become reachable. That existing rethrow is verified, not touched, by this
 task's second test.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 5: Catch-site fix — `backlinks.ts` (`loadBacklinks`, `loadRedirects`)
 **What:** Fix both catch blocks in `backlinks.ts` (FR-6) to rethrow a
@@ -170,7 +170,7 @@ each rejects rather than returning its degraded fallback. `pnpm typecheck`,
 `pnpm lint`, and this file's test suite pass.
 **Depends on:** 1, 2
 **Estimate:** 3
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 6: Catch-site fix — `mention-index.ts` (`loadMentionIndex`)
 **What:** Fix `loadMentionIndex`'s catch block (FR-6) to rethrow a
@@ -183,7 +183,7 @@ rejects rather than returning its empty-index fallback. `pnpm typecheck`,
 `pnpm lint`, and this file's test suite pass.
 **Depends on:** 1, 2
 **Estimate:** 2
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 7: Catch-site fix — `previews.ts` (`loadPreview`)
 **What:** Fix `loadPreview`'s catch block (FR-6) to rethrow a locked-access
@@ -196,7 +196,7 @@ rather than returning `null`/its fallback. `pnpm typecheck`, `pnpm lint`,
 and this file's test suite pass.
 **Depends on:** 1, 2
 **Estimate:** 2
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 8: Catch-site fix — `trash.ts` (`listTrashedItems` ×2, `collectFolderDescriptors`)
 **What:** Fix the three catch blocks in `trash.ts` (FR-6) — the two
@@ -220,7 +220,7 @@ and this file's test suite pass.
 `trash.ts` (restore, purge, listing) — pick the call path FR-6 names
 (feeding `listTrashedItems`) for the regression test; this task does not
 need to re-verify every caller.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 9: Catch-site fix — `project-crud-core.ts` + `execute-search.ts` (project-root lookups)
 **What:** Fix the catch blocks in `findProjectRootByInternalId`
@@ -241,7 +241,7 @@ and each file's test suite pass.
 at `:105-115` (the non-ENOENT rethrow covered by Task 4/FR-11) — do NOT
 touch that one here; this task only touches the `findProjectRoot` catch at
 `:78-84`.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 10: Catch-site fix — sidecar read swallows (`resource-crud-core.ts`, `sidecar.ts`)
 **What:** Fix the swallowed read half of `updateSidecarCore`
@@ -263,7 +263,7 @@ write, which already surfaces errors correctly via `io.ts`'s async mutating
 wrappers) or the query path's `readSidecar` rethrow at `sidecar.ts:71-79`
 (reached from `query-evaluate-core.ts:160`, already correct) — this task
 touches only the pre-write read at ~158-162.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 11: Catch-site fix — `indexer-queue.ts` (`rescanEntityAcrossProject`) + `sidecar.ts:178` propagation test
 **What:** Fix `rescanEntityAcrossProject`'s log-only catch (FR-8) to
@@ -297,7 +297,7 @@ calls the weakest link in this feature's confidence. `pnpm typecheck`,
 hold), stop and report rather than forcing a fix — FR-8 is conditioned on
 that inference being confirmed. This is the task most likely to surface a
 finding rather than a clean fix; budget review time accordingly.
-**Done:** [ ] — check off when the task is complete
+**Done:** [x] — check off when the task is complete
 
 ### Task 12: Merge gate — verify the gate and all ten catch sites land as one wave
 **What:** A verification checkpoint, not new code: confirm Tasks 2-11 are
