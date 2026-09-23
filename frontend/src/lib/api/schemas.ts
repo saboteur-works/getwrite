@@ -497,4 +497,9 @@ export const MarkdownExportResultSchema = z.object({
 
 export const PatchRevisionContentResponseSchema = z.object({
   updatedAt: z.string().optional(),
+  // Set by `revision-core.ts`'s `updateRevisionInPlace` when the write would
+  // have destroyed most of the resource's content and it preserved the
+  // previous state as its own revision first. Optional because the field
+  // post-dates the shape and a response without it simply means no snapshot.
+  snapshotCreated: z.boolean().optional(),
 });

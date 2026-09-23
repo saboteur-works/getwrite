@@ -6,6 +6,7 @@ import { tiptapToPlainText } from "../../src/lib/tiptap-text";
 import { countWords } from "../../src/lib/word-count";
 import { useAppDispatch } from "../../src/store/hooks";
 import { updateResource } from "../../src/store/resourcesSlice";
+import { toastService } from "../../src/lib/toast-service";
 
 export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
@@ -20,6 +21,14 @@ interface UseCanonicalAutosaveOptions {
   selectedResourceId: string | null;
   currentRevisionId: string | null;
   canonicalRevisionId: string | null;
+  /**
+   * Called after a save that preserved the previous content as its own
+   * revision first (`revision-core.ts`'s `updateRevisionInPlace` reports this
+   * as `snapshotCreated`). The new revision is already on disk; the consumer
+   * uses this to refetch its revision list, which otherwise would not show the
+   * backup until the next reload or resource switch.
+   */
+  onSnapshotCreated?: () => void;
 }
 
 interface UseCanonicalAutosaveResult {
@@ -36,17 +45,25 @@ export function useCanonicalAutosave({
   selectedResourceId,
   currentRevisionId,
   canonicalRevisionId,
+  onSnapshotCreated,
 }: UseCanonicalAutosaveOptions): UseCanonicalAutosaveResult {
   const dispatch = useAppDispatch();
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
   const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
   const [failedSaveDoc, setFailedSaveDoc] =
     React.useState<TipTapDocument | null>(null);
+  // Read through a ref so a consumer passing an inline callback does not
+  // rebuild the debounced saver on every render, which would drop a pending
+  // autosave mid-keystroke.
+  const onSnapshotCreatedRef = React.useRef(onSnapshotCreated);
+  onSnapshotCreatedRef.current = onSnapshotCreated;
 
   const persistCanonicalRevisionContent = React.useCallback(
     async (
       doc: TipTapDocument,
-    ): Promise<{ updatedAt?: string } | undefined> => {
+    ): Promise<
+      { updatedAt?: string; snapshotCreated?: boolean } | undefined
+    > => {
       if (
         !projectId ||
         !selectedResourceId ||
@@ -75,6 +92,17 @@ export function useCanonicalAutosave({
         setSaveStatus("saved");
         setLastSavedAt(new Date());
         setFailedSaveDoc(null);
+        if (result?.snapshotCreated) {
+          // The save just overwrote most of the resource's content. The
+          // previous state was preserved as a revision first, but a writer who
+          // has only watched their scene vanish has no reason to look in the
+          // revision list unless they are told the way back is there.
+          toastService.success(
+            "Saved a backup of your previous content",
+            "Find it in Revision Control, named \u201cAuto-backup before large deletion\u201d.",
+          );
+          onSnapshotCreatedRef.current?.();
+        }
         if (selectedResourceId && result?.updatedAt) {
           dispatch(
             updateResource({

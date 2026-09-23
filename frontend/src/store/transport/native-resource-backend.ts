@@ -193,7 +193,10 @@ export function createNativeResourcesTransport(
           revisionId,
           content,
         );
-        return { updatedAt: updated.updatedAt };
+        return {
+          updatedAt: updated.updatedAt,
+          snapshotCreated: updated.snapshotCreated,
+        };
       });
     },
 

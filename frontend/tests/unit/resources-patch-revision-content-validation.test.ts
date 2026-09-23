@@ -80,3 +80,70 @@ describe("httpResourcesTransport.patchRevisionContent", () => {
     expect(reportTransportValidationFailure).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The snapshot flag rides the same response body. It tells the editor that the
+ * write it just made would have destroyed most of the resource, and that the
+ * previous content was preserved as its own revision first — which is what
+ * drives both the writer-facing notice and the revision-list refetch.
+ */
+describe("httpResourcesTransport.patchRevisionContent — snapshot flag", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("passes snapshotCreated through when the server reports one", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({
+            updatedAt: "2026-09-23T19:33:24.000Z",
+            snapshotCreated: true,
+          }),
+        ),
+    );
+
+    await expect(
+      httpResourcesTransport.patchRevisionContent(
+        "resource-1",
+        "project-1",
+        "revision-1",
+        "{}",
+      ),
+    ).resolves.toEqual({
+      updatedAt: "2026-09-23T19:33:24.000Z",
+      snapshotCreated: true,
+    });
+    expect(reportTransportValidationFailure).not.toHaveBeenCalled();
+  });
+
+  it("accepts a body without the field, which simply means no snapshot", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ updatedAt: "2026-09-23T19:33:24.000Z" }),
+        ),
+    );
+
+    await expect(
+      httpResourcesTransport.patchRevisionContent(
+        "resource-1",
+        "project-1",
+        "revision-1",
+        "{}",
+      ),
+    ).resolves.toEqual({
+      updatedAt: "2026-09-23T19:33:24.000Z",
+      snapshotCreated: undefined,
+    });
+    expect(reportTransportValidationFailure).not.toHaveBeenCalled();
+  });
+});
