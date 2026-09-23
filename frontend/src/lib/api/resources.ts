@@ -1,6 +1,7 @@
 import type { AnyResource, Folder, TipTapDocument } from "../models/types";
 import { createTransport } from "../../store/transport/create-transport";
 import {
+  PatchRevisionContentResponseSchema,
   ResourceContentResponseSchema,
   ResourceResponseSchema,
   ResourceRevisionContentResponseSchema,
@@ -158,13 +159,20 @@ export interface ResourcesTransport {
     projectId: string,
     revisionId: string,
   ): Promise<string | null>;
-  /** Persists new content for an existing revision. */
+  /**
+   * Persists new content for an existing revision.
+   *
+   * `updatedAt` is optional in the resolved result: on the HTTP transport, a
+   * malformed response body is reported (never thrown) since the underlying
+   * save already succeeded server-side by the time the body is parsed — see
+   * `httpResourcesTransport.patchRevisionContent`'s doc comment.
+   */
   patchRevisionContent(
     resourceId: string,
     projectId: string,
     revisionId: string,
     content: string,
-  ): Promise<{ updatedAt: string }>;
+  ): Promise<{ updatedAt?: string }>;
   /** Persists a folder/resource reorder for a project. */
   reorder(
     projectId: string,
@@ -322,6 +330,15 @@ export const httpResourcesTransport: ResourcesTransport = {
     return typeof result.data.content === "string" ? result.data.content : null;
   },
 
+  /**
+   * The save already succeeded server-side (HTTP 200, content persisted) by
+   * the time this parses the body, so a malformed body must not be promoted
+   * to a throw here — unlike `compile`/`export`, throwing would falsely tell
+   * the writer their save failed. On a validation failure this reports and
+   * resolves with `{ updatedAt: undefined }` rather than throwing or
+   * substituting a synthesized timestamp; callers (`useCanonicalAutosave.ts`)
+   * already treat an absent `updatedAt` as "skip the resource-tree update."
+   */
   async patchRevisionContent(resourceId, projectId, revisionId, content) {
     const response = await fetch(`/api/resource/revision/${resourceId}`, {
       method: "PATCH",
@@ -331,8 +348,16 @@ export const httpResourcesTransport: ResourcesTransport = {
     if (!response.ok) {
       throw new Error(`Failed to persist revision (${response.status})`);
     }
-    const data = (await response.json()) as { updatedAt?: string };
-    return { updatedAt: data.updatedAt ?? new Date().toISOString() };
+    const body: unknown = await response.json();
+    const result = PatchRevisionContentResponseSchema.safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure(
+        "resources.patchRevisionContent",
+        result.error.issues,
+      );
+      return { updatedAt: undefined };
+    }
+    return { updatedAt: result.data.updatedAt };
   },
 
   async reorder(projectId, payload, projectRoot) {
@@ -565,7 +590,7 @@ export async function patchRevisionContent(
   projectId: string,
   revisionId: string,
   content: string,
-): Promise<{ updatedAt: string }> {
+): Promise<{ updatedAt?: string }> {
   const transport = await resolveResourcesTransport();
   return transport.patchRevisionContent(
     resourceId,

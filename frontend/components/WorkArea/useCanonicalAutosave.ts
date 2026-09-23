@@ -44,7 +44,9 @@ export function useCanonicalAutosave({
     React.useState<TipTapDocument | null>(null);
 
   const persistCanonicalRevisionContent = React.useCallback(
-    async (doc: TipTapDocument): Promise<{ updatedAt: string } | undefined> => {
+    async (
+      doc: TipTapDocument,
+    ): Promise<{ updatedAt?: string } | undefined> => {
       if (
         !projectId ||
         !selectedResourceId ||

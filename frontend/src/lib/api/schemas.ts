@@ -420,3 +420,59 @@ export const EntityMentionCountsResponseSchema = z.record(
 export const ResourceExcerptsResponseSchema = z.object({
   excerpts: z.record(z.string(), z.string()).optional(),
 });
+
+// ---------------------------------------------------------------------------
+// TextCompileResultSchema / MarkdownCompileResultSchema /
+// TextExportResultSchema / MarkdownExportResultSchema —
+// PatchRevisionContentResponseSchema (Feature 51-53) — match the response
+// shapes read in `./compile.ts`, `./export.ts`, and `./resources.ts`'s
+// `patchRevisionContent`.
+//
+// `TextCompileResultSchema` and `TextExportResultSchema` are byte-identical
+// in shape (`{ text: string; filename: string }`), as are
+// `MarkdownCompileResultSchema` and `MarkdownExportResultSchema`
+// (`{ markdown: string; filename: string; warnings: MarkdownConstructWarning[]
+// }`) — each pair is declared independently rather than sharing a base
+// schema, since compile and export are separate transport boundaries that
+// happen to agree on shape today but are not guaranteed to stay identical.
+//
+// `MarkdownConstructWarningSchema` mirrors `MarkdownConstructWarning`
+// (`../export/types.ts`) field-for-field rather than importing that TS type,
+// per this module's transport/persistence — and, more generally,
+// transport/domain-type — separation; it is shared *only* for its element
+// shape between the two Markdown schemas, not the top-level schemas
+// themselves.
+// ---------------------------------------------------------------------------
+
+const MarkdownConstructWarningSchema = z.object({
+  construct: z.string(),
+  label: z.string(),
+  kind: z.enum(["html-fallback", "dropped"]),
+  count: z.number(),
+});
+
+export const TextCompileResultSchema = z.object({
+  text: z.string(),
+  filename: z.string(),
+});
+
+export const MarkdownCompileResultSchema = z.object({
+  markdown: z.string(),
+  filename: z.string(),
+  warnings: z.array(MarkdownConstructWarningSchema),
+});
+
+export const TextExportResultSchema = z.object({
+  text: z.string(),
+  filename: z.string(),
+});
+
+export const MarkdownExportResultSchema = z.object({
+  markdown: z.string(),
+  filename: z.string(),
+  warnings: z.array(MarkdownConstructWarningSchema),
+});
+
+export const PatchRevisionContentResponseSchema = z.object({
+  updatedAt: z.string().optional(),
+});

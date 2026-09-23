@@ -1,5 +1,7 @@
 import type { MarkdownConstructWarning } from "../export/types";
 import { createTransport } from "../../store/transport/create-transport";
+import { MarkdownExportResultSchema, TextExportResultSchema } from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 /**
  * Request body shared by the text and markdown export endpoints (identical
@@ -83,12 +85,24 @@ export interface ExportTransport {
 export const httpExportTransport: ExportTransport = {
   async text(body) {
     const response = await postExportRequest("text", body);
-    return (await response.json()) as TextExportResult;
+    const responseBody: unknown = await response.json();
+    const result = TextExportResultSchema.safeParse(responseBody);
+    if (!result.success) {
+      reportTransportValidationFailure("export.text", result.error.issues);
+      throw new Error("Invalid response from text export");
+    }
+    return result.data;
   },
 
   async markdown(body) {
     const response = await postExportRequest("markdown", body);
-    return (await response.json()) as MarkdownExportResult;
+    const responseBody: unknown = await response.json();
+    const result = MarkdownExportResultSchema.safeParse(responseBody);
+    if (!result.success) {
+      reportTransportValidationFailure("export.markdown", result.error.issues);
+      throw new Error("Invalid response from markdown export");
+    }
+    return result.data as MarkdownExportResult;
   },
 };
 
