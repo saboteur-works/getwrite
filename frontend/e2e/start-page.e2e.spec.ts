@@ -100,7 +100,12 @@ test("start page empty-state button opens create project modal", async ({
   ).toBeVisible();
 });
 
-test("start page open project button fires onOpen with project path", async ({
+/**
+ * Renamed from "with project path". Since the ADR-017/018 tenant-route
+ * migration the start page hands over the project's on-disk directory id, not
+ * its full `rootPath` — routes no longer accept a client-supplied path.
+ */
+test("start page open project button fires onOpen with the project directory id", async ({
   page,
 }) => {
   await page.goto(INTERACTIVE_STORY);
@@ -111,7 +116,8 @@ test("start page open project button fires onOpen with project path", async ({
   await page.getByRole("button", { name: /open newer project/i }).click();
 
   await expect(lastAction).toHaveText("open");
-  await expect(lastPayload).toHaveText("/tmp/projects/proj-new");
+  // The directory basename of `/tmp/projects/proj-new`, not the full path.
+  await expect(lastPayload).toHaveText("proj-new");
 });
 
 test("start page three-dot menu opens manage actions", async ({ page }) => {
