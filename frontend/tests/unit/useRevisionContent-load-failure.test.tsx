@@ -51,6 +51,33 @@ describe("useRevisionContent — load failures", () => {
     await waitFor(() => expect(result.current.loadState).toBe("error"));
   });
 
+  it("reports loaded when a failed read still left a document from Redux", async () => {
+    // `EditView` also receives content through `currentRevisionContent`. A
+    // failed fetch alongside a document that arrived by another route is not
+    // the dangerous case — there is nothing blank to type over.
+    fetchResourceContent.mockResolvedValue(null);
+    const { result } = renderHook(() =>
+      useRevisionContent({
+        initialContent: "",
+        selectedResourceId: "resource-1",
+        projectId: "project-dir",
+        currentRevisionId: "rev-1",
+        currentRevisionContent: JSON.stringify({
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "From Redux." }],
+            },
+          ],
+        }),
+      }),
+    );
+
+    await waitFor(() => expect(result.current.tipTapDoc).not.toBeNull());
+    expect(result.current.loadState).toBe("loaded");
+  });
+
   it("reports loaded — not error — for a resource with no canonical revision", async () => {
     fetchResourceContent.mockResolvedValue({
       resourceContent: { plaintextContent: "On disk." },
@@ -69,6 +96,19 @@ describe("useRevisionContent — load failures", () => {
     fetchRevisionContent.mockResolvedValue(
       JSON.stringify({ type: "doc", content: [{ type: "paragraph" }] }),
     );
+
+    const { result } = render();
+    await waitFor(() => expect(result.current.loadState).toBe("loaded"));
+  });
+
+  it("treats an empty canonical revision as loaded, not failed", async () => {
+    fetchResourceContent.mockResolvedValue({
+      resourceContent: { plaintextContent: "" },
+      revisions: [{ id: "rev-1", isCanonical: true }],
+    });
+    // A resource whose first revision holds nothing yet. `""` is falsy, so a
+    // truthiness check here would show an error for a merely blank document.
+    fetchRevisionContent.mockResolvedValue("");
 
     const { result } = render();
     await waitFor(() => expect(result.current.loadState).toBe("loaded"));

@@ -56,8 +56,12 @@ export function useRevisionContent({
 }: UseRevisionContentOptions): UseRevisionContentResult {
   const [content, setContent] = React.useState<string>(initialContent);
   const [tipTapDoc, setTipTapDoc] = React.useState<TipTapDocument | null>(null);
-  const [loadState, setLoadState] =
-    React.useState<RevisionContentLoadState>("idle");
+  // Whether the last load attempt hit a failed read. Kept separate from
+  // `loadState` because a failed read only MATTERS when it leaves nothing to
+  // show: `EditView` also receives content from Redux (`currentRevisionContent`,
+  // the effect below), so a resource whose document arrived by another route is
+  // not in trouble just because one fetch failed.
+  const [hasReadFailed, setHasReadFailed] = React.useState(false);
   // Bumped by `retryLoad` to re-run the load effect for the same resource.
   const [reloadToken, setReloadToken] = React.useState(0);
 
@@ -111,14 +115,14 @@ export function useRevisionContent({
     const loadResourceAndCanonicalRevision = async () => {
       setContent(initialContent);
       setTipTapDoc(null);
-      setLoadState("loading");
+      setHasReadFailed(false);
 
       const resourceData = await loadResourceContent();
       if (isCancelled) return;
       if (!resourceData) {
         // The effect only runs with a resource and project selected, so a
         // null here is a failed read — not "nothing selected".
-        setLoadState("error");
+        setHasReadFailed(true);
         return;
       }
 
@@ -143,7 +147,6 @@ export function useRevisionContent({
       if (!canonicalRevision?.id) {
         // A resource with no canonical revision is an ordinary state, not a
         // failure: what the resource files hold is all there is.
-        setLoadState("loaded");
         return;
       }
 
@@ -152,11 +155,16 @@ export function useRevisionContent({
       );
 
       if (isCancelled) return;
-      if (!canonicalContent) {
+      if (canonicalContent === null) {
+        setHasReadFailed(true);
         // The canonical revision is the authoritative document. Failing to
         // read one that the resource says exists is an error, however
         // readable the resource files were.
-        setLoadState("error");
+        //
+        // Compared against `null` specifically, NOT falsiness: `""` is a
+        // legitimately EMPTY document — a resource whose first revision holds
+        // nothing yet — and treating it as a failure would put an error in
+        // front of a writer whose document is simply blank.
         return;
       }
 
@@ -164,7 +172,6 @@ export function useRevisionContent({
       if (parsedTipTapDoc) {
         setTipTapDoc(parsedTipTapDoc);
         setContent(canonicalContent);
-        setLoadState("loaded");
         return;
       }
 
@@ -177,7 +184,6 @@ export function useRevisionContent({
       // resource to one paragraph, which the canonical autosave then persists.
       setTipTapDoc(plainTextToTiptap(canonicalContent));
       setContent(canonicalContent);
-      setLoadState("loaded");
     };
 
     if (selectedResourceId && projectId) {
@@ -216,6 +222,16 @@ export function useRevisionContent({
     setTipTapDoc(plainTextToTiptap(currentRevisionContent));
     setContent(currentRevisionContent);
   }, [currentRevisionContent, currentRevisionId, parseTipTapRevisionContent]);
+
+  // "error" only when a read failed AND nothing filled the document from any
+  // source. This is the condition that actually endangers a writer: an empty
+  // editor they can type into, whose first keystroke autosaves over content
+  // that is still on disk.
+  const loadState: RevisionContentLoadState = hasReadFailed
+    ? tipTapDoc === null
+      ? "error"
+      : "loaded"
+    : "loaded";
 
   return {
     content,
