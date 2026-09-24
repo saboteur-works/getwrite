@@ -593,9 +593,12 @@ export default function MetadataSidebar({
         </>
       ) : (
         <div className="px-4">
-          <h4 className="text-gw-secondary text-gw-label tracking-label mt-4">
+          {/* A sentence, not a heading. It was an <h4> for its styling, which
+              put an h4 under an h2 with no h3 between (axe's heading-order)
+              and announced an instruction as a section title. */}
+          <p className="text-gw-secondary text-gw-label tracking-label mt-4">
             Select a resource to view its metadata.
-          </h4>
+          </p>
         </div>
       )}
     </aside>

@@ -10,6 +10,7 @@ interface TabsContextValue {
   onValueChange: (value: string) => void;
   baseId: string;
   orientation: TabsOrientation;
+  hasPanels: boolean;
 }
 
 const TabsContext = createContext<TabsContextValue | null>(null);
@@ -30,6 +31,18 @@ export interface TabsProps {
    * Defaults to "horizontal".
    */
   orientation?: TabsOrientation;
+  /**
+   * Whether this `Tabs` renders its own `TabsContent` panels.
+   *
+   * A trigger's `aria-controls` must point at an element that exists. Some
+   * call sites use `Tabs` purely as a tab strip and render the corresponding
+   * view elsewhere in the tree (`ViewSwitcher`, and the shell above it), so
+   * every trigger was referencing a panel id that was never in the document —
+   * axe's `aria-valid-attr-value`, and a dangling reference for any AT that
+   * follows it. Those call sites pass `false` and the attribute is omitted
+   * rather than pointed at nothing.
+   */
+  hasPanels?: boolean;
   children: React.ReactNode;
 }
 
@@ -38,12 +51,19 @@ export function Tabs({
   onValueChange,
   className,
   orientation = "horizontal",
+  hasPanels = true,
   children,
 }: TabsProps): JSX.Element {
   const baseId = useId();
   return (
     <TabsContext.Provider
-      value={{ activeValue: value, onValueChange, baseId, orientation }}
+      value={{
+        activeValue: value,
+        onValueChange,
+        baseId,
+        orientation,
+        hasPanels,
+      }}
     >
       <div
         className={cn(
@@ -134,7 +154,7 @@ export function TabsTrigger({
   className,
   children,
 }: TabsTriggerProps): JSX.Element {
-  const { activeValue, onValueChange, baseId } = useTabsContext();
+  const { activeValue, onValueChange, baseId, hasPanels } = useTabsContext();
   const isActive = activeValue === value;
 
   return (
@@ -142,7 +162,7 @@ export function TabsTrigger({
       type="button"
       role="tab"
       id={`${baseId}-tab-${value}`}
-      aria-controls={`${baseId}-panel-${value}`}
+      aria-controls={hasPanels ? `${baseId}-panel-${value}` : undefined}
       aria-selected={isActive}
       aria-disabled={disabled}
       data-value={value}

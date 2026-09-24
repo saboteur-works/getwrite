@@ -76,6 +76,10 @@ export default function ViewSwitcher({
         value={view}
         onValueChange={(v) => onChange(v as ViewName)}
         className="workarea-view-tabs-scroll"
+        /* This is a tab strip only — the view it selects is rendered by the
+           work area, not by a TabsContent here — so a trigger has no panel to
+           point `aria-controls` at. */
+        hasPanels={false}
       >
         <TabsList
           aria-label="Work area views"

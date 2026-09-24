@@ -16,6 +16,11 @@ export const WithInput: Story = {
     label: "Example Field",
     children: (
       <input
+        // LabeledField names the GROUP, not one control inside it — see its
+        // doc comment for why it cannot name the control directly. Every real
+        // consumer labels its own control; this story now does the same
+        // instead of rendering an unlabelled input.
+        aria-label="Example Field"
         defaultValue="Example"
         className="w-full mt-2 p-2 border rounded text-sm"
       />
