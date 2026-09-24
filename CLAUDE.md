@@ -279,6 +279,7 @@ Key standards (read these before making significant changes):
 - `docs/standards/package-selection.md` — Guidance on adding dependencies
 - `docs/standards/storage-context.md` — Request-scoped `StorageContext` seam: when routes/CLI/background jobs must establish it
 - `docs/standards/security.md` — Fail-closed defaults, no client-supplied paths, boundary validation, tenancy, crypto, secrets
+- `docs/standards/failure-visibility.md` — A failure must not render as absence: narrow catches, never return the same value for "failed" and "empty"
 - `docs/standards/accessibility.md` — WCAG 2.1 AA target, semantic roles, keyboard operability, a11y test conventions
 
 ## Styling
