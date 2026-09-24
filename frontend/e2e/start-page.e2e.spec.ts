@@ -63,9 +63,8 @@ test("start page empty state shows when no projects", async ({ page }) => {
   await expect(
     page.getByText(/create your first project to begin writing/i),
   ).toBeVisible();
-  // Button has aria-label="Start a new project" — locate by visible text instead.
   await expect(
-    page.locator("button").filter({ hasText: /create the first project/i }),
+    page.getByRole("button", { name: /create the first project/i }),
   ).toBeVisible();
   await expect(page.getByText(/your next manuscript/i)).toBeVisible();
 });
@@ -73,7 +72,6 @@ test("start page empty state shows when no projects", async ({ page }) => {
 test("start page hero button opens create project modal", async ({ page }) => {
   await page.goto(DEFAULT_STORY);
 
-  // Two buttons share label/aria — the hero button is in <aside>
   const heroCreate = page
     .getByRole("button", { name: /start a new project/i })
     .first();

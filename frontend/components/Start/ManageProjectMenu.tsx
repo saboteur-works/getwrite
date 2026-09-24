@@ -82,10 +82,14 @@ export default function ManageProjectMenu({
 
   return (
     <div className="relative inline-block" ref={menuRef}>
+      {/* One of these renders per project row, so the accessible name has to
+          say WHICH project it manages: a bare "Manage project" leaves a
+          screen-reader user with a list of identical buttons. */}
       <button
         type="button"
         aria-haspopup="menu"
         aria-expanded={isOpen}
+        aria-label={projectName ? `Manage ${projectName}` : "Manage project"}
         onClick={() => setIsOpen((v) => !v)}
         className="inline-flex items-center justify-center px-2 py-1 border border-gw-border text-sm text-gw-secondary hover:border-gw-border-md hover:text-gw-primary transition-colors duration-150"
       >

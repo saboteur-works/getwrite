@@ -108,3 +108,53 @@ test("StartPage opens projects using the root path's directory basename as proje
   // `selectActiveProjectDirectoryId`'s doc comment in `projectsSlice.ts`.
   expect(onOpen).toHaveBeenCalledWith("proj_open_1");
 });
+
+test("StartPage names each project's manage menu after its project", async () => {
+  // One manage menu renders per project row and its only content is an
+  // aria-hidden icon, so before this it had no accessible name at all — a
+  // screen-reader user got a row of identically anonymous buttons.
+  const now = new Date().toISOString();
+  const projects = ["Alpha", "Beta"].map((name, index) => ({
+    project: {
+      id: `proj_manage_${index}`,
+      name,
+      createdAt: now,
+      updatedAt: now,
+      rootPath: `/tmp/proj_manage_${index}`,
+    },
+    resources: [],
+    folders: [],
+  }));
+
+  render(
+    <Provider store={makeStore()}>
+      <StartPage projects={projects} />
+    </Provider>,
+  );
+
+  expect(
+    screen.getByRole("button", { name: "Manage Alpha" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Manage Beta" }),
+  ).toBeInTheDocument();
+});
+
+test("StartPage's create buttons are named by their own visible text", () => {
+  // WCAG 2.5.3 Label in Name: the empty-state button reads "Create the first
+  // project" but carried aria-label="Start a new project", so its accessible
+  // name contained none of its visible text — a speech-input user saying what
+  // they could see could not activate it. Both buttons now take their name
+  // from their label.
+  render(
+    <Provider store={makeStore()}>
+      <StartPage projects={[]} />
+    </Provider>,
+  );
+
+  const create = screen.getByRole("button", {
+    name: "Create the first project",
+  });
+  expect(create).toBeInTheDocument();
+  expect(create).not.toHaveAttribute("aria-label");
+});
