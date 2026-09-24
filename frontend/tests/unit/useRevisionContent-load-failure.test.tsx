@@ -175,11 +175,7 @@ describe("useRevisionContent — load failures", () => {
     });
     act(() => result.current.retryLoad());
 
-    // Generous timeout: this one flaked under full-suite parallel load at
-    // waitFor's 1s default while passing in isolation.
-    await waitFor(() => expect(result.current.loadState).toBe("loaded"), {
-      timeout: 5000,
-    });
+    await waitFor(() => expect(result.current.loadState).toBe("loaded"));
     expect(result.current.content).toBe("On disk.");
   });
 });
