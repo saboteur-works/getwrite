@@ -102,21 +102,27 @@ describe("native tags transport — in-process backend reuses the shared tags CR
     ).resolves.toEqual([]);
   });
 
-  it("create/remove/assign resolve silently (fire-and-forget) even for an invalid projectId", async () => {
+  /**
+   * Contract CHANGED deliberately: these three used to resolve silently to
+   * mirror the HTTP transport's fire-and-forget writes. The HTTP transport now
+   * rejects on a failed write — a failure that reports as success left the UI
+   * showing a tag that was never persisted — so native matches rather than
+   * reverting to the behaviour the web path was just fixed out of
+   * (`docs/standards/failure-visibility.md`).
+   */
+  it("create/remove/assign reject rather than resolving on an invalid projectId", async () => {
     const fs = createFakeCapacitorFilesystem();
     const transport = createNativeTagsTransport({
       fs,
       projectsDir: PROJECTS_DIR,
     });
 
-    await expect(
-      transport.create("not-a-uuid", "Draft"),
-    ).resolves.toBeUndefined();
+    await expect(transport.create("not-a-uuid", "Draft")).rejects.toThrow();
     await expect(
       transport.remove("not-a-uuid", generateUUID()),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow();
     await expect(
       transport.assign("not-a-uuid", "resource-1", generateUUID(), true),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow();
   });
 });

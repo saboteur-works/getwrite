@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import type { Tag } from "../../src/lib/models/types";
 import { listTags, createTag, deleteTag } from "../../src/lib/api/tags";
+import { toastService } from "../../src/lib/toast-service";
 import { getProjectDirectoryId } from "../../src/store/projectsSlice";
 import Button from "./UI/Button/Button";
 import Chip from "./UI/Chip";
@@ -77,13 +78,23 @@ export default function TagsManagerModal({
       setShouldUseColor(false);
       loadTags();
       nameInputRef.current?.focus();
+    } catch {
+      // `createTag` rejects on a failed write now that the transport checks
+      // the response. The typed name is deliberately left in the field: the
+      // tag does not exist, and clearing the input would suggest it does.
+      toastService.error("Could not create that tag.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (tagId: string) => {
-    await deleteTag(projectId, tagId);
+    try {
+      await deleteTag(projectId, tagId);
+    } catch {
+      toastService.error("Could not delete that tag.");
+      return;
+    }
     loadTags();
   };
 

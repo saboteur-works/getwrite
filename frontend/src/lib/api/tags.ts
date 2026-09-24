@@ -38,17 +38,41 @@ export interface TagsTransport {
   list(projectId: string): Promise<Tag[]>;
   /** Lists the tag ids assigned to a resource. Degrades to `[]` on failure. */
   listAssignments(projectId: string, resourceId: string): Promise<string[]>;
-  /** Creates a new project-level tag. Fire-and-forget — no return value. */
+  /**
+   * Creates a new project-level tag.
+   *
+   * REJECTS on failure. These three writes used to be fire-and-forget: no
+   * response check, no throw, so a failed write resolved exactly like a
+   * successful one and the UI showed a tag that was never persisted until the
+   * next reload. `TagsSection.tsx` even carried a revert-on-failure `catch`
+   * that nothing could ever reach (`docs/standards/failure-visibility.md`).
+   */
   create(projectId: string, name: string, color?: string): Promise<void>;
-  /** Deletes a project-level tag. Fire-and-forget — no return value. */
+  /** Deletes a project-level tag. Rejects on failure — see {@link create}. */
   remove(projectId: string, tagId: string): Promise<void>;
-  /** Assigns or unassigns a tag to/from a resource. Fire-and-forget. */
+  /**
+   * Assigns or unassigns a tag to/from a resource. Rejects on failure — see
+   * {@link create}.
+   */
   assign(
     projectId: string,
     resourceId: string,
     tagId: string,
     assign: boolean,
   ): Promise<void>;
+}
+
+/**
+ * Throws when a tag write did not succeed.
+ *
+ * The message names the attempted action so a caller can say what failed
+ * without re-deriving it, and carries the status for the console — never the
+ * response body, which on an encrypted project can hold decrypted user prose
+ * (`docs/standards/security.md`).
+ */
+function throwIfWriteFailed(response: Response, action: string): void {
+  if (response.ok) return;
+  throw new Error(`Could not ${action} (${response.status}).`);
 }
 
 /**
@@ -93,27 +117,30 @@ export const httpTagsTransport: TagsTransport = {
   },
 
   async create(projectId, name, color) {
-    await fetch("/api/project/tags", {
+    const response = await fetch("/api/project/tags", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "create", projectId, name, color }),
     });
+    throwIfWriteFailed(response, "create the tag");
   },
 
   async remove(projectId, tagId) {
-    await fetch("/api/project/tags/delete", {
+    const response = await fetch("/api/project/tags/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId, tagId }),
     });
+    throwIfWriteFailed(response, "delete the tag");
   },
 
   async assign(projectId, resourceId, tagId, assign) {
-    await fetch("/api/project/tags/assign", {
+    const response = await fetch("/api/project/tags/assign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId, resourceId, tagId, assign }),
     });
+    throwIfWriteFailed(response, assign ? "assign the tag" : "remove the tag");
   },
 };
 
