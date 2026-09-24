@@ -18,6 +18,7 @@ import {
   GLOBAL_APPEARANCE_STORAGE_KEY,
   getStoredGlobalAppearancePreferences,
 } from "../../src/lib/user-preferences";
+import Button from "../common/UI/Button";
 import { useRevisionContent } from "./useRevisionContent";
 import { useCanonicalAutosave } from "./useCanonicalAutosave";
 import { tiptapToPlainText } from "../../src/lib/tiptap-text";
@@ -85,13 +86,14 @@ export default function EditView({
   // name. This is what `useRevisionContent`/`useCanonicalAutosave` send as
   // `projectId` to the tenant-scoped revision/resource routes.
   const projectDirectoryId = useAppSelector(selectActiveProjectDirectoryId);
-  const { content, tipTapDoc, setContent, setTipTapDoc } = useRevisionContent({
-    initialContent,
-    selectedResourceId: selectedResource?.id ?? null,
-    projectId: projectDirectoryId,
-    currentRevisionId,
-    currentRevisionContent,
-  });
+  const { content, tipTapDoc, setContent, setTipTapDoc, loadState, retryLoad } =
+    useRevisionContent({
+      initialContent,
+      selectedResourceId: selectedResource?.id ?? null,
+      projectId: projectDirectoryId,
+      currentRevisionId,
+      currentRevisionContent,
+    });
 
   const dispatch = useAppDispatch();
 
@@ -343,15 +345,43 @@ export default function EditView({
         <div className="shrink-0">
           <RevisionControl />
         </div>
-        <div className="flex-1 min-h-0 min-w-0 w-full">
-          <TipTapEditor
-            id="editview-editor"
-            value={tipTapDoc ?? content} // prefer loaded doc, fallback to initial/plain content
-            onChange={handleChange}
-            onNodeTypesChange={setNodeTypes}
-            readonly={false}
-          />
-        </div>
+        {loadState === "error" ? (
+          /*
+           * A failed read renders as an error, never as an empty editor.
+           * Both content transports return `null` for "the read failed" and
+           * for "there is nothing here", so a blank editor here used to be
+           * indistinguishable from an empty document — and the first
+           * keystroke autosaved that blank over content that was fine on
+           * disk. Replacing the editor rather than disabling it means there
+           * is nothing to type into at all.
+           */
+          <div
+            data-testid="editview-load-error"
+            role="alert"
+            className="flex-1 min-h-0 min-w-0 w-full flex flex-col items-center justify-center gap-3 px-4 text-center"
+          >
+            <p className="text-gw-primary font-bold">
+              This document could not be loaded.
+            </p>
+            <p className="text-gw-secondary text-gw-small max-w-prose">
+              Its content is still on disk and has not been changed. Editing is
+              unavailable until it loads, so nothing can be written over it.
+            </p>
+            <Button variant="secondary" onClick={retryLoad}>
+              Try again
+            </Button>
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 min-w-0 w-full">
+            <TipTapEditor
+              id="editview-editor"
+              value={tipTapDoc ?? content} // prefer loaded doc, fallback to initial/plain content
+              onChange={handleChange}
+              onNodeTypesChange={setNodeTypes}
+              readonly={false}
+            />
+          </div>
+        )}
       </div>
 
       <footer

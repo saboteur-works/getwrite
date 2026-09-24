@@ -22,12 +22,29 @@ interface UseRevisionContentOptions {
   currentRevisionContent: string | null;
 }
 
+/**
+ * Whether the selected resource's content actually loaded.
+ *
+ * `"error"` is distinct from "loaded and empty". Both transports collapse a
+ * failed read and an absent value into `null` (`fetchContent`,
+ * `fetchRevisionContent`), and this hook used to return early on either — so a
+ * failed read left the editor showing `initialContent` with no error, no
+ * retry, and nothing to tell a writer that the document they were looking at
+ * was not the document on disk. The first keystroke then autosaved that empty
+ * editor over real content.
+ */
+export type RevisionContentLoadState = "idle" | "loading" | "loaded" | "error";
+
 interface UseRevisionContentResult {
   content: string;
   tipTapDoc: TipTapDocument | null;
   setContent: React.Dispatch<React.SetStateAction<string>>;
   setTipTapDoc: React.Dispatch<React.SetStateAction<TipTapDocument | null>>;
   parseTipTapRevisionContent: (value: string) => TipTapDocument | null;
+  /** Whether the load succeeded; see {@link RevisionContentLoadState}. */
+  loadState: RevisionContentLoadState;
+  /** Re-runs the load for the current resource. */
+  retryLoad: () => void;
 }
 
 export function useRevisionContent({
@@ -39,6 +56,14 @@ export function useRevisionContent({
 }: UseRevisionContentOptions): UseRevisionContentResult {
   const [content, setContent] = React.useState<string>(initialContent);
   const [tipTapDoc, setTipTapDoc] = React.useState<TipTapDocument | null>(null);
+  const [loadState, setLoadState] =
+    React.useState<RevisionContentLoadState>("idle");
+  // Bumped by `retryLoad` to re-run the load effect for the same resource.
+  const [reloadToken, setReloadToken] = React.useState(0);
+
+  const retryLoad = React.useCallback(() => {
+    setReloadToken((token) => token + 1);
+  }, []);
 
   const parseTipTapRevisionContent = React.useCallback(
     (value: string): TipTapDocument | null => {
@@ -86,9 +111,14 @@ export function useRevisionContent({
     const loadResourceAndCanonicalRevision = async () => {
       setContent(initialContent);
       setTipTapDoc(null);
+      setLoadState("loading");
 
       const resourceData = await loadResourceContent();
-      if (!resourceData || isCancelled) {
+      if (isCancelled) return;
+      if (!resourceData) {
+        // The effect only runs with a resource and project selected, so a
+        // null here is a failed read — not "nothing selected".
+        setLoadState("error");
         return;
       }
 
@@ -111,6 +141,9 @@ export function useRevisionContent({
       );
 
       if (!canonicalRevision?.id) {
+        // A resource with no canonical revision is an ordinary state, not a
+        // failure: what the resource files hold is all there is.
+        setLoadState("loaded");
         return;
       }
 
@@ -118,7 +151,12 @@ export function useRevisionContent({
         canonicalRevision.id,
       );
 
-      if (!canonicalContent || isCancelled) {
+      if (isCancelled) return;
+      if (!canonicalContent) {
+        // The canonical revision is the authoritative document. Failing to
+        // read one that the resource says exists is an error, however
+        // readable the resource files were.
+        setLoadState("error");
         return;
       }
 
@@ -126,6 +164,7 @@ export function useRevisionContent({
       if (parsedTipTapDoc) {
         setTipTapDoc(parsedTipTapDoc);
         setContent(canonicalContent);
+        setLoadState("loaded");
         return;
       }
 
@@ -138,6 +177,7 @@ export function useRevisionContent({
       // resource to one paragraph, which the canonical autosave then persists.
       setTipTapDoc(plainTextToTiptap(canonicalContent));
       setContent(canonicalContent);
+      setLoadState("loaded");
     };
 
     if (selectedResourceId && projectId) {
@@ -154,6 +194,7 @@ export function useRevisionContent({
     parseTipTapRevisionContent,
     projectId,
     selectedResourceId,
+    reloadToken,
   ]);
 
   React.useEffect(() => {
@@ -182,5 +223,7 @@ export function useRevisionContent({
     setContent,
     setTipTapDoc,
     parseTipTapRevisionContent,
+    loadState,
+    retryLoad,
   };
 }
