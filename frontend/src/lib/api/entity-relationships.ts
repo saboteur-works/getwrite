@@ -34,7 +34,10 @@ import {
   EntityRelationshipRemovedCountResponseSchema,
   EntityRelationshipRemovedResponseSchema,
 } from "./schemas";
-import { reportTransportValidationFailure } from "./transport-validation";
+import {
+  reportTransportReadFailure,
+  reportTransportValidationFailure,
+} from "./transport-validation";
 
 export type { EntityRelationshipEdge };
 
@@ -125,9 +128,21 @@ export const httpEntityRelationshipsTransport: EntityRelationshipsTransport = {
       const response = await fetch(
         `/api/project/${encodeURIComponent(projectId)}/entity-relationships`,
       );
-      if (!response.ok) return [];
+      if (!response.ok) {
+        reportTransportReadFailure("entity-relationships.list", {
+          kind: "http",
+          status: response.status,
+        });
+        return [];
+      }
       const data = (await response.json()) as unknown;
-      if (!Array.isArray(data)) return [];
+      if (!Array.isArray(data)) {
+        // A body that is not an array never reaches the schema below, so it
+        // would otherwise be the one malformed-response case that degrades
+        // without a report.
+        reportTransportValidationFailure("entity-relationships.list", []);
+        return [];
+      }
       const result = z.array(EntityRelationshipEdgeSchema).safeParse(data);
       if (!result.success) {
         reportTransportValidationFailure(
@@ -138,6 +153,9 @@ export const httpEntityRelationshipsTransport: EntityRelationshipsTransport = {
       }
       return result.data;
     } catch {
+      reportTransportReadFailure("entity-relationships.list", {
+        kind: "network",
+      });
       return [];
     }
   },

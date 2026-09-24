@@ -16,7 +16,10 @@ import {
   ResourceMentionsResponseSchema,
   EntityMentionedInResponseSchema,
 } from "./schemas";
-import { reportTransportValidationFailure } from "./transport-validation";
+import {
+  reportTransportReadFailure,
+  reportTransportValidationFailure,
+} from "./transport-validation";
 
 // ---------------------------------------------------------------------------
 // Transport collapse (ADR-021 Phase 2, Task 11)
@@ -72,7 +75,13 @@ export const httpMentionsTransport: MentionsTransport = {
       const response = await fetch(
         `/api/resource/${encodeURIComponent(resourceId)}/mentions?projectId=${encodeURIComponent(projectId)}`,
       );
-      if (!response.ok) return [];
+      if (!response.ok) {
+        reportTransportReadFailure("mentions.getResourceMentions", {
+          kind: "http",
+          status: response.status,
+        });
+        return [];
+      }
       const data: unknown = await response.json();
       const result = ResourceMentionsResponseSchema.safeParse(data);
       if (!result.success) {
@@ -84,6 +93,9 @@ export const httpMentionsTransport: MentionsTransport = {
       }
       return result.data.mentions ?? [];
     } catch {
+      reportTransportReadFailure("mentions.getResourceMentions", {
+        kind: "network",
+      });
       return [];
     }
   },
@@ -93,7 +105,13 @@ export const httpMentionsTransport: MentionsTransport = {
       const response = await fetch(
         `/api/resource/${encodeURIComponent(entityId)}/mentioned-in?projectId=${encodeURIComponent(projectId)}`,
       );
-      if (!response.ok) return [];
+      if (!response.ok) {
+        reportTransportReadFailure("mentions.getEntityMentionedIn", {
+          kind: "http",
+          status: response.status,
+        });
+        return [];
+      }
       const data: unknown = await response.json();
       const result = EntityMentionedInResponseSchema.safeParse(data);
       if (!result.success) {
@@ -105,6 +123,9 @@ export const httpMentionsTransport: MentionsTransport = {
       }
       return result.data.mentionedIn ?? [];
     } catch {
+      reportTransportReadFailure("mentions.getEntityMentionedIn", {
+        kind: "network",
+      });
       return [];
     }
   },

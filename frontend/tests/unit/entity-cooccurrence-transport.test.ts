@@ -13,6 +13,7 @@ import type { EntityCooccurrenceEntry } from "../../src/lib/models/mentions-core
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
   reportTransportValidationFailure: vi.fn(),
+  reportTransportReadFailure: vi.fn(),
 }));
 
 const RUNTIME_ENV = "NEXT_PUBLIC_GETWRITE_RUNTIME";

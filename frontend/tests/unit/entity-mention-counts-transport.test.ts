@@ -11,6 +11,7 @@ import { reportTransportValidationFailure } from "../../src/lib/api/transport-va
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
   reportTransportValidationFailure: vi.fn(),
+  reportTransportReadFailure: vi.fn(),
 }));
 
 const RUNTIME_ENV = "NEXT_PUBLIC_GETWRITE_RUNTIME";

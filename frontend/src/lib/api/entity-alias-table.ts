@@ -14,7 +14,10 @@
 import { createTransport } from "../../store/transport/create-transport";
 import type { EntityAliasTable } from "../models/entity-alias-table";
 import { EntityAliasTableSchema } from "./schemas";
-import { reportTransportValidationFailure } from "./transport-validation";
+import {
+  reportTransportReadFailure,
+  reportTransportValidationFailure,
+} from "./transport-validation";
 
 // ---------------------------------------------------------------------------
 // Transport collapse (ADR-021)
@@ -62,7 +65,13 @@ export const httpEntityAliasTableTransport: EntityAliasTableTransport = {
       const response = await fetch(
         `/api/project/${encodeURIComponent(projectId)}/entity-alias-table`,
       );
-      if (!response.ok) return EMPTY_ALIAS_TABLE;
+      if (!response.ok) {
+        reportTransportReadFailure("entity-alias-table.getEntityAliasTable", {
+          kind: "http",
+          status: response.status,
+        });
+        return EMPTY_ALIAS_TABLE;
+      }
       const body: unknown = await response.json();
       const result = EntityAliasTableSchema.safeParse(body);
       if (!result.success) {
@@ -74,6 +83,9 @@ export const httpEntityAliasTableTransport: EntityAliasTableTransport = {
       }
       return result.data;
     } catch {
+      reportTransportReadFailure("entity-alias-table.getEntityAliasTable", {
+        kind: "network",
+      });
       return EMPTY_ALIAS_TABLE;
     }
   },

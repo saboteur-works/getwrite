@@ -11,7 +11,10 @@
 import { createTransport } from "../../store/transport/create-transport";
 import type { EntityMentionCounts } from "../models/mentions-core";
 import { EntityMentionCountsResponseSchema } from "./schemas";
-import { reportTransportValidationFailure } from "./transport-validation";
+import {
+  reportTransportReadFailure,
+  reportTransportValidationFailure,
+} from "./transport-validation";
 
 export type { EntityMentionCounts };
 
@@ -63,7 +66,13 @@ export const httpEntityMentionCountsTransport: EntityMentionCountsTransport = {
       const response = await fetch(
         `/api/project/${encodeURIComponent(projectId)}/entity-mention-counts`,
       );
-      if (!response.ok) return EMPTY_MENTION_COUNTS;
+      if (!response.ok) {
+        reportTransportReadFailure(
+          "entity-mention-counts.getEntityMentionCounts",
+          { kind: "http", status: response.status },
+        );
+        return EMPTY_MENTION_COUNTS;
+      }
       const data: unknown = await response.json();
       const result = EntityMentionCountsResponseSchema.safeParse(data);
       if (!result.success) {
@@ -75,6 +84,10 @@ export const httpEntityMentionCountsTransport: EntityMentionCountsTransport = {
       }
       return result.data;
     } catch {
+      reportTransportReadFailure(
+        "entity-mention-counts.getEntityMentionCounts",
+        { kind: "network" },
+      );
       return EMPTY_MENTION_COUNTS;
     }
   },

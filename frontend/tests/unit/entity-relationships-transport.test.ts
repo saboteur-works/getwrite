@@ -17,6 +17,7 @@ import type { EntityRelationshipEdge } from "../../src/lib/models/entity-relatio
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
   reportTransportValidationFailure: vi.fn(),
+  reportTransportReadFailure: vi.fn(),
 }));
 
 const RUNTIME_ENV = "NEXT_PUBLIC_GETWRITE_RUNTIME";
