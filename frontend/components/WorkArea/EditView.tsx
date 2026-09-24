@@ -345,7 +345,27 @@ export default function EditView({
         <div className="shrink-0">
           <RevisionControl />
         </div>
-        {loadState === "error" ? (
+        {loadState === "loading" ? (
+          /*
+           * No editor while a read is in flight. Until it settles, nothing is
+           * known about the document, and an empty editor here is the same
+           * hazard as the error case below reached by a different route: the
+           * writer sees a blank page for a resource that is fine on disk, and
+           * the first keystroke autosaves that blank over it.
+           *
+           * `role="status"` rather than `alert`: waiting is ordinary, and
+           * nothing has gone wrong yet.
+           */
+          <div
+            data-testid="editview-loading"
+            role="status"
+            className="flex-1 min-h-0 min-w-0 w-full flex items-center justify-center px-4 text-center"
+          >
+            <p className="text-gw-secondary text-gw-small">
+              Loading this document&hellip;
+            </p>
+          </div>
+        ) : loadState === "error" ? (
           /*
            * A failed read renders as an error, never as an empty editor.
            * Both content transports return `null` for "the read failed" and
