@@ -32,6 +32,21 @@ interface UseRevisionContentOptions {
  * retry, and nothing to tell a writer that the document they were looking at
  * was not the document on disk. The first keystroke then autosaved that empty
  * editor over real content.
+ *
+ * `"loading"` is distinct from `"loaded"` for the same reason, and was
+ * declared here but never returned. Measured before this fix, with the
+ * resource read held deliberately unresolved:
+ *
+ *     in-flight :: loadState = "loaded" | content = "" | tipTapDoc = null
+ *
+ * So for the whole duration of every read — initial load and retry alike —
+ * the hook reported a loaded, empty document, and `EditView` rendered a
+ * typeable editor over it. That is the same shape as the failure case above,
+ * reached by a different route. It also made
+ * `useRevisionContent-load-failure`'s retry test race the fetch, since
+ * `waitFor(loadState === "loaded")` was satisfied immediately by the
+ * in-flight state; that test was misdiagnosed as slow and given a longer
+ * timeout in #225, which changed nothing, and it failed in CI.
  */
 export type RevisionContentLoadState = "idle" | "loading" | "loaded" | "error";
 
@@ -64,6 +79,18 @@ export function useRevisionContent({
   const [hasReadFailed, setHasReadFailed] = React.useState(false);
   // Bumped by `retryLoad` to re-run the load effect for the same resource.
   const [reloadToken, setReloadToken] = React.useState(0);
+  // The load this hook has actually finished, as an opaque key. Compared
+  // against the key the current props imply, this makes "a read is in flight"
+  // DERIVED rather than a flag an effect has to set — so the very first render
+  // after a resource is selected already reports "loading", instead of a frame
+  // of "loaded" with an empty document before the effect runs.
+  const [settledLoadKey, setSettledLoadKey] = React.useState<string | null>(
+    null,
+  );
+  const loadKey =
+    selectedResourceId && projectId
+      ? `${projectId}\u0000${selectedResourceId}\u0000${reloadToken}`
+      : null;
 
   const retryLoad = React.useCallback(() => {
     setReloadToken((token) => token + 1);
@@ -187,7 +214,13 @@ export function useRevisionContent({
     };
 
     if (selectedResourceId && projectId) {
-      void loadResourceAndCanonicalRevision();
+      // `finally` rather than a call after each `return`: the function has
+      // five exit paths and a missed one would leave the view loading
+      // forever. A cancelled effect deliberately does NOT settle — its key is
+      // already stale, and the effect that superseded it owns the state.
+      void loadResourceAndCanonicalRevision().finally(() => {
+        if (!isCancelled) setSettledLoadKey(loadKey);
+      });
     }
 
     return () => {
@@ -201,6 +234,7 @@ export function useRevisionContent({
     projectId,
     selectedResourceId,
     reloadToken,
+    loadKey,
   ]);
 
   React.useEffect(() => {
@@ -223,15 +257,29 @@ export function useRevisionContent({
     setContent(currentRevisionContent);
   }, [currentRevisionContent, currentRevisionId, parseTipTapRevisionContent]);
 
-  // "error" only when a read failed AND nothing filled the document from any
-  // source. This is the condition that actually endangers a writer: an empty
-  // editor they can type into, whose first keystroke autosaves over content
-  // that is still on disk.
-  const loadState: RevisionContentLoadState = hasReadFailed
-    ? tipTapDoc === null
-      ? "error"
-      : "loaded"
-    : "loaded";
+  // "idle" first: with nothing selected there is no read to be waiting on.
+  //
+  // "loading" is reported only while a read is in flight AND there is nothing
+  // to show meanwhile — the same reasoning as "error" below, since they are
+  // one hazard reached at different times: an in-flight read, like a failed
+  // one, only endangers a writer when it leaves an empty editor to type into,
+  // whose first keystroke autosaves over content that is still on disk. A
+  // document that arrived by another route (`initialContent` from the store,
+  // or `currentRevisionContent`) is right there on screen, and withholding
+  // the editor would flicker it away for no gain.
+  //
+  // Being permissive here is safe precisely because it cannot mask a failure:
+  // if the read then fails, "error" still fires on its own, stricter
+  // condition, which is left exactly as it shipped.
+  const hasNothingToShowMeanwhile = tipTapDoc === null && content === "";
+  const loadState: RevisionContentLoadState =
+    loadKey === null
+      ? "idle"
+      : settledLoadKey !== loadKey && hasNothingToShowMeanwhile
+        ? "loading"
+        : hasReadFailed && tipTapDoc === null
+          ? "error"
+          : "loaded";
 
   return {
     content,

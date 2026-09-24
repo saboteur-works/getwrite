@@ -74,8 +74,12 @@ describe("useRevisionContent — load failures", () => {
       }),
     );
 
-    await waitFor(() => expect(result.current.tipTapDoc).not.toBeNull());
-    expect(result.current.loadState).toBe("loaded");
+    // Wait for the READ to settle, not just for Redux to deliver a document.
+    // The Redux effect can win the race, and while the read is still in
+    // flight "loading" is the correct answer — asserting on `tipTapDoc`
+    // alone caught that intermediate state under full-suite load.
+    await waitFor(() => expect(result.current.loadState).toBe("loaded"));
+    expect(result.current.tipTapDoc).not.toBeNull();
   });
 
   it("reports loaded — not error — for a resource with no canonical revision", async () => {
@@ -112,6 +116,52 @@ describe("useRevisionContent — load failures", () => {
 
     const { result } = render();
     await waitFor(() => expect(result.current.loadState).toBe("loaded"));
+  });
+
+  it("reports loading, not loaded, while the read is still in flight", async () => {
+    // The defect this file's retry case kept tripping over. Measured before
+    // the fix, with the read held unresolved:
+    //   in-flight :: loadState = "loaded" | content = "" | tipTapDoc = null
+    // So every consumer was told an empty document had loaded, for the whole
+    // duration of every read. Holding the promise open makes that state
+    // observable deterministically rather than by racing a real fetch.
+    let releaseRead!: (value: unknown) => void;
+    const pendingRead = new Promise((resolve) => {
+      releaseRead = resolve;
+    });
+    fetchResourceContent.mockReturnValue(pendingRead);
+
+    const { result } = render();
+
+    expect(result.current.loadState).toBe("loading");
+    expect(result.current.content).toBe("");
+
+    await act(async () => {
+      releaseRead({
+        resourceContent: { plaintextContent: "On disk." },
+        revisions: [],
+      });
+      await pendingRead;
+    });
+
+    await waitFor(() => expect(result.current.loadState).toBe("loaded"));
+    expect(result.current.content).toBe("On disk.");
+  });
+
+  it("reports idle when there is no resource to read", () => {
+    const { result } = renderHook(() =>
+      useRevisionContent({
+        initialContent: "",
+        selectedResourceId: null,
+        projectId: null,
+        currentRevisionId: null,
+        currentRevisionContent: null,
+      }),
+    );
+    // Nothing is selected, so there is no read to be waiting on and nothing
+    // to call loaded either.
+    expect(result.current.loadState).toBe("idle");
+    expect(fetchResourceContent).not.toHaveBeenCalled();
   });
 
   it("recovers when a retried read succeeds", async () => {

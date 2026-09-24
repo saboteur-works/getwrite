@@ -112,3 +112,56 @@ describe("EditView — content that fails to load", () => {
     expect(screen.queryByTestId("editview-load-error")).toBeNull();
   });
 });
+
+/**
+ * The same hazard reached from the other direction: while the read is still in
+ * flight, nothing is known about the document, so an editor rendered over it
+ * is a blank page for a resource that is fine on disk.
+ */
+describe("EditView — content that has not loaded yet", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("shows no editor while the read is in flight", async () => {
+    let releaseRead!: (value: unknown) => void;
+    const pendingRead = new Promise((resolve) => {
+      releaseRead = resolve;
+    });
+    fetchResourceContent.mockReturnValue(pendingRead);
+
+    const store = makeStore();
+    const resource = createTextResource({
+      name: "Scene",
+      plainText: "words on disk",
+    });
+    store.dispatch(
+      setProject({
+        id: "project-1",
+        name: "Project",
+        rootPath: "/tmp/project",
+        resources: [{ id: resource.id, name: resource.name }],
+      }),
+    );
+    store.dispatch(setSelectedProjectId("project-1"));
+    store.dispatch(setResources([resource]));
+    store.dispatch(setSelectedResourceId(resource.id));
+
+    render(
+      <Provider store={store}>
+        <EditView />
+      </Provider>,
+    );
+
+    expect(screen.getByTestId("editview-loading")).toBeInTheDocument();
+    expect(screen.queryByTestId("tiptap-mock")).not.toBeInTheDocument();
+
+    releaseRead({
+      resourceContent: { plaintextContent: "words on disk" },
+      revisions: [],
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("tiptap-mock")).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("editview-loading")).not.toBeInTheDocument();
+  });
+});
