@@ -165,15 +165,15 @@ export default function ResourceCommandPalette({
             className="resource-palette-list"
           />
         ) : (
-          <ul
-            className="resource-palette-list"
-            role="listbox"
-            aria-label="Resources"
-          >
-            <li className="resource-palette-empty">
+          /* Not an empty `<ul role="listbox">`: the message was an `<li>`
+             whose parent was a listbox rather than a list, which axe flags,
+             and an option-less listbox announces nothing useful anyway. As a
+             `role="status"` it is read out when the search stops matching. */
+          <div className="resource-palette-list">
+            <p className="resource-palette-empty" role="status">
               No resources match your search.
-            </li>
-          </ul>
+            </p>
+          </div>
         )}
       </DialogContent>
     </Dialog>

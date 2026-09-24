@@ -491,7 +491,12 @@ export default function FilterChip({
 
   return (
     <div className={outerClass} role="group" aria-label="Filter condition">
-      <span className="filter-chip__drag" aria-label="Drag to reorder">
+      {/* Decorative. The grip is not the drag handle — `FilterGroup` marks the
+          whole chip row `draggable` — so an accessible name here announced a
+          control that does not exist. `aria-label` is also prohibited on a
+          roleless span, which is what axe flagged (68 nodes, all this one
+          element). */}
+      <span className="filter-chip__drag" aria-hidden="true">
         <GripVertical size={12} aria-hidden="true" />
       </span>
 

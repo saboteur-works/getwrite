@@ -25,6 +25,10 @@ async function flushThunkAndRender(): Promise<void> {
   for (let i = 0; i < 10; i++) await Promise.resolve();
 }
 
+// Search results are `role="option"`, not `role="button"`. Each option used to
+// wrap a `<button tabIndex={-1}>` — a focusable control inside `role="option"`,
+// which ARIA forbids — so the option itself is now the clickable element.
+
 describe("SearchBar", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -60,10 +64,10 @@ describe("SearchBar", () => {
       await flushThunkAndRender();
     });
 
-    expect(screen.getByRole("button", { name: /Alpha/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Gamma/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Alpha/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Gamma/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Alpha/i }));
+    fireEvent.click(screen.getByRole("option", { name: /Alpha/i }));
     expect(onSelect).toHaveBeenCalledWith("r1");
   });
 
@@ -134,7 +138,7 @@ describe("SearchBar", () => {
       await flushThunkAndRender();
     });
 
-    expect(screen.getByRole("button", { name: /Alpha/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Alpha/i })).toBeInTheDocument();
 
     // ArrowDown moves highlight from 0 → 1 (Gamma), Enter selects it
     fireEvent.keyDown(input, { key: "ArrowDown" });
@@ -219,12 +223,12 @@ describe("SearchBar", () => {
       await flushThunkAndRender();
     });
 
-    expect(screen.getByRole("button", { name: /Alpha/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Alpha/i })).toBeInTheDocument();
 
     fireEvent.keyDown(input, { key: "Escape" });
 
     expect(
-      screen.queryByRole("button", { name: /Alpha/i }),
+      screen.queryByRole("option", { name: /Alpha/i }),
     ).not.toBeInTheDocument();
   });
 });

@@ -147,7 +147,13 @@ export default function CompileResourceTree({
   return (
     <div
       className="border-hairline border-gw-border bg-gw-chrome2 max-h-80 overflow-y-auto py-2"
-      role="tree"
+      /* Not `role="tree"`. Nothing inside it was ever a `treeitem` — the rows
+         are labelled checkboxes and a disclosure button — so the role
+         promised tree keyboard semantics (arrow navigation, roving tabindex,
+         aria-selected) that are not implemented, and axe rejected it for
+         having no required children. `group` describes what this actually is:
+         a labelled set of related controls. */
+      role="group"
       aria-label="Resources to compile"
       data-testid="compile-resource-tree"
     >

@@ -1027,6 +1027,10 @@ export default function AppShell({
                 width; the tier check swaps in the drawer once hydrated. */}
               {showSidebars && layout.tier !== "phone" && layout.leftOpen ? (
                 <aside
+                  // Two <aside> landmarks in this shell; without distinct
+                  // names a screen reader's landmark list shows two
+                  // indistinguishable "complementary" entries.
+                  aria-label="Resources"
                   className="hidden md:flex appshell-sidebar border-r"
                   style={{ width: layout.leftWidth }}
                 >
@@ -1649,6 +1653,7 @@ export default function AppShell({
                 the drawer once hydrated. */}
               {showSidebars && layout.tier === "desktop" && layout.rightOpen ? (
                 <aside
+                  aria-label="Metadata"
                   className="hidden lg:flex appshell-sidebar border-l"
                   style={{ width: layout.rightWidth }}
                 >

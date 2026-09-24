@@ -35,6 +35,11 @@ beforeEach(() => {
   };
 });
 
+// Chips are queried by `role="button"`, not `role="listitem"`. They used to be
+// `<button role="listitem">` — an unallowed role that REPLACED the button
+// semantics, so an activatable chip announced as a plain list item. The button
+// now sits inside a `role="listitem"` box, and the name is on the button.
+
 describe("TimelineView", () => {
   it("shows empty state when no resources have storyDate", () => {
     fakeState.resources.resources = [
@@ -53,7 +58,7 @@ describe("TimelineView", () => {
     fakeState.resources.resources = [res];
     render(<TimelineView />);
     expect(
-      screen.getByRole("listitem", { name: "Opening Scene" }),
+      screen.getByRole("button", { name: "Opening Scene" }),
     ).toBeInTheDocument();
   });
 
@@ -76,15 +81,9 @@ describe("TimelineView", () => {
       }),
     ];
     render(<TimelineView />);
-    expect(
-      screen.getByRole("listitem", { name: "Scene A" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("listitem", { name: "Scene B" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("listitem", { name: "Scene C" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Scene A" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Scene B" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Scene C" })).toBeInTheDocument();
   });
 
   it("shows group labels for folders referenced by dated items", () => {
@@ -131,9 +130,9 @@ describe("TimelineView", () => {
       createTextResource({ name: "Undated", plainText: "" }),
     ];
     render(<TimelineView />);
-    expect(screen.getByRole("listitem", { name: "Dated" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dated" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("listitem", { name: "Undated" }),
+      screen.queryByRole("button", { name: "Undated" }),
     ).not.toBeInTheDocument();
   });
 });
@@ -179,9 +178,7 @@ describe("TimelineView — POV / Notes feature gating (Task 9)", () => {
     render(<TimelineView />);
 
     // The scene still renders, but no POV affordances are present.
-    expect(
-      screen.getByRole("listitem", { name: "Scene A" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Scene A" })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "ALL" }),
     ).not.toBeInTheDocument();
@@ -202,9 +199,7 @@ describe("TimelineView — POV / Notes feature gating (Task 9)", () => {
     ];
     render(<TimelineView />);
 
-    expect(
-      screen.getByRole("listitem", { name: "Scene A" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Scene A" })).toBeInTheDocument();
     // No POV in the data → no pills, no legend.
     expect(
       screen.queryByRole("button", { name: "ALL" }),
@@ -226,8 +221,6 @@ describe("TimelineView — POV / Notes feature gating (Task 9)", () => {
     fakeState.resources.resources = [res];
 
     expect(() => render(<TimelineView />)).not.toThrow();
-    expect(
-      screen.getByRole("listitem", { name: "Scene A" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Scene A" })).toBeInTheDocument();
   });
 });

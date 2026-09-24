@@ -12,6 +12,10 @@ const makeItem = (
   overrides: Partial<TimelineItem> = {},
 ): TimelineItem => ({ id, label, startDate, ...overrides });
 
+// Chips are queried by `role="button"`. They used to be `<button
+// role="listitem">`, an unallowed role that replaced the button semantics; the
+// button now sits inside a `role="listitem"` box and carries the name.
+
 describe("Timeline", () => {
   it("renders a chip for each item", () => {
     const items: TimelineItem[] = [
@@ -30,10 +34,10 @@ describe("Timeline", () => {
     ];
     render(<Timeline items={items} />);
     expect(
-      screen.getByRole("listitem", { name: "Scene One" }),
+      screen.getByRole("button", { name: "Scene One" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("listitem", { name: "Scene Two" }),
+      screen.getByRole("button", { name: "Scene Two" }),
     ).toBeInTheDocument();
   });
 
@@ -44,7 +48,7 @@ describe("Timeline", () => {
       makeItem("abc", "Clickable Scene", "2024-04-01", { onClick }),
     ];
     render(<Timeline items={items} />);
-    await user.click(screen.getByRole("listitem", { name: "Clickable Scene" }));
+    await user.click(screen.getByRole("button", { name: "Clickable Scene" }));
     expect(onClick).toHaveBeenCalledWith("abc");
   });
 
@@ -130,11 +134,9 @@ describe("Timeline", () => {
       makeItem("2", "Ungrouped", "2024-02-01"),
     ];
     render(<Timeline items={items} groups={groups} />);
+    expect(screen.getByRole("button", { name: "Grouped" })).toBeInTheDocument();
     expect(
-      screen.getByRole("listitem", { name: "Grouped" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("listitem", { name: "Ungrouped" }),
+      screen.getByRole("button", { name: "Ungrouped" }),
     ).toBeInTheDocument();
   });
 

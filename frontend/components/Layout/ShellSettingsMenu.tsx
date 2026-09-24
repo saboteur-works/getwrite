@@ -192,8 +192,11 @@ export default function ShellSettingsMenu({
               <MenuItemButton
                 className="appshell-topbar-dropdown-item"
                 role="menuitemcheckbox"
+                // `aria-checked` is this role's state attribute; `aria-pressed`
+                // belongs to `button`/`switch` and is prohibited here. Both said
+                // the same thing, so dropping the prohibited one changes nothing
+                // a screen reader announces.
                 aria-checked={isDarkMode}
-                aria-pressed={isDarkMode}
                 icon={
                   isDarkMode ? (
                     <Sun size={14} aria-hidden="true" />

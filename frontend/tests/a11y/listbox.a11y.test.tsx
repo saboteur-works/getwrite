@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import Listbox from "../../components/common/UI/Listbox/Listbox";
 import type { ListboxOption } from "../../components/common/UI/Listbox/Listbox";
+import { runAxe } from "./helpers/axe";
 
 const OPTIONS: ListboxOption[] = [
   { value: "apple", label: "Apple" },
@@ -55,7 +56,7 @@ describe("a11y: Listbox primitive", () => {
         onHighlightChange={onHighlightChange}
       />,
     );
-    fireEvent.mouseEnter(screen.getByText("Cherry").closest("button")!);
+    fireEvent.mouseEnter(screen.getByText("Cherry").closest("li")!);
     expect(onHighlightChange).toHaveBeenCalledWith(2);
   });
 
@@ -64,6 +65,19 @@ describe("a11y: Listbox primitive", () => {
       <Listbox options={OPTIONS} highlightedIndex={0} onSelect={vi.fn()} />,
     );
     expect(screen.getByText("Text")).toBeInTheDocument();
+  });
+
+  it("puts no focusable control inside an option", async () => {
+    // Each option wrapped a `<button tabIndex={-1}>`: a focusable control
+    // inside `role="option"`, which axe rejects outright. This file asserted
+    // roles and behaviour but never ran axe, which is why it went unnoticed.
+    const { container } = render(
+      <Listbox options={OPTIONS} highlightedIndex={0} onSelect={vi.fn()} />,
+    );
+    expect(container.querySelectorAll("[role='option'] button")).toHaveLength(
+      0,
+    );
+    await runAxe(container);
   });
 
   it("accepts custom aria-label", () => {

@@ -67,7 +67,7 @@ test("metadata sidebar synopsis input is visible and accepts input", async ({
 }) => {
   await page.goto("/iframe.html?id=sidebar-metadatasidebar--interactive");
 
-  const synopsis = page.getByLabel("synopsis");
+  const synopsis = page.getByRole("textbox", { name: "synopsis" });
   await expect(synopsis).toBeVisible();
 
   await synopsis.fill("A duel at dawn resolves the tension.");
@@ -99,12 +99,12 @@ test("collapse: clicking Document header hides synopsis and notes", async ({
     "/iframe.html?id=sidebar-metadatasidebar--interactive-collapse",
   );
 
-  const synopsisTextarea = page.getByLabel("synopsis");
+  const synopsisTextarea = page.getByRole("textbox", { name: "synopsis" });
   await expect(synopsisTextarea).toBeVisible();
 
   await page.getByRole("button", { name: /document/i }).click();
   await expect(synopsisTextarea).not.toBeAttached();
-  await expect(page.getByLabel("notes")).not.toBeAttached();
+  await expect(page.getByRole("textbox", { name: "notes" })).not.toBeAttached();
 });
 
 test("collapse: clicking Document header again restores synopsis and notes", async ({
@@ -115,7 +115,7 @@ test("collapse: clicking Document header again restores synopsis and notes", asy
   );
 
   const docBtn = page.getByRole("button", { name: /document/i });
-  const synopsisTextarea = page.getByLabel("synopsis");
+  const synopsisTextarea = page.getByRole("textbox", { name: "synopsis" });
 
   await docBtn.click();
   await expect(synopsisTextarea).not.toBeAttached();
@@ -163,7 +163,9 @@ test("collapse: Document and Timeline sections collapse independently", async ({
 
   // Collapse only the Document section
   await page.getByRole("button", { name: /document/i }).click();
-  await expect(page.getByLabel("synopsis")).not.toBeAttached();
+  await expect(
+    page.getByRole("textbox", { name: "synopsis" }),
+  ).not.toBeAttached();
 
   // Timeline should still be visible
   await expect(
@@ -179,5 +181,5 @@ test("all-expanded story shows Document and Timeline section headers", async ({
   await expect(page.getByRole("button", { name: /document/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /timeline/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /tags/i })).toBeVisible();
-  await expect(page.getByLabel("synopsis")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "synopsis" })).toBeVisible();
 });

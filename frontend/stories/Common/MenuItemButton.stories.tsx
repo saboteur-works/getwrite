@@ -6,6 +6,17 @@ import MenuItemButton from "../../components/common/MenuItemButton";
 const meta: Meta<typeof MenuItemButton> = {
   title: "Common/MenuItemButton",
   component: MenuItemButton,
+  // The component defaults to `role="menuitem"`, which requires a menu
+  // ancestor. Every real call site provides one; only these stories rendered
+  // it bare, so axe's `aria-required-parent` here was a story artifact rather
+  // than a product defect. The decorator supplies the context the app does.
+  decorators: [
+    (Story) => (
+      <div role="menu" aria-label="Example menu">
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default meta;

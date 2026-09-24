@@ -7,6 +7,22 @@ import { action } from "storybook/actions";
 const meta = {
   title: "Timeline/TimelineChip",
   component: TimelineChip,
+  // A chip is a `role="listitem"` positioned inside `TimelineRow`'s
+  // `role="list"` track. Rendered bare, it has no list ancestor, which axe
+  // reports as `aria-required-parent` — a story artifact, not a product
+  // defect. The decorator supplies the container the row provides, including
+  // the relative positioning the chip's absolute placement needs.
+  decorators: [
+    (Story: () => JSX.Element) => (
+      <div
+        role="list"
+        aria-label="Example timeline items"
+        style={{ position: "relative", height: 80, width: 480 }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof TimelineChip>;
 
 export default meta;

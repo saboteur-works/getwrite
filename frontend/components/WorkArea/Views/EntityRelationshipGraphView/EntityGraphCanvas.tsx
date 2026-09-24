@@ -984,7 +984,12 @@ export default function EntityGraphCanvas({
     <>
       <svg
         ref={svgRef}
-        role="img"
+        /* Not `role="img"`. Every node `<g>` inside is `tabIndex={0}`
+           `role="button"` (FR-9), and `img` declares the subtree a single
+           graphic with no interactive parts — axe's `nested-interactive`.
+           `group` keeps the label while admitting that the thing contains
+           controls. */
+        role="group"
         aria-label="Entity relationship graph canvas"
         className={className}
         width={width}
