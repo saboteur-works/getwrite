@@ -27,7 +27,6 @@ type Story = StoryObj<typeof EditView>;
 export const Default: Story = {
   args: {
     initialContent: "<h2>Opening</h2><p>The sun sets over the harbor.</p>",
-    apiKey: undefined,
   },
 };
 
@@ -40,23 +39,19 @@ export const WikiLinkStyling: Story = {
   args: {
     initialContent:
       "<p>This scene continues from [[Opening]] and references [[The Bureau]].</p>",
-    apiKey: undefined,
   },
 };
 
 export const Interactive: Story = {
   render: (args: EditViewProps) => {
-    const [content, setContent] = React.useState(args.initialContent ?? "");
+    // No content probe: `EditView` exposes no content callback (only
+    // `onUnsavedChange`), so the `onChange` this story used to pass was
+    // ignored and the probe never updated. The spec that read it has been
+    // removed; typing is covered through the real footer word count in
+    // `ui-flows.e2e.spec.ts`.
     return (
       <div>
-        <EditView {...args} initialContent={content} onChange={setContent} />
-        <div
-          data-testid="editor-content"
-          aria-hidden
-          style={{ display: "none" }}
-        >
-          {content}
-        </div>
+        <EditView {...args} />
       </div>
     );
   },

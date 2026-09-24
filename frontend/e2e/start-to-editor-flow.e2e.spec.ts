@@ -52,6 +52,12 @@ test("clicking Open Project transitions to the opened-project view", async ({
   );
 });
 
+// Must match the exported ids in `stories/Start/StartPage.stories.tsx`. The
+// mocked open-project response is validated against `ProjectApiEntrySchema`,
+// which requires UUID ids, so these cannot be readable slugs.
+const OPENED_RESOURCE_1_ID = "33333333-3333-4333-8333-333333333333";
+const OPENED_RESOURCE_2_ID = "44444444-4444-4444-8444-444444444444";
+
 test("opened-project view lists the resources returned by the API", async ({
   page,
 }) => {
@@ -63,14 +69,24 @@ test("opened-project view lists the resources returned by the API", async ({
     page.locator('[data-testid="opened-resource-count"]'),
   ).toHaveText("2");
   await expect(
-    page.locator('[data-testid="opened-resource-open-res-1"]'),
+    page.locator(`[data-testid="opened-resource-${OPENED_RESOURCE_1_ID}"]`),
   ).toHaveText("Opening Scene");
   await expect(
-    page.locator('[data-testid="opened-resource-open-res-2"]'),
+    page.locator(`[data-testid="opened-resource-${OPENED_RESOURCE_2_ID}"]`),
   ).toHaveText("Inciting Incident");
 });
 
-test("Open Project posts the project rootPath to /api/project", async ({
+/**
+ * Renamed from "posts the project rootPath". `openProject` sends
+ * `{ projectId }`, not `{ projectPath }`: the ADR-017/018 tenant-route
+ * migration deliberately stopped project-scoped routes accepting a
+ * client-supplied path, and the route now derives the root from a
+ * server-validated id (`docs/standards/storage-context.md`).
+ *
+ * The old assertion encoded the contract that migration removed on purpose, so
+ * it is updated to the identifier actually sent rather than restored.
+ */
+test("Open Project posts the selected project's id to /api/project", async ({
   page,
 }) => {
   await page.goto(FLOW_STORY);
@@ -89,7 +105,11 @@ test("Open Project posts the project rootPath to /api/project", async ({
   );
   expect(lastPayload).not.toBeNull();
   const parsed = JSON.parse(lastPayload as string);
-  expect(parsed.projectPath).toBe("/tmp/projects/disk-proj");
+  // The on-disk directory basename of the card's `rootPath`
+  // (`/tmp/projects/disk-proj`), NOT `StoredProject.id` ("src-proj-1") — the
+  // FR12 distinction `selectActiveProjectDirectoryId` documents in
+  // `projectsSlice.ts`. Tenant-scoped routes resolve a project from this.
+  expect(parsed.projectId).toBe("disk-proj");
 });
 
 test("API failure surfaces an error and keeps the user on the start page", async ({

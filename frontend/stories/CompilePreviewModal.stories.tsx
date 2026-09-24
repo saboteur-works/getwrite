@@ -125,6 +125,11 @@ export const Interactive: Story = {
   render: (args: any) => {
     const [isOpen, setIsOpen] = React.useState(true);
     const [lastAction, setLastAction] = React.useState<string | null>(null);
+    // Compile-only probe. `last-action` records whichever callback fired most
+    // recently, and the modal closes itself after a compile — so a test
+    // watching `last-action` for "compile" races the subsequent "close" and
+    // passes or fails depending on when it sampled.
+    const [compileCount, setCompileCount] = React.useState(0);
     return (
       <div>
         <CompilePreviewModal
@@ -137,6 +142,7 @@ export const Interactive: Story = {
           }}
           onConfirmCompile={(ids) => {
             setLastAction("compile");
+            setCompileCount((n) => n + 1);
             args.onConfirmCompile?.(ids);
           }}
         />
@@ -145,6 +151,13 @@ export const Interactive: Story = {
         </div>
         <div data-testid="last-action" aria-hidden style={{ display: "none" }}>
           {lastAction}
+        </div>
+        <div
+          data-testid="compile-count"
+          aria-hidden
+          style={{ display: "none" }}
+        >
+          {compileCount}
         </div>
       </div>
     );

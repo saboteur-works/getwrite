@@ -14,13 +14,21 @@ test("appshell renders the project name in the work area", async ({ page }) => {
 async function expandChaptersFolder(
   page: import("@playwright/test").Page,
 ): Promise<void> {
-  // Folders render with a chevron-toggling icon button as the first button
-  // inside the .resource-tree-item div, and a name button after it.
+  // `.resource-tree-icon-button` is worn by two elements per row since the
+  // row kebab was added (`ResourceRowMenu.tsx`), so the bare class is a strict
+  // mode violation. Exclude the kebab to reach the chevron.
+  //
+  // Selected by class rather than role because the chevron has no accessible
+  // name — no `aria-label`, and its only child is an icon. That is a real
+  // a11y defect (same shape as the Start Page manage menu, `task_2ac96a77`)
+  // and is why there is no `getByRole` to use here.
   const chaptersItem = page
     .locator(".resource-tree-item")
     .filter({ hasText: "Chapters" })
     .first();
-  await chaptersItem.locator(".resource-tree-icon-button").click();
+  await chaptersItem
+    .locator(".resource-tree-icon-button:not(.resource-tree-kebab)")
+    .click();
 }
 
 test("appshell resource tree shows the seeded resources", async ({ page }) => {

@@ -63,7 +63,11 @@ test("Compile (txt default) posts to /api/compile/text with project + resource i
   const { url, body } = await readLastCompileCall(page);
   expect(url).toBe("/api/compile/text");
   expect(body).toMatchObject({
-    projectPath: "/tmp/projects/pack",
+    // The project's on-disk directory basename, not an absolute path: the
+    // ADR-017/018 tenant-route migration stopped `/api/compile/*` accepting a
+    // client-supplied path, and `CompileBody.projectId` documents the same
+    // FR12 distinction as `selectActiveProjectDirectoryId`.
+    projectId: "pack",
     projectName: "Packageable Project",
     includeHeaders: true,
   });

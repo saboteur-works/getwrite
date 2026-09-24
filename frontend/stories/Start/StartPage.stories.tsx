@@ -252,6 +252,28 @@ function getOpenFlowMockState(): OpenFlowMockState {
   return w.__openFlowMockState;
 }
 
+/**
+ * Ids used by the open-project flow mock below.
+ *
+ * `openProject` validates its response against `ProjectApiEntrySchema`
+ * (`src/lib/api/schemas.ts`), whose `project`, `folders` and `resources`
+ * entries all require a real UUID `id`. The readable slugs these replace
+ * ("opened-proj", "open-res-1", ...) fail that validation, so `openProject`
+ * threw and the opened-project view never rendered.
+ *
+ * Fixed rather than generated so `start-to-editor-flow.e2e.spec.ts` can
+ * address the rendered rows by `data-testid`; that spec repeats these literals
+ * and the two must be kept in step.
+ *
+ * NOT exported: in CSF every named export of a `.stories.tsx` is treated as a
+ * story, so exporting these made Storybook try to render four strings as
+ * stories and broke the whole file.
+ */
+const OPENED_PROJECT_ID = "11111111-1111-4111-8111-111111111111";
+const OPENED_FOLDER_ID = "22222222-2222-4222-8222-222222222222";
+const OPENED_RESOURCE_1_ID = "33333333-3333-4333-8333-333333333333";
+const OPENED_RESOURCE_2_ID = "44444444-4444-4444-8444-444444444444";
+
 function installOpenFlowFetchMock(openedProjectId: string): void {
   const state = getOpenFlowMockState();
   if (state.installed) return;
@@ -277,7 +299,7 @@ function installOpenFlowFetchMock(openedProjectId: string): void {
 
         const respFolders: Folder[] = [
           {
-            id: "open-folder-1",
+            id: OPENED_FOLDER_ID,
             slug: "open-folder-1",
             name: "Chapters",
             orderIndex: 0,
@@ -288,20 +310,20 @@ function installOpenFlowFetchMock(openedProjectId: string): void {
         ];
         const respResources: AnyResource[] = [
           {
-            id: "open-res-1",
+            id: OPENED_RESOURCE_1_ID,
             slug: "open-res-1",
             name: "Opening Scene",
             type: "text",
-            folderId: "open-folder-1",
+            folderId: OPENED_FOLDER_ID,
             createdAt: new Date().toISOString(),
             orderIndex: 0,
           },
           {
-            id: "open-res-2",
+            id: OPENED_RESOURCE_2_ID,
             slug: "open-res-2",
             name: "Inciting Incident",
             type: "text",
-            folderId: "open-folder-1",
+            folderId: OPENED_FOLDER_ID,
             createdAt: new Date().toISOString(),
             orderIndex: 1,
           },
@@ -346,7 +368,7 @@ const openFlowSourceProjects: StartPageProjectEntry[] = [
 ];
 
 function OpenProjectFlowStory(): JSX.Element {
-  installOpenFlowFetchMock("opened-proj");
+  installOpenFlowFetchMock(OPENED_PROJECT_ID);
   const dispatch = useDispatch();
   const [openedName, setOpenedName] = React.useState<string | null>(null);
   const [openedResources, setOpenedResources] = React.useState<AnyResource[]>(

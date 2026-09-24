@@ -1,20 +1,19 @@
 import { test, expect } from "@playwright/test";
 
-test("editview interactive variant tracks content changes", async ({
-  page,
-}) => {
-  await page.goto("/iframe.html?id=workarea-editview--interactive");
-
-  const editor = page
-    .locator('[role="textbox"], [contenteditable="true"]')
-    .first();
-  const contentProbe = page.locator('[data-testid="editor-content"]');
-
-  await editor.click();
-  await page.keyboard.type("Test content");
-
-  await expect(contentProbe).toContainText("Test content", { timeout: 2000 });
-});
+/*
+ * Removed: "editview interactive variant tracks content changes".
+ *
+ * It read a `[data-testid="editor-content"]` probe the story fed from an
+ * `onChange` prop that `EditView` does not have — the component's only
+ * callback is `onUnsavedChange`. The probe therefore never updated and the
+ * test could not pass without adding a content callback to the product purely
+ * to satisfy it.
+ *
+ * Its intent — typing in the editor is reflected outside it — is already
+ * covered by `ui-flows.e2e.spec.ts`'s "edit view editor accepts input and
+ * updates word count", which exercises the real footer. The story's dead
+ * `onChange` wiring and probe were removed with it.
+ */
 
 test("editview displays initial content", async ({ page }) => {
   await page.goto("/iframe.html?id=workarea-editview--default");
