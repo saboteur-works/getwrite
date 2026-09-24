@@ -377,6 +377,13 @@ export default function ResourceTree({
             >
               {item.isFolder() && (
                 <button
+                  type="button"
+                  /* The chevron's only content is an aria-hidden icon, so
+                     without this the button is announced as unlabelled. The
+                     name states the action rather than the state; the
+                     expanded/collapsed state is already carried by the
+                     treeitem's own `aria-expanded` from `item.getProps()`. */
+                  aria-label={`${item.isExpanded() ? "Collapse" : "Expand"} ${item.getItemName()}`}
                   className="resource-tree-icon-button"
                   onClick={(e) => {
                     e.stopPropagation();

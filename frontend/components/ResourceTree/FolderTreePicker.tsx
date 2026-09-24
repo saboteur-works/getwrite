@@ -72,39 +72,46 @@ function TreeNode({
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => onSelect(node.folder.id)}
-        className={cn(
-          "flex w-full items-center gap-1.5 py-1.5 text-sm text-left transition-colors duration-100",
-          "hover:bg-gw-chrome3 focus-visible:outline-none focus-visible:bg-gw-chrome3",
-          isSelected ? "text-gw-primary bg-gw-chrome3" : "text-gw-secondary",
-        )}
+      {/* The chevron is a SIBLING of the select button, not nested inside it:
+          a button may not contain another interactive control, which is why
+          this was previously a `role="button"` span — labelled, but not
+          keyboard-operable at all. The row is a flex container instead, so
+          both controls are real buttons and both are reachable by Tab. */}
+      <div
+        className="flex items-center"
         style={{ paddingLeft: `${8 + depth * 16}px`, paddingRight: "8px" }}
-        aria-pressed={isSelected}
       >
         {hasChildren ? (
-          <span
-            role="button"
-            aria-label={isExpanded ? "Collapse" : "Expand"}
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded((v) => !v);
-            }}
-            className="shrink-0 text-gw-secondary hover:text-gw-primary"
+          <button
+            type="button"
+            aria-label={`${isExpanded ? "Collapse" : "Expand"} ${node.folder.name}`}
+            aria-expanded={isExpanded}
+            onClick={() => setIsExpanded((v) => !v)}
+            className="shrink-0 py-1.5 pr-1.5 text-gw-secondary hover:text-gw-primary focus-visible:outline-none focus-visible:text-gw-primary"
           >
             {isExpanded ? (
               <ChevronDown size={12} strokeWidth={1.5} />
             ) : (
               <ChevronRight size={12} strokeWidth={1.5} />
             )}
-          </span>
+          </button>
         ) : (
-          <span className="shrink-0 w-3" />
+          <span className="shrink-0 w-3 mr-1.5" />
         )}
-        <FolderIcon size={12} strokeWidth={1.5} className="shrink-0" />
-        <span className="truncate">{node.folder.name}</span>
-      </button>
+        <button
+          type="button"
+          onClick={() => onSelect(node.folder.id)}
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-1.5 py-1.5 text-sm text-left transition-colors duration-100",
+            "hover:bg-gw-chrome3 focus-visible:outline-none focus-visible:bg-gw-chrome3",
+            isSelected ? "text-gw-primary bg-gw-chrome3" : "text-gw-secondary",
+          )}
+          aria-pressed={isSelected}
+        >
+          <FolderIcon size={12} strokeWidth={1.5} className="shrink-0" />
+          <span className="truncate">{node.folder.name}</span>
+        </button>
+      </div>
       {hasChildren && isExpanded && (
         <div>
           {node.children.map((child) => (

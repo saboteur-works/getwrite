@@ -66,4 +66,42 @@ describe("ResourceTree", () => {
     fireEvent.click(childNode);
     expect(testStore.getState().resources.selectedResourceId).toBe(item.id);
   });
+
+  it("names a folder's expand chevron after the folder", async () => {
+    // The chevron's only content is an aria-hidden icon, so before this it was
+    // announced as an unlabelled button — and there is one per folder row.
+    const folder = createFolderResource({
+      name: "Act One",
+      parentFolderId: null,
+      orderIndex: 0,
+      metadataSource: { isMetadataSource: false },
+    });
+    const project = createProject({ name: "Chevron Project" });
+
+    const testStore = makeStore();
+    testStore.dispatch(
+      setProject({
+        id: project.id,
+        name: project.name,
+        rootPath: project.rootPath ?? "",
+        folders: [folder],
+        resources: [],
+      }),
+    );
+    testStore.dispatch(setSelectedProjectId(project.id));
+    testStore.dispatch(setFolders([folder]));
+    testStore.dispatch(setResources([]));
+
+    render(
+      <Provider store={testStore}>
+        <ResourceTree />
+      </Provider>,
+    );
+
+    const chevron = screen.getByRole("button", { name: "Expand Act One" });
+    fireEvent.click(chevron);
+    expect(
+      await screen.findByRole("button", { name: "Collapse Act One" }),
+    ).toBeTruthy();
+  });
 });

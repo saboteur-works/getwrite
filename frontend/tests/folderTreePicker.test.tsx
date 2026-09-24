@@ -181,8 +181,47 @@ describe("FolderTreePicker", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button"));
-    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand Parent" }));
     expect(screen.getByText("Child")).toBeInTheDocument();
+  });
+
+  it("names the expand control after the folder it expands", () => {
+    const folders = [makeFolder("p", "Parent"), makeFolder("c", "Child", "p")];
+    render(
+      <FolderTreePicker
+        folders={folders}
+        value={undefined}
+        onChange={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button"));
+    const expand = screen.getByRole("button", { name: "Expand Parent" });
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(expand);
+    expect(
+      screen.getByRole("button", { name: "Collapse Parent" }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("makes the expand control keyboard-operable", () => {
+    // It was a <span role="button"> with no tabIndex and no key handler:
+    // labelled for a screen reader, but unreachable and unactivatable by
+    // keyboard. A real <button> gets focus and Enter/Space activation from
+    // the platform; a span without tabIndex cannot take focus at all, which
+    // is the discriminating assertion here.
+    const folders = [makeFolder("p", "Parent"), makeFolder("c", "Child", "p")];
+    render(
+      <FolderTreePicker
+        folders={folders}
+        value={undefined}
+        onChange={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button"));
+    const expand = screen.getByRole("button", { name: "Expand Parent" });
+    expand.focus();
+    expect(expand).toHaveFocus();
+    expect(expand.tagName).toBe("BUTTON");
   });
 
   it("uses a custom rootLabel for the trigger when no value", () => {

@@ -647,8 +647,6 @@ export default function StartPage({
                   <Button
                     variant="default"
                     onClick={() => setIsModalOpen(true)}
-                    title="Start a New Projct"
-                    aria-label="Start a new project"
                   >
                     <FolderPlus size={16} aria-hidden="true" />
                     Start a New Project
@@ -718,8 +716,6 @@ export default function StartPage({
               <Button
                 variant="default"
                 onClick={() => setIsModalOpen(true)}
-                title="Start a New Projct"
-                aria-label="Start a new project"
                 className=" mt-6 inline-flex items-center"
               >
                 <Plus size={15} aria-hidden="true" />
