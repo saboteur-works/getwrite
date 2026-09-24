@@ -5,6 +5,19 @@ import { readSidecar } from "./sidecar";
 import { readFolderTree } from "./folder-utils";
 import { migrateProjectOnLoad } from "./metadata-schema";
 
+/**
+ * True for the "this path does not exist" error both the real `fs` adapter and
+ * `memoryAdapter` raise (`code: "ENOENT"`), and nothing else — a permissions
+ * failure, an I/O error, or a locked-project error is not a missing directory.
+ */
+function isMissingEntryError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "ENOENT"
+  );
+}
+
 /** A resource entry assembled from its sidecar metadata and plaintext content. */
 export interface LoadedResource {
   id: string;
@@ -32,8 +45,9 @@ export interface LoadedProject {
  * - Reads folder descriptors recursively via `readFolderTree` (gracefully
  *   handles a missing `folders/` directory).
  * - Reads resource sidecars from `meta/` and their plaintext from
- *   `resources/<id>/content.txt` (gracefully handles a missing `meta/`
- *   directory by returning an empty resources array).
+ *   `resources/<id>/content.txt`. A MISSING `meta/` directory yields an empty
+ *   resources array; an UNREADABLE one throws, rather than presenting a
+ *   project whose contents could not be read as a project with no contents.
  *
  * @param projectPath - Absolute path to the project root directory.
  */
@@ -54,7 +68,18 @@ export async function loadProjectFromDisk(
   let metaFilenames: string[];
   try {
     metaFilenames = (await readdir(metaDir)) as string[];
-  } catch {
+  } catch (error) {
+    // A project with no `meta/` directory at all is an ordinary state — a new
+    // or legacy project — and loads with no resources.
+    //
+    // Every OTHER failure propagates. This catch used to swallow all of them,
+    // so an unreadable `meta/` (permissions, I/O error) opened as a project
+    // that appeared EMPTY: a writer would see their manuscript gone and the
+    // app would report nothing wrong. It also swallowed `ProjectLockedError`
+    // and `MissingProjectKeyError` from the encrypting adapter, which is the
+    // exact fail-closed violation Feature 54 exists to prevent — a locked
+    // project would render as an empty one rather than prompting to unlock.
+    if (!isMissingEntryError(error)) throw error;
     metaFilenames = [];
   }
 

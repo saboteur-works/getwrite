@@ -22,12 +22,29 @@ interface UseRevisionContentOptions {
   currentRevisionContent: string | null;
 }
 
+/**
+ * Whether the selected resource's content actually loaded.
+ *
+ * `"error"` is distinct from "loaded and empty". Both transports collapse a
+ * failed read and an absent value into `null` (`fetchContent`,
+ * `fetchRevisionContent`), and this hook used to return early on either — so a
+ * failed read left the editor showing `initialContent` with no error, no
+ * retry, and nothing to tell a writer that the document they were looking at
+ * was not the document on disk. The first keystroke then autosaved that empty
+ * editor over real content.
+ */
+export type RevisionContentLoadState = "idle" | "loading" | "loaded" | "error";
+
 interface UseRevisionContentResult {
   content: string;
   tipTapDoc: TipTapDocument | null;
   setContent: React.Dispatch<React.SetStateAction<string>>;
   setTipTapDoc: React.Dispatch<React.SetStateAction<TipTapDocument | null>>;
   parseTipTapRevisionContent: (value: string) => TipTapDocument | null;
+  /** Whether the load succeeded; see {@link RevisionContentLoadState}. */
+  loadState: RevisionContentLoadState;
+  /** Re-runs the load for the current resource. */
+  retryLoad: () => void;
 }
 
 export function useRevisionContent({
@@ -39,6 +56,18 @@ export function useRevisionContent({
 }: UseRevisionContentOptions): UseRevisionContentResult {
   const [content, setContent] = React.useState<string>(initialContent);
   const [tipTapDoc, setTipTapDoc] = React.useState<TipTapDocument | null>(null);
+  // Whether the last load attempt hit a failed read. Kept separate from
+  // `loadState` because a failed read only MATTERS when it leaves nothing to
+  // show: `EditView` also receives content from Redux (`currentRevisionContent`,
+  // the effect below), so a resource whose document arrived by another route is
+  // not in trouble just because one fetch failed.
+  const [hasReadFailed, setHasReadFailed] = React.useState(false);
+  // Bumped by `retryLoad` to re-run the load effect for the same resource.
+  const [reloadToken, setReloadToken] = React.useState(0);
+
+  const retryLoad = React.useCallback(() => {
+    setReloadToken((token) => token + 1);
+  }, []);
 
   const parseTipTapRevisionContent = React.useCallback(
     (value: string): TipTapDocument | null => {
@@ -86,9 +115,14 @@ export function useRevisionContent({
     const loadResourceAndCanonicalRevision = async () => {
       setContent(initialContent);
       setTipTapDoc(null);
+      setHasReadFailed(false);
 
       const resourceData = await loadResourceContent();
-      if (!resourceData || isCancelled) {
+      if (isCancelled) return;
+      if (!resourceData) {
+        // The effect only runs with a resource and project selected, so a
+        // null here is a failed read — not "nothing selected".
+        setHasReadFailed(true);
         return;
       }
 
@@ -111,6 +145,8 @@ export function useRevisionContent({
       );
 
       if (!canonicalRevision?.id) {
+        // A resource with no canonical revision is an ordinary state, not a
+        // failure: what the resource files hold is all there is.
         return;
       }
 
@@ -118,7 +154,17 @@ export function useRevisionContent({
         canonicalRevision.id,
       );
 
-      if (!canonicalContent || isCancelled) {
+      if (isCancelled) return;
+      if (canonicalContent === null) {
+        setHasReadFailed(true);
+        // The canonical revision is the authoritative document. Failing to
+        // read one that the resource says exists is an error, however
+        // readable the resource files were.
+        //
+        // Compared against `null` specifically, NOT falsiness: `""` is a
+        // legitimately EMPTY document — a resource whose first revision holds
+        // nothing yet — and treating it as a failure would put an error in
+        // front of a writer whose document is simply blank.
         return;
       }
 
@@ -154,6 +200,7 @@ export function useRevisionContent({
     parseTipTapRevisionContent,
     projectId,
     selectedResourceId,
+    reloadToken,
   ]);
 
   React.useEffect(() => {
@@ -176,11 +223,23 @@ export function useRevisionContent({
     setContent(currentRevisionContent);
   }, [currentRevisionContent, currentRevisionId, parseTipTapRevisionContent]);
 
+  // "error" only when a read failed AND nothing filled the document from any
+  // source. This is the condition that actually endangers a writer: an empty
+  // editor they can type into, whose first keystroke autosaves over content
+  // that is still on disk.
+  const loadState: RevisionContentLoadState = hasReadFailed
+    ? tipTapDoc === null
+      ? "error"
+      : "loaded"
+    : "loaded";
+
   return {
     content,
     tipTapDoc,
     setContent,
     setTipTapDoc,
     parseTipTapRevisionContent,
+    loadState,
+    retryLoad,
   };
 }
