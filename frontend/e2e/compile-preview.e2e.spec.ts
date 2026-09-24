@@ -42,15 +42,17 @@ test("compile preview modal interactive tracks compile action", async ({
 }) => {
   await page.goto("/iframe.html?id=common-compilepreviewmodal--interactive");
 
-  const lastActionProbe = page.locator('[data-testid="last-action"]');
+  // Watches the compile-only counter, not `last-action`: the modal closes
+  // itself after compiling, so `last-action` flips to "close" and a test
+  // reading it races that transition — this was the suite's last remaining
+  // nondeterministic test, failing roughly one run in three.
+  const compileCountProbe = page.locator('[data-testid="compile-count"]');
   const compileButton = page.getByRole("button", { name: /compile/i }).first();
 
-  if (await compileButton.isVisible()) {
-    await compileButton.click();
+  await expect(compileButton).toBeVisible();
+  await compileButton.click();
 
-    // Verify compile action was tracked
-    await expect(lastActionProbe).toHaveText("compile", { timeout: 1000 });
-  }
+  await expect(compileCountProbe).toHaveText("1");
 });
 
 test("compile preview modal interactive tracks is-open state", async ({
