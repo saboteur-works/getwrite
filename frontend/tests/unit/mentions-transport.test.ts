@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
   reportTransportValidationFailure: vi.fn(),
+  reportTransportReadFailure: vi.fn(),
 }));
 
 import {

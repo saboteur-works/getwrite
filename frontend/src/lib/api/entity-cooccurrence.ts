@@ -15,7 +15,10 @@
 import { createTransport } from "../../store/transport/create-transport";
 import type { EntityCooccurrenceEntry } from "../models/mentions-core";
 import { EntityCooccurrenceResponseSchema } from "./schemas";
-import { reportTransportValidationFailure } from "./transport-validation";
+import {
+  reportTransportReadFailure,
+  reportTransportValidationFailure,
+} from "./transport-validation";
 
 export type { EntityCooccurrenceEntry };
 
@@ -74,7 +77,13 @@ export const httpEntityCooccurrenceTransport: EntityCooccurrenceTransport = {
       const response = await fetch(
         `/api/project/${encodeURIComponent(projectId)}/entity-cooccurrence`,
       );
-      if (!response.ok) return EMPTY_COOCCURRENCE;
+      if (!response.ok) {
+        reportTransportReadFailure(
+          "entity-cooccurrence.getEntityCooccurrence",
+          { kind: "http", status: response.status },
+        );
+        return EMPTY_COOCCURRENCE;
+      }
       const body: unknown = await response.json();
       const result = EntityCooccurrenceResponseSchema.safeParse(body);
       if (!result.success) {
@@ -86,6 +95,9 @@ export const httpEntityCooccurrenceTransport: EntityCooccurrenceTransport = {
       }
       return result.data;
     } catch {
+      reportTransportReadFailure("entity-cooccurrence.getEntityCooccurrence", {
+        kind: "network",
+      });
       return EMPTY_COOCCURRENCE;
     }
   },

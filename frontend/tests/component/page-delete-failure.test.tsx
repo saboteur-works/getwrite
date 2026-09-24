@@ -141,10 +141,26 @@ vi.mock("../../components/Layout/AppShell", () => ({
 // `checkWorkspaceLock` fires a real fetch to `/api/encryption` on mount;
 // stub it out so it fails harmlessly (rejected async thunk) rather than
 // hitting a real network call in the test environment.
+//
+// The entity alias table is answered rather than rejected. Its read is
+// incidental to this file — the subject is the delete branch — but a failed
+// read now raises a user-visible toast, which would otherwise trip the
+// "no error toast on a successful delete" assertions below. That toast is a
+// true positive: with a blanket-rejecting stub the read really did fail.
 beforeEach(() => {
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockRejectedValue(new Error("not available in test")),
+    vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : String(input);
+      if (url.includes("entity-alias-table")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ entities: {}, claimedBy: {} }),
+        } as Response;
+      }
+      throw new Error("not available in test");
+    }),
   );
   deleteResourceMock.mockReset();
   deleteFolderMock.mockReset();

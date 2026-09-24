@@ -17,6 +17,7 @@ import { reportTransportValidationFailure } from "../../src/lib/api/transport-va
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
   reportTransportValidationFailure: vi.fn(),
+  reportTransportReadFailure: vi.fn(),
 }));
 
 function jsonResponse(body: unknown, ok = true): Response {

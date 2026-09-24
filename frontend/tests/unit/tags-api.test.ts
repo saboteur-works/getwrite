@@ -32,6 +32,7 @@ import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selectio
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
   reportTransportValidationFailure: vi.fn(),
+  reportTransportReadFailure: vi.fn(),
 }));
 
 // Feature 54, Tasks 14 & 16: a partial mock of tags-crud-core so a single
