@@ -172,7 +172,7 @@ A resource's revision directory under `<projectRoot>/revisions/<resourceId>/` is
 
 `purgeResource`/`purgeFolder` permanently delete a trashed item via a fixed, ordered, idempotent five-step sweep (index/backlinks/mentions removal, authored entity-relationship edges, trashed revisions, trashed sidecar + ref record, then trashed content files last) — see `PurgeSweepError`/`PurgeStepName` for how a mid-sweep failure is reported; since every step is idempotent, a retried purge simply re-runs the sweep from the top.
 
-Both restore and purge are reachable from the app's **Trash** tab, individually or as a batch (including an "Empty trash" action that purges everything). This is web/desktop only — the native Android transport (`native-trash-backend.ts`) is a stub that rejects every call, deferred as follow-up work.
+Both restore and purge are reachable from the app's **Trash** tab, individually or as a batch (including an "Empty trash" action that purges everything). The native Android transport (`native-trash-backend.ts`) is an in-process implementation over the shared `trash-core.ts` (the same core the HTTP routes call), not a stub.
 
 ---
 

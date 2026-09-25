@@ -264,7 +264,7 @@ getwrite-cli prune [projectRoot] [--max <number>]
 1. Reads all resource UUIDs from `<projectRoot>/resources/`.
 2. For each resource, calls `pruneRevisions(projectRoot, resourceId, maxRevisions)`.
 3. Deletes selected revision directories (`revisions/<resourceId>/v-<N>/`).
-4. Canonical and preserved (`metadata.preserve: true`) revisions are never pruned.
+4. Canonical and protected (`metadata.preserve: true`) revisions are never pruned. Protected non-canonical revisions are also excluded from the count compared with `--max`; a protected canonical revision still counts.
 
 **Exit codes:** `0` = success, `2` = unexpected error
 

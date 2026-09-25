@@ -18,7 +18,7 @@ You can **protect** a revision so that automatic cleanup never removes it, no ma
 
 - Every revision card has a **Protect** button, including the canonical revision's card. Once a revision is protected, the button reads **Unprotect**. For screen readers the buttons are named "Protect revision vN" and "Unprotect revision vN".
 - A protected revision shows a **Protected** badge (shield icon plus the word "Protected", not a colour alone) beside the **Canonical** badge. A protected canonical revision shows both badges.
-- **Delete** stays available on a protected revision's card, but it refuses: the deletion fails and a message appears saying "Protected revisions cannot be deleted. Unprotect it first." Unprotect the revision, then delete it.
+- **Delete Revision** stays available on a protected revision's card, but it refuses: the deletion fails and a message appears saying "Protected revisions cannot be deleted. Unprotect it first." Unprotect the revision, then delete it.
 
 ## How old revisions are cleaned up
 
