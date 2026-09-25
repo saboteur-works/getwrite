@@ -432,3 +432,94 @@ export const RerenderProvocateur: Story = {
     );
   },
 };
+
+/**
+ * The two states that exist to stop a writer losing work, neither of which had
+ * a story until now — so neither was ever visually reviewed, reachable from a
+ * story id in e2e, or seen by the strict-axe sweep over Storybook.
+ *
+ * Both turn on the same thing: `EditView` renders NO editor unless a document
+ * has actually arrived. A blank editor a writer can type into is the hazard
+ * (`docs/standards/failure-visibility.md`) — the first keystroke autosaves that
+ * blank over content that is still on disk.
+ */
+function SelectedResourceEditView({
+  installFetch,
+}: {
+  installFetch?: () => () => void;
+}): JSX.Element {
+  const dispatch = useDispatch();
+  const [isReady, setIsReady] = React.useState(false);
+
+  React.useEffect(() => {
+    const uninstall = installFetch?.();
+    const resource = createTextResource({ name: "Draft", plainText: "" });
+    dispatch(setResources([resource]));
+    dispatch(setSelectedResourceId(resource.id));
+    setIsReady(true);
+    return () => {
+      uninstall?.();
+    };
+  }, [dispatch, installFetch]);
+
+  // The resource must be selected before `EditView` mounts: with none
+  // selected there is no read at all, and the hook correctly reports "idle".
+  if (!isReady) return <div data-testid="seeding">Seeding&hellip;</div>;
+  return <EditView />;
+}
+
+/**
+ * The read fails. `EditView` replaces the editor with an error that says the
+ * content is still on disk and offers a retry — it does not merely disable the
+ * editor, because a disabled editor is a promise and an absent one is a
+ * guarantee.
+ *
+ * No mock: Storybook serves no API, so `/api/project-resources` genuinely
+ * fails here. That is the real failure path rather than a simulation of one.
+ */
+export const LoadFailed: Story = {
+  // Opted into strict axe (global default is "todo"). Both states were
+  // measured clean, and they are worth holding to that: an error a writer is
+  // meant to read and act on is exactly where an unlabelled or unannounced
+  // control costs the most.
+  parameters: { a11y: { test: "error" } },
+  render: () => <SelectedResourceEditView />,
+};
+
+/**
+ * The read never answers. `EditView` shows its `role="status"` placeholder and
+ * no editor, because nothing is yet known about the document.
+ *
+ * `/api/project-resources` is held open wholesale on purpose: it serves both
+ * the resource content read AND the revision list, and both are meant to be
+ * outstanding here.
+ */
+function installNeverAnsweringRead(): () => void {
+  const originalFetch = window.fetch;
+  window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+    if (url.includes("/api/project-resources")) {
+      return new Promise<Response>(() => {});
+    }
+    return originalFetch(input, init);
+  }) as typeof window.fetch;
+
+  // Restored on unmount, unlike the older install-once story mocks in this
+  // repo: a `window.fetch` override that outlives its story leaks into every
+  // story rendered after it.
+  return () => {
+    window.fetch = originalFetch;
+  };
+}
+
+export const LoadInFlight: Story = {
+  parameters: { a11y: { test: "error" } },
+  render: () => (
+    <SelectedResourceEditView installFetch={installNeverAnsweringRead} />
+  ),
+};
