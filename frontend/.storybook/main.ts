@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StorybookConfig } from "@storybook/nextjs-vite";
 
+const storybookDir = path.dirname(fileURLToPath(import.meta.url));
 const shimsDir = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -35,8 +36,8 @@ const nodeBuiltinShims = {
   "node:path": path.join(shimsDir, "path.mjs"),
   "node:fs/promises": path.join(shimsDir, "fs-promises.mjs"),
   "fs/promises": path.join(shimsDir, "fs-promises.mjs"),
-  "node:fs": path.join(shimsDir, "fs.mjs"),
-  fs: path.join(shimsDir, "fs.mjs"),
+  "node:fs": path.join(storybookDir, "fs-shim.mjs"),
+  fs: path.join(storybookDir, "fs-shim.mjs"),
 };
 
 const config: StorybookConfig = {
