@@ -85,7 +85,7 @@ function buildStore(associated: AnyResource[]) {
         resources,
         folders: [],
       },
-    } as never,
+    },
   });
 }
 

@@ -7,7 +7,7 @@ const meta = {
   title: "Common/EntityCompileResourceList",
   component: EntityCompileResourceList,
   decorators: [
-    (Story) => (
+    (Story: () => JSX.Element) => (
       <div className="p-4 bg-gw-chrome w-[340px]">
         <Story />
       </div>

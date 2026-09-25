@@ -6,7 +6,7 @@ const meta = {
   title: "WorkArea/EntityRosterRow",
   component: EntityRosterRow,
   decorators: [
-    (Story) => (
+    (Story: () => JSX.Element) => (
       <ul className="p-4 bg-gw-chrome w-[420px]">
         <Story />
       </ul>

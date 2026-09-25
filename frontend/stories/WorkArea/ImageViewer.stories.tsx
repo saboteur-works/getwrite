@@ -30,7 +30,7 @@ const meta: Meta<typeof ImageViewer> = {
   component: ImageViewer,
   parameters: { layout: "fullscreen" },
   decorators: [
-    (Story) => (
+    (Story: () => JSX.Element) => (
       <div style={{ height: 480 }} className="bg-gw-bg">
         <Story />
       </div>
@@ -52,7 +52,7 @@ export const Portrait: Story = {
 
 export const ZoomInteraction: Story = {
   args: { src: LANDSCAPE, alt: "A zoomable gradient sample image" },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     // Starts at 100% with zoom-out disabled.
     expect(canvas.getByText("100%")).toBeInTheDocument();
@@ -73,7 +73,7 @@ export const ErrorState: Story = {
     src: "/__nonexistent_image__.png",
     alt: "An image that fails to load",
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByRole("alert")).toBeInTheDocument());
     expect(canvas.getByText("Unable to load image.")).toBeInTheDocument();

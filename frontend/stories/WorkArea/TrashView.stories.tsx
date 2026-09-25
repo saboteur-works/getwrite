@@ -125,7 +125,7 @@ function buildStore() {
           },
         },
       },
-    } as never,
+    },
   });
 }
 
@@ -252,7 +252,7 @@ export const MixedResourcesAndFolders: Story = {
 export const MultiSelectPartial: Story = {
   beforeEach: () => mockTrashFetch({ listing: THREE_RESOURCE_LISTING }),
   render: () => renderView(),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     const rows = await canvas.findAllByTestId("trash-row");
     const firstRow = rows[0];
@@ -278,7 +278,7 @@ export const BatchReportMixedOutcome: Story = {
       ],
     }),
   render: () => renderView(),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     await selectAllRows(canvasElement);
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByTestId("trash-delete-selected"));
@@ -302,7 +302,7 @@ export const RestoreNoticeRelocated: Story = {
       restoreResults: [{ id: "res-1", ok: true, relocated: true }],
     }),
   render: () => renderView(),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     const firstRow = (await canvas.findAllByTestId("trash-row"))[0];
     await userEvent.click(within(firstRow).getByTestId("trash-row-select"));
@@ -325,7 +325,7 @@ export const RestoreNoticeRenamed: Story = {
       restoreResults: [{ id: "res-1", ok: true, renamed: true }],
     }),
   render: () => renderView(),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     const firstRow = (await canvas.findAllByTestId("trash-row"))[0];
     await userEvent.click(within(firstRow).getByTestId("trash-row-select"));
@@ -360,7 +360,7 @@ export const RestoreNoticeReferencesNotRestored: Story = {
       ],
     }),
   render: () => renderView(),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     const firstRow = (await canvas.findAllByTestId("trash-row"))[0];
     await userEvent.click(within(firstRow).getByTestId("trash-row-select"));

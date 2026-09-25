@@ -53,8 +53,9 @@ export const Reorderable: Story = {
         }
       };
 
-      // expose simulate for e2e tests
-      // @ts-ignore
+      // expose simulate for e2e tests. No suppression needed: the `as any`
+      // already silences the assignment, so the `@ts-ignore` that sat here
+      // was doing nothing — which is exactly what `@ts-expect-error` reports.
       (window as any).__simulateReorder = simulateReorder;
 
       return (

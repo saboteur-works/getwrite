@@ -88,7 +88,7 @@ export const Open: Story = {
     }
 
     const Wrapper = () => {
-      const [open, setOpen] = React.useState(true);
+      const [isOpen, setOpen] = React.useState(true);
       const [created, setCreated] = React.useState<CreateProjectPayload | null>(
         null,
       );
@@ -96,7 +96,7 @@ export const Open: Story = {
         <div>
           <CreateProjectModal
             {...args}
-            isOpen={open}
+            isOpen={isOpen}
             onClose={() => setOpen(false)}
             onCreate={(p) => {
               setCreated(p);

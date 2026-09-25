@@ -4,6 +4,7 @@ import { userEvent, within, expect, waitFor } from "storybook/test";
 import ImportScrivenerDialog from "../../../frontend/components/Start/ImportScrivenerDialog";
 import type {
   DesktopBridge,
+  DocxImportOutcome,
   ScrivenerImportOutcome,
   ScrivenerSourceChoice,
 } from "../../src/lib/desktop-bridge";
@@ -47,6 +48,13 @@ function installScrivenerBridge(overrides: {
     restart: async () => {},
     chooseScrivenerSource,
     startScrivenerImport,
+    // The three DOCX methods (Feature 45) were missing from this fixture, so
+    // the bridge did not satisfy `DesktopBridge` and the "Import Word
+    // Document" button it enables would have called `undefined`. They are
+    // cancelled/no-op stubs: this story exercises the Scrivener flow.
+    chooseDocxFile: async () => ({ ok: false, cancelled: true }),
+    chooseDocxFolder: async () => ({ ok: false, cancelled: true }),
+    startDocxImport: () => new Promise<DocxImportOutcome>(() => {}),
   };
   (window as unknown as Record<string, unknown>).getwriteDesktop = bridge;
 }
@@ -77,7 +85,7 @@ export const ChooseSource: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportScrivenerDialog>) => {
     installScrivenerBridge({});
     return <ImportScrivenerDialog {...args} />;
   },
@@ -94,7 +102,7 @@ export const EditingName: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportScrivenerDialog>) => {
     installScrivenerBridge({});
     return <ImportScrivenerDialog {...args} />;
   },
@@ -115,7 +123,7 @@ export const NameValidationError: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportScrivenerDialog>) => {
     installScrivenerBridge({});
     return <ImportScrivenerDialog {...args} />;
   },
@@ -139,7 +147,7 @@ export const Importing: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportScrivenerDialog>) => {
     installScrivenerBridge({ startScrivenerImport: neverResolvingImport });
     return <ImportScrivenerDialog {...args} />;
   },
@@ -170,7 +178,7 @@ export const Success: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportScrivenerDialog>) => {
     installScrivenerBridge({
       startScrivenerImport: async (): Promise<ScrivenerImportOutcome> => ({
         kind: "success",
@@ -206,7 +214,7 @@ export const RefusalUnsupported: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportScrivenerDialog>) => {
     installScrivenerBridge({
       startScrivenerImport: async (): Promise<ScrivenerImportOutcome> => ({
         kind: "refusal-unsupported",
@@ -234,7 +242,7 @@ export const RefusalDestinationNotEmpty: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportScrivenerDialog>) => {
     installScrivenerBridge({
       startScrivenerImport: async (): Promise<ScrivenerImportOutcome> => ({
         kind: "refusal-destination-not-empty",
@@ -262,7 +270,7 @@ export const Fatal: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportScrivenerDialog>) => {
     installScrivenerBridge({
       startScrivenerImport: async (): Promise<ScrivenerImportOutcome> => ({
         kind: "fatal",

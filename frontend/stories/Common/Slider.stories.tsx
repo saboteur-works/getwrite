@@ -6,7 +6,7 @@ const meta: Meta<typeof Slider> = {
   title: "Foundations/Slider",
   component: Slider,
   decorators: [
-    (Story) => (
+    (Story: () => JSX.Element) => (
       <div style={{ width: 320 }} className="bg-gw-bg p-6">
         <Story />
       </div>

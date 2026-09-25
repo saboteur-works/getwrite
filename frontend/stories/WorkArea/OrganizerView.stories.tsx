@@ -69,13 +69,13 @@ export const WithSelectedFolder: Story = {
 
 export const Interactive: Story = {
   render: () => {
-    const [show, setShow] = React.useState(true);
+    const [shouldShow, setShow] = React.useState(true);
     const [selectedId, setSelectedId] = React.useState<string | null>(null);
     return (
       <div>
-        <OrganizerView showBody={show} onToggleBody={(s) => setShow(s)} />
+        <OrganizerView showBody={shouldShow} onToggleBody={(s) => setShow(s)} />
         <div data-testid="show-body" aria-hidden style={{ display: "none" }}>
-          {String(show)}
+          {String(shouldShow)}
         </div>
         <div
           data-testid="selected-resource-id"

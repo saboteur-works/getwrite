@@ -29,7 +29,7 @@ function TransitionDemo({
   easing,
   use,
 }: TransitionToken): JSX.Element {
-  const [hovered, setHovered] = React.useState(false);
+  const [isHovered, setHovered] = React.useState(false);
 
   return (
     <div
@@ -45,10 +45,10 @@ function TransitionDemo({
           style={{
             width: 200,
             height: 48,
-            backgroundColor: hovered
+            backgroundColor: isHovered
               ? "var(--color-gw-chrome2)"
               : "var(--color-gw-chrome)",
-            border: hovered
+            border: isHovered
               ? "0.5px solid var(--color-gw-border-md)"
               : "0.5px solid var(--color-gw-border)",
             borderRadius: "var(--radius-md)",
@@ -66,7 +66,7 @@ function TransitionDemo({
               fontSize: 10,
               textTransform: "uppercase",
               letterSpacing: "0.14em",
-              color: hovered
+              color: isHovered
                 ? "var(--color-gw-primary)"
                 : "var(--color-gw-secondary)",
               transition: `color var(${token})`,
@@ -123,7 +123,7 @@ function TransitionDemo({
 }
 
 function ReducedMotionDemo(): JSX.Element {
-  const [enabled, setEnabled] = React.useState(false);
+  const [isEnabled, setEnabled] = React.useState(false);
 
   return (
     <div
@@ -133,7 +133,7 @@ function ReducedMotionDemo(): JSX.Element {
       }}
     >
       <div
-        className={enabled ? "gw-reduced-motion" : undefined}
+        className={isEnabled ? "gw-reduced-motion" : undefined}
         style={{ display: "flex", gap: 32, alignItems: "center" }}
       >
         <div
@@ -210,10 +210,10 @@ function ReducedMotionDemo(): JSX.Element {
             fontSize: 10,
             textTransform: "uppercase",
             letterSpacing: "0.14em",
-            color: enabled
+            color: isEnabled
               ? "var(--color-gw-primary)"
               : "var(--color-gw-secondary)",
-            backgroundColor: enabled
+            backgroundColor: isEnabled
               ? "var(--color-gw-chrome2)"
               : "transparent",
             border: "0.5px solid var(--color-gw-border)",
@@ -222,7 +222,7 @@ function ReducedMotionDemo(): JSX.Element {
             cursor: "pointer",
           }}
         >
-          {enabled ? "Reduced motion: ON" : "Reduced motion: OFF"}
+          {isEnabled ? "Reduced motion: ON" : "Reduced motion: OFF"}
         </button>
         <span
           style={{
@@ -298,7 +298,7 @@ function MotionShowcase(): JSX.Element {
       >
         The .gw-reduced-motion class collapses all animation and transition
         durations to 0.01ms. Applied by the user preferences system when reduced
-        motion is enabled. Also respected via the prefers-reduced-motion media
+        motion is isEnabled. Also respected via the prefers-reduced-motion media
         query.
       </p>
       <div style={{ borderTop: "0.5px solid var(--color-gw-border)" }}>

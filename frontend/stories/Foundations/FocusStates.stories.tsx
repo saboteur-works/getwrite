@@ -41,10 +41,10 @@ interface FocusDemoItem {
 }
 
 function ButtonDemo(): JSX.Element {
-  const [focused, setFocused] = React.useState(false);
+  const [isFocused, setFocused] = React.useState(false);
   return (
     <button
-      style={{ ...BASE_BUTTON, ...(focused ? FOCUS_RING_STYLE : {}) }}
+      style={{ ...BASE_BUTTON, ...(isFocused ? FOCUS_RING_STYLE : {}) }}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
     >
@@ -54,12 +54,12 @@ function ButtonDemo(): JSX.Element {
 }
 
 function InputDemo(): JSX.Element {
-  const [focused, setFocused] = React.useState(false);
+  const [isFocused, setFocused] = React.useState(false);
   return (
     <input
       type="text"
       placeholder="Chapter title..."
-      style={{ ...BASE_INPUT, ...(focused ? FOCUS_RING_STYLE : {}) }}
+      style={{ ...BASE_INPUT, ...(isFocused ? FOCUS_RING_STYLE : {}) }}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
     />
@@ -67,7 +67,7 @@ function InputDemo(): JSX.Element {
 }
 
 function LinkDemo(): JSX.Element {
-  const [focused, setFocused] = React.useState(false);
+  const [isFocused, setFocused] = React.useState(false);
   return (
     <a
       href="#"
@@ -82,7 +82,7 @@ function LinkDemo(): JSX.Element {
         borderRadius: "var(--radius-sm)",
         padding: "1px 3px",
         transition: "box-shadow var(--transition-fast)",
-        ...(focused ? FOCUS_RING_STYLE : {}),
+        ...(isFocused ? FOCUS_RING_STYLE : {}),
       }}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}

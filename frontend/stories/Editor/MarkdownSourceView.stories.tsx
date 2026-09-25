@@ -38,7 +38,7 @@ export const Default: Story = {
     onExitToRichText: action("exit-to-rich-text"),
   },
   decorators: [
-    (Story) => (
+    (Story: () => JSX.Element) => (
       <div style={{ height: 360, border: "1px solid var(--gw-border, #ccc)" }}>
         <Story />
       </div>
@@ -53,7 +53,7 @@ export const Empty: Story = {
     onExitToRichText: action("exit-to-rich-text"),
   },
   decorators: [
-    (Story) => (
+    (Story: () => JSX.Element) => (
       <div style={{ height: 360, border: "1px solid var(--gw-border, #ccc)" }}>
         <Story />
       </div>
@@ -71,7 +71,7 @@ export const Interactive: Story = {
     onChange: action("source-changed"),
     onExitToRichText: action("exit-to-rich-text"),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof MarkdownSourceView>) => {
     const [value, setValue] = useState(args.value);
     const [lastAction, setLastAction] = useState<string | null>(null);
     return (

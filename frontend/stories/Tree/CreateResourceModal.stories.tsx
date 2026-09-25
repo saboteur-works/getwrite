@@ -86,7 +86,7 @@ export const AudioType: Story = {
 
 export const Interactive: Story = {
   render: (args: React.ComponentProps<typeof CreateResourceModal>) => {
-    const [open, setOpen] = React.useState(true);
+    const [isOpen, setOpen] = React.useState(true);
     const [created, setCreated] = React.useState<CreateResourcePayload | null>(
       null,
     );
@@ -94,7 +94,7 @@ export const Interactive: Story = {
       <div>
         <CreateResourceModal
           {...args}
-          isOpen={open}
+          isOpen={isOpen}
           onClose={() => setOpen(false)}
           onCreate={(payload: CreateResourcePayload) => {
             setCreated(payload);
@@ -102,7 +102,7 @@ export const Interactive: Story = {
           }}
         />
         <div data-testid="is-open" aria-hidden style={{ display: "none" }}>
-          {String(open)}
+          {String(isOpen)}
         </div>
         <div
           data-testid="created-resource"

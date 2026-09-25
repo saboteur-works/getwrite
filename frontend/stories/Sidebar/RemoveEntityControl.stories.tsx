@@ -32,15 +32,15 @@ const SELECTED_ENTITY_ID = "entity-aria";
  *   edge array resolves normally, `"pending"` never resolves (captures the
  *   in-flight state), and `"reject"` rejects (captures the fetch-failure
  *   state).
- * - `sidecarShouldFail` controls whether the `POST
+ * - `shouldSidecarFail` controls whether the `POST
  *   .../resource/{id}/sidecar` call (Task 1's `updateSidecar`) rejects,
  *   capturing the write-failure state.
  */
 function mockRemoveEntityFetch(options: {
   listResponse: EntityRelationshipEdge[] | "pending" | "reject";
-  sidecarShouldFail?: boolean;
+  shouldSidecarFail?: boolean;
 }) {
-  const { listResponse, sidecarShouldFail = false } = options;
+  const { listResponse, shouldSidecarFail = false } = options;
   const original = globalThis.fetch;
   globalThis.fetch = async (
     input: RequestInfo | URL,
@@ -65,7 +65,7 @@ function mockRemoveEntityFetch(options: {
     }
 
     if (url.includes("/sidecar") && method === "POST") {
-      if (sidecarShouldFail) {
+      if (shouldSidecarFail) {
         throw new Error("Network error");
       }
       return { ok: true, json: async () => ({}) } as Response;
@@ -124,7 +124,7 @@ function buildStore() {
         resources: [selectedEntity],
         folders: [],
       },
-    } as never,
+    },
   });
 }
 
@@ -189,7 +189,7 @@ type Story = StoryObj<typeof meta>;
 export const ZeroEdges: Story = {
   beforeEach: () => mockRemoveEntityFetch({ listResponse: [] }),
   render: () => renderControl(),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     await openDialog(canvasElement);
     const body = within(document.body);
     await body.findByText(/this will clear this resource's entity status/i);
@@ -211,7 +211,7 @@ export const ZeroEdges: Story = {
 export const SeveralEdges: Story = {
   beforeEach: () => mockRemoveEntityFetch({ listResponse: THREE_EDGES }),
   render: () => renderControl(),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     await openDialog(canvasElement);
     const body = within(document.body);
     const checkbox = await body.findByRole<HTMLInputElement>("checkbox", {
@@ -230,7 +230,7 @@ export const SeveralEdges: Story = {
 export const PendingFetch: Story = {
   beforeEach: () => mockRemoveEntityFetch({ listResponse: "pending" }),
   render: () => renderControl(),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     await openDialog(canvasElement);
     const body = within(document.body);
     const confirmButton = await body.findByRole("button", { name: "Remove" });
@@ -250,7 +250,7 @@ export const PendingFetch: Story = {
 export const FetchFailure: Story = {
   beforeEach: () => mockRemoveEntityFetch({ listResponse: "reject" }),
   render: () => renderControl(),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     await openDialog(canvasElement);
     const body = within(document.body);
     await body.findByText(/relationship data could not be loaded/i);
@@ -269,9 +269,9 @@ export const FetchFailure: Story = {
  */
 export const WriteFailure: Story = {
   beforeEach: () =>
-    mockRemoveEntityFetch({ listResponse: [], sidecarShouldFail: true }),
+    mockRemoveEntityFetch({ listResponse: [], shouldSidecarFail: true }),
   render: () => renderControl(),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     await openDialog(canvasElement);
     const body = within(document.body);
     const confirmButton = await body.findByRole("button", { name: "Remove" });

@@ -15,7 +15,10 @@ import {
 } from "../../src/store/projectsSlice";
 import { setResources, setFolders } from "../../src/store/resourcesSlice";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
-import type { DesktopBridge } from "../../src/lib/desktop-bridge";
+import type {
+  DesktopBridge,
+  DocxImportOutcome,
+} from "../../src/lib/desktop-bridge";
 
 const meta: Meta<typeof StartPage> = {
   title: "Start/StartPage",
@@ -375,7 +378,7 @@ function OpenProjectFlowStory(): JSX.Element {
     [],
   );
   const [openError, setOpenError] = React.useState<string | null>(null);
-  const [openInFlight, setOpenInFlight] = React.useState<boolean>(false);
+  const [isOpenInFlight, setOpenInFlight] = React.useState<boolean>(false);
 
   const handleOpen = async (projectPath: string) => {
     setOpenInFlight(true);
@@ -439,7 +442,7 @@ function OpenProjectFlowStory(): JSX.Element {
     <div>
       <StartPage projects={openFlowSourceProjects} onOpen={handleOpen} />
       <div data-testid="open-in-flight" aria-hidden style={{ display: "none" }}>
-        {String(openInFlight)}
+        {String(isOpenInFlight)}
       </div>
       <div data-testid="open-error" aria-hidden style={{ display: "none" }}>
         {openError ?? ""}
@@ -661,6 +664,12 @@ function installScrivenerBridge(): void {
       tagCount: 0,
       report: "Report body",
     }),
+    // Feature 45's three DOCX methods were missing here. StartPage renders
+    // "Import Word Document" whenever a bridge is present, so the button was
+    // on screen with `chooseDocxFile` undefined behind it.
+    chooseDocxFile: async () => ({ ok: false, cancelled: true }),
+    chooseDocxFolder: async () => ({ ok: false, cancelled: true }),
+    startDocxImport: () => new Promise<DocxImportOutcome>(() => {}),
   };
   (window as unknown as Record<string, unknown>).getwriteDesktop = bridge;
 }
@@ -680,7 +689,7 @@ export const ImportButtonVisible: Story = {
     installScrivenerBridge();
     return <StartPage {...args} />;
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole("button", { name: /Import from Scrivener/i });
   },
@@ -696,7 +705,7 @@ export const ImportButtonAbsent: Story = {
     removeScrivenerBridge();
     return <StartPage {...args} />;
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     // Wait a tick for StartPage's render to settle, then assert absence.
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -717,7 +726,7 @@ export const ImportDocxButtonVisible: Story = {
     installScrivenerBridge();
     return <StartPage {...args} />;
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole("button", { name: /Import Word Document/i });
   },
@@ -733,7 +742,7 @@ export const ImportDocxButtonAbsent: Story = {
     removeScrivenerBridge();
     return <StartPage {...args} />;
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     // Wait a tick for StartPage's render to settle, then assert absence.
     await new Promise((resolve) => setTimeout(resolve, 0));

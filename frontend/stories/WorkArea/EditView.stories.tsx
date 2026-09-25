@@ -94,14 +94,15 @@ interface RevisionSeedConfig {
   resourceId: string;
   canonicalId: string;
   nonCanonicalId?: string;
-  selectCanonical: boolean;
+  shouldSelectCanonical: boolean;
 }
 
 function seedRevisionsForStory(
   dispatch: ReturnType<typeof useDispatch>,
   config: RevisionSeedConfig,
 ): void {
-  const { resourceId, canonicalId, nonCanonicalId, selectCanonical } = config;
+  const { resourceId, canonicalId, nonCanonicalId, shouldSelectCanonical } =
+    config;
   const now = new Date().toISOString();
   const revisions = [
     {
@@ -134,7 +135,7 @@ function seedRevisionsForStory(
     payload: {
       resourceId,
       revisions,
-      currentRevisionId: selectCanonical
+      currentRevisionId: shouldSelectCanonical
         ? canonicalId
         : (nonCanonicalId ?? canonicalId),
     },
@@ -143,13 +144,13 @@ function seedRevisionsForStory(
 
 function StoryWithSeededRevisions({
   initialContent,
-  selectCanonical,
+  shouldSelectCanonical,
 }: {
   initialContent: string;
-  selectCanonical: boolean;
+  shouldSelectCanonical: boolean;
 }): JSX.Element {
   const dispatch = useDispatch();
-  const [ready, setReady] = React.useState(false);
+  const [isReady, setReady] = React.useState(false);
 
   React.useEffect(() => {
     const resource = createTextResource({ name: "Draft", plainText: "seed" });
@@ -158,13 +159,13 @@ function StoryWithSeededRevisions({
     seedRevisionsForStory(dispatch, {
       resourceId: resource.id,
       canonicalId: "rev-canonical",
-      nonCanonicalId: selectCanonical ? undefined : "rev-previous",
-      selectCanonical,
+      nonCanonicalId: shouldSelectCanonical ? undefined : "rev-previous",
+      shouldSelectCanonical,
     });
     setReady(true);
-  }, [dispatch, selectCanonical]);
+  }, [dispatch, shouldSelectCanonical]);
 
-  if (!ready) return <div data-testid="seeding">Seeding…</div>;
+  if (!isReady) return <div data-testid="seeding">Seeding…</div>;
   return <EditView initialContent={initialContent} />;
 }
 
@@ -176,7 +177,7 @@ export const WithCanonicalRevision: Story = {
   render: () => (
     <StoryWithSeededRevisions
       initialContent="<p>Initial draft.</p>"
-      selectCanonical
+      shouldSelectCanonical
     />
   ),
 };
@@ -189,7 +190,7 @@ export const WithNonCanonicalRevision: Story = {
   render: () => (
     <StoryWithSeededRevisions
       initialContent="<p>Initial draft.</p>"
-      selectCanonical={false}
+      shouldSelectCanonical={false}
     />
   ),
 };
@@ -210,7 +211,7 @@ function SwitchableEditViewStory({
 }): JSX.Element {
   const dispatch = useDispatch();
   const [activeId, setActiveId] = React.useState<string>(initialId);
-  const [ready, setReady] = React.useState(false);
+  const [isReady, setReady] = React.useState(false);
 
   const loadRevisionFor = React.useCallback(
     (resource: SwitchableResource) => {
@@ -280,7 +281,7 @@ function SwitchableEditViewStory({
     if (target) loadRevisionFor(target);
   };
 
-  if (!ready) return <div data-testid="seeding">Seeding…</div>;
+  if (!isReady) return <div data-testid="seeding">Seeding…</div>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -365,7 +366,7 @@ function EditorBodyConfigStory({
   paragraphSpacing: string;
 }): JSX.Element {
   const dispatch = useDispatch();
-  const [ready, setReady] = React.useState(false);
+  const [isReady, setReady] = React.useState(false);
 
   React.useEffect(() => {
     dispatch(
@@ -377,7 +378,7 @@ function EditorBodyConfigStory({
     setReady(true);
   }, [dispatch, fontFamily, fontSize, lineHeight, paragraphSpacing]);
 
-  if (!ready) return <div data-testid="seeding">Seeding…</div>;
+  if (!isReady) return <div data-testid="seeding">Seeding…</div>;
   return <EditView initialContent="<p>Configured body.</p>" />;
 }
 
