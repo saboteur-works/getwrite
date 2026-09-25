@@ -625,6 +625,38 @@ lost work.
   canonical revision is indexed and searched — see Constraints); when a
   user opens the diff view from such a result, the diff MUST consistently
   select the most recent matching revision. [US-7]
+- FR-45: A writer MUST be able to protect and unprotect an existing revision
+  so that automatic pruning never deletes it. Status: Not started. Revisions
+  are already named at save time (`metadata.name`); that is unchanged. As
+  measured 2026-09-25: `docs/user/revisions.md` tells writers they can mark a
+  revision as preserved and `docs/features/revisions.md` documents the
+  `metadata.preserve` flag; pruning already honours `metadata.preserve`
+  (`selectPruneCandidates`, `frontend/src/lib/models/revision.ts`); no UI or
+  client code sets it — `RevisionControl.tsx` has no such control and
+  `PATCH /api/resource/revision/[resource-id]` accepts only
+  `{projectId, revisionId, content?}` and ignores `metadata` — so the
+  documented behaviour is not reachable by a writer today. This requirement
+  interacts with FR-6 (pruning under the max-revisions-per-resource
+  configuration) and FR-5 (the canonical revision). Decided 2026-09-25: the
+  automatic pre-deletion snapshot (created at
+  `frontend/src/lib/models/revision-core.ts:312` with no preserve flag) is
+  NOT protected by default and stays an ordinary, prunable revision, as today
+  (OQ-38, resolved); and protected revisions are EXCLUDED from the
+  per-resource max-revisions count, so the cap applies only to unprotected
+  revisions (OQ-39, resolved). The second decision changes how FR-6's cap is
+  counted: today `selectPruneCandidates`
+  (`frontend/src/lib/models/revision.ts:56-80`) counts every revision,
+  protected and canonical included, toward the cap, so this is a change to
+  pruning behaviour and not only a new UI control. Known downside: total
+  revision storage per resource is unbounded, since protected revisions never
+  count against the cap and are never pruned. The canonical revision STILL
+  COUNTS toward the cap (OQ-40, resolved): for a resource with no protected
+  revisions, counting is unchanged from today and the canonical revision
+  takes one slot; only protected revisions are newly excluded from the
+  count. A protected revision that is also the canonical revision still
+  counts (the canonical rule wins over the protected-exclusion rule), so the
+  count compared with the cap is all revisions minus the protected
+  non-canonical revisions. [US-9]
 
 ### Later Requirements
 
@@ -1760,6 +1792,42 @@ marker-bearing project directory without a marker check of their own.
 Settling this needs reading those two modules' traversal paths directly;
 it is worth doing before Task 21 lands rather than now, since Task 21 is
 the change that would make any such gap live.
+
+**OQ-38 (resolved): Should the automatic pre-deletion snapshot be protected
+by default (FR-45)?**
+**Impact:** FR-45.
+**Resolution:** Resolved 2026-09-25 at the Gate 1 triage of FR-45: option
+(b), never protect. The snapshot (created at
+`frontend/src/lib/models/revision-core.ts:312` with no preserve flag) stays
+an ordinary, prunable revision. No change from today's behaviour.
+
+**OQ-39 (resolved): Do protected revisions (FR-45) count toward the
+per-resource max-revisions cap?**
+**Impact:** FR-45, FR-6.
+**Resolution:** Resolved 2026-09-25 at the Gate 1 triage of FR-45: option
+(b), exclude protected revisions from the count, so the cap applies only to
+unprotected revisions. Today they do count (`selectPruneCandidates`,
+`frontend/src/lib/models/revision.ts:56-80`, `total = revisions.length`
+includes preserved and canonical revisions), so this changes pruning
+behaviour. `docs/features/revisions.md:85` and the doc comment at
+`revision.ts:260-262` describe the current "protected revisions consume
+capacity" behaviour and will need updating downstream. Known downside stated
+at triage: total storage per resource is then unbounded. (The exclusion
+applies to protected non-canonical revisions only; see the Gate 4
+clarification under OQ-40.)
+
+**OQ-40 (resolved): With protected revisions excluded from the per-resource
+max-revisions count (OQ-39), does the canonical revision still count toward
+the cap?**
+**Impact:** FR-45, FR-6, FR-5.
+**Resolution:** Resolved 2026-09-25 at the Gate 1 triage of FR-45: option
+(a), the canonical revision STILL COUNTS toward the cap. For a resource with
+no protected revisions, counting is unchanged from today
+(`selectPruneCandidates`, `frontend/src/lib/models/revision.ts:56-80`);
+canonical continues to take one slot. Only protected revisions are newly
+excluded from the count.
+**Clarified at Gate 4 (2026-09-25):** only protected NON-canonical revisions
+are excluded; a protected canonical revision still counts.
 
 ## Out of Scope (Deferred)
 

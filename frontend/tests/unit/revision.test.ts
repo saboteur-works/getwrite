@@ -104,3 +104,48 @@ d2("models/revision.selectPruneCandidates", () => {
     expect2(() => selectPruneCandidates([], -1)).toThrow();
   });
 });
+
+import { setCanonicalRevision } from "../../src/lib/models/revision";
+
+describe("models/revision metadata.name persistence", () => {
+  it("keeps metadata.name through list and a canonical flip", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-rev-name-"));
+    const resourceId = generateUUID();
+
+    await writeRevision(tmp, resourceId, 1, "one", {
+      metadata: { name: "before the duel" },
+    });
+    await writeRevision(tmp, resourceId, 2, "two", { isCanonical: true });
+
+    const listed = await listRevisions(tmp, resourceId);
+    expect(listed.find((r) => r.versionNumber === 1)?.metadata).toEqual({
+      name: "before the duel",
+    });
+
+    await setCanonicalRevision(tmp, resourceId, listed[0].id);
+    const afterFlip = await listRevisions(tmp, resourceId);
+    expect(afterFlip.find((r) => r.versionNumber === 1)?.metadata).toEqual({
+      name: "before the duel",
+    });
+
+    await removeDirRetry(tmp);
+  });
+
+  it("prunes a named revision unless metadata.preserve is set", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-rev-name-"));
+    const resourceId = generateUUID();
+
+    await writeRevision(tmp, resourceId, 1, "one", {
+      metadata: { name: "named only" },
+    });
+    await writeRevision(tmp, resourceId, 2, "two", {
+      metadata: { name: "named and preserved", preserve: true },
+    });
+    await writeRevision(tmp, resourceId, 3, "three", { isCanonical: true });
+
+    const deleted = await pruneRevisions(tmp, resourceId, 1);
+    expect(deleted.map((d) => d.versionNumber)).toEqual([1]);
+
+    await removeDirRetry(tmp);
+  });
+});
