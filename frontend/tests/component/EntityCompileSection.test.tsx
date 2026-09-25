@@ -104,6 +104,27 @@ describe("EntityCompileSection", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("uses the default button size like the other entity-panel buttons", async () => {
+    // Measured: the `xs` size rendered 9px text at 24px tall; Remove Entity and
+    // the relationship Add buttons render 10px text at 33px tall (default size).
+    mockMentionedIn([]);
+    const store = setupStore("entity-aria");
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityCompileSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    const trigger = await screen.findByRole("button", {
+      name: "Compile this entity's resources",
+    });
+    expect(trigger.className).not.toContain("text-[9px]");
+    expect(trigger.className).toContain("px-4");
+  });
+
   it("keeps the sidebar's 16px section margin below it", async () => {
     // It renders outside a CollapsibleSection, so it does not get that
     // wrapper's `mb-4`. Measured: scrolled to the bottom of the sidebar, every

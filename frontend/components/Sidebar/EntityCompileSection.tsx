@@ -105,7 +105,6 @@ export default function EntityCompileSection(): JSX.Element | null {
       <Button
         type="button"
         variant="secondary"
-        size="xs"
         onClick={() => setIsCompileModalOpen(true)}
         disabled={!hasCompilableResources}
         aria-disabled={!hasCompilableResources}
