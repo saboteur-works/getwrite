@@ -163,7 +163,7 @@ export default function SearchBar({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             aria-label="resource-search"
-            className="searchbar-input text-gw-small"
+            className="searchbar-input"
             disabled={!selectedProjectId}
           />
           <span className="searchbar-shortcut" aria-hidden="true">

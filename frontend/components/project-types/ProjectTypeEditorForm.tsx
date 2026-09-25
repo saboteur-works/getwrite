@@ -617,7 +617,7 @@ function LabeledInput({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="project-type-editor-field-control text-gw-small"
+        className="project-type-editor-field-control"
       />
     </label>
   );
@@ -637,7 +637,7 @@ function LabeledNumberInput({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="project-type-editor-field-control text-gw-small"
+        className="project-type-editor-field-control"
       />
     </label>
   );

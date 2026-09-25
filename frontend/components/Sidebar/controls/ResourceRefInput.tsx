@@ -137,7 +137,7 @@ export default function ResourceRefInput({
         <Input
           type="text"
           aria-label={ariaLabel}
-          className="w-full mt-2"
+          className="w-full mt-2 text-gw-label"
           value={inputVal}
           onChange={handleInputChange}
           placeholder={

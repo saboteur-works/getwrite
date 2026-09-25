@@ -133,6 +133,21 @@ describe("EntitySection", () => {
     expect(warning.className).not.toContain("text-gw-nano");
   });
 
+  it("sets its inputs at the 11px label size", () => {
+    makeFetchStub();
+    const store = setupStore("res-2d", { entityKind: "character" });
+
+    render(
+      <Provider store={store}>
+        <EntitySection />
+      </Provider>,
+    );
+
+    for (const label of ["entity-kind-input", "new-alias-input"]) {
+      expect(screen.getByLabelText(label).className).toContain("text-gw-label");
+    }
+  });
+
   it("shows no warning while the alias draft field is empty", async () => {
     const store = setupStore("res-2b", { entityKind: "character" });
 

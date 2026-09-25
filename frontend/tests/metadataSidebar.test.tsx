@@ -444,6 +444,9 @@ describe("MetadataSidebar", () => {
       screen.getByRole("button", { name: /custom group/i }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("my-field")).toBeInTheDocument();
+    expect(screen.getByLabelText("my-field").className).toContain(
+      "text-gw-label",
+    );
   });
 
   it("calls onChangeField with custom field key for a custom text field", () => {

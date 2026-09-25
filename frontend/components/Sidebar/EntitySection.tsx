@@ -147,7 +147,7 @@ export default function EntitySection(): JSX.Element | null {
           list={ENTITY_KIND_DATALIST_ID}
           aria-label="entity-kind-input"
           placeholder="e.g. character"
-          className="w-full mt-2"
+          className="w-full mt-2 text-gw-label"
           value={entityKindText}
           onChange={(e) => setEntityKindText(e.target.value)}
         />
@@ -211,7 +211,7 @@ export default function EntitySection(): JSX.Element | null {
                 type="text"
                 aria-label="new-alias-input"
                 placeholder="Add alias"
-                className="w-full"
+                className="w-full text-gw-label"
                 value={newAlias}
                 onChange={(e) => setNewAlias(e.target.value)}
                 onKeyDown={(e) => {

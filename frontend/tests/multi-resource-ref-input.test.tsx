@@ -35,6 +35,13 @@ describe("MultiResourceRefInput", () => {
     expect(screen.getByText("Characters")).toBeTruthy();
   });
 
+  it("sets its own 11px size, since Input no longer bakes one in", () => {
+    renderComponent();
+    expect(
+      screen.getByLabelText("multi-resource-ref-input").className,
+    ).toContain("text-gw-label");
+  });
+
   it("renders chips for existing value entries with dismiss buttons", () => {
     renderComponent({
       value: [
