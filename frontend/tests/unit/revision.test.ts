@@ -367,3 +367,72 @@ describe("revision-core.setRevisionPreserve", () => {
     await removeDirRetry(tmp);
   });
 });
+
+import {
+  deleteRevision,
+  PROTECTED_REVISION_DELETE_MESSAGE,
+} from "../../src/lib/models/revision-core";
+
+describe("revision-core.deleteRevision with protected revisions", () => {
+  async function fixture() {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-rev-del-"));
+    const resourceId = generateUUID();
+    await writeRevision(tmp, resourceId, 1, "one");
+    await writeRevision(tmp, resourceId, 2, "two", { isCanonical: true });
+    const revs = await listRevisions(tmp, resourceId);
+    return {
+      tmp,
+      resourceId,
+      nonCanonical: revs.find((r) => r.versionNumber === 1)!,
+      canonical: revs.find((r) => r.versionNumber === 2)!,
+    };
+  }
+
+  async function exists(p: string): Promise<boolean> {
+    return fs.access(p).then(
+      () => true,
+      () => false,
+    );
+  }
+
+  it("exposes a stable, user-readable message", () => {
+    expect(PROTECTED_REVISION_DELETE_MESSAGE).toBe(
+      "Protected revisions cannot be deleted. Unprotect it first.",
+    );
+  });
+
+  it("refuses to delete a protected revision and keeps its directory", async () => {
+    const { tmp, resourceId, nonCanonical } = await fixture();
+    await setRevisionPreserve(tmp, resourceId, nonCanonical.id, true);
+    await expect(
+      deleteRevision(tmp, resourceId, nonCanonical.id),
+    ).rejects.toThrow(PROTECTED_REVISION_DELETE_MESSAGE);
+    expect(
+      await exists(path.join(revisionsBaseDir(tmp, resourceId), "v-1")),
+    ).toBe(true);
+    await removeDirRetry(tmp);
+  });
+
+  it("deletes after unprotecting", async () => {
+    const { tmp, resourceId, nonCanonical } = await fixture();
+    await setRevisionPreserve(tmp, resourceId, nonCanonical.id, true);
+    await setRevisionPreserve(tmp, resourceId, nonCanonical.id, false);
+    await deleteRevision(tmp, resourceId, nonCanonical.id);
+    expect(
+      await exists(path.join(revisionsBaseDir(tmp, resourceId), "v-1")),
+    ).toBe(false);
+    await removeDirRetry(tmp);
+  });
+
+  it("keeps not-found and canonical errors unchanged", async () => {
+    const { tmp, resourceId, canonical } = await fixture();
+    await expect(deleteRevision(tmp, resourceId, "nope")).rejects.toThrow(
+      "Revision nope not found.",
+    );
+    await setRevisionPreserve(tmp, resourceId, canonical.id, true);
+    await expect(deleteRevision(tmp, resourceId, canonical.id)).rejects.toThrow(
+      "Cannot delete the canonical revision; promote another revision first.",
+    );
+    await removeDirRetry(tmp);
+  });
+});
