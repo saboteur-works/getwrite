@@ -1567,6 +1567,21 @@ html.gw-theme-dark {
     background: transparent;
   }
 
+  /* Protected indicator — text + icon badge; deliberately not red (red is
+     reserved for canonical/position state). */
+  .revision-control-protected-badge {
+    display: inline-flex;
+    align-items: center;
+    border: 0.5px solid var(--color-gw-border-md);
+    padding: 1px 6px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-gw-secondary);
+    background: transparent;
+  }
+
   /* Save button — outlined primary, never blue-filled (D20) */
   .revision-control-save-button {
     display: inline-flex;
