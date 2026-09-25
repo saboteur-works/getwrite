@@ -78,34 +78,25 @@ export function createNativeTagsTransport(
       });
     },
 
+    // The three writes let a failure propagate, matching the HTTP transport
+    // now that it rejects rather than swallowing. Catching here would put
+    // native back in the state the web path was just fixed out of: a write
+    // that failed reported as one that succeeded.
     async create(projectId, name, color) {
       await run(async () => {
-        try {
-          await createTagCore(projectId, name, color);
-        } catch {
-          // Mirrors the HTTP transport's fire-and-forget parity: a failed
-          // create resolves silently rather than rejecting.
-        }
+        await createTagCore(projectId, name, color);
       });
     },
 
     async remove(projectId, tagId) {
       await run(async () => {
-        try {
-          await deleteTagCore(projectId, tagId);
-        } catch {
-          // Mirrors the HTTP transport's fire-and-forget parity.
-        }
+        await deleteTagCore(projectId, tagId);
       });
     },
 
     async assign(projectId, resourceId, tagId, assign) {
       await run(async () => {
-        try {
-          await assignTagCore(projectId, resourceId, tagId, assign);
-        } catch {
-          // Mirrors the HTTP transport's fire-and-forget parity.
-        }
+        await assignTagCore(projectId, resourceId, tagId, assign);
       });
     },
   };

@@ -6,6 +6,7 @@ import useAppSelector from "../../src/store/hooks";
 import { selectResource } from "../../src/store/resourcesSlice";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import type { Tag } from "../../src/lib/models/types";
+import { toastService } from "../../src/lib/toast-service";
 import {
   listTags,
   listTagAssignments,
@@ -63,9 +64,16 @@ export default function TagsSection(): JSX.Element | null {
     try {
       await assignTag(projectId, resourceId, tagId, !isAssigned);
     } catch {
-      // Revert optimistic update on failure
+      // Revert the optimistic update, and say so. This path was unreachable
+      // until `assignTag` began rejecting: the write was fire-and-forget, so
+      // a failure resolved like a success and the tag stayed on screen
+      // unpersisted until the next reload
+      // (`docs/standards/failure-visibility.md`).
       setAssignedTagIds((prev) =>
         isAssigned ? [...prev, tagId] : prev.filter((id) => id !== tagId),
+      );
+      toastService.error(
+        isAssigned ? "Could not remove that tag." : "Could not add that tag.",
       );
     }
   };

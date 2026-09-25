@@ -184,3 +184,60 @@ describe("TagsSection", () => {
     expect(await screen.findByText(/No tags yet/i)).toBeInTheDocument();
   });
 });
+
+/**
+ * The revert-on-failure path in `TagsSection.handleToggle` was unreachable
+ * until `assignTag` began rejecting: the write was fire-and-forget, so a
+ * failed assignment resolved like a successful one and the chip stayed
+ * selected, unpersisted, until the next reload.
+ */
+describe("TagsSection — a failed assignment", () => {
+  function makeFetchStubWithFailingAssign(
+    tags: { id: string; name: string }[],
+  ) {
+    return vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = input.toString();
+          const body = init?.body ? JSON.parse(init.body as string) : {};
+          if (url.includes("/api/project/tags/assign")) {
+            return { ok: false, status: 500 } as Response;
+          }
+          if (url.includes("/api/project/tags")) {
+            if (body.action === "list") {
+              return { ok: true, json: async () => ({ tags }) } as Response;
+            }
+            if (body.action === "assignments") {
+              return {
+                ok: true,
+                json: async () => ({ tagIds: [] }),
+              } as Response;
+            }
+          }
+          return { ok: true, json: async () => ({}) } as Response;
+        },
+      );
+  }
+
+  it("reverts the chip rather than leaving it selected", async () => {
+    makeFetchStubWithFailingAssign([{ id: "tag-1", name: "Draft" }]);
+    const store = setupStore("res-revert");
+
+    render(
+      <Provider store={store}>
+        <TagsSection />
+      </Provider>,
+    );
+
+    const chip = await screen.findByText("Draft");
+    fireEvent.click(chip);
+
+    // The optimistic selection is rolled back once the write rejects. Asserted
+    // via aria-pressed rather than styling so it reflects what is announced.
+    await waitFor(() => {
+      const button = chip.closest("button");
+      expect(button?.getAttribute("aria-pressed")).not.toBe("true");
+    });
+  });
+});
