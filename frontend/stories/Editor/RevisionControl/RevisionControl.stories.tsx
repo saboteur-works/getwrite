@@ -65,6 +65,7 @@ function makeRevisionStore() {
             filePath: "revisions/res-1/v-2/content.txt",
             isCanonical: true,
             displayName: "Post-edit pass",
+            isProtected: false,
           },
           {
             id: "rev-1",
@@ -74,6 +75,7 @@ function makeRevisionStore() {
             filePath: "revisions/res-1/v-1/content.txt",
             isCanonical: false,
             displayName: "Initial draft",
+            isProtected: false,
           },
         ],
         isLoading: false,

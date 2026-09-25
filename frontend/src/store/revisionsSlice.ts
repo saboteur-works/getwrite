@@ -23,12 +23,14 @@ import {
   fetchRevisionContent,
   fetchRevisionList,
   persistCanonicalRevision,
+  persistRevisionPreserve,
   removeRevision,
   resolveRevisionRequestContext,
   type RevisionRequestContext,
 } from "./revision-transport-service";
 import { setSelectedResourceId } from "./resourcesSlice";
 import type { RootState } from "./store";
+import type { Revision } from "../lib/models/types";
 
 export type { RevisionEntry } from "./revision-normalization";
 
@@ -72,6 +74,15 @@ interface SaveRevisionPayload extends ResourceScopedPayload {
 
 interface ResourceAndRevisionPayload extends ResourceScopedPayload {
   revisionId: string;
+}
+
+interface SetPreservePayload extends ResourceAndRevisionPayload {
+  preserve: boolean;
+}
+
+interface SetPreserveResult extends ResourceAndRevisionPayload {
+  /** Revision as returned by the server, carrying the persisted metadata. */
+  revision: Revision;
 }
 
 interface LoadRevisionsResult {
@@ -230,6 +241,27 @@ export const setCanonicalRevisionForSelectedResource = makeRevisionThunk<
     return { resourceId, revisionId };
   },
   "Failed to set canonical revision.",
+);
+
+/**
+ * Protects or unprotects a revision (sets `metadata.preserve`) for the
+ * currently selected resource. State is patched locally from the revision the
+ * server returns, not refetched.
+ */
+export const setRevisionPreserveForSelectedResource = makeRevisionThunk<
+  SetPreservePayload,
+  SetPreserveResult
+>(
+  "revisions/setRevisionPreserveForSelectedResource",
+  async (context, { resourceId, revisionId, preserve }) => {
+    const revision = await persistRevisionPreserve(
+      context,
+      revisionId,
+      preserve,
+    );
+    return { resourceId, revisionId, revision };
+  },
+  "Failed to update revision protection.",
 );
 
 // ---------------------------------------------------------------------------
@@ -481,6 +513,42 @@ const revisionsSlice = createSlice({
       (state, action) => {
         state.errorMessage =
           action.payload ?? "Failed to set canonical revision.";
+        return state;
+      },
+    );
+
+    builder.addCase(setRevisionPreserveForSelectedResource.pending, (state) => {
+      state.errorMessage = "";
+      return state;
+    });
+    builder.addCase(
+      setRevisionPreserveForSelectedResource.fulfilled,
+      (state, action) => {
+        if (
+          state.resourceId !== null &&
+          state.resourceId !== action.payload.resourceId
+        ) {
+          return state;
+        }
+
+        const { revisionId, revision } = action.payload;
+        state.revisions = state.revisions.map((entry) =>
+          entry.id === revisionId
+            ? {
+                ...entry,
+                metadata: revision.metadata,
+                isProtected: Boolean(revision.metadata?.["preserve"]),
+              }
+            : entry,
+        );
+        return state;
+      },
+    );
+    builder.addCase(
+      setRevisionPreserveForSelectedResource.rejected,
+      (state, action) => {
+        state.errorMessage =
+          action.payload ?? "Failed to update revision protection.";
         return state;
       },
     );

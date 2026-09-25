@@ -50,6 +50,7 @@ function makeRevision(
     filePath: `/tmp/${id}.json`,
     isCanonical,
     displayName: `Revision ${versionNumber}`,
+    isProtected: false,
     metadata: {},
   };
 }

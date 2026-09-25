@@ -9,6 +9,8 @@ import type { Revision } from "../lib/models/types";
 export interface RevisionEntry extends Revision {
   /** Human-readable label shown in the revision list UI. */
   displayName: string;
+  /** True when `metadata.preserve` is truthy (protected from pruning and deletion). */
+  isProtected: boolean;
 }
 
 /** Returns the trimmed string if non-empty, otherwise undefined. */
@@ -40,6 +42,7 @@ export function toRevisionEntry(
   return {
     ...revision,
     displayName: resolveRevisionDisplayName(revision, fallbackName),
+    isProtected: Boolean(revision.metadata?.["preserve"]),
   };
 }
 
