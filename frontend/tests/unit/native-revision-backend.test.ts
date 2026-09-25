@@ -3,7 +3,12 @@
 // `capacitorFsAdapter`, with no HTTP at all — the revision analogue of
 // `transport-collapse.spike.test.ts`'s "in-process backend reuses the shared
 // search core" section.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import {
+  isLockedAccessError,
+  ProjectLockedError,
+} from "../../src/lib/models/locked-access";
+import { httpRevisionTransport } from "../../src/store/revision-transport-service";
 import path from "node:path";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { createFakeCapacitorFilesystem } from "../../src/lib/models/capacitor-filesystem";
@@ -117,6 +122,85 @@ describe("native revision transport — in-process backend reuses the shared rev
         generateUUID(),
       ),
     ).rejects.toThrow(/Invalid projectId/);
+  });
+});
+
+describe("native revision transport — setPreserve", () => {
+  it("sets and clears preserve, matching the HTTP transport's result for the same revision", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = generateUUID();
+    const resourceId = generateUUID();
+    await seedResourceContent(fs, projectId, resourceId, "seed");
+    const transport = createNativeRevisionTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    const context: RevisionRequestContext = { projectId, resourceId };
+    const rev = await transport.create(context, "Keep");
+
+    const nativeResult = await transport.setPreserve(context, rev.id, true);
+    expect(nativeResult.metadata).toMatchObject({ preserve: true });
+
+    // The route returns the core's Revision as JSON; the HTTP transport must
+    // hand back that same value.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({
+        ok: true,
+        json: async () => JSON.parse(JSON.stringify(nativeResult)),
+      } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+    const httpResult = await httpRevisionTransport.setPreserve(
+      context,
+      rev.id,
+      true,
+    );
+    vi.unstubAllGlobals();
+    expect(httpResult).toEqual(nativeResult);
+
+    const cleared = await transport.setPreserve(context, rev.id, false);
+    expect(cleared.metadata).not.toHaveProperty("preserve");
+  });
+
+  it("rejects deleting a protected revision with the core's message", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = generateUUID();
+    const resourceId = generateUUID();
+    await seedResourceContent(fs, projectId, resourceId, "seed");
+    const transport = createNativeRevisionTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    const context: RevisionRequestContext = { projectId, resourceId };
+    const rev = await transport.create(context, "Keep");
+    await transport.setPreserve(context, rev.id, true);
+
+    await expect(transport.delete(context, rev.id)).rejects.toThrow(
+      "Protected revisions cannot be deleted. Unprotect it first.",
+    );
+  });
+
+  it("surfaces a locked project as a locked-access error, not a degraded value", async () => {
+    const projectId = generateUUID();
+    const locked = new Proxy(createFakeCapacitorFilesystem(), {
+      get: () => () => Promise.reject(new ProjectLockedError(projectId)),
+    });
+    const transport = createNativeRevisionTransport({
+      fs: locked,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    const error = await transport
+      .setPreserve(
+        { projectId, resourceId: generateUUID() },
+        generateUUID(),
+        true,
+      )
+      .then(
+        () => null,
+        (e: unknown) => e,
+      );
+    expect(isLockedAccessError(error)).toBe(true);
   });
 });
 

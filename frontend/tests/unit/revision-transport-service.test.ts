@@ -16,6 +16,7 @@ import {
   fetchRevisionContent,
   fetchRevisionList,
   persistCanonicalRevision,
+  persistRevisionPreserve,
   removeRevision,
   resolveRevisionRequestContext,
 } from "../../src/store/revision-transport-service";
@@ -148,5 +149,53 @@ describe("revision-transport-service (T9b regression)", () => {
     expect(body.projectId).toBe(directoryUuid);
     expect(body).not.toHaveProperty("projectPath");
     expect(body).not.toHaveProperty("projectRoot");
+  });
+
+  it("persistRevisionPreserve sends exactly {projectId, revisionId, preserve} in a PATCH and returns the revision", async () => {
+    const updated = { id: "revision-1", metadata: { preserve: true } };
+    fetchMock.mockResolvedValue(jsonResponse(updated));
+
+    const result = await persistRevisionPreserve(
+      { projectId: directoryUuid, resourceId },
+      "revision-1",
+      true,
+    );
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`/api/resource/revision/${resourceId}`);
+    expect((init as RequestInit).method).toBe("PATCH");
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      projectId: directoryUuid,
+      revisionId: "revision-1",
+      preserve: true,
+    });
+    expect(result).toEqual(updated);
+  });
+
+  it("persistRevisionPreserve rejects on non-2xx carrying the server message", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "boom" }, false));
+
+    await expect(
+      persistRevisionPreserve(
+        { projectId: directoryUuid, resourceId },
+        "revision-1",
+        false,
+      ),
+    ).rejects.toThrow("boom");
+  });
+
+  it("removeRevision rejects on a protected-revision 400 carrying the core's message", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { error: "Protected revisions cannot be deleted. Unprotect it first." },
+        false,
+      ),
+    );
+
+    await expect(
+      removeRevision({ projectId: directoryUuid, resourceId }, "revision-1"),
+    ).rejects.toThrow(
+      "Protected revisions cannot be deleted. Unprotect it first.",
+    );
   });
 });
