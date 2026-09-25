@@ -195,7 +195,7 @@ export default function EntitySection(): JSX.Element | null {
                       </Button>
                     </div>
                     {warning && (
-                      <p className="text-gw-nano text-gw-secondary mt-1">
+                      <p className="text-gw-label text-gw-secondary mt-1">
                         {warning}
                       </p>
                     )}
@@ -222,7 +222,7 @@ export default function EntitySection(): JSX.Element | null {
                 }}
               />
               {newAliasWarning && (
-                <p className="text-gw-nano text-gw-secondary mt-1">
+                <p className="text-gw-label text-gw-secondary mt-1">
                   {newAliasWarning}
                 </p>
               )}

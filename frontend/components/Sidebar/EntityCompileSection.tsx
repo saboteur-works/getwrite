@@ -112,7 +112,7 @@ export default function EntityCompileSection(): JSX.Element | null {
         Compile this entity&apos;s resources
       </Button>
       {!hasCompilableResources && (
-        <p className="text-gw-nano text-gw-secondary">
+        <p className="text-gw-label text-gw-secondary">
           No associated resources to compile.
         </p>
       )}

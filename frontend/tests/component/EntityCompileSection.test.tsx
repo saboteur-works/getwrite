@@ -123,6 +123,11 @@ describe("EntityCompileSection", () => {
     });
     expect(trigger.className).not.toContain("text-[9px]");
     expect(trigger.className).toContain("px-4");
+
+    // Its explanatory hint sits at the 11px label size, not the 9px minimum.
+    const hint = screen.getByText("No associated resources to compile.");
+    expect(hint.className).toContain("text-gw-label");
+    expect(hint.className).not.toContain("text-gw-nano");
   });
 
   it("keeps the sidebar's 16px section margin below it", async () => {

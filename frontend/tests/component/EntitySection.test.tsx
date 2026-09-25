@@ -110,6 +110,29 @@ describe("EntitySection", () => {
     });
   });
 
+  it("shows the alias warning at the 11px label size, not the 9px minimum", async () => {
+    // STYLING.md reserves nano (9px) for tab labels and shortcut hints; the
+    // sidebar's other hint text (TagsSection) is 11px.
+    makeFetchStub();
+    const store = setupStore("res-2c", { entityKind: "character" });
+
+    render(
+      <Provider store={store}>
+        <EntitySection />
+      </Provider>,
+    );
+
+    fireEvent.change(screen.getByLabelText("new-alias-input"), {
+      target: { value: "Jo" },
+    });
+
+    const warning = await screen.findByText(
+      /very short and will match frequently/i,
+    );
+    expect(warning.className).toContain("text-gw-label");
+    expect(warning.className).not.toContain("text-gw-nano");
+  });
+
   it("shows no warning while the alias draft field is empty", async () => {
     const store = setupStore("res-2b", { entityKind: "character" });
 

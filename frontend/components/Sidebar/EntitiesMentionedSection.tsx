@@ -62,7 +62,7 @@ export default function EntitiesMentionedSection(): JSX.Element | null {
 
   if (isLoading) {
     return (
-      <p className="text-gw-nano text-gw-secondary" role="status">
+      <p className="text-gw-label text-gw-secondary" role="status">
         Loading mentions&hellip;
       </p>
     );

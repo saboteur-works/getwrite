@@ -174,7 +174,7 @@ export default function EntityRelationshipsSection(): JSX.Element | null {
           ))}
         </select>
         {otherEntities.length === 0 && (
-          <p className="text-gw-nano text-gw-secondary mt-1">
+          <p className="text-gw-label text-gw-secondary mt-1">
             No other declared entities yet.
           </p>
         )}
@@ -196,7 +196,7 @@ export default function EntityRelationshipsSection(): JSX.Element | null {
           ))}
         </select>
         {!hasRelationshipTypes && (
-          <p className="text-gw-nano text-gw-secondary mt-1">
+          <p className="text-gw-label text-gw-secondary mt-1">
             No relationship types are configured for this project.
           </p>
         )}
@@ -212,14 +212,14 @@ export default function EntityRelationshipsSection(): JSX.Element | null {
           Add
         </Button>
         {error && (
-          <p className="text-gw-nano text-gw-secondary mt-1" role="alert">
+          <p className="text-gw-label text-gw-secondary mt-1" role="alert">
             {error}
           </p>
         )}
       </div>
 
       {isLoading && (
-        <p className="text-gw-nano text-gw-secondary" role="status">
+        <p className="text-gw-label text-gw-secondary" role="status">
           Loading relationships&hellip;
         </p>
       )}
@@ -248,7 +248,7 @@ export default function EntityRelationshipsSection(): JSX.Element | null {
             return (
               <li
                 key={edge.id}
-                className="flex items-center justify-between gap-2 text-sm text-gw-primary"
+                className="flex items-center justify-between gap-2 text-gw-label text-gw-primary"
                 data-edge-role={isSource ? "source" : "target"}
               >
                 <span>
