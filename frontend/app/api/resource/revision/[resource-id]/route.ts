@@ -11,7 +11,10 @@
  *   current filesystem content when body.content is omitted.
  *
  * PATCH  /api/resource/revision/:resourceId
- *   Marks an existing revision as canonical. Body carries `projectId`.
+ *   Body carries `projectId` and `revisionId`, plus at most one of:
+ *   `content` (persist in place), `preserve` (boolean; set/clear the
+ *   protection flag). With neither, marks the revision canonical. Sending both
+ *   `content` and `preserve` is a 400 and applies neither.
  *
  * DELETE /api/resource/revision/:resourceId
  *   Removes a revision directory by revision UUID. Body carries `projectId`.
@@ -29,8 +32,10 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   createRevision,
   deleteRevision,
+  PROTECTED_REVISION_DELETE_MESSAGE,
   readRevision,
   setCanonicalRevision,
+  setRevisionPreserve,
   updateRevisionInPlace,
 } from "../../../../../src/lib/models/revision-core";
 import type { Revision } from "../../../../../src/lib/models/types";
@@ -65,6 +70,8 @@ interface SetCanonicalRevisionBody {
   revisionId: string;
   /** Optional revision content to persist in-place for canonical revisions. */
   content?: string;
+  /** Sets (true) or clears (false) the revision's protection flag. */
+  preserve?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -217,8 +224,9 @@ async function handleDelete(
     }
     if (
       error instanceof Error &&
-      error.message ===
-        "Cannot delete the canonical revision; promote another revision first."
+      (error.message === PROTECTED_REVISION_DELETE_MESSAGE ||
+        error.message ===
+          "Cannot delete the canonical revision; promote another revision first.")
     ) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
@@ -234,7 +242,12 @@ async function handlePatch(
 
   const parsed = await parseJsonBody<SetCanonicalRevisionBody>(req);
   if (parsed instanceof NextResponse) return parsed;
-  const { projectId, revisionId, content } = parsed.body;
+  const {
+    projectId,
+    revisionId,
+    content,
+    preserve: shouldPreserve,
+  } = parsed.body;
 
   const resolved = resolveProjectPath(projectId);
   if (resolved instanceof Response) return resolved;
@@ -243,7 +256,30 @@ async function handlePatch(
   const revisionIdError = requireString(revisionId, "revisionId");
   if (revisionIdError) return revisionIdError;
 
+  if (content !== undefined && shouldPreserve !== undefined) {
+    return NextResponse.json(
+      { error: "Send either `content` or `preserve`, not both." },
+      { status: 400 },
+    );
+  }
+  if (shouldPreserve !== undefined && typeof shouldPreserve !== "boolean") {
+    return NextResponse.json(
+      { error: "Field `preserve` must be a boolean." },
+      { status: 400 },
+    );
+  }
+
   try {
+    if (typeof shouldPreserve === "boolean") {
+      const updated = await setRevisionPreserve(
+        projectPath,
+        resourceId,
+        revisionId,
+        shouldPreserve,
+      );
+      return NextResponse.json(updated, { status: 200 });
+    }
+
     if (typeof content === "string") {
       const updated = await updateRevisionInPlace(
         projectPath,

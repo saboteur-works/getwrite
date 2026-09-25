@@ -34,6 +34,7 @@ vi.mock("../../src/lib/models/revision-core", async () => {
     deleteRevision: vi.fn(actual.deleteRevision),
     setCanonicalRevision: vi.fn(actual.setCanonicalRevision),
     updateRevisionInPlace: vi.fn(actual.updateRevisionInPlace),
+    setRevisionPreserve: vi.fn(actual.setRevisionPreserve),
   };
 });
 
@@ -42,6 +43,8 @@ import {
   createRevision,
   deleteRevision,
   setCanonicalRevision,
+  setRevisionPreserve,
+  PROTECTED_REVISION_DELETE_MESSAGE,
 } from "../../src/lib/models/revision-core";
 import {
   GET,
@@ -520,6 +523,229 @@ describe("revision route — locked-access rethrow (Feature 54, Task 16)", () =>
       });
 
       expect(res.status).toBe(401);
+    });
+  });
+});
+
+describe("revision route — protect revision (FR-8, FR-10, FR-11)", () => {
+  beforeEach(() => {
+    setStorageAdapter(createMemoryAdapter());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function seed(): Promise<{
+    projectsDir: string;
+    projectId: string;
+    projectPath: string;
+    resourceId: string;
+  }> {
+    const projectsDir = "/projects-" + generateUUID();
+    const projectId = generateUUID();
+    return {
+      projectsDir,
+      projectId,
+      projectPath: path.join(projectsDir, projectId),
+      resourceId: generateUUID(),
+    };
+  }
+
+  const patch = (body: object, resourceId: string): ReturnType<typeof PATCH> =>
+    PATCH(makeRequest("PATCH", body), {
+      params: Promise.resolve({ "resource-id": resourceId }),
+    });
+
+  it("preserve:true returns 200 with the updated revision and persists it", async () => {
+    const { projectsDir, projectId, projectPath, resourceId } = await seed();
+    await withProjectsDirEnv(projectsDir, async () => {
+      await writeRevision(projectPath, resourceId, 1, "a", {
+        isCanonical: true,
+      });
+      const rev = await writeRevision(projectPath, resourceId, 2, "b", {
+        metadata: { name: "Draft" },
+      });
+
+      const res = await patch(
+        { projectId, revisionId: rev.id, preserve: true },
+        resourceId,
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        id: string;
+        isCanonical: boolean;
+        metadata: Record<string, unknown>;
+      };
+      expect(body.id).toBe(rev.id);
+      expect(body.metadata.preserve).toBe(true);
+      expect(body.metadata.name).toBe("Draft");
+      expect(body.isCanonical).toBe(false);
+
+      const stored = (await listRevisions(projectPath, resourceId)).find(
+        (r) => r.id === rev.id,
+      );
+      expect(stored?.metadata?.preserve).toBe(true);
+    });
+  });
+
+  it("preserve:false clears the flag", async () => {
+    const { projectsDir, projectId, projectPath, resourceId } = await seed();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const rev = await writeRevision(projectPath, resourceId, 1, "a", {
+        isCanonical: true,
+        metadata: { preserve: true },
+      });
+      const res = await patch(
+        { projectId, revisionId: rev.id, preserve: false },
+        resourceId,
+      );
+      expect(res.status).toBe(200);
+      const stored = (await listRevisions(projectPath, resourceId))[0];
+      expect(stored?.metadata?.preserve).toBeUndefined();
+    });
+  });
+
+  it("rejects {content, preserve} with 400 and applies neither", async () => {
+    const { projectsDir, projectId, projectPath, resourceId } = await seed();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const rev = await writeRevision(projectPath, resourceId, 1, "orig", {
+        isCanonical: true,
+      });
+      const res = await patch(
+        { projectId, revisionId: rev.id, content: "new", preserve: true },
+        resourceId,
+      );
+      expect(res.status).toBe(400);
+      const read = await readRevision(projectPath, resourceId, rev.id);
+      expect(read.content).toBe("orig");
+      expect(read.revision.metadata?.preserve).toBeUndefined();
+    });
+  });
+
+  it("rejects non-boolean preserve with 400 without changes", async () => {
+    const { projectsDir, projectId, projectPath, resourceId } = await seed();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const rev = await writeRevision(projectPath, resourceId, 1, "a", {
+        isCanonical: true,
+      });
+      for (const bad of ["true", 1, null]) {
+        const res = await patch(
+          { projectId, revisionId: rev.id, preserve: bad },
+          resourceId,
+        );
+        expect(res.status).toBe(400);
+      }
+      const stored = (await listRevisions(projectPath, resourceId))[0];
+      expect(stored?.metadata?.preserve).toBeUndefined();
+    });
+  });
+
+  it("does not accept a generic metadata merge (name unchanged)", async () => {
+    const { projectsDir, projectId, projectPath, resourceId } = await seed();
+    await withProjectsDirEnv(projectsDir, async () => {
+      await writeRevision(projectPath, resourceId, 1, "a", {
+        isCanonical: true,
+      });
+      const rev = await writeRevision(projectPath, resourceId, 2, "b", {
+        metadata: { name: "Keep" },
+      });
+      await patch(
+        {
+          projectId,
+          revisionId: rev.id,
+          preserve: true,
+          metadata: { name: "Hacked" },
+        },
+        resourceId,
+      );
+      await patch(
+        { projectId, revisionId: rev.id, metadata: { name: "Hacked2" } },
+        resourceId,
+      );
+      const stored = (await listRevisions(projectPath, resourceId)).find(
+        (r) => r.id === rev.id,
+      );
+      expect(stored?.metadata?.name).toBe("Keep");
+    });
+  });
+
+  it("content-only and neither-field behaviours are unchanged", async () => {
+    const { projectsDir, projectId, projectPath, resourceId } = await seed();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const canonical = await writeRevision(projectPath, resourceId, 1, "a", {
+        isCanonical: true,
+      });
+      const other = await writeRevision(projectPath, resourceId, 2, "b");
+
+      const contentRes = await patch(
+        { projectId, revisionId: canonical.id, content: "edited" },
+        resourceId,
+      );
+      expect(contentRes.status).toBe(200);
+      expect(
+        (await readRevision(projectPath, resourceId, canonical.id)).content,
+      ).toBe("edited");
+
+      const flipRes = await patch(
+        { projectId, revisionId: other.id },
+        resourceId,
+      );
+      expect(flipRes.status).toBe(200);
+      const revs = await listRevisions(projectPath, resourceId);
+      expect(revs.find((r) => r.id === other.id)?.isCanonical).toBe(true);
+      expect(revs.find((r) => r.id === canonical.id)?.isCanonical).toBe(false);
+    });
+  });
+
+  it("preserve on an unknown revision returns 404", async () => {
+    const { projectsDir, projectId, projectPath, resourceId } = await seed();
+    await withProjectsDirEnv(projectsDir, async () => {
+      await writeRevision(projectPath, resourceId, 1, "a", {
+        isCanonical: true,
+      });
+      const res = await patch(
+        { projectId, revisionId: generateUUID(), preserve: true },
+        resourceId,
+      );
+      expect(res.status).toBe(404);
+    });
+  });
+
+  it("rethrows a locked-access error from setRevisionPreserve as 401", async () => {
+    const { projectsDir, projectId, resourceId } = await seed();
+    await withProjectsDirEnv(projectsDir, async () => {
+      vi.mocked(setRevisionPreserve).mockRejectedValueOnce(
+        new ProjectLockedError(projectId),
+      );
+      const res = await patch(
+        { projectId, revisionId: generateUUID(), preserve: true },
+        resourceId,
+      );
+      expect(res.status).toBe(401);
+    });
+  });
+
+  it("DELETE of a protected revision returns 400 with the shared message and keeps it", async () => {
+    const { projectsDir, projectId, projectPath, resourceId } = await seed();
+    await withProjectsDirEnv(projectsDir, async () => {
+      await writeRevision(projectPath, resourceId, 1, "a", {
+        isCanonical: true,
+      });
+      const rev = await writeRevision(projectPath, resourceId, 2, "b", {
+        metadata: { preserve: true },
+      });
+      const res = await DELETE(
+        makeRequest("DELETE", { projectId, revisionId: rev.id }),
+        { params: Promise.resolve({ "resource-id": resourceId }) },
+      );
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe(PROTECTED_REVISION_DELETE_MESSAGE);
+      const ids = (await listRevisions(projectPath, resourceId)).map(
+        (r) => r.id,
+      );
+      expect(ids).toContain(rev.id);
     });
   });
 });
