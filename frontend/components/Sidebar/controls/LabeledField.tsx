@@ -7,8 +7,11 @@ export interface LabeledFieldProps {
 }
 
 /**
- * Sidebar control wrapper that renders a `text-gw-micro font-medium font-mono` label
- * above the provided control slot.
+ * Sidebar control wrapper that renders the sidebar's uppercase mono label
+ * above the provided control slot. The label carries its own look, so a
+ * caller passes `className` only for wrapper layout such as `mb-4`; it used to
+ * pass the label's color, case and tracking too, and any control that did not
+ * (the entity sections) rendered a differently styled label.
  *
  * The text used to be a `<label>` sibling with no `htmlFor` — an element that
  * labelled nothing, which axe reports as a control with no label. It is a
@@ -30,7 +33,10 @@ export default function LabeledField({
   const labelId = useId();
   return (
     <div className={className} role="group" aria-labelledby={labelId}>
-      <span id={labelId} className="text-gw-micro font-medium font-mono">
+      <span
+        id={labelId}
+        className="block text-gw-micro leading-[1.65] font-medium font-mono text-brand-mid uppercase tracking-label"
+      >
         {label}
       </span>
       {children}

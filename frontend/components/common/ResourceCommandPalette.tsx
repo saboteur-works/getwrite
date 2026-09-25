@@ -145,7 +145,7 @@ export default function ResourceCommandPalette({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={handleInputKeyDown}
-            className="resource-palette-input"
+            className="resource-palette-input text-gw-body"
             placeholder="Search resources..."
           />
         </div>

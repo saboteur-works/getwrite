@@ -23,6 +23,26 @@ describe("UI foundation (Task 3 smoke)", () => {
         "text-gw-primary bg-gw-chrome2",
       );
     });
+
+    it("keeps a text-gw-* size and a text-gw-* color together", () => {
+      // The custom size scale (`text-gw-label` etc.) must be a font-size group.
+      // Otherwise tailwind-merge reads it as a text color and drops it when a
+      // color class follows.
+      expect(cn("text-gw-label", "text-gw-primary")).toBe(
+        "text-gw-label text-gw-primary",
+      );
+      expect(cn("text-gw-primary", "text-gw-label")).toBe(
+        "text-gw-primary text-gw-label",
+      );
+    });
+
+    it("still de-duplicates two text-gw-* sizes (last wins)", () => {
+      expect(cn("text-gw-label", "text-gw-nano")).toBe("text-gw-nano");
+    });
+
+    it("lets a text-gw-* size override a stock Tailwind size", () => {
+      expect(cn("text-sm", "text-gw-label")).toBe("text-gw-label");
+    });
   });
 
   describe("Button (canonical primitive, Task 4)", () => {

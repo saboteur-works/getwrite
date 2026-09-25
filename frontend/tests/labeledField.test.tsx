@@ -14,6 +14,19 @@ describe("LabeledField", () => {
     expect(screen.getByText("Status")).toBeTruthy();
   });
 
+  it("styles the label itself, so callers do not have to pass label classes", () => {
+    render(
+      <LabeledField label="Entity Kind">
+        <span>control</span>
+      </LabeledField>,
+    );
+
+    const label = screen.getByText("Entity Kind");
+    expect(label.className).toContain("uppercase");
+    expect(label.className).toContain("tracking-label");
+    expect(label.className).toContain("text-brand-mid");
+  });
+
   it("renders children", () => {
     render(
       <LabeledField label="Notes">

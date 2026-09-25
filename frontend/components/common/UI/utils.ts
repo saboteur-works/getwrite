@@ -1,5 +1,30 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/**
+ * The product type scale, mirroring `--text-gw-*` in `styles/getwrite-theme.css`.
+ *
+ * tailwind-merge only knows Tailwind's stock font sizes. Without this list it
+ * reads `text-gw-label` as a text color, so `cn("text-gw-label", "text-gw-primary")`
+ * silently dropped the size.
+ */
+const GW_FONT_SIZES = [
+  "gw-hero",
+  "gw-display",
+  "gw-h1",
+  "gw-h2",
+  "gw-h3",
+  "gw-body",
+  "gw-small",
+  "gw-editor",
+  "gw-label",
+  "gw-micro",
+  "gw-nano",
+];
+
+const twMerge = extendTailwindMerge({
+  extend: { classGroups: { "font-size": [{ text: GW_FONT_SIZES }] } },
+});
 
 /**
  * Tailwind-aware className merger used by every primitive in `components/common/UI/`.

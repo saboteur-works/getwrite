@@ -159,9 +159,7 @@ export default function EntitySection(): JSX.Element | null {
       </LabeledField>
 
       {isEntity && (
-        <div>
-          <label className="text-gw-micro font-medium font-mono">Aliases</label>
-
+        <LabeledField label="Aliases" className="mb-4">
           {aliases.length > 0 && (
             <ul className="mt-2 flex flex-col gap-2">
               {aliases.map((alias, index) => {
@@ -237,7 +235,7 @@ export default function EntitySection(): JSX.Element | null {
               Add
             </Button>
           </div>
-        </div>
+        </LabeledField>
       )}
     </div>
   );

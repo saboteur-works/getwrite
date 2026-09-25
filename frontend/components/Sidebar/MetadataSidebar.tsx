@@ -97,7 +97,7 @@ function ImageMetadataSection({
         <ReadOnlyField
           label="Dimensions"
           value={`${resource.width ?? "?"} × ${resource.height ?? "?"} px`}
-          className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+          className="mb-4"
         />
       )}
       {exifEntries.map(([key, value]) => (
@@ -109,7 +109,7 @@ function ImageMetadataSection({
               ? JSON.stringify(value)
               : String(value)
           }
-          className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+          className="mb-4"
         />
       ))}
       {!hasContent && (
@@ -133,14 +133,14 @@ function AudioMetadataSection({
         <ReadOnlyField
           label="Format"
           value={resource.format.toUpperCase()}
-          className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+          className="mb-4"
         />
       )}
       {resource.durationSeconds !== undefined && (
         <ReadOnlyField
           label="Duration"
           value={formatAudioDuration(resource.durationSeconds)}
-          className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+          className="mb-4"
         />
       )}
       {!hasContent && (
@@ -320,7 +320,7 @@ export default function MetadataSidebar({
           <SynopsisInput
             ariaLabel="synopsis"
             value={(rawValue as string) ?? ""}
-            className="text-brand-mid text-gw-nano tracking-label uppercase mb-4"
+            className="mb-4"
             onChange={(v) => onChangeField?.(key, v)}
           />
         );
@@ -329,7 +329,7 @@ export default function MetadataSidebar({
           <NotesInput
             ariaLabel="notes"
             value={(rawValue as string) ?? ""}
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             onChange={(v) => onChangeField?.(key, v)}
           />
         );
@@ -337,7 +337,7 @@ export default function MetadataSidebar({
         return (
           <StatusSelector
             ariaLabel="status"
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             value={(rawValue as string) ?? ""}
             options={projectStatuses.length > 0 ? projectStatuses : undefined}
             onChange={(v) => onChangeField?.(key, v)}
@@ -346,7 +346,7 @@ export default function MetadataSidebar({
       case "pov":
         return (
           <POVAutocomplete
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             resourceOptions={allResourceOptions}
             value={(rawValue as string | ResourceRef) ?? undefined}
             onChange={(v) => onChangeField?.(key, v)}
@@ -355,7 +355,7 @@ export default function MetadataSidebar({
       case "storyDate":
         return (
           <DateTimeInput
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             value={(rawValue as string) ?? ""}
             onChange={(v) => onChangeField?.(key, v)}
           />
@@ -363,7 +363,7 @@ export default function MetadataSidebar({
       case "storyDuration":
         return (
           <DurationInput
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             value={(rawValue as number | null) ?? null}
             onChange={(v) => onChangeField?.(key, v)}
           />
@@ -371,7 +371,7 @@ export default function MetadataSidebar({
       case "storyEndDate":
         return (
           <EndDateInput
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             computedEndDate={computedEndDate}
             overrideValue={(rawValue as string) ?? undefined}
             onChange={(v) => onChangeField?.(key, v)}
@@ -387,7 +387,7 @@ export default function MetadataSidebar({
             label={label}
             ariaLabel={key}
             value={(rawValue as string) ?? ""}
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             onChange={(v) => onChangeField?.(key, v)}
           />
         );
@@ -397,14 +397,14 @@ export default function MetadataSidebar({
             label={label}
             ariaLabel={key}
             value={(rawValue as number) ?? undefined}
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             onChange={(v) => onChangeField?.(key, v)}
           />
         );
       case "date":
         return (
           <DateTimeInput
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             value={(rawValue as string) ?? ""}
             onChange={(v) => onChangeField?.(key, v)}
           />
@@ -415,7 +415,7 @@ export default function MetadataSidebar({
             label={label}
             ariaLabel={key}
             value={(rawValue as boolean) ?? false}
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             onChange={(v) => onChangeField?.(key, v)}
           />
         );
@@ -426,7 +426,7 @@ export default function MetadataSidebar({
             ariaLabel={key}
             options={options ?? []}
             value={(rawValue as string) ?? ""}
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             onChange={(v) => onChangeField?.(key, v)}
           />
         );
@@ -438,7 +438,7 @@ export default function MetadataSidebar({
             options={options ?? []}
             value={(rawValue as string[]) ?? []}
             multiple
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             onChange={(v) => onChangeField?.(key, v)}
           />
         );
@@ -449,7 +449,7 @@ export default function MetadataSidebar({
             ariaLabel={key}
             value={(rawValue as ResourceRef | ResourceRef[] | null) ?? null}
             resourceOptions={allResourceOptions}
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             multiple={isMultiple}
             onChange={(v) => onChangeField?.(key, v)}
           />
@@ -466,7 +466,7 @@ export default function MetadataSidebar({
             )}
             value={toResourceRefArray(rawValue)}
             maxSelections={field.maxSelections}
-            className="text-brand-mid text-gw-label tracking-label uppercase mb-4"
+            className="mb-4"
             onChange={(v) => onChangeField?.(key, v)}
           />
         );
