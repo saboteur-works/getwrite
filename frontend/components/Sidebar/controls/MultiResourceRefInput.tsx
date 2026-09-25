@@ -131,7 +131,7 @@ export default function MultiResourceRefInput({
         <Input
           type="text"
           aria-label="multi-resource-ref-input"
-          className="w-full"
+          className="w-full text-gw-label"
           value={inputVal}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}

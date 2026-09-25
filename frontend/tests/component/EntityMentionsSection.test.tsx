@@ -226,6 +226,38 @@ describe("EntityMentionsSection", () => {
     expect(screen.getByText(/Bob/)).toBeInTheDocument();
   });
 
+  it("sets snippets and the ambiguity note at the 10px micro size and keeps badges at the 9px nano size", async () => {
+    // Supporting metadata is one step below the 11px row name; badges are
+    // chips, which STYLING.md sets at 9px.
+    mockMentionedIn([
+      {
+        resourceId: "scene-6",
+        name: "Chapter Six",
+        snippets: ["May arrived at dawn."],
+        isLinked: false,
+        isMentioned: true,
+        ambiguousWith: [["Bob"]],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    const snippet = await screen.findByText("May arrived at dawn.");
+    expect(snippet.className).toContain("text-gw-micro");
+    expect(snippet.className).not.toContain("text-gw-nano");
+    expect(screen.getByText(/Ambiguous/).className).toContain("text-gw-micro");
+    expect(
+      screen.getByLabelText("Chapter Six-mentioned-badge").className,
+    ).toContain("text-gw-nano");
+  });
+
   it("navigates to the mentioning resource on click", async () => {
     mockMentionedIn([
       {
@@ -476,6 +508,28 @@ describe("EntityMentionsSection co-occurrence list (Task 6)", () => {
       "Priya (3), ",
       "Marcus (1)",
     ]);
+  });
+
+  it("sets the co-occurrence line at the 10px micro size", async () => {
+    mockMentionedInAndCooccurrence([], {
+      "entity-aria": [
+        { entityId: "entity-priya", count: 2, resourceIds: ["r1", "r2"] },
+      ],
+    });
+    const store = await setupStoreWithAliasTable("entity-aria");
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    const list = await screen.findByLabelText("entity-cooccurrence-list");
+    const line = list.parentElement as HTMLElement;
+    expect(line.className).toContain("text-gw-micro");
+    expect(line.className).not.toContain("text-gw-nano");
   });
 
   it("renders no heading, line, or empty-state text when the selected entity has no co-occurrence entry (FR-7)", async () => {

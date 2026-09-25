@@ -1,7 +1,9 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import EntityRelationshipsSection from "../../components/Sidebar/EntityRelationshipsSection";
+import EntityRelationshipsRefreshProvider from "../../components/Sidebar/EntityRelationshipsRefreshContext";
 import projectsReducer from "../../src/store/projectsSlice";
 import resourcesReducer from "../../src/store/resourcesSlice";
 import revisionsReducer from "../../src/store/revisionsSlice";
@@ -170,6 +172,16 @@ const DANGLING_EDGE: EntityRelationshipEdge[] = [
 const meta = {
   title: "Sidebar/EntityRelationshipsSection",
   component: EntityRelationshipsSection,
+  // The section reads `useEntityRelationshipsRefresh()`, which throws outside
+  // this provider. `MetadataSidebar` supplies it in the app; without it every
+  // story here failed to render.
+  decorators: [
+    (Story: React.ComponentType) => (
+      <EntityRelationshipsRefreshProvider>
+        <Story />
+      </EntityRelationshipsRefreshProvider>
+    ),
+  ],
 } satisfies Meta<typeof EntityRelationshipsSection>;
 
 export default meta;

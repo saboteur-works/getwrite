@@ -112,7 +112,7 @@ export default function POVAutocomplete({
             setHighlightedIndex(0);
           }}
           onKeyDown={handleKeyDown}
-          className="w-full"
+          className="w-full text-gw-label"
         />
         {isOpen && (
           <Listbox

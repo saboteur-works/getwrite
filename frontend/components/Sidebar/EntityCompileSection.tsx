@@ -101,11 +101,10 @@ export default function EntityCompileSection(): JSX.Element | null {
   const hasCompilableResources = orderedResourceIds.length > 0;
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 mb-4">
       <Button
         type="button"
         variant="secondary"
-        size="xs"
         onClick={() => setIsCompileModalOpen(true)}
         disabled={!hasCompilableResources}
         aria-disabled={!hasCompilableResources}
@@ -113,7 +112,7 @@ export default function EntityCompileSection(): JSX.Element | null {
         Compile this entity&apos;s resources
       </Button>
       {!hasCompilableResources && (
-        <p className="text-gw-nano text-gw-secondary">
+        <p className="text-gw-label text-gw-secondary">
           No associated resources to compile.
         </p>
       )}

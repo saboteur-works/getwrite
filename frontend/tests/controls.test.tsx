@@ -5,6 +5,9 @@ import userEvent from "@testing-library/user-event";
 import EditorMenuColorSubmenu from "../components/Editor/MenuBar/EditorMenuColorSubmenu";
 import EditorMenuInput from "../components/Editor/MenuBar/EditorMenuInput";
 import NotesInput from "../components/Sidebar/controls/NotesInput";
+import SynopsisInput from "../components/Sidebar/controls/SynopsisInput";
+import NumberInput from "../components/Sidebar/controls/NumberInput";
+import ResourceRefInput from "../components/Sidebar/controls/ResourceRefInput";
 import StatusSelector from "../components/Sidebar/controls/StatusSelector";
 import MultiSelectList from "../components/Sidebar/controls/MultiSelectList";
 import POVAutocomplete from "../components/Sidebar/controls/POVAutocomplete";
@@ -19,6 +22,32 @@ describe("Sidebar Controls", () => {
     const ta = screen.getByLabelText("notes-input");
     fireEvent.change(ta, { target: { value: "hello" } });
     expect(onChange).toHaveBeenCalledWith("hello");
+  });
+
+  it.each([
+    ["NotesInput", <NotesInput key="n" ariaLabel="ta" />],
+    ["SynopsisInput", <SynopsisInput key="s" ariaLabel="ta" />],
+  ])("%s textarea is block-level", (_name, element) => {
+    // An inline-block textarea sits on the text baseline and leaves a gap
+    // below it that scales with the wrapper's font size (measured: 6.5px at
+    // 16px, 2.5px at 9px), so the two fields' heights drifted apart.
+    render(element);
+    expect(screen.getByLabelText("ta").className).toContain("block");
+  });
+
+  it.each([
+    ["POVAutocomplete", <POVAutocomplete key="p" />, "pov-input"],
+    ["NumberInput", <NumberInput key="n" label="Words" ariaLabel="ta" />, "ta"],
+    [
+      "ResourceRefInput",
+      <ResourceRefInput key="r" label="Ref" ariaLabel="ta" />,
+      "ta",
+    ],
+  ])("%s sets its own 11px size", (_name, element, aria) => {
+    // Input no longer bakes in a size (it inherits), so the sidebar's inputs,
+    // which used to inherit 11px from a wrapper class, must ask for it.
+    render(element);
+    expect(screen.getByLabelText(aria).className).toContain("text-gw-label");
   });
 
   it("StatusSelector calls onChange", () => {

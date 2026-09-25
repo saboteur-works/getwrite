@@ -147,7 +147,7 @@ export default function EntitySection(): JSX.Element | null {
           list={ENTITY_KIND_DATALIST_ID}
           aria-label="entity-kind-input"
           placeholder="e.g. character"
-          className="w-full mt-2"
+          className="w-full mt-2 text-gw-label"
           value={entityKindText}
           onChange={(e) => setEntityKindText(e.target.value)}
         />
@@ -159,9 +159,7 @@ export default function EntitySection(): JSX.Element | null {
       </LabeledField>
 
       {isEntity && (
-        <div>
-          <label className="text-gw-micro font-medium font-mono">Aliases</label>
-
+        <LabeledField label="Aliases" className="mb-4">
           {aliases.length > 0 && (
             <ul className="mt-2 flex flex-col gap-2">
               {aliases.map((alias, index) => {
@@ -197,7 +195,7 @@ export default function EntitySection(): JSX.Element | null {
                       </Button>
                     </div>
                     {warning && (
-                      <p className="text-gw-nano text-gw-secondary mt-1">
+                      <p className="text-gw-label text-gw-secondary mt-1">
                         {warning}
                       </p>
                     )}
@@ -213,7 +211,7 @@ export default function EntitySection(): JSX.Element | null {
                 type="text"
                 aria-label="new-alias-input"
                 placeholder="Add alias"
-                className="w-full"
+                className="w-full text-gw-label"
                 value={newAlias}
                 onChange={(e) => setNewAlias(e.target.value)}
                 onKeyDown={(e) => {
@@ -224,7 +222,7 @@ export default function EntitySection(): JSX.Element | null {
                 }}
               />
               {newAliasWarning && (
-                <p className="text-gw-nano text-gw-secondary mt-1">
+                <p className="text-gw-label text-gw-secondary mt-1">
                   {newAliasWarning}
                 </p>
               )}
@@ -237,7 +235,7 @@ export default function EntitySection(): JSX.Element | null {
               Add
             </Button>
           </div>
-        </div>
+        </LabeledField>
       )}
     </div>
   );

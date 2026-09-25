@@ -41,7 +41,7 @@ export default function NumberInput({
       <Input
         type="number"
         aria-label={ariaLabel}
-        className="w-full mt-2"
+        className="w-full mt-2 text-gw-label"
         value={number}
         onChange={(e) => {
           const v = e.target.value;

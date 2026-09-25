@@ -258,7 +258,12 @@ describe("RemoveEntityControl", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Remove Entity" }));
 
-    await screen.findByText(/could not be loaded/i);
+    const loadError = await screen.findByText(/could not be loaded/i);
+    // Measured: the dialog's description and checkbox label are 14px
+    // (text-sm), and other modals' inline errors are text-sm too; this message
+    // was text-gw-nano (9px).
+    expect(loadError.className).toContain("text-sm");
+    expect(loadError.className).not.toContain("text-gw-nano");
 
     expect(
       screen.queryByRole("checkbox", { name: /also delete/i }),
@@ -447,7 +452,9 @@ describe("RemoveEntityControl", () => {
 
       fireEvent.click(screen.getByText("Remove"));
 
-      await screen.findByText(/failed to remove entity/i);
+      const submitError = await screen.findByText(/failed to remove entity/i);
+      expect(submitError.className).toContain("text-sm");
+      expect(submitError.className).not.toContain("text-gw-nano");
       expect(getResource(store).entityKind).toBe("character");
       // `hidden: true` because Radix marks background content (including
       // this control's own trigger) `aria-hidden` while the dialog stays

@@ -109,7 +109,11 @@ describe("EntitiesMentionedSection", () => {
       </Provider>,
     );
 
-    expect(await screen.findByRole("status")).toBeInTheDocument();
+    const status = await screen.findByRole("status");
+    expect(status).toBeInTheDocument();
+    // 11px label size, not the 9px minimum reserved for tab labels/shortcuts.
+    expect(status.className).toContain("text-gw-label");
+    expect(status.className).not.toContain("text-gw-nano");
 
     resolveFetch({
       ok: true,

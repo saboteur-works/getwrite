@@ -190,6 +190,39 @@ describe("EntityRelationshipsSection", () => {
     ).toBeInTheDocument();
   });
 
+  it("sets hint text and edge rows at the 11px label size", async () => {
+    // Rows were text-sm (14px) and hints text-gw-nano (9px) in one panel.
+    mockedList.mockResolvedValue([
+      {
+        id: "edge-source",
+        sourceEntityId: "entity-aria",
+        targetEntityId: "entity-priya",
+        relationshipType: "ally of",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+    const store = await setupStore({ relationshipTypes: [] });
+
+    render(
+      <Provider store={store}>
+        <EntityRelationshipsRefreshProvider>
+          <EntityRelationshipsSection />
+        </EntityRelationshipsRefreshProvider>
+      </Provider>,
+    );
+
+    const hint = await screen.findByText(
+      /No relationship types are configured/i,
+    );
+    expect(hint.className).toContain("text-gw-label");
+    expect(hint.className).not.toContain("text-gw-nano");
+
+    const list = await screen.findByLabelText("entity-relationship-list");
+    const row = list.querySelector("li") as HTMLLIElement;
+    expect(row.className).toContain("text-gw-label");
+    expect(row.className).not.toContain("text-sm");
+  });
+
   it("calls create with the chosen target and type on Add, and re-fetches the edge list on success", async () => {
     mockedList.mockResolvedValue([]);
     mockedCreate.mockResolvedValue({

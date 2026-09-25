@@ -114,7 +114,7 @@ function CooccurrenceList({
   });
 
   return (
-    <div className="text-gw-nano text-gw-secondary">
+    <div className="text-gw-micro text-gw-secondary">
       <span>Also appears with: </span>
       <ul className="inline" aria-label="entity-cooccurrence-list">
         {named.map((entry, index) => (
@@ -168,7 +168,7 @@ export default function EntityMentionsSection(): JSX.Element | null {
 
   if (isLoading) {
     return (
-      <p className="text-gw-nano text-gw-secondary" role="status">
+      <p className="text-gw-label text-gw-secondary" role="status">
         Loading mentions&hellip;
       </p>
     );
@@ -217,11 +217,11 @@ export default function EntityMentionsSection(): JSX.Element | null {
                     const ambiguousWith = row.ambiguousWith[index] ?? [];
                     return (
                       <li key={index}>
-                        <p className="text-gw-nano text-gw-secondary">
+                        <p className="text-gw-micro text-gw-secondary">
                           {snippet}
                         </p>
                         {ambiguousWith.length > 0 && (
-                          <p className="text-gw-nano text-gw-secondary italic">
+                          <p className="text-gw-micro text-gw-secondary italic">
                             Ambiguous &mdash; also matches{" "}
                             {ambiguousWith.join(", ")}
                           </p>
