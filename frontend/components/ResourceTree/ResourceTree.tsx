@@ -369,9 +369,14 @@ export default function ResourceTree({
                 carrying the role from `item.getProps()`; keyboard
                 navigation is bound by `tree.getContainerProps()` on the
                 container, not by this element's tag. */}
+            {/* No `key` here. This div is not a list child — the mapped
+                child is the <ResourceContextMenu> above, which carries the
+                key. A `key` written after a prop spread also forces the
+                compiler off the static-children path, so React then
+                validates these children as a plain array and warns that the
+                chevron <button> below has no key of its own. */}
             <div
               {...item.getProps()}
-              key={item.getId()}
               onClick={(e) => handleClick(e, item)}
               className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""} ${item.isFolder() ? "text-gw-label text-gw-secondary" : ""}`}
             >

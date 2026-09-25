@@ -409,9 +409,15 @@ export async function getEntityCooccurrence(
 ): Promise<Record<string, EntityCooccurrenceEntry[]>> {
   const index = await loadMentionIndex(projectRoot);
 
-  // pairs[a][b] -> Set of resourceIds shared by a and b (a < b in insertion
-  // order, so each unordered pair is tracked exactly once before being
-  // mirrored into the final per-entity result below).
+  // pairs[a][b] -> Set of resourceIds shared by a and b, where a < b
+  // lexicographically, so each unordered pair is tracked under exactly one
+  // key before being mirrored into the final per-entity result below. The
+  // ordering has to be canonical rather than whatever order the records
+  // happen to arrive in: `MentionIndex` makes no guarantee that two
+  // resources list the same two entities in the same order, and bucketing
+  // (a, b) and (b, a) separately emitted two entries naming the same other
+  // entity — a split count, and a duplicate React key in the consuming
+  // "Also appears with" list.
   const pairs = new Map<string, Map<string, Set<string>>>();
 
   const addPair = (a: string, b: string, resourceId: string): void => {
@@ -431,7 +437,7 @@ export async function getEntityCooccurrence(
   for (const [resourceId, records] of Object.entries(index)) {
     const entityIds = Array.from(
       new Set(records.map((record) => record.entityId)),
-    );
+    ).sort();
     for (let i = 0; i < entityIds.length; i++) {
       for (let j = i + 1; j < entityIds.length; j++) {
         const a = entityIds[i];

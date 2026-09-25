@@ -310,6 +310,39 @@ describe("getEntityCooccurrence (entity-cooccurrence FR-1/FR-2/FR-3/FR-4)", () =
     ]);
   });
 
+  it("pairs two entities once when their record order differs between resources", async () => {
+    const projectRoot = await makeTmpProjectRoot();
+    const ariaId = "entity-aria";
+    const jonesId = "entity-jones";
+    const sceneOneId = "scene-1";
+    const sceneTwoId = "scene-2";
+
+    // Same two entities in both resources, but listed in the opposite order.
+    // The index makes no ordering guarantee, so a pair must be canonicalised
+    // before it is bucketed — otherwise (aria, jones) and (jones, aria) are
+    // tracked as two separate pairs and each entity gets two entries naming
+    // the same other entity, which React then renders with a duplicate key.
+    await persistMentionIndex(projectRoot, {
+      [sceneOneId]: [
+        { entityId: ariaId, resourceId: sceneOneId, count: 1, offsets: [0] },
+        { entityId: jonesId, resourceId: sceneOneId, count: 1, offsets: [20] },
+      ],
+      [sceneTwoId]: [
+        { entityId: jonesId, resourceId: sceneTwoId, count: 1, offsets: [5] },
+        { entityId: ariaId, resourceId: sceneTwoId, count: 1, offsets: [15] },
+      ],
+    });
+
+    const cooccurrence = await getEntityCooccurrence(projectRoot);
+
+    expect(cooccurrence[ariaId]).toEqual([
+      { entityId: jonesId, count: 2, resourceIds: [sceneOneId, sceneTwoId] },
+    ]);
+    expect(cooccurrence[jonesId]).toEqual([
+      { entityId: ariaId, count: 2, resourceIds: [sceneOneId, sceneTwoId] },
+    ]);
+  });
+
   it("omits an entity mentioned only in resources no other declared entity shares (done-when c, FR-4)", async () => {
     const projectRoot = await makeTmpProjectRoot();
     const ariaId = "entity-aria";
