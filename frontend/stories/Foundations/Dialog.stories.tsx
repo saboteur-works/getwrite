@@ -29,13 +29,13 @@ function DialogDemo({
   topAlign?: boolean;
   triggerLabel?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setOpen] = useState(false);
   return (
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>
         {triggerLabel}
       </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={isOpen} onOpenChange={setOpen}>
         <DialogContent maxWidth={maxWidth} topAlign={topAlign}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>

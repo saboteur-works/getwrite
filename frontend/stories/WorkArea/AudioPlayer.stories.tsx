@@ -41,7 +41,7 @@ const meta: Meta<typeof AudioPlayer> = {
   component: AudioPlayer,
   parameters: { layout: "fullscreen" },
   decorators: [
-    (Story) => (
+    (Story: () => JSX.Element) => (
       <div style={{ height: 160 }} className="bg-gw-bg">
         <Story />
       </div>
@@ -55,7 +55,7 @@ type Story = StoryObj<typeof AudioPlayer>;
 
 export const Default: Story = {
   args: { src: SAMPLE_AUDIO },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     expect(canvas.getByLabelText("Play")).toBeInTheDocument();
     expect(canvas.getByLabelText("Seek")).toBeInTheDocument();
@@ -64,7 +64,7 @@ export const Default: Story = {
 
 export const WithKnownDuration: Story = {
   args: { src: SAMPLE_AUDIO, durationSeconds: 83 },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     // Duration from the prop renders before the element loads its own metadata.
     expect(canvas.getByText("1:23")).toBeInTheDocument();
@@ -73,7 +73,7 @@ export const WithKnownDuration: Story = {
 
 export const ErrorState: Story = {
   args: { src: "/__nonexistent_audio__.mp3" },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByRole("alert")).toBeInTheDocument());
     expect(canvas.getByText("Unable to load audio.")).toBeInTheDocument();

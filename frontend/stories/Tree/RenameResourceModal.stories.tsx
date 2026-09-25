@@ -31,13 +31,13 @@ export const Open: Story = {
 
 export const Interactive: Story = {
   render: (args: React.ComponentProps<typeof RenameResourceModal>) => {
-    const [open, setOpen] = React.useState(true);
+    const [isOpen, setOpen] = React.useState(true);
     const [lastRename, setLastRename] = React.useState<string | null>(null);
     return (
       <div>
         <RenameResourceModal
           {...args}
-          isOpen={open}
+          isOpen={isOpen}
           onClose={() => setOpen(false)}
           onConfirm={(name: string) => {
             setLastRename(name);
@@ -48,7 +48,7 @@ export const Interactive: Story = {
           {lastRename}
         </div>
         <div data-testid="is-open" aria-hidden style={{ display: "none" }}>
-          {String(open)}
+          {String(isOpen)}
         </div>
       </div>
     );

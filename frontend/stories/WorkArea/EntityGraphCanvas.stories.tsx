@@ -107,7 +107,7 @@ export const Empty: Story = {
  */
 export const EdgeTooltips: Story = {
   args: { nodes, edges, onNodeActivated: () => {} },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     const nameById = new Map(nodes.map((node) => [node.entityId, node.name]));
 
@@ -190,7 +190,7 @@ export const EdgeTooltips: Story = {
  */
 export const NodeDragging: Story = {
   args: { nodes, edges, onNodeActivated: () => {} },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
 
     const nodeElements = canvas.getAllByTestId("entity-graph-node");

@@ -11,7 +11,7 @@ const meta: Meta<typeof MenuItemButton> = {
   // it bare, so axe's `aria-required-parent` here was a story artifact rather
   // than a product defect. The decorator supplies the context the app does.
   decorators: [
-    (Story) => (
+    (Story: () => JSX.Element) => (
       <div role="menu" aria-label="Example menu">
         <Story />
       </div>

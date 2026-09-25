@@ -125,7 +125,7 @@ function installAppShellFetchMock(): void {
 function AppShellAfterOpenStory(): JSX.Element {
   installAppShellFetchMock();
   const dispatch = useDispatch();
-  const [ready, setReady] = React.useState(false);
+  const [isReady, setReady] = React.useState(false);
   const seededResources = React.useMemo(buildSeededResources, []);
   const seededFolders = React.useMemo(buildSeededFolders, []);
 
@@ -209,7 +209,7 @@ function AppShellAfterOpenStory(): JSX.Element {
     setReady(true);
   }, [dispatch, seededFolders, seededResources]);
 
-  if (!ready) return <div data-testid="seeding">Seeding…</div>;
+  if (!isReady) return <div data-testid="seeding">Seeding…</div>;
 
   return (
     <div style={{ height: "100vh" }}>

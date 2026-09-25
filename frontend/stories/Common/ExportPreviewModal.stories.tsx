@@ -64,9 +64,11 @@ export const Interactive: Story = {
             setLastAction("close");
             args.onClose?.();
           }}
-          onConfirmExport={() => {
+          onConfirmExport={(format) => {
             setLastAction("export");
-            args.onConfirmExport?.();
+            // The chosen format was being dropped here, so the story's
+            // handler could never tell text from markdown.
+            args.onConfirmExport?.(format);
           }}
           onShowCompile={() => {
             setLastAction("compile");

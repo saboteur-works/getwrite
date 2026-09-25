@@ -15,7 +15,10 @@ function makeStore(rootPath: string | null) {
     preloadedState: {
       projects: {
         selectedProjectId: rootPath ? "story-proj" : null,
-        projects: rootPath
+        // Annotated rather than inferred: the conditional produced a union of
+        // two differently-shaped object literals, which does not match the
+        // slice's `Record<string, StoredProject>`.
+        projects: (rootPath
           ? {
               "story-proj": {
                 id: "story-proj",
@@ -23,7 +26,7 @@ function makeStore(rootPath: string | null) {
                 rootPath,
               } as StoredProject,
             }
-          : {},
+          : {}) as Record<string, StoredProject>,
       },
     },
   });
@@ -34,7 +37,7 @@ const meta: Meta<typeof MediaView> = {
   component: MediaView,
   parameters: { layout: "fullscreen" },
   decorators: [
-    (Story) => (
+    (Story: () => JSX.Element) => (
       <div style={{ height: 360 }} className="bg-gw-bg">
         <Story />
       </div>
@@ -59,7 +62,7 @@ export const ImageResourceView: Story = {
       />
     </Provider>
   ),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     // Image branch renders the ImageViewer (its controls toolbar is present).
     expect(
@@ -91,7 +94,7 @@ export const NoProjectOpen: Story = {
       />
     </Provider>
   ),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     expect(
       canvas.getByText("Open a project to view this media."),

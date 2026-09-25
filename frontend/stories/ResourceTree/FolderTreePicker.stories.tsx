@@ -25,7 +25,7 @@ const meta: Meta<typeof FolderTreePicker> = {
   title: "ResourceTree/FolderTreePicker",
   component: FolderTreePicker,
   decorators: [
-    (Story) => (
+    (Story: () => JSX.Element) => (
       <div style={{ width: 320, padding: 24 }}>
         <Story />
       </div>
@@ -107,7 +107,7 @@ export const NoFolders: Story = { render: () => <Interactive folders={[]} /> };
 // where react-remove-scroll blocks wheel events outside the dialog subtree.
 // Many flat folders ensure the open list overflows 12rem and must scroll.
 export const InDialog: Story = {
-  decorators: [(Story) => <Story />],
+  decorators: [(Story: () => JSX.Element) => <Story />],
   render: () => {
     const [value, setValue] = useState<string | undefined>(undefined);
     return (
@@ -138,7 +138,7 @@ export const InDialog: Story = {
 // still applies to this rootLabel variant.
 export const InDialogCustomRoot: Story = {
   name: "In Dialog (rootLabel)",
-  decorators: [(Story) => <Story />],
+  decorators: [(Story: () => JSX.Element) => <Story />],
   render: () => {
     const [value, setValue] = useState<string | undefined>(undefined);
     return (

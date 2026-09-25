@@ -28,10 +28,7 @@ const REACT_COMPILER_RULES = {
 // service. Config/setup/script files that live outside tsconfig's program are
 // parsed syntactically in a later override (see NON_PROJECT_FILES).
 const TYPE_AWARE_LANGUAGE_OPTIONS = {
-  parserOptions: {
-    projectService: true,
-    tsconfigRootDir: import.meta.dirname,
-  },
+  parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
 };
 
 // Files not covered by tsconfig.json's program: root config files, build
@@ -48,7 +45,6 @@ const eslintConfig = [
       "dist/**",
       "storybook-static/**",
       "playwright-report/**",
-      "stories/**",
       // ADR-021 Phase 2: build-native-static.mjs's generated shadow build
       // root and its static export output — neither is source, both are
       // gitignored, and the shadow root's own `.next/**` build artifacts
@@ -63,6 +59,31 @@ const eslintConfig = [
     ],
   },
   ...coreWebVitals,
+  // `stories/**` is now typechecked and linted like the rest of the source it
+  // documents (it was previously listed among the generated-output ignores
+  // above, alongside `.next/` and `dist/`, which let 77 type errors and a
+  // story whose `play` function threw a ReferenceError go unnoticed). Two
+  // rules are relaxed here, and only here, because they fire on the CSF
+  // format itself rather than on anything wrong:
+  //
+  //   - `react-hooks/rules-of-hooks`: Storybook invokes a story's `render`
+  //     as a component, but the rule only sees a lowercase function property
+  //     and reports every hook inside it. 82 such reports, none of them a
+  //     real hook-order problem. Rewriting each render body into a named
+  //     component would be a large mechanical diff across fixtures for no
+  //     behavioural gain; a genuine hook bug in a story still surfaces as a
+  //     broken story in the Storybook build and the e2e run.
+  //   - `react/no-unescaped-entities`: story fixtures are full of prose with
+  //     apostrophes and quotation marks. The rule guards against ambiguity in
+  //     shipped UI copy; these strings are sample content.
+  {
+    files: ["stories/**/*.{ts,tsx}"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+      "react/no-unescaped-entities": "off",
+    },
+  },
+
   ...nextTypescript,
   {
     languageOptions: TYPE_AWARE_LANGUAGE_OPTIONS,
@@ -108,15 +129,9 @@ const eslintConfig = [
           custom: { regex: "^I[A-Z]", match: false },
         },
         // Classes, type aliases, enums, type parameters.
-        {
-          selector: "typeLike",
-          format: ["PascalCase"],
-        },
+        { selector: "typeLike", format: ["PascalCase"] },
         // Enum members.
-        {
-          selector: "enumMember",
-          format: ["PascalCase"],
-        },
+        { selector: "enumMember", format: ["PascalCase"] },
       ],
       // Extensive pre-existing any usage; warn rather than error until
       // addressed systematically per docs/standards/typescript-implementation.md
@@ -139,12 +154,8 @@ const eslintConfig = [
   },
   {
     files: NON_PROJECT_FILES,
-    languageOptions: {
-      parserOptions: { projectService: false },
-    },
-    rules: {
-      "@typescript-eslint/naming-convention": "off",
-    },
+    languageOptions: { parserOptions: { projectService: false } },
+    rules: { "@typescript-eslint/naming-convention": "off" },
   },
 ];
 

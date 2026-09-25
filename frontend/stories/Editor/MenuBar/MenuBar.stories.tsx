@@ -203,6 +203,9 @@ const defaultState: MenuBarState = {
   textColor: "#111827",
   backgroundColor: "#fff8b3",
   fontSize: "14px",
+  // `fontFamily` was added to `MenuBarState` after this fixture was written,
+  // so the story drove the font-family control with a missing value.
+  fontFamily: "Domine",
   isDomine: true,
   getWriteParagraphLeading: "1.5",
   isInsideTable: false,
@@ -262,7 +265,7 @@ export const Interactive: Story = {
     // Create an editor double that tracks actions
     const { editor, actions } = createEditorDouble();
     const originalChain = editor.chain;
-    let previousActionCount = 0;
+    const previousActionCount = 0;
 
     const chainProxy = new Proxy(originalChain.bind(editor), {
       apply() {

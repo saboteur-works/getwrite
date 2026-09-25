@@ -1,5 +1,9 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+// This story's `play` function used `within`, `userEvent` and `waitFor`
+// without importing any of them, so it threw a ReferenceError the moment it
+// ran. `stories/` was excluded from typecheck, so nothing said so.
+import { userEvent, within, waitFor, expect } from "storybook/test";
 import ResourceContextMenu from "../../components/ResourceTree/ResourceContextMenu";
 import {
   ContextMenu,
@@ -25,7 +29,7 @@ export const Default: Story = {
     onClose: () => undefined,
     onAction: (action: string) => console.log("action", action),
   },
-  render: (args) => (
+  render: (args: React.ComponentProps<typeof ResourceContextMenu>) => (
     <ResourceContextMenu {...args}>
       <div
         style={{
@@ -40,19 +44,36 @@ export const Default: Story = {
   ),
 };
 
+/**
+ * Opened by the `play` function, not by a prop.
+ *
+ * This story passed `defaultOpen` and was named "Open", but Radix's
+ * `ContextMenu.Root` has no such prop — a context menu opens on right-click
+ * and nothing else — so the menu was never open and the story showed only its
+ * trigger. Typecheck reports the dead prop now that `stories/` is included.
+ */
 export const Open: Story = {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.pointer({
+      target: canvas.getByTestId("open-story-trigger"),
+      keys: "[MouseRight]",
+    });
+    await within(document.body).findByRole("menu");
+  },
   render: () => {
     return (
-      <ContextMenu defaultOpen>
+      <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
+            data-testid="open-story-trigger"
             style={{
               padding: 16,
               border: "1px dashed #ccc",
               cursor: "context-menu",
             }}
           >
-            Right-click here (menu pre-opened)
+            Right-click here
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="resource-context-menu">

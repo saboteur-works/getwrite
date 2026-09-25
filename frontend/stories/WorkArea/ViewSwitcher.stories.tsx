@@ -1,4 +1,5 @@
 import React from "react";
+import type { ViewName } from "../../src/lib/models/types";
 import type { Meta, StoryObj } from "@storybook/react";
 import ViewSwitcher, {
   ViewSwitcherProps,
@@ -52,9 +53,10 @@ export const DisabledTimeline: Story = {
 
 export const Interactive: Story = {
   render: () => {
-    const [view, setView] = React.useState<
-      "edit" | "organizer" | "data" | "diff" | "timeline"
-    >("edit");
+    // `ViewName` rather than a hand-copied union: the local list was written
+    // before `entityRoster`, `entityGraph` and `trash` existed, so this story
+    // could not select the three newest tabs it renders.
+    const [view, setView] = React.useState<ViewName>("edit");
     return (
       <div>
         <ViewSwitcher view={view} onChange={setView} />

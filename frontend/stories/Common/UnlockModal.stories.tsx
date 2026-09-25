@@ -61,7 +61,9 @@ export const Interactive: Story = {
     onUnlock: () => undefined,
     onDecline: () => undefined,
   },
-  render: function InteractiveStory(args) {
+  render: function InteractiveStory(
+    args: React.ComponentProps<typeof UnlockModal>,
+  ) {
     const [isOpen, setIsOpen] = React.useState(true);
     const [outcome, setOutcome] = React.useState("Awaiting a choice");
 

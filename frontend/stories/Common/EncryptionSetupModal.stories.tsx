@@ -66,7 +66,9 @@ export const Interactive: Story = {
     onConfirm: () => undefined,
     onCancel: () => undefined,
   },
-  render: function InteractiveStory(args) {
+  render: function InteractiveStory(
+    args: React.ComponentProps<typeof EncryptionSetupModal>,
+  ) {
     const [isOpen, setIsOpen] = React.useState(true);
     const [lastResult, setLastResult] = React.useState<string>("");
 

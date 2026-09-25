@@ -71,7 +71,9 @@ export const Interactive: Story = {
     needsPassphrase: true,
     onEnableEncryption: () => undefined,
   },
-  render: function InteractiveStory(args) {
+  render: function InteractiveStory(
+    args: React.ComponentProps<typeof EncryptionSettings>,
+  ) {
     const [isEncrypted, setIsEncrypted] = React.useState(false);
 
     return (

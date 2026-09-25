@@ -91,7 +91,7 @@ export const ChooseSource: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
     installDocxBridge({});
     return <ImportDocxDialog {...args} />;
   },
@@ -109,7 +109,7 @@ export const EditingNameFromDocument: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
     installDocxBridge({});
     return <ImportDocxDialog {...args} />;
   },
@@ -131,7 +131,7 @@ export const EditingNameFromFolder: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
     installDocxBridge({});
     return <ImportDocxDialog {...args} />;
   },
@@ -155,7 +155,7 @@ export const Importing: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
     installDocxBridge({ startDocxImport: neverResolvingImport });
     return <ImportDocxDialog {...args} />;
   },
@@ -186,7 +186,7 @@ export const Success: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
     installDocxBridge({
       startDocxImport: async (): Promise<DocxImportOutcome> => ({
         kind: "success",
@@ -221,7 +221,7 @@ export const RefusalNoDocxFound: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
     installDocxBridge({
       startDocxImport: async (): Promise<DocxImportOutcome> => ({
         kind: "refusal-no-docx-found",
@@ -249,7 +249,7 @@ export const RefusalDestinationNotEmpty: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
     installDocxBridge({
       startDocxImport: async (): Promise<DocxImportOutcome> => ({
         kind: "refusal-destination-not-empty",
@@ -277,7 +277,7 @@ export const RefusalUnknownProjectType: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
     installDocxBridge({
       startDocxImport: async (): Promise<DocxImportOutcome> => ({
         kind: "refusal-unknown-project-type",
@@ -305,7 +305,7 @@ export const Fatal: Story = {
     onClose: () => console.log("close"),
     onImported: (projectId: string) => console.log("imported", projectId),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
     installDocxBridge({
       startDocxImport: async (): Promise<DocxImportOutcome> => ({
         kind: "fatal",

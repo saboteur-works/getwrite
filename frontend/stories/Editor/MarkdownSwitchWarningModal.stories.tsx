@@ -78,7 +78,7 @@ export const Interactive: Story = {
     onConfirm: action("confirm-switch"),
     onCancel: action("cancel-switch"),
   },
-  render: (args) => {
+  render: (args: React.ComponentProps<typeof MarkdownSwitchWarningModal>) => {
     const [isOpen, setIsOpen] = React.useState(true);
     const [lastAction, setLastAction] = React.useState<string | null>(null);
     return (

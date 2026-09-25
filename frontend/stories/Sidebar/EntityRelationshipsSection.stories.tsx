@@ -105,9 +105,9 @@ function buildStore(aliasTable: EntityAliasTable, relationshipTypes: string[]) {
       entityAliasTable: {
         projectId: PROJECT_ID,
         table: aliasTable,
-        status: "succeeded",
+        status: "succeeded" as const,
       },
-    } as never,
+    },
   });
 }
 
