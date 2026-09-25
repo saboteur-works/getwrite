@@ -101,7 +101,7 @@ export default function EntityCompileSection(): JSX.Element | null {
   const hasCompilableResources = orderedResourceIds.length > 0;
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 mb-4">
       <Button
         type="button"
         variant="secondary"
