@@ -424,6 +424,41 @@ export async function setCanonicalRevision(
 }
 
 /**
+ * Sets or clears the `preserve` protection flag on a revision by merging it
+ * into the revision's existing `metadata` (`name` and every other key are left
+ * untouched). Works on canonical and non-canonical revisions and never changes
+ * `isCanonical`. Clearing removes the `preserve` key, so the revision reads as
+ * unprotected under the truthy check used by prune.
+ *
+ * @throws {Error} `Revision ${revisionId} not found.` when no matching
+ *   revision exists.
+ */
+export async function setRevisionPreserve(
+  projectRoot: string,
+  resourceId: string,
+  revisionId: string,
+  preserve: boolean,
+): Promise<Revision> {
+  const target = await findRevisionById(projectRoot, resourceId, revisionId);
+
+  const metadata: Record<string, unknown> = { ...(target.metadata ?? {}) };
+  if (preserve) {
+    metadata.preserve = true;
+  } else {
+    delete metadata.preserve;
+  }
+
+  const updated: Revision = { ...target, metadata };
+  const metaPath = path.join(
+    revisionDir(projectRoot, resourceId, target.versionNumber),
+    "metadata.json",
+  );
+  await writeFile(metaPath, JSON.stringify(updated, null, 2), "utf8");
+
+  return updated;
+}
+
+/**
  * Deletes a non-canonical revision.
  *
  * @throws {Error} `Revision ${revisionId} not found.` when no matching

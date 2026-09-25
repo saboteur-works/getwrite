@@ -260,3 +260,110 @@ describe("models/revision.pruneRevisions autoPrune:false with protected revision
     await removeDirRetry(tmp);
   });
 });
+
+import { setRevisionPreserve } from "../../src/lib/models/revision-core";
+
+describe("revision-core.setRevisionPreserve", () => {
+  async function fixture() {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-rev-pres-"));
+    const resourceId = generateUUID();
+    await writeRevision(tmp, resourceId, 1, "one", {
+      metadata: { name: "before the duel", note: { a: 1 } },
+    });
+    await writeRevision(tmp, resourceId, 2, "two", { isCanonical: true });
+    const revs = await listRevisions(tmp, resourceId);
+    return {
+      tmp,
+      resourceId,
+      nonCanonical: revs.find((r) => r.versionNumber === 1)!,
+      canonical: revs.find((r) => r.versionNumber === 2)!,
+    };
+  }
+
+  async function readMetaOnDisk(
+    tmp: string,
+    resourceId: string,
+    version: number,
+  ): Promise<{ metadata?: Record<string, unknown>; isCanonical: boolean }> {
+    return JSON.parse(
+      await fs.readFile(
+        path.join(
+          revisionsBaseDir(tmp, resourceId),
+          `v-${version}`,
+          "metadata.json",
+        ),
+        "utf8",
+      ),
+    );
+  }
+
+  it("protects a non-canonical revision, keeping name and other keys", async () => {
+    const { tmp, resourceId, nonCanonical } = await fixture();
+    const updated = await setRevisionPreserve(
+      tmp,
+      resourceId,
+      nonCanonical.id,
+      true,
+    );
+    expect(updated.metadata).toEqual({
+      name: "before the duel",
+      note: { a: 1 },
+      preserve: true,
+    });
+    expect(updated.isCanonical).toBe(false);
+    const onDisk = await readMetaOnDisk(tmp, resourceId, 1);
+    expect(onDisk.metadata).toEqual({
+      name: "before the duel",
+      note: { a: 1 },
+      preserve: true,
+    });
+    await removeDirRetry(tmp);
+  });
+
+  it("clearing makes the revision a prune candidate again", async () => {
+    const { tmp, resourceId, nonCanonical } = await fixture();
+    await setRevisionPreserve(tmp, resourceId, nonCanonical.id, true);
+    let revs = await listRevisions(tmp, resourceId);
+    expect(selectPruneCandidates(revs, 1)).toEqual([]);
+
+    const cleared = await setRevisionPreserve(
+      tmp,
+      resourceId,
+      nonCanonical.id,
+      false,
+    );
+    expect(cleared.metadata?.preserve).toBeFalsy();
+    expect(cleared.metadata?.name).toBe("before the duel");
+    revs = await listRevisions(tmp, resourceId);
+    expect(selectPruneCandidates(revs, 1).map((r) => r.versionNumber)).toEqual([
+      1,
+    ]);
+    const onDisk = await readMetaOnDisk(tmp, resourceId, 1);
+    expect(onDisk.metadata?.preserve).toBeFalsy();
+    expect(onDisk.metadata?.name).toBe("before the duel");
+    await removeDirRetry(tmp);
+  });
+
+  it("works on the canonical revision without changing isCanonical", async () => {
+    const { tmp, resourceId, canonical } = await fixture();
+    const updated = await setRevisionPreserve(
+      tmp,
+      resourceId,
+      canonical.id,
+      true,
+    );
+    expect(updated.isCanonical).toBe(true);
+    expect(updated.metadata?.preserve).toBe(true);
+    expect((await readMetaOnDisk(tmp, resourceId, 2)).isCanonical).toBe(true);
+    expect((await readMetaOnDisk(tmp, resourceId, 1)).isCanonical).toBe(false);
+    await removeDirRetry(tmp);
+  });
+
+  it("throws for an unknown revision id", async () => {
+    const { tmp, resourceId } = await fixture();
+    await expect(
+      setRevisionPreserve(tmp, resourceId, "nope", true),
+    ).rejects.toThrow("Revision nope not found.");
+    await removeDirRetry(tmp);
+  });
+});
