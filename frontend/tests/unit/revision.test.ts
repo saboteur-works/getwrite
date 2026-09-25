@@ -41,6 +41,7 @@ describe("models/revision", () => {
 
 import { describe as d2, it as it2, expect as expect2 } from "vitest";
 import { selectPruneCandidates } from "../../src/lib/models/revision";
+import type { Revision } from "../../src/lib/models/types";
 
 function makeRev(
   id: string,
@@ -105,6 +106,80 @@ d2("models/revision.selectPruneCandidates", () => {
   });
 });
 
+function makeProtectedRev(id: string, ver: number, canonical = false) {
+  return {
+    ...makeRev(id, ver, canonical),
+    metadata: { preserve: true },
+  } as const;
+}
+
+d2("models/revision.selectPruneCandidates protected revisions (FR-7)", () => {
+  it2(
+    "worked example: max 3, 6 revs, 2 protected, unprotected canonical -> 1 candidate",
+    () => {
+      const revs = [
+        makeProtectedRev("a", 1),
+        makeRev("b", 2),
+        makeProtectedRev("c", 3),
+        makeRev("d", 4),
+        makeRev("e", 5),
+        makeRev("f", 6, true),
+      ];
+      const candidates = selectPruneCandidates(revs, 3);
+      expect2(candidates.map((r) => r.versionNumber)).toEqual([2]);
+    },
+  );
+
+  it2("with no protected revisions, 6 revs and max 3 selects 3", () => {
+    const revs: Revision[] = [1, 2, 3, 4, 5].map((v) => makeRev(`r${v}`, v));
+    revs.push(makeRev("r6", 6, true));
+    const candidates = selectPruneCandidates(revs, 3);
+    expect2(candidates.map((r) => r.versionNumber)).toEqual([1, 2, 3]);
+  });
+
+  it2("never selects a protected revision", () => {
+    const revs = [
+      makeProtectedRev("a", 1),
+      makeProtectedRev("b", 2),
+      makeRev("c", 3),
+      makeRev("d", 4, true),
+    ];
+    const candidates = selectPruneCandidates(revs, 1);
+    expect2(candidates.map((r) => r.versionNumber)).toEqual([3]);
+  });
+
+  it2(
+    "protected canonical still counts: max 2, 5 revs -> count 3, 1 candidate",
+    () => {
+      const revs = [
+        makeProtectedRev("a", 1, true),
+        makeProtectedRev("b", 2),
+        makeProtectedRev("c", 3),
+        makeRev("d", 4),
+        makeRev("e", 5),
+      ];
+      const candidates = selectPruneCandidates(revs, 2);
+      expect2(candidates.map((r) => r.versionNumber)).toEqual([4]);
+    },
+  );
+
+  it2(
+    "protected canonical still counts: max 3, 6 revs -> count 4, 1 candidate",
+    () => {
+      const revs = [
+        makeProtectedRev("a", 1, true),
+        makeProtectedRev("b", 2),
+        makeProtectedRev("c", 3),
+        makeRev("d", 4),
+        makeRev("e", 5),
+        makeRev("f", 6),
+      ];
+      const candidates = selectPruneCandidates(revs, 3);
+      expect2(candidates.map((r) => r.versionNumber)).toEqual([4]);
+    },
+  );
+});
+
 import { setCanonicalRevision } from "../../src/lib/models/revision";
 
 describe("models/revision metadata.name persistence", () => {
@@ -122,7 +197,7 @@ describe("models/revision metadata.name persistence", () => {
       name: "before the duel",
     });
 
-    await setCanonicalRevision(tmp, resourceId, listed[0].id);
+    await setCanonicalRevision(tmp, resourceId, 1);
     const afterFlip = await listRevisions(tmp, resourceId);
     expect(afterFlip.find((r) => r.versionNumber === 1)?.metadata).toEqual({
       name: "before the duel",
@@ -145,6 +220,42 @@ describe("models/revision metadata.name persistence", () => {
 
     const deleted = await pruneRevisions(tmp, resourceId, 1);
     expect(deleted.map((d) => d.versionNumber)).toEqual([1]);
+
+    await removeDirRetry(tmp);
+  });
+});
+
+describe("models/revision.pruneRevisions autoPrune:false with protected revisions", () => {
+  it("deletes nothing when unprotected candidates cannot meet the count, and prunes when they can", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-rev-prot-"));
+    const resourceId = generateUUID();
+    await writeRevision(tmp, resourceId, 1, "one", {
+      metadata: { preserve: true },
+    });
+    await writeRevision(tmp, resourceId, 2, "two", {
+      metadata: { preserve: true },
+    });
+    await writeRevision(tmp, resourceId, 3, "three");
+    await writeRevision(tmp, resourceId, 4, "four", { isCanonical: true });
+
+    // count = 4 - 2 protected non-canonical = 2; max 2 -> nothing required.
+    expect(
+      await pruneRevisions(tmp, resourceId, 2, { autoPrune: false }),
+    ).toEqual([]);
+    expect((await listRevisions(tmp, resourceId)).length).toBe(4);
+
+    // max 1 -> required 1, candidate v3 available -> prunes it.
+    const deleted = await pruneRevisions(tmp, resourceId, 1, {
+      autoPrune: false,
+    });
+    expect(deleted.map((r) => r.versionNumber)).toEqual([3]);
+    expect((await listRevisions(tmp, resourceId)).length).toBe(3);
+
+    // max 0 -> required 2 but no candidates remain -> aborts, nothing deleted.
+    expect(
+      await pruneRevisions(tmp, resourceId, 0, { autoPrune: false }),
+    ).toEqual([]);
+    expect((await listRevisions(tmp, resourceId)).length).toBe(3);
 
     await removeDirRetry(tmp);
   });
