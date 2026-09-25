@@ -262,7 +262,7 @@ export default function RemoveEntityControl(): JSX.Element | null {
         isConfirmDisabled={isConfirmDisabled}
         details={
           loadError ? (
-            <p className="text-gw-nano text-gw-secondary" role="alert">
+            <p className="text-sm text-gw-secondary" role="alert">
               {loadError}
             </p>
           ) : (
@@ -282,7 +282,7 @@ export default function RemoveEntityControl(): JSX.Element | null {
                 </label>
               )}
               {submitError && (
-                <p className="text-gw-nano text-gw-secondary" role="alert">
+                <p className="text-sm text-gw-secondary" role="alert">
                   {submitError}
                 </p>
               )}
