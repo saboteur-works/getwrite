@@ -9,7 +9,7 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Reason: one pure function, about eight small cases, no I/O. Export a `getResourceWordCount`-style helper only if it can be shared with `DataView` without editing its existing tests; otherwise duplicate the one-line read and pin equality in a test against the same fixtures. Do not touch DataView here. A status that is absent or not a string is unset; that is all. Blank (empty or whitespace) statuses are not expected (user decision, Gate 4, 2026-09-26), so this task does not special-case them and has no test for them. Whether anything prevents a blank status from being written is unverified; a POS note titled 'Blank status values: not verified impossible' tracks verifying that nothing can write them. Amended at Gate 4 by the user, 2026-09-26.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Retired: not needed, resolved by OQ-11
 **What:** Retired: not needed, resolved by OQ-11. No load-state signal is added; loading and load failure are unreachable in `DataView` (see the source spec's OQ-11).
@@ -27,7 +27,7 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Depends on:** 1
 **Estimate:** 5
 **Notes:** Read `DataView.tsx` and `CollapsibleSection.tsx` props before coding (`title`, `children`, `defaultOpen`, `variant`, `actions`, `onToggle`); the section id derives from the slugified title, so "By status" must not collide with an existing title. Copy strings were working copy at the time of writing (user-confirmed and replaced by Task 10, Gate 6); keep them in one constants object so a wording change is one edit. Reason for 5: new component with its empty and no-statuses states plus a11y structure, edits the largest work-area view.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Feed the roll-up the FULL resource list, not the smart-folder-narrowed one (FR-17)
 **What:** Give DataView a separate prop for the full project resource list, and pass `liveResources` from AppShell, while `resources` stays the narrowed `queryResources`.
@@ -36,7 +36,7 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Depends on:** 3
 **Estimate:** 3
 **Notes:** Read AppShell.tsx and DataView props first; do not guess prop names. Task order differs from the brief's (b)/(c) listing because the smart-folder test needs the section to exist. Model the AppShell test on `tests/appShellEntityRosterGating.test.tsx`. Reason: two files of plumbing plus one integration test.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Storybook stories and axe a11y test for the section states (FR-7, FR-16)
 **What:** Add stories for empty, populated, off-list and no-statuses-configured states and an axe test over them.
@@ -45,7 +45,7 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Depends on:** 3
 **Estimate:** 3
 **Notes:** DataView stories already exist at stories/WorkArea/DataView.stories.tsx:56 and :313 (they render DataView directly with args); extend them or add a new file. Read `stories/WorkArea/DataView.stories.tsx` and `tests/a11y/collapsiblesection.a11y.test.tsx` for conventions. Story test execution needs Storybook and runs outside the sandbox (Task 8).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Wiring-level test through AppShell/DataView with mixed statuses (FR-1, FR-9, FR-10, FR-11, FR-12, FR-13, FR-17)
 **What:** Add an integration test mounting AppShell with a project whose resources carry mixed statuses and asserting the rendered roll-up.
@@ -54,7 +54,7 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Depends on:** 4
 **Estimate:** 3
 **Notes:** Lesson from Feature 59: unit tests alone missed real-app defects. The lead also exercises the running app; this test does not replace that. If the StatusSelector path is impractical to drive in jsdom, dispatch the same store update `handleChangeStatus` produces and say so in Notes.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Documentation (FR-3, FR-13, FR-15)
 **What:** Document the roll-up for users and maintainers and update the project glossary and code map if needed.
@@ -63,7 +63,7 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Depends on:** 4
 **Estimate:** 2
 **Notes:** Wording of the stale note was a working copy; it is now user-confirmed and Task 10 updates the docs to the confirmed strings. Docs must match whatever ships. Developer doc location, verified by reading docs/features/ and docs/features/data/: existing files cover data types, metadata, projects, sidecars, indexing, previews, revisions, tags, writing-log and CLI, and a grep of them finds no page documenting DataView or work-area views; docs/features/data/metadata.md documents the `status` field and `config.statuses` but is a data-model page, so a new docs/features/status-rollup.md is used and may link to it. Amended at Gate 4 by the user, 2026-09-26 (paths).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Final gate (all FRs)
 **What:** Run the full verification against baselines and record the results.
@@ -72,7 +72,7 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Depends on:** 5, 6, 7
 **Estimate:** 2
 **Notes:** Storybook and its Playwright runner fail inside the Bash sandbox; retry outside before filing a bug.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Pass the project's configured statuses to the roll-up (FR-9, FR-10, FR-11, FR-12, FR-16)
 **What:** Make the By-status roll-up receive the project's configured statuses. Measured by the exercise agent in a disposable workspace at branch 4718752f (cause not yet confirmed by a fix): for a Novel project whose project.json has `config.statuses = [Outline, Draft, Revised, Polished]`, the Data view By-status section always showed the no-statuses hint and listed every status assigned via the sidebar as "<name> (not in the current list)"; this held on first open, after reload and after reopening. `GET /api/projects` returned the statuses and the sidebar selector listed all four. The query builder's Status value dropdown offered only "select..." (observed, not investigated). Read by the lead, not run: `DataView.tsx:182` passes `statuses={project?.config?.statuses ?? []}` to `StatusRollup`; `AppShell.tsx` (~:1377) passes `project={project ?? undefined}`; the page's project shape (`app/(app)/page.tsx:99-101`) types `config?: { wordCountGoal?: number; dailyWordGoal?: number }` and builds it at :269 and :319 without `statuses`; the statuses exist in Redux (`src/store/projectsSlice.ts:138`, `statuses: project.config?.statuses ?? []`). Hypothesis, unconfirmed: the list is dropped at the page/AppShell to DataView boundary. The implementor chooses the smallest mechanism consistent with existing patterns (for example reading statuses from the Redux project via an existing selector in AppShell and passing them to DataView, or widening the page's config shape) and records the choice and why in Notes. Also check every other reader of `project.config` in DataView and other views for the same loss and report; fix only what is needed here.
@@ -81,7 +81,7 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Depends on:** 3, 4, 6
 **Estimate:** 3
 **Notes:** Reason for 3: a small plumbing fix in two or three files, but the failing-first test must build a page-shaped project and drive AppShell with a seeded store, and the audit of other `project.config` readers adds reading. Why earlier tests missed it (hypothesis, verify by reading the tests): the DataView and Task 6 wiring tests hand the component a project that already has `config.statuses` filled in, so the page-shaped project was never exercised (the same class of miss as Feature 59 Task 16). Recorded by the lead as observations, not part of this task, causes untested: the word-count jump (14 to 24 total words on the same project after a reload with no edits) and the blank-status row behaviour. Implementor records here: the mechanism chosen and why, the observed failure of the first test, the list of edited existing tests, and the audit of other `project.config` readers.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Update the status roll-up copy to the confirmed strings (FR-3, FR-14, FR-15, FR-16)
 **What:** Change the strings in the single `STATUS_ROLLUP_COPY` constants object (`frontend/components/WorkArea/StatusRollup.tsx`), plus every test, story and doc that quotes the old strings. New strings (user-confirmed at Gate 6): stale note "Word counts for some older resources may read low."; scope note "Text resources only, across the whole project. Not affected by the selected smart folder."; no-statuses hint "No statuses are configured for this project, so every resource shows under No status."; empty state "No text resources yet.". Unchanged: the "No status" row label, the "<value> (not in the current list)" off-list label, the table caption "Resources and words by status", the column headers.
@@ -90,7 +90,7 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Depends on:** 9
 **Estimate:** 2
 **Notes:** Reason for 2: string changes in one constants object plus a grep-driven sweep of tests, stories and three docs, with no logic change; the cost is the sweep and the failing-first observation. Amended at Gate 6 by the user ("I'll take your recs for the copy"), 2026-09-26; these strings replace the earlier working-copy strings, which are now user-confirmed as replaced. Rationale: (1) stale note: "plain-text revisions" is internal jargon and names a cause not verified beyond a comment in `revision-core.ts`; (2) scope note: states the scope directly rather than pointing at the Overview total; (3) no-statuses hint: the lead found no place in Project Settings to add statuses to an existing project, so the old hint may point writers to a place that does not exist. Checked by the spec manager: `ProjectSettingsDialog.tsx` `TAB_OPTIONS` lists Heading Styles, Body Text Styles, Default Revision Name, Manage Tags, Metadata, Writing Goals, and a grep for "statuses" under `SchemaManager` and `preferences` found nothing; only `project-types/ProjectTypeEditorForm.tsx` edits statuses. Not checked: the settings panels' contents and any non-grep route (not exhaustive); (4) empty state: the roll-up counts text resources only, so an images-only project would misleadingly say "No resources". Implementor records here: each edited existing test/story and the grep result. Task 8 must be re-run after this task.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 10
