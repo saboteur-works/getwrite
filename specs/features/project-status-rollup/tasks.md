@@ -74,18 +74,28 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Notes:** Storybook and its Playwright runner fail inside the Bash sandbox; retry outside before filing a bug.
 **Done:** [ ]
 
+### Task 9: Pass the project's configured statuses to the roll-up (FR-9, FR-10, FR-11, FR-12, FR-16)
+**What:** Make the By-status roll-up receive the project's configured statuses. Measured by the exercise agent in a disposable workspace at branch 4718752f (cause not yet confirmed by a fix): for a Novel project whose project.json has `config.statuses = [Outline, Draft, Revised, Polished]`, the Data view By-status section always showed the no-statuses hint and listed every status assigned via the sidebar as "<name> (not in the current list)"; this held on first open, after reload and after reopening. `GET /api/projects` returned the statuses and the sidebar selector listed all four. The query builder's Status value dropdown offered only "select..." (observed, not investigated). Read by the lead, not run: `DataView.tsx:182` passes `statuses={project?.config?.statuses ?? []}` to `StatusRollup`; `AppShell.tsx` (~:1377) passes `project={project ?? undefined}`; the page's project shape (`app/(app)/page.tsx:99-101`) types `config?: { wordCountGoal?: number; dailyWordGoal?: number }` and builds it at :269 and :319 without `statuses`; the statuses exist in Redux (`src/store/projectsSlice.ts:138`, `statuses: project.config?.statuses ?? []`). Hypothesis, unconfirmed: the list is dropped at the page/AppShell to DataView boundary. The implementor chooses the smallest mechanism consistent with existing patterns (for example reading statuses from the Redux project via an existing selector in AppShell and passing them to DataView, or widening the page's config shape) and records the choice and why in Notes. Also check every other reader of `project.config` in DataView and other views for the same loss and report; fix only what is needed here.
+**Files:** frontend/components/Layout/AppShell.tsx, frontend/components/WorkArea/DataView.tsx, frontend/app/(app)/page.tsx (only if the page shape is widened), tests (frontend/tests/appShellStatusRollup.test.tsx extended; a new failing-first test as below)
+**Done when:** a test written first FAILS on current code (observe and record the failure in Notes) and passes after: through AppShell (and/or a page-shaped project) with a project built the way `page.tsx` builds it (its `config` lacks `statuses`) while the Redux store carries statuses [Draft, Revised], the By-status rows are "Draft" and "Revised" as configured rows (not "(not in the current list)") and no no-statuses hint is shown; a project with genuinely empty statuses still shows the hint; Task 6's wiring test is extended (not weakened) to use the page-shaped project; no existing test is edited except where this task states, and every edit is listed in Notes (HALT if another existing test contradicts); `pnpm typecheck`, `pnpm lint`, full `pnpm test:ci` and `pnpm knip` (baseline 47) clean. Verification for the lead afterwards: re-exercise the running app with the Novel project.
+**Depends on:** 3, 4, 6
+**Estimate:** 3
+**Notes:** Reason for 3: a small plumbing fix in two or three files, but the failing-first test must build a page-shaped project and drive AppShell with a seeded store, and the audit of other `project.config` readers adds reading. Why earlier tests missed it (hypothesis, verify by reading the tests): the DataView and Task 6 wiring tests hand the component a project that already has `config.statuses` filled in, so the page-shaped project was never exercised (the same class of miss as Feature 59 Task 16). Recorded by the lead as observations, not part of this task, causes untested: the word-count jump (14 to 24 total words on the same project after a reload with no edits) and the blank-status row behaviour. Implementor records here: the mechanism chosen and why, the observed failure of the first test, the list of edited existing tests, and the audit of other `project.config` readers.
+**Done:** [ ]
+
 ## Summary
-- Total tasks: 8
-- Total estimated effort: 21 points (1: 3, 2: 0, 3: 5, 4: 3, 5: 3, 6: 3, 7: 2, 8: 2)
-- Active tasks: 7 (Task 2 retired in place, estimate 0)
-- Critical path: 1 -> 3 -> 4 -> 6 -> 8 (3 + 5 + 3 + 3 + 2 = 16 points)
+- Total tasks: 9
+- Total estimated effort: 24 points (1: 3, 2: 0, 3: 5, 4: 3, 5: 3, 6: 3, 7: 2, 8: 2, 9: 3)
+- Active tasks: 8 (Task 2 retired in place, estimate 0)
+- Critical path: 1 -> 3 -> 4 -> 6 -> 9 (3 + 5 + 3 + 3 + 3 = 17 points); Task 8 then re-runs as the closing gate (see Parallelism)
 - Risks: Task 3 edits the largest work-area view and must not disturb existing dataView tests. Task 4 is the trap named in FR-17: passing `queryResources` would silently make the roll-up follow smart folders. The unreachability of loading/failure in DataView (OQ-11) is high confidence on the production path (static-import grep: DataView mounts only from AppShell.tsx:1375; AppShell only from app/(app)/page.tsx:913); residual limits are that dynamic or lazy imports and test files were not checked, and that Storybook stories (DataView.stories.tsx:56, :313; AppShell.stories.tsx:22; AppShellAfterOpen.stories.tsx:216) can render DataView with any props, which is not a production concern. Amended at Gate 4 by the user, 2026-09-26. Copy strings are working copy pending user confirmation.
 - Note: the uncaught rejection from the Start page's Open button (`page.tsx:936`, `StartPage.tsx:863`) is out of scope by the user's decision; a POS follow-up is filed by the lead. The agent did not read `docs/standards/failure-visibility.md` and read only the `onClick` region of `StartPage.tsx` (medium confidence on exact UX).
 
 ## Parallelism
 - Task 1 has no dependencies and can start immediately. Task 2 is retired.
 - After Task 3: Tasks 4 and 5 can proceed in parallel (both touch DataView tests or stories; sequence if they collide on `dataView.test.tsx`).
-- After Task 4: Tasks 6 and 7 can proceed in parallel; Task 8 needs 5, 6 and 7.
+- After Task 4: Tasks 6 and 7 can proceed in parallel.
+- Task 9 needs 3, 4 and 6 (it extends Task 6's test), so it starts after Task 6 and can run in parallel with Task 7. It is appended after Task 8 and ids are not renumbered, so the schema forbids Task 8 from listing it as a dependency; Task 8 (final gate) must be run after Task 9 is done, not before.
 
 ## FR coverage
 - FR-1: 1, 3, 6
@@ -96,14 +106,14 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 - FR-6: 3 (same reason)
 - FR-7: 3, 5
 - FR-8: 1, 3
-- FR-9: 1, 6
-- FR-10: 1, 6
-- FR-11: 1, 6
-- FR-12: 1, 6
+- FR-9: 1, 6, 9
+- FR-10: 1, 6, 9
+- FR-11: 1, 6, 9
+- FR-12: 1, 6, 9
 - FR-13: 1, 3, 6, 7
 - FR-14: 3
 - FR-15: 3, 7
-- FR-16: 3, 5
+- FR-16: 3, 5, 9
 - FR-17: 4, 6
 
 ## Open Questions
