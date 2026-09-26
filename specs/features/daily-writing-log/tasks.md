@@ -134,15 +134,25 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Notes:** Record baseline counts before starting.
 **Done:** [ ]
 
+### Task 16: Fix daily-goal save using the wrong project id (FR-6)
+**What:** Make the Project Settings dialog's daily-goal save use the project's directory id, and check every other place Feature 59 passes a project id for the same mistake.
+**Files:** frontend/components/Layout/AppShell.tsx (:1119 passes `projectId={project?.id}` to ProjectSettingsDialog; other call sites at :566, :774, :886, :908, :926, :1178 use `getProjectDirectoryId(project.rootPath)`, src/store/projectsSlice.ts:858), frontend/components/Layout/ProjectSettingsDialog.tsx, frontend/components/Layout/DailyWordGoalField.tsx, frontend/tests/dailyWordGoalField.test.tsx, frontend/tests/projectSettingsDialogDailyGoal.test.tsx, a new or existing AppShell-level test
+**Done when:** a test written first FAILS on the current code and passes after the fix; it uses a project whose `id` differs from its directory basename and asserts the goal transport receives the directory id; a second test at the level that would have caught it (ProjectSettingsDialog rendered through AppShell wiring, not only the field with a mocked prop) does the same; every other Feature 59 site that passes a project id (footer GET reads, goal transport callers) is checked and the result recorded in Notes; `pnpm typecheck` and `pnpm lint` clean.
+**Depends on:** 11
+**Estimate:** 2
+**Notes:** Measured by the exercise agent (Stage 6.5): saving the goal in Project Settings > Default Revision Name showed "Failed to save daily goal: Failed to save the daily word goal (HTTP 500)."; server log `PUT /api/project/writing-log 500` with `ENOENT ... open '<workspace>/4943675f-.../project.json'` at frontend/src/lib/models/writing-log-core.ts:182; 4943675f-... is the `id` field inside project.json while the project directory name was af142f76-...; the same PUT via curl with the directory id returned 200 and wrote dailyWordGoal. The footer GET reads returned 200 with the directory id. The cause (wrong id passed at AppShell.tsx:1119) is a hypothesis until the fix is tried; the lead verified the differing call sites by reading. Why the Task 11 tests did not catch it (read, not run): tests/dailyWordGoalField.test.tsx renders `DailyWordGoalField` with the literal `projectId="p1"`, and tests/projectSettingsDialogDailyGoal.test.tsx renders `ProjectSettingsDialog` with a `projectId` argument supplied by the test itself; neither renders AppShell or derives the id from a project object, so the id AppShell computes was never exercised. Verification step (lead, not an implementor task): after the fix, re-exercise the goal save in the running app. Also observed by the exercise, NOT part of this task, unresolved, cause not established: a 0/0/0 entry logged about one second after opening a resource before any typing, and the expanded footer wrapping into cramped lines at ~1200px width.
+**Done:** [ ]
+
 ## Summary
-- Total tasks: 15
-- Total estimated effort: 49 points (was 46; Task 2 +1, Task 9 +2, reasons in their Notes)
+- Total tasks: 16
+- Total estimated effort: 51 points (was 46; Task 2 +1, Task 9 +2, reasons in their Notes; Task 16 +2, a Stage 6.5 bug fix appended after Task 15)
 - Critical path: 2 -> 3 -> 5 -> 6 -> 12 -> 13 -> 15 (Tasks 1 -> 9 -> 10 -> 11 -> 12 is comparable; Task 9 is now 5, so this second path is 1(2) + 9(5) + 10(5) + 11(3) + 12(5) = 20 points against the first path's 2(3) + 3(5) + 5(5) + 6(3) + 12(5) = 21 before Tasks 13 and 15, so 2 -> 3 -> 5 -> 6 -> 12 remains the critical path)
 - Risks: Task 5 edits the primary canonical save path and must never fail a content save because logging failed. Task 12 is the largest UI task and depends on props discovered from the existing footer. Task 1 shares schemas.ts lines with Feature 61, which must land after. Task 7 must ensure imports do not also trigger the Task 5 hook (double counting). The FR-11 diff cost is unmeasured; no benchmark task is added because a debounced per-save O(n) diff is not a suspected bottleneck.
 
 ## Parallelism
 - Tasks 1, 2 and 4 have no dependencies and can start together (1 and 2 both edit schemas.ts, so sequence them or merge carefully).
 - After 3: Tasks 5, 7 and 8 can proceed; Task 9 needs 1 and 3.
+- Task 16 needs only Task 11 (done); it was appended after Task 15 and, as a bug fix, is worked first and before re-running the Task 15 gate.
 
 ## FR coverage
 - FR-1: 2, 3, 9
@@ -150,7 +160,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 - FR-3: 2, 7
 - FR-4: 2, 3
 - FR-5: 2, 5, 6, 9, 12
-- FR-6: 1, 9, 11
+- FR-6: 1, 9, 11, 16
 - FR-7: 9, 10, 12, 13
 - FR-8: 12, 13
 - FR-9: 10
