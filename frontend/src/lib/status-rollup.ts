@@ -1,6 +1,6 @@
 import type { AnyResource } from "./models/types";
 
-export type StatusRollupRowKind = "configured" | "unknown" | "unset";
+type StatusRollupRowKind = "configured" | "unknown" | "unset";
 
 export interface StatusRollupRow {
   /** Display label. Unknown rows say, as text, that the value is not in the current list. */
@@ -10,10 +10,10 @@ export interface StatusRollupRow {
   words: number;
 }
 
-export const UNSET_STATUS_LABEL = "No status";
+const UNSET_STATUS_LABEL = "No status";
 
 /** Label for a status value present on resources but absent from `config.statuses`. */
-export function unknownStatusLabel(value: string): string {
+function unknownStatusLabel(value: string): string {
   return `${value} (not in the current list)`;
 }
 
