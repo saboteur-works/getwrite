@@ -787,7 +787,7 @@ export async function importDocxProject(
  * mention index from scratch, mirroring `cli/src/commands/reindex.ts:23-60`
  * (same as `import-scrivener-project.ts`'s own rebuild).
  */
-async function rebuildIndexes(projectRoot: string): Promise<number> {
+export async function rebuildIndexes(projectRoot: string): Promise<number> {
   const resourceIds = await listResourceIds(projectRoot);
   const plainTextById = new Map<string, string | undefined>();
 

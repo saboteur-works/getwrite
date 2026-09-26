@@ -742,7 +742,7 @@ async function scanSnapshots(
  * mention index from scratch, mirroring `cli/src/commands/reindex.ts:23-60`
  * (FR-11).
  */
-async function rebuildIndexes(projectRoot: string): Promise<number> {
+export async function rebuildIndexes(projectRoot: string): Promise<number> {
   const resourceIds = await listResourceIds(projectRoot);
   const now = new Date().toISOString();
   const plainTextById = new Map<string, string | undefined>();
