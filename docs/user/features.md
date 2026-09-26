@@ -88,7 +88,7 @@ The Organizer lays out a folder's contents as cards — text previews, image thu
 
 ### Data view
 
-The Data view gives you a high-level read on a project: how many documents it holds, its total word count, and what you've edited recently — a quick pulse-check on progress.
+The Data view gives you a high-level read on a project: how many documents it holds, its total word count, and what you've edited recently — a quick pulse-check on progress. A "By status" section breaks resources and words down by status.
 
 → [Data View](views/data.md)
 

@@ -520,3 +520,152 @@ describe("DataView collapsible sections", () => {
     expect(screen.getByText("Beta")).toBeInTheDocument();
   });
 });
+
+describe("DataView By status section", () => {
+  const now = new Date().toISOString();
+  const makeStatusResource = (
+    name: string,
+    status: string | undefined,
+    wordCount: number,
+  ): AnyResource =>
+    ({
+      id: `res-${name}`,
+      slug: name,
+      name,
+      type: "text",
+      folderId: null,
+      createdAt: now,
+      updatedAt: now,
+      orderIndex: 0,
+      userMetadata: { wordCount, ...(status !== undefined ? { status } : {}) },
+    }) as unknown as AnyResource;
+
+  const statusProject: Project = {
+    id: "proj-status",
+    name: "Status Project",
+    createdAt: now,
+    config: { statuses: ["Draft", "Final"], editorConfig: { headings: {} } },
+  };
+
+  it("renders 'By status' after Overview and before Breakdown", () => {
+    const folders = [
+      {
+        id: "f1",
+        slug: "f1",
+        name: "A",
+        type: "folder",
+        folderId: null,
+        createdAt: now,
+        orderIndex: 0,
+      },
+      {
+        id: "f2",
+        slug: "f2",
+        name: "B",
+        type: "folder",
+        folderId: null,
+        createdAt: now,
+        orderIndex: 1,
+      },
+    ] as unknown as Folder[];
+    const resources = [
+      { ...makeStatusResource("r1", "Draft", 10), folderId: "f1" },
+      { ...makeStatusResource("r2", "Final", 20), folderId: "f2" },
+    ] as AnyResource[];
+    render(
+      <DataView
+        project={statusProject}
+        resources={resources}
+        folders={folders}
+      />,
+    );
+    const order = screen
+      .getAllByRole("button", { name: /overview|by status|breakdown/i })
+      .map((b: HTMLElement) => b.textContent);
+    expect(order).toEqual([
+      "Status Project Overview",
+      "By status",
+      "Breakdown",
+    ]);
+  });
+
+  it("shows per-status count and words in a table", () => {
+    render(
+      <DataView
+        project={statusProject}
+        resources={[
+          makeStatusResource("r1", "Draft", 10),
+          makeStatusResource("r2", "Draft", 15),
+          makeStatusResource("r3", undefined, 7),
+        ]}
+      />,
+    );
+    const row = screen
+      .getByRole("rowheader", { name: "Draft" })
+      .closest("tr") as HTMLElement;
+    expect(
+      Array.from(row.querySelectorAll("td")).map((c) => c.textContent),
+    ).toEqual(["2", "25"]);
+    const rows = screen
+      .getAllByRole("rowheader")
+      .map((h: HTMLElement) => h.textContent);
+    expect(rows[rows.length - 1]).toBe("No status");
+  });
+
+  it("shows 'no resources yet' and no table when there are no resources", () => {
+    render(<DataView project={statusProject} resources={[]} />);
+    expect(screen.getByText("No text resources yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("can be collapsed", () => {
+    render(
+      <DataView
+        project={statusProject}
+        resources={[makeStatusResource("r1", "Draft", 10)]}
+      />,
+    );
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /by status/i }));
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("rolls up statusRollupResources while Overview and list follow resources", () => {
+    const narrowed = [makeStatusResource("Only", "Draft", 10)];
+    const full = [
+      makeStatusResource("Only", "Draft", 10),
+      makeStatusResource("Other1", "Final", 20),
+      makeStatusResource("Other2", "Final", 30),
+    ];
+    render(
+      <DataView
+        project={statusProject}
+        resources={narrowed}
+        statusRollupResources={full}
+      />,
+    );
+    const finalRow = screen
+      .getByRole("rowheader", { name: "Final" })
+      .closest("tr") as HTMLElement;
+    expect(
+      Array.from(finalRow.querySelectorAll("td")).map((c) => c.textContent),
+    ).toEqual(["2", "50"]);
+    expect(screen.queryByText("Other1")).toBeNull();
+    expect(screen.getAllByText("Only").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("falls back to resources for the roll-up when statusRollupResources is omitted", () => {
+    render(
+      <DataView
+        project={statusProject}
+        resources={[makeStatusResource("A", "Draft", 10)]}
+      />,
+    );
+    const row = screen
+      .getByRole("rowheader", { name: "Draft" })
+      .closest("tr") as HTMLElement;
+    expect(
+      Array.from(row.querySelectorAll("td")).map((c) => c.textContent),
+    ).toEqual(["1", "10"]);
+  });
+});
