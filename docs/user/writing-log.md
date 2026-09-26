@@ -15,12 +15,12 @@ Select **Today's writing** to expand it. It then adds Added, Deleted and Net wor
 
 ## Setting a daily goal
 
-Open **Project Settings** and use **Daily word goal**. Enter a whole number of words (0 or more), or leave it empty to clear the goal. This is separate from any total word-count goal for the project.
+Open **Project Settings** and use **Daily word goal**. It is in the **Default Revision Name** tab. Enter a whole number of words (0 or more), or leave it empty to clear the goal. After saving, the field may show the old value if you reopen Project Settings before reloading the project. This is separate from any total word-count goal for the project.
 
 ## What is counted
 
 - Each autosave of a document's current (canonical) revision adds an entry: words added, words deleted, and net (added minus deleted). Saves to other revisions are not counted.
-- Words are compared as a bag of words between the previous and new saved text. This has known blind spots: a paragraph you move counts as nothing, and a rewrite that reuses many of the same words counts fewer changes than you might expect. A word you add and delete between two saves is not counted.
+- Words are compared as a bag of words between the previous and new saved text. This has known blind spots: a paragraph you move counts as nothing, and a rewrite that reuses many of the same words counts fewer changes than you might expect. Words must match exactly, so a change in capitalization or attached punctuation counts as one word deleted and one added. A word you add and delete between two saves is not counted. An autosave that changes nothing still adds an entry, of zero.
 - A Word (docx) or Scrivener import is logged once, on the day of the import, and shown on the separate Imported line. Imported words are never counted toward your daily goal. Plain-text file import is not logged.
 - There is no backfill: writing from before this feature existed is not included.
 

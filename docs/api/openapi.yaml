@@ -676,6 +676,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "401":
+          description: Workspace/project is locked (encryption), or hosted auth is active with no valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Project has no usable key (encryption)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Unhandled failure, including a corrupt or schema-invalid day file (`WritingLogCorruptError` is not caught by the route, so there is no dedicated error body)
     put:
       summary: Set or clear the daily word goal
       description: |
@@ -707,6 +721,18 @@ paths:
                     minimum: 0
         "400":
           description: Invalid JSON, invalid projectId, or goal not a non-negative integer or null
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Workspace/project is locked (encryption), or hosted auth is active with no valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Project has no usable key (encryption)
           content:
             application/json:
               schema:
@@ -2094,11 +2120,28 @@ paths:
                   description: If provided, sets (true) or clears (false) the protected flag on the revision. Cannot be combined with `content`.
       responses:
         "200":
-          description: Updated revision
+          description: |
+            Updated revision. For an in-place canonical `content` update the body also carries
+            `updatedAt`, `snapshotCreated`, and, only when writing-log logging had trouble, a
+            `writingLog` object (see below). Absent when the save was logged normally.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Revision"
+                allOf:
+                  - $ref: "#/components/schemas/Revision"
+                  - type: object
+                    properties:
+                      writingLog:
+                        type: object
+                        description: |
+                          Feature 59. `skipped`: a marker entry was recorded instead of a word entry
+                          (previous or new content unreadable/not TipTap JSON). `markerAppendFailed`:
+                          `skipped` and the marker append itself failed. `appendFailed`: the word
+                          entry append failed; nothing was recorded. The content save still succeeded.
+                        properties:
+                          skipped: { type: boolean, enum: [true] }
+                          markerAppendFailed: { type: boolean, enum: [true] }
+                          appendFailed: { type: boolean, enum: [true] }
         "400":
           description: Invalid JSON, missing fields, non-boolean `preserve`, a body carrying both `content` and `preserve` (neither applied), or attempting to update non-canonical content in place
           content:
