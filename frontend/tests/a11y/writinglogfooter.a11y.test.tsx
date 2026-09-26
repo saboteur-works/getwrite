@@ -1,10 +1,9 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { runAxe } from "./helpers/axe";
 import WritingLogFooterDisplay from "../../components/WorkArea/WritingLogFooterDisplay";
-import { EDIT_FOOTER_EXPANDED_KEY } from "../../src/lib/edit-footer-state";
 
 vi.mock("../../src/lib/api/writing-log", () => ({
   getTodayWritingLog: vi
@@ -18,37 +17,28 @@ vi.mock("../../src/lib/api/writing-log", () => ({
 }));
 
 describe("a11y: WritingLogFooterDisplay", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-  });
-
   it("axe passes when collapsed", async () => {
     const { container } = render(<WritingLogFooterDisplay projectId="p1" />);
     await screen.findByText("Today: 550 / 1000");
     await runAxe(container);
   });
 
-  it("axe passes when expanded", async () => {
-    window.localStorage.setItem(EDIT_FOOTER_EXPANDED_KEY, "true");
-    const { container } = render(<WritingLogFooterDisplay projectId="p1" />);
+  it("axe passes with the overlay open", async () => {
+    const user = userEvent.setup();
+    render(<WritingLogFooterDisplay projectId="p1" />);
+    await screen.findByText("Today: 550 / 1000");
+    await user.click(screen.getByRole("button", { name: /today's writing/i }));
     await screen.findByText("Added: 640");
-    await runAxe(container);
+    await runAxe(document.body);
   });
 
-  it.each([["{Enter}"], [" "]])(
-    "key %j toggles and focus stays on the button",
-    async (key) => {
-      const user = userEvent.setup();
-      render(<WritingLogFooterDisplay projectId="p1" />);
-      await screen.findByText("Today: 550 / 1000");
-      const btn = screen.getByRole("button", { name: /today's writing/i });
-      btn.focus();
-      await user.keyboard(key);
-      expect(btn).toHaveAttribute("aria-expanded", "true");
-      expect(btn).toHaveFocus();
-      await user.keyboard(key);
-      expect(btn).toHaveAttribute("aria-expanded", "false");
-      expect(btn).toHaveFocus();
-    },
-  );
+  it.each([["{Enter}"], [" "]])("key %j opens the overlay", async (key) => {
+    const user = userEvent.setup();
+    render(<WritingLogFooterDisplay projectId="p1" />);
+    await screen.findByText("Today: 550 / 1000");
+    const btn = screen.getByRole("button", { name: /today's writing/i });
+    btn.focus();
+    await user.keyboard(key);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+  });
 });

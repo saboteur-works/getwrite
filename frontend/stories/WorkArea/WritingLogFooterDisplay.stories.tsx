@@ -1,22 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import WritingLogFooterDisplay from "../../components/WorkArea/WritingLogFooterDisplay";
-import { EDIT_FOOTER_EXPANDED_KEY } from "../../src/lib/edit-footer-state";
 import type { WritingLogAggregate } from "../../src/lib/api/writing-log";
 
 /**
  * `WritingLogFooterDisplay` fetches today's aggregate itself, so each story
- * stubs `globalThis.fetch` (the pattern used by `TrashView.stories.tsx`) and
- * seeds the persisted expand state; the returned function restores both.
+ * stubs `globalThis.fetch` (the pattern used by `TrashView.stories.tsx`); the
+ * returned function restores it.
  */
-function setup(aggregate: WritingLogAggregate, isExpanded: boolean) {
+function setup(aggregate: WritingLogAggregate) {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (): Promise<Response> =>
     ({ ok: true, json: async () => aggregate }) as Response;
-  window.localStorage.setItem(EDIT_FOOTER_EXPANDED_KEY, String(isExpanded));
   return () => {
     globalThis.fetch = originalFetch;
-    window.localStorage.removeItem(EDIT_FOOTER_EXPANDED_KEY);
   };
 }
 
@@ -39,33 +36,33 @@ export default meta;
 
 type Story = StoryObj<typeof WritingLogFooterDisplay>;
 
-/** Default: summary line only, details region hidden. */
+/** Default: summary line only, no overlay open. */
 export const Collapsed: Story = {
-  beforeEach: () => setup(WITH_GOAL, false),
+  beforeEach: () => setup(WITH_GOAL),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByText("Today: 550 / 1000");
-    await expect(canvas.getByRole("button")).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
+    await expect(canvas.queryByRole("dialog")).toBeNull();
   },
 };
 
-/** Details region shows added, deleted and net. */
+/** The button opens the details overlay with added, deleted and net. */
 export const Expanded: Story = {
-  beforeEach: () => setup(WITH_GOAL, true),
+  beforeEach: () => setup(WITH_GOAL),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByText("Added: 640");
-    await expect(canvas.getByText("Deleted: 90")).toBeVisible();
-    await expect(canvas.getByText("Net: 550")).toBeVisible();
+    await canvas.findByText("Today: 550 / 1000");
+    await userEvent.click(canvas.getByRole("button"));
+    const dialog = within(await within(document.body).findByRole("dialog"));
+    await dialog.findByText("Added: 640");
+    await expect(dialog.getByText("Deleted: 90")).toBeVisible();
+    await expect(dialog.getByText("Net: 550")).toBeVisible();
   },
 };
 
 /** No daily goal set: the figure is shown without a target. */
 export const NoGoal: Story = {
-  beforeEach: () => setup({ ...WITH_GOAL, goal: undefined }, false),
+  beforeEach: () => setup({ ...WITH_GOAL, goal: undefined }),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     await within(canvasElement).findByText("Today: 550");
   },
@@ -74,12 +71,12 @@ export const NoGoal: Story = {
 /** Imported words are listed separately and excluded from the goal. */
 export const ImportLine: Story = {
   beforeEach: () =>
-    setup(
-      { ...WITH_GOAL, imported: { added: 12000, deleted: 0, net: 12000 } },
-      true,
-    ),
+    setup({ ...WITH_GOAL, imported: { added: 12000, deleted: 0, net: 12000 } }),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-    await within(canvasElement).findByText(
+    const canvas = within(canvasElement);
+    await canvas.findByText("Today: 550 / 1000");
+    await userEvent.click(canvas.getByRole("button"));
+    await within(document.body).findByText(
       "Imported (not counted toward goal): 12000",
     );
   },
@@ -87,7 +84,7 @@ export const ImportLine: Story = {
 
 /** A skipped save leaves a marker: the count is flagged as possibly incomplete. */
 export const IncompleteMarker: Story = {
-  beforeEach: () => setup({ ...WITH_GOAL, incomplete: true }, false),
+  beforeEach: () => setup({ ...WITH_GOAL, incomplete: true }),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     await within(canvasElement).findByText("Today's count may be incomplete");
   },

@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 vi.mock("../../src/lib/api/writing-log", () => ({
   getTodayWritingLog: vi.fn(),
@@ -7,7 +14,6 @@ vi.mock("../../src/lib/api/writing-log", () => ({
 
 import { getTodayWritingLog } from "../../src/lib/api/writing-log";
 import WritingLogFooterDisplay from "../../components/WorkArea/WritingLogFooterDisplay";
-import { EDIT_FOOTER_EXPANDED_KEY } from "../../src/lib/edit-footer-state";
 import {
   reportWritingLogSignal,
   resetWritingLogSessionIncomplete,
@@ -37,13 +43,15 @@ afterEach(() => {
 });
 
 describe("WritingLogFooterDisplay", () => {
-  it("collapsed by default shows Today: N / G as text", async () => {
+  it("shows Today: N / G as text without opening anything", async () => {
     mocked.mockResolvedValue(aggregate());
     render(<WritingLogFooterDisplay projectId="p1" />);
     expect(await screen.findByText("Today: 420 / 1000")).toBeTruthy();
     const btn = screen.getByRole("button", { name: "Today's writing" });
     expect(btn.getAttribute("type")).toBe("button");
-    expect(btn.getAttribute("aria-expanded")).toBe("false");
+    expect(btn.hasAttribute("aria-expanded")).toBe(false);
+    expect(btn.hasAttribute("aria-controls")).toBe(false);
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByText(/Added/)).toBeNull();
   });
 
@@ -53,41 +61,115 @@ describe("WritingLogFooterDisplay", () => {
     expect(await screen.findByText("Today: 420")).toBeTruthy();
   });
 
-  it("expanded adds added/deleted/net and a separate import line", async () => {
+  it("button opens a modal with added/deleted/net, import line and goal description", async () => {
+    mocked.mockResolvedValue(aggregate());
+    render(<WritingLogFooterDisplay projectId="p1" />);
+    await screen.findByText("Today: 420 / 1000");
+    fireEvent.click(screen.getByRole("button", { name: "Today's writing" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Today's writing",
+    });
+    await within(dialog).findByText("Added: 500");
+    expect(within(dialog).getByText("Deleted: 80")).toBeTruthy();
+    expect(within(dialog).getByText("Net: 420")).toBeTruthy();
+    expect(
+      within(dialog).getByText("Imported (not counted toward goal): 3000"),
+    ).toBeTruthy();
+    expect(dialog.getAttribute("aria-describedby")).toBeTruthy();
+    expect(dialog.textContent).toContain("1000");
+    expect(within(dialog).getAllByRole("button")).toHaveLength(1);
+    expect(within(dialog).queryByRole("progressbar")).toBeNull();
+    expect(within(dialog).queryByRole("spinbutton")).toBeNull();
+  });
+
+  it("describes no goal as 'No daily goal set'", async () => {
+    mocked.mockResolvedValue(aggregate({ goal: undefined }));
+    render(<WritingLogFooterDisplay projectId="p1" />);
+    await screen.findByText("Today: 420");
+    fireEvent.click(screen.getByRole("button", { name: "Today's writing" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("No daily goal set")).toBeTruthy();
+  });
+
+  it("shows the incomplete marker inside the overlay", async () => {
+    mocked.mockResolvedValue(aggregate({ incomplete: true }));
+    render(<WritingLogFooterDisplay projectId="p1" />);
+    await screen.findByText("Today: 420 / 1000");
+    fireEvent.click(screen.getByRole("button", { name: "Today's writing" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/today's count may be incomplete/i),
+    ).toBeTruthy();
+  });
+
+  it("overlay numbers are fetched on open and frozen while open; footer stays live", async () => {
+    mocked.mockResolvedValue(aggregate());
+    const r = render(
+      <WritingLogFooterDisplay projectId="p1" refreshToken={1} />,
+    );
+    await screen.findByText("Today: 420 / 1000");
+    fireEvent.click(screen.getByRole("button", { name: "Today's writing" }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText("Net: 420");
+    mocked.mockResolvedValue(
+      aggregate({ totals: { added: 900, deleted: 80, net: 820 } }),
+    );
+    r.rerender(<WritingLogFooterDisplay projectId="p1" refreshToken={2} />);
+    await waitFor(() =>
+      expect(screen.getByText("Today: 820 / 1000")).toBeTruthy(),
+    );
+    expect(within(dialog).getByText("Net: 420")).toBeTruthy();
+    expect(within(dialog).queryByText("Net: 820")).toBeNull();
+  });
+
+  it("Esc closes and focus returns to the button", async () => {
+    const user = userEvent.setup();
     mocked.mockResolvedValue(aggregate());
     render(<WritingLogFooterDisplay projectId="p1" />);
     await screen.findByText("Today: 420 / 1000");
     const btn = screen.getByRole("button", { name: "Today's writing" });
-    fireEvent.click(btn);
-    expect(btn.getAttribute("aria-expanded")).toBe("true");
-    const region = document.getElementById(btn.getAttribute("aria-controls")!);
-    expect(region).not.toBeNull();
-    const text = region!.textContent ?? "";
-    expect(text).toContain("Added: 500");
-    expect(text).toContain("Deleted: 80");
-    expect(text).toContain("Net: 420");
-    expect(text).toContain("Imported (not counted toward goal): 3000");
+    await user.click(btn);
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(btn).toHaveFocus());
   });
 
-  it("toggling persists and a remount restores", async () => {
+  it("the close button closes the overlay", async () => {
     mocked.mockResolvedValue(aggregate());
-    const first = render(<WritingLogFooterDisplay projectId="p1" />);
+    render(<WritingLogFooterDisplay projectId="p1" />);
     await screen.findByText("Today: 420 / 1000");
     fireEvent.click(screen.getByRole("button", { name: "Today's writing" }));
-    expect(window.localStorage.getItem(EDIT_FOOTER_EXPANDED_KEY)).toBe("true");
-    first.unmount();
-    render(<WritingLogFooterDisplay projectId="p1" />);
-    const btn = await screen.findByRole("button", { name: "Today's writing" });
-    expect(btn.getAttribute("aria-expanded")).toBe("true");
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
-  it("has no Esc handler collapsing it", async () => {
+  it("button carries the exact HoverTip text", async () => {
     mocked.mockResolvedValue(aggregate());
     render(<WritingLogFooterDisplay projectId="p1" />);
     const btn = await screen.findByRole("button", { name: "Today's writing" });
-    fireEvent.click(btn);
-    fireEvent.keyDown(btn, { key: "Escape" });
-    expect(btn.getAttribute("aria-expanded")).toBe("true");
+    expect(btn.getAttribute("data-tooltip-content")).toBe(
+      "Show today's writing details",
+    );
+    expect(btn.getAttribute("data-tooltip-id")).toBeTruthy();
+  });
+
+  it("never touches localStorage", async () => {
+    const get = vi.spyOn(Storage.prototype, "getItem");
+    const set = vi.spyOn(Storage.prototype, "setItem");
+    mocked.mockResolvedValue(aggregate());
+    render(<WritingLogFooterDisplay projectId="p1" />);
+    await screen.findByText("Today: 420 / 1000");
+    fireEvent.click(screen.getByRole("button", { name: "Today's writing" }));
+    await screen.findByRole("dialog");
+    expect(get).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
+    get.mockRestore();
+    set.mockRestore();
   });
 
   it("renders the incomplete text only when the aggregate flag is set", async () => {

@@ -3,10 +3,8 @@ import {
   getTodayWritingLog,
   type WritingLogAggregate,
 } from "../../src/lib/api/writing-log";
-import {
-  getEditFooterExpanded,
-  setEditFooterExpanded,
-} from "../../src/lib/edit-footer-state";
+import { HoverTipSurface, hoverTipProps } from "../common/UI/HoverTip";
+import WritingLogDetailsDialog from "./WritingLogDetailsDialog";
 import {
   getWritingLogSessionIncomplete,
   subscribeWritingLogSessionIncomplete,
@@ -28,10 +26,10 @@ type FetchState =
   | { kind: "error" }
   | { kind: "ready"; projectId: string; aggregate: WritingLogAggregate };
 
-const REGION_ID = "editview-writing-log-details";
+const TOOLTIP_ID = "editview-writing-log-tip";
 
 /**
- * Collapsed-by-default footer disclosure for today's writing versus the daily
+ * Footer figure with a details-overlay button for today's writing versus the daily
  * goal (Feature 59, FR-7/FR-8). Neutral colour only; a failed read renders as
  * an explicit "unavailable" message, never as zero.
  */
@@ -39,9 +37,8 @@ export default function WritingLogFooterDisplay({
   projectId,
   refreshToken = null,
 }: WritingLogFooterDisplayProps): JSX.Element | null {
-  const [isExpanded, setIsExpanded] = React.useState<boolean>(() =>
-    getEditFooterExpanded(),
-  );
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = React.useState<boolean>(false);
   const [state, setState] = React.useState<FetchState>({ kind: "loading" });
   const hasSessionIncomplete = React.useSyncExternalStore(
     subscribeWritingLogSessionIncomplete,
@@ -66,12 +63,6 @@ export default function WritingLogFooterDisplay({
 
   if (!projectId) return null;
 
-  const toggle = (): void => {
-    const isNextExpanded = !isExpanded;
-    setIsExpanded(isNextExpanded);
-    setEditFooterExpanded(isNextExpanded);
-  };
-
   // A result belonging to a previously open project is treated as not yet loaded.
   const aggregate =
     state.kind === "ready" && state.projectId === projectId
@@ -94,33 +85,23 @@ export default function WritingLogFooterDisplay({
   return (
     <div className="flex items-center gap-2 text-gw-secondary text-gw-small">
       <button
+        ref={buttonRef}
         type="button"
-        aria-expanded={isExpanded}
-        aria-controls={REGION_ID}
         className="font-medium text-gw-primary hover:text-gw-secondary"
-        onClick={toggle}
+        onClick={() => setIsDetailsOpen(true)}
+        {...hoverTipProps(TOOLTIP_ID, "Show today's writing details")}
       >
         Today&apos;s writing
       </button>
+      <HoverTipSurface id={TOOLTIP_ID} />
       <span>{summary}</span>
       {isIncomplete && <span>Today&apos;s count may be incomplete</span>}
-      <div
-        id={REGION_ID}
-        role="region"
-        aria-label="Today's writing details"
-        hidden={!isExpanded}
-      >
-        {isExpanded && aggregate && (
-          <span className="flex items-center gap-3">
-            <span>Added: {aggregate.totals.added}</span>
-            <span>Deleted: {aggregate.totals.deleted}</span>
-            <span>Net: {aggregate.totals.net}</span>
-            <span>
-              Imported (not counted toward goal): {aggregate.imported.net}
-            </span>
-          </span>
-        )}
-      </div>
+      <WritingLogDetailsDialog
+        isOpen={isDetailsOpen}
+        projectId={projectId}
+        onClose={() => setIsDetailsOpen(false)}
+        returnFocusRef={buttonRef}
+      />
     </div>
   );
 }
