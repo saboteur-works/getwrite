@@ -14,8 +14,8 @@ Primary fields
 - `id` (string, optional): project identifier. Generated when omitted.
 - `name` (string): human-friendly project name.
 - `description` (string, optional): a short description used in listings.
-- `maxRevisions` (number, default 50): maximum number of revisions counted toward the cap per resource (protected non-canonical revisions are not counted). The `revision-manager` enforces this when creating revisions.
-- `autoPrune` (boolean, default true): whether to automatically prune older revisions when `maxRevisions` is exceeded.
+- `maxRevisions` (number, default 50): normalized into the project config (`project.ts`) but not read by any code path that prunes. `getwrite prune` takes `--max`; `revision-manager.ts` reads an option of the same name but has no caller outside tests. When pruning does run, protected non-canonical revisions are not counted toward the cap.
+- `autoPrune` (boolean, default true): normalized into the project config but not read anywhere. It is an option on `pruneRevisions` only (`revision.ts`); no caller passes it from config.
 - `meta` (object, optional): per-project meta options (e.g., paths or flags for previews/indexing). See examples below.
 
 Meta/Derived storage

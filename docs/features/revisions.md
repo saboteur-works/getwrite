@@ -87,6 +87,8 @@ In `revision-core.ts`. Sets `metadata.preserve = true`, or deletes the `preserve
 
 Pruning removes old revisions to enforce a `maxRevisions` cap.
 
+**When it runs.** Only from the `getwrite prune` CLI command, via `pruneExecutor.ts` (its `--max` value, default 50, is passed straight through; `project.json` is not read). The other non-test caller of `pruneRevisions`, `createRevision` in `revision-manager.ts`, has no importer outside tests, and the app's own `createRevision` (`revision-core.ts`) does not prune. No code reads `config.maxRevisions` or `config.autoPrune` to drive pruning. This describes the code as measured, not observed at runtime.
+
 ### Selection rules (`selectPruneCandidates`)
 
 Given all revisions for a resource:
@@ -121,7 +123,7 @@ See [docs/features/cli.md](./cli.md) for full CLI reference.
 The `runCli` function in `pruneExecutor.ts` orchestrates CLI-driven pruning. It:
 
 1. Reads all resource IDs from `resources/`
-2. Calls `pruneRevisions` for each with the configured `maxRevisions`
+2. Calls `pruneRevisions` for each with the `--max` value (default 50)
 3. Reports pruned counts to stdout
 
 ---

@@ -14,7 +14,7 @@ To save a named snapshot, type a name into the "Revision name" box under **Save 
 
 ## Protecting milestone revisions
 
-You can **protect** a revision so that automatic cleanup never removes it, no matter how old it gets. Use this for milestones you want to keep permanently, like a submitted draft or a finished chapter.
+You can **protect** a revision so that pruning never removes it, no matter how old it gets. Use this for milestones you want to keep permanently, like a submitted draft or a finished chapter.
 
 - Every revision card has a **Protect** button, including the canonical revision's card. Once a revision is protected, the button reads **Unprotect**. For screen readers the buttons are named "Protect revision vN" and "Unprotect revision vN".
 - A protected revision shows a **Protected** badge (shield icon plus the word "Protected", not a colour alone) beside the **Canonical** badge. A protected canonical revision shows both badges.
@@ -22,13 +22,13 @@ You can **protect** a revision so that automatic cleanup never removes it, no ma
 
 ## How old revisions are cleaned up
 
-To keep history from growing without limit, GetWrite caps how many revisions it keeps per resource. This is the **maximum revisions** setting (default 50). When a resource exceeds the cap, the oldest revisions are removed first.
+GetWrite does not prune revisions on its own today. Saving, editing, and switching revisions in the app never delete old ones, and the app has no setting for a revision limit. Old revisions are removed only when you run the `getwrite prune` command (see below), which keeps at most a **maximum** number of revisions per resource (`--max`, default 50). When a resource exceeds that number, the oldest revisions are removed first.
 
 Protected revisions do not count toward the cap, and they are never removed. The canonical revision is never removed, but it does count toward the cap, even when it is protected. Because protected revisions sit outside the cap, the total number of revisions stored for a resource has no upper limit if you keep protecting them.
 
 For example, with a maximum of 3 and 6 revisions of which 2 are protected (and the canonical one unprotected), 4 revisions count toward the cap, so the single oldest unprotected, non-canonical revision is removed.
 
-Whether cleanup happens automatically is controlled by the **auto-prune** setting. You can adjust both of these per project; see [Project Configuration](project-configuration.md).
+The `maxRevisions` and `autoPrune` fields that appear in a project's `project.json` are not currently used when pruning; the limit comes from the command's `--max` option. See [Project Configuration](project-configuration.md).
 
 ## Deleting and recovering resources (Trash)
 

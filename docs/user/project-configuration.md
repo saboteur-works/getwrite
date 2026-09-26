@@ -10,8 +10,8 @@ Common fields
 
 - `name` (required): The visible name of the project.
 - `description` (optional): Short description shown in project lists.
-- `maxRevisions` (optional, default 50): How many historical revisions to keep per resource. Set higher if you want longer history, but note disk usage will increase.
-- `autoPrune` (optional, default true): When true, the app will automatically delete oldest unprotected, non-canonical revisions once `maxRevisions` is exceeded (protected revisions do not count toward the cap).
+- `maxRevisions` (optional, default 50): Stored in `project.json`, but not currently read by anything that prunes revisions. The `getwrite prune` command takes its limit from its own `--max` option (default 50).
+- `autoPrune` (optional, default true): Stored in `project.json`, but not currently read. The app does not prune revisions automatically; see [Revisions](revisions.md).
 - `config.statuses` (optional): Array of status strings available as options for all resources in the project. Customize this to match your workflow stages.
 - `config.features` (optional): Per-project toggles for the optional built-in metadata fields and views — `timeline`, `pov`, `synopsis`, `notes`, `timelineView`, `entities`, and `entityHighlighting` (each a boolean; an absent flag means off). These are normally set through the app — the **Built-in features** section of the Metadata Fields manager and **User Preferences → Timeline view** — which keep the linked flags consistent (the Timeline view requires `timeline`, so `timelineView: true` forces `timeline: true`; `entityHighlighting`'s toggle is only shown once `entities` is on, and highlighting has no effect without it). Edit by hand only with that invariant in mind.
 - `config.organizerCardBody` (optional): What the Organizer view renders beneath each card's title. `{ "source": "none" }`, `{ "source": "text-excerpt", "excerptLength": 200 }`, or `{ "source": "field", "fieldKey": "<metadata key>" }`. Set this from **User Preferences → Organizer Card Body**.
@@ -48,7 +48,7 @@ Recommended for writers:
 Notes and tips
 
 - After changing `project.json`, re-open the project in the app or restart the app so the loader picks up changes.
-- Increasing `maxRevisions` will retain more history but increases disk usage.
+- Changing `maxRevisions` in `project.json` does not currently change how many revisions are kept; use `getwrite prune --max <n>` (see [Revisions](revisions.md)).
 - If you run into unexpected behavior after editing `project.json`, check the app logs for schema validation errors; the loader validates configuration at runtime.
 
 Advanced
@@ -59,4 +59,3 @@ Advanced
 Help
 
 - For CLI or scripting, treat `project.json` as a plain JSON file. Use `jq` or your editor to modify values.
-- If you need to bulk-change `maxRevisions` across projects, a simple script that parses JSON and rewrites files is sufficient.
