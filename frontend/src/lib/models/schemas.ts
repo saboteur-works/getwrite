@@ -674,6 +674,49 @@ export async function validateProjectTypeFile(filePath: string) {
 export type Infer<T extends z.ZodTypeAny> = z.infer<T>;
 
 /**
+ * Strict ISO 8601 instant (Feature 59). Stricter than `IsoDateString`, which
+ * accepts anything `Date.parse` does (e.g. "2026" or "Sep 26 2026").
+ */
+const StrictIsoTimestamp = z.string().datetime({ offset: true });
+
+/** Origin of a bulk word addition; absent for ordinary save-diff entries. */
+export const WritingLogSourceSchema = z.enum(["docx", "scrivener"]);
+
+/**
+ * One writing-log word entry (Feature 59, FR-1/FR-3). `net` is stored and
+ * must equal `added - deleted`.
+ */
+export const WritingLogWordEntrySchema = z
+  .object({
+    added: z.number().int().nonnegative(),
+    deleted: z.number().int().nonnegative(),
+    net: z.number().int(),
+    timestamp: StrictIsoTimestamp,
+    source: WritingLogSourceSchema.optional(),
+  })
+  .strict()
+  .refine((e) => e.net === e.added - e.deleted, {
+    message: "net must equal added minus deleted",
+    path: ["net"],
+  });
+
+/** Marker entry recording a save whose diff could not be logged (FR-5). */
+export const WritingLogMarkerEntrySchema = z
+  .object({ skipped: z.literal(true), timestamp: StrictIsoTimestamp })
+  .strict();
+
+/** Either writing-log entry variant. */
+export const WritingLogEntrySchema = z.union([
+  WritingLogWordEntrySchema,
+  WritingLogMarkerEntrySchema,
+]);
+
+/** Contents of `meta/writing-log/YYYY-MM-DD.json`. */
+export const WritingLogDayFileSchema = z.object({
+  entries: z.array(WritingLogEntrySchema),
+});
+
+/**
  * Default export for compatibility with modules expecting grouped schema access.
  */
 export default Schemas;

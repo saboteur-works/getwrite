@@ -378,5 +378,32 @@ export interface Revision {
   metadata?: Record<string, unknown>;
 }
 
+/** Origin of a bulk word addition in the writing log (Feature 59). */
+export type WritingLogSource = "docx" | "scrivener";
+
+/** Writing-log word entry; `net` always equals `added - deleted`. */
+export interface WritingLogWordEntry {
+  added: number;
+  deleted: number;
+  net: number;
+  /** ISO 8601 instant. */
+  timestamp: string;
+  source?: WritingLogSource;
+}
+
+/** Writing-log marker: a save whose diff could not be logged. */
+export interface WritingLogMarkerEntry {
+  skipped: true;
+  /** ISO 8601 instant. */
+  timestamp: string;
+}
+
+export type WritingLogEntry = WritingLogWordEntry | WritingLogMarkerEntry;
+
+/** Contents of one `meta/writing-log/YYYY-MM-DD.json` day file. */
+export interface WritingLogDayFile {
+  entries: WritingLogEntry[];
+}
+
 /** Discriminated union of all concrete resource types, keyed by `type`. */
 export type AnyResource = TextResource | ImageResource | AudioResource | Folder;
