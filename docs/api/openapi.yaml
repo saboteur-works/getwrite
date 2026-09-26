@@ -385,6 +385,30 @@ components:
         filename:
           type: string
 
+    WritingLogTotals:
+      type: object
+      required: [added, deleted, net]
+      properties:
+        added: { type: integer }
+        deleted: { type: integer }
+        net: { type: integer }
+
+    WritingLogAggregate:
+      type: object
+      required: [totals, imported, incomplete]
+      properties:
+        totals:
+          $ref: "#/components/schemas/WritingLogTotals"
+        imported:
+          $ref: "#/components/schemas/WritingLogTotals"
+        goal:
+          type: integer
+          minimum: 0
+          description: "`dailyWordGoal`; absent when none is set"
+        incomplete:
+          type: boolean
+          description: True when the window contains a skipped-save marker entry
+
     Error:
       type: object
       required: [error]
@@ -603,6 +627,86 @@ paths:
                 $ref: "#/components/schemas/Error"
         "500":
           description: Failed to update preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/project/writing-log:
+    get:
+      summary: Read the daily writing-log aggregate for a local-day window
+      description: |
+        Aggregates the project's writing log for the half-open window `[from, to)`.
+        The client sends the ISO start and end instants of its own local day; the
+        server has no timezone fallback and never uses the window as a path. The
+        window must be ISO instants, `to` after `from`, at most 26 hours long and
+        overlapping at most 3 UTC day files. A failing window is rejected, not clamped.
+        Non-import entries are summed into `totals`; entries with a `source` (imports)
+        are summed into `imported` and are excluded from any goal comparison.
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: from
+          in: query
+          required: true
+          description: ISO instant, inclusive start of the local day
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          description: ISO instant, exclusive end of the local day
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Aggregate for the window
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WritingLogAggregate"
+        "400":
+          description: Invalid projectId, or missing/malformed/unordered/over-long window
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Set or clear the daily word goal
+      description: |
+        Sets `config.dailyWordGoal` in `project.json`, or clears it when `null`.
+        Distinct from `wordCountGoal`, which is not touched.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, dailyWordGoal]
+              properties:
+                projectId:
+                  $ref: "#/components/schemas/UUID"
+                dailyWordGoal:
+                  type: [integer, "null"]
+                  minimum: 0
+      responses:
+        "200":
+          description: The stored goal (absent after a clear)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dailyWordGoal:
+                    type: integer
+                    minimum: 0
+        "400":
+          description: Invalid JSON, invalid projectId, or goal not a non-negative integer or null
           content:
             application/json:
               schema:

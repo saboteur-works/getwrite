@@ -299,6 +299,8 @@ getwrite-cli reindex [projectRoot]
 3. Recomputes backlinks across all resources and persists `meta/backlinks.json`.
 4. Rebuilds the entity mention index from scratch (declared entities detected by name/alias in every resource's prose) and persists `meta/index/mentions.json`.
 
+**Does not touch the writing log:** `reindex` does not clear or rebuild `meta/writing-log/`. The log records when words were written and cannot be rebuilt from resources, so it is left as is. See [writing-log.md](./writing-log.md).
+
 **Exit codes:** `0` = success, `2` = unexpected error
 
 **Example:**

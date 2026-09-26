@@ -16,6 +16,8 @@ Common fields
 - `config.features` (optional): Per-project toggles for the optional built-in metadata fields and views — `timeline`, `pov`, `synopsis`, `notes`, `timelineView`, `entities`, and `entityHighlighting` (each a boolean; an absent flag means off). These are normally set through the app — the **Built-in features** section of the Metadata Fields manager and **User Preferences → Timeline view** — which keep the linked flags consistent (the Timeline view requires `timeline`, so `timelineView: true` forces `timeline: true`; `entityHighlighting`'s toggle is only shown once `entities` is on, and highlighting has no effect without it). Edit by hand only with that invariant in mind.
 - `config.organizerCardBody` (optional): What the Organizer view renders beneath each card's title. `{ "source": "none" }`, `{ "source": "text-excerpt", "excerptLength": 200 }`, or `{ "source": "field", "fieldKey": "<metadata key>" }`. Set this from **User Preferences → Organizer Card Body**.
 
+- `config.dailyWordGoal` (optional): Your daily word goal, a whole number of words (0 or more). Set it in **Project Settings** ("Daily word goal") rather than by hand; clear the field to remove it. It is separate from any total word-count goal. See [Daily writing log](writing-log.md).
+
 Example with custom statuses:
 
 ```json
