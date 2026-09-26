@@ -83,12 +83,12 @@ const baseArgs: ProjectSettingsDialogProps = {
   projectId: "story-proj",
 };
 
-/** A daily writing goal is already set; the Default Revision Name tab shows it. */
+/** A daily writing goal is already set; the Writing Goals tab shows it. */
 export const WithDailyGoal: Story = {
   args: { ...baseArgs, initialDailyWordGoal: 500 },
 };
 
-/** All five tabs available; defaults to the "Heading Styles" section. */
+/** All six tabs available; defaults to the "Heading Styles" section. */
 export const Default: Story = { args: baseArgs };
 
 /**

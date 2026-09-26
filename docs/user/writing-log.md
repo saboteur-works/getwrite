@@ -15,7 +15,7 @@ Select **Today's writing** (hover it to see "Show today's writing details") to o
 
 ## Setting a daily goal
 
-Open **Project Settings** and use **Daily word goal**. It is in the **Default Revision Name** tab. Enter a whole number of words (0 or more), or leave it empty to clear the goal. After saving, the field may show the old value if you reopen Project Settings before reloading the project. This is separate from any total word-count goal for the project.
+Open **Project Settings** and use **Daily word goal**. It is in the **Writing Goals** tab. Enter a whole number of words (0 or more), or leave it empty to clear the goal. After saving, the field may show the old value if you reopen Project Settings before reloading the project. This is separate from any total word-count goal for the project.
 
 ## What is counted
 

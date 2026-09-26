@@ -80,9 +80,7 @@ async function openGoalSettings(): Promise<void> {
     screen.getByRole("button", { name: "Open project settings menu" }),
   );
   fireEvent.click(screen.getByRole("menuitem", { name: "Project Settings" }));
-  fireEvent.click(
-    await screen.findByRole("tab", { name: /Default Revision Name/i }),
-  );
+  fireEvent.click(await screen.findByRole("tab", { name: /Writing Goals/i }));
 }
 
 function saveGoal(value: string): void {

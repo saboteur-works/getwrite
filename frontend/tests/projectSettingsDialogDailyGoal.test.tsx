@@ -61,9 +61,7 @@ describe("ProjectSettingsDialog daily goal project id (Task 16)", () => {
     };
     vi.mocked(setDailyWordGoal).mockResolvedValue({ dailyWordGoal: 300 });
     renderWith(getProjectDirectoryId(project.rootPath));
-    fireEvent.click(
-      screen.getByRole("tab", { name: /Default Revision Name/i }),
-    );
+    fireEvent.click(screen.getByRole("tab", { name: /Writing Goals/i }));
     fireEvent.click(screen.getByRole("button", { name: "Save daily goal" }));
     await waitFor(() =>
       expect(setDailyWordGoal).toHaveBeenCalledWith("dir-basename-id", 300),

@@ -56,7 +56,7 @@ The aggregate (`WritingLogAggregate`) sums non-import entries into `totals`, sum
 
 Daily goal
 
-`dailyWordGoal` is an optional non-negative integer in project config (`config.dailyWordGoal`), **distinct from `wordCountGoal`**, a separate config field that is not touched when the daily goal is set or cleared. `setDailyWordGoalCore` sets it (or clears it with `null`) under `withMetaLock`. The writer sets it in Project Settings (`DailyWordGoalField.tsx`, "Daily word goal"). It is placed inside the Default Revision Name tab of Project Settings (`ProjectSettingsDialog.tsx`), not a tab of its own. The dialog's initial value comes from the app shell's loaded project config, which is not refreshed after a save, so the field's prefill can be stale until the project is reloaded; the footer reads the goal from the aggregate response, not from the shell. See [project-configuration.md](./project-configuration.md).
+`dailyWordGoal` is an optional non-negative integer in project config (`config.dailyWordGoal`), **distinct from `wordCountGoal`**, a separate config field that is not touched when the daily goal is set or cleared. `setDailyWordGoalCore` sets it (or clears it with `null`) under `withMetaLock`. The writer sets it in Project Settings (`DailyWordGoalField.tsx`, "Daily word goal"). It lives in the "Writing Goals" tab of Project Settings (`ProjectSettingsDialog.tsx`), appended last after Metadata. The dialog's initial value comes from the app shell's loaded project config, which is not refreshed after a save, so the field's prefill can be stale until the project is reloaded; the footer reads the goal from the aggregate response, not from the shell. See [project-configuration.md](./project-configuration.md).
 
 Transport and UI
 
