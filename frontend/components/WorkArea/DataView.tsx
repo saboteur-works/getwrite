@@ -6,6 +6,7 @@ import WordCountProgressBar from "./WordCountProgressBar";
 import ResourceListItem from "./ResourceListItem";
 import StubResourcesSection from "./StubResourcesSection";
 import ResourceBreakdown, { type ResourceGroup } from "./ResourceBreakdown";
+import StatusRollup from "./StatusRollup";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 
 const STUB_WORD_THRESHOLD = 50;
@@ -166,6 +167,13 @@ export default function DataView({
             <div className="text-gw-h1 font-bold">{totalWords}</div>
           </div>
         </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="By status">
+        <StatusRollup
+          resources={flatResources}
+          statuses={project?.config?.statuses ?? []}
+        />
       </CollapsibleSection>
 
       {wordCountGoal && wordCountGoal > 0 ? (
