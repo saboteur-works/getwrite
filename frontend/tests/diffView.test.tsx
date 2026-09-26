@@ -13,6 +13,7 @@ function makeRevision(overrides: Partial<RevisionEntry> = {}): RevisionEntry {
     createdAt: "2026-01-01T00:00:00Z",
     isCanonical: false,
     displayName: "Revision v1",
+    isProtected: false,
     filePath: "/path/to/content",
     metadata: {},
     ...overrides,

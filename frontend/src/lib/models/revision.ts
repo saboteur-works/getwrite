@@ -35,15 +35,35 @@ export interface PruneRevisionsOptions {
   autoPrune?: boolean;
 }
 
+/** True when the revision carries a truthy `metadata.preserve` flag. */
+function isProtected(r: Revision): boolean {
+  return Boolean((r.metadata as Record<string, unknown> | undefined)?.preserve);
+}
+
+/**
+ * Number of revisions that count toward the `maxRevisions` limit: every
+ * revision except protected non-canonical ones. A protected canonical revision
+ * still counts.
+ *
+ * @param revisions - All known revisions for a single resource.
+ * @returns The capacity-consuming revision count.
+ */
+function countTowardLimit(revisions: Revision[]): number {
+  return revisions.filter((r) => r.isCanonical || !isProtected(r)).length;
+}
+
 /**
  * Determine which revisions should be pruned when enforcing a maximum retained
  * revisions count for a resource.
  *
  * Selection rules:
- * - Excludes canonical revisions.
- * - Excludes revisions where `metadata.preserve` is truthy.
- * - Sorts remaining candidates by ascending `versionNumber`.
- * - Returns the oldest `total - maxRevisions` entries.
+ * - The count compared with `maxRevisions` is all revisions minus protected
+ *   (`metadata.preserve` truthy) non-canonical revisions; a protected canonical
+ *   revision still counts.
+ * - Canonical and protected revisions are never candidates.
+ * - Remaining candidates are sorted by ascending `versionNumber`.
+ * - Returns the oldest `count - maxRevisions` entries (fewer if not enough
+ *   candidates exist).
  *
  * @param revisions - All known revisions for a single resource.
  * @param maxRevisions - Maximum revisions to retain.
@@ -60,23 +80,14 @@ export function selectPruneCandidates(
   if (maxRevisions < 0)
     throw new RangeError("maxRevisions must be non-negative");
 
-  const total = revisions.length;
-  if (total <= maxRevisions) return [];
+  const count = countTowardLimit(revisions);
+  if (count <= maxRevisions) return [];
 
-  // Exclude canonical and preserved revisions from pruning candidates.
-  const nonCanonical = revisions.filter(
-    (r) =>
-      !r.isCanonical &&
-      !(r.metadata as Record<string, unknown> | undefined)?.preserve,
-  );
-  if (nonCanonical.length === 0) return [];
+  const eligible = revisions
+    .filter((r) => !r.isCanonical && !isProtected(r))
+    .sort((a, b) => a.versionNumber - b.versionNumber);
 
-  const sorted = [...nonCanonical].sort(
-    (a, b) => a.versionNumber - b.versionNumber,
-  );
-
-  const toRemoveCount = Math.max(0, total - maxRevisions);
-  return sorted.slice(0, toRemoveCount);
+  return eligible.slice(0, count - maxRevisions);
 }
 
 /**
@@ -258,8 +269,8 @@ export async function listRevisions(
  * filesystem directories for selected candidates and returns deleted metadata.
  *
  * If `options.autoPrune` is explicitly `false` and the required number of
- * revisions cannot be removed (because protected revisions consume capacity),
- * this function aborts and returns `[]` without deleting anything.
+ * revisions cannot be removed (too few unprotected non-canonical revisions
+ * exist to reach the limit), this function aborts and returns `[]` without deleting anything.
  *
  * @param projectRoot - Absolute path to the project root.
  * @param resourceId - Resource UUID.
@@ -284,7 +295,10 @@ export async function pruneRevisions(
   const candidates = selectPruneCandidates(revisions, maxRevisions);
   const deleted: Revision[] = [];
 
-  const requiredToRemove = Math.max(0, revisions.length - maxRevisions);
+  const requiredToRemove = Math.max(
+    0,
+    countTowardLimit(revisions) - maxRevisions,
+  );
   if (candidates.length < requiredToRemove && options?.autoPrune === false) {
     // In headless/non-autoPrune mode, abort and perform no deletions.
     return [];

@@ -63,6 +63,7 @@ function createRevisionEntry(
     filePath: `/tmp/${revisionId}.json`,
     isCanonical,
     displayName: isCanonical ? "Canonical" : "Previous",
+    isProtected: false,
   };
 }
 

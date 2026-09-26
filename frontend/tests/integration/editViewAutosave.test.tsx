@@ -61,6 +61,7 @@ function createRevisionEntry(resourceId: string): RevisionEntry {
     filePath: "/tmp/rev-canonical.json",
     isCanonical: true,
     displayName: "Canonical",
+    isProtected: false,
   };
 }
 

@@ -4,6 +4,7 @@ import {
   ChevronUp,
   History,
   Save,
+  ShieldCheck,
   Star,
   Trash2,
   View,
@@ -17,6 +18,7 @@ import {
   fetchRevisionContentForSelectedResource,
   loadRevisionsForSelectedResource,
   saveRevisionForSelectedResource,
+  setRevisionPreserveForSelectedResource,
   setCanonicalRevisionForSelectedResource,
   selectCurrentRevisionContent,
   selectCurrentRevisionId,
@@ -161,8 +163,35 @@ export default function RevisionControl() {
         }),
       ).unwrap();
       toast.success(`Deleted: ${resolveRevisionName(revisionId)}`);
-    } catch {
-      toast.error("Failed to delete revision.");
+    } catch (error) {
+      toast.error(
+        typeof error === "string" && error.trim().length > 0
+          ? error
+          : "Failed to delete revision.",
+      );
+    }
+  };
+
+  const handleTogglePreserve = async (
+    revisionId: string,
+    preserve: boolean,
+  ) => {
+    if (!project?.rootPath || !selectedResource?.id) return;
+
+    try {
+      await dispatch(
+        setRevisionPreserveForSelectedResource({
+          resourceId: selectedResource.id,
+          revisionId,
+          preserve,
+        }),
+      ).unwrap();
+    } catch (error) {
+      toast.error(
+        typeof error === "string" && error.trim().length > 0
+          ? error
+          : "Failed to update revision protection.",
+      );
     }
   };
 
@@ -291,61 +320,95 @@ export default function RevisionControl() {
                                 {new Date(revision.createdAt).toLocaleString()}
                               </p>
                             </div>
-                            {revision.isCanonical && (
-                              <span className="revision-control-badge">
-                                Canonical
-                              </span>
-                            )}
+                            <div className="flex flex-wrap items-center justify-end gap-1">
+                              {revision.isCanonical && (
+                                <span className="revision-control-badge">
+                                  Canonical
+                                </span>
+                              )}
+                              {revision.isProtected && (
+                                <span className="revision-control-protected-badge">
+                                  <ShieldCheck
+                                    className="h-3 w-3 mr-1"
+                                    aria-hidden="true"
+                                  />
+                                  Protected
+                                </span>
+                              )}
+                            </div>
                           </div>
 
-                          {!revision.isCanonical && (
-                            <div className="grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleViewRevision(revision.id)}
-                                disabled={fetchingRevisionId === revision.id}
-                                className="revision-control-action-button"
-                              >
-                                <View className="h-3 w-3 mr-2 text-gw-secondary" />
-                                {fetchingRevisionId === revision.id
-                                  ? "Loading..."
-                                  : "View Revision"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  void handleSetCanonical(revision.id)
-                                }
-                                className="revision-control-action-button"
-                              >
-                                <Star className="h-3 w-3 mr-2 text-gw-secondary" />
-                                Set as Canonical Revision
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleDeleteRevision(revision.id)
-                                }
-                                disabled={deletingRevisionId === revision.id}
-                                className="revision-control-action-button revision-control-action-button--danger"
-                              >
-                                <Trash2 className="h-3 w-3 mr-2 text-gw-red" />
-                                {deletingRevisionId === revision.id
-                                  ? "Deleting..."
-                                  : "Delete Revision"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  void handleRollbackRevision(revision.id)
-                                }
-                                className="revision-control-action-button"
-                              >
-                                <History className="h-3 w-3 mr-2 text-gw-secondary" />
-                                Roll Back to Revision
-                              </button>
-                            </div>
-                          )}
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void handleTogglePreserve(
+                                  revision.id,
+                                  !revision.isProtected,
+                                )
+                              }
+                              aria-label={`${
+                                revision.isProtected ? "Unprotect" : "Protect"
+                              } revision v${revision.versionNumber}`}
+                              className="revision-control-action-button"
+                            >
+                              <ShieldCheck
+                                className="h-3 w-3 mr-2 text-gw-secondary"
+                                aria-hidden="true"
+                              />
+                              {revision.isProtected ? "Unprotect" : "Protect"}
+                            </button>
+                            {!revision.isCanonical && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleViewRevision(revision.id)
+                                  }
+                                  disabled={fetchingRevisionId === revision.id}
+                                  className="revision-control-action-button"
+                                >
+                                  <View className="h-3 w-3 mr-2 text-gw-secondary" />
+                                  {fetchingRevisionId === revision.id
+                                    ? "Loading..."
+                                    : "View Revision"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void handleSetCanonical(revision.id)
+                                  }
+                                  className="revision-control-action-button"
+                                >
+                                  <Star className="h-3 w-3 mr-2 text-gw-secondary" />
+                                  Set as Canonical Revision
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDeleteRevision(revision.id)
+                                  }
+                                  disabled={deletingRevisionId === revision.id}
+                                  className="revision-control-action-button revision-control-action-button--danger"
+                                >
+                                  <Trash2 className="h-3 w-3 mr-2 text-gw-red" />
+                                  {deletingRevisionId === revision.id
+                                    ? "Deleting..."
+                                    : "Delete Revision"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void handleRollbackRevision(revision.id)
+                                  }
+                                  className="revision-control-action-button"
+                                >
+                                  <History className="h-3 w-3 mr-2 text-gw-secondary" />
+                                  Roll Back to Revision
+                                </button>
+                              </>
+                            )}
+                          </div>
 
                           {fetchingRevisionId === revision.id && (
                             <p className="mt-2 text-gw-small font-mono text-gw-secondary">

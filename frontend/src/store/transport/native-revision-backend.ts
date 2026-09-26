@@ -30,6 +30,7 @@ import {
   readRevision,
   resolveRevisionProjectRoot,
   setCanonicalRevision,
+  setRevisionPreserve,
   updateRevisionInPlace,
 } from "../../lib/models/revision-core";
 import type { RevisionTransport } from "../revision-transport-service";
@@ -91,6 +92,18 @@ export function createNativeRevisionTransport(
       await run(async () => {
         const projectRoot = resolveProjectRootOrThrow(context.projectId);
         await setCanonicalRevision(projectRoot, context.resourceId, revisionId);
+      });
+    },
+
+    async setPreserve(context, revisionId, preserve) {
+      return run(async () => {
+        const projectRoot = resolveProjectRootOrThrow(context.projectId);
+        return setRevisionPreserve(
+          projectRoot,
+          context.resourceId,
+          revisionId,
+          preserve,
+        );
       });
     },
 

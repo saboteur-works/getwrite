@@ -33,6 +33,7 @@ function makeRevision(
     createdAt: new Date(2026, 0, versionNumber).toISOString(),
     isCanonical,
     displayName,
+    isProtected: false,
     filePath: `/path/v${versionNumber}/content.bin`,
     metadata: {},
   };

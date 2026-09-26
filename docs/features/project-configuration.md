@@ -14,7 +14,7 @@ Primary fields
 - `id` (string, optional): project identifier. Generated when omitted.
 - `name` (string): human-friendly project name.
 - `description` (string, optional): a short description used in listings.
-- `maxRevisions` (number, default 50): maximum number of revisions retained per resource. The `revision-manager` enforces this when creating revisions.
+- `maxRevisions` (number, default 50): maximum number of revisions counted toward the cap per resource (protected non-canonical revisions are not counted). The `revision-manager` enforces this when creating revisions.
 - `autoPrune` (boolean, default true): whether to automatically prune older revisions when `maxRevisions` is exceeded.
 - `meta` (object, optional): per-project meta options (e.g., paths or flags for previews/indexing). See examples below.
 

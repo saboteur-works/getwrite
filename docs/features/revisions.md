@@ -31,17 +31,17 @@ Writes are atomic: content and metadata are first written to a temporary directo
 
 Each `metadata.json` contains a `Revision` object:
 
-| Field           | Type       | Description                                                          |
-| --------------- | ---------- | -------------------------------------------------------------------- |
-| `id`            | UUID       | Stable revision UUID (not the same as versionNumber)                 |
-| `resourceId`    | UUID       | Resource this revision belongs to                                    |
-| `versionNumber` | number     | Sequential version number                                            |
-| `createdAt`     | ISO string | When the revision was created                                        |
-| `savedAt`       | ISO string | When the metadata was last written (updated on canonical set)        |
-| `author`        | string?    | Optional author identifier                                           |
-| `filePath`      | string     | Absolute path to `content.bin`                                       |
-| `isCanonical`   | boolean    | Whether this is the currently canonical revision                     |
-| `metadata`      | object?    | Arbitrary key/value bag; `metadata.preserve = true` prevents pruning |
+| Field           | Type       | Description                                                                                                                    |
+| --------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `id`            | UUID       | Stable revision UUID (not the same as versionNumber)                                                                           |
+| `resourceId`    | UUID       | Resource this revision belongs to                                                                                              |
+| `versionNumber` | number     | Sequential version number                                                                                                      |
+| `createdAt`     | ISO string | When the revision was created                                                                                                  |
+| `savedAt`       | ISO string | When the metadata was last written (updated on canonical set)                                                                  |
+| `author`        | string?    | Optional author identifier                                                                                                     |
+| `filePath`      | string     | Absolute path to `content.bin`                                                                                                 |
+| `isCanonical`   | boolean    | Whether this is the currently canonical revision                                                                               |
+| `metadata`      | object?    | Arbitrary key/value bag; `metadata.preserve = true` protects it from pruning and deletion; `metadata.name` is the display name |
 
 ---
 
@@ -59,9 +59,27 @@ The `revision-transport-service.ts` resolves revision operations through the tra
 
 ## The `preserve` Flag
 
-Setting `metadata.preserve = true` on a revision marks it as protected. The pruning system (see below) will never select a preserved revision for deletion, regardless of how many revisions exist.
+Setting `metadata.preserve = true` on a revision marks it as protected (the UI calls this "Protected"). Protection has three effects:
 
-Use `preserve` to protect milestone revisions (e.g., submitted drafts, chapter completions) that must be retained even under aggressive `maxRevisions` settings.
+- The pruning system never selects a protected revision for deletion.
+- A protected non-canonical revision does not count toward `maxRevisions` (see Pruning), so storage per resource is unbounded if revisions keep being protected.
+- `deleteRevision` refuses to delete it (FR-10, below).
+
+Use it to protect milestone revisions (e.g., submitted drafts, chapter completions). `metadata.name` is the convention for a revision's display name (set when saving an explicit revision; `resolveRevisionDisplayName` falls back to `Revision v<N>`); setting or clearing `preserve` merges into existing `metadata` and leaves `name` and other keys untouched.
+
+### `setRevisionPreserve(projectRoot, resourceId, revisionId, preserve)`
+
+In `revision-core.ts`. Sets `metadata.preserve = true`, or deletes the `preserve` key when `preserve` is `false`, merging into the existing metadata and rewriting that revision's `metadata.json`. Works on canonical and non-canonical revisions, never changes `isCanonical`, and returns the updated `Revision`. Throws `Revision <id> not found.` for an unknown id.
+
+### Delete refusal (FR-10)
+
+`deleteRevision` throws `PROTECTED_REVISION_DELETE_MESSAGE` ("Protected revisions cannot be deleted. Unprotect it first.") when the target is protected. The DELETE route maps it to HTTP 400, and the UI shows it in the error toast.
+
+### Transport and state
+
+- `PATCH /api/resource/revision/[resource-id]` has a third mode, body `{ projectId, revisionId, preserve: boolean }`, which calls `setRevisionPreserve`. Sending both `content` and `preserve` returns 400, as does a non-boolean `preserve`. There is deliberately no generic `metadata` merge, so clients cannot write arbitrary keys such as `name`.
+- The `RevisionTransport` method is `setPreserve`; the exported wrapper in `revision-transport-service.ts` is `persistRevisionPreserve(context, revisionId, preserve)`. The native backend calls `setRevisionPreserve` directly.
+- The Redux thunk is `setRevisionPreserveForSelectedResource`; `RevisionEntry` carries `isProtected`, derived from `metadata.preserve`.
 
 ---
 
@@ -73,16 +91,19 @@ Pruning removes old revisions to enforce a `maxRevisions` cap.
 
 Given all revisions for a resource:
 
-1. Exclude canonical revisions (`isCanonical: true`)
-2. Exclude preserved revisions (`metadata.preserve: true`)
-3. Sort remaining by ascending `versionNumber` (oldest first)
-4. Return the oldest `total - maxRevisions` entries
+1. Compute the count compared with the cap: all revisions minus protected non-canonical revisions. A protected canonical revision still counts.
+2. If that count is at most `maxRevisions`, return nothing.
+3. Exclude canonical revisions (`isCanonical: true`) and protected revisions (`metadata.preserve` truthy) from the candidates
+4. Sort remaining by ascending `versionNumber` (oldest first)
+5. Return the oldest `count - maxRevisions` entries
+
+Worked example: `maxRevisions` 3, 6 revisions, 2 of them protected, canonical unprotected. The count is 6 - 2 = 4, so there is 1 prune candidate: the oldest unprotected non-canonical revision.
 
 ### `pruneRevisions(projectRoot, resourceId, maxRevisions, options)`
 
 - Calls `selectPruneCandidates` to identify deletion candidates
 - Deletes each candidate's `revisions/<resourceId>/v-<N>/` directory
-- If `options.autoPrune === false` and the required number of revisions cannot be removed (because protected revisions consume capacity), the function aborts and returns `[]` without deleting anything
+- If `options.autoPrune === false` and the required number of revisions cannot be removed (because canonical or protected revisions leave fewer eligible candidates than the count over the cap requires), the function aborts and returns `[]` without deleting anything
 - Default `maxRevisions` in the project config is `50`
 
 ### CLI pruning
@@ -107,12 +128,12 @@ The `runCli` function in `pruneExecutor.ts` orchestrates CLI-driven pruning. It:
 
 ## API Routes
 
-| Method | Path                                   | Description                               |
-| ------ | -------------------------------------- | ----------------------------------------- |
-| GET    | `/api/resource/revision/[resource-id]` | Fetch revision metadata + content         |
-| POST   | `/api/resource/revision/[resource-id]` | Save a new revision                       |
-| PATCH  | `/api/resource/revision/[resource-id]` | Set canonical or update canonical content |
-| DELETE | `/api/resource/revision/[resource-id]` | Delete a revision by UUID                 |
+| Method | Path                                   | Description                                               |
+| ------ | -------------------------------------- | --------------------------------------------------------- |
+| GET    | `/api/resource/revision/[resource-id]` | Fetch revision metadata + content                         |
+| POST   | `/api/resource/revision/[resource-id]` | Save a new revision                                       |
+| PATCH  | `/api/resource/revision/[resource-id]` | Set canonical, update content, or set/clear `preserve`    |
+| DELETE | `/api/resource/revision/[resource-id]` | Delete a revision by UUID (400 if canonical or protected) |
 
 See [docs/api/openapi.yaml](../api/openapi.yaml) for full request/response schemas.
 
@@ -151,7 +172,7 @@ A resource's revision directory under `<projectRoot>/revisions/<resourceId>/` is
 
 `purgeResource`/`purgeFolder` permanently delete a trashed item via a fixed, ordered, idempotent five-step sweep (index/backlinks/mentions removal, authored entity-relationship edges, trashed revisions, trashed sidecar + ref record, then trashed content files last) — see `PurgeSweepError`/`PurgeStepName` for how a mid-sweep failure is reported; since every step is idempotent, a retried purge simply re-runs the sweep from the top.
 
-Both restore and purge are reachable from the app's **Trash** tab, individually or as a batch (including an "Empty trash" action that purges everything). This is web/desktop only — the native Android transport (`native-trash-backend.ts`) is a stub that rejects every call, deferred as follow-up work.
+Both restore and purge are reachable from the app's **Trash** tab, individually or as a batch (including an "Empty trash" action that purges everything). The native Android transport (`native-trash-backend.ts`) is an in-process implementation over the shared `trash-core.ts` (the same core the HTTP routes call), not a stub.
 
 ---
 

@@ -1966,6 +1966,36 @@ built or merged) nor "Not started" (the work is done) — it is retired as a
 completed measurement, its finding now carried by OQ-37's resolution
 rather than by any pending implementation task.
 
+### Feature 58: Protect revision — Not started
+
+**Value:** A writer on deadline can mark a revision they never want lost as
+protected, and can undo that, so automatic pruning never deletes it — instead
+of the documented but unreachable "preserve" behaviour that no UI sets today.
+**Vertical slice:** A model function that merges metadata for one existing
+revision (setting and clearing the protected flag); an HTTP route path and a
+native transport method for it, collapsed through `createTransport` per
+ADR-021 parity (the existing `PATCH /api/resource/revision/[resource-id]`
+accepts only `{projectId, revisionId, content?}` and ignores `metadata`); the
+revisions slice, plus a protect/unprotect toggle and a protected indicator in
+`RevisionControl.tsx` (which has no such control today); a change to pruning
+behaviour in `selectPruneCandidates`
+(`frontend/src/lib/models/revision.ts:56-80`), which currently counts every
+revision toward the per-resource max-revisions cap, so that protected
+revisions are excluded from that count while the canonical revision still
+counts toward it; tests; and corrections to `docs/user/revisions.md` and
+`docs/features/revisions.md`, which today describe a control no UI provides.
+**Requirements covered:** FR-45
+**User stories:** US-9
+**Depends on:** Feature 4
+**Branch suggestion:** feat/protect-revision
+**Notes:** Not started. Decided in the parent spec (FR-45), not reopened
+here: the automatic pre-deletion snapshot is not protected by default
+(OQ-38); protected revisions are excluded from the per-resource
+max-revisions count (OQ-39); the canonical revision still counts toward the
+cap (OQ-40). Documented downside: total revision storage per resource is
+unbounded, since protected revisions never count against the cap and are
+never pruned. Its feature spec is `specs/features/protect-revision.md`.
+
 ---
 
 ## Coverage check
@@ -2017,11 +2047,12 @@ rather than by any pending implementation task.
   - FR-42: Feature 31
   - FR-43: Feature 43
   - FR-44: Feature 44
+  - FR-45: Feature 58
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 57
+- Total features: 58
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped

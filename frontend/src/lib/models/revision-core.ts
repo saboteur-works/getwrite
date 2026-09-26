@@ -424,12 +424,58 @@ export async function setCanonicalRevision(
 }
 
 /**
- * Deletes a non-canonical revision.
+ * Sets or clears the `preserve` protection flag on a revision by merging it
+ * into the revision's existing `metadata` (`name` and every other key are left
+ * untouched). Works on canonical and non-canonical revisions and never changes
+ * `isCanonical`. Clearing removes the `preserve` key, so the revision reads as
+ * unprotected under the truthy check used by prune.
+ *
+ * @throws {Error} `Revision ${revisionId} not found.` when no matching
+ *   revision exists.
+ */
+export async function setRevisionPreserve(
+  projectRoot: string,
+  resourceId: string,
+  revisionId: string,
+  preserve: boolean,
+): Promise<Revision> {
+  const target = await findRevisionById(projectRoot, resourceId, revisionId);
+
+  const metadata: Record<string, unknown> = { ...(target.metadata ?? {}) };
+  if (preserve) {
+    metadata.preserve = true;
+  } else {
+    delete metadata.preserve;
+  }
+
+  const updated: Revision = { ...target, metadata };
+  const metaPath = path.join(
+    revisionDir(projectRoot, resourceId, target.versionNumber),
+    "metadata.json",
+  );
+  await writeFile(metaPath, JSON.stringify(updated, null, 2), "utf8");
+
+  return updated;
+}
+
+/**
+ * Stable, user-readable message thrown by {@link deleteRevision} when the
+ * target revision is protected (`metadata.preserve`). Callers (e.g. the
+ * revision route) match on this exact string.
+ */
+export const PROTECTED_REVISION_DELETE_MESSAGE =
+  "Protected revisions cannot be deleted. Unprotect it first.";
+
+/**
+ * Deletes a non-canonical, unprotected revision.
  *
  * @throws {Error} `Revision ${revisionId} not found.` when no matching
  *   revision exists.
  * @throws {Error} `"Cannot delete the canonical revision; promote another
  *   revision first."` when the target revision is canonical.
+ * @throws {Error} {@link PROTECTED_REVISION_DELETE_MESSAGE} when the target
+ *   revision is protected (`metadata.preserve` is truthy). Checked after the
+ *   not-found and canonical checks; nothing is removed from disk.
  */
 export async function deleteRevision(
   projectRoot: string,
@@ -447,6 +493,10 @@ export async function deleteRevision(
     throw new Error(
       "Cannot delete the canonical revision; promote another revision first.",
     );
+  }
+
+  if (target.metadata?.preserve) {
+    throw new Error(PROTECTED_REVISION_DELETE_MESSAGE);
   }
 
   const directory = revisionDir(projectRoot, resourceId, target.versionNumber);

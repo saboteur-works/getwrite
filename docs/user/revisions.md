@@ -8,13 +8,25 @@ At any moment, exactly one revision is the **canonical** revision — the active
 
 You can view earlier revisions from the Metadata Panel. If you edit an earlier revision and save it, that version is promoted to become the newest, canonical revision. The canonical revision cannot be deleted.
 
+## Naming revisions
+
+To save a named snapshot, type a name into the "Revision name" box under **Save Explicit Revision** and choose **Save**. The name is stored with the revision (as its `metadata.name`) and shown as the heading of its card in the list of existing revisions. A revision without a name is shown as "Revision vN", where N is its version number. There is no rename action, and protecting or unprotecting a revision never changes its name or content.
+
 ## Protecting milestone revisions
 
-You can mark a revision as **preserved** to protect it — a preserved revision is never removed by automatic cleanup, no matter how old it gets. Use this for milestones you want to keep permanently, like a submitted draft or a finished chapter.
+You can **protect** a revision so that automatic cleanup never removes it, no matter how old it gets. Use this for milestones you want to keep permanently, like a submitted draft or a finished chapter.
+
+- Every revision card has a **Protect** button, including the canonical revision's card. Once a revision is protected, the button reads **Unprotect**. For screen readers the buttons are named "Protect revision vN" and "Unprotect revision vN".
+- A protected revision shows a **Protected** badge (shield icon plus the word "Protected", not a colour alone) beside the **Canonical** badge. A protected canonical revision shows both badges.
+- **Delete Revision** stays available on a protected revision's card, but it refuses: the deletion fails and a message appears saying "Protected revisions cannot be deleted. Unprotect it first." Unprotect the revision, then delete it.
 
 ## How old revisions are cleaned up
 
-To keep history from growing without limit, GetWrite caps how many revisions it keeps per resource. This is the **maximum revisions** setting (default 50). When a resource exceeds the cap, the oldest revisions are removed first — but the canonical revision and any preserved revisions are always kept.
+To keep history from growing without limit, GetWrite caps how many revisions it keeps per resource. This is the **maximum revisions** setting (default 50). When a resource exceeds the cap, the oldest revisions are removed first.
+
+Protected revisions do not count toward the cap, and they are never removed. The canonical revision is never removed, but it does count toward the cap, even when it is protected. Because protected revisions sit outside the cap, the total number of revisions stored for a resource has no upper limit if you keep protecting them.
+
+For example, with a maximum of 3 and 6 revisions of which 2 are protected (and the canonical one unprotected), 4 revisions count toward the cap, so the single oldest unprotected, non-canonical revision is removed.
 
 Whether cleanup happens automatically is controlled by the **auto-prune** setting. You can adjust both of these per project; see [Project Configuration](project-configuration.md).
 

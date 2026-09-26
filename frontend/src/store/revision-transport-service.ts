@@ -162,7 +162,13 @@ export interface RevisionTransport {
     context: RevisionRequestContext,
     revisionId: string,
   ): Promise<void>;
-  /** Deletes a non-canonical revision. */
+  /** Sets or clears a revision's protection flag; resolves the updated revision. */
+  setPreserve(
+    context: RevisionRequestContext,
+    revisionId: string,
+    preserve: boolean,
+  ): Promise<Revision>;
+  /** Deletes a non-canonical, unprotected revision. */
   delete(context: RevisionRequestContext, revisionId: string): Promise<void>;
 }
 
@@ -241,6 +247,26 @@ export const httpRevisionTransport: RevisionTransport = {
       await throwApiError(response, "Failed to set canonical revision.");
   },
 
+  async setPreserve(context, revisionId, preserve) {
+    const response = await fetch(
+      `/api/resource/revision/${context.resourceId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: context.projectId,
+          revisionId,
+          preserve,
+        }),
+      },
+    );
+
+    if (!response.ok)
+      await throwApiError(response, "Failed to update revision protection.");
+
+    return (await response.json()) as Revision;
+  },
+
   async delete(context, revisionId) {
     const response = await fetch(
       `/api/resource/revision/${context.resourceId}`,
@@ -313,4 +339,17 @@ export async function persistCanonicalRevision(
 ): Promise<void> {
   const transport = await resolveRevisionTransport();
   await transport.setCanonical(context, revisionId);
+}
+
+/**
+ * Persist a revision's protection flag (set or clear); resolves the updated
+ * revision.
+ */
+export async function persistRevisionPreserve(
+  context: RevisionRequestContext,
+  revisionId: string,
+  preserve: boolean,
+): Promise<Revision> {
+  const transport = await resolveRevisionTransport();
+  return transport.setPreserve(context, revisionId, preserve);
 }

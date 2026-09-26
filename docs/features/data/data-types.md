@@ -70,7 +70,7 @@ Revision
   - `createdAt` / `savedAt` (ISO string)
   - `author` (string | undefined)
   - `isCanonical` (boolean) — exactly one revision per resource is canonical at any time
-  - `metadata` (object | undefined) — arbitrary revision-level metadata; `metadata.preserve: true` prevents pruning
+  - `metadata` (object | undefined) — arbitrary revision-level metadata; `metadata.preserve: true` marks the revision protected: never pruned, excluded from the `maxRevisions` count unless canonical, and refused by `deleteRevision`
 
 Sidecar Metadata
 

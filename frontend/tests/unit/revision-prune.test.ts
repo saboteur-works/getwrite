@@ -55,25 +55,49 @@ describe("revision pruning algorithm (T014a)", () => {
     expect(candidates.map((r) => r.versionNumber)).toEqual([1]);
   });
 
-  it("in headless mode aborts when not enough removable revisions and autoPrune=false", async () => {
-    const projectRoot = "/proj-" + generateUUID();
-    const resourceId = generateUUID();
-
-    // create revisions 1 and 2; mark v1 preserved and no canonical available
-    await writeRevision(projectRoot, resourceId, 1, "one");
-    await writeRevision(projectRoot, resourceId, 2, "two");
-
-    // mark v1 preserved
+  /** Marks the given version as protected via its on-disk metadata. */
+  async function protectRevision(
+    projectRoot: string,
+    resourceId: string,
+    version: number,
+  ): Promise<void> {
     const base = revisionsBaseDir(projectRoot, resourceId);
-    const metaPath = path.posix.join(base, "v-1", "metadata.json");
+    const metaPath = path.posix.join(base, `v-${version}`, "metadata.json");
     const raw = await (
       await import("../../src/lib/models/io")
     ).readFile(metaPath, "utf8");
     const parsed = JSON.parse(raw);
     parsed.metadata = { preserve: true };
     await ioWriteFile(metaPath, JSON.stringify(parsed, null, 2), "utf8");
+  }
 
-    // prune to 0 with autoPrune=false should abort and delete nothing
+  // FR-7 (authorised deviation): protected non-canonical revisions do not
+  // count toward the limit, so a lone unprotected revision is removable.
+  it("in headless mode prunes an unprotected revision even when another is protected (FR-7)", async () => {
+    const projectRoot = "/proj-" + generateUUID();
+    const resourceId = generateUUID();
+    await writeRevision(projectRoot, resourceId, 1, "one");
+    await writeRevision(projectRoot, resourceId, 2, "two");
+    await protectRevision(projectRoot, resourceId, 1);
+
+    const deleted = await pruneRevisions(projectRoot, resourceId, 0, {
+      autoPrune: false,
+    });
+    expect(deleted.map((r) => r.versionNumber)).toEqual([2]);
+  });
+
+  it("in headless mode aborts when not enough removable revisions and autoPrune=false", async () => {
+    const projectRoot = "/proj-" + generateUUID();
+    const resourceId = generateUUID();
+
+    // v1 canonical (counts, never removable), v2 protected non-canonical
+    // (excluded): count 1 > max 0 but no candidate exists, so it aborts.
+    await writeRevision(projectRoot, resourceId, 1, "one", {
+      isCanonical: true,
+    });
+    await writeRevision(projectRoot, resourceId, 2, "two");
+    await protectRevision(projectRoot, resourceId, 2);
+
     const deleted = await pruneRevisions(projectRoot, resourceId, 0, {
       autoPrune: false,
     });

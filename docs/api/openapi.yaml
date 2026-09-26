@@ -1951,13 +1951,19 @@ paths:
                 $ref: "#/components/schemas/Error"
 
     patch:
-      summary: Set canonical revision or update canonical content
+      summary: Set canonical revision, update canonical content, or set protection
       description: |
-        Two behaviors depending on body:
-        - When `content` is absent: marks the revision identified by `revisionId` as canonical
-          (unmarks all others for the same resource).
+        Three behaviors depending on body:
+        - When neither `content` nor `preserve` is present: marks the revision identified by
+          `revisionId` as canonical (unmarks all others for the same resource).
         - When `content` is provided: updates `content.bin` in-place for the already-canonical
           revision (only allowed if the revision is already canonical) and bumps the sidecar `updatedAt`.
+        - When `preserve` is provided (boolean): sets or clears the protected flag on the revision
+          identified by `revisionId`. This mode changes only that flag (no generic metadata merge).
+          A protected revision cannot be deleted and is excluded from the prune cap count.
+
+        A body carrying both `content` and `preserve` is rejected with 400 and neither is applied.
+        A non-boolean `preserve` is rejected with 400.
       parameters:
         - name: resource-id
           in: path
@@ -1978,16 +1984,19 @@ paths:
                   $ref: "#/components/schemas/UUID"
                 content:
                   type: string
-                  description: If provided, updates content.bin in-place (canonical revision only)
+                  description: If provided, updates content.bin in-place (canonical revision only). Cannot be combined with `preserve`.
+                preserve:
+                  type: boolean
+                  description: If provided, sets (true) or clears (false) the protected flag on the revision. Cannot be combined with `content`.
       responses:
         "200":
-          description: Updated canonical revision
+          description: Updated revision
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Revision"
         "400":
-          description: Invalid JSON, missing fields, or attempting to update non-canonical content in place
+          description: Invalid JSON, missing fields, non-boolean `preserve`, a body carrying both `content` and `preserve` (neither applied), or attempting to update non-canonical content in place
           content:
             application/json:
               schema:
@@ -2009,7 +2018,8 @@ paths:
       summary: Delete a revision
       description: |
         Removes the revision directory `revisions/<resourceId>/v-<version>/` for the
-        revision identified by `revisionId`. The canonical revision cannot be deleted.
+        revision identified by `revisionId`. The canonical revision cannot be deleted, and a
+        protected revision (see `preserve` on PATCH) cannot be deleted either; both return 400.
         Returns the deleted revision's metadata.
       parameters:
         - name: resource-id
@@ -2037,7 +2047,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Revision"
         "400":
-          description: Invalid JSON, missing fields, or attempting to delete the canonical revision
+          description: Invalid JSON, missing fields, or attempting to delete the canonical revision or a protected revision
           content:
             application/json:
               schema:

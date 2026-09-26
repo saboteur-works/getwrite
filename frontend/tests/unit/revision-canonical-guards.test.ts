@@ -26,6 +26,7 @@ function createRevisionEntry(overrides: Partial<RevisionEntry>): RevisionEntry {
     filePath: `/tmp/${revisionId}.json`,
     isCanonical: false,
     displayName: `Revision v${versionNumber}`,
+    isProtected: false,
     ...overrides,
   };
 }
