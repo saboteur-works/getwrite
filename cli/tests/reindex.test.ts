@@ -14,6 +14,55 @@ describe("reindex command — registration", () => {
   });
 });
 
+describe("reindex command — writing log preservation (FR-12)", () => {
+  let tmpDir: string;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-reindex-log-"));
+    exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation((() => undefined) as never);
+  });
+
+  afterEach(async () => {
+    exitSpy.mockRestore();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("leaves meta/writing-log day files byte-identical", async () => {
+    const resourceId = "44444444-5555-4666-8777-888888888888";
+    const resourceDir = path.join(tmpDir, "resources", resourceId);
+    await fs.mkdir(resourceDir, { recursive: true });
+    await fs.writeFile(path.join(resourceDir, "content.txt"), "some prose");
+
+    const { appendWritingLogEntry } =
+      await import("../../frontend/src/lib/models/writing-log");
+    await appendWritingLogEntry(
+      tmpDir,
+      { added: 12, deleted: 3 },
+      "2026-09-20T10:00:00.000Z",
+    );
+    const dayFile = path.join(tmpDir, "meta", "writing-log", "2026-09-20.json");
+    const before = await fs.readFile(dayFile);
+
+    const program = new Command();
+    registerReindex(program);
+    process.env.GETWRITE_CLI_TESTING = "1";
+    try {
+      await program.parseAsync(["node", "test", "reindex", tmpDir]);
+    } finally {
+      delete process.env.GETWRITE_CLI_TESTING;
+    }
+
+    // Reindex really ran (it wrote its own output)...
+    await fs.access(path.join(tmpDir, "meta", "index", "inverted.json"));
+    // ...and left the log alone.
+    const after = await fs.readFile(dayFile);
+    expect(after.equals(before)).toBe(true);
+  });
+});
+
 describe("reindex command — functional", () => {
   let tmpDir: string;
   let exitSpy: ReturnType<typeof vi.spyOn>;
