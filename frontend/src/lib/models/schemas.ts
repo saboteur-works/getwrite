@@ -235,6 +235,7 @@ export const OrganizerCardBodyConfigSchema = z.object({
 export const ProjectConfigSchema = z.object({
   maxRevisions: z.number().int().nonnegative().optional(),
   wordCountGoal: z.number().int().nonnegative().optional(),
+  dailyWordGoal: z.number().int().nonnegative().optional(),
   statuses: z.array(z.string()).optional(),
   relationshipTypes: z.array(z.string()).optional(),
   autoPrune: z.boolean().optional(),

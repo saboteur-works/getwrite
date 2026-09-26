@@ -93,6 +93,8 @@ export interface ProjectConfig {
   maxRevisions?: number;
   /** Target word count for the project (e.g. 80000 for a novel). */
   wordCountGoal?: number;
+  /** Target net words per day (Feature 59). Unset means no daily goal. */
+  dailyWordGoal?: number;
   /** Custom status values available to the project (e.g., ["Draft","Complete"]). */
   statuses?: string[];
   /** Custom relationship-type values available to the project (e.g., ["ally of","rival of"]). */

@@ -11,6 +11,7 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
   return {
     maxRevisions: config?.maxRevisions ?? 50,
     wordCountGoal: config?.wordCountGoal,
+    dailyWordGoal: config?.dailyWordGoal,
     statuses: config?.statuses ?? [],
     // Left undefined (not defaulted to []) when absent, unlike `statuses`:
     // FR-18's DEFAULT_RELATIONSHIP_TYPES fallback is applied at read time by

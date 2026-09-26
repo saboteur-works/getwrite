@@ -157,6 +157,7 @@ export const ApiTagSchema = z.object({
 const ApiProjectConfigSchema = z.object({
   maxRevisions: z.number().optional(),
   wordCountGoal: z.number().optional(),
+  dailyWordGoal: z.number().int().nonnegative().optional(),
   statuses: z.array(z.string()).optional(),
   relationshipTypes: z.array(z.string()).optional(),
   autoPrune: z.boolean().optional(),
