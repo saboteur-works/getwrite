@@ -23,6 +23,7 @@ import { useRevisionContent } from "./useRevisionContent";
 import { useCanonicalAutosave } from "./useCanonicalAutosave";
 import { tiptapToPlainText } from "../../src/lib/tiptap-text";
 import { countWords } from "../../src/lib/word-count";
+import WritingLogFooterDisplay from "./WritingLogFooterDisplay";
 
 export interface EditViewProps {
   /** Initial editor content (HTML or plain text) */
@@ -414,6 +415,11 @@ export default function EditView({
           </span>
           <span aria-hidden="true">|</span>
           <NodeTypeIndicator types={nodeTypes} />
+          <span aria-hidden="true">|</span>
+          <WritingLogFooterDisplay
+            projectId={projectDirectoryId}
+            refreshToken={lastSavedAt?.getTime() ?? null}
+          />
         </div>
         {isViewingNonCanonical && hasEditsAfterRevisionSwitch && (
           <p className="text-gw-small text-red-600 font-medium">
