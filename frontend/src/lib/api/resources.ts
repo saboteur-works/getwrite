@@ -9,6 +9,7 @@ import {
 } from "./schemas";
 import { reportTransportValidationFailure } from "./transport-validation";
 import type { WritingLogSignal } from "../models/revision-core";
+import { reportWritingLogSignal } from "../writing-log-signal";
 
 /** Result of a canonical content patch; `writingLog` is set only on trouble. */
 export interface PatchRevisionContentResult {
@@ -621,12 +622,15 @@ export async function patchRevisionContent(
   content: string,
 ): Promise<PatchRevisionContentResult> {
   const transport = await resolveResourcesTransport();
-  return transport.patchRevisionContent(
+  const result = await transport.patchRevisionContent(
     resourceId,
     projectId,
     revisionId,
     content,
   );
+  // Single choke point shared by the HTTP and native transports (FR-5).
+  reportWritingLogSignal(result.writingLog);
+  return result;
 }
 
 /**
