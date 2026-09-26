@@ -496,7 +496,7 @@ export const MarkdownExportResultSchema = z.object({
   warnings: z.array(MarkdownConstructWarningSchema),
 });
 
-export const WritingLogSignalSchema = z.object({
+const WritingLogSignalSchema = z.object({
   skipped: z.literal(true).optional(),
   markerAppendFailed: z.literal(true).optional(),
   appendFailed: z.literal(true).optional(),

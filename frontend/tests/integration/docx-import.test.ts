@@ -652,14 +652,14 @@ async function readAllLogEntries(
 describe("importDocxProject — writing log (Feature 59, FR-3/FR-10)", () => {
   it("writes exactly one 'docx' additions entry equal to the total imported words, after the index rebuild", async () => {
     const projectRoot = await mkTempProjectRoot("getwrite-docx-import-log-");
-    let mentionsExistedAtAppend = false;
+    let didMentionsExistAtAppend = false;
     const actual = (
       await vi.importActual<typeof import("../../src/lib/models/writing-log")>(
         "../../src/lib/models/writing-log",
       )
     ).appendWritingLogEntry;
     vi.mocked(appendWritingLogEntry).mockImplementationOnce(async (...args) => {
-      mentionsExistedAtAppend = await fs
+      didMentionsExistAtAppend = await fs
         .stat(path.join(projectRoot, "meta", "index", "mentions.json"))
         .then(() => true)
         .catch(() => false);
@@ -685,7 +685,7 @@ describe("importDocxProject — writing log (Feature 59, FR-3/FR-10)", () => {
       net: totalWords,
       source: "docx",
     });
-    expect(mentionsExistedAtAppend).toBe(true);
+    expect(didMentionsExistAtAppend).toBe(true);
     await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
   });
 

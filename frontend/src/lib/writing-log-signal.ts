@@ -22,17 +22,17 @@ import { toastService } from "./toast-service";
 export const WRITING_LOG_SKIPPED_TOAST_ID = "writing-log-skipped";
 export const WRITING_LOG_APPEND_FAILED_TOAST_ID = "writing-log-append-failed";
 
-export const WRITING_LOG_SKIPPED_TOAST_MESSAGE =
+const WRITING_LOG_SKIPPED_TOAST_MESSAGE =
   "Today's word count may be incomplete: this save couldn't be counted.";
-export const WRITING_LOG_APPEND_FAILED_TOAST_MESSAGE =
+const WRITING_LOG_APPEND_FAILED_TOAST_MESSAGE =
   "Today's word count may be incomplete: this save couldn't be recorded.";
 
-let sessionIncomplete = false;
+let isSessionIncomplete = false;
 const listeners = new Set<() => void>();
 
 /** True once a marker append failed this session (fallback indicator). */
 export function getWritingLogSessionIncomplete(): boolean {
-  return sessionIncomplete;
+  return isSessionIncomplete;
 }
 
 /** Subscribe to flag changes; returns an unsubscribe (useSyncExternalStore-shaped). */
@@ -47,14 +47,14 @@ export function subscribeWritingLogSessionIncomplete(
 
 /** Clears the session flag (tests, project switch). */
 export function resetWritingLogSessionIncomplete(): void {
-  if (!sessionIncomplete) return;
-  sessionIncomplete = false;
+  if (!isSessionIncomplete) return;
+  isSessionIncomplete = false;
   listeners.forEach((l) => l());
 }
 
 function setSessionIncomplete(): void {
-  if (sessionIncomplete) return;
-  sessionIncomplete = true;
+  if (isSessionIncomplete) return;
+  isSessionIncomplete = true;
   listeners.forEach((l) => l());
 }
 

@@ -382,7 +382,7 @@ export interface Revision {
 export type WritingLogSource = "docx" | "scrivener";
 
 /** Writing-log word entry; `net` always equals `added - deleted`. */
-export interface WritingLogWordEntry {
+interface WritingLogWordEntry {
   added: number;
   deleted: number;
   net: number;
@@ -392,7 +392,7 @@ export interface WritingLogWordEntry {
 }
 
 /** Writing-log marker: a save whose diff could not be logged. */
-export interface WritingLogMarkerEntry {
+interface WritingLogMarkerEntry {
   skipped: true;
   /** ISO 8601 instant. */
   timestamp: string;

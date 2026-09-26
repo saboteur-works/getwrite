@@ -129,7 +129,7 @@ export const httpWritingLogTransport: WritingLogTransport = {
  * `next.config.mjs`'s `turbopack.resolveAlias` can substitute a `node:*`-free
  * web-stub at build time.
  */
-export const resolveWritingLogTransport: () => Promise<WritingLogTransport> =
+const resolveWritingLogTransport: () => Promise<WritingLogTransport> =
   createTransport(httpWritingLogTransport, () =>
     import("../../store/transport/native-writing-log-backend").then(
       ({ createNativeWritingLogTransport }) =>

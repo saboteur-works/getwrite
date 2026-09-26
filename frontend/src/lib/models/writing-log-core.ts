@@ -20,7 +20,7 @@ import { readWritingLogEntries } from "./writing-log";
 export { InvalidProjectIdCoreError };
 
 /** Longest accepted local-day window: 25h DST day plus 1h of slack. */
-export const MAX_WINDOW_MS = 26 * 60 * 60 * 1000;
+const MAX_WINDOW_MS = 26 * 60 * 60 * 1000;
 /** Most UTC day files a validated window may overlap. */
 export const MAX_WINDOW_DAY_FILES = 3;
 
@@ -46,7 +46,7 @@ export class InvalidDailyWordGoalError extends Error {
   }
 }
 
-export interface WritingLogTotals {
+interface WritingLogTotals {
   added: number;
   deleted: number;
   net: number;
@@ -132,7 +132,7 @@ export async function getWritingLogAggregateCore(
 }
 
 /** Root-keyed aggregation (re-validates the window). Exported for tests. */
-export async function aggregateForRoot(
+async function aggregateForRoot(
   projectRoot: string,
   from: string,
   to: string,

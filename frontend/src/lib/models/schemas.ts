@@ -680,7 +680,7 @@ export type Infer<T extends z.ZodTypeAny> = z.infer<T>;
 const StrictIsoTimestamp = z.string().datetime({ offset: true });
 
 /** Origin of a bulk word addition; absent for ordinary save-diff entries. */
-export const WritingLogSourceSchema = z.enum(["docx", "scrivener"]);
+const WritingLogSourceSchema = z.enum(["docx", "scrivener"]);
 
 /**
  * One writing-log word entry (Feature 59, FR-1/FR-3). `net` is stored and
@@ -706,7 +706,7 @@ export const WritingLogMarkerEntrySchema = z
   .strict();
 
 /** Either writing-log entry variant. */
-export const WritingLogEntrySchema = z.union([
+const WritingLogEntrySchema = z.union([
   WritingLogWordEntrySchema,
   WritingLogMarkerEntrySchema,
 ]);
