@@ -4,12 +4,12 @@ GetWrite keeps a record of the words you write each day, so you can see whether 
 
 ## The footer display
 
-At the bottom of the editor, **Today's writing** shows today's figure. It is collapsed by default:
+At the bottom of the editor, **Today's writing** shows today's figure next to it:
 
 - With a goal set: `Today: 420 / 1000`.
 - With no goal: `Today: 420` (today's net words).
 
-Select **Today's writing** to expand it. It then adds Added, Deleted and Net words, and a separate **Imported (not counted toward goal)** figure. Whether it is expanded is remembered on this device. The display is never red. If today's figure cannot be read, it says "Today's count is unavailable" rather than showing zero.
+Select **Today's writing** (hover it to see "Show today's writing details") to open a details window. It shows Added, Deleted and Net words, a separate **Imported (not counted toward goal)** figure, and "Today's count may be incomplete" when that applies. The window is read-only: set the goal in Project Settings. Press Esc or **Close** to dismiss it; focus returns to the button. The window is meant to be the place where further writing diagnostics may later appear; none exist yet. The display is never red. If today's figure cannot be read, it says "Today's count is unavailable" rather than showing zero.
 
 "Today" is your local calendar day.
 

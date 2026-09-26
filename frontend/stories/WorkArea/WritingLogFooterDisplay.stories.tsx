@@ -36,8 +36,8 @@ export default meta;
 
 type Story = StoryObj<typeof WritingLogFooterDisplay>;
 
-/** Default: summary line only, no overlay open. */
-export const Collapsed: Story = {
+/** Default: closed footer with a goal, no overlay open. */
+export const Closed: Story = {
   beforeEach: () => setup(WITH_GOAL),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
@@ -47,7 +47,7 @@ export const Collapsed: Story = {
 };
 
 /** The button opens the details overlay with added, deleted and net. */
-export const Expanded: Story = {
+export const OverlayOpen: Story = {
   beforeEach: () => setup(WITH_GOAL),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
@@ -68,10 +68,14 @@ export const NoGoal: Story = {
   },
 };
 
-/** Imported words are listed separately and excluded from the goal. */
-export const ImportLine: Story = {
+/** Open overlay: imports are listed separately, plus the incomplete marker. */
+export const OverlayImportAndIncomplete: Story = {
   beforeEach: () =>
-    setup({ ...WITH_GOAL, imported: { added: 12000, deleted: 0, net: 12000 } }),
+    setup({
+      ...WITH_GOAL,
+      imported: { added: 12000, deleted: 0, net: 12000 },
+      incomplete: true,
+    }),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByText("Today: 550 / 1000");
@@ -79,6 +83,10 @@ export const ImportLine: Story = {
     await within(document.body).findByText(
       "Imported (not counted toward goal): 12000",
     );
+    const dialog = within(await within(document.body).findByRole("dialog"));
+    await expect(
+      dialog.getByText("Today's count may be incomplete"),
+    ).toBeVisible();
   },
 };
 
