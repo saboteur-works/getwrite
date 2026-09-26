@@ -1,5 +1,72 @@
 # Changelog
 
+## [2.3.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v2.2.0...getwrite-v2.3.0) (2026-09-26)
+
+
+### Features
+
+* daily writing log and daily goal (Feature 59) ([35c9af9](https://github.com/saboteur-works/getwrite/commit/35c9af9cde46115e4f3951ca1cd41cd1cee5557c))
+* protect revision (FR-45, Feature 58) ([2665c47](https://github.com/saboteur-works/getwrite/commit/2665c475538dcb588bde54c924901662c11f357c))
+* **task-10:** writing-log routes, transport and native backend ([5b29575](https://github.com/saboteur-works/getwrite/commit/5b29575c3af9db57cbb7d9fc07f711f1b9a1fac6))
+* **task-11:** daily word goal control in project settings ([4fce8fe](https://github.com/saboteur-works/getwrite/commit/4fce8fe115a63e21e0e257b7d7cc282a2bfbfe5e))
+* **task-12:** expandable footer goal display ([7551ebb](https://github.com/saboteur-works/getwrite/commit/7551ebb58eecdd47ad6652e8e10ed02a317419c6))
+* **task-13:** footer story and a11y test ([e4d06ab](https://github.com/saboteur-works/getwrite/commit/e4d06aba4a4eb4f5187a6f9de13e1c17764233f7))
+* **task-14:** document writing log and daily goal ([6c14442](https://github.com/saboteur-works/getwrite/commit/6c14442069f4c646cb6d76fc60bb986479e1cafd))
+* **task-16:** use project directory id for daily goal save ([f2e6580](https://github.com/saboteur-works/getwrite/commit/f2e65801165501a73fda365e0311d97eafcc8fd2))
+* **task-17:** writing-details overlay replaces inline footer expansion ([7c2b5f4](https://github.com/saboteur-works/getwrite/commit/7c2b5f43f4a6bcfe422ea3f353311fd7aead7e72))
+* **task-18:** overlay story, dialog a11y tests and docs update ([8e8ad3e](https://github.com/saboteur-works/getwrite/commit/8e8ad3ee01f4d2b5dd02c9aeac950ed2676649ac))
+* **task-19:** refresh footer daily goal figure after goal save or clear ([d72d8ca](https://github.com/saboteur-works/getwrite/commit/d72d8ca2ee5e924ee349de5f0d007e62c62e245d))
+* **task-1:** add dailyWordGoal to config schemas and types ([9c488c9](https://github.com/saboteur-works/getwrite/commit/9c488c9d868bc3b48ce9ca500dae0fa6c03c2495))
+* **task-1:** exclude protected revisions from prune cap count (FR-6, FR-7) ([c0c6090](https://github.com/saboteur-works/getwrite/commit/c0c60902a987d931cd8af57e84d36c8c4980220b))
+* **task-20:** move daily word goal into Writing Goals tab in Project Settings ([d9625fe](https://github.com/saboteur-works/getwrite/commit/d9625fe2d56ecb376834e97a40e01b05fdc8ac99))
+* **task-21:** skip zero-change canonical autosaves in the writing log ([d10d8e1](https://github.com/saboteur-works/getwrite/commit/d10d8e1a5fa9434903547305148be12a5dfc5250))
+* **task-2:** add setRevisionPreserve core function (FR-3, FR-4, FR-8) ([8e93e7d](https://github.com/saboteur-works/getwrite/commit/8e93e7d4857bea9d2770d2810eab078c0ee771ac))
+* **task-2:** writing-log entry and day-file schemas ([5a1e132](https://github.com/saboteur-works/getwrite/commit/5a1e1324aaa27373a43afedc15b583d58072c0d0))
+* **task-3:** deleteRevision refuses protected revisions (FR-10) ([1c86876](https://github.com/saboteur-works/getwrite/commit/1c86876052c9bcc0af0989c0ad267dae3e9920f3))
+* **task-3:** writing-log model append and read ([b294ce3](https://github.com/saboteur-works/getwrite/commit/b294ce3ee830a4745728ec4603b0511321a439b2))
+* **task-4:** PATCH preserve mode and protected-delete 400 (FR-8, FR-10, FR-11) ([73ae4ba](https://github.com/saboteur-works/getwrite/commit/73ae4bae5117625112b683393d244fc886bea816))
+* **task-4:** word-bag diff function ([05c6107](https://github.com/saboteur-works/getwrite/commit/05c610734780fff79fe625b1bd2c3f63127b7c8b))
+* **task-5:** add setPreserve to revision transports (FR-8) ([b1df68b](https://github.com/saboteur-works/getwrite/commit/b1df68b27f721348444f1e02d5f9521a0085d1b9))
+* **task-5:** hook writing log into canonical save ([e5396f7](https://github.com/saboteur-works/getwrite/commit/e5396f7ac5ce23491410e63c7a94ad9218d02625))
+* **task-6:** deduplicated skipped-log toast and session flag ([87c0a5f](https://github.com/saboteur-works/getwrite/commit/87c0a5fd550fbfa0274aaae54f7e7162fbaa7c18))
+* **task-6:** isProtected in revision entries and preserve thunk (FR-1, FR-2, FR-5) ([1840b56](https://github.com/saboteur-works/getwrite/commit/1840b56348db9a1223b3ca66f4d5ca1fb9abeec7))
+* **task-7:** log docx and scrivener imports with source ([1a0c11f](https://github.com/saboteur-works/getwrite/commit/1a0c11fd1af1406a303bb0e9d3b1d8d137af3c8c))
+* **task-7:** protect/unprotect control and Protected indicator in RevisionControl (FR-1, FR-2, FR-4, FR-5) ([0ab2bb1](https://github.com/saboteur-works/getwrite/commit/0ab2bb1a630667290b47da40a98fdd836acea4c0))
+* **task-8:** pin import rebuild preserves writing log ([c5f1e36](https://github.com/saboteur-works/getwrite/commit/c5f1e36f4a735fa4c432fc9983ce09826b716255))
+* **task-8:** pin reindex preserves writing log ([e64603b](https://github.com/saboteur-works/getwrite/commit/e64603b4bcfa7b608ef13646b6b6343a6fd6f599))
+* **task-9:** writing-log and goal cores ([75e4e57](https://github.com/saboteur-works/getwrite/commit/75e4e574cec43c48c5931a3ad2c2be04740be93e))
+
+
+### Bug Fixes
+
+* **a11y:** give every unnamed control an accessible name ([db38ccf](https://github.com/saboteur-works/getwrite/commit/db38ccffa514dde255abe883fcc82c74780780d4))
+* **a11y:** give every unnamed control an accessible name [task_2ac96a77] ([5217235](https://github.com/saboteur-works/getwrite/commit/5217235cb54912279e72e1d8fdb73540a4ccfd01))
+* **a11y:** stop roles and references claiming what the markup lacks ([791a4a2](https://github.com/saboteur-works/getwrite/commit/791a4a2fb084ad05e74a3759ef5922345e12c9c7))
+* **a11y:** stop roles and references claiming what the markup lacks [task_583b703f] ([423dab8](https://github.com/saboteur-works/getwrite/commit/423dab82184ddc242e1af9a3c2b0038ab09cc355))
+* **editor:** raise the load error only when nothing loaded [task_b2604ce9] ([4c7dff9](https://github.com/saboteur-works/getwrite/commit/4c7dff98770bb1c966c38a92f02872b8241a985b))
+* **editor:** report a read in flight as loading, not as an empty document ([b7112b3](https://github.com/saboteur-works/getwrite/commit/b7112b3ea7c2b48fe07abe55b809781501252254))
+* **editor:** report a read in flight as loading, not as an empty document [task_f3b22583] ([78a90d9](https://github.com/saboteur-works/getwrite/commit/78a90d9d04ca0d79eb81d592704b94cdf0c456bd))
+* **entities,tree:** remove duplicate and missing React keys ([a32728e](https://github.com/saboteur-works/getwrite/commit/a32728ee9024f6bcbb122ff5b241e395434fbc5b))
+* **entities,tree:** remove duplicate and missing React keys [task_507590d8] ([bf85563](https://github.com/saboteur-works/getwrite/commit/bf8556309b7034119fcab0b5ad6538640d5dcba3))
+* **entity-compile:** keep the sidebar's 16px margin below the compile section [task_3c463d4e] ([edd1157](https://github.com/saboteur-works/getwrite/commit/edd1157e7b47af481f8374f18f100eb201896463))
+* **entity-compile:** use the default button size like the other entity buttons [task_3c463d4e] ([12b3ac8](https://github.com/saboteur-works/getwrite/commit/12b3ac83be40e97acbbb4037c98f919b3a01c8dd))
+* **entity-sidebar:** use one text-size scale for entity lists and hints [task_3c463d4e] ([27520bc](https://github.com/saboteur-works/getwrite/commit/27520bc900d5f116c5cfa6e5914b0d4cf78aa744))
+* **entity:** report a failed read instead of rendering it as empty ([76d7aa2](https://github.com/saboteur-works/getwrite/commit/76d7aa216e9b881d5886cec1a44e1b7eed46ab28))
+* **entity:** report a failed read instead of rendering it as empty [task_c6c912c3] ([e48feaf](https://github.com/saboteur-works/getwrite/commit/e48feaf05835a654d07f747d93dc815392cf88c3))
+* **input:** stop forcing 11px on every Input; sidebar inputs ask for it [task_3c463d4e] ([b65c3e6](https://github.com/saboteur-works/getwrite/commit/b65c3e69e1a9684007ae3fae3c541aaf1dd39b76))
+* **release:** bump shipped versions to 2.2.0 and stop pushing to main ([49b571a](https://github.com/saboteur-works/getwrite/commit/49b571a39ea0d23b7e303cc9debe45436034760d))
+* **release:** bump shipped versions to 2.2.0 and stop pushing to main ([8a3c0a0](https://github.com/saboteur-works/getwrite/commit/8a3c0a0262f95fae93f57ffebd354dec6c96200b))
+* **remove-entity:** size the dialog's error messages like the dialog's other text [task_3c463d4e] ([ea2c58a](https://github.com/saboteur-works/getwrite/commit/ea2c58ad2307e9b9cf653a9b6fcf11e2b8bcb0bd))
+* **sidebar:** bring the entity sections in line with the metadata sidebar ([90d5c76](https://github.com/saboteur-works/getwrite/commit/90d5c7665a9dc9f0aab728cf4d3213b5340e6254))
+* **sidebar:** make Synopsis and Notes textareas block-level [task_3c463d4e] ([49fe5f0](https://github.com/saboteur-works/getwrite/commit/49fe5f00fff309ee7593b487599996bf94ae8732))
+* **sidebar:** style entity labels and stop cn() dropping text-gw-* sizes [task_3c463d4e] ([e64a927](https://github.com/saboteur-works/getwrite/commit/e64a927780f649a55458e50ec19a7ba4cfc4142a))
+* stop failed reads rendering as empty ([89b5872](https://github.com/saboteur-works/getwrite/commit/89b58724403086f1b257130b33838231394183b0))
+* stop failed reads rendering as empty [task_b2604ce9] [task_50a83c64] ([3c2a400](https://github.com/saboteur-works/getwrite/commit/3c2a400f56371440ba8ba8e22716bc739ea77d3c))
+* **stories:** wrap the EntityRelationshipsSection stories in the refresh provider [task_3c463d4e] ([fe85be6](https://github.com/saboteur-works/getwrite/commit/fe85be672ccced94f51ae6bbe2826281b6fe1630))
+* **storybook:** give the node:fs alias a named `promises` export ([0bfde09](https://github.com/saboteur-works/getwrite/commit/0bfde0938222c7bac46950f85dd0f8ed2bfb2658))
+* **tags:** reject a failed tag write instead of reporting success ([84a03ec](https://github.com/saboteur-works/getwrite/commit/84a03ec31e0732f05b7cd2ea79209b12398393fc))
+* **tags:** reject a failed tag write instead of reporting success [task_d1340e5e] ([32d0614](https://github.com/saboteur-works/getwrite/commit/32d061431a4f405fc964291f3b6bbce98d615596))
+
 ## [2.2.0](https://github.com/saboteur-works/getwrite/compare/getwrite-v2.1.0...getwrite-v2.2.0) (2026-09-24)
 
 
