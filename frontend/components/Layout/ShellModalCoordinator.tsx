@@ -89,6 +89,9 @@ export interface ShellModalCoordinatorProps {
   onSaveDefaultRevisionName: (name: string) => Promise<void>;
   /** Root path of the active project — required to render the Tags section of ProjectSettingsDialog (FR11). */
   projectPath?: string;
+  /** Active project id, for the daily writing goal field in ProjectSettingsDialog. */
+  projectId?: string;
+  initialDailyWordGoal?: number;
   isPreferencesModalOpen: boolean;
   setIsPreferencesModalOpen: (open: boolean) => void;
   isHelpModalOpen: boolean;
@@ -165,6 +168,8 @@ export default function ShellModalCoordinator({
   initialDefaultRevisionName,
   onSaveDefaultRevisionName,
   projectPath,
+  projectId,
+  initialDailyWordGoal,
   isPreferencesModalOpen,
   setIsPreferencesModalOpen,
   isHelpModalOpen,
@@ -328,6 +333,8 @@ export default function ShellModalCoordinator({
         initialDefaultRevisionName={initialDefaultRevisionName}
         onSaveDefaultRevisionName={onSaveDefaultRevisionName}
         projectPath={projectPath}
+        projectId={projectId}
+        initialDailyWordGoal={initialDailyWordGoal}
       />
 
       <Dialog

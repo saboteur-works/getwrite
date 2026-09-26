@@ -14,6 +14,7 @@ import BodySettingsModal from "../preferences/BodySettingsModal";
 import DefaultRevisionNameModal from "../preferences/DefaultRevisionNameModal";
 import TagsManagerModal from "../common/TagsManagerModal";
 import SchemaManager from "../SchemaManager/SchemaManager";
+import DailyWordGoalField from "./DailyWordGoalField";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 
@@ -28,6 +29,10 @@ export interface ProjectSettingsDialogProps {
   onSaveDefaultRevisionName: (name: string) => Promise<void>;
   /** Root path of the active project — required to render the Tags section (FR11). */
   projectPath?: string;
+  /** Server-validated id of the active project — required to render the daily writing goal field (Feature 59, FR-6). */
+  projectId?: string;
+  /** Currently saved `dailyWordGoal`, if any. */
+  initialDailyWordGoal?: number;
 }
 
 type ProjectSettingsTab =
@@ -86,6 +91,8 @@ export default function ProjectSettingsDialog({
   initialDefaultRevisionName,
   onSaveDefaultRevisionName,
   projectPath,
+  projectId,
+  initialDailyWordGoal,
 }: ProjectSettingsDialogProps): JSX.Element {
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>(DEFAULT_TAB);
   const hasProjectPath = Boolean(projectPath);
@@ -177,6 +184,12 @@ export default function ProjectSettingsDialog({
                 onSave={onSaveDefaultRevisionName}
                 closeOnSave={false}
               />
+              {projectId ? (
+                <DailyWordGoalField
+                  projectId={projectId}
+                  initialGoal={initialDailyWordGoal}
+                />
+              ) : null}
             </TabsContent>
 
             <TabsContent value="tags" forceMount className={PANEL_CLASS}>
