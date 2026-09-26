@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Type, PenLine, Tag, LayoutList } from "lucide-react";
+import { Type, PenLine, Tag, LayoutList, Target } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import {
   Tabs,
@@ -14,6 +14,7 @@ import BodySettingsModal from "../preferences/BodySettingsModal";
 import DefaultRevisionNameModal from "../preferences/DefaultRevisionNameModal";
 import TagsManagerModal from "../common/TagsManagerModal";
 import SchemaManager from "../SchemaManager/SchemaManager";
+import DailyWordGoalField from "./DailyWordGoalField";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 
@@ -28,6 +29,10 @@ export interface ProjectSettingsDialogProps {
   onSaveDefaultRevisionName: (name: string) => Promise<void>;
   /** Root path of the active project — required to render the Tags section (FR11). */
   projectPath?: string;
+  /** Server-validated id of the active project — required to render the daily writing goal field (Feature 59, FR-6). */
+  projectId?: string;
+  /** Currently saved `dailyWordGoal`, if any. */
+  initialDailyWordGoal?: number;
 }
 
 type ProjectSettingsTab =
@@ -35,7 +40,8 @@ type ProjectSettingsTab =
   | "body-text"
   | "default-revision-name"
   | "tags"
-  | "metadata";
+  | "metadata"
+  | "writing-goals";
 
 interface ProjectSettingsTabOption {
   value: ProjectSettingsTab;
@@ -66,11 +72,13 @@ const TAB_OPTIONS: ProjectSettingsTabOption[] = [
   },
   { value: "tags", label: "Manage Tags", icon: Tag },
   { value: "metadata", label: "Metadata", icon: LayoutList },
+  { value: "writing-goals", label: "Writing Goals", icon: Target },
 ];
 
 /**
  * Consolidated "Project Settings" surface: one Dialog with a vertical, left-hand
- * tab rail switching between the five previously-separate settings modals.
+ * tab rail switching between the previously-separate settings modals plus the Writing Goals
+ * section.
  * Every panel stays mounted for the dialog's lifetime (forceMount) so
  * in-progress edits survive tab switches. Saving in any one section does
  * not close the dialog; closing the dialog (its own close, Escape, backdrop)
@@ -86,6 +94,8 @@ export default function ProjectSettingsDialog({
   initialDefaultRevisionName,
   onSaveDefaultRevisionName,
   projectPath,
+  projectId,
+  initialDailyWordGoal,
 }: ProjectSettingsDialogProps): JSX.Element {
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>(DEFAULT_TAB);
   const hasProjectPath = Boolean(projectPath);
@@ -190,6 +200,19 @@ export default function ProjectSettingsDialog({
 
             <TabsContent value="metadata" forceMount className={PANEL_CLASS}>
               <SchemaManager onClose={handleClose} />
+            </TabsContent>
+
+            <TabsContent
+              value="writing-goals"
+              forceMount
+              className={PANEL_CLASS}
+            >
+              {projectId ? (
+                <DailyWordGoalField
+                  projectId={projectId}
+                  initialGoal={initialDailyWordGoal}
+                />
+              ) : null}
             </TabsContent>
           </Tabs>
         </div>

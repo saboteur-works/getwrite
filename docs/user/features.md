@@ -34,6 +34,10 @@ Opening GetWrite shows all your projects at a glance, along with totals for how 
 
 When you open a text document, GetWrite gives you a focused rich-text editor designed to get out of the way. You get inline formatting (bold, italic, underline, and more) from the toolbar or keyboard shortcuts, and a live word, character, and paragraph count in the footer so you always know where you stand.
 
+### Daily writing log and goal
+
+GetWrite keeps a per-project record of the words you add and delete each day, and shows today's figure in a "Today's writing" control in the editor footer. See [Daily writing log](writing-log.md).
+
 ### Headings and editor appearance
 
 Headings are styled per project, so the look of your manuscript matches the work. You can customize the size, font, weight, spacing, and color of each heading level — useful for giving chapters, scenes, or sections a consistent, personal feel. The writing surface itself is tuned for long-form comfort, with generous line spacing that never drops below a readable minimum.

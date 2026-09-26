@@ -157,6 +157,7 @@ export const ApiTagSchema = z.object({
 const ApiProjectConfigSchema = z.object({
   maxRevisions: z.number().optional(),
   wordCountGoal: z.number().optional(),
+  dailyWordGoal: z.number().int().nonnegative().optional(),
   statuses: z.array(z.string()).optional(),
   relationshipTypes: z.array(z.string()).optional(),
   autoPrune: z.boolean().optional(),
@@ -495,6 +496,12 @@ export const MarkdownExportResultSchema = z.object({
   warnings: z.array(MarkdownConstructWarningSchema),
 });
 
+const WritingLogSignalSchema = z.object({
+  skipped: z.literal(true).optional(),
+  markerAppendFailed: z.literal(true).optional(),
+  appendFailed: z.literal(true).optional(),
+});
+
 export const PatchRevisionContentResponseSchema = z.object({
   updatedAt: z.string().optional(),
   // Set by `revision-core.ts`'s `updateRevisionInPlace` when the write would
@@ -502,4 +509,32 @@ export const PatchRevisionContentResponseSchema = z.object({
   // previous state as its own revision first. Optional because the field
   // post-dates the shape and a response without it simply means no snapshot.
   snapshotCreated: z.boolean().optional(),
+  // Present only when the daily writing log could not be updated normally
+  // (Feature 59); see `revision-core.ts`'s `WritingLogSignal`.
+  writingLog: WritingLogSignalSchema.optional(),
+});
+
+// ---------------------------------------------------------------------------
+// WritingLogAggregateResponseSchema / SetDailyWordGoalResponseSchema —
+// Feature 59 (daily writing log). Match `writing-log-core.ts`'s
+// `WritingLogAggregate` and `{ dailyWordGoal: number | undefined }`. `goal`
+// and `dailyWordGoal` are optional because `JSON.stringify` drops
+// `undefined`-valued keys before the response leaves the server.
+// ---------------------------------------------------------------------------
+
+const WritingLogTotalsSchema = z.object({
+  added: z.number(),
+  deleted: z.number(),
+  net: z.number(),
+});
+
+export const WritingLogAggregateResponseSchema = z.object({
+  totals: WritingLogTotalsSchema,
+  imported: WritingLogTotalsSchema,
+  goal: z.number().optional(),
+  incomplete: z.boolean(),
+});
+
+export const SetDailyWordGoalResponseSchema = z.object({
+  dailyWordGoal: z.number().optional(),
 });

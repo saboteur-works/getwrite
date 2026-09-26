@@ -1116,6 +1116,12 @@ export default function AppShell({
                     isProjectTypesModalOpen={isProjectTypesModalOpen}
                     setIsProjectTypesModalOpen={setIsProjectTypesModalOpen}
                     projectPath={project?.rootPath}
+                    projectId={
+                      project?.rootPath
+                        ? getProjectDirectoryId(project.rootPath)
+                        : undefined
+                    }
+                    initialDailyWordGoal={project?.config?.dailyWordGoal}
                     isResourcePaletteOpen={isResourcePaletteOpen}
                     setIsResourcePaletteOpen={setIsResourcePaletteOpen}
                     isProjectTypesLoading={isProjectTypesLoading}

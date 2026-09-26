@@ -93,6 +93,8 @@ export interface ProjectConfig {
   maxRevisions?: number;
   /** Target word count for the project (e.g. 80000 for a novel). */
   wordCountGoal?: number;
+  /** Target net words per day (Feature 59). Unset means no daily goal. */
+  dailyWordGoal?: number;
   /** Custom status values available to the project (e.g., ["Draft","Complete"]). */
   statuses?: string[];
   /** Custom relationship-type values available to the project (e.g., ["ally of","rival of"]). */
@@ -374,6 +376,33 @@ export interface Revision {
   isCanonical: boolean;
   /** Optional arbitrary metadata persisted alongside the revision (e.g., preserve flags). */
   metadata?: Record<string, unknown>;
+}
+
+/** Origin of a bulk word addition in the writing log (Feature 59). */
+export type WritingLogSource = "docx" | "scrivener";
+
+/** Writing-log word entry; `net` always equals `added - deleted`. */
+interface WritingLogWordEntry {
+  added: number;
+  deleted: number;
+  net: number;
+  /** ISO 8601 instant. */
+  timestamp: string;
+  source?: WritingLogSource;
+}
+
+/** Writing-log marker: a save whose diff could not be logged. */
+interface WritingLogMarkerEntry {
+  skipped: true;
+  /** ISO 8601 instant. */
+  timestamp: string;
+}
+
+export type WritingLogEntry = WritingLogWordEntry | WritingLogMarkerEntry;
+
+/** Contents of one `meta/writing-log/YYYY-MM-DD.json` day file. */
+export interface WritingLogDayFile {
+  entries: WritingLogEntry[];
 }
 
 /** Discriminated union of all concrete resource types, keyed by `type`. */

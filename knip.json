@@ -14,7 +14,10 @@
     // real reference. Mirrors every other native-*-backend.web-stub.ts file
     // in this directory (all pre-existing, un-ignored baseline findings
     // outside this feature's own scope).
-    "frontend/src/store/transport/native-trash-backend.web-stub.ts"
+    "frontend/src/store/transport/native-trash-backend.web-stub.ts",
+    // native-writing-log-backend.web-stub.ts: same Turbopack-only alias
+    // substitute as the trash stub above (Feature 59).
+    "frontend/src/store/transport/native-writing-log-backend.web-stub.ts"
   ],
   "workspaces": {
     ".": { "paths": { "@gw/core": ["frontend/src/lib/core.ts"] } },

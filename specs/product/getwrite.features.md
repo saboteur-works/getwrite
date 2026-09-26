@@ -1996,6 +1996,46 @@ cap (OQ-40). Documented downside: total revision storage per resource is
 unbounded, since protected revisions never count against the cap and are
 never pruned. Its feature spec is `specs/features/protect-revision.md`.
 
+### Feature 59: Daily writing log and daily goal — Not started
+
+**Value:** A writer on deadline can see, per project per day, how many words they added, deleted and netted, and compare today's figures against a daily goal they set, so progress is measured in writing done rather than total length.
+**Vertical slice:** A new append-only daily-log store validated in `schemas.ts` (fields include a `source` marking import entries), persisted through the storage adapter and failing closed when locked; a save-path hook at the debounced canonical save that computes additions, deletions and net by before/after comparison, with its own read of the previous content (`snapshotBeforeDestructiveWrite` cannot distinguish unreadable from non-destructive) and a visible failure signal, per `docs/standards/failure-visibility.md`, when the previous content is unreadable; one additions entry per docx or Scrivener import on the import day under the new project's id; a daily-goal setting and a today-versus-goal display, not indicated in red; a transport for reading the log and setting the goal, resolved through `createTransport` with a native backend, a web-stub and HTTP response-body validation (the FR-50 constraint for this feature's transport); tests.
+**Requirements covered:** FR-48, FR-50
+**User stories:** US-21
+**Depends on:** Feature 4, Feature 31, Feature 45
+**Branch suggestion:** feat/daily-writing-log
+**Notes:** Ships first of the FR-46 to FR-49 slices (OQ-42, resolved). History before the log ships cannot be backfilled. The log stays local (Observability constraint) and is handled per the encrypted-project constraint. Decided in the parent spec, not reopened: OQ-43, OQ-46, OQ-47, OQ-48, OQ-49. Plain-text file import stays deferred and is not part of this feature. FR-50 is owned by this feature (Gate 2, 2026-09-26): it adds the first transport of Features 59-62. The daily goal is a new optional `dailyWordGoal` in project config; flag the `schemas.ts` change in tasks so it does not collide with Feature 61. Imports show as a separate line and only non-import words are compared to the goal. Scope addition at Gate 3 (2026-09-26): the footer display must be expandable, beyond this feature's original list. Amended at Gate 6 by the user (2026-09-26), superseding that part: the footer keeps its "Today's writing" button and collapsed figure but no longer expands inline; the button opens a closeable writing-details overlay, intended as the later home for Feature 60 and 62 diagnostics (not built here). OQ-15 to OQ-19 were resolved at Gate 6 by the user ("Take your recs"), 2026-09-26: a blocking, read-only modal on `UI/Dialog` titled "Today's writing", goal set only in Project Settings, collapsed figure kept inline in the footer. Details are in `specs/features/daily-writing-log.md`.
+
+### Feature 60: Project status roll-up — Not started
+
+**Value:** A writer on deadline can see, for a project, how many resources and how many words sit at each status, so they can tell how much of the project is at each stage of completion.
+**Vertical slice:** A read-only derivation from existing data (sidecar `wordCount`, status field, `config.statuses`) persisting nothing new; a transport for the roll-up resolved through `createTransport` with a native backend, a web-stub and HTTP response-body validation (FR-50 constraint for this feature's transport); a roll-up view or section showing resource count and words per status together, likely in the Data view; tests.
+**Requirements covered:** FR-46
+**User stories:** US-19
+**Depends on:** Feature 7, Feature 11
+**Branch suggestion:** feat/status-rollup
+**Notes:** Follows the FR-48 pass (OQ-42). Decided in the parent spec: both resource count and words per status (OQ-41). Sidecar `wordCount` is skipped for legacy plain-text revisions, so those resources may under-report; the feature spec should decide how that is shown. Independent of Feature 59. Must follow FR-50 (owned by Feature 59) for its own transport.
+
+### Feature 61: In-app word-count goals (project and resource) — Not started
+
+**Value:** A writer on deadline can set, change and clear a project word-count goal and an optional per-resource goal from inside the app, instead of editing `project.json` by hand, and track progress against them.
+**Vertical slice:** A new optional per-resource goal field on the sidecar validated in `schemas.ts`; write paths for the existing project `wordCountGoal` (`ProjectConfig`) and the new resource goal; a transport for both resolved through `createTransport` with a native backend, a web-stub and HTTP response-body validation (FR-50 constraint for this feature's transport); a goals control and progress display where the existing `WordCountProgressBar` and Data view already render project progress, not indicated in red; tests.
+**Requirements covered:** FR-47
+**User stories:** US-20
+**Depends on:** Feature 7, Feature 11
+**Branch suggestion:** feat/word-count-goals
+**Notes:** Follows the FR-48 pass (OQ-42). The project `wordCountGoal` already exists and is read today; only the write path and control are new. This is a total-length goal, distinct from Feature 59's daily goal. Must follow FR-50 (owned by Feature 59) for its own transport.
+
+### Feature 62: Prose diagnostics — Not started
+
+**Value:** A writer on deadline can see cheap prose observations for each resource (dialogue ratio, average sentence length, top repeated words) and request located detail such as repeated phrases with positions, with no AI or network dependency.
+**Vertical slice:** Scalar metrics computed by the existing indexer and persisted in a diagnostics index validated in `schemas.ts`, carrying a `heuristicVersion` and rebuilt lazily on mismatch, persisted through the storage adapter and failing closed when locked via `isLockedAccessError` per the mention-index precedent; on-demand located detail computed and not persisted; a transport resolved through `createTransport` with a native backend, a web-stub and HTTP response-body validation (FR-50 constraint for this feature's transport); a presentation of flags as observations, not errors, and not in red; tests.
+**Requirements covered:** FR-49
+**User stories:** US-22
+**Depends on:** Feature 9
+**Branch suggestion:** feat/prose-diagnostics
+**Notes:** Follows the FR-48 pass (OQ-42). The spec requires each scalar metric to be benchmarked at 1k, 10k and 100k words before the design is committed (OQ-44); its task list should measure first and claim no cost until then. Decided in the parent spec: OQ-44, OQ-45, OQ-46. Must follow FR-50 (owned by Feature 59) for its own transport.
+
 ---
 
 ## Coverage check
@@ -2048,11 +2088,16 @@ never pruned. Its feature spec is `specs/features/protect-revision.md`.
   - FR-43: Feature 43
   - FR-44: Feature 44
   - FR-45: Feature 58
+  - FR-46: Feature 60
+  - FR-47: Feature 61
+  - FR-48: Feature 59
+  - FR-49: Feature 62
+  - FR-50: Feature 59 (owner; Features 60, 61 and 62 follow it for their own transports)
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 58
+- Total features: 62
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -2129,10 +2174,10 @@ never pruned. Its feature spec is `specs/features/protect-revision.md`.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57 (30 and 28 are the only pair left with an unmet hard dependency;
+  57, 59, 60, 61, 62 (30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 51, 52, 53. Everything
+- Not yet built: 59, 60, 61, 62, 24, 27, 28, 29, 30, 32, 44, 46, 47, 51, 52, 53. Everything
   else in this list has shipped (Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped
   separately as Feature 49; Feature 48's own deferred remainder is tracked
@@ -2472,3 +2517,8 @@ FR-42 split (this document's own scoping call, 2026-09-11):
   Branch suggestion field is `n/a` rather than a real branch name for this
   reason; if the resulting finding shows a live gap, a follow-on feature
   (not yet named here) would carry the fix.
+- Features 59-62 (FR-46 to FR-50, amendment of 2026-09-26). Build order: 59 first (OQ-42), then 60, 61 and 62 in any order or in parallel; all four depend only on shipped features (59 on 4, 31 and 45; 60 and 61 on 7 and 11; 62 on 9). Scoping questions, all four resolved below.
+- **Resolved: FR-50 owner.** Resolved at Gate 2 by the user ("we'll go with your recs"), 2026-09-26. Feature 59 owns FR-50 (it ships first and adds the first transport). Features 60, 61 and 62 each keep a note that they must follow FR-50 for their own transports.
+- **Resolved: where the daily goal lives.** Resolved at Gate 2 by the user ("we'll go with your recs"), 2026-09-26. A new optional `dailyWordGoal` field in project config, next to `wordCountGoal` and named to be clearly distinct from it; the log records only figures. Feature 59's tasks must flag the `schemas.ts` change so it does not collide with Feature 61's edits to the same area.
+- **Resolved: daily-goal comparison and imports.** Resolved at Gate 2 by the user ("we'll go with your recs"), 2026-09-26. The comparison shows import entries as a separate line and compares only non-import words against the goal.
+- **Resolved: legacy plain-text revisions in Feature 60's roll-up.** Resolved at Gate 2 by the user ("we'll go with your recs"), 2026-09-26. The roll-up shows stored counts with a visible note that older resources with legacy plain-text revisions may read low, per `docs/standards/failure-visibility.md`.

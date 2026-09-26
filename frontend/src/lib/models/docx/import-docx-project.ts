@@ -114,6 +114,8 @@ import { createFolderResource, createTextResource } from "../resource-factory";
 import { writeResourceToFile } from "../resource-persistence";
 import { writeRevision } from "../revision";
 import { addField, addGroup } from "../metadata-schema";
+import { appendWritingLogEntry } from "../writing-log";
+import { countWords } from "../../word-count";
 import { withIndexingSuspended } from "../indexer-queue";
 import { readSidecar } from "../sidecar";
 import {
@@ -764,7 +766,17 @@ export async function importDocxProject(
 
     // ── Rebuild indexes, mirroring cli/src/commands/reindex.ts ────────────
     currentPhase = ORCHESTRATION_PHASES[4];
-    await rebuildIndexes(projectRoot);
+    const importedWordCount = await rebuildIndexes(projectRoot);
+
+    // Feature 59 FR-3/FR-10: one import entry, written last so the imported
+    // words are never also diff-logged (imports write via writeResourceToFile +
+    // writeRevision, not updateRevisionInPlace). A failure here reaches the
+    // catch above, which removes a run-created projectRoot, so no orphan log.
+    await appendWritingLogEntry(projectRoot, {
+      added: importedWordCount,
+      deleted: 0,
+      source: "docx",
+    });
 
     return { project, projectRoot, folderCount, resourceCount, report };
   }
@@ -775,7 +787,7 @@ export async function importDocxProject(
  * mention index from scratch, mirroring `cli/src/commands/reindex.ts:23-60`
  * (same as `import-scrivener-project.ts`'s own rebuild).
  */
-async function rebuildIndexes(projectRoot: string): Promise<void> {
+export async function rebuildIndexes(projectRoot: string): Promise<number> {
   const resourceIds = await listResourceIds(projectRoot);
   const plainTextById = new Map<string, string | undefined>();
 
@@ -844,4 +856,8 @@ async function rebuildIndexes(projectRoot: string): Promise<void> {
   }
 
   await persistMentionIndex(projectRoot, mentionIndex);
+  let totalWords = 0;
+  for (const text of plainTextById.values())
+    totalWords += countWords(text ?? "");
+  return totalWords;
 }

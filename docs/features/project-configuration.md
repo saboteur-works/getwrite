@@ -16,6 +16,7 @@ Primary fields
 - `description` (string, optional): a short description used in listings.
 - `maxRevisions` (number, default 50): normalized into the project config (`project.ts`) but not read by any code path that prunes. `getwrite prune` takes `--max`; `revision-manager.ts` reads an option of the same name but has no caller outside tests. When pruning does run, protected non-canonical revisions are not counted toward the cap.
 - `autoPrune` (boolean, default true): normalized into the project config but not read anywhere. It is an option on `pruneRevisions` only (`revision.ts`); no caller passes it from config.
+- `config.dailyWordGoal` (integer >= 0, optional): the writer's daily writing goal, compared against today's non-import net words from the [writing log](./writing-log.md). Distinct from `config.wordCountGoal` (a separate config field, not changed by the daily goal). Set or cleared from Project Settings.
 - `meta` (object, optional): per-project meta options (e.g., paths or flags for previews/indexing). See examples below.
 
 Meta/Derived storage
@@ -24,6 +25,7 @@ Meta/Derived storage
 - Index: `meta/index/inverted.json` (managed by `frontend/src/lib/models/inverted-index.ts`)
 - Backlinks: `meta/backlinks.json` (managed by `frontend/src/lib/models/backlinks.ts`)
 - Entity mentions: `meta/index/mentions.json` (managed by `frontend/src/lib/models/mention-index.ts`)
+- Writing log: `meta/writing-log/YYYY-MM-DD.json`, one file per UTC day (managed by `frontend/src/lib/models/writing-log.ts`; see [writing-log.md](./writing-log.md))
 - Templates: `meta/templates/<id>.json`
 - Previews: `meta/previews/<resourceId>.json`
 

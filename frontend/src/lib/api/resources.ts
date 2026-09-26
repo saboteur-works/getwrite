@@ -8,6 +8,15 @@ import {
   ResourceRevisionContentResponseSchema,
 } from "./schemas";
 import { reportTransportValidationFailure } from "./transport-validation";
+import type { WritingLogSignal } from "../models/revision-core";
+import { reportWritingLogSignal } from "../writing-log-signal";
+
+/** Result of a canonical content patch; `writingLog` is set only on trouble. */
+export interface PatchRevisionContentResult {
+  updatedAt?: string;
+  snapshotCreated?: boolean;
+  writingLog?: WritingLogSignal;
+}
 
 /**
  * Computes the id of `folderId` plus every folder/resource nested beneath it
@@ -173,7 +182,7 @@ export interface ResourcesTransport {
     projectId: string,
     revisionId: string,
     content: string,
-  ): Promise<{ updatedAt?: string; snapshotCreated?: boolean }>;
+  ): Promise<PatchRevisionContentResult>;
   /** Persists a folder/resource reorder for a project. */
   reorder(
     projectId: string,
@@ -377,6 +386,7 @@ export const httpResourcesTransport: ResourcesTransport = {
     return {
       updatedAt: result.data.updatedAt,
       snapshotCreated: result.data.snapshotCreated,
+      writingLog: result.data.writingLog,
     };
   },
 
@@ -610,14 +620,17 @@ export async function patchRevisionContent(
   projectId: string,
   revisionId: string,
   content: string,
-): Promise<{ updatedAt?: string; snapshotCreated?: boolean }> {
+): Promise<PatchRevisionContentResult> {
   const transport = await resolveResourcesTransport();
-  return transport.patchRevisionContent(
+  const result = await transport.patchRevisionContent(
     resourceId,
     projectId,
     revisionId,
     content,
   );
+  // Single choke point shared by the HTTP and native transports (FR-5).
+  reportWritingLogSignal(result.writingLog);
+  return result;
 }
 
 /**

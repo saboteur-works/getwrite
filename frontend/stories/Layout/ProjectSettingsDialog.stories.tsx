@@ -80,9 +80,15 @@ const baseArgs: ProjectSettingsDialogProps = {
   initialDefaultRevisionName: "Initial Draft",
   onSaveDefaultRevisionName: async () => {},
   projectPath: "/story",
+  projectId: "story-proj",
 };
 
-/** All five tabs available; defaults to the "Heading Styles" section. */
+/** A daily writing goal is already set; the Writing Goals tab shows it. */
+export const WithDailyGoal: Story = {
+  args: { ...baseArgs, initialDailyWordGoal: 500 },
+};
+
+/** All six tabs available; defaults to the "Heading Styles" section. */
 export const Default: Story = { args: baseArgs };
 
 /**
