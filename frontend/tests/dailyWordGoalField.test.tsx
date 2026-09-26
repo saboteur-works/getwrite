@@ -78,3 +78,16 @@ describe("DailyWordGoalField", () => {
     expect(input().value).toBe("200");
   });
 });
+
+describe("DailyWordGoalField project id (Task 16)", () => {
+  it("passes the project id it is given, unchanged, to the transport", async () => {
+    mockSet.mockResolvedValue({ dailyWordGoal: 500 });
+    render(
+      <DailyWordGoalField projectId="dir-basename-id" initialGoal={500} />,
+    );
+    save();
+    await waitFor(() =>
+      expect(mockSet).toHaveBeenCalledWith("dir-basename-id", 500),
+    );
+  });
+});
