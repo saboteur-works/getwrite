@@ -107,6 +107,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Depends on:** 6, 10
 **Estimate:** 5
 **Notes:** Not reusable: CollapsibleSection.tsx (only sidebar/workarea variants); use it and tests/a11y/collapsiblesection.a11y.test.tsx as pattern references only.
+Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the inline expand/collapse, the collapsed-by-default rule, the `getwrite.editFooter.expanded` persistence and the disclosure a11y (`aria-expanded`, `aria-controls`, no Esc, no Radix) are replaced by Task 17's overlay. The Done history above is unchanged.
 **Done:** [ ]
 
 ### Task 13: Storybook story and a11y test for the footer display (FR-7, FR-8)
@@ -115,6 +116,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Done when:** an axe check passes for collapsed and expanded states; a keyboard test confirms Enter and Space toggle and focus stays on the button; the story renders all listed states and `pnpm test-storybook` for it passes (run outside the sandbox); story opts in with `a11y: { test: "error" }`.
 **Depends on:** 12
 **Estimate:** 2
+**Notes:** Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the collapsed/expanded story states and the disclosure toggle keyboard test are replaced by Task 18's overlay story and dialog tests. The Done history above is unchanged.
 **Done:** [ ]
 
 ### Task 14: Update docs (all FRs)
@@ -123,6 +125,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Done when:** docs state: per-day file layout and append-only meaning, day files keyed by UTC date with the local day derived at read time from timestamps (OQ-8 as amended at Gate 4), the marker entry for skipped saves, word-bag blind spots, no backfill, imports shown separately and excluded from the goal, non-canonical saves not logged, the skipped-save signal, `dailyWordGoal` distinct from `wordCountGoal`; openapi parses as YAML; links resolve.
 **Depends on:** 7, 8, 10, 12
 **Estimate:** 2
+**Notes:** Footer wording superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the expandable-footer and `localStorage` text this task wrote is corrected by Task 18. The Done history above is unchanged.
 **Done:** [ ]
 
 ### Task 15: Final verification gate
@@ -143,16 +146,36 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Notes:** Measured by the exercise agent (Stage 6.5): saving the goal in Project Settings > Default Revision Name showed "Failed to save daily goal: Failed to save the daily word goal (HTTP 500)."; server log `PUT /api/project/writing-log 500` with `ENOENT ... open '<workspace>/4943675f-.../project.json'` at frontend/src/lib/models/writing-log-core.ts:182; 4943675f-... is the `id` field inside project.json while the project directory name was af142f76-...; the same PUT via curl with the directory id returned 200 and wrote dailyWordGoal. The footer GET reads returned 200 with the directory id. The cause (wrong id passed at AppShell.tsx:1119) is a hypothesis until the fix is tried; the lead verified the differing call sites by reading. Why the Task 11 tests did not catch it (read, not run): tests/dailyWordGoalField.test.tsx renders `DailyWordGoalField` with the literal `projectId="p1"`, and tests/projectSettingsDialogDailyGoal.test.tsx renders `ProjectSettingsDialog` with a `projectId` argument supplied by the test itself; neither renders AppShell or derives the id from a project object, so the id AppShell computes was never exercised. Verification step (lead, not an implementor task): after the fix, re-exercise the goal save in the running app. Also observed by the exercise, NOT part of this task, unresolved, cause not established: a 0/0/0 entry logged about one second after opening a resource before any typing, and the expanded footer wrapping into cramped lines at ~1200px width.
 **Done:** [ ]
 
+### Task 17: Replace the inline expandable footer with a writing-details overlay opened from the existing Today's writing button (FR-7, FR-8)
+**What:** Keep the footer's "Today's writing" text button, the collapsed figure and the incomplete marker; stop expanding inline; open a closeable modal/overlay with added, deleted, net, the import line and the incomplete marker; give the button a HoverTip; remove the expanded-state persistence.
+**Files:** frontend/components/WorkArea/WritingLogFooterDisplay.tsx, frontend/components/WorkArea/EditView.tsx (footer ~:407), a new overlay component under frontend/components/WorkArea/ built on the component chosen for OQ-15/OQ-16, frontend/components/common/UI/HoverTip.tsx (consumer only), frontend/src/lib/edit-footer-state.ts and frontend/tests/unit/edit-footer-state.test.ts (remove, or repurpose only if a use is found), existing footer tests
+**Done when:** read `frontend/components/common/UI/Dialog` props and stories, `UnlockModal.tsx` and `ConfirmDialog.tsx` first (the pattern was confirmed from those two only); tests written first confirm: the footer shows the figure ("Today: N / G", or net with no goal) and the incomplete marker without opening anything; the button opens the overlay, which holds added, deleted, net, the separate import line (excluded from the comparison) and the incomplete marker; the overlay is a blocking modal built directly on `UI/Dialog` (`DialogContent` in the `UnlockModal.tsx` layout, `DialogTitle` "Today's writing", `DialogDescription` naming the goal or "No daily goal set", a single close button in `DialogFooter`), and does not use `ConfirmDialog` (no confirm button, no `onConfirm`/`onCancel`); if no description is rendered the Radix describedby warning is suppressed as `ConfirmDialog` does; its body shows exactly Added, Deleted, Net, "Imported (not counted toward goal)" and the incomplete marker, with no progress bar, local date, explanation text or goal editor (at most a plain-text hint pointing to Project Settings); its numbers are fetched on open and do not change while it is open, while the footer figure stays live; Esc closes it; focus moves into it on open and returns to the "Today's writing" button on close; the button's tooltip text is exactly "Show today's writing details" via HoverTip, and the details are also reachable without hover (the tooltip is the only hover-only element); nothing reads or writes `getwrite.editFooter.expanded` (a test asserts localStorage is untouched); `aria-expanded`/`aria-controls` are gone from the button; `edit-footer-state.ts` and its test file are removed (knip clean) or, if repurposed, a stated non-footer use exists; the goal display remains outside the `aria-live` region (:423) and has no red class or token; the existing red "Unsaved edits" text (:419) is unchanged; existing footer tests are updated only where they asserted the inline expansion or the localStorage key, each change listed in Notes; existing editView tests otherwise pass; nothing from Features 60/62 is added.
+**Depends on:** 12, 13, 16
+**Estimate:** 5
+**Notes:** Amended at Gate 6 by the user (2026-09-26); supersedes parts of the Gate 3 resolutions (OQ-10 to OQ-13). OQ-15 to OQ-19 resolved at Gate 6 by the user ("Take your recs"), 2026-09-26: blocking modal on `UI/Dialog` (not `ConfirmDialog`); read-only overlay, goal set only in Project Settings; title "Today's writing"; figure stays inline in the footer. Known separate issue, not in scope: AppShell's config copy of `dailyWordGoal` is stale after a save until the project reloads (`DailyWordGoalField.tsx` `initialGoal` only seeds state; `AppShell.tsx:1124`). Tooltip copy "Show today's writing details" is the user's option A with only the collapsed-state wording applying (the lead's inference, since a modal has no expanded state). Estimate 5: UI restructure plus removal of persistence plus updating existing footer tests, on the footer Task 12 sized at 5.
+**Done:** [ ]
+
+### Task 18: Overlay story, dialog a11y tests and docs update (FR-7, FR-8)
+**What:** Update the footer story and a11y tests for the overlay, and correct the docs that describe the expandable footer and the localStorage key.
+**Files:** frontend/stories/WorkArea/WritingLogFooterDisplay.stories.tsx, frontend/tests/a11y/ (footer test, modelled on tests/a11y/dialog.a11y.test.tsx), frontend/tests/a11y/helpers/axe.ts, docs/features/writing-log.md (:64 footer line), docs/user/writing-log.md, CLAUDE.md (Code Map "Writing log (Feature 59)" line at :160 and the Glossary "Daily word goal" entry at :269)
+**Done when:** the story shows the closed footer (goal, no goal, incomplete marker) and the open overlay (with import line and incomplete marker) and opts in with `a11y: { test: "error" }`; an axe check passes for the footer and for the open overlay; a keyboard test confirms Enter and Space open it, Esc closes it, and focus returns to the button; a test asserts the button tooltip copy "Show today's writing details" and the read-only content (title, goal description, Added/Deleted/Net/"Imported (not counted toward goal)", no goal editor); `pnpm test-storybook` for it passes (outside the sandbox); the three docs no longer describe an inline expandable footer, collapsed-by-default behaviour, or `getwrite.editFooter.expanded`, and describe the overlay, the tooltip copy and that it is intended as the later home for Feature 60/62 diagnostics without claiming they exist; a grep of docs/ and CLAUDE.md for `editFooter` and "expandable" finds no stale description.
+**Depends on:** 17
+**Estimate:** 3
+**Notes:** Amended at Gate 6 by the user (2026-09-26). Estimate 3: story states and dialog tests replace Task 13's, plus three doc edits.
+**Done:** [ ]
+
 ## Summary
-- Total tasks: 16
-- Total estimated effort: 51 points (was 46; Task 2 +1, Task 9 +2, reasons in their Notes; Task 16 +2, a Stage 6.5 bug fix appended after Task 15)
+- Total tasks: 18
+- Total estimated effort: 59 points (was 51; Task 17 +5 and Task 18 +3, appended at Gate 6 to replace the inline expandable footer with a writing-details overlay; earlier: Task 2 +1, Task 9 +2, Task 16 +2)
 - Critical path: 2 -> 3 -> 5 -> 6 -> 12 -> 13 -> 15 (Tasks 1 -> 9 -> 10 -> 11 -> 12 is comparable; Task 9 is now 5, so this second path is 1(2) + 9(5) + 10(5) + 11(3) + 12(5) = 20 points against the first path's 2(3) + 3(5) + 5(5) + 6(3) + 12(5) = 21 before Tasks 13 and 15, so 2 -> 3 -> 5 -> 6 -> 12 remains the critical path)
-- Risks: Task 5 edits the primary canonical save path and must never fail a content save because logging failed. Task 12 is the largest UI task and depends on props discovered from the existing footer. Task 1 shares schemas.ts lines with Feature 61, which must land after. Task 7 must ensure imports do not also trigger the Task 5 hook (double counting). The FR-11 diff cost is unmeasured; no benchmark task is added because a debounced per-save O(n) diff is not a suspected bottleneck.
+- Risks: Tasks 17 and 18 are no longer blocked in design (OQ-15 to OQ-19 resolved at Gate 6, "Take your recs"); the Task 15 gate must be re-run after them. Estimates unchanged (17 stays 5, 18 stays 3): the resolutions fix the component and content without adding or removing work. Task 5 edits the primary canonical save path and must never fail a content save because logging failed. Task 12 is the largest UI task and depends on props discovered from the existing footer. Task 1 shares schemas.ts lines with Feature 61, which must land after. Task 7 must ensure imports do not also trigger the Task 5 hook (double counting). The FR-11 diff cost is unmeasured; no benchmark task is added because a debounced per-save O(n) diff is not a suspected bottleneck.
 
 ## Parallelism
 - Tasks 1, 2 and 4 have no dependencies and can start together (1 and 2 both edit schemas.ts, so sequence them or merge carefully).
 - After 3: Tasks 5, 7 and 8 can proceed; Task 9 needs 1 and 3.
 - Task 16 needs only Task 11 (done); it was appended after Task 15 and, as a bug fix, is worked first and before re-running the Task 15 gate.
+
+- Task 17 needs 12, 13 and 16 and may start now that OQ-15 to OQ-19 are resolved; Task 18 follows 17. Critical path is now 2 -> 3 -> 5 -> 6 -> 12 -> 17 -> 18 (Task 13 is done history; 17 also needs 16).
 
 ## FR coverage
 - FR-1: 2, 3, 9
@@ -161,8 +184,8 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 - FR-4: 2, 3
 - FR-5: 2, 5, 6, 9, 12
 - FR-6: 1, 9, 11, 16
-- FR-7: 9, 10, 12, 13
-- FR-8: 12, 13
+- FR-7: 9, 10, 12, 13, 17, 18
+- FR-8: 12, 13, 17, 18
 - FR-9: 10
 - FR-10: 7
 - FR-11: 4
@@ -171,4 +194,6 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 
 ## Open Questions
 
-None. OQ-14 (the local-day window) was resolved at Gate 4 by the user ("take your recs"); see the source spec.
+None.
+
+OQ-14 (the local-day window) was resolved at Gate 4 by the user ("take your recs"). OQ-15 to OQ-19 (the writing-details overlay) were resolved at Gate 6 by the user ("Take your recs"), 2026-09-26; see the source spec for each resolution.
