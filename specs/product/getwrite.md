@@ -731,7 +731,8 @@ lost work.
   audio only) and is a later addition (see Out of Scope (Deferred)).
   Additions mean words added since the previous save (OQ-47, resolved).
   Granularity of the save-path log is one before/after entry per
-  debounced save of a canonical revision. When the previous content cannot
+  debounced save of a canonical revision. Amended 2026-09-26 (feature spec OQ-23): a save
+  whose comparison gives zero words added and zero deleted appends no entry. When the previous content cannot
   be read, that save's log entry MUST be skipped and a visible failure
   signal surfaced per `docs/standards/failure-visibility.md` (OQ-49,
   resolved). `snapshotBeforeDestructiveWrite` returns null for both an
