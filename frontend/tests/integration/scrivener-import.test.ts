@@ -15,6 +15,7 @@ import {
   importScrivenerProject,
   UnsupportedScrivenerProjectError,
 } from "../../src/lib/models/scrivener/import-scrivener-project";
+import { countWords } from "../../src/lib/word-count";
 import { readSidecar } from "../../src/lib/models/sidecar";
 import { revisionDir } from "../../src/lib/models/revision";
 import { flushIndexer, enqueueIndex } from "../../src/lib/models/indexer-queue";
@@ -959,5 +960,53 @@ describe("importScrivenerProject — FR-2 refusal", () => {
         .rm(projectRoot, { recursive: true, force: true })
         .catch(() => {});
     }
+  });
+});
+
+// Feature 59 Task 7 (FR-3/FR-10): the import logs one 'scrivener' additions entry.
+describe("importScrivenerProject — writing log (Feature 59)", () => {
+  it("writes exactly one 'scrivener' additions entry equal to the total imported words", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-log-"),
+    );
+    await importScrivenerProject({ scrivPath: FIXTURE_SCRIV_DIR, projectRoot });
+    await flushIndexer();
+
+    const resources = await readAllResources(projectRoot);
+    const totalWords = resources.reduce(
+      (n, r) => n + countWords((r as { plainText?: string }).plainText ?? ""),
+      0,
+    );
+    expect(totalWords).toBeGreaterThan(0);
+
+    const dir = path.join(projectRoot, "meta", "writing-log");
+    const entries: { added: number; deleted: number; source?: string }[] = [];
+    for (const f of await fs.readdir(dir)) {
+      const day = JSON.parse(await fs.readFile(path.join(dir, f), "utf8"));
+      entries.push(...day.entries);
+    }
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      added: totalWords,
+      deleted: 0,
+      source: "scrivener",
+    });
+    await fs.rm(projectRoot, { recursive: true, force: true });
+  });
+
+  it("leaves no orphan log when a fatal error deletes the run-created projectRoot", async () => {
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-logfail-"),
+    );
+    const projectRoot = path.join(parent, "destination");
+    vi.mocked(applyDocumentMetadata).mockRejectedValueOnce(
+      new Error("injected fatal error (log test)"),
+    );
+    await expect(
+      importScrivenerProject({ scrivPath: FIXTURE_SCRIV_DIR, projectRoot }),
+    ).rejects.toThrow("injected fatal error");
+    await flushIndexer();
+    await expect(fs.stat(projectRoot)).rejects.toThrow();
+    await fs.rm(parent, { recursive: true, force: true });
   });
 });

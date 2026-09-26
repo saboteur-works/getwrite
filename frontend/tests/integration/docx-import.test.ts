@@ -17,11 +17,24 @@ import {
   DocxDestinationNotEmptyError,
 } from "../../src/lib/models/docx/import-docx-project";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
+import { appendWritingLogEntry } from "../../src/lib/models/writing-log";
+import { countWords } from "../../src/lib/word-count";
 import type {
   AnyResource,
   Project,
   TextResource,
 } from "../../src/lib/models/types";
+
+// Feature 59 Task 7: lets a test inject a failure into, or observe the timing
+// of, the import's writing-log append. Falls through to the real function.
+vi.mock("../../src/lib/models/writing-log", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/models/writing-log")>();
+  return {
+    ...actual,
+    appendWritingLogEntry: vi.fn(actual.appendWritingLogEntry),
+  };
+});
 
 const FIXTURES_DIR = path.join(__dirname, "..", "fixtures", "docx");
 
@@ -605,5 +618,92 @@ describe("importDocxProject — refusals before any write", () => {
     expect(entries).toEqual(["pre-existing-file.txt"]);
 
     await fs.rm(projectRoot, { recursive: true, force: true });
+  });
+});
+
+interface LoggedEntryLike {
+  added?: number;
+  deleted?: number;
+  net?: number;
+  source?: string;
+  skipped?: boolean;
+}
+
+async function readAllLogEntries(
+  projectRoot: string,
+): Promise<LoggedEntryLike[]> {
+  const dir = path.join(projectRoot, "meta", "writing-log");
+  let files: string[];
+  try {
+    files = await fs.readdir(dir);
+  } catch {
+    return [];
+  }
+  const entries: LoggedEntryLike[] = [];
+  for (const f of files.sort()) {
+    const day = JSON.parse(await fs.readFile(path.join(dir, f), "utf8")) as {
+      entries: LoggedEntryLike[];
+    };
+    entries.push(...day.entries);
+  }
+  return entries;
+}
+
+describe("importDocxProject — writing log (Feature 59, FR-3/FR-10)", () => {
+  it("writes exactly one 'docx' additions entry equal to the total imported words, after the index rebuild", async () => {
+    const projectRoot = await mkTempProjectRoot("getwrite-docx-import-log-");
+    let mentionsExistedAtAppend = false;
+    const actual = (
+      await vi.importActual<typeof import("../../src/lib/models/writing-log")>(
+        "../../src/lib/models/writing-log",
+      )
+    ).appendWritingLogEntry;
+    vi.mocked(appendWritingLogEntry).mockImplementationOnce(async (...args) => {
+      mentionsExistedAtAppend = await fs
+        .stat(path.join(projectRoot, "meta", "index", "mentions.json"))
+        .then(() => true)
+        .catch(() => false);
+      return actual(...args);
+    });
+    await importDocxProject({
+      sourcePath: path.join(FIXTURES_DIR, "multi-heading.docx"),
+      projectRoot,
+    });
+    await flushIndexer();
+
+    const resources = await readAllResources(projectRoot);
+    const totalWords = resources.reduce(
+      (n, r) => n + countWords((r as { plainText?: string }).plainText ?? ""),
+      0,
+    );
+    expect(totalWords).toBeGreaterThan(0);
+    const entries = await readAllLogEntries(projectRoot);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      added: totalWords,
+      deleted: 0,
+      net: totalWords,
+      source: "docx",
+    });
+    expect(mentionsExistedAtAppend).toBe(true);
+    await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
+  });
+
+  it("leaves no orphan log when a fatal error deletes the run-created projectRoot", async () => {
+    const projectRoot = await mkTempProjectRoot(
+      "getwrite-docx-import-logfail-",
+    );
+    vi.mocked(appendWritingLogEntry).mockRejectedValueOnce(
+      new Error("injected log failure"),
+    );
+    await expect(
+      importDocxProject({
+        sourcePath: path.join(FIXTURES_DIR, "multi-heading.docx"),
+        projectRoot,
+      }),
+    ).rejects.toThrow("injected log failure");
+    await flushIndexer();
+    await expect(fs.stat(projectRoot)).rejects.toThrow();
+    await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
   });
 });

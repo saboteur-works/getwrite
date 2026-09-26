@@ -115,6 +115,8 @@ import { createFolderResource, createTextResource } from "../resource-factory";
 import { writeResourceToFile } from "../resource-persistence";
 import { writeRevision } from "../revision";
 import { addField, addGroup } from "../metadata-schema";
+import { appendWritingLogEntry } from "../writing-log";
+import { countWords } from "../../word-count";
 import { withIndexingSuspended } from "../indexer-queue";
 import { createTag, assignTagToResource } from "../tags";
 import { updateFeatureConfig } from "../project-features";
@@ -507,7 +509,17 @@ export async function importScrivenerProject(
 
     // ── Rebuild indexes (FR-11), mirroring cli/src/commands/reindex.ts ────
     currentPhase = ORCHESTRATION_PHASES[6];
-    await rebuildIndexes(projectRoot);
+    const importedWordCount = await rebuildIndexes(projectRoot);
+
+    // Feature 59 FR-3/FR-10: one import entry, written last so the imported
+    // words are never also diff-logged (imports write via writeResourceToFile +
+    // writeRevision, not updateRevisionInPlace). A failure here reaches the
+    // catch above, which removes a run-created projectRoot, so no orphan log.
+    await appendWritingLogEntry(projectRoot, {
+      added: importedWordCount,
+      deleted: 0,
+      source: "scrivener",
+    });
 
     return {
       project,
@@ -730,7 +742,7 @@ async function scanSnapshots(
  * mention index from scratch, mirroring `cli/src/commands/reindex.ts:23-60`
  * (FR-11).
  */
-async function rebuildIndexes(projectRoot: string): Promise<void> {
+async function rebuildIndexes(projectRoot: string): Promise<number> {
   const resourceIds = await listResourceIds(projectRoot);
   const now = new Date().toISOString();
   const plainTextById = new Map<string, string | undefined>();
@@ -800,6 +812,10 @@ async function rebuildIndexes(projectRoot: string): Promise<void> {
   }
 
   await persistMentionIndex(projectRoot, mentionIndex);
+  let totalWords = 0;
+  for (const text of plainTextById.values())
+    totalWords += countWords(text ?? "");
+  return totalWords;
 }
 
 const scrivenerImporter = { importScrivenerProject };
