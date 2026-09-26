@@ -163,6 +163,22 @@ lost work.
 - US-16: As a writer on deadline, I want to encrypt my project at rest on
   desktop or Android so that my files remain private if my device is lost
   or accessed by someone else. [Shipped]
+- US-19: As a writer on deadline, I want to see, per status, how many
+  resources and how many words I have so that I can tell how much of the
+  project is still at each stage of completion. [Next]
+- US-20: As a writer on deadline, I want to set a word-count goal for my
+  project from inside the app, and a goal for an individual resource, so
+  that I can track progress without editing `project.json` by hand. [Next]
+- US-21: As a writer on deadline, I want to keep a per-project, per-day record
+  of the words I added, deleted and netted, and a daily goal to compare it
+  against, so that I can see whether I wrote today. Words from an imported
+  Word (.docx) or Scrivener import count toward the log as additions,
+  tagged as an import so they can be separated from the daily goal. [Next]
+- US-22: As a writer on deadline, I want to see cheap prose diagnostics for each
+  resource (dialogue ratio, average sentence length, most-repeated words)
+  and, on request, the exact repeated phrases and where they occur, with no
+  AI service involved, so that I can find overused wording while revising.
+  [Next]
 
 ## Functional Requirements
 
@@ -658,6 +674,93 @@ lost work.
   count compared with the cap is all revisions minus the protected
   non-canonical revisions. [US-9]
 
+- FR-46: The product MUST show, for a project, the number of resources and
+  the total words at each status, both figures together, derived from data
+  that already exists. Status: Not started. Sequencing: follows the FR-48 pass (OQ-42, resolved). As measured 2026-09-26 (read-only
+  greps on main at 24ade246): `wordCount` is stored on the resource sidecar
+  (`schemas.ts:387`) and refreshed on every canonical autosave
+  (`revision-core.ts:368-385`, skipped for legacy plain-text revisions);
+  status is a locked select field (`default-metadata-schema.ts:16`) with a
+  per-project list in `config.statuses`, and a query intrinsic
+  (`query-intrinsics.ts:116`); `DataView.tsx` aggregates word count per
+  folder (line 132) and contains no per-status grouping. No status roll-up
+  view was found. The roll-up MUST persist nothing new. The weighting of
+  the roll-up is decided: both resource count and words per status (OQ-41,
+  resolved). [US-19]
+- FR-47: A writer MUST be able to set, change and clear a project's word-count
+  goal from inside the app, and MUST be able to set, change and clear an
+  optional goal on an individual resource. Status: Not started. Sequencing: follows the FR-48 pass (OQ-42, resolved). As measured
+  2026-09-26: `wordCountGoal` already exists on `ProjectConfig`
+  (`types.ts:95`, `schemas.ts:237,615`) and is read in `DataView.tsx:92`,
+  rendered by `WordCountProgressBar` when greater than 0; nothing in
+  `app/api`, `src/lib/api`, or the components outside project-type editing
+  writes it for an existing project, so it is settable today only via a
+  project-type spec or by editing `project.json`; no in-app control was
+  found. No per-resource goal field was found in the sidecar schema. The
+  per-resource goal MUST be a new optional sidecar field validated in
+  `schemas.ts`. Goal progress MUST NOT be indicated in red. [US-20]
+- FR-48: The product MUST keep a daily writing log recording, per project per
+  day, words added, words deleted and net words (added minus deleted), and
+  MUST let a writer set a daily goal and compare the day's figures against
+  it. Status: Not started. Sequencing: ships first of FR-46 to FR-49 (OQ-42,
+  resolved 2026-09-26, option (a): daily log plus daily goal). Decided by the
+  owner 2026-09-26: the daily log is
+  in scope, and its unit is additions, deletions and net. As measured
+  2026-09-26: no record of when words were written exists; sidecars carry
+  `createdAt`/`updatedAt` only, so a daily count cannot be derived from
+  stored data, and history before the log ships cannot be backfilled. The
+  log MUST be a new append-only store validated in `schemas.ts`, MUST stay
+  local (see the Observability constraint), and MUST be handled per the
+  encrypted-project constraint below. How additions and deletions are
+  computed at save is settled in part: the pre-overwrite canonical content
+  is available at the save point (OQ-43, resolved), and a word added and
+  then deleted between two saves is not captured: additions are words added
+  since the previous save by before/after comparison, and additions,
+  deletions and net are all logged (OQ-47, resolved). Decided by the
+  owner 2026-09-26: imported text counts toward the daily log. Interpreted
+  as Word (.docx) import; Scrivener import is also covered (OQ-48,
+  resolved).
+  Words from an import MUST be logged as additions. Imports do not go
+  through `updateRevisionInPlace`, so which import paths are covered and
+  how an import into a newly created project is attributed are decided
+  (OQ-48, resolved): docx and Scrivener imports are logged as one additions
+  entry on the import day under the new project's id, carrying a `source`
+  field that marks it as an import so the daily-goal comparison can exclude
+  or separate it; the log schema therefore has a `source` field. Plain-text
+  file import does not exist today (`resource/upload` accepts image and
+  audio only) and is a later addition (see Out of Scope (Deferred)).
+  Additions mean words added since the previous save (OQ-47, resolved).
+  Granularity of the save-path log is one before/after entry per
+  debounced save of a canonical revision. When the previous content cannot
+  be read, that save's log entry MUST be skipped and a visible failure
+  signal surfaced per `docs/standards/failure-visibility.md` (OQ-49,
+  resolved). `snapshotBeforeDestructiveWrite` returns null for both an
+  unreadable and a non-destructive case, so this requirement needs its own
+  read or a distinguishable result. The log MUST be persisted through the
+  storage adapter and fail closed when locked (OQ-46, resolved). [US-21]
+- FR-49: The product MUST compute prose diagnostics with no AI or network
+  dependency. Status: Not started. Sequencing: follows the FR-48 pass (OQ-42,
+  resolved). Decided by the owner 2026-09-26:
+  diagnostics are in scope, with cheap scalar metrics per resource (dialogue
+  ratio, average sentence length, top repeated words) persisted through the
+  existing indexer, and located detail (exact repeated phrases and their
+  positions) computed on demand and not persisted. As measured 2026-09-26: no
+  prose-diagnostic code exists (a grep for readability, passive, adverb,
+  repetition and streak returned only unrelated hits). Diagnostic flags MUST
+  be presented as observations, not errors, and MUST NOT use red. Persisted
+  metrics MUST be validated in `schemas.ts`. Each scalar metric MUST be benchmarked at 1k, 10k and 100k
+  words before the design is committed; this is a required pre-implementation
+  measurement, and no cost is claimed here (OQ-44, resolved). Persisted
+  metrics MUST carry a `heuristicVersion` and be rebuilt lazily on mismatch
+  (OQ-45, resolved). The diagnostics index MUST be persisted through the
+  storage adapter and fail closed when locked, using `isLockedAccessError`
+  per the mention-index precedent, with no silent skip (OQ-46, resolved).
+  [US-22]
+- FR-50: Every client transport added for FR-46 to FR-49 MUST be resolved
+  through `createTransport` (ADR-021), with a native backend and a
+  web-stub, and MUST validate its HTTP response body per the
+  transport-boundary constraint. Status: Not started. [US-19][US-20][US-21][US-22]
+
 ### Later Requirements
 
 - FR-30: The product SHOULD ship hosted, multi-device access to the same
@@ -816,6 +919,16 @@ lost work.
   `lockSession` discards the reference rather than leaving a locked object
   in place; both are unverified and this spec does not assert intent behind
   either.
+- Progress and diagnostics (FR-46 to FR-50) must have no AI or network
+  dependency. Red is reserved for canonical and position state and must not
+  be used for goal progress or diagnostic flags; heuristic flags (for example
+  filter words, passive voice) are observations, not errors. Any new
+  persisted data (per-resource goal, daily log, diagnostic metrics) must be
+  validated in `frontend/src/lib/models/schemas.ts`. Any persisted data these
+  features add to an encrypted project must go through the encrypting adapter
+  and fail closed when no usable key is available, per
+  `docs/standards/security.md` and the no-usable-key constraint above; the
+  mention index (`indexer-queue.ts`, `reindex` CLI) is the precedent.
 
 ## Open Questions
 
@@ -1829,8 +1942,95 @@ excluded from the count.
 **Clarified at Gate 4 (2026-09-25):** only protected NON-canonical revisions
 are excluded; a protected canonical revision still counts.
 
+**OQ-41 (resolved): Should the status roll-up (FR-46) show both resource count and words
+per status?**
+**Impact:** FR-46.
+**Resolution:** Resolved 2026-09-26 at Gate 1 by the user ("take your recommendations"): option (a), show both resource count and words per
+status. `countWords` (`src/lib/word-count.ts`) and `previews.ts:97`
+(`split(/\s+/).filter(Boolean)`) count words by different methods; whether
+they disagree on real content is not measured.
+
+**OQ-42 (resolved): Which of the four capabilities (FR-46 to FR-49) ships first?**
+**Impact:** FR-46, FR-47, FR-48, FR-49.
+**Resolution:** Resolved 2026-09-26 at Gate 1 by the user ("take your recommendations"): option (a), the daily log plus daily goal (FR-48)
+ships first, as the only non-backfillable data; the roll-up derived from
+existing data can wait. The other FR-46/47/49 slices remain for later passes.
+
+**OQ-43 (resolved): Is the canonical content from before an autosave overwrite
+available at the save point in `revision-core.ts`, so additions and deletions
+can be computed by comparing before and after?**
+**Impact:** FR-48.
+**Resolution:** Resolved 2026-09-26 at Gate 1 by the user: yes. The
+pre-overwrite canonical content is available at the save point
+(`frontend/src/lib/models/revision-core.ts`; `snapshotBeforeDestructiveWrite`
+reads it at about lines 279-322, before `updateRevisionInPlace` overwrites at
+about line 359). Evidence is from triage and was not re-verified by the lead.
+Autosaves are included: `EditView.tsx:116` -> `useCanonicalAutosave` ->
+`patchRevisionContent` -> the PATCH route
+(`app/api/resource/revision/[resource-id]/route.ts:284`) or
+`native-resource-backend.ts:190` -> `updateRevisionInPlace`. Only
+canonical-revision edits go through this path (the hook returns early
+otherwise). Granularity is one before/after per debounced save. The
+previous-content read is best-effort (returns null on failure); the
+unreadable case is raised as OQ-49.
+
+**OQ-44 (resolved): What is the compute cost of each scalar diagnostic metric (dialogue
+ratio, average sentence length, top repeated words) on the autosave/indexer
+path?**
+**Impact:** FR-49.
+**Resolution:** Resolved 2026-09-26 at Gate 1 by the user ("take your recommendations"): option (a), benchmark each scalar metric at
+1k/10k/100k-word resources before committing the design. Recorded as a
+required pre-implementation measurement, not a claim about cost; no
+measurement has been taken.
+
+**OQ-45 (resolved): How are stored diagnostic metrics versioned or rebuilt when a
+heuristic changes, so stored values do not go stale?**
+**Impact:** FR-49.
+**Resolution:** Resolved 2026-09-26 at Gate 1 by the user ("take your recommendations"): option (a), store a `heuristicVersion` on the
+persisted metrics and rebuild lazily on mismatch.
+
+**OQ-46 (resolved): How is the persisted diagnostics index handled on encrypted projects?**
+**Impact:** FR-49, FR-48.
+**Resolution:** Resolved 2026-09-26 at Gate 1 by the user ("take your recommendations"): option (a), persist the diagnostics index and the
+daily log through the storage adapter and fail closed when locked
+(`isLockedAccessError`, following the mention-index precedent); no silent
+skip.
+
+**OQ-47 (resolved): How is a word added and then deleted between two autosaves counted in
+the daily log?**
+**Impact:** FR-48.
+**Resolution:** Resolved 2026-09-26 at Gate 1 by the user ("take your recommendations"): option (a), additions mean words added since the
+previous save (before/after comparison); typing effort within a debounce
+window is not captured. Additions, deletions and net are all logged (prior
+user decision).
+
+**OQ-48 (resolved): Which import paths count toward the daily log (FR-48), and how is an
+import into a newly created project attributed?**
+**Impact:** FR-48, US-21.
+**Resolution:** Resolved 2026-09-26 at Gate 1 by the user ("take your recommendations"). (i) docx and Scrivener imports count as additions.
+Plain-text file import does not exist today (`resource/upload` is image and
+audio only) and is a later addition to the import file types, recorded in
+Out of Scope (Deferred) and not built now; FR-48 and US-21 no longer
+imply an existing plain-text path. (ii) Import words are logged as one
+additions entry on the import day under the new project's id, tagged with an
+import `source` so the daily-goal comparison can exclude or separate them;
+this adds a `source` field to the log schema.
+
+**OQ-49 (resolved): When the previous canonical content cannot be read at save, is the
+save skipped in the daily log or are all its words counted as additions?**
+**Impact:** FR-48.
+**Resolution:** Resolved 2026-09-26 at Gate 1 by the user ("take your recommendations"): option (c), skip that save's log entry and surface a
+visible failure signal per `docs/standards/failure-visibility.md`.
+`snapshotBeforeDestructiveWrite` returns null for both unreadable and
+non-destructive cases, so FR-48 needs its own read or a distinguishable
+result.
+
 ## Out of Scope (Deferred)
 
+- Plain-text file import as an import file type (FR-48, resolved: OQ-48).
+  No such path exists today (`resource/upload` accepts image and audio
+  only); it is a later addition, not built now, and would count toward the
+  daily log as additions once added.
 - A keyboard-operable equivalent for dragging a node on the entity
   relationship graph (FR-40, resolved: OQ-6). A keyboard-only user cannot
   reposition a node; the synchronized accessible list remains the
