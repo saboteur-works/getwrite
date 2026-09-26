@@ -1,0 +1,75 @@
+# Feature: Project status roll-up
+
+> Scope note: over the 500-word guideline because it carries decisions already
+> resolved in the parent spec as requirements, plus verified facts.
+
+## Overview
+
+A writer on deadline cannot see how much of a project sits at each stage. As read on main at 35c9af9c, `DataView.tsx` aggregates word count per folder and has no per-status grouping. This feature shows, for a project, the number of resources and the total words at each status, both figures together, derived from existing data and persisting nothing new.
+
+Parent: `specs/product/getwrite.md` FR-46, FR-50, US-19 (OQ-41 resolved); `specs/product/getwrite.features.md` Feature 60.
+
+## Goals
+
+- A writer can see, per status, the resource count and total words together.
+- The roll-up warns that resources with legacy plain-text revisions may read low.
+- A failed or locked read is never shown as an empty or zero roll-up: the roll-up only ever sees a successfully loaded project.
+- Behaviour is identical on web/desktop and native (it is client-side, so it is the same code path).
+
+## Non-goals
+
+- No writing of status from the roll-up; it is read-only.
+- No new persisted data, index or cache.
+- No AI or network use.
+- No red styling (red is reserved for canonical/position state).
+
+## User stories
+
+- US-1: As a writer on deadline, I want to see, per status, how many resources and how many words I have so that I can tell how much of the project is still at each stage of completion.
+
+## Functional requirements
+
+- FR-1: The product MUST show, per status, the number of resources and the total words, both figures together. [US-1]
+- FR-2: The roll-up MUST be derived from existing data and MUST persist nothing new. [US-1]
+- FR-3: The words figure MUST be the stored word count read the same way `DataView` reads it (`userMetadata.wordCount ?? wordCount ?? 0`), and the roll-up MUST show a visible note that resources with legacy plain-text revisions may read low (`revision-core.ts` leaves the sidecar `wordCount` unchanged for them). The note is blanket and always visible (OQ-7). [US-1]
+- FR-4: Not applicable, resolved by OQ-8. The roll-up is derived client-side from already-loaded Redux state, so no client transport, route, core, native backend, web-stub or response schema is added and FR-50 does not apply. If a transport is ever added later, it MUST then resolve through `createTransport` with a native backend, a web-stub and HTTP response-body validation (FR-50), following Feature 59's pattern. [US-1]
+- FR-5: A failed read MUST NOT render as an empty or zero roll-up (`docs/standards/failure-visibility.md`); the failure MUST be visible and distinct from "no statuses". Satisfied by adding no new failing read: the roll-up only ever sees a successfully loaded project, because a failed load never mounts `DataView` (OQ-11), so it never renders zeros for a failure. [US-1]
+- FR-6: A locked or keyless encrypted project MUST fail closed (`isLockedAccessError`, `locked-access.ts`). Satisfied by adding no new read: the roll-up reads only state the existing load already produced, and only ever sees a successfully loaded project (OQ-11), so it never renders zeros for a failed or locked load. [US-1]
+- FR-7: The roll-up MUST meet `docs/standards/accessibility.md`, MUST NOT rely on colour alone, and MUST NOT use red. [US-1]
+- FR-8: The roll-up MUST NOT use AI or network calls. [US-1]
+- FR-9: The status counted for a resource MUST be `userMetadata.status` (a single string) only. `resource.statuses` MUST NOT be counted (OQ-1). [US-1]
+- FR-10: Resources with no status MUST be shown in an always-present row labelled "No status" (kind `unset`), always last, even when its count is 0 (OQ-2). [US-1]
+- FR-11: Status values not in `config.statuses` MUST appear as extra rows after the configured ones, labelled as not in the current status list, so the row totals still match the counted resources (OQ-3). [US-1]
+- FR-12: Rows MUST be ordered: `config.statuses` order, then unknown values, then the "No status" row (OQ-4). [US-1]
+- FR-13: Only text resources MUST be counted, and the section MUST label them "text resources". Trashed resources cannot appear (the loader reads only `meta/resource-*.meta.json`, `resource-persistence.ts:227-238`; trashed sidecars live under `.trash/meta/`). The roll-up total therefore need not equal the Overview "Resources" total, and this MUST be stated in the UI copy or docs (OQ-5). [US-1]
+- FR-14: The roll-up MUST be a new `CollapsibleSection` titled "By status" in `DataView`, placed between the Overview and Breakdown sections (OQ-6). [US-1]
+- FR-15: The stale-count note MUST be a blanket, always-visible line under the roll-up. Working copy, exact wording for the user to confirm: "Word totals may read low for resources with older plain-text revisions." No per-resource detection is attempted (OQ-7). [US-1]
+- FR-16: The roll-up MUST render a neutral "no resources yet" state for a loaded project with no text resources. Copy is a working copy for the user to confirm. With `config.statuses` empty (for example the blank project type) the roll-up MUST still show the "No status" row plus any off-list values, with a hint that no statuses are configured (OQ-10). The roll-up has no loading or error state: loading and load failure are handled upstream and `DataView` is never mounted for them (OQ-11); no new slice field, prop or defensive branch is added. [US-1]
+- FR-17: The roll-up MUST be computed from the full project resource list (`liveResources`, `AppShell.tsx:276`), NOT from the smart-folder-narrowed `queryResources` that `DataView` receives as `resources` (`AppShell.tsx:1316-1320`); selecting a smart folder MUST NOT change the roll-up (OQ-5). [US-1]
+
+## Open questions
+
+- OQ-1: Which status representation is counted: `userMetadata.status`, `resource.statuses`, or both? Resolved at Gate 3 by the user ("take your recs"), 2026-09-26: count `userMetadata.status` (single string) only; `resource.statuses` is not counted because nothing writes it. Evidence (triage agent's, not re-read by the lead): writers of `userMetadata.status` are the sidebar `StatusSelector` via `MetadataSidebar.tsx:336-345` -> `AppShell.tsx:967-970` -> `handleChangeStatus` in `app/(app)/page.tsx:497-505` -> `updateResource`, and the Scrivener importer `metadata-mapper.ts:400-401`; readers are `execute-search.ts:251`, `OrganizerCard.tsx:67`, `TimelineView.tsx:104-105`. The agent did not trace `updateResource` to the sidecar write, and the lead did not re-read any of these lines. Separate out-of-scope observation: the query intrinsic `statuses` and the sidebar `status` are disjoint, so a smart folder filtering on status does not see sidebar-set values. — Impact: FR-9, FR-1
+- OQ-2: How are resources with no status shown (an "Unset" row, or omitted)? Resolved at Gate 3 by the user ("take your recs"), 2026-09-26: an always-present "Unset" row, labelled "No status", always last. — Impact: FR-10
+- OQ-3: How are status values not present in `config.statuses` shown? Resolved at Gate 3 by the user ("take your recs"), 2026-09-26: as extra rows after the configured ones, labelled as not in the current list, so totals still match. — Impact: FR-11
+- OQ-4: Are status rows ordered by `config.statuses` order or by count? Resolved at Gate 3 by the user ("take your recs"), 2026-09-26: `config.statuses` order, then unknown values, then Unset. — Impact: FR-12
+- OQ-5: Which resource types count (text only, or images/audio which have no `wordCount`), and are trashed resources excluded? Resolved at Gate 3 by the user ("take your recs"), 2026-09-26: text resources only, labelled "text resources"; trashed resources cannot appear (loader reads only `meta/resource-*.meta.json`, `resource-persistence.ts:227-238`; trashed sidecars live under `.trash/meta/`), so the roll-up total need not match the Overview "Resources" total, and that is stated. Trap recorded as FR-17: `DataView` receives `queryResources` (a smart folder narrows it, `AppShell.tsx:1316-1320`); the roll-up MUST read the full `liveResources` (`AppShell.tsx:276`). Triage evidence; the lead did not re-read these lines. — Impact: FR-13, FR-17, FR-1
+- OQ-6: Where does the roll-up live (Data view section, new view, or the writing-details dialog)? Resolved at Gate 3 by the user ("take your recs"), 2026-09-26: a new `CollapsibleSection` "By status" in `DataView` between Overview and Breakdown. `DataView.tsx` and `CollapsibleSection.tsx` were read by the spec manager: props are `title`, `children`, `defaultOpen`, `variant` (`sidebar`|`workarea`), `actions`, `onToggle`. — Impact: FR-14
+- OQ-7: How is the stale-count note worded and when does it appear? Resolved at Gate 3 by the user ("take your recs"), 2026-09-26: a blanket, always-visible line under the roll-up; working copy "Word totals may read low for resources with older plain-text revisions." (exact wording for the user to confirm). No per-resource detection is possible: there is no stale flag in the sidecar (`revision-core.ts:134-152` returns nothing for non-JSON/non-doc content, `:490` leaves `wordCount` untouched), and a 0-means-stale heuristic would misfire because `DataView` treats `wordCount <= 50` as a stub. Triage evidence; the lead did not re-read these lines. — Impact: FR-15, FR-3
+- OQ-8: Is the aggregate computed server-side or client-side? Resolved at Gate 3 by the user ("take your recs"), 2026-09-26: derived client-side from the Redux resources state (each item carries `userMetadata.status` and `wordCount`); no server route, core, native backend, web-stub or response schema. FR-4 is therefore not applicable; FR-5 and FR-6 are satisfied by adding no new failing read, with the requirement that the roll-up not render zeros when the load failed or the store is empty because of a failure. — Impact: FR-4, FR-5, FR-6
+- OQ-9: What are the loading, error and empty states? Resolved at Gate 3 by the user ("take your recs"), 2026-09-26: three distinct states: "Loading…", a neutral "no resources yet" for a loaded empty project, and a visible error on load failure. Partly superseded at Gate 3 by OQ-11 (2026-09-26): the loading and error states are dropped because they are unreachable in `DataView`; only the "no resources yet" state remains. The user acknowledged this change by accepting the recommendation ("take your recs"). Copy is a working copy for the user to confirm. — Impact: FR-16, FR-5
+- OQ-10: What is shown when the project has zero statuses configured? Resolved at Gate 3 by the user ("take your recs"), 2026-09-26: still show the Unset row plus any off-list values, with a hint that no statuses are configured. — Impact: FR-16
+- OQ-11: What existing signal distinguishes "project loading", "load failed" and "loaded, empty" for the roll-up? Resolved at Gate 3 by the user ("take your recs"), 2026-09-26: option (a), no signal is needed. The roll-up renders only the "no resources yet" state (plus the OQ-10 no-statuses hint). Loading and load failure are handled upstream and are structurally unreachable in `DataView`: `page.tsx:932` renders `StartPage` while no project is selected; `handleOpen` (`page.tsx:290-324`) awaits `openProject`, then dispatches all Redux state and calls `setSelectedProject` in one synchronous run; if `openProject` throws, `handleOpen` aborts before any dispatch so `DataView` never mounts; the catch sites at `page.tsx:350` and `:388` are refresh/import paths where the prior state stays on screen; the Trash-restore re-open is a refresh, not a loading or zero state. The slices have no loading/error fields (`projectsSlice.ts:496`, `resourcesSlice.ts:22`). No new slice field, no new prop, no defensive dead branches. Because the roll-up only ever sees a successfully loaded project, FR-5 and FR-6 hold. Supersedes the loading/error part of OQ-9/FR-16, as the user acknowledged by accepting the recommendation. Evidence is the triage agent's, not re-read by the lead; confidence high on the production path. Amended at Gate 4 by the user, 2026-09-26: the lead enumerated mount sites by static-import grep (frontend components, app, stories, src; tests excluded): DataView is mounted in production only from `frontend/components/Layout/AppShell.tsx:1375` and in Storybook from `stories/WorkArea/DataView.stories.tsx` (:56, :313, rendering DataView directly with args); AppShell is mounted in production only from `frontend/app/(app)/page.tsx:913` and in Storybook from `stories/AppShell.stories.tsx:22` and `stories/Layout/AppShellAfterOpen.stories.tsx:216`. Residual limits: dynamic or lazy imports and test files were not checked; stories can render DataView with any props but are not a production concern. — Impact: FR-16, FR-5, FR-6, FR-2
+
+## Out of scope (deferred)
+
+- Editing a resource's status from the roll-up.
+- Status-based goals or progress bars (Feature 61).
+- Prose diagnostics (Feature 62).
+- Correcting legacy plain-text revision word counts.
+- The uncaught promise rejection from the Start page's Open button (`page.tsx:936` passes the bare async `handleOpen`; `StartPage.tsx:863`): out of scope by the user's decision at Gate 3 ("take your recs"), 2026-09-26. A POS follow-up is filed by the lead. The agent did not read `docs/standards/failure-visibility.md` and read only the `onClick` region of `StartPage.tsx`; confidence on the exact UX is medium.
+
+## Verification notes
+
+- Verified by reading main: `DataView.tsx` `getWordCount` reads `userMetadata.wordCount ?? wordCount ?? 0`, aggregates per folder (~:132), no per-status grouping; DataView receives resources via props/view/project fallbacks. `execute-search.ts:251` reads `userMetadata.status` as a string. `resource.statuses` is a string array in schemas and is read at `query-evaluate-core.ts:72` and `query-intrinsics.ts:120`; no writer under `frontend/src` or `components` was found by grep. `config.statuses` exists (`project.ts:15`). Feature 59 files named in FR-4 exist. `revision-core.ts` ~473-490 refreshes `wordCount` conditionally.
+- Resolved at Gate 3 (2026-09-26): the home is `DataView` (OQ-6). Still not verified by the lead: the OQ-1, OQ-5 and OQ-7 line references were supplied by the triage agent and not re-read; `updateResource` was not traced to the sidecar write.
