@@ -30,6 +30,12 @@ export interface DataViewProps {
   view?: { project: Project; folders: AnyResource[]; resources: AnyResource[] };
   /** Optional override flat list of resources to render (uses project(s).resources by default) */
   resources?: AnyResource[];
+  /**
+   * Full project resource list feeding the "By status" roll-up, independent of
+   * any smart-folder narrowing applied to `resources`. Falls back to the
+   * resolved `resources` list when omitted.
+   */
+  statusRollupResources?: AnyResource[];
   /** Folder list used to group resources in the Breakdown section. */
   folders?: Folder[];
   /** Called when the user clicks the jump button on a breakdown group row. */
@@ -53,6 +59,7 @@ export default function DataView({
   project,
   view,
   resources,
+  statusRollupResources,
   folders,
   onSelectFolder,
   onResourceClick,
@@ -171,7 +178,7 @@ export default function DataView({
 
       <CollapsibleSection title="By status">
         <StatusRollup
-          resources={flatResources}
+          resources={statusRollupResources ?? flatResources}
           statuses={project?.config?.statuses ?? []}
         />
       </CollapsibleSection>

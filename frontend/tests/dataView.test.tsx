@@ -629,4 +629,43 @@ describe("DataView By status section", () => {
     fireEvent.click(screen.getByRole("button", { name: /by status/i }));
     expect(screen.queryByRole("table")).toBeNull();
   });
+
+  it("rolls up statusRollupResources while Overview and list follow resources", () => {
+    const narrowed = [makeStatusResource("Only", "Draft", 10)];
+    const full = [
+      makeStatusResource("Only", "Draft", 10),
+      makeStatusResource("Other1", "Final", 20),
+      makeStatusResource("Other2", "Final", 30),
+    ];
+    render(
+      <DataView
+        project={statusProject}
+        resources={narrowed}
+        statusRollupResources={full}
+      />,
+    );
+    const finalRow = screen
+      .getByRole("rowheader", { name: "Final" })
+      .closest("tr") as HTMLElement;
+    expect(
+      Array.from(finalRow.querySelectorAll("td")).map((c) => c.textContent),
+    ).toEqual(["2", "50"]);
+    expect(screen.queryByText("Other1")).toBeNull();
+    expect(screen.getAllByText("Only").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("falls back to resources for the roll-up when statusRollupResources is omitted", () => {
+    render(
+      <DataView
+        project={statusProject}
+        resources={[makeStatusResource("A", "Draft", 10)]}
+      />,
+    );
+    const row = screen
+      .getByRole("rowheader", { name: "Draft" })
+      .closest("tr") as HTMLElement;
+    expect(
+      Array.from(row.querySelectorAll("td")).map((c) => c.textContent),
+    ).toEqual(["1", "10"]);
+  });
 });
