@@ -32,6 +32,9 @@ import { countWords } from "../word-count";
 import type { TipTapDocument } from "../models";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { isDestructiveContentChange } from "./content-loss";
+import { appendWritingLogEntry } from "./writing-log";
+import { diffWords } from "./word-diff";
+import { isLockedAccessError } from "./locked-access";
 
 /**
  * When `content` is omitted, {@link createRevision} reads the resource's
@@ -322,6 +325,90 @@ async function snapshotBeforeDestructiveWrite(
 }
 
 /**
+ * Signal on an in-place save result describing writing-log trouble. Absent
+ * when the save was logged normally.
+ *
+ * - `skipped`: previous or new content was unreadable/non-TipTap, so a marker
+ *   entry (not a word entry) was recorded instead.
+ * - `markerAppendFailed`: `skipped` and the marker append itself failed.
+ * - `appendFailed`: the word entry append failed; nothing was recorded.
+ */
+export interface WritingLogSignal {
+  skipped?: true;
+  markerAppendFailed?: true;
+  appendFailed?: true;
+}
+
+/** Plain text of raw revision content, or null when it is not a TipTap doc. */
+function tiptapPlainTextOrNull(raw: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      (parsed as { type?: unknown }).type === "doc"
+    ) {
+      return tiptapToPlainText(parsed as TipTapDocument);
+    }
+  } catch {
+    // not JSON: legacy plain text
+  }
+  return null;
+}
+
+/**
+ * The writing-log's own read of the canonical revision's current content
+ * (deliberately not `snapshotBeforeDestructiveWrite`, which returns null for
+ * both "unreadable" and "not destructive"). Null means unreadable; a locked
+ * project rethrows.
+ */
+async function readPreviousContentForLog(
+  projectRoot: string,
+  resourceId: string,
+  versionNumber: number,
+): Promise<string | null> {
+  try {
+    return await readRevisionContent(projectRoot, resourceId, versionNumber);
+  } catch (error) {
+    if (isLockedAccessError(error)) throw error;
+    return null;
+  }
+}
+
+/**
+ * Appends the writing-log entry for a canonical save. Never throws except for
+ * a locked project; any other failure is returned as a signal.
+ */
+async function logCanonicalSave(
+  projectRoot: string,
+  previousRaw: string | null,
+  newRaw: string,
+): Promise<WritingLogSignal | undefined> {
+  const before =
+    previousRaw === null ? null : tiptapPlainTextOrNull(previousRaw);
+  const after = tiptapPlainTextOrNull(newRaw);
+  try {
+    if (before !== null && after !== null) {
+      const { added, deleted } = diffWords(before, after);
+      await appendWritingLogEntry(projectRoot, { added, deleted });
+      return undefined;
+    }
+  } catch (error) {
+    if (isLockedAccessError(error)) throw error;
+    console.error("Failed to append writing-log entry", error);
+    return { appendFailed: true };
+  }
+  try {
+    await appendWritingLogEntry(projectRoot, { skipped: true });
+    return { skipped: true };
+  } catch (error) {
+    if (isLockedAccessError(error)) throw error;
+    console.error("Failed to append writing-log marker entry", error);
+    return { skipped: true, markerAppendFailed: true };
+  }
+}
+
+/**
  * Updates the canonical revision's content in place, syncing derived
  * resource content files and bumping the resource sidecar's `updatedAt`.
  *
@@ -335,7 +422,13 @@ export async function updateRevisionInPlace(
   resourceId: string,
   revisionId: string,
   content: string,
-): Promise<Revision & { updatedAt: string; snapshotCreated: boolean }> {
+): Promise<
+  Revision & {
+    updatedAt: string;
+    snapshotCreated: boolean;
+    writingLog?: WritingLogSignal;
+  }
+> {
   const revisions = await listRevisions(projectRoot, resourceId);
   const target = revisions.find((revision) => revision.id === revisionId);
 
@@ -356,12 +449,22 @@ export async function updateRevisionInPlace(
     content,
   );
 
+  const previousRaw = await readPreviousContentForLog(
+    projectRoot,
+    resourceId,
+    target.versionNumber,
+  );
+
   await writeRevisionContent(
     projectRoot,
     resourceId,
     target.versionNumber,
     content,
   );
+
+  // Logged only once the content is safely written; a logging failure is
+  // signalled on the result and never fails or rolls back the save.
+  const writingLog = await logCanonicalSave(projectRoot, previousRaw, content);
 
   // Keep the derived content files (read by compile/export/search) in sync
   // with the canonical revision so they cannot drift behind the editor.
@@ -388,7 +491,12 @@ export async function updateRevisionInPlace(
   // Reported back to the caller so the editor can refresh its revision list
   // and tell the writer a way back exists — a backup nobody knows about is
   // only half a safety net.
-  return { ...target, updatedAt, snapshotCreated: snapshot !== null };
+  return {
+    ...target,
+    updatedAt,
+    snapshotCreated: snapshot !== null,
+    ...(writingLog ? { writingLog } : {}),
+  };
 }
 
 /**

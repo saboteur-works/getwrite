@@ -196,6 +196,7 @@ export function createNativeResourcesTransport(
         return {
           updatedAt: updated.updatedAt,
           snapshotCreated: updated.snapshotCreated,
+          writingLog: updated.writingLog,
         };
       });
     },

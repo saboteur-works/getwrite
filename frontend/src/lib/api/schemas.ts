@@ -496,6 +496,12 @@ export const MarkdownExportResultSchema = z.object({
   warnings: z.array(MarkdownConstructWarningSchema),
 });
 
+export const WritingLogSignalSchema = z.object({
+  skipped: z.literal(true).optional(),
+  markerAppendFailed: z.literal(true).optional(),
+  appendFailed: z.literal(true).optional(),
+});
+
 export const PatchRevisionContentResponseSchema = z.object({
   updatedAt: z.string().optional(),
   // Set by `revision-core.ts`'s `updateRevisionInPlace` when the write would
@@ -503,4 +509,7 @@ export const PatchRevisionContentResponseSchema = z.object({
   // previous state as its own revision first. Optional because the field
   // post-dates the shape and a response without it simply means no snapshot.
   snapshotCreated: z.boolean().optional(),
+  // Present only when the daily writing log could not be updated normally
+  // (Feature 59); see `revision-core.ts`'s `WritingLogSignal`.
+  writingLog: WritingLogSignalSchema.optional(),
 });
