@@ -223,6 +223,11 @@ const nextConfig = {
           // same rule as above.
           "../../store/transport/native-entity-cooccurrence-backend":
             "./src/store/transport/native-entity-cooccurrence-backend.web-stub",
+          // daily-writing-log Task 10: lib/api/writing-log.ts also lives in
+          // src/lib/api/, so its dynamic import's literal specifier is
+          // "../../store/transport/native-writing-log-backend" — same rule.
+          "../../store/transport/native-writing-log-backend":
+            "./src/store/transport/native-writing-log-backend.web-stub",
           // entity-relationships Task 5: lib/api/entity-relationships.ts also
           // lives in src/lib/api/, so its dynamic import's literal specifier
           // is "../../store/transport/native-entity-relationships-backend" —

@@ -513,3 +513,28 @@ export const PatchRevisionContentResponseSchema = z.object({
   // (Feature 59); see `revision-core.ts`'s `WritingLogSignal`.
   writingLog: WritingLogSignalSchema.optional(),
 });
+
+// ---------------------------------------------------------------------------
+// WritingLogAggregateResponseSchema / SetDailyWordGoalResponseSchema —
+// Feature 59 (daily writing log). Match `writing-log-core.ts`'s
+// `WritingLogAggregate` and `{ dailyWordGoal: number | undefined }`. `goal`
+// and `dailyWordGoal` are optional because `JSON.stringify` drops
+// `undefined`-valued keys before the response leaves the server.
+// ---------------------------------------------------------------------------
+
+const WritingLogTotalsSchema = z.object({
+  added: z.number(),
+  deleted: z.number(),
+  net: z.number(),
+});
+
+export const WritingLogAggregateResponseSchema = z.object({
+  totals: WritingLogTotalsSchema,
+  imported: WritingLogTotalsSchema,
+  goal: z.number().optional(),
+  incomplete: z.boolean(),
+});
+
+export const SetDailyWordGoalResponseSchema = z.object({
+  dailyWordGoal: z.number().optional(),
+});
