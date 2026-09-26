@@ -76,6 +76,44 @@ describe("updateRevisionInPlace — writing log", () => {
     expect(result.writingLog).toBeUndefined();
   });
 
+  it("appends no entry and no signal when the words are identical", async () => {
+    const rev = await seed(doc("one two three"));
+    const result = await updateRevisionInPlace(
+      projectRoot,
+      resourceId,
+      rev.id,
+      doc("one two three"),
+    );
+    expect(await allEntries()).toHaveLength(0);
+    expect(appendSpy).not.toHaveBeenCalled();
+    expect(result.writingLog).toBeUndefined();
+    expect(await storedContent()).toBe(doc("one two three"));
+  });
+
+  it("appends one entry for a same-size replacement with net 0", async () => {
+    const rev = await seed(doc("a b c"));
+    const result = await updateRevisionInPlace(
+      projectRoot,
+      resourceId,
+      rev.id,
+      doc("a b d"),
+    );
+    const entries = await allEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ added: 1, deleted: 1, net: 0 });
+    expect(result.writingLog).toBeUndefined();
+  });
+
+  it("appends one entry for a pure addition and for a pure deletion", async () => {
+    const rev = await seed(doc("a b"));
+    await updateRevisionInPlace(projectRoot, resourceId, rev.id, doc("a b c"));
+    await updateRevisionInPlace(projectRoot, resourceId, rev.id, doc("a b"));
+    const entries = await allEntries();
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toMatchObject({ added: 1, deleted: 0, net: 1 });
+    expect(entries[1]).toMatchObject({ added: 0, deleted: 1, net: -1 });
+  });
+
   it("appends nothing for a non-canonical save (which throws)", async () => {
     const rev = await seed(doc("a b"), false);
     await expect(

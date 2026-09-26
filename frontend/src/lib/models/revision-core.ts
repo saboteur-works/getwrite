@@ -376,7 +376,8 @@ async function readPreviousContentForLog(
 }
 
 /**
- * Appends the writing-log entry for a canonical save. Never throws except for
+ * Appends the writing-log entry for a canonical save; a save that adds and
+ * deletes no words appends nothing and returns no signal. Never throws except for
  * a locked project; any other failure is returned as a signal.
  */
 async function logCanonicalSave(
@@ -390,6 +391,7 @@ async function logCanonicalSave(
   try {
     if (before !== null && after !== null) {
       const { added, deleted } = diffWords(before, after);
+      if (added === 0 && deleted === 0) return undefined;
       await appendWritingLogEntry(projectRoot, { added, deleted });
       return undefined;
     }

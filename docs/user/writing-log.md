@@ -19,8 +19,8 @@ Open **Project Settings** and use **Daily word goal**. It is in the **Writing Go
 
 ## What is counted
 
-- Each autosave of a document's current (canonical) revision adds an entry: words added, words deleted, and net (added minus deleted). Saves to other revisions are not counted.
-- Words are compared as a bag of words between the previous and new saved text. This has known blind spots: a paragraph you move counts as nothing, and a rewrite that reuses many of the same words counts fewer changes than you might expect. Words must match exactly, so a change in capitalization or attached punctuation counts as one word deleted and one added. A word you add and delete between two saves is not counted. An autosave that changes nothing still adds an entry, of zero.
+- Each autosave of a document's current (canonical) revision that adds or deletes at least one word adds an entry: words added, words deleted, and net (added minus deleted). Saves to other revisions are not counted.
+- Words are compared as a bag of words between the previous and new saved text. This has known blind spots: a paragraph you move counts as nothing, and a rewrite that reuses many of the same words counts fewer changes than you might expect. Words must match exactly, so a change in capitalization or attached punctuation counts as one word deleted and one added. A word you add and delete between two saves is not counted. An autosave that adds and deletes no words adds no entry; a save that swaps one word for another is counted as one added and one deleted.
 - A Word (docx) or Scrivener import is logged once, on the day of the import, and shown on the separate Imported line. Imported words are never counted toward your daily goal. Plain-text file import is not logged.
 - There is no backfill: writing from before this feature existed is not included.
 

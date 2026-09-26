@@ -689,6 +689,34 @@ describe("importDocxProject — writing log (Feature 59, FR-3/FR-10)", () => {
     await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
   });
 
+  it("still writes its one 'docx' entry (added 0) for a zero-word import", async () => {
+    const projectRoot = await mkTempProjectRoot("getwrite-docx-import-zero-");
+    const sourceDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-docx-zero-src-"),
+    );
+    const sourcePath = path.join(sourceDir, "empty.docx");
+    const { Document, Packer, Paragraph } = await import("docx");
+    await fs.writeFile(
+      sourcePath,
+      await Packer.toBuffer(
+        new Document({ sections: [{ children: [new Paragraph({})] }] }),
+      ),
+    );
+    await importDocxProject({ sourcePath, projectRoot });
+    await flushIndexer();
+
+    const entries = await readAllLogEntries(projectRoot);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      added: 0,
+      deleted: 0,
+      net: 0,
+      source: "docx",
+    });
+    await fs.rm(sourceDir, { recursive: true, force: true });
+    await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
+  });
+
   it("leaves no orphan log when a fatal error deletes the run-created projectRoot", async () => {
     const projectRoot = await mkTempProjectRoot(
       "getwrite-docx-import-logfail-",
