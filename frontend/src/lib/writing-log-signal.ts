@@ -58,6 +58,30 @@ function setSessionIncomplete(): void {
   listeners.forEach((l) => l());
 }
 
+let goalVersion = 0;
+const goalListeners = new Set<() => void>();
+
+/** Monotonic counter bumped after each successful daily goal save or clear. */
+export function getWritingLogGoalVersion(): number {
+  return goalVersion;
+}
+
+/** Subscribe to goal changes; returns an unsubscribe (useSyncExternalStore-shaped). */
+export function subscribeWritingLogGoalVersion(
+  listener: () => void,
+): () => void {
+  goalListeners.add(listener);
+  return () => {
+    goalListeners.delete(listener);
+  };
+}
+
+/** Signals that the daily goal changed so goal-dependent views re-read it. */
+export function notifyWritingLogGoalChanged(): void {
+  goalVersion += 1;
+  goalListeners.forEach((l) => l());
+}
+
 /** Routes a save result's writing-log signal to toasts and the session flag. */
 export function reportWritingLogSignal(
   signal: WritingLogSignal | undefined,

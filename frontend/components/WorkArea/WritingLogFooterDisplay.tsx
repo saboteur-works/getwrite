@@ -6,7 +6,9 @@ import {
 import { HoverTipSurface, hoverTipProps } from "../common/UI/HoverTip";
 import WritingLogDetailsDialog from "./WritingLogDetailsDialog";
 import {
+  getWritingLogGoalVersion,
   getWritingLogSessionIncomplete,
+  subscribeWritingLogGoalVersion,
   subscribeWritingLogSessionIncomplete,
 } from "../../src/lib/writing-log-signal";
 
@@ -46,6 +48,12 @@ export default function WritingLogFooterDisplay({
     () => false,
   );
 
+  const goalVersion = React.useSyncExternalStore(
+    subscribeWritingLogGoalVersion,
+    getWritingLogGoalVersion,
+    () => 0,
+  );
+
   React.useEffect(() => {
     if (!projectId) return;
     let isCancelled = false;
@@ -59,7 +67,7 @@ export default function WritingLogFooterDisplay({
     return () => {
       isCancelled = true;
     };
-  }, [projectId, refreshToken]);
+  }, [projectId, refreshToken, goalVersion]);
 
   if (!projectId) return null;
 

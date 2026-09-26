@@ -5,6 +5,7 @@ import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
 import Input from "../common/UI/Input/Input";
 import { setDailyWordGoal } from "../../src/lib/api/writing-log";
+import { notifyWritingLogGoalChanged } from "../../src/lib/writing-log-signal";
 
 export interface DailyWordGoalFieldProps {
   /** Server-validated id of the active project. */
@@ -56,6 +57,7 @@ export default function DailyWordGoalField({
     setErrorMessage(null);
     try {
       await setDailyWordGoal(projectId, goal);
+      notifyWritingLogGoalChanged();
       setSavedMessage(
         goal === null ? "Daily goal cleared." : "Daily goal saved.",
       );
