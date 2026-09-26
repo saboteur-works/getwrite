@@ -23,10 +23,10 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 ### Task 3: "By status" CollapsibleSection in DataView (FR-1, FR-5, FR-6, FR-7, FR-13, FR-14, FR-15, FR-16)
 **What:** Render the roll-up as a `CollapsibleSection` titled "By status" between Overview and Breakdown, with the empty state, the no-statuses-configured hint and the stale-note line. No loading or error branches (OQ-11).
 **Files:** frontend/components/WorkArea/StatusRollup.tsx (new), frontend/components/WorkArea/DataView.tsx, frontend/tests/dataView.test.tsx (add cases; no existing case edited), frontend/tests/statusRollup.test.tsx (new)
-**Done when:** tests written first confirm: DataView renders a section titled "By status" positioned after the Overview and before Breakdown; rows show label, resource count and words together, using a real `<table>` with `<th scope>` headers (or an equivalent list, fixed by reading `docs/standards/accessibility.md` first) so count and words are announced per status; the "No status" row is last; an unknown row's label says it is not in the current list as text, not colour alone; the working-copy line "Word totals may read low for resources with older plain-text revisions." is always visible; the section states it counts "text resources" and that its total may differ from the Overview total; a project with no text resources shows a neutral "no resources yet" (no zero table); no loading or error state is rendered and none is tested; with `config.statuses` empty a hint that no statuses are configured shows alongside the No status row; no class in the new component uses red tokens; existing dataView tests pass unmodified; `pnpm typecheck` and `pnpm lint` clean.
+**Done when:** tests written first confirm: DataView renders a section titled "By status" positioned after the Overview and before Breakdown; rows show label, resource count and words together, using a real `<table>` with `<th scope>` headers (or an equivalent list, fixed by reading `docs/standards/accessibility.md` first) so count and words are announced per status; the "No status" row is last; an unknown row's label says it is not in the current list as text, not colour alone; the stale note (working copy at the time of writing: "Word totals may read low for resources with older plain-text revisions."; final string set by Task 10) is always visible; the section states it counts "text resources" and that its total may differ from the Overview total (working copy; final scope note set by Task 10); a project with no text resources shows a neutral "no resources yet" state (working copy; final string set by Task 10) (no zero table); no loading or error state is rendered and none is tested; with `config.statuses` empty a hint that no statuses are configured shows alongside the No status row; no class in the new component uses red tokens; existing dataView tests pass unmodified; `pnpm typecheck` and `pnpm lint` clean.
 **Depends on:** 1
 **Estimate:** 5
-**Notes:** Read `DataView.tsx` and `CollapsibleSection.tsx` props before coding (`title`, `children`, `defaultOpen`, `variant`, `actions`, `onToggle`); the section id derives from the slugified title, so "By status" must not collide with an existing title. Copy strings are working copy for the user to confirm; keep them in one constants object so a wording change is one edit. Reason for 5: new component with its empty and no-statuses states plus a11y structure, edits the largest work-area view.
+**Notes:** Read `DataView.tsx` and `CollapsibleSection.tsx` props before coding (`title`, `children`, `defaultOpen`, `variant`, `actions`, `onToggle`); the section id derives from the slugified title, so "By status" must not collide with an existing title. Copy strings were working copy at the time of writing (user-confirmed and replaced by Task 10, Gate 6); keep them in one constants object so a wording change is one edit. Reason for 5: new component with its empty and no-statuses states plus a11y structure, edits the largest work-area view.
 **Done:** [ ]
 
 ### Task 4: Feed the roll-up the FULL resource list, not the smart-folder-narrowed one (FR-17)
@@ -62,7 +62,7 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Done when:** the user doc states what each row means, that only text resources count, that the total may differ from Overview, the "No status" and off-list rows, the stale-word-count caveat, and that it does not follow smart-folder selection; the feature doc names `status-rollup.ts`, the client-side-only decision (no transport, FR-50 not applicable) and that `resource.statuses` is not counted; the CLAUDE.md glossary entry exists and states the out-of-scope observation that the query intrinsic `statuses` and the sidebar `status` are disjoint; a grep of docs/ and CLAUDE.md for the section title and file name finds each mention consistent with the shipped copy; `pnpm knip` unaffected by doc edits.
 **Depends on:** 4
 **Estimate:** 2
-**Notes:** Wording of the stale note is a working copy until the user confirms; docs must match whatever ships. Developer doc location, verified by reading docs/features/ and docs/features/data/: existing files cover data types, metadata, projects, sidecars, indexing, previews, revisions, tags, writing-log and CLI, and a grep of them finds no page documenting DataView or work-area views; docs/features/data/metadata.md documents the `status` field and `config.statuses` but is a data-model page, so a new docs/features/status-rollup.md is used and may link to it. Amended at Gate 4 by the user, 2026-09-26 (paths).
+**Notes:** Wording of the stale note was a working copy; it is now user-confirmed and Task 10 updates the docs to the confirmed strings. Docs must match whatever ships. Developer doc location, verified by reading docs/features/ and docs/features/data/: existing files cover data types, metadata, projects, sidecars, indexing, previews, revisions, tags, writing-log and CLI, and a grep of them finds no page documenting DataView or work-area views; docs/features/data/metadata.md documents the `status` field and `config.statuses` but is a data-model page, so a new docs/features/status-rollup.md is used and may link to it. Amended at Gate 4 by the user, 2026-09-26 (paths).
 **Done:** [ ]
 
 ### Task 8: Final gate (all FRs)
@@ -83,12 +83,21 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 **Notes:** Reason for 3: a small plumbing fix in two or three files, but the failing-first test must build a page-shaped project and drive AppShell with a seeded store, and the audit of other `project.config` readers adds reading. Why earlier tests missed it (hypothesis, verify by reading the tests): the DataView and Task 6 wiring tests hand the component a project that already has `config.statuses` filled in, so the page-shaped project was never exercised (the same class of miss as Feature 59 Task 16). Recorded by the lead as observations, not part of this task, causes untested: the word-count jump (14 to 24 total words on the same project after a reload with no edits) and the blank-status row behaviour. Implementor records here: the mechanism chosen and why, the observed failure of the first test, the list of edited existing tests, and the audit of other `project.config` readers.
 **Done:** [ ]
 
+### Task 10: Update the status roll-up copy to the confirmed strings (FR-3, FR-14, FR-15, FR-16)
+**What:** Change the strings in the single `STATUS_ROLLUP_COPY` constants object (`frontend/components/WorkArea/StatusRollup.tsx`), plus every test, story and doc that quotes the old strings. New strings (user-confirmed at Gate 6): stale note "Word counts for some older resources may read low."; scope note "Text resources only, across the whole project. Not affected by the selected smart folder."; no-statuses hint "No statuses are configured for this project, so every resource shows under No status."; empty state "No text resources yet.". Unchanged: the "No status" row label, the "<value> (not in the current list)" off-list label, the table caption "Resources and words by status", the column headers.
+**Files:** frontend/components/WorkArea/StatusRollup.tsx, frontend/tests/statusRollup.test.tsx, frontend/tests/dataView.test.tsx, frontend/tests/appShellStatusRollup.test.tsx, frontend/tests/a11y/statusRollup.a11y.test.tsx, frontend/stories/WorkArea/DataView.stories.tsx (each only if it quotes an old string; found by grep), docs/user/views/data.md, docs/features/status-rollup.md, CLAUDE.md (Glossary "Status roll-up")
+**Done when:** test-first, observed failing: tests assert the four new exact strings and fail on the old code; the four old strings no longer appear anywhere (grep `frontend/`, `docs/`, `CLAUDE.md`, `specs/`, excluding the amendment history text in the specs, which may quote the old strings as history); tests and stories that quote the old strings are updated only as this task states, and each edit is listed in Notes; docs updated: docs/user/views/data.md, docs/features/status-rollup.md, CLAUDE.md glossary "Status roll-up"; axe and story tests still pass; `pnpm typecheck`, `pnpm lint`, `pnpm test:ci` and `pnpm knip` (baseline 47) green; no other behaviour change.
+**Depends on:** 9
+**Estimate:** 2
+**Notes:** Reason for 2: string changes in one constants object plus a grep-driven sweep of tests, stories and three docs, with no logic change; the cost is the sweep and the failing-first observation. Amended at Gate 6 by the user ("I'll take your recs for the copy"), 2026-09-26; these strings replace the earlier working-copy strings, which are now user-confirmed as replaced. Rationale: (1) stale note: "plain-text revisions" is internal jargon and names a cause not verified beyond a comment in `revision-core.ts`; (2) scope note: states the scope directly rather than pointing at the Overview total; (3) no-statuses hint: the lead found no place in Project Settings to add statuses to an existing project, so the old hint may point writers to a place that does not exist. Checked by the spec manager: `ProjectSettingsDialog.tsx` `TAB_OPTIONS` lists Heading Styles, Body Text Styles, Default Revision Name, Manage Tags, Metadata, Writing Goals, and a grep for "statuses" under `SchemaManager` and `preferences` found nothing; only `project-types/ProjectTypeEditorForm.tsx` edits statuses. Not checked: the settings panels' contents and any non-grep route (not exhaustive); (4) empty state: the roll-up counts text resources only, so an images-only project would misleadingly say "No resources". Implementor records here: each edited existing test/story and the grep result. Task 8 must be re-run after this task.
+**Done:** [ ]
+
 ## Summary
-- Total tasks: 9
-- Total estimated effort: 24 points (1: 3, 2: 0, 3: 5, 4: 3, 5: 3, 6: 3, 7: 2, 8: 2, 9: 3)
-- Active tasks: 8 (Task 2 retired in place, estimate 0)
-- Critical path: 1 -> 3 -> 4 -> 6 -> 9 (3 + 5 + 3 + 3 + 3 = 17 points); Task 8 then re-runs as the closing gate (see Parallelism)
-- Risks: Task 3 edits the largest work-area view and must not disturb existing dataView tests. Task 4 is the trap named in FR-17: passing `queryResources` would silently make the roll-up follow smart folders. The unreachability of loading/failure in DataView (OQ-11) is high confidence on the production path (static-import grep: DataView mounts only from AppShell.tsx:1375; AppShell only from app/(app)/page.tsx:913); residual limits are that dynamic or lazy imports and test files were not checked, and that Storybook stories (DataView.stories.tsx:56, :313; AppShell.stories.tsx:22; AppShellAfterOpen.stories.tsx:216) can render DataView with any props, which is not a production concern. Amended at Gate 4 by the user, 2026-09-26. Copy strings are working copy pending user confirmation.
+- Total tasks: 10
+- Total estimated effort: 26 points (1: 3, 2: 0, 3: 5, 4: 3, 5: 3, 6: 3, 7: 2, 8: 2, 9: 3, 10: 2)
+- Active tasks: 9 (Task 2 retired in place, estimate 0)
+- Critical path: 1 -> 3 -> 4 -> 6 -> 9 -> 10 (3 + 5 + 3 + 3 + 3 + 2 = 19 points); Task 8 then re-runs as the closing gate (see Parallelism)
+- Risks: Task 3 edits the largest work-area view and must not disturb existing dataView tests. Task 4 is the trap named in FR-17: passing `queryResources` would silently make the roll-up follow smart folders. The unreachability of loading/failure in DataView (OQ-11) is high confidence on the production path (static-import grep: DataView mounts only from AppShell.tsx:1375; AppShell only from app/(app)/page.tsx:913); residual limits are that dynamic or lazy imports and test files were not checked, and that Storybook stories (DataView.stories.tsx:56, :313; AppShell.stories.tsx:22; AppShellAfterOpen.stories.tsx:216) can render DataView with any props, which is not a production concern. Amended at Gate 4 by the user, 2026-09-26. Copy strings were working copy pending user confirmation; confirmed at Gate 6 and updated by Task 10.
 - Note: the uncaught rejection from the Start page's Open button (`page.tsx:936`, `StartPage.tsx:863`) is out of scope by the user's decision; a POS follow-up is filed by the lead. The agent did not read `docs/standards/failure-visibility.md` and read only the `onClick` region of `StartPage.tsx` (medium confidence on exact UX).
 
 ## Parallelism
@@ -96,6 +105,7 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 - After Task 3: Tasks 4 and 5 can proceed in parallel (both touch DataView tests or stories; sequence if they collide on `dataView.test.tsx`).
 - After Task 4: Tasks 6 and 7 can proceed in parallel.
 - Task 9 needs 3, 4 and 6 (it extends Task 6's test), so it starts after Task 6 and can run in parallel with Task 7. It is appended after Task 8 and ids are not renumbered, so the schema forbids Task 8 from listing it as a dependency; Task 8 (final gate) must be run after Task 9 is done, not before.
+- Task 10 depends on 9 (it edits the same component and tests) and is sequential after it. It is appended after Task 8, so the schema cannot make Task 8 depend on it: Task 8 (final gate) MUST be re-run after Task 10 is done; a run of Task 8 before Task 10 does not close the feature.
 
 ## FR coverage
 - FR-1: 1, 3, 6
@@ -110,10 +120,10 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 - FR-10: 1, 6, 9
 - FR-11: 1, 6, 9
 - FR-12: 1, 6, 9
-- FR-13: 1, 3, 6, 7
-- FR-14: 3
-- FR-15: 3, 7
-- FR-16: 3, 5, 9
+- FR-13: 1, 3, 6, 7, 10
+- FR-14: 3, 10
+- FR-15: 3, 7, 10
+- FR-16: 3, 5, 9, 10
 - FR-17: 4, 6
 
 ## Open Questions
@@ -121,3 +131,5 @@ Source spec: `specs/features/project-status-rollup.md`. Granularity: story point
 None.
 
 Amended at Gate 4 by the user, 2026-09-26: Task 8 exercise list drops the stale failure state; Task 1 drops the blank-status rule (blank statuses not expected, unverified, POS note tracks it); Task 7 doc paths fixed (docs/user/views/data.md, new docs/features/status-rollup.md); Task 5 notes existing DataView stories; Summary risk line updated to OQ-11 evidence. No ids or estimates changed.
+
+Amended at Gate 6 by the user ("I'll take your recs for the copy"), 2026-09-26: Task 10 added (confirmed copy strings, replacing the earlier working-copy strings); Summary, Parallelism (Task 10 sequential after 9; Task 8 must be re-run after Task 10) and FR coverage updated; Task 3 and Task 7 notes point at Task 10. Task 9 not edited. No existing ids or estimates changed.
