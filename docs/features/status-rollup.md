@@ -5,7 +5,7 @@ The "By status" section of the Data view (Feature 60). User-facing description: 
 ## Files
 
 - `frontend/src/lib/status-rollup.ts` - `computeStatusRollup(resources, statuses)` returns rows: configured statuses in order, unknown values in first-seen order (label from `unknownStatusLabel`: "<value> (not in the current list)"), then a final `UNSET_STATUS_LABEL` ("No status") row.
-- `frontend/components/WorkArea/StatusRollup.tsx` - renders a table; all user-visible strings live in `STATUS_ROLLUP_COPY`.
+- `frontend/components/WorkArea/StatusRollup.tsx` - renders a table (`<caption>` is screen-reader-only, column headers `scope="col"`, status cells `<th scope="row">`); all user-visible strings live in `STATUS_ROLLUP_COPY`. The table is replaced by "No resources yet." when no text resource exists, so the "No status" row is present only when at least one text resource exists. The scope note and stale note render in every state; the no-statuses hint renders when `config.statuses` is empty. No red is used.
 - `frontend/components/WorkArea/DataView.tsx` - mounts it in a `CollapsibleSection` titled "By status".
 
 ## Decisions

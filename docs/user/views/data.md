@@ -18,7 +18,7 @@ The **By status** section shows how your text resources are spread across the pr
 - A status a resource carries that is no longer in the project's list gets its own row, labelled "<value> (not in the current list)".
 - Resources with no status are counted in the final **No status** row.
 - If the project has no statuses set up, the section says: "No statuses are set up for this project yet. Resources appear under No status until you add some in Project Settings."
-- A project with no text resources shows "No resources yet."
+- A project with no text resources shows "No resources yet." instead of the table, so the zero rows and the **No status** row are not shown in that case.
 
 Things to know:
 
