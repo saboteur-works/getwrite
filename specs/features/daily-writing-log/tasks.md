@@ -9,7 +9,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Line numbers verified 2026-09-26 by grep. Feature 59 lands before Feature 61 (FR-13), which edits the same lines; sequence, do not parallelise. project-creator.ts copies from a project-type spec: decide only whether a spec may seed it; default no, plumb the field type only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Add the writing-log entry and day-file schema (FR-1, FR-3, FR-4)
 **What:** Define Zod schemas for a word entry (added, deleted, net, ISO timestamp, optional `source` marking import), a second marker-entry variant (`skipped: true`, ISO timestamp, no word counts), and a day file holding either variant.
@@ -18,7 +18,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Keep this separate from the dailyWordGoal task so the two schemas.ts edits do not conflict textually. Estimate raised 2 -> 3 at Gate 4: added the marker-entry variant and its tests (FR-5).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Implement the writing-log model: append and read (FR-1, FR-4)
 **What:** Add `writing-log.ts` that appends an entry (word or marker) to `meta/writing-log/YYYY-MM-DD.json`, keyed by the UTC date of the entry's ISO timestamp computed inside the model (never accepted from a client), and reads entries for a local-day window by loading the overlapping UTC day files (the window's validation lives in Task 9's core, not here).
@@ -27,7 +27,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Follow mention-index.ts (withMetaLock at :65). Per OQ-8 (amended at Gate 4) the key encodes no day definition and there is no re-keying. The local-day window is supplied by the caller as ISO `from`/`to` instants and validated in Task 9 (OQ-14, resolved at Gate 4). Estimate stays 5: the UTC-key and multi-file-read work replaces, rather than adds to, the local-date-key work. Failure-visibility standard: a corrupt file must not look like an empty day.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Implement the word-bag diff function (FR-2, FR-11)
 **What:** Add a pure function computing added, deleted and net between before and after text as a multiset difference, using `countWords` on `tiptapToPlainText`.
@@ -36,7 +36,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Depends on:** none
 **Estimate:** 3
 **Notes:** FR-11 states compute cost is unmeasured. No benchmark task is added: the spec explicitly leaves cost unmeasured, the diff is O(n) over one resource per debounced save, and a benchmark would be speculative. Revisit only if a large-resource save is observed slow.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Hook logging into `updateRevisionInPlace` for canonical saves (FR-2, FR-5)
 **What:** Read the previous canonical content itself, diff against the new content, and append one entry; when previous content is unreadable or non-TipTap, append a marker entry (`skipped: true`) instead of a word entry and return a signal.
@@ -45,7 +45,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Depends on:** 3, 4
 **Estimate:** 5
 **Notes:** `snapshotBeforeDestructiveWrite` returns null for both unreadable and non-destructive cases, hence the own read (spec FR-5). Decide and record the exact result field name; Task 6 and 9 consume it. Highest-risk task: touches the primary save path. Estimate stays 5: the marker append reuses Task 3's append and Task 2's variant.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Surface the skipped-log signal as a deduplicated toast and persistent marker (FR-5)
 **What:** Route the signal from the save result to `toastService.error` with a stable id and expose a persistent 'incomplete' flag for the goal display.
@@ -54,7 +54,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Depends on:** 5
 **Estimate:** 3
 **Notes:** Mirror reportTransportValidationFailure's stable-id toast. Native and HTTP both flow the field from Task 5; verify both.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Log docx and Scrivener imports with a `source` field (FR-3, FR-10)
 **What:** Append one additions entry under the new project's id at the end of each import, marked as an import; do nothing for plain-text.
@@ -63,7 +63,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Depends on:** 3
 **Estimate:** 3
 **Notes:** Imports write resources through paths that must not call the Task 5 hook; verify they do not, or the words would be double counted as non-import additions.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Guarantee `reindex` does not clear the writing log (FR-12)
 **What:** Add a regression test, and a code change only if one is needed, so a from-scratch reindex leaves meta/writing-log intact.
@@ -72,7 +72,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Depends on:** 3
 **Estimate:** 2
 **Notes:** Expected to pass without source changes; the value is pinning it. If reindex clears meta/ wholesale, that is a real defect to fix here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Add core functions for reading the log and setting the goal (FR-6, FR-7)
 **What:** Add transport-agnostic cores: get today's aggregate (non-import totals, import total, goal, incomplete flag) for a required client-supplied local-day window (`from`, `to` ISO instants), validating that window, and set or clear `dailyWordGoal`.
@@ -81,7 +81,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Depends on:** 1, 3
 **Estimate:** 5
 **Notes:** Uses project-root-resolver.ts like the other cores. Estimate raised 3 -> 5 at Gate 4: multi-file local-day assembly plus the incomplete flag. Window validation (Zod datetime, ordering, 26-hour cap, file-count bound) lives here so HTTP and native share it (OQ-14, resolved at Gate 4); the window is never a path component. Estimate stays 5: the validation is a small, test-heavy addition to the multi-file assembly already sized at 5.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Add HTTP routes and `createTransport` client with native backend, web-stub and response validation (FR-9)
 **What:** Expose read-log and set-goal via API routes and a `lib/api` module resolving through `createTransport`, with a native backend, web-stub, and Zod-validated HTTP responses. The read route takes required `from`/`to` query parameters from `new URL(req.url).searchParams`; the `lib/api` client (this task, not Task 12) computes the local day's start and end ISO instants and sends them.
@@ -90,7 +90,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Depends on:** 9
 **Estimate:** 5
 **Notes:** Follow entity-mention-counts.ts + native-entity-mention-counts-backend.ts. Failure must not render as zero words. Estimate stays 5: the window parameter, the 400 mapping and the client computation replace no existing work, but are small additions to a route and client already sized at 5, whose validation itself is in Task 9.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Add a `dailyWordGoal` control to ProjectSettingsDialog (FR-6)
 **What:** Add a numeric field to set and clear the daily goal, saved through the goal transport.
@@ -98,7 +98,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Done when:** read the component's props and story args first; tests written first confirm: the field shows the current goal or empty; entering a valid number saves via the transport; clearing saves as unset; a negative or non-integer value is rejected with an accessible error message; it is labelled distinctly from `wordCountGoal`; a failed save surfaces an error rather than silently reverting; existing dialog tests pass; `pnpm lint` no new errors.
 **Depends on:** 10
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Add the expandable footer goal display in EditView (FR-7, FR-8)
 **What:** Add a collapsed-by-default disclosure to the footer showing today-versus-goal, expanding to added/deleted/net and the import line, with persisted state.
@@ -108,7 +108,7 @@ Source spec: `specs/features/daily-writing-log.md`. Granularity: story points (1
 **Estimate:** 5
 **Notes:** Not reusable: CollapsibleSection.tsx (only sidebar/workarea variants); use it and tests/a11y/collapsiblesection.a11y.test.tsx as pattern references only.
 Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the inline expand/collapse, the collapsed-by-default rule, the `getwrite.editFooter.expanded` persistence and the disclosure a11y (`aria-expanded`, `aria-controls`, no Esc, no Radix) are replaced by Task 17's overlay. The Done history above is unchanged.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Storybook story and a11y test for the footer display (FR-7, FR-8)
 **What:** Add a story covering collapsed, expanded, no goal, import line, and incomplete marker, plus an axe a11y test.
@@ -117,7 +117,7 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 **Depends on:** 12
 **Estimate:** 2
 **Notes:** Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the collapsed/expanded story states and the disclosure toggle keyboard test are replaced by Task 18's overlay story and dialog tests. The Done history above is unchanged.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Update docs (all FRs)
 **What:** Document the writing log, the daily goal, the footer, the blind spots and the reindex guarantee.
@@ -126,7 +126,7 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 **Depends on:** 7, 8, 10, 12
 **Estimate:** 2
 **Notes:** Footer wording superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the expandable-footer and `localStorage` text this task wrote is corrected by Task 18. The Done history above is unchanged.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Final verification gate
 **What:** Run the repository gates and confirm each FR has passing coverage.
@@ -135,7 +135,7 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 **Depends on:** 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
 **Estimate:** 1
 **Notes:** Record baseline counts before starting.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Fix daily-goal save using the wrong project id (FR-6)
 **What:** Make the Project Settings dialog's daily-goal save use the project's directory id, and check every other place Feature 59 passes a project id for the same mistake.
@@ -144,7 +144,7 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 **Depends on:** 11
 **Estimate:** 2
 **Notes:** Measured by the exercise agent (Stage 6.5): saving the goal in Project Settings > Default Revision Name showed "Failed to save daily goal: Failed to save the daily word goal (HTTP 500)."; server log `PUT /api/project/writing-log 500` with `ENOENT ... open '<workspace>/4943675f-.../project.json'` at frontend/src/lib/models/writing-log-core.ts:182; 4943675f-... is the `id` field inside project.json while the project directory name was af142f76-...; the same PUT via curl with the directory id returned 200 and wrote dailyWordGoal. The footer GET reads returned 200 with the directory id. The cause (wrong id passed at AppShell.tsx:1119) is a hypothesis until the fix is tried; the lead verified the differing call sites by reading. Why the Task 11 tests did not catch it (read, not run): tests/dailyWordGoalField.test.tsx renders `DailyWordGoalField` with the literal `projectId="p1"`, and tests/projectSettingsDialogDailyGoal.test.tsx renders `ProjectSettingsDialog` with a `projectId` argument supplied by the test itself; neither renders AppShell or derives the id from a project object, so the id AppShell computes was never exercised. Verification step (lead, not an implementor task): after the fix, re-exercise the goal save in the running app. Also observed by the exercise, NOT part of this task, unresolved, cause not established: a 0/0/0 entry logged about one second after opening a resource before any typing, and the expanded footer wrapping into cramped lines at ~1200px width.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Replace the inline expandable footer with a writing-details overlay opened from the existing Today's writing button (FR-7, FR-8)
 **What:** Keep the footer's "Today's writing" text button, the collapsed figure and the incomplete marker; stop expanding inline; open a closeable modal/overlay with added, deleted, net, the import line and the incomplete marker; give the button a HoverTip; remove the expanded-state persistence.
@@ -153,7 +153,7 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 **Depends on:** 12, 13, 16
 **Estimate:** 5
 **Notes:** Amended at Gate 6 by the user (2026-09-26); supersedes parts of the Gate 3 resolutions (OQ-10 to OQ-13). OQ-15 to OQ-19 resolved at Gate 6 by the user ("Take your recs"), 2026-09-26: blocking modal on `UI/Dialog` (not `ConfirmDialog`); read-only overlay, goal set only in Project Settings; title "Today's writing"; figure stays inline in the footer. Known separate issue, not in scope: AppShell's config copy of `dailyWordGoal` is stale after a save until the project reloads (`DailyWordGoalField.tsx` `initialGoal` only seeds state; `AppShell.tsx:1124`). Tooltip copy "Show today's writing details" is the user's option A with only the collapsed-state wording applying (the lead's inference, since a modal has no expanded state). Estimate 5: UI restructure plus removal of persistence plus updating existing footer tests, on the footer Task 12 sized at 5.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Overlay story, dialog a11y tests and docs update (FR-7, FR-8)
 **What:** Update the footer story and a11y tests for the overlay, and correct the docs that describe the expandable footer and the localStorage key.
@@ -162,7 +162,7 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 **Depends on:** 17
 **Estimate:** 3
 **Notes:** Amended at Gate 6 by the user (2026-09-26). Estimate 3: story states and dialog tests replace Task 13's, plus three doc edits.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Refresh the footer's daily goal figure after the goal changes (FR-6, FR-7)
 **What:** After a daily goal save or clear succeeds, the footer figure refreshes without a reload or a document save. The implementor chooses the smallest mechanism consistent with existing patterns (for example a small signal like `writing-log-signal.ts`, or a refresh token bumped from AppShell after the goal transport resolves) and records the choice and why in Notes.
@@ -171,7 +171,7 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 **Depends on:** 11, 16, 17
 **Estimate:** 3
 **Notes:** Added 2026-09-26 on the user's "fix now" after the overlay exercise (Stage 6.5). Measured by the exercise agent (one read, not re-checked): with the goal set to 500 and the footer at "Today: 13 / 500", the goal was cleared in Project Settings ("Daily goal cleared."); the overlay then correctly read "No daily goal set" but the footer still read "Today: 13 / 500" about 500ms after closing settings. Read by the lead: `WritingLogFooterDisplay.tsx` fetches the aggregate on mount, when `projectId` changes and when `refreshToken` changes; `EditView.tsx` (~:421) passes the last-saved timestamp as `refreshToken`; the footer's goal comes from the aggregate's `goal` (a server read), so nothing tells it to refetch when the goal is saved. The cause is a HYPOTHESIS until the test-first step confirms it. Precedent: `frontend/src/lib/writing-log-signal.ts` exposes a subscribe/getSnapshot pattern (`getWritingLogSessionIncomplete` / `subscribeWritingLogSessionIncomplete`). Known separate issue: AppShell's config copy of `dailyWordGoal` is stale after a save until reload (`DailyWordGoalField.tsx` `initialGoal` only seeds state; `AppShell.tsx` ~:1124). If the chosen mechanism naturally fixes that too, the implementor says so; fixing it is not required and must not widen scope beyond the smallest change. Verification step (lead, not an implementor task): re-exercise in the running app. Estimate 3: wiring across the settings dialog and footer plus a wiring-level test.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Move the daily word goal into a "Writing Goals" tab in Project Settings (FR-6)
 **What:** Add a "Writing Goals" tab to ProjectSettingsDialog that hosts `DailyWordGoalField` unchanged (the existing "Daily writing goal" section, no extra description), appended LAST in the tab list after Metadata with no reordering of the existing tabs, and remove the field from the Default Revision Name tab. The tab holds the daily goal only; nothing from Feature 61 (the `wordCountGoal` control) is built.
@@ -180,7 +180,7 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 **Depends on:** 19, 11, 16
 **Estimate:** 3
 **Notes:** Added 2026-09-26, Amended at Gate 6 by the user: "the writing goal is buried in the default revision name tab and should be in its own 'Writing Goals' tab." Task 19 has LANDED (commit d72d8ca2: DailyWordGoalField.tsx, WritingLogFooterDisplay.tsx, src/lib/writing-log-signal.ts, tests/appShellDailyGoalFooterRefresh.test.tsx), so Task 20 must update that Task 19 test's tab reference (~:84) as well. References to the old placement found by grep on 2026-09-26 (read, not run): CLAUDE.md:269; docs/user/writing-log.md:18; docs/features/writing-log.md:59; frontend/tests/projectSettingsDialogDailyGoal.test.tsx:65; frontend/tests/appShellDailyGoalProjectId.test.tsx:86; frontend/tests/appShellDailyGoalFooterRefresh.test.tsx:84; frontend/stories/Layout/ProjectSettingsDialog.stories.tsx:86 (and :91 "All five tabs"); the 5-tab count assertion at frontend/tests/projectSettingsDialog.test.tsx:88-101. Not stale: this file's Task 16 Notes (a historical measurement) and specs/features/project-settings-consolidation.md (a record of the earlier tab set). No agentic-qa procedure or CLI reference to the tab was found under specs/, docs/ or cli/src by grep; if a QA procedure outside those paths uses `role=tab[name="Default Revision Name"]` for the goal, update it here. Estimate 3: one new tab plus seven or so reference updates and a wiring-level test, no new logic. Resolved at Gate 6 by the user ("take your recs, approved"), 2026-09-26 (OQ-20 to OQ-22): tab appended last after Metadata, no reordering (current order: headings, body-text, default-revision-name, tags, metadata in ProjectSettingsDialog.tsx); tab label "Writing Goals" hosting the existing "Daily writing goal" section unchanged with no extra description; projectSettingsDialog.test.tsx tab count 5 -> 6 and nothing else changed beyond what this task lists. The tab is intended as the later home for the `wordCountGoal` control (Feature 61); that control is not built here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Skip zero-change canonical autosaves in the writing log (FR-2)
 **What:** In `logCanonicalSave`, when the word-bag diff gives `added` == 0 AND `deleted` == 0, append no entry and return no signal. A diff with `added` > 0 or `deleted` > 0 is still appended, including a net-0 same-size replacement. The FR-5 marker path (unreadable or non-TipTap previous content) is unchanged. Imports (FR-3) are unchanged; the save-on-create that produces most zero-change saves is out of scope and tracked separately.
@@ -189,7 +189,7 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 **Depends on:** 5, 20
 **Estimate:** 2
 **Notes:** Added 2026-09-26, Amended at Gate 6 by the user ("Both, take your recs"); supersedes the earlier reading that every debounced canonical autosave logs one entry (spec FR-2, OQ-23). Old-behaviour references found by grep on 2026-09-26 (read, not run): docs/features/writing-log.md:24 ("including one that changes no words (it appends a 0/0/0 entry)") and :25 (zero-word import, stays); CLAUDE.md:268 ("a save that changes nothing still appends a 0/0/0 entry, and a zero-word import still writes one entry"; edit only the first clause); specs/product/getwrite.md FR-48 ("one before/after entry per debounced save", amended in the same pass). docs/user/writing-log.md had no matching statement by grep. No existing test in tests/unit/revision-writing-log.test.ts asserts a 0/0/0 entry for a no-change save by grep, so likely no existing test edit is needed; confirm by reading and list any edit here. OQ-24 resolved at Gate 6 by the user ("take your recs, approved"), 2026-09-26: option (a), imports unchanged; a zero-word import still writes its entry because an import is a deliberate event; the skip rule applies to the canonical save path only (earlier this was the lead's inference). docs/features/writing-log.md:24 and CLAUDE.md:268 were ALREADY edited (uncommitted) by the earlier spec-manager pass: the implementor must include and verify them, not redo them. Estimate 2: one conditional in one function, three new tests, three doc edits; no new schema or transport. Because the diff result is already computed, no extra cost is added to the save path.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 21
