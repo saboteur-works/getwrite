@@ -110,6 +110,7 @@ describe("AppShell — status roll-up ignores smart folders (FR-17)", () => {
         rootPath: project.rootPath,
         folders: [],
         resources: resources.map((r) => ({ id: r.id, name: r.name })),
+        statuses: ["Draft", "Final"],
         config,
       } as never),
     );

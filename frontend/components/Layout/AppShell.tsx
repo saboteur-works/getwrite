@@ -1375,6 +1375,7 @@ export default function AppShell({
                                   <DataView
                                     resources={queryResources}
                                     statusRollupResources={liveResources}
+                                    statuses={projectStatuses}
                                     project={project ?? undefined}
                                     folders={liveFolders}
                                     isEvaluating={

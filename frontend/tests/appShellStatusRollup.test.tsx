@@ -56,15 +56,22 @@ function buildResources(): Record<string, AnyResource> {
   };
 }
 
-function renderShell(statuses: string[], resources: AnyResource[]) {
+function renderShell(
+  statuses: string[],
+  resources: AnyResource[],
+  options: { pageShaped?: boolean } = {},
+) {
   const config = { statuses };
+  // page.tsx builds its project without config.statuses; statuses reach the
+  // app only through the Redux store.
+  const projectConfig = options.pageShaped ? {} : config;
   const project = {
     id: PROJECT_ID,
     name: "Rollup Wiring",
     rootPath: "/test/rollup-wiring",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    config,
+    config: projectConfig,
   };
   const store = makeStore();
   store.dispatch(
@@ -200,5 +207,35 @@ describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
     ).toBeInTheDocument();
     const rows = rollupRows();
     expect(rows[rows.length - 1][0]).toBe("No status");
+  });
+
+  it("uses the store's statuses when the page-shaped project config lacks them", () => {
+    const res = buildResources();
+    renderShell(["Draft", "Revised"], Object.values(res), { pageShaped: true });
+
+    const rows = rollupRows();
+    expect(rows.slice(0, 2)).toEqual([
+      ["Draft", "2", "150"],
+      ["Revised", "1", "200"],
+    ]);
+    expect(
+      rows.some(
+        (r) =>
+          r[0].includes("(not in the current list)") &&
+          (r[0].startsWith("Draft") || r[0].startsWith("Revised")),
+      ),
+    ).toBe(false);
+    expect(
+      screen.queryByText(/No statuses are set up for this project yet/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("still shows the no-statuses hint for a page-shaped project with genuinely empty statuses", () => {
+    const res = buildResources();
+    renderShell([], Object.values(res), { pageShaped: true });
+
+    expect(
+      screen.getByText(/No statuses are set up for this project yet/),
+    ).toBeInTheDocument();
   });
 });

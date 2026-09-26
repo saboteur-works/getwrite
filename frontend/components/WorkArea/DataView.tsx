@@ -36,6 +36,12 @@ export interface DataViewProps {
    * resolved `resources` list when omitted.
    */
   statusRollupResources?: AnyResource[];
+  /**
+   * The project's configured statuses for the "By status" roll-up. Takes
+   * precedence over `project.config.statuses`, which the page-built project
+   * shape does not carry (statuses live in the Redux store).
+   */
+  statuses?: string[];
   /** Folder list used to group resources in the Breakdown section. */
   folders?: Folder[];
   /** Called when the user clicks the jump button on a breakdown group row. */
@@ -60,6 +66,7 @@ export default function DataView({
   view,
   resources,
   statusRollupResources,
+  statuses,
   folders,
   onSelectFolder,
   onResourceClick,
@@ -179,7 +186,7 @@ export default function DataView({
       <CollapsibleSection title="By status">
         <StatusRollup
           resources={statusRollupResources ?? flatResources}
-          statuses={project?.config?.statuses ?? []}
+          statuses={statuses ?? project?.config?.statuses ?? []}
         />
       </CollapsibleSection>
 
