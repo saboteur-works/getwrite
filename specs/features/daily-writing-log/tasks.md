@@ -164,11 +164,20 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 **Notes:** Amended at Gate 6 by the user (2026-09-26). Estimate 3: story states and dialog tests replace Task 13's, plus three doc edits.
 **Done:** [ ]
 
+### Task 19: Refresh the footer's daily goal figure after the goal changes (FR-6, FR-7)
+**What:** After a daily goal save or clear succeeds, the footer figure refreshes without a reload or a document save. The implementor chooses the smallest mechanism consistent with existing patterns (for example a small signal like `writing-log-signal.ts`, or a refresh token bumped from AppShell after the goal transport resolves) and records the choice and why in Notes.
+**Files:** frontend/components/WorkArea/WritingLogFooterDisplay.tsx, frontend/components/WorkArea/EditView.tsx, frontend/components/Layout/AppShell.tsx and/or frontend/components/Layout/DailyWordGoalField.tsx, frontend/src/lib/writing-log-signal.ts (only if reused), tests
+**Done when:** a test written first FAILS on the current code (observe and record the failure) and passes after; at the AppShell/EditView wiring level (not only the footer component with a hand-fed `refreshToken`): setting the goal to 500 makes the footer read "Today: N / 500" without a save; clearing it makes the footer read "Today: N" with no goal, without a save or reload; a failed goal save does not change the footer; the overlay and footer agree after each change; no existing test is edited (if one contradicts, HALT); `pnpm typecheck` and `pnpm lint` clean; nothing about Features 60/62 added.
+**Depends on:** 11, 16, 17
+**Estimate:** 3
+**Notes:** Added 2026-09-26 on the user's "fix now" after the overlay exercise (Stage 6.5). Measured by the exercise agent (one read, not re-checked): with the goal set to 500 and the footer at "Today: 13 / 500", the goal was cleared in Project Settings ("Daily goal cleared."); the overlay then correctly read "No daily goal set" but the footer still read "Today: 13 / 500" about 500ms after closing settings. Read by the lead: `WritingLogFooterDisplay.tsx` fetches the aggregate on mount, when `projectId` changes and when `refreshToken` changes; `EditView.tsx` (~:421) passes the last-saved timestamp as `refreshToken`; the footer's goal comes from the aggregate's `goal` (a server read), so nothing tells it to refetch when the goal is saved. The cause is a HYPOTHESIS until the test-first step confirms it. Precedent: `frontend/src/lib/writing-log-signal.ts` exposes a subscribe/getSnapshot pattern (`getWritingLogSessionIncomplete` / `subscribeWritingLogSessionIncomplete`). Known separate issue: AppShell's config copy of `dailyWordGoal` is stale after a save until reload (`DailyWordGoalField.tsx` `initialGoal` only seeds state; `AppShell.tsx` ~:1124). If the chosen mechanism naturally fixes that too, the implementor says so; fixing it is not required and must not widen scope beyond the smallest change. Verification step (lead, not an implementor task): re-exercise in the running app. Estimate 3: wiring across the settings dialog and footer plus a wiring-level test.
+**Done:** [ ]
+
 ## Summary
-- Total tasks: 18
-- Total estimated effort: 59 points (was 51; Task 17 +5 and Task 18 +3, appended at Gate 6 to replace the inline expandable footer with a writing-details overlay; earlier: Task 2 +1, Task 9 +2, Task 16 +2)
+- Total tasks: 19
+- Total estimated effort: 62 points (was 59; Task 19 +3, appended 2026-09-26 to refresh the footer goal figure after a goal change; earlier: was 51; Task 17 +5 and Task 18 +3, appended at Gate 6 to replace the inline expandable footer with a writing-details overlay; earlier: Task 2 +1, Task 9 +2, Task 16 +2)
 - Critical path: 2 -> 3 -> 5 -> 6 -> 12 -> 13 -> 15 (Tasks 1 -> 9 -> 10 -> 11 -> 12 is comparable; Task 9 is now 5, so this second path is 1(2) + 9(5) + 10(5) + 11(3) + 12(5) = 20 points against the first path's 2(3) + 3(5) + 5(5) + 6(3) + 12(5) = 21 before Tasks 13 and 15, so 2 -> 3 -> 5 -> 6 -> 12 remains the critical path)
-- Risks: Tasks 17 and 18 are no longer blocked in design (OQ-15 to OQ-19 resolved at Gate 6, "Take your recs"); the Task 15 gate must be re-run after them. Estimates unchanged (17 stays 5, 18 stays 3): the resolutions fix the component and content without adding or removing work. Task 5 edits the primary canonical save path and must never fail a content save because logging failed. Task 12 is the largest UI task and depends on props discovered from the existing footer. Task 1 shares schemas.ts lines with Feature 61, which must land after. Task 7 must ensure imports do not also trigger the Task 5 hook (double counting). The FR-11 diff cost is unmeasured; no benchmark task is added because a debounced per-save O(n) diff is not a suspected bottleneck.
+- Risks: Tasks 17 and 18 are no longer blocked in design (OQ-15 to OQ-19 resolved at Gate 6, "Take your recs"); the Task 15 gate must be re-run after them. Estimates unchanged (17 stays 5, 18 stays 3; Task 19 adds 3): the resolutions fix the component and content without adding or removing work. Task 5 edits the primary canonical save path and must never fail a content save because logging failed. Task 12 is the largest UI task and depends on props discovered from the existing footer. Task 1 shares schemas.ts lines with Feature 61, which must land after. Task 7 must ensure imports do not also trigger the Task 5 hook (double counting). The FR-11 diff cost is unmeasured; no benchmark task is added because a debounced per-save O(n) diff is not a suspected bottleneck.
 
 ## Parallelism
 - Tasks 1, 2 and 4 have no dependencies and can start together (1 and 2 both edit schemas.ts, so sequence them or merge carefully).
@@ -176,6 +185,7 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 - Task 16 needs only Task 11 (done); it was appended after Task 15 and, as a bug fix, is worked first and before re-running the Task 15 gate.
 
 - Task 17 needs 12, 13 and 16 and may start now that OQ-15 to OQ-19 are resolved; Task 18 follows 17. Critical path is now 2 -> 3 -> 5 -> 6 -> 12 -> 17 -> 18 (Task 13 is done history; 17 also needs 16).
+- Task 19 needs 11, 16 and 17 and touches the footer, EditView and the settings/goal wiring, so it should be sequenced with Task 18 (both touch WritingLogFooterDisplay tests and stories) rather than run in parallel; it is not on the critical path.
 
 ## FR coverage
 - FR-1: 2, 3, 9
@@ -183,8 +193,8 @@ Superseded in part at Gate 6 (2026-09-26, Amended at Gate 6 by the user): the in
 - FR-3: 2, 7
 - FR-4: 2, 3
 - FR-5: 2, 5, 6, 9, 12
-- FR-6: 1, 9, 11, 16
-- FR-7: 9, 10, 12, 13, 17, 18
+- FR-6: 1, 9, 11, 16, 19
+- FR-7: 9, 10, 12, 13, 17, 18, 19
 - FR-8: 12, 13, 17, 18
 - FR-9: 10
 - FR-10: 7
