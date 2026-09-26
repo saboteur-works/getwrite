@@ -7,12 +7,11 @@ import { computeStatusRollup } from "../../src/lib/status-rollup";
 /** Working copy: every user-visible string of the roll-up, in one place. */
 export const STATUS_ROLLUP_COPY = {
   scopeNote:
-    "Counts text resources only, so this total may differ from the Overview total.",
-  staleNote:
-    "Word totals may read low for resources with older plain-text revisions.",
-  noResources: "No resources yet.",
+    "Text resources only, across the whole project. Not affected by the selected smart folder.",
+  staleNote: "Word counts for some older resources may read low.",
+  noResources: "No text resources yet.",
   noStatusesConfigured:
-    "No statuses are set up for this project yet. Resources appear under No status until you add some in Project Settings.",
+    "No statuses are configured for this project, so every resource shows under No status.",
   tableCaption: "Resources and words by status",
   statusHeader: "Status",
   resourcesHeader: "Resources",

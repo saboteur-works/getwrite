@@ -614,7 +614,7 @@ describe("DataView By status section", () => {
 
   it("shows 'no resources yet' and no table when there are no resources", () => {
     render(<DataView project={statusProject} resources={[]} />);
-    expect(screen.getByText(/no resources yet/i)).toBeInTheDocument();
+    expect(screen.getByText("No text resources yet.")).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
   });
 

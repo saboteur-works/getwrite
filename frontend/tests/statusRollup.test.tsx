@@ -1,9 +1,7 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-import StatusRollup, {
-  STATUS_ROLLUP_COPY,
-} from "../components/WorkArea/StatusRollup";
+import StatusRollup from "../components/WorkArea/StatusRollup";
 import type { AnyResource } from "../src/lib/models/types";
 
 const make = (
@@ -74,13 +72,12 @@ describe("StatusRollup", () => {
   it("always shows the working-copy stale note and text-resources scope note", () => {
     render(<StatusRollup resources={[make("a")]} statuses={["Draft"]} />);
     expect(
-      screen.getByText(
-        "Word totals may read low for resources with older plain-text revisions.",
-      ),
+      screen.getByText("Word counts for some older resources may read low."),
     ).toBeInTheDocument();
-    expect(screen.getByText(/text resources/)).toBeInTheDocument();
     expect(
-      screen.getByText(/differ from the Overview total/),
+      screen.getByText(
+        "Text resources only, across the whole project. Not affected by the selected smart folder.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -107,16 +104,16 @@ describe("StatusRollup", () => {
         statuses={["Draft"]}
       />,
     );
-    expect(
-      screen.getByText(STATUS_ROLLUP_COPY.noResources),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No text resources yet.")).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
   });
 
   it("shows a no-statuses-configured hint alongside the No status row", () => {
     render(<StatusRollup resources={[make("a")]} statuses={[]} />);
     expect(
-      screen.getByText(STATUS_ROLLUP_COPY.noStatusesConfigured),
+      screen.getByText(
+        "No statuses are configured for this project, so every resource shows under No status.",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("rowheader", { name: "No status" }),
@@ -126,7 +123,9 @@ describe("StatusRollup", () => {
   it("does not show the hint when statuses are configured", () => {
     render(<StatusRollup resources={[make("a")]} statuses={["Draft"]} />);
     expect(
-      screen.queryByText(STATUS_ROLLUP_COPY.noStatusesConfigured),
+      screen.queryByText(
+        "No statuses are configured for this project, so every resource shows under No status.",
+      ),
     ).toBeNull();
   });
 

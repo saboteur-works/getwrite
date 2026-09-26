@@ -17,11 +17,11 @@ The **By status** section shows how your text resources are spread across the pr
 - Rows appear in the order of your project's status list, including statuses no resource uses yet (shown as 0).
 - A status a resource carries that is no longer in the project's list gets its own row, labelled "<value> (not in the current list)".
 - Resources with no status are counted in the final **No status** row.
-- If the project has no statuses set up, the section says: "No statuses are set up for this project yet. Resources appear under No status until you add some in Project Settings."
-- A project with no text resources shows "No resources yet." instead of the table, so the zero rows and the **No status** row are not shown in that case.
+- If the project has no statuses configured, the section says: "No statuses are configured for this project, so every resource shows under No status."
+- A project with no text resources shows "No text resources yet." instead of the table, so the zero rows and the **No status** row are not shown in that case.
 
 Things to know:
 
-- Only text resources are counted, so this total may differ from the Overview total. The section says so: "Counts text resources only, so this total may differ from the Overview total."
-- Word totals come from each resource's stored word count, which can lag behind. The section says: "Word totals may read low for resources with older plain-text revisions." (This wording is a working copy and may change.)
+- Only text resources are counted, across the whole project. The section says so: "Text resources only, across the whole project. Not affected by the selected smart folder."
+- Word totals come from each resource's stored word count, which can lag behind. The section says: "Word counts for some older resources may read low."
 - The section covers the whole project. It does not follow smart-folder selection, even when a smart folder is selected in the resource tree.
