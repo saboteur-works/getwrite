@@ -344,7 +344,11 @@ export async function deleteResourceCore(
  * is rejected rather than silently ignored or coerced (FR-20/FR-25,
  * `docs/standards/security.md`).
  */
-const SIDECAR_CLEARABLE_KEYS: readonly string[] = ["entityKind", "aliases"];
+const SIDECAR_CLEARABLE_KEYS: readonly string[] = [
+  "entityKind",
+  "aliases",
+  "wordCountGoal",
+];
 
 /**
  * Thrown by {@link updateSidecarCore} when `clearKeys` is malformed (not an
