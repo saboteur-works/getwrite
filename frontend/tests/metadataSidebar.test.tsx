@@ -1079,3 +1079,47 @@ describe("MetadataSidebar — feature gating (Task 7)", () => {
     ).toBeInTheDocument();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Word count goal section (Feature 61, Task 5)
+// ---------------------------------------------------------------------------
+
+describe("MetadataSidebar — Word count goal section (Task 5)", () => {
+  it("renders the Word count goal section for a text resource", () => {
+    const res = createTextResource({ name: "Chapter One", plainText: "" });
+    const testStore = makeStore();
+    testStore.dispatch(setProject({ id: "p", rootPath: "/test" }));
+    testStore.dispatch(setSelectedProjectId("p"));
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /word count goal/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("word-count-goal-input")).toBeInTheDocument();
+  });
+
+  it("does not render the Word count goal section for an image resource", () => {
+    const res = createImageResource({ name: "Cover" });
+    const testStore = makeStore();
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /word count goal/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("word-count-goal-input"),
+    ).not.toBeInTheDocument();
+  });
+});
