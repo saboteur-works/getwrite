@@ -13,7 +13,7 @@ Code read before writing this list (facts, not guesses): `frontend/components/La
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Field name is `wordCountGoal` on `TextResourceSchema` — the same name `ProjectConfigSchema` already uses for the project-level goal, but on a different schema (a resource, not project config), so there is no collision at the type level; `AnyResource` callers narrow on `type === "text"` before reading it, mirroring `wordCount`'s own scoping. Collision check: no other in-flight feature is known to be editing `TextResourceSchema` or `SIDECAR_CLEARABLE_KEYS` right now (git status at spec time shows only this new spec file untracked); `schemas.ts` is a high-churn file across features generally, so re-check for conflicts immediately before landing.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Project-goal write path — model core and HTTP route
 **What:** Add a new transport-agnostic core (`setWordCountGoalCore`, and a paired `getWordCountGoalCore` if useful for the route's GET, or fold the read into the existing project-open response — decide and record which) that sets or clears `config.wordCountGoal` in `project.json`, mirroring `setDailyWordGoalCore`'s exact pattern (delete the key on `null`, never write `undefined`; `withMetaLock`; `atomicWriteFile`), plus a new HTTP route exposing it.
@@ -22,7 +22,7 @@ Code read before writing this list (facts, not guesses): `frontend/components/La
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Deliberately a new sibling module rather than extending `writing-log-core.ts` (wordCountGoal is not a writing-log concept) or `project-preferences-core.ts`/`project-config.ts` (neither existing function persists an arbitrary top-level `config` key the way `setDailyWordGoalCore` does — `saveProjectPreferencesCore` writes `metadata`, `saveRevisionSettingsCore` writes only `defaultRevisionName`). This mirrors the precedent of `revision-settings.ts` as its own small persistence module. Reads whether the project-goal value needs its own GET at all: the project-open response (`ProjectApiEntrySchema`) already carries `config.wordCountGoal` once present (it is on `ApiProjectConfigSchema` today only implicitly via `ProjectConfigSchema` reuse — verify and add if missing), so a dedicated GET route may be unnecessary; record the decision here. Collision check: no other in-flight feature is known to touch `app/api/project/` right now.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Client transport for the project goal; confirmed no-new-transport finding for the resource goal
 **What:** Add `lib/api/word-count-goal.ts` resolving through `createTransport` (native backend + web-stub + HTTP response validation), mirroring `lib/api/writing-log.ts`'s contract exactly per FR-4/OQ-8 (reject on network error, non-2xx, or malformed body; never degrade to zero/absent). Confirm in writing that the resource goal needs no equivalent new module (see the finding above the task list) and record the confirmation here rather than building unneeded transport code.
@@ -31,7 +31,7 @@ Code read before writing this list (facts, not guesses): `frontend/components/La
 **Depends on:** 1, 2
 **Estimate:** 3
 **Notes:** Follow `entity-mention-counts.ts` + `native-entity-mention-counts-backend.ts` as the smallest recent precedent for a read-only-shaped pair; this one also writes, so mirror `entity-relationships.ts`'s note about being "the one that writes as well as reads" if a single combined method isn't natural — a single `WordCountGoalTransport` object with one `setWordCountGoal(projectId, goal)` method (and a `getWordCountGoal` only if Task 2 needs one) is expected to be enough; two separate transport modules are not needed for one project-level goal.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Project-goal UI — second field in the Writing Goals tab
 **What:** Add a `WordCountGoalField` component patterned on `DailyWordGoalField.tsx` (same Card/label/Input/save-button/`role="alert"`/`role="status"` layout) and render it alongside `DailyWordGoalField` in `ProjectSettingsDialog.tsx`'s existing `"writing-goals"` tab; wire `initialWordCountGoal` through from `AppShell.tsx`.
@@ -40,7 +40,7 @@ Code read before writing this list (facts, not guesses): `frontend/components/La
 **Depends on:** 3
 **Estimate:** 3
 **Notes:** Working-copy strings from the spec (heading "Project word-count goal"; label "Total word-count goal"; helper text "Total words you're aiming for across the whole project. Separate from the daily writing goal above. Leave empty for no goal.") are NOT yet user-confirmed (OQ-1 marks them working copy). Write tests against these exact strings, but flag in this task's Notes that they may need to change on user sign-off, the same way Feature 60's Task 3→Task 10 pattern separated "ship working copy" from "confirm and update copy" — do not block this task on copy confirmation, but do not treat the strings as final either. Collision risk: `ProjectSettingsDialog.tsx` and `AppShell.tsx` are both large, frequently-touched files; no other in-flight feature is known to be editing them right now, but re-check immediately before landing.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Resource-goal UI — new "Word count goal" sidebar section
 **What:** Add a `WordCountGoalSection` component patterned on `EntitySection.tsx`'s `persist(updated, clearKeys)` approach, and render it as a new `CollapsibleSection` titled "Word count goal" in `MetadataSidebar.tsx`, visible for text resources only.
@@ -49,7 +49,7 @@ Code read before writing this list (facts, not guesses): `frontend/components/La
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Deliberately does not depend on Task 3 — per that task's finding, the resource goal rides the existing `updateSidecar` transport, already wired. Working-copy title "Word count goal" is user-confirmed at Gate 3 (OQ-2), unlike the project-goal UI strings in Task 4.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Resource-goal progress display
 **What:** Render `WordCountProgressBar` inside the same "Word count goal" section, `current` = the resource's own current word count, `goal` = the field from Task 5, shown only when a goal is set.
@@ -58,7 +58,7 @@ Code read before writing this list (facts, not guesses): `frontend/components/La
 **Depends on:** 5
 **Estimate:** 2
 **Notes:** `WordCountProgressBar` takes `goal: number` (not `number | undefined`) — gate its rendering entirely on `goal !== null && goal !== undefined && goal > 0` in the wrapping section rather than changing the shared component's prop type.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Locked/keyless fail-closed coverage for both goals
 **What:** Add or confirm test coverage that a locked or keyless project fails closed (via `isLockedAccessError`) on read and write of both goals, rather than degrading to empty/zero.
@@ -67,7 +67,7 @@ Code read before writing this list (facts, not guesses): `frontend/components/La
 **Depends on:** 2, 3
 **Estimate:** 2
 **Notes:** Expected to mostly be "already covered, cite the existing generic test" for the resource goal (per Task 5/3's finding that it rides existing infrastructure) and "new, small test" for the project goal (genuinely new core). If reading finds a real gap, fix it here rather than assuming.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Wiring-level test through AppShell/page-shaped project for BOTH goals
 **What:** Add integration-level tests mounting `AppShell` (or a page-shaped project object, matching `page.tsx`'s actual shape) proving both goals work end-to-end, not just at the component-prop level — the lesson from Feature 59 Task 16 and Feature 60 Task 9, where unit tests missed real defects because they handed components a project shape that already had the field, unlike what `page.tsx` actually builds.
@@ -76,7 +76,7 @@ Code read before writing this list (facts, not guesses): `frontend/components/La
 **Depends on:** 4, 5, 6
 **Estimate:** 3
 **Notes:** This is the task most likely to surface a real defect (per the two cited precedents) rather than confirm a non-issue; do not shorten it to a prop-level test.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Storybook stories and a11y tests for both new UI pieces
 **What:** Add stories and axe a11y tests for `WordCountGoalField` (project) and `WordCountGoalSection` (resource, including its progress-bar state), opting in to `a11y: { test: "error" }`.
@@ -85,7 +85,7 @@ Code read before writing this list (facts, not guesses): `frontend/components/La
 **Depends on:** 4, 5, 6
 **Estimate:** 2
 **Notes:** Storybook story-test execution must be run outside the sandbox (recurring project note); do not attempt it inside this session's Bash sandbox and file it as a defect if it fails only there.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Documentation
 **What:** Document both goals for users and maintainers, and update the CLAUDE.md glossary/Code Map if a new model file or pattern warrants a line.
@@ -94,7 +94,7 @@ Code read before writing this list (facts, not guesses): `frontend/components/La
 **Depends on:** 8, 9
 **Estimate:** 2
 **Notes:** Mirror Feature 60 Task 7's approach to locating the right existing doc pages before adding a new one.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Final gate
 **What:** Run full verification against a freshly re-measured baseline.
