@@ -15,7 +15,7 @@ Code/precedent read before writing this list: `frontend/tests/entityHighlightBen
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Reason for 3, not 1-2: sourcing a real, dialogue-bearing public-domain text and cutting it to *exact* word counts (not "about 1,000") takes deliberate trimming at each boundary, plus the programmatic-verification step FR-3/OQ-1 requires ("verify word counts programmatically not by eye" per the lead's brief). Recommended source (this task's own call, not user-confirmed): Jane Austen's *Pride and Prejudice* (Project Gutenberg EBook #1342, US public domain) — chosen because it is dialogue-dense throughout (not just in isolated scenes), long enough to cut a clean 100k-word excerpt without repeating text, and its Gutenberg header/footer boilerplate must be stripped before counting (record in `LICENSE-NOTE.md` that the boilerplate was removed and is not counted). If Gutenberg access is unavailable from this environment (network egress may need `www.gutenberg.org` added to `allowed_domains`), the implementor picks the smallest reasonable substitute from an already-vendored public-domain source if one exists in the repo (none was found in this pass) or flags the network need explicitly rather than fabricating text.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Throwaway metric stand-ins and timed benchmark harness
 **What:** Write three minimal, non-product metric functions (dialogue ratio, average sentence length, top repeated words) and a Vitest harness that times each individually and combined at each of the three fixture sizes, with enough repetitions to report a stable number.
@@ -24,7 +24,7 @@ Code/precedent read before writing this list: `frontend/tests/entityHighlightBen
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Reason for 3: three small pure functions plus a repeat-and-median harness and copy-pasted real output, mirroring `entityHighlightBenchmark.test.ts`'s shape exactly (that file was itself sized similarly). Repetition methodology is this task's own call (median of 7 independent runs per cell, each run re-reading the same fixture text from memory — not from disk per run, since disk I/O is not part of what FR-1/FR-2 asks to measure): stated here for the record, not user-confirmed, and changeable if the actual run shows it unstable (if so, raise the repeat count and note the change here rather than silently rerunning once). The 100k-word cell's dialogue-ratio quote-scanning and sentence-split regexes are the ones most likely to show non-linear cost; watch for and report if either metric's 100k timing is disproportionately worse than a linear extrapolation from 1k/10k would predict — that observation, if it occurs, belongs in Task 3's finding, not silently dropped.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Record the finding on FR-49 and Feature 63
 **What:** Update Feature 63's Notes in `getwrite.features.md` (Feature 57's exact closed-measurement pattern) and amend FR-49's text in `getwrite.md`, replacing the "no cost is claimed here (OQ-44, resolved)" placeholder with the real measured numbers and a conditional sync-vs-async recommendation.
@@ -33,7 +33,7 @@ Code/precedent read before writing this list: `frontend/tests/entityHighlightBen
 **Depends on:** 2
 **Estimate:** 2
 **Notes:** Reason for 2: two focused doc edits with numbers copied from Task 2's own recorded output, no new investigation — but getting the conditional wording exactly right (not collapsing to one verdict) is the part worth a full point of care, per FR-2/OQ-4's explicit "MUST NOT collapse either measurement into the other." If Task 2's numbers show the combined cost and the slowest individual metric tell noticeably different stories (e.g. one metric dominates so heavily that "combined" is almost identical to "that metric alone"), say so explicitly in both edits rather than only reporting the two numbers side by side.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Final check — scope boundary, fixture accuracy, and schema validation
 **What:** Confirm no product code/schema/transport/UI file was touched, confirm the fixture's license note is present and accurate, and validate both edited spec documents against their schemas.
