@@ -538,3 +538,15 @@ export const WritingLogAggregateResponseSchema = z.object({
 export const SetDailyWordGoalResponseSchema = z.object({
   dailyWordGoal: z.number().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// SetWordCountGoalResponseSchema — Feature 61 Task 3 (project-wide word-count
+// goal). Mirrors SetDailyWordGoalResponseSchema's shape exactly: matches
+// `word-count-goal-core.ts`'s `{ wordCountGoal: number | undefined }`.
+// `wordCountGoal` is optional because `JSON.stringify` drops
+// `undefined`-valued keys before the response leaves the server.
+// ---------------------------------------------------------------------------
+
+export const SetWordCountGoalResponseSchema = z.object({
+  wordCountGoal: z.number().optional(),
+});
