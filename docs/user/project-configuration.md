@@ -17,6 +17,8 @@ Common fields
 - `config.organizerCardBody` (optional): What the Organizer view renders beneath each card's title. `{ "source": "none" }`, `{ "source": "text-excerpt", "excerptLength": 200 }`, or `{ "source": "field", "fieldKey": "<metadata key>" }`. Set this from **User Preferences → Organizer Card Body**.
 
 - `config.dailyWordGoal` (optional): Your daily word goal, a whole number of words (0 or more). Set it in **Project Settings** ("Daily word goal") rather than by hand; clear the field to remove it. It is separate from any total word-count goal. See [Daily writing log](writing-log.md).
+- `config.wordCountGoal` (optional): A total word-count goal for the whole project, a whole number of words (0 or more). You can now set, change, or clear it in the app — open **Project Settings**, go to the **Writing Goals** tab, and use the field below "Daily word goal" (labeled "Total word-count goal" at the time of writing; this copy was working text and may have changed since). Leave the field empty to clear the goal. It is separate from the per-day goal above and from the per-resource goal described next. Progress toward it is never shown in red.
+- **Per-resource word-count goal** (not a `project.json` field — this one lives on the individual resource, not on project config): any text resource can have its own optional word-count goal, set from that resource's own sidebar in a "Word count goal" section. Leave the field blank to clear it. When a goal is set, a progress bar appears in that same section — also never shown in red. It has no project-wide total and does not appear in the Data view or any "By status" breakdown; it only tracks that one resource.
 
 Example with custom statuses:
 
