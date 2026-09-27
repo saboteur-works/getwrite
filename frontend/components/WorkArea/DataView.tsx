@@ -6,6 +6,7 @@ import WordCountProgressBar from "./WordCountProgressBar";
 import ResourceListItem from "./ResourceListItem";
 import StubResourcesSection from "./StubResourcesSection";
 import ResourceBreakdown, { type ResourceGroup } from "./ResourceBreakdown";
+import StatusRollup from "./StatusRollup";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 
 const STUB_WORD_THRESHOLD = 50;
@@ -29,6 +30,18 @@ export interface DataViewProps {
   view?: { project: Project; folders: AnyResource[]; resources: AnyResource[] };
   /** Optional override flat list of resources to render (uses project(s).resources by default) */
   resources?: AnyResource[];
+  /**
+   * Full project resource list feeding the "By status" roll-up, independent of
+   * any smart-folder narrowing applied to `resources`. Falls back to the
+   * resolved `resources` list when omitted.
+   */
+  statusRollupResources?: AnyResource[];
+  /**
+   * The project's configured statuses for the "By status" roll-up. Takes
+   * precedence over `project.config.statuses`, which the page-built project
+   * shape does not carry (statuses live in the Redux store).
+   */
+  statuses?: string[];
   /** Folder list used to group resources in the Breakdown section. */
   folders?: Folder[];
   /** Called when the user clicks the jump button on a breakdown group row. */
@@ -52,6 +65,8 @@ export default function DataView({
   project,
   view,
   resources,
+  statusRollupResources,
+  statuses,
   folders,
   onSelectFolder,
   onResourceClick,
@@ -166,6 +181,13 @@ export default function DataView({
             <div className="text-gw-h1 font-bold">{totalWords}</div>
           </div>
         </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="By status">
+        <StatusRollup
+          resources={statusRollupResources ?? flatResources}
+          statuses={statuses ?? project?.config?.statuses ?? []}
+        />
       </CollapsibleSection>
 
       {wordCountGoal && wordCountGoal > 0 ? (

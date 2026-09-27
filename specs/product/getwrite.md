@@ -677,14 +677,27 @@ lost work.
 - FR-46: The product MUST show, for a project, the number of resources and
   the total words at each status, both figures together, derived from data
   that already exists. Status: Not started. Sequencing: follows the FR-48 pass (OQ-42, resolved). As measured 2026-09-26 (read-only
-  greps on main at 24ade246): `wordCount` is stored on the resource sidecar
-  (`schemas.ts:387`) and refreshed on every canonical autosave
-  (`revision-core.ts:368-385`, skipped for legacy plain-text revisions);
-  status is a locked select field (`default-metadata-schema.ts:16`) with a
-  per-project list in `config.statuses`, and a query intrinsic
-  (`query-intrinsics.ts:116`); `DataView.tsx` aggregates word count per
-  folder (line 132) and contains no per-status grouping. No status roll-up
-  view was found. The roll-up MUST persist nothing new. The weighting of
+  greps on main at 24ade246, before Feature 59 landed) and corrected
+  2026-09-26 after the lead re-measured on main at 35c9af9c (read-only
+  greps; not exhaustive): the earlier text conflated two status
+  representations. (a) `userMetadata.status`, a single string, is written
+  by the sidebar StatusSelector (`MetadataSidebar.tsx:336`) and by the
+  Scrivener import (`metadata-mapper.ts:161`), is read by search
+  (`execute-search.ts:251`), and is declared as the locked select field
+  (`default-metadata-schema.ts:16`) with a per-project option list in
+  `config.statuses` (`project.ts:15`). (b) `resource.statuses`, a string
+  array documented "Status tags (project-scoped values)" (`types.ts:261`),
+  is loaded from the sidecar (`query-evaluate-core.ts:72`) and exposed as
+  the multiselect query intrinsic `statuses` (`query-intrinsics.ts:116-120`);
+  no UI code writing it was found, unconfirmed. Which of the two the
+  roll-up counts is not decided here (feature-spec decision). Word count:
+  `wordCount` is stored on the resource sidecar (`schemas.ts:388`) and
+  refreshed on canonical autosave (`revision-core.ts` around 473-490,
+  skipped for legacy plain-text revisions); `DataView.tsx:18-20`
+  `getWordCount` reads `userMetadata.wordCount ?? wordCount ?? 0` (a
+  missing count becomes 0), and aggregates word count per folder (at
+  line 132) with no per-status grouping; no roll-up or per-status grouping code
+  was found anywhere. No status roll-up view was found. The roll-up MUST persist nothing new. The weighting of
   the roll-up is decided: both resource count and words per status (OQ-41,
   resolved). [US-19]
 - FR-47: A writer MUST be able to set, change and clear a project's word-count

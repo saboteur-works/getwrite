@@ -2009,12 +2009,12 @@ never pruned. Its feature spec is `specs/features/protect-revision.md`.
 ### Feature 60: Project status roll-up — Not started
 
 **Value:** A writer on deadline can see, for a project, how many resources and how many words sit at each status, so they can tell how much of the project is at each stage of completion.
-**Vertical slice:** A read-only derivation from existing data (sidecar `wordCount`, status field, `config.statuses`) persisting nothing new; a transport for the roll-up resolved through `createTransport` with a native backend, a web-stub and HTTP response-body validation (FR-50 constraint for this feature's transport); a roll-up view or section showing resource count and words per status together, likely in the Data view; tests.
+**Vertical slice:** A read-only derivation from existing data (word count and status, which status representation is counted is left to the feature spec; see FR-46's 2026-09-26 correction) persisting nothing new; derived client-side from already-loaded Redux state, with no transport, route, native backend, web-stub or response schema added (OQ-8); a roll-up view or section showing resource count and words per status together, likely in the Data view; tests.
 **Requirements covered:** FR-46
 **User stories:** US-19
 **Depends on:** Feature 7, Feature 11
 **Branch suggestion:** feat/status-rollup
-**Notes:** Follows the FR-48 pass (OQ-42). Decided in the parent spec: both resource count and words per status (OQ-41). Sidecar `wordCount` is skipped for legacy plain-text revisions, so those resources may under-report; the feature spec should decide how that is shown. Independent of Feature 59. Must follow FR-50 (owned by Feature 59) for its own transport.
+**Notes:** Follows the FR-48 pass (OQ-42). Decided in the parent spec: both resource count and words per status (OQ-41). Sidecar `wordCount` is skipped for legacy plain-text revisions, so those resources may under-report; the feature spec should decide how that is shown. Corrected 2026-09-26 (re-measured by the lead on main at 35c9af9c; earlier text measured at 24ade246, before Feature 59): there are two status representations (`userMetadata.status`, a single string; `resource.statuses`, an array with no UI writer found, unconfirmed) and the feature spec must decide which is counted. Also for the feature spec: resources with no status, and status values absent from `config.statuses`. Independent of Feature 59. FR-50 (owned by Feature 59) applies only if a transport is later added: the feature spec resolved at Gate 3 (2026-09-26, OQ-8) that the roll-up is derived client-side from already-loaded state, so this feature adds no transport.
 
 ### Feature 61: In-app word-count goals (project and resource) — Not started
 
