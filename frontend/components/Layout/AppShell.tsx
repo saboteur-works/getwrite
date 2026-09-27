@@ -1122,6 +1122,7 @@ export default function AppShell({
                         : undefined
                     }
                     initialDailyWordGoal={project?.config?.dailyWordGoal}
+                    initialWordCountGoal={project?.config?.wordCountGoal}
                     isResourcePaletteOpen={isResourcePaletteOpen}
                     setIsResourcePaletteOpen={setIsResourcePaletteOpen}
                     isProjectTypesLoading={isProjectTypesLoading}

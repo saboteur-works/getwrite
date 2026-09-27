@@ -92,6 +92,8 @@ export interface ShellModalCoordinatorProps {
   /** Active project id, for the daily writing goal field in ProjectSettingsDialog. */
   projectId?: string;
   initialDailyWordGoal?: number;
+  /** Currently saved project-wide `wordCountGoal`, for the Writing Goals tab of ProjectSettingsDialog. */
+  initialWordCountGoal?: number;
   isPreferencesModalOpen: boolean;
   setIsPreferencesModalOpen: (open: boolean) => void;
   isHelpModalOpen: boolean;
@@ -170,6 +172,7 @@ export default function ShellModalCoordinator({
   projectPath,
   projectId,
   initialDailyWordGoal,
+  initialWordCountGoal,
   isPreferencesModalOpen,
   setIsPreferencesModalOpen,
   isHelpModalOpen,
@@ -335,6 +338,7 @@ export default function ShellModalCoordinator({
         projectPath={projectPath}
         projectId={projectId}
         initialDailyWordGoal={initialDailyWordGoal}
+        initialWordCountGoal={initialWordCountGoal}
       />
 
       <Dialog
