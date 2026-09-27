@@ -2034,7 +2034,17 @@ never pruned. Its feature spec is `specs/features/protect-revision.md`.
 **User stories:** US-22
 **Depends on:** Feature 9
 **Branch suggestion:** feat/prose-diagnostics
-**Notes:** Follows the FR-48 pass (OQ-42). The spec requires each scalar metric to be benchmarked at 1k, 10k and 100k words before the design is committed (OQ-44); its task list should measure first and claim no cost until then. Decided in the parent spec: OQ-44, OQ-45, OQ-46. Must follow FR-50 (owned by Feature 59) for its own transport.
+**Notes:** Follows the FR-48 pass (OQ-42). The benchmark this requirement needs is now Feature 63, not this feature's own first task — this feature depends on Feature 63's closed finding before its design (specifically the "computed by the existing indexer" claim in its own Vertical Slice, above) can be committed; not recorded in the structured "Depends on" field above because the dependency graph requires a dependency's id to precede the dependent's, and Feature 63 is numbered and sequenced after this feature. Decided in the parent spec: OQ-44, OQ-45, OQ-46. Must follow FR-50 (owned by Feature 59) for its own transport.
+
+### Feature 63: Prose diagnostics — cost benchmark (measurement) — Not started
+
+**Value:** Settle, before Feature 62's design is committed, the compute cost of each of the three scalar metrics its parent requirement names (dialogue ratio, average sentence length, top repeated words) at 1k, 10k and 100k words of realistic prose, so the "computed by the existing indexer at save time" design in Feature 62's own Vertical Slice is not sized against an unmeasured cost.
+**Vertical slice:** A measurement-only pass, producing no behavior change and no merged feature branch — a benchmark script/test measuring each metric's wall-clock cost at the three sizes, on realistic prose (not synthetic repeated text, which would not represent adverb/dialogue/sentence-boundary detection cost realistically); output is a written finding (numbers plus a recommendation: safe to compute synchronously in the indexer at save time, or needs to move async/background) recorded back onto Feature 62's own requirement, not a product code change.
+**Requirements covered:** None of its own — this is a measurement task scoped by the parent spec's own requirement that this measurement occur, not a functional requirement itself.
+**User stories:** None
+**Depends on:** Feature 9
+**Branch suggestion:** n/a — measurement only, no feature branch expected
+**Notes:** Not yet measured. Feature 62 depends on this feature's result and must not proceed to full design until it closes.
 
 ---
 
@@ -2097,7 +2107,7 @@ never pruned. Its feature spec is `specs/features/protect-revision.md`.
 
 ## Summary
 
-- Total features: 62
+- Total features: 63
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
