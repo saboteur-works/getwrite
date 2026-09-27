@@ -129,3 +129,60 @@ export function topRepeatedWords(
     .slice(0, n)
     .map(([word, count]) => ({ word, count }));
 }
+
+export interface LocatedRepeatedWord extends WordFrequency {
+  /** Every character offset within `text` at which this word occurs. */
+  offsets: number[];
+}
+
+/** Matches a run of ASCII letters/digits — the same character class
+ * `tokenize()`'s `/[^a-z0-9]+/` split implies once its lowercasing is
+ * accounted for, used here to recover each token's original-text offset,
+ * which `tokenize()` itself discards. */
+const WORD_RUN_REGEX = /[a-zA-Z0-9]+/g;
+
+/**
+ * FR-5/FR-8's on-demand, never-persisted located detail: for the same
+ * top-N/min-occurrence repeated words `topRepeatedWords` computes over
+ * `text`, finds every occurrence's character offset within that same
+ * `text`.
+ *
+ * Deliberately re-scans `text` with a plain word-run regex rather than
+ * reusing `tokenize()` (which lowercases and discards position
+ * information) — the two tokenizations agree on which runs count as a
+ * "word" for every ASCII case, since lowercasing an ASCII letter never
+ * changes which `[a-z0-9]+` run it belongs to. Result order matches
+ * `topRepeatedWords`'s own order (highest count first, ties broken by
+ * first-encountered order); each entry's `offsets` is in ascending
+ * document order.
+ */
+export function locateRepeatedPhrases(
+  text: string,
+  opts: TopRepeatedWordsOptions = {},
+): LocatedRepeatedWord[] {
+  const repeated = topRepeatedWords(text, opts);
+  if (repeated.length === 0) {
+    return [];
+  }
+
+  const offsetsByWord = new Map<string, number[]>();
+  for (const { word } of repeated) {
+    offsetsByWord.set(word, []);
+  }
+
+  const regex = new RegExp(WORD_RUN_REGEX);
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    const token = match[0].toLowerCase();
+    const offsets = offsetsByWord.get(token);
+    if (offsets) {
+      offsets.push(match.index);
+    }
+  }
+
+  return repeated.map(({ word, count }) => ({
+    word,
+    count,
+    offsets: offsetsByWord.get(word) ?? [],
+  }));
+}

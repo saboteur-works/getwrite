@@ -3,12 +3,14 @@
  *
  * The in-process implementation of {@link ProseDiagnosticsTransport} for a
  * native (Capacitor) build: instead of
- * `fetch('/api/resource/:resourceId/diagnostics')`, it invokes the same
- * transport-agnostic diagnostics model functions the HTTP route uses
- * (`lib/models/diagnostics-index.ts`'s `rebuildDiagnosticsRecordIfStale` and
- * `lib/models/indexer-queue.ts`'s `loadPersistedPlainText`). There is no
- * server and no HTTP — the exact same business logic runs directly in the
- * WebView process.
+ * `fetch('/api/resource/:resourceId/diagnostics')` /
+ * `fetch('/api/resource/:resourceId/diagnostics-detail')`, it invokes the
+ * same transport-agnostic diagnostics model functions the HTTP routes use
+ * (`lib/models/diagnostics-index.ts`'s `rebuildDiagnosticsRecordIfStale`,
+ * `lib/models/indexer-queue.ts`'s `loadPersistedPlainText`, and — for the
+ * FR-8 located detail (Task 5) — `lib/models/prose-diagnostics.ts`'s
+ * `locateRepeatedPhrases`). There is no server and no HTTP — the exact same
+ * business logic runs directly in the WebView process.
  *
  * This module is imported *only* on the native path (see
  * `lib/api/prose-diagnostics.ts`'s dynamic import), because it pulls in the
@@ -34,8 +36,10 @@ import { createNativeRunner, type NativeBackendDeps } from "./native-runner";
 import { resolveProjectRoot } from "../../lib/models/project-root-resolver";
 import { rebuildDiagnosticsRecordIfStale } from "../../lib/models/diagnostics-index";
 import { loadPersistedPlainText } from "../../lib/models/indexer-queue";
+import { locateRepeatedPhrases } from "../../lib/models/prose-diagnostics";
 import {
   EMPTY_PROSE_DIAGNOSTICS,
+  EMPTY_PROSE_DIAGNOSTICS_DETAIL,
   type ProseDiagnosticsTransport,
 } from "../../lib/api/prose-diagnostics";
 
@@ -70,6 +74,25 @@ export function createNativeProseDiagnosticsTransport(
         } catch {
           // Mirrors the HTTP transport's degrade-gracefully parity.
           return EMPTY_PROSE_DIAGNOSTICS;
+        }
+      });
+    },
+
+    async getProseDiagnosticsDetail(projectId, resourceId) {
+      return run(async () => {
+        try {
+          const projectRoot = resolveProjectRoot(projectId);
+          if (!projectRoot) return EMPTY_PROSE_DIAGNOSTICS_DETAIL;
+          // Reads the exact same persisted plain text the FR-7 summary
+          // method above reads, then computes the FR-8 located detail
+          // fresh, never persisting it — mirroring the
+          // diagnostics-detail HTTP route's own read+compute contract.
+          const plainText =
+            (await loadPersistedPlainText(projectRoot, resourceId)) ?? "";
+          return locateRepeatedPhrases(plainText);
+        } catch {
+          // Mirrors the HTTP transport's degrade-gracefully parity.
+          return EMPTY_PROSE_DIAGNOSTICS_DETAIL;
         }
       });
     },

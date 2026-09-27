@@ -569,3 +569,20 @@ export const ProseDiagnosticsResponseSchema = z.object({
   averageSentenceLength: z.number(),
   topRepeatedWords: z.array(ProseDiagnosticsRepeatedWordSchema),
 });
+
+// ---------------------------------------------------------------------------
+// ProseDiagnosticsDetailResponseSchema — Feature 62 (prose diagnostics),
+// Task 5. Matches `prose-diagnostics.ts`'s `LocatedRepeatedWord` shape:
+// `{ locatedRepeatedWords: { word: string; count: number; offsets:
+// number[] }[] }`.
+// ---------------------------------------------------------------------------
+
+const LocatedRepeatedWordSchema = z.object({
+  word: z.string(),
+  count: z.number(),
+  offsets: z.array(z.number()),
+});
+
+export const ProseDiagnosticsDetailResponseSchema = z.object({
+  locatedRepeatedWords: z.array(LocatedRepeatedWordSchema),
+});
