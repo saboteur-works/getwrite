@@ -2034,7 +2034,49 @@ never pruned. Its feature spec is `specs/features/protect-revision.md`.
 **User stories:** US-22
 **Depends on:** Feature 9
 **Branch suggestion:** feat/prose-diagnostics
-**Notes:** Follows the FR-48 pass (OQ-42). The spec requires each scalar metric to be benchmarked at 1k, 10k and 100k words before the design is committed (OQ-44); its task list should measure first and claim no cost until then. Decided in the parent spec: OQ-44, OQ-45, OQ-46. Must follow FR-50 (owned by Feature 59) for its own transport.
+**Notes:** Follows the FR-48 pass (OQ-42). The benchmark this requirement needs is now Feature 63, not this feature's own first task — this feature depends on Feature 63's closed finding before its design (specifically the "computed by the existing indexer" claim in its own Vertical Slice, above) can be committed; not recorded in the structured "Depends on" field above because the dependency graph requires a dependency's id to precede the dependent's, and Feature 63 is numbered and sequenced after this feature. Decided in the parent spec: OQ-44, OQ-45, OQ-46. Must follow FR-50 (owned by Feature 59) for its own transport.
+
+### Feature 63: Prose diagnostics — cost benchmark (measurement) — Measured, closed (no code change)
+
+**Value:** Settle, before Feature 62's design is committed, the compute cost of each of the three scalar metrics its parent requirement names (dialogue ratio, average sentence length, top repeated words) at 1k, 10k and 100k words of realistic prose, so the "computed by the existing indexer at save time" design in Feature 62's own Vertical Slice is not sized against an unmeasured cost.
+**Vertical slice:** A measurement-only pass, producing no behavior change and no merged feature branch — a benchmark script/test measuring each metric's wall-clock cost at the three sizes, on realistic prose (not synthetic repeated text, which would not represent adverb/dialogue/sentence-boundary detection cost realistically); output is a written finding (numbers plus a recommendation: safe to compute synchronously in the indexer at save time, or needs to move async/background) recorded back onto Feature 62's own requirement, not a product code change.
+**Requirements covered:** None of its own — this is a measurement task scoped by the parent spec's own requirement that this measurement occur, not a functional requirement itself.
+**User stories:** None
+**Depends on:** Feature 9
+**Branch suggestion:** n/a — measurement only, no feature branch expected
+**Notes:** Measured (integrated benchmark run on this branch, `pnpm
+--filter getwrite-frontend exec vitest run proseDiagnosticsBenchmark`,
+median of 7 runs, elapsed ms), and closed. These are throwaway-stand-in-
+implementation costs (see `proseDiagnosticsBenchmark.test.ts`'s own
+docblock), not Feature 62's eventual real implementation's cost — the
+numbers below are not a guarantee about Feature 62's real algorithms.
+Per-metric individual cost: dialogueRatio — 1k words = 0.004 ms, 10k words
+= 0.034 ms, 100k words = 0.232 ms; averageSentenceLength — 1k words =
+0.044 ms, 10k words = 0.445 ms, 100k words = 3.741 ms; topRepeatedWords —
+1k words = 0.110 ms, 10k words = 0.929 ms, 100k words = 8.025 ms.
+Combined cost (all three run back-to-back, measured directly, not
+summed): 1k words = 0.128 ms, 10k words = 1.256 ms, 100k words = 12.892
+ms. Across 1k→10k→100k (each a 10x word-count increase), every metric's
+cost also scaled roughly 10x — no super-linear ("worse than linear")
+growth was observed at 100k for any metric, including dialogue-ratio and
+sentence-split. Recommendation, stated conditionally per OQ-4's
+resolution: if Feature 62 keeps the three metrics computed together in
+one indexer task, the combined-cost number at each size is what matters
+for the sync-vs-async call; if a later design splits them, each metric's
+own individual cost becomes the relevant number instead. No pass/fail
+millisecond threshold is asserted here (FR-6) — that judgment is left to
+Feature 62's design owner. **Reduces indexer-timing-cost risk: yes, at
+the sizes measured** — no code changes here, but the measurement itself
+is the outcome: it clears the concern that the "computed by the existing
+indexer at save time" design in Feature 62's Vertical Slice would be
+sized against an unmeasured cost, since even the worst-measured combined
+cost (12.892 ms at 100k words) is small relative to typical background-
+queue work. This does not extend to Feature 62's eventual real
+algorithms, only to these throwaway stand-ins. **Status is unusual for
+this document:** this entry closes as neither "Shipped" (nothing was
+built or merged) nor "Not started" (the work is done) — it is retired as
+a completed measurement, its finding now carried by FR-49's own text.
+Feature 62 may now proceed to full design using this finding.
 
 ---
 
@@ -2097,7 +2139,7 @@ never pruned. Its feature spec is `specs/features/protect-revision.md`.
 
 ## Summary
 
-- Total features: 62
+- Total features: 63
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped

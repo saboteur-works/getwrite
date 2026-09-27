@@ -764,7 +764,29 @@ lost work.
   be presented as observations, not errors, and MUST NOT use red. Persisted
   metrics MUST be validated in `schemas.ts`. Each scalar metric MUST be benchmarked at 1k, 10k and 100k
   words before the design is committed; this is a required pre-implementation
-  measurement, and no cost is claimed here (OQ-44, resolved). Persisted
+  measurement (OQ-44, resolved). Measured (Feature 63, integrated benchmark
+  run, median of 7 runs, elapsed ms; throwaway-stand-in-implementation
+  costs, not a guarantee about Feature 62's real algorithms): per-metric
+  individual cost — dialogueRatio 1k = 0.004 ms / 10k = 0.034 ms / 100k =
+  0.232 ms; averageSentenceLength 1k = 0.044 ms / 10k = 0.445 ms / 100k =
+  3.741 ms; topRepeatedWords 1k = 0.110 ms / 10k = 0.929 ms / 100k = 8.025
+  ms. Combined cost (all three run together, measured directly, not
+  summed): 1k = 0.128 ms / 10k = 1.256 ms / 100k = 12.892 ms. Indexing today
+  is fire-and-forget and out of the save's response path (`revision-manager.ts`'s
+  `void enqueueIndex(...)`, `sidecar.ts`'s `setImmediate`-scheduled indexing),
+  but `processQueue` runs tasks strictly sequentially, so a new synchronous
+  cost inside `runTask` would not block the save's HTTP/native response but
+  would extend that resource's own background task and delay resources
+  queued behind it. Recommendation, stated conditionally: if Feature 62
+  keeps the three metrics computed together in one indexer task, the
+  combined-cost number at each size is what matters for the sync-vs-async
+  call; if a later design splits them, each metric's own individual cost
+  becomes the relevant number instead. Since even the worst-measured
+  combined cost — 12.892 ms at 100k words — is small relative to typical
+  background-queue work and human-imperceptible even if it did block,
+  computing synchronously in the indexer at save time appears safe at the
+  measured sizes; no fixed pass/fail threshold is set by this measurement.
+  Persisted
   metrics MUST carry a `heuristicVersion` and be rebuilt lazily on mismatch
   (OQ-45, resolved). The diagnostics index MUST be persisted through the
   storage adapter and fail closed when locked, using `isLockedAccessError`
