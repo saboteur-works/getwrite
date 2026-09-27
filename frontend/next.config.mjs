@@ -240,6 +240,12 @@ const nextConfig = {
           // above.
           "../../store/transport/native-trash-backend":
             "./src/store/transport/native-trash-backend.web-stub",
+          // word-count-goal Task 3: lib/api/word-count-goal.ts also lives
+          // in src/lib/api/, so its dynamic import's literal specifier is
+          // "../../store/transport/native-word-count-goal-backend" — same
+          // rule as above.
+          "../../store/transport/native-word-count-goal-backend":
+            "./src/store/transport/native-word-count-goal-backend.web-stub",
         },
   },
 };

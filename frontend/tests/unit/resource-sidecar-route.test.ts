@@ -152,6 +152,42 @@ describe("POST /api/resource/[resource-id]/sidecar (clearKeys, FR-20/FR-25)", ()
     });
   });
 
+  it("deletes wordCountGoal from the persisted sidecar entirely, not as an undefined-valued key (Feature 61)", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+        wordCountGoal: 5000,
+        orderIndex: 3,
+        folderId: "folder-1",
+      });
+
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/sidecar/route");
+      const res = await POST(
+        sidecarRequest(resourceId, {
+          projectId,
+          updatedResource: {},
+          clearKeys: ["wordCountGoal"],
+        }) as never,
+        { params: Promise.resolve({ "resource-id": resourceId }) },
+      );
+
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, resourceId);
+      expect(sidecar).not.toBeNull();
+      expect(
+        Object.prototype.hasOwnProperty.call(sidecar, "wordCountGoal"),
+      ).toBe(false);
+      expect(sidecar?.name).toBe("Original");
+      expect(sidecar?.orderIndex).toBe(3);
+      expect(sidecar?.folderId).toBe("folder-1");
+    });
+  });
+
   it("behaves exactly as a pure merge when clearKeys is omitted", async () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {

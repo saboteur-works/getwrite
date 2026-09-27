@@ -15,6 +15,7 @@ import DefaultRevisionNameModal from "../preferences/DefaultRevisionNameModal";
 import TagsManagerModal from "../common/TagsManagerModal";
 import SchemaManager from "../SchemaManager/SchemaManager";
 import DailyWordGoalField from "./DailyWordGoalField";
+import WordCountGoalField from "./WordCountGoalField";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 
@@ -33,6 +34,8 @@ export interface ProjectSettingsDialogProps {
   projectId?: string;
   /** Currently saved `dailyWordGoal`, if any. */
   initialDailyWordGoal?: number;
+  /** Currently saved project-wide `wordCountGoal`, if any. */
+  initialWordCountGoal?: number;
 }
 
 type ProjectSettingsTab =
@@ -96,6 +99,7 @@ export default function ProjectSettingsDialog({
   projectPath,
   projectId,
   initialDailyWordGoal,
+  initialWordCountGoal,
 }: ProjectSettingsDialogProps): JSX.Element {
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>(DEFAULT_TAB);
   const hasProjectPath = Boolean(projectPath);
@@ -208,10 +212,16 @@ export default function ProjectSettingsDialog({
               className={PANEL_CLASS}
             >
               {projectId ? (
-                <DailyWordGoalField
-                  projectId={projectId}
-                  initialGoal={initialDailyWordGoal}
-                />
+                <>
+                  <DailyWordGoalField
+                    projectId={projectId}
+                    initialGoal={initialDailyWordGoal}
+                  />
+                  <WordCountGoalField
+                    projectId={projectId}
+                    initialGoal={initialWordCountGoal}
+                  />
+                </>
               ) : null}
             </TabsContent>
           </Tabs>

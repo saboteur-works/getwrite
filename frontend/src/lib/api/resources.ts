@@ -144,6 +144,12 @@ export interface ResourcesTransport {
    * result after the update, validated server-side (or in-process on native)
    * against a fail-closed allowlist — see
    * `resource-crud-core.ts`'s `updateSidecarCore`.
+   *
+   * Rejects on a non-2xx HTTP response (Task 12) — previously a bare
+   * `await fetch(...)` with no status check, so a 400/401/409 was never
+   * surfaced as a rejected promise. Every caller must treat this as
+   * potentially rejecting; see the Task 12 caller audit in
+   * `docs/features/word-count-goals.md`.
    */
   updateSidecar(
     resourceId: string,
@@ -283,7 +289,7 @@ export const httpResourcesTransport: ResourcesTransport = {
   },
 
   async updateSidecar(resourceId, projectId, updatedResource, clearKeys) {
-    await fetch(`/api/resource/${resourceId}/sidecar`, {
+    const response = await fetch(`/api/resource/${resourceId}/sidecar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(
@@ -292,6 +298,9 @@ export const httpResourcesTransport: ResourcesTransport = {
           : { projectId, updatedResource },
       ),
     });
+    if (!response.ok) {
+      throw new Error(`Failed to update sidecar (${response.status})`);
+    }
   },
 
   async rename(resourceId, projectId, newName, resourceType) {

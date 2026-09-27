@@ -388,6 +388,7 @@ export const TextResourceSchema = ResourceBaseSchema.extend({
   wordCount: z.number().int().nonnegative().optional(),
   charCount: z.number().int().nonnegative().optional(),
   paragraphCount: z.number().int().nonnegative().optional(),
+  wordCountGoal: z.number().int().nonnegative().optional(),
 });
 
 /**

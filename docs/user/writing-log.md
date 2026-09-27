@@ -17,6 +17,15 @@ Select **Today's writing** (hover it to see "Show today's writing details") to o
 
 Open **Project Settings** and use **Daily word goal**. It is in the **Writing Goals** tab. Enter a whole number of words (0 or more), or leave it empty to clear the goal. After saving, the field may show the old value if you reopen Project Settings before reloading the project. This is separate from any total word-count goal for the project.
 
+## Total and per-resource word-count goals
+
+Beyond the daily goal above, GetWrite also has two other word-count goals you can set, change, or clear from inside the app:
+
+- **A total goal for the whole project** — also in **Project Settings**, **Writing Goals** tab, in the field below "Daily word goal", labeled "Total word-count goal". Reopening the tab right after saving, before reloading the project, can show the old value (the same known staleness as the daily goal above); the save itself takes effect immediately.
+- **A goal for one resource** — in that resource's own sidebar, under a "Word count goal" section (shown for text resources only). When set, a progress bar appears in that section.
+
+Neither is shown in the footer described above, and neither is ever shown in red. See [Project Configuration](project-configuration.md) for details on the project-wide field.
+
 ## What is counted
 
 - Each autosave of a document's current (canonical) revision that adds or deletes at least one word adds an entry: words added, words deleted, and net (added minus deleted). Saves to other revisions are not counted.

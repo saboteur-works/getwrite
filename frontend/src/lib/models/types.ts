@@ -330,6 +330,8 @@ export interface TextResource extends ResourceBase {
   wordCount?: number;
   charCount?: number;
   paragraphCount?: number;
+  /** Target word count for this resource (Feature 61). Unset means no goal. */
+  wordCountGoal?: number;
 }
 
 /** Image resource model with common image metadata. */

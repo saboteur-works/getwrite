@@ -21,6 +21,7 @@ import { filterResourceOptionsByScope } from "./folderScope";
 import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
 import TagsSection from "./TagsSection";
+import WordCountGoalSection from "./WordCountGoalSection";
 import EntitySection from "./EntitySection";
 import RemoveEntityControl from "./RemoveEntityControl";
 import EntityRelationshipsSection from "./EntityRelationshipsSection";
@@ -533,6 +534,11 @@ export default function MetadataSidebar({
             <CollapsibleSection title="Tags" variant="sidebar">
               <TagsSection />
             </CollapsibleSection>
+            {editableResource.type === "text" && (
+              <CollapsibleSection title="Word count goal" variant="sidebar">
+                <WordCountGoalSection />
+              </CollapsibleSection>
+            )}
             {isEntitiesEnabled && (
               <EntityMentionsProvider>
                 {/* RemoveEntityControl and EntityRelationshipsSection share

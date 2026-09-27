@@ -12,6 +12,9 @@ import editorConfigReducer from "../src/store/editorConfigSlice";
 import { runAxe } from "./a11y/helpers/axe";
 
 vi.mock("../src/lib/api/writing-log", () => ({ setDailyWordGoal: vi.fn() }));
+vi.mock("../src/lib/api/word-count-goal", () => ({
+  setWordCountGoal: vi.fn(),
+}));
 
 function renderDialog(): void {
   const store = configureStore({
@@ -34,6 +37,7 @@ function renderDialog(): void {
         projectId="p1"
         projectPath="/story"
         initialDailyWordGoal={300}
+        initialWordCountGoal={50000}
       />
     </Provider>,
   );
@@ -74,6 +78,15 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
         "Daily word goal",
       ),
     ).toBeNull();
+  });
+
+  it("hosts both the daily goal and total word-count goal fields together in the Writing Goals panel", () => {
+    renderDialog();
+    const panel = panelFor("Writing Goals");
+    expect(within(panel).getByLabelText("Daily word goal")).toBeInTheDocument();
+    expect(
+      within(panel).getByLabelText("Total word-count goal"),
+    ).toBeInTheDocument();
   });
 
   it("is reachable by keyboard and has the accessible name 'Writing Goals'", async () => {
