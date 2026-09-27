@@ -25,6 +25,17 @@ import {
   persistMentionIndex,
   type MentionRecord,
 } from "./mention-index";
+import {
+  dialogueRatio,
+  averageSentenceLength,
+  topRepeatedWords,
+  HEURISTIC_VERSION,
+} from "./prose-diagnostics";
+import {
+  loadDiagnosticsIndex,
+  persistDiagnosticsIndex,
+  type DiagnosticsRecord,
+} from "./diagnostics-index";
 import type { TextResource } from "./types";
 
 type Task = {
@@ -99,7 +110,7 @@ export function installShutdownHooks(): void {
  * Task 6) so both scan the same "already on disk" text — never unsaved
  * editor state.
  */
-async function loadPersistedPlainText(
+export async function loadPersistedPlainText(
   projectRoot: string,
   resourceId: string,
 ): Promise<string | undefined> {
@@ -229,6 +240,22 @@ async function runTask(task: Task) {
           await persistMentionIndex(task.projectRoot, mentionIndex);
         } catch (err) {
           console.error("[indexer-queue] mention detection failed:", err);
+        }
+
+        try {
+          const text = plain ?? "";
+          const record: DiagnosticsRecord = {
+            dialogueRatio: dialogueRatio(text),
+            averageSentenceLength: averageSentenceLength(text),
+            topRepeatedWords: topRepeatedWords(text),
+            heuristicVersion: HEURISTIC_VERSION,
+          };
+
+          const diagnosticsIndex = await loadDiagnosticsIndex(task.projectRoot);
+          diagnosticsIndex[task.resourceId] = record;
+          await persistDiagnosticsIndex(task.projectRoot, diagnosticsIndex);
+        } catch (err) {
+          console.error("[indexer-queue] diagnostics computation failed:", err);
         }
       },
       task.adapter,

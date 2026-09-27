@@ -3,6 +3,12 @@ import { atomicWriteFile, mkdir, readFile } from "./io";
 import { withMetaLock } from "./meta-locks";
 import { isLockedAccessError } from "./locked-access";
 import { DiagnosticsIndexSchema } from "./schemas";
+import {
+  dialogueRatio,
+  averageSentenceLength,
+  topRepeatedWords,
+  HEURISTIC_VERSION,
+} from "./prose-diagnostics";
 
 const INDEX_DIR = "meta/index";
 const INDEX_FILE = "diagnostics.json";
@@ -98,9 +104,44 @@ export async function removeResourceFromDiagnosticsIndex(
   await persistDiagnosticsIndex(projectRoot, index);
 }
 
+/**
+ * Given a resource's persisted plain text, returns its diagnostics record —
+ * recomputing and re-persisting it first if the stored record is missing or
+ * was computed by an older `HEURISTIC_VERSION` than the one currently in
+ * effect (`prose-diagnostics.ts`). When the stored record's version already
+ * matches, it is returned completely unchanged: no recompute, no re-persist.
+ *
+ * This is the "lazy rebuild on read" seam a later task's on-demand detail
+ * read (Task 5) is expected to call, so a stale record is corrected the
+ * first time anything reads it rather than waiting for the resource's next
+ * save.
+ */
+export async function rebuildDiagnosticsRecordIfStale(
+  projectRoot: string,
+  resourceId: string,
+  plainText: string,
+): Promise<DiagnosticsRecord> {
+  const index = await loadDiagnosticsIndex(projectRoot);
+  const stored = index[resourceId];
+  if (stored && stored.heuristicVersion === HEURISTIC_VERSION) {
+    return stored;
+  }
+
+  const fresh: DiagnosticsRecord = {
+    dialogueRatio: dialogueRatio(plainText),
+    averageSentenceLength: averageSentenceLength(plainText),
+    topRepeatedWords: topRepeatedWords(plainText),
+    heuristicVersion: HEURISTIC_VERSION,
+  };
+  index[resourceId] = fresh;
+  await persistDiagnosticsIndex(projectRoot, index);
+  return fresh;
+}
+
 const diagnosticsIndex = {
   loadDiagnosticsIndex,
   persistDiagnosticsIndex,
   removeResourceFromDiagnosticsIndex,
+  rebuildDiagnosticsRecordIfStale,
 };
 export default diagnosticsIndex;
