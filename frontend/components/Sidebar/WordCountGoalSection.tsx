@@ -58,20 +58,22 @@ export default function WordCountGoalSection(): JSX.Element | null {
     });
   };
 
+  const textResource = resource && resource.type === "text" ? resource : null;
+
   const currentText =
-    resource && typeof resource.wordCountGoal === "number"
-      ? String(resource.wordCountGoal)
+    textResource && typeof textResource.wordCountGoal === "number"
+      ? String(textResource.wordCountGoal)
       : "";
 
   const [goalText, setGoalText] = useSyncedControlledValue(
     currentText,
     (nextText: string) => {
-      if (!resource) return;
+      if (!textResource) return;
       const trimmed = nextText.trim();
 
       if (trimmed.length === 0) {
         setError(null);
-        persist(withoutWordCountGoal(resource), ["wordCountGoal"]);
+        persist(withoutWordCountGoal(textResource), ["wordCountGoal"]);
         return;
       }
 
@@ -82,11 +84,11 @@ export default function WordCountGoalSection(): JSX.Element | null {
       }
 
       setError(null);
-      persist({ ...resource, wordCountGoal: parsed });
+      persist({ ...textResource, wordCountGoal: parsed });
     },
   );
 
-  if (!projectId || !resource || resource.type !== "text") return null;
+  if (!projectId || !textResource) return null;
 
   return (
     <LabeledField label="Word count goal" className="mb-4">

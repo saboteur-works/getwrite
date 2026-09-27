@@ -206,8 +206,12 @@ describe("WordCountGoalSection", () => {
     await waitFor(() => {
       const updated = store
         .getState()
-        .resources.resources.find((r) => r.id === res.id);
-      expect((updated as AnyResource | undefined)?.wordCountGoal).toBe(3000);
+        .resources.resources.find((r) => r.id === res.id) as
+        | AnyResource
+        | undefined;
+      expect(
+        updated && updated.type === "text" ? updated.wordCountGoal : undefined,
+      ).toBe(3000);
     });
 
     expect(input.value).toBe("3000");
