@@ -5,10 +5,11 @@ import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource, updateResource } from "../../src/store/resourcesSlice";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { updateSidecar } from "../../src/lib/api/resources";
-import type { AnyResource } from "../../src/lib/models/types";
+import type { AnyResource, TextResource } from "../../src/lib/models/types";
 import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
 import Input from "../common/UI/Input/Input";
+import WordCountProgressBar from "../WorkArea/WordCountProgressBar";
 
 const VALIDATION_ERROR =
   "Enter a non-negative whole number, or leave blank to clear the goal.";
@@ -22,6 +23,18 @@ const VALIDATION_ERROR =
  * `undefined` would never clear it (Feature 61's brief on `patchRevisionContent`
  * names this same bug class).
  */
+/**
+ * Reads a text resource's current word count, mirroring `DataView.tsx`'s
+ * `getWordCount`: `userMetadata.wordCount` wins over the top-level
+ * `wordCount` field, which wins over `0`.
+ */
+function getCurrentWordCount(resource: TextResource): number {
+  const userMetadataWordCount = resource.userMetadata?.wordCount;
+  return typeof userMetadataWordCount === "number"
+    ? userMetadataWordCount
+    : (resource.wordCount ?? 0);
+}
+
 function withoutWordCountGoal(resource: AnyResource): AnyResource {
   const { wordCountGoal, ...rest } = resource as AnyResource & {
     wordCountGoal?: number;
@@ -90,6 +103,10 @@ export default function WordCountGoalSection(): JSX.Element | null {
 
   if (!projectId || !textResource) return null;
 
+  const hasGoal =
+    typeof textResource.wordCountGoal === "number" &&
+    textResource.wordCountGoal > 0;
+
   return (
     <LabeledField label="Word count goal" className="mb-4">
       <Input
@@ -105,6 +122,13 @@ export default function WordCountGoalSection(): JSX.Element | null {
         <p role="alert" className="text-gw-label text-gw-secondary mt-1">
           {error}
         </p>
+      )}
+      {hasGoal && (
+        <WordCountProgressBar
+          current={getCurrentWordCount(textResource)}
+          goal={textResource.wordCountGoal as number}
+          className="mt-2"
+        />
       )}
     </LabeledField>
   );
