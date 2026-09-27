@@ -42,7 +42,16 @@ Code/precedent read before writing this list: `frontend/tests/entityHighlightBen
 **Depends on:** 3
 **Estimate:** 1
 **Notes:** This is a verification-only task with no code produced; the point is spent on running the two validator commands and one grep/diff check and reading the result, not on writing anything new. If either schema check fails, the fix belongs back in Task 3's edit, not here — this task does not repair content, only confirms or reports.
-**Done:** [ ]
+
+Verification run 2026-09-27 — all four checks PASS:
+
+1. Boundary (FR-4): `git diff --stat main..HEAD` shows exactly 10 changed files, all within the expected set — `frontend/tests/fixtures/prose-diagnostics-benchmark/{1k,10k,100k}-words.txt`, `frontend/tests/fixtures/prose-diagnostics-benchmark/LICENSE-NOTE.md`, `frontend/tests/fixtures/prose-diagnostics-benchmark/fixture-word-counts.test.ts`, `frontend/tests/proseDiagnosticsBenchmark.test.ts`, `specs/features/prose-diagnostics-benchmark.md`, `specs/features/prose-diagnostics-benchmark/tasks.md`, `specs/product/getwrite.features.md`, `specs/product/getwrite.md`. `git diff main..HEAD -- frontend/src/`, `-- frontend/app/`, `-- frontend/components/`, and `-- frontend/src/lib/models/schemas.ts` each produced empty output. PASS.
+2. Fixture license note: re-read `LICENSE-NOTE.md` in full — names Jane Austen's *Pride and Prejudice*, Project Gutenberg EBook #1342, fetched from `https://www.gutenberg.org/files/1342/1342-0.txt` on 2026-09-27, public-domain basis stated (US public domain; Austen died 1817, work published 1813). `grep -ni "TODO\|placeholder\|XXX\|TBD"` on the file found no matches. PASS.
+3. Schema validation: `node ~/Repositories/saboteur-labs/ai-workflows/tools/lib/check-outputs.js --doc specs/product/getwrite.features.md --schema sab.features/1 --against specs/product/getwrite.md` → `PASS  specs/product/getwrite.features.md conforms to sab.features/1.` (exit 0). `node ~/Repositories/saboteur-labs/ai-workflows/tools/lib/check-outputs.js --doc specs/product/getwrite.md --schema sab.product-spec/1` → `PASS  specs/product/getwrite.md conforms to sab.product-spec/1.` (exit 0). PASS.
+4. Fresh test runs: `pnpm --filter getwrite-frontend exec vitest run proseDiagnosticsBenchmark --reporter=verbose` → 1 file, 1 test passed; console table reproduced the recorded numbers (1k: dialogue 0.004ms/sentence 0.040ms/topRepeated 0.111ms/combined 0.153ms; 10k: 0.034/0.473/0.861/1.164ms; 100k: 0.216/3.544/7.890/12.432ms). `pnpm --filter getwrite-frontend exec vitest run fixture-word-counts --reporter=verbose` → 1 file, 6 tests passed. PASS.
+
+No product code, schema, transport, or UI file was touched by this task; only this Notes entry was added to the task list.
+**Done:** [x]
 
 ## Summary
 - Total tasks: 4
