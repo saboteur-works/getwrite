@@ -116,7 +116,53 @@ describe("WordCountGoalSection", () => {
     expect(resourceId).toBe(res.id);
     expect(projectId).toBe(PROJECT_ID);
     expect(clearKeys).toEqual(["wordCountGoal"]);
-    expect("wordCountGoal" in updatedResource).toBe(false);
+    // Task 12: `wordCountGoal` is now sent as an explicit `undefined`-valued
+    // key on the object dispatched to Redux (matching `EntitySection.tsx`'s
+    // `withEntityKind` precedent), not omitted entirely — `updateResource`'s
+    // reducer only overwrites a key it sees present on the payload, so an
+    // omitted key would leave the previous value in place in Redux even
+    // though the on-disk clear (via `clearKeys` above) succeeds.
+    expect("wordCountGoal" in updatedResource).toBe(true);
+    expect(updatedResource.wordCountGoal).toBeUndefined();
+  });
+
+  it("removes wordCountGoal from the resource's Redux entry on clear, not just from the displayed input (Task 12)", async () => {
+    const res = createTextResource({ name: "Chapter One" });
+    Object.assign(res, { wordCountGoal: 1500 });
+    const store = setupStore(res);
+
+    render(
+      <Provider store={store}>
+        <WordCountGoalSection />
+      </Provider>,
+    );
+
+    const input = screen.getByLabelText(
+      "word-count-goal-input",
+    ) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "" } });
+
+    await waitFor(() => {
+      expect(updateSidecar).toHaveBeenCalled();
+    });
+
+    const updated = store
+      .getState()
+      .resources.resources.find((r) => r.id === res.id) as
+      | AnyResource
+      | undefined;
+
+    expect(updated).toBeDefined();
+    // The bug this test guards against: before the fix, `withoutWordCountGoal`
+    // omitted the key entirely, so `updateResource`'s shallow-merge reducer
+    // left the resource's Redux entry at its stale `wordCountGoal: 1500`
+    // even though the sidecar write cleared it on disk. Reading the value
+    // straight off the resource (as `EntitySection` field reads do, and as
+    // `WordCountGoalSection`'s own `currentText` derivation does) must now
+    // see no goal.
+    expect(
+      updated && updated.type === "text" ? updated.wordCountGoal : "present",
+    ).toBeUndefined();
   });
 
   it("a non-negative integer sets the goal via the ordinary updateSidecar call (no clearKeys)", async () => {
@@ -146,6 +192,40 @@ describe("WordCountGoalSection", () => {
     expect(projectId).toBe(PROJECT_ID);
     expect(clearKeys).toBeUndefined();
     expect(updatedResource.wordCountGoal).toBe(2000);
+  });
+
+  it("surfaces a visible error when the sidecar write rejects, without rolling back or losing the typed input (Task 12)", async () => {
+    const res = createTextResource({ name: "Chapter One" });
+    const store = setupStore(res);
+    (
+      updateSidecar as unknown as ReturnType<typeof vi.fn>
+    ).mockRejectedValueOnce(new Error("Failed to update sidecar (409)"));
+
+    render(
+      <Provider store={store}>
+        <WordCountGoalSection />
+      </Provider>,
+    );
+
+    const input = screen.getByLabelText(
+      "word-count-goal-input",
+    ) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "4200" } });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/couldn't save/i);
+
+    // The typed value is neither cleared nor reverted — the optimistic
+    // Redux dispatch already ran and is not rolled back on a failed write.
+    expect(input.value).toBe("4200");
+    const updated = store
+      .getState()
+      .resources.resources.find((r) => r.id === res.id) as
+      | AnyResource
+      | undefined;
+    expect(
+      updated && updated.type === "text" ? updated.wordCountGoal : undefined,
+    ).toBe(4200);
   });
 
   it("rejects a negative value client-side with no request sent", async () => {

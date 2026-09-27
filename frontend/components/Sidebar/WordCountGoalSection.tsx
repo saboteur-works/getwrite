@@ -14,15 +14,9 @@ import WordCountProgressBar from "../WorkArea/WordCountProgressBar";
 const VALIDATION_ERROR =
   "Enter a non-negative whole number, or leave blank to clear the goal.";
 
-/**
- * Returns a copy of `resource` with `wordCountGoal` removed entirely — not
- * set to `undefined` — so the request body sent to `updateSidecar` carries
- * no `wordCountGoal` key at all. Clearing goes through `clearKeys` exclusively
- * (Feature 61): `JSON.stringify` drops an `undefined`-valued key before the
- * request ever reaches the server, so a body that merely sets the field to
- * `undefined` would never clear it (Feature 61's brief on `patchRevisionContent`
- * names this same bug class).
- */
+const PERSIST_ERROR =
+  "Couldn't save the word count goal. Your input hasn't been lost — try again.";
+
 /**
  * Reads a text resource's current word count, mirroring `DataView.tsx`'s
  * `getWordCount`: `userMetadata.wordCount` wins over the top-level
@@ -35,12 +29,20 @@ function getCurrentWordCount(resource: TextResource): number {
     : (resource.wordCount ?? 0);
 }
 
+/**
+ * Returns a copy of `resource` with `wordCountGoal` explicitly set to
+ * `undefined`, mirroring `EntitySection.tsx`'s `withEntityKind` precedent
+ * (Task 12): `updateResource`'s reducer (`store/resourcesSlice.ts`) merges a
+ * dispatched partial update with a shallow `{ ...previous, ...update }`
+ * spread, which only overwrites keys *present* on `update` — an omitted key
+ * leaves the previous value in place in Redux. `JSON.stringify` drops an
+ * `undefined`-valued key on its own, so the persisted sidecar payload sent to
+ * `updateSidecar` still omits `wordCountGoal` entirely regardless; clearing
+ * on disk goes through the separate `clearKeys` parameter passed to `persist`
+ * below, not through this object's shape.
+ */
 function withoutWordCountGoal(resource: AnyResource): AnyResource {
-  const { wordCountGoal, ...rest } = resource as AnyResource & {
-    wordCountGoal?: number;
-  };
-  void wordCountGoal;
-  return rest as AnyResource;
+  return { ...resource, wordCountGoal: undefined } as AnyResource;
 }
 
 /**
@@ -55,6 +57,11 @@ function withoutWordCountGoal(resource: AnyResource): AnyResource {
  * Validation (non-negative integer, or blank to clear) happens client-side
  * before any request is sent — a negative or non-integer value is rejected
  * with an accessible `role="alert"` message and no call to `updateSidecar`.
+ *
+ * A sidecar write that itself fails (`updateSidecar` now rejects on a
+ * non-2xx response, Task 12) surfaces the same accessible `role="alert"`
+ * message rather than failing silently; the writer's typed value is not
+ * rolled back, since the optimistic Redux update already dispatched.
  */
 export default function WordCountGoalSection(): JSX.Element | null {
   const projectId = useAppSelector(selectActiveProjectDirectoryId);
@@ -65,10 +72,18 @@ export default function WordCountGoalSection(): JSX.Element | null {
   const persist = (updated: AnyResource, clearKeys?: string[]): void => {
     dispatch(updateResource(updated));
     if (!projectId) return;
-    void updateSidecar(updated.id, projectId, updated, clearKeys).catch(() => {
-      // Best-effort persistence, consistent with EntitySection.tsx — a
-      // failed write is not rolled back here.
-    });
+    void updateSidecar(updated.id, projectId, updated, clearKeys)
+      .then(() => {
+        // A later successful save clears an earlier failure's message.
+        setError(null);
+      })
+      .catch(() => {
+        // The optimistic Redux update above is not rolled back — the
+        // writer's typed value stays on screen — but the write silently
+        // failing is not acceptable (Task 12): surface it so the writer
+        // knows to retry rather than assuming it saved.
+        setError(PERSIST_ERROR);
+      });
   };
 
   const textResource = resource && resource.type === "text" ? resource : null;

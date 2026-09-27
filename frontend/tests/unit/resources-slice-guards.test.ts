@@ -3,6 +3,7 @@ import resourcesReducer, {
   removeResource,
   setResources,
   setFolders,
+  updateResource,
 } from "../../src/store/resourcesSlice";
 import { renameMetadataFieldKey } from "../../src/store/projectsSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../../src/lib/models/default-metadata-schema";
@@ -184,5 +185,57 @@ describe("store/resourcesSlice — removeResource removes from both resources an
 
     expect(state.folders.map((f) => f.id)).toEqual(["unrelated"]);
     expect(state.resources.map((r) => r.id)).toEqual(["r3"]);
+  });
+});
+
+function makeTextResourceWithWordCountGoal(
+  id: string,
+  wordCountGoal: number,
+): AnyResource {
+  return { ...makeTextResource(id), wordCountGoal } as unknown as AnyResource;
+}
+
+describe("store/resourcesSlice — updateResource clearing an optional field (word-count-goals Task 12)", () => {
+  it("removes wordCountGoal from the resource's entry when the dispatched payload sets it to undefined explicitly", () => {
+    let state = resourcesReducer(
+      undefined,
+      setResources([makeTextResourceWithWordCountGoal("r1", 1500)]),
+    );
+
+    // Mirrors `WordCountGoalSection.tsx`'s fixed `withoutWordCountGoal`
+    // (Task 12): the dispatched payload carries the key with an explicit
+    // `undefined` value, not an omitted key.
+    state = resourcesReducer(
+      state,
+      updateResource({
+        id: "r1",
+        wordCountGoal: undefined,
+      } as unknown as Partial<AnyResource> & { id: string }),
+    );
+
+    const updated = state.resources.find((r) => r.id === "r1");
+    expect(updated).toBeDefined();
+    expect(
+      (updated as AnyResource & { wordCountGoal?: number }).wordCountGoal,
+    ).toBeUndefined();
+  });
+
+  it("regression: an OMITTED key on the payload leaves the previous value in place (documents the pre-fix bug shape)", () => {
+    // This is not the shape `WordCountGoalSection.tsx` sends after the
+    // Task 12 fix — it documents why an omitted key was the wrong approach:
+    // `updateResource`'s shallow `{ ...previous, ...payload }` merge only
+    // overwrites a key it sees present on `payload`, so omitting the key
+    // here leaves the stale value untouched.
+    let state = resourcesReducer(
+      undefined,
+      setResources([makeTextResourceWithWordCountGoal("r1", 1500)]),
+    );
+
+    state = resourcesReducer(state, updateResource({ id: "r1" }));
+
+    const updated = state.resources.find((r) => r.id === "r1");
+    expect(
+      (updated as AnyResource & { wordCountGoal?: number }).wordCountGoal,
+    ).toBe(1500);
   });
 });

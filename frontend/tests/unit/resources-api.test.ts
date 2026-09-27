@@ -197,6 +197,21 @@ describe("resources.ts CRUD functions (T9c regression)", () => {
     expect(bodyWithoutClearKeys).not.toHaveProperty("clearKeys");
   });
 
+  it.each([400, 401, 409])(
+    "updateSidecar rejects when fetch resolves with a %d response (Task 12 — mirrors the locked (401) / keyless (409) statuses with-storage-context.ts maps ProjectLockedError/MissingProjectKeyError to)",
+    async (status) => {
+      fetchMock.mockResolvedValue(jsonResponse({}, false, status));
+      const updated = {
+        id: resourceId,
+        name: "Renamed",
+      } as unknown as AnyResource;
+
+      await expect(
+        updateSidecar(resourceId, directoryUuid, updated),
+      ).rejects.toThrow();
+    },
+  );
+
   it("renameResource sends projectId in the POST body, with no projectRoot field", async () => {
     await renameResource(resourceId, directoryUuid, "New name", "resource");
 
