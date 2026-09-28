@@ -1,6 +1,6 @@
 # GetWrite CLI
 
-The GetWrite CLI (`getwrite-cli`) is a Node.js command-line tool for project management, Scrivener and Word (DOCX) import, template operations, revision pruning, integrity checks, screenshot capture, and a developer-facing agentic QA harness.
+The GetWrite CLI (`getwrite-cli`) is a Node.js command-line tool for project management, Scrivener, Word (DOCX), and plain-text (.txt) import, template operations, revision pruning, integrity checks, screenshot capture, and a developer-facing agentic QA harness.
 
 It lives in its own pnpm workspace package, **`cli/`**, separate from the Next.js frontend. It consumes the framework-free model layer through the single `@gw/core` barrel (`frontend/src/lib/core.ts`), which esbuild bundles at build time. See [ADR-016](../architecture/ADRs/adr-016-cli-extraction-and-deferred-core-package.md) for the rationale and the deferred follow-up (promoting `@gw/core` to a standalone package).
 
@@ -156,6 +156,46 @@ getwrite-cli project import-docx <source> [projectRoot] [--name <name>] [-s, --s
 node cli/dist/bin/getwrite-cli.cjs project import-docx ./Manuscript.docx ./my-novel
 # Imported DOCX project to: ./my-novel
 # Folders: 0, Resources: 8
+```
+
+---
+
+### `project import-plaintext`
+
+Imports a single `.txt` file or a folder of `.txt` files into a new, complete GetWrite project (Feature 64). One-shot, never writes to the source. Unlike `import-docx`/`import-scrivener`, this pipeline is CLI-only — there is no desktop UI for it yet.
+
+```sh
+getwrite-cli project import-plaintext <source> [projectRoot] [--name <name>]
+```
+
+**Arguments:**
+
+- `source` (required) — path to a single `.txt` file or a directory containing one or more `.txt` files. The two shapes are auto-detected; a directory with no `.txt` file anywhere in its tree is refused before any write.
+- `projectRoot` (optional) — directory to create the destination project in. Defaults to `.` (current directory).
+
+**Options:**
+
+- `-n, --name <name>` (optional) — destination project name. Defaults to the single file's basename with the `.txt` extension stripped (single-file source) or `source`'s basename (folder source).
+
+**What it carries over:**
+
+1. UTF-8 text only, with a leading byte-order mark stripped before parsing. A blank line (or a run of consecutive blank lines) separates paragraphs; a lone `\n` within a paragraph block is a soft wrap, preserved as a TipTap hard break rather than starting a new paragraph or becoming a literal space.
+2. For a single-file source: one resource, named from the file's basename with `.txt` stripped (or `--name`, if given).
+3. For a folder source: one resource per `.txt` file, with subfolders mirrored as GetWrite folders — walked recursively to any depth, non-`.txt` files and hidden/dot files or folders skipped and tallied, and ordered by case-insensitive natural filename order.
+4. Rebuilds the destination project's inverted index, backlinks, and entity mention index from scratch (mirroring `reindex`); background indexing is suspended for the whole write phase so this rebuild is the only indexing work the run performs.
+5. Logs exactly one writing-log entry tagged `source: "plaintext"` (even a zero-word import), excluded from the daily-goal comparison like a docx/Scrivener import.
+
+**Scope:** like `import-docx`/`import-scrivener`, this importer only ever creates a brand-new destination project — a pre-existing, non-empty `projectRoot` is refused before any write; there is no path for importing plain-text content into an already-existing project.
+
+**Exit codes:** `0` = success, `2` = refused source (no `.txt` found, non-empty destination) or unexpected error
+
+**Example:**
+
+```sh
+node cli/dist/bin/getwrite-cli.cjs project import-plaintext ./Manuscript.txt ./my-novel
+# Imported plain-text project to: ./my-novel
+# Folders: 0, Resources: 1
+# Report written to: ./my-novel/plaintext-import-report.txt
 ```
 
 ---

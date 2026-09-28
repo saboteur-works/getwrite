@@ -16,13 +16,13 @@ Storage layout
 
 Entries
 
-- Word entry: `{ added, deleted, net, timestamp, source? }`. `net` is stored and the schema requires `net === added - deleted`. `source` is `"docx"` or `"scrivener"` and marks an import.
+- Word entry: `{ added, deleted, net, timestamp, source? }`. `net` is stored and the schema requires `net === added - deleted`. `source` is `"docx"`, `"scrivener"`, or `"plaintext"` and marks an import.
 - Marker entry: `{ skipped: true, timestamp }`, with no word counts. It records a save whose words could not be counted (see Skipped saves).
 
 What is logged
 
 - Each debounced **canonical** autosave that changes at least one word (`added` > 0 or `deleted` > 0, even when net is 0), through `updateRevisionInPlace` (`frontend/src/lib/models/revision-core.ts`, `logCanonicalSave`) appends one entry; a save with `added` 0 and `deleted` 0 appends none. Non-canonical revision saves are not logged.
-- A docx or Scrivener import appends one entry with `source` (even a zero-word import writes a 0/0/0 entry) after its index rebuild (`import-docx-project.ts`, `import-scrivener-project.ts`). Imports write through `writeResourceToFile`/`writeRevision`, not `updateRevisionInPlace`, so imported words are not also diff-logged. Plain-text file import is not logged.
+- A docx, Scrivener, or plain-text import appends one entry with `source` (even a zero-word import writes a 0/0/0 entry) after its index rebuild (`import-docx-project.ts`, `import-scrivener-project.ts`, `import-plaintext-project.ts`). Imports write through `writeResourceToFile`/`writeRevision`, not `updateRevisionInPlace`, so imported words are not also diff-logged.
 - There is **no backfill**: history from before the log shipped is not reconstructed.
 - The log is not rebuildable from resources, so `getwrite-cli reindex` does not clear or rebuild it ([cli.md](./cli.md#reindex)).
 
