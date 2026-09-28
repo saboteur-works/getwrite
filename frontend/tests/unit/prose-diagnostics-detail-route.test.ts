@@ -11,17 +11,32 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+
+vi.mock("../../src/lib/models/indexer-queue", async (importActual) => {
+  const actual =
+    await importActual<typeof import("../../src/lib/models/indexer-queue")>();
+  return {
+    ...actual,
+    loadPersistedPlainText: vi.fn(actual.loadPersistedPlainText),
+  };
+});
 
 import { GET as diagnosticsDetailGet } from "../../app/api/resource/[resource-id]/diagnostics-detail/route";
 import { locateRepeatedPhrases } from "../../src/lib/models/prose-diagnostics";
+import { loadPersistedPlainText } from "../../src/lib/models/indexer-queue";
+import {
+  MissingProjectKeyError,
+  ProjectLockedError,
+} from "../../src/lib/models/locked-access";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 const tmpDirs: string[] = [];
 
 afterEach(async () => {
+  vi.mocked(loadPersistedPlainText).mockClear();
   while (tmpDirs.length > 0) {
     const dir = tmpDirs.pop();
     if (dir) await removeDirRetry(dir);
@@ -178,6 +193,36 @@ describe("GET /api/resource/[id]/diagnostics-detail", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
+    });
+  });
+
+  describe("locked/keyless project access — fail-closed, not 200-with-empty-body", () => {
+    it("maps a rethrown ProjectLockedError to 401", async () => {
+      const { projectsDir, projectId } = await makeTmpProjectsDir();
+      await withProjectsDirEnv(projectsDir, async () => {
+        vi.mocked(loadPersistedPlainText).mockRejectedValueOnce(
+          new ProjectLockedError(projectId),
+        );
+        const res = await diagnosticsDetailGet(
+          makeGetRequest("scene-locked", projectId),
+          { params: Promise.resolve({ "resource-id": "scene-locked" }) },
+        );
+        expect(res.status).toBe(401);
+      });
+    });
+
+    it("maps a rethrown MissingProjectKeyError to 409", async () => {
+      const { projectsDir, projectId } = await makeTmpProjectsDir();
+      await withProjectsDirEnv(projectsDir, async () => {
+        vi.mocked(loadPersistedPlainText).mockRejectedValueOnce(
+          new MissingProjectKeyError(projectId),
+        );
+        const res = await diagnosticsDetailGet(
+          makeGetRequest("scene-keyless", projectId),
+          { params: Promise.resolve({ "resource-id": "scene-keyless" }) },
+        );
+        expect(res.status).toBe(409);
+      });
     });
   });
 });

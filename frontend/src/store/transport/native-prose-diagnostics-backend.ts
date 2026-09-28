@@ -25,18 +25,26 @@
  * backend resolves `projectId` -> project root itself via the shared
  * `resolveProjectRoot()` (`project-root-resolver.ts`).
  *
- * **Degrade-gracefully parity.** The HTTP transport's method never throws —
- * any failure (network, non-2xx, malformed body) yields
- * `EMPTY_PROSE_DIAGNOSTICS`. This backend mirrors that: any error, including
- * an invalid `projectId`, is swallowed and resolves to
- * `EMPTY_PROSE_DIAGNOSTICS`, matching `lib/api/prose-diagnostics.ts`'s HTTP
- * implementation.
+ * **Degrade-gracefully parity — with a fail-closed carve-out for locked
+ * access.** The HTTP transport's method never throws — any failure
+ * (network, non-2xx, malformed body) yields `EMPTY_PROSE_DIAGNOSTICS`. This
+ * backend mirrors that for every *ordinary* failure, including an invalid
+ * `projectId`. It deliberately does NOT extend that degrade to a
+ * locked-access failure (`isLockedAccessError` —
+ * `ProjectLockedError`/`MissingProjectKeyError`): that is rethrown instead,
+ * mirroring `lib/models/diagnostics-index.ts`'s `loadDiagnosticsIndex` and
+ * `lib/models/indexer-queue.ts`'s `loadPersistedPlainText`, both of which
+ * already draw this same distinction. A locked or keyless project is not the
+ * same fact as "this resource genuinely has no diagnostics yet", and
+ * swallowing the former into the latter's empty default would misreport a
+ * locked project as one with none (`docs/standards/failure-visibility.md`).
  */
 import { createNativeRunner, type NativeBackendDeps } from "./native-runner";
 import { resolveProjectRoot } from "../../lib/models/project-root-resolver";
 import { rebuildDiagnosticsRecordIfStale } from "../../lib/models/diagnostics-index";
 import { loadPersistedPlainText } from "../../lib/models/indexer-queue";
 import { locateRepeatedPhrases } from "../../lib/models/prose-diagnostics";
+import { isLockedAccessError } from "../../lib/models/locked-access";
 import {
   EMPTY_PROSE_DIAGNOSTICS,
   EMPTY_PROSE_DIAGNOSTICS_DETAIL,
@@ -71,7 +79,8 @@ export function createNativeProseDiagnosticsTransport(
             averageSentenceLength: record.averageSentenceLength,
             topRepeatedWords: record.topRepeatedWords,
           };
-        } catch {
+        } catch (err) {
+          if (isLockedAccessError(err)) throw err;
           // Mirrors the HTTP transport's degrade-gracefully parity.
           return EMPTY_PROSE_DIAGNOSTICS;
         }
@@ -90,7 +99,8 @@ export function createNativeProseDiagnosticsTransport(
           const plainText =
             (await loadPersistedPlainText(projectRoot, resourceId)) ?? "";
           return locateRepeatedPhrases(plainText);
-        } catch {
+        } catch (err) {
+          if (isLockedAccessError(err)) throw err;
           // Mirrors the HTTP transport's degrade-gracefully parity.
           return EMPTY_PROSE_DIAGNOSTICS_DETAIL;
         }

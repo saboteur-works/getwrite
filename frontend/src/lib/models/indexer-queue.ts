@@ -109,6 +109,16 @@ export function installShutdownHooks(): void {
  * Task 5) and the targeted single-entity rescan ({@link rescanEntityAcrossProject},
  * Task 6) so both scan the same "already on disk" text — never unsaved
  * editor state.
+ *
+ * A locked-access failure (`isLockedAccessError` — the project is encrypted
+ * and either the workspace is locked or the keyring holds no key for it) is
+ * rethrown rather than swallowed into `undefined` the way every other read
+ * failure here is: a caller reading a locked project's content must be able
+ * to tell "locked" apart from "genuinely has no content yet" (Feature 62's
+ * diagnostics-detail route, `../../app/api/resource/[resource-id]/diagnostics-detail/route.ts`,
+ * has no other lock-aware read on its path and depends on this rethrow to
+ * fail closed rather than degrading to an empty result for a locked
+ * project).
  */
 export async function loadPersistedPlainText(
   projectRoot: string,
@@ -123,7 +133,8 @@ export async function loadPersistedPlainText(
     plain =
       loaded.plainText ||
       (loaded.tiptap ? tiptapToPlainText(loaded.tiptap) : undefined);
-  } catch {
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
     // ignore
   }
 
@@ -135,11 +146,13 @@ export async function loadPersistedPlainText(
       if (last?.filePath) {
         try {
           plain = await readFile(last.filePath, "utf8");
-        } catch {
+        } catch (err) {
+          if (isLockedAccessError(err)) throw err;
           // ignore read errors
         }
       }
-    } catch {
+    } catch (err) {
+      if (isLockedAccessError(err)) throw err;
       // ignore
     }
   }
