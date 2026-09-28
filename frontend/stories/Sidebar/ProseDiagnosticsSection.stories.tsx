@@ -13,8 +13,8 @@ import type { TextResource } from "../../src/lib/models/types";
 const PROJECT_ID = "prose-diagnostics-story-project";
 
 /**
- * `ProseDiagnosticsSection` reads through `getProseDiagnostics`
- * (`lib/api/prose-diagnostics.ts`), whose HTTP transport calls `fetch`
+ * `ProseDiagnosticsSection` reads through `getProseDiagnosticsOrThrow`
+ * (`lib/api/prose-diagnostics.ts`, Task 14), whose HTTP transport calls `fetch`
  * directly. Mocked at the `fetch` boundary, mirroring
  * `WordCountGoalSection.stories.tsx`'s `mockSidecarFetch` — no real
  * filesystem I/O occurs, and this codebase has no established

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import useAppSelector from "../../src/store/hooks";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import {
-  getProseDiagnostics,
+  getProseDiagnosticsOrThrow,
   type ProseDiagnosticsSummary,
 } from "../../src/lib/api/prose-diagnostics";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
@@ -59,11 +59,14 @@ function formatTopRepeatedWords(
  *
  * Renders one of three discriminated states — loading (on mount), ready
  * (the three metrics), or error (the fetch threw) — and never silently
- * renders nothing, per `docs/standards/failure-visibility.md`. In practice
- * `getProseDiagnostics` (`lib/api/prose-diagnostics.ts`) degrades to
- * {@link EMPTY_PROSE_DIAGNOSTICS} on most transport failures rather than
- * rejecting, so the error state here guards the case where the call itself
- * throws.
+ * renders nothing, per `docs/standards/failure-visibility.md`. Reads through
+ * `getProseDiagnosticsOrThrow` (`lib/api/prose-diagnostics.ts`, Task 14,
+ * FR-4/FR-7) rather than the degrade-to-empty `getProseDiagnostics`, so a
+ * transport failure (network error, non-2xx including a locked project's
+ * 401/409, or a malformed body) always lands in the `error` state here
+ * instead of silently resolving to a zeroed summary indistinguishable from a
+ * resource that genuinely has none — the `error` state's `role="alert"` and
+ * distinct copy keep the two apart.
  *
  * The "Show detail" button opens `ProseDiagnosticsDetailDialog` (Task 7),
  * a read-only overlay showing the located repeated-word detail (FR-5/FR-8),
@@ -93,7 +96,7 @@ export default function ProseDiagnosticsSection({
 
     void (async () => {
       try {
-        const summary = await getProseDiagnostics(projectId, resourceId);
+        const summary = await getProseDiagnosticsOrThrow(projectId, resourceId);
         if (isCancelled) return;
         setState({ status: "ready", summary });
       } catch {

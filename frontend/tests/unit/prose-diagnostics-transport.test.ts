@@ -11,6 +11,7 @@ vi.mock("../../src/lib/api/transport-validation", () => ({
 
 import {
   getProseDiagnostics,
+  getProseDiagnosticsOrThrow,
   httpProseDiagnosticsTransport,
   EMPTY_PROSE_DIAGNOSTICS,
 } from "../../src/lib/api/prose-diagnostics";
@@ -109,5 +110,91 @@ describe("httpProseDiagnosticsTransport", () => {
     expect(typeof httpProseDiagnosticsTransport.getProseDiagnostics).toBe(
       "function",
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getProseDiagnosticsOrThrow (Task 14, FR-4/FR-7): identical to
+// getProseDiagnostics except it REJECTS on any failure (non-2xx including a
+// locked project's 401, network error, or malformed body) rather than
+// degrading to EMPTY_PROSE_DIAGNOSTICS, mirroring
+// `entity-relationships.ts`'s `listOrThrow`.
+// ---------------------------------------------------------------------------
+describe("prose-diagnostics transport — getProseDiagnosticsOrThrow", () => {
+  beforeEach(() => {
+    delete process.env[RUNTIME_ENV];
+    mockedReport.mockClear();
+  });
+
+  it("is a function on httpProseDiagnosticsTransport", () => {
+    expect(
+      typeof httpProseDiagnosticsTransport.getProseDiagnosticsOrThrow,
+    ).toBe("function");
+  });
+
+  it("resolves with the summary on a successful, well-formed response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        dialogueRatio: 0.5,
+        averageSentenceLength: 8,
+        topRepeatedWords: [{ word: "aria", count: 4 }],
+      }),
+    } as Response);
+
+    await expect(
+      getProseDiagnosticsOrThrow("project-1", "resource-1"),
+    ).resolves.toEqual({
+      dialogueRatio: 0.5,
+      averageSentenceLength: 8,
+      topRepeatedWords: [{ word: "aria", count: 4 }],
+    });
+  });
+
+  it("rejects on a non-2xx response (e.g. a locked project's 401)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({}),
+    } as Response);
+
+    await expect(
+      getProseDiagnosticsOrThrow("project-1", "resource-1"),
+    ).rejects.toThrow();
+  });
+
+  it("rejects rather than degrading on a network failure", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+
+    await expect(
+      getProseDiagnosticsOrThrow("project-1", "resource-1"),
+    ).rejects.toThrow();
+  });
+
+  it("rejects and reports a validation failure on a malformed body, without leaking it", async () => {
+    const SECRET_WORD = "Elowen-Secret-Prose-Marker-OrThrow";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        dialogueRatio: "not-a-number",
+        averageSentenceLength: 8,
+        topRepeatedWords: [{ word: SECRET_WORD, count: 4 }],
+      }),
+    } as Response);
+
+    await expect(
+      getProseDiagnosticsOrThrow("project-1", "resource-1"),
+    ).rejects.toThrow();
+
+    expect(mockedReport).toHaveBeenCalledWith(
+      "prose-diagnostics.getProseDiagnosticsOrThrow",
+      expect.any(Array),
+    );
+
+    for (const call of mockedReport.mock.calls) {
+      for (const arg of call) {
+        expect(JSON.stringify(arg)).not.toContain(SECRET_WORD);
+      }
+    }
   });
 });

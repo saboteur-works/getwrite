@@ -13,10 +13,10 @@ import { createTextResource } from "../../src/lib/models/resource";
 import type { ProseDiagnosticsSummary } from "../../src/lib/api/prose-diagnostics";
 
 vi.mock("../../src/lib/api/prose-diagnostics", () => ({
-  getProseDiagnostics: vi.fn(),
+  getProseDiagnosticsOrThrow: vi.fn(),
 }));
 
-import { getProseDiagnostics } from "../../src/lib/api/prose-diagnostics";
+import { getProseDiagnosticsOrThrow } from "../../src/lib/api/prose-diagnostics";
 
 const PROJECT_ID = "proj-diagnostics-a11y";
 const PROJECT_PATH = "/tmp/proj-diagnostics-a11y";
@@ -40,7 +40,7 @@ afterEach(() => {
 
 describe("a11y: ProseDiagnosticsSection", () => {
   it("axe passes in the loading state", async () => {
-    vi.mocked(getProseDiagnostics).mockImplementation(
+    vi.mocked(getProseDiagnosticsOrThrow).mockImplementation(
       () => new Promise(() => {}),
     );
     const resource = createTextResource({ name: "Chapter One" });
@@ -65,7 +65,7 @@ describe("a11y: ProseDiagnosticsSection", () => {
         { word: "and", count: 22 },
       ],
     };
-    vi.mocked(getProseDiagnostics).mockResolvedValue(summary);
+    vi.mocked(getProseDiagnosticsOrThrow).mockResolvedValue(summary);
     const resource = createTextResource({ name: "Chapter One" });
     const store = setupStore();
 
@@ -83,7 +83,7 @@ describe("a11y: ProseDiagnosticsSection", () => {
   });
 
   it("axe passes in the error state", async () => {
-    vi.mocked(getProseDiagnostics).mockRejectedValue(new Error("boom"));
+    vi.mocked(getProseDiagnosticsOrThrow).mockRejectedValue(new Error("boom"));
     const resource = createTextResource({ name: "Chapter One" });
     const store = setupStore();
 

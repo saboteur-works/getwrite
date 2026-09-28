@@ -1129,7 +1129,7 @@ describe("MetadataSidebar — Word count goal section (Task 5)", () => {
 // ---------------------------------------------------------------------------
 
 vi.mock("../src/lib/api/prose-diagnostics", () => ({
-  getProseDiagnostics: vi
+  getProseDiagnosticsOrThrow: vi
     .fn()
     .mockResolvedValue({
       dialogueRatio: 0,

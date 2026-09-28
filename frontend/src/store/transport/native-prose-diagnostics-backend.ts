@@ -17,6 +17,14 @@
  * server-side diagnostics/indexer model and storage layer, which must never
  * enter the web client bundle.
  *
+ * **`getProseDiagnosticsOrThrow` (Task 14, FR-4/FR-7).** The one exception
+ * to the degrade-gracefully parity below: it does not wrap its body in a
+ * try/catch, so an invalid `projectId` (`resolveProjectRoot` returning
+ * `null`) or any error from `loadPersistedPlainText`/
+ * `rebuildDiagnosticsRecordIfStale` — including a locked-access error —
+ * propagates uncaught, mirroring `native-entity-relationships-backend.ts`'s
+ * `listOrThrow`.
+ *
  * **Storage context binding.** Every operation runs through the shared
  * `createNativeRunner(deps)` helper (`native-runner.ts`), mirroring
  * `native-mentions-backend.ts`.
@@ -84,6 +92,27 @@ export function createNativeProseDiagnosticsTransport(
           // Mirrors the HTTP transport's degrade-gracefully parity.
           return EMPTY_PROSE_DIAGNOSTICS;
         }
+      });
+    },
+
+    async getProseDiagnosticsOrThrow(projectId, resourceId) {
+      return run(async () => {
+        const projectRoot = resolveProjectRoot(projectId);
+        if (!projectRoot) {
+          throw new Error(`Invalid projectId: ${projectId}`);
+        }
+        const plainText =
+          (await loadPersistedPlainText(projectRoot, resourceId)) ?? "";
+        const record = await rebuildDiagnosticsRecordIfStale(
+          projectRoot,
+          resourceId,
+          plainText,
+        );
+        return {
+          dialogueRatio: record.dialogueRatio,
+          averageSentenceLength: record.averageSentenceLength,
+          topRepeatedWords: record.topRepeatedWords,
+        };
       });
     },
 

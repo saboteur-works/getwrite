@@ -9,7 +9,7 @@ vi.mock("../components/TipTapEditor", () => ({
 vi.mock("../src/lib/api/prose-diagnostics", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../src/lib/api/prose-diagnostics")>();
-  return { ...actual, getProseDiagnostics: vi.fn() };
+  return { ...actual, getProseDiagnosticsOrThrow: vi.fn() };
 });
 
 import AppShell from "../components/Layout/AppShell";
@@ -20,9 +20,9 @@ import {
   setSelectedResourceId,
 } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
-import { getProseDiagnostics } from "../src/lib/api/prose-diagnostics";
+import { getProseDiagnosticsOrThrow } from "../src/lib/api/prose-diagnostics";
 
-const mockGetProseDiagnostics = vi.mocked(getProseDiagnostics);
+const mockGetProseDiagnostics = vi.mocked(getProseDiagnosticsOrThrow);
 
 // The project.json `id` deliberately differs from the directory basename in
 // rootPath, mirroring appShellResourceWordCountGoal.test.tsx (Feature 61,

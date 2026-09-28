@@ -3,10 +3,22 @@
  *
  * Client transport for a resource's persisted prose diagnostics summary
  * (FR-7 of Feature 62, prose diagnostics): dialogue ratio, average sentence
- * length, and top repeated words. Degrades gracefully: any failure yields
- * {@link EMPTY_PROSE_DIAGNOSTICS} rather than throwing, matching how
- * `mentions.ts`/`entity-alias-table.ts` degrade on read failure, since a
- * diagnostics summary is advisory.
+ * length, and top repeated words. `getProseDiagnostics` degrades gracefully:
+ * any failure yields {@link EMPTY_PROSE_DIAGNOSTICS} rather than throwing,
+ * matching how `mentions.ts`/`entity-alias-table.ts` degrade on read
+ * failure, since a diagnostics summary is advisory.
+ *
+ * `getProseDiagnosticsOrThrow` (Task 14, FR-4/FR-7) is the one exception to
+ * that degrade-gracefully contract: it rejects on the identical set of
+ * failures `getProseDiagnostics` degrades on (network error, non-2xx
+ * response including a locked project's 401/409, or a malformed body),
+ * mirroring `entity-relationships.ts`'s `listOrThrow` — added for the one
+ * caller (`ProseDiagnosticsSection.tsx`) that must distinguish "this
+ * resource genuinely has zero metrics" from "the read failed," so the two
+ * cases can render distinguishably rather than both collapsing into the
+ * same zeroed display. `getProseDiagnostics` itself is unchanged by this
+ * addition, and `getProseDiagnosticsDetail` (a separate, unrelated read) is
+ * out of scope and keeps its own degrade-only contract.
  */
 import { createTransport } from "../../store/transport/create-transport";
 import {
@@ -72,6 +84,20 @@ export interface ProseDiagnosticsTransport {
   ): Promise<ProseDiagnosticsSummary>;
 
   /**
+   * Fetches `resourceId`'s persisted prose diagnostics summary, identically
+   * to {@link getProseDiagnostics}, except it REJECTS on any failure
+   * (network error, non-2xx response including a locked project's
+   * 401/409, or a malformed body) instead of degrading to
+   * {@link EMPTY_PROSE_DIAGNOSTICS} (Task 14, FR-4/FR-7). Exists so a caller
+   * that must distinguish "zero metrics" from "the read failed" —
+   * `ProseDiagnosticsSection.tsx` — has a way to do so.
+   */
+  getProseDiagnosticsOrThrow(
+    projectId: string,
+    resourceId: string,
+  ): Promise<ProseDiagnosticsSummary>;
+
+  /**
    * Fetches `resourceId`'s on-demand located repeated-word detail (FR-8),
    * computed fresh from its persisted plain text on every call and never
    * persisted. Degrades gracefully: any failure yields
@@ -128,6 +154,27 @@ export const httpProseDiagnosticsTransport: ProseDiagnosticsTransport = {
       });
       return EMPTY_PROSE_DIAGNOSTICS;
     }
+  },
+
+  async getProseDiagnosticsOrThrow(projectId, resourceId) {
+    const response = await fetch(
+      `/api/resource/${encodeURIComponent(resourceId)}/diagnostics?projectId=${encodeURIComponent(projectId)}`,
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to load prose diagnostics (status ${response.status}).`,
+      );
+    }
+    const data: unknown = await response.json();
+    const result = ProseDiagnosticsResponseSchema.safeParse(data);
+    if (!result.success) {
+      reportTransportValidationFailure(
+        "prose-diagnostics.getProseDiagnosticsOrThrow",
+        result.error.issues,
+      );
+      throw new Error("Malformed prose diagnostics response.");
+    }
+    return result.data;
   },
 
   async getProseDiagnosticsDetail(projectId, resourceId) {
@@ -193,6 +240,24 @@ export async function getProseDiagnostics(
 ): Promise<ProseDiagnosticsSummary> {
   const transport = await resolveProseDiagnosticsTransport();
   return transport.getProseDiagnostics(projectId, resourceId);
+}
+
+/**
+ * Fetches `resourceId`'s persisted prose diagnostics summary (FR-7),
+ * identically to {@link getProseDiagnostics}, except it REJECTS on any
+ * failure (network error, non-2xx response, or a malformed body) instead of
+ * resolving to {@link EMPTY_PROSE_DIAGNOSTICS} (Task 14, FR-4/FR-7).
+ *
+ * @param projectId - The project's on-disk directory basename.
+ * @param resourceId - The resource whose diagnostics are being looked up.
+ * @returns The diagnostics summary on success; rejects on any failure.
+ */
+export async function getProseDiagnosticsOrThrow(
+  projectId: string,
+  resourceId: string,
+): Promise<ProseDiagnosticsSummary> {
+  const transport = await resolveProseDiagnosticsTransport();
+  return transport.getProseDiagnosticsOrThrow(projectId, resourceId);
 }
 
 /**
