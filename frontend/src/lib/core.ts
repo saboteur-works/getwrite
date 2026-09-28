@@ -98,6 +98,15 @@ export {
   type ImportDocxProjectResult,
 } from "./models/docx/import-docx-project";
 
+// Plain-text import (CLI's `project import-plaintext` command)
+export {
+  importPlainTextProject,
+  PlainTextDestinationNotEmptyError,
+  type ImportPlainTextProjectOptions,
+  type ImportPlainTextProjectResult,
+} from "./models/plaintext/import-plaintext-project";
+export { NoTxtFilesFoundError } from "./models/plaintext/source-detection";
+
 // DOCX source detection (needed by the CLI to refuse --split-level against a
 // directory source before calling the orchestrator).
 export {
