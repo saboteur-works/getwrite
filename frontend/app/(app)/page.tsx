@@ -323,6 +323,29 @@ export default function Home(): JSX.Element {
     });
   };
 
+  /**
+   * `StartPage`'s "Open Project" button wiring for `handleOpen`.
+   *
+   * `handleOpen` is async and can throw (`@throws` above); passed directly
+   * as `onOpen`, a click fires it unawaited from a synchronous handler, so a
+   * rejection (e.g. a locked or missing project) became an unhandled promise
+   * rejection with no visible error — the writer's click appeared to do
+   * nothing (POS task_8898ff5e). Mirrors the catch-and-report pattern already
+   * used for `handleOpen`'s other two callers (`handleImportComplete` below,
+   * and the Trash-restore effect), except this one surfaces a toast rather
+   * than degrading silently, since here there is no other success signal
+   * already shown to the writer.
+   */
+  const handleOpenFromStartPage = (id: string): void => {
+    void handleOpen(id).catch((err) => {
+      console.error("Error opening project:", err);
+      toastService.error(
+        "Cannot open project",
+        err instanceof Error ? err.message : "Failed to open project",
+      );
+    });
+  };
+
   // ── Trash-restore staleness fix ─────────────────────────────────────────
   // `selectedProject` above is local `useState`, hydrated once by
   // `handleOpen` and never otherwise kept in sync with a restore performed
@@ -933,7 +956,7 @@ export default function Home(): JSX.Element {
         <StartPage
           projects={projects}
           onCreate={handleCreate}
-          onOpen={handleOpen}
+          onOpen={handleOpenFromStartPage}
           lockStatus={
             lockStatus === "locked" || lockStatus === "unlocked"
               ? lockStatus
