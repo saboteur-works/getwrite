@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useAppSelector from "../../src/store/hooks";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import {
@@ -8,6 +8,7 @@ import {
   type ProseDiagnosticsSummary,
 } from "../../src/lib/api/prose-diagnostics";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
+import ProseDiagnosticsDetailDialog from "./ProseDiagnosticsDetailDialog";
 import type { TextResource } from "../../src/lib/models/types";
 
 // ---------------------------------------------------------------------------
@@ -64,8 +65,9 @@ function formatTopRepeatedWords(
  * rejecting, so the error state here guards the case where the call itself
  * throws.
  *
- * The "Show detail" button is a no-op stub as of Task 6 — Task 7 wires it
- * to a real detail dialog.
+ * The "Show detail" button opens `ProseDiagnosticsDetailDialog` (Task 7),
+ * a read-only overlay showing the located repeated-word detail (FR-5/FR-8),
+ * fetched fresh each time it opens and never cached across opens.
  */
 export default function ProseDiagnosticsSection({
   resource,
@@ -74,6 +76,8 @@ export default function ProseDiagnosticsSection({
 }): JSX.Element {
   const projectId = useAppSelector(selectActiveProjectDirectoryId);
   const [state, setState] = useState<DiagnosticsState>({ status: "loading" });
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const showDetailButtonRef = useRef<HTMLButtonElement>(null);
 
   const resourceId = resource.id;
 
@@ -103,7 +107,7 @@ export default function ProseDiagnosticsSection({
   }, [projectId, resourceId]);
 
   function handleShowDetail(): void {
-    // No-op stub: Task 7 wires this to a real diagnostics detail dialog.
+    setIsDetailOpen(true);
   }
 
   return (
@@ -135,12 +139,22 @@ export default function ProseDiagnosticsSection({
         </div>
       )}
       <button
+        ref={showDetailButtonRef}
         type="button"
         onClick={handleShowDetail}
         className="text-gw-label text-gw-secondary hover:text-gw-primary transition-colors duration-150"
       >
         {SHOW_DETAIL_LABEL}
       </button>
+      {projectId && (
+        <ProseDiagnosticsDetailDialog
+          isOpen={isDetailOpen}
+          projectId={projectId}
+          resourceId={resourceId}
+          onClose={() => setIsDetailOpen(false)}
+          returnFocusRef={showDetailButtonRef}
+        />
+      )}
     </CollapsibleSection>
   );
 }
