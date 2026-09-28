@@ -80,6 +80,7 @@ export default function ProseDiagnosticsSection({
   const showDetailButtonRef = useRef<HTMLButtonElement>(null);
 
   const resourceId = resource.id;
+  const resourceUpdatedAt = resource.updatedAt;
 
   useEffect(() => {
     if (!projectId || !resourceId) {
@@ -104,7 +105,14 @@ export default function ProseDiagnosticsSection({
     return () => {
       isCancelled = true;
     };
-  }, [projectId, resourceId]);
+    // `resourceUpdatedAt` re-fires this fetch after a same-resource autosave
+    // completes: `useCanonicalAutosave.ts` dispatches an `updatedAt` change
+    // to `resourcesSlice` on every successful save, which flows into the
+    // `resource` prop this component already receives — the same
+    // save-completion signal `WritingLogFooterDisplay.tsx`'s `refreshToken`
+    // prop represents, reached here via Redux rather than prop-threading
+    // since this component is a Sidebar sibling of EditView, not its child.
+  }, [projectId, resourceId, resourceUpdatedAt]);
 
   function handleShowDetail(): void {
     setIsDetailOpen(true);

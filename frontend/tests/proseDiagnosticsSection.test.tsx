@@ -120,6 +120,51 @@ describe("ProseDiagnosticsSection", () => {
     ).toBeInTheDocument();
   });
 
+  it("refetches and re-renders when the same resource's updatedAt changes (post-save refresh)", async () => {
+    const firstSummary: ProseDiagnosticsSummary = {
+      dialogueRatio: 0.25,
+      averageSentenceLength: 14.2,
+      topRepeatedWords: [{ word: "the", count: 40 }],
+    };
+    const secondSummary: ProseDiagnosticsSummary = {
+      dialogueRatio: 0.5,
+      averageSentenceLength: 9.1,
+      topRepeatedWords: [{ word: "she", count: 12 }],
+    };
+    vi.mocked(getProseDiagnostics).mockClear();
+    vi.mocked(getProseDiagnostics)
+      .mockResolvedValueOnce(firstSummary)
+      .mockResolvedValueOnce(secondSummary);
+    const resource = {
+      ...createTextResource({ name: "Chapter One" }),
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const store = setupStore();
+
+    const { rerender } = render(
+      <Provider store={store}>
+        <ProseDiagnosticsSection resource={resource} />
+      </Provider>,
+    );
+
+    expect(await screen.findByText(/the \(40\)/)).toBeInTheDocument();
+    expect(getProseDiagnostics).toHaveBeenCalledTimes(1);
+
+    const savedResource = {
+      ...resource,
+      updatedAt: "2026-01-01T00:05:00.000Z",
+    };
+
+    rerender(
+      <Provider store={store}>
+        <ProseDiagnosticsSection resource={savedResource} />
+      </Provider>,
+    );
+
+    expect(await screen.findByText(/she \(12\)/)).toBeInTheDocument();
+    expect(getProseDiagnostics).toHaveBeenCalledTimes(2);
+  });
+
   it("never renders any red-associated class or style (FR-6 no-red convention)", async () => {
     vi.mocked(getProseDiagnostics).mockResolvedValue({
       dialogueRatio: 0.5,
