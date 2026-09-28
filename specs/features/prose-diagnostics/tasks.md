@@ -13,7 +13,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** none
 **Estimate:** 3
 **Notes:** `schemas.ts` is a high-churn shared file across features generally (word-count-goals' Task 1 flagged the same risk) — re-check for concurrent edits immediately before landing. `mention-index.ts` itself validates nothing through `schemas.ts` (plain `JSON.parse` cast), so this task's schema-validated load path is new ground for this codebase's index modules, not a copy of an existing validated load — call this out again in code comments so a future reader does not assume `mention-index.ts` was skipped by oversight.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Real scalar-metric functions (dialogue ratio, average sentence length, top repeated words)
 **What:** Port the benchmark's three stand-in algorithms into a new, real, non-test module as pure functions: `dialogueRatio(text): number`, `averageSentenceLength(text): number` (using `text.split(/[.!?]+\s+/)` exactly as FR-1/OQ-3 direct), and `topRepeatedWords(text, { n: 10, minOccurrences: 3 }): { word: string; count: number }[]` — the last reusing `inverted-index.ts`'s exported `STOP_WORDS`/`tokenize()` for filtering (not the benchmark's own ad hoc `text.toLowerCase().match(/[a-z']+/g)`, and not a new filter set), then applying the top-N-of-10 and minimum-occurrence-floor-of-3 cutoffs (both working copy per OQ-2, not user-confirmed). Export a `HEURISTIC_VERSION` constant (starting at `1`) alongside these for Task 3/Task 1 to consume.
@@ -22,7 +22,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** none
 **Estimate:** 3
 **Notes:** `frontend/tests/proseDiagnosticsBenchmark.test.ts`'s docblock (lines 19-27) explicitly says its three stand-in functions are throwaway and "NOT... production code... Do not reuse these functions as production code." This task does exactly what that docblock warns against, on purpose — FR-1's and OQ-3's Gate-3-resolved text explicitly directs the real implementation to adopt the same regex approach as-is, because Feature 63's benchmark evidence only covers that specific algorithm's cost (FR-2). State this in the new module's own docblock so a future reader (or a future audit) does not flag it as a violation of the benchmark file's warning without this context — the warning was correct when written and is being knowingly superseded by a later, explicit product decision, not silently ignored.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Wire diagnostics computation into the indexer + lazy version-mismatch rebuild on read
 **What:** In `indexer-queue.ts`'s `runTask`, add a diagnostics block alongside the existing mention-detection block (same try/catch-and-log-only pattern, same reuse of the already-computed `plain` text) that computes all three metrics via Task 2's functions, tags the result with Task 2's `HEURISTIC_VERSION`, and persists it via Task 1's `persistDiagnosticsIndex` — unconditionally, at every save, never conditioned on whether the resource changed. Export `loadPersistedPlainText` from `indexer-queue.ts` (or extract it to a small shared module if that reads cleaner once Task 5 also needs it) so the on-demand located-detail core (Task 5) reads the literal same function, per the "Key finding" above. Separately, add a lazy rebuild-on-read helper (e.g. `getDiagnosticsForResource(projectRoot, resourceId)` in `diagnostics-index.ts` or a new small core) that recomputes and re-persists a resource's record when its stored `heuristicVersion` does not match Task 2's current constant, before returning it.
@@ -31,7 +31,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** 1, 2
 **Estimate:** 3
 **Notes:** `indexer-queue.ts` is the same file the mention index and inverted index already share a save-time path in — no other in-flight feature is known to be editing it right now, but it is a natural collision point for future indexer work; re-check before landing. The mention-detection block's error handling swallows a locked-access error the same as any other error inside `runTask`'s try/catch — this task mirrors that inherited behavior rather than fixing it, since fixing it is out of this feature's scope and would change existing mention-index behavior too.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: FR-7 transport — persisted scalar-metrics read
 **What:** Add a new `GET`-shaped per-resource route (analogous to `resource/[resource-id]/mentions`) that returns the resource's persisted diagnostics record (applying Task 3's lazy version-mismatch rebuild first), a `lib/api/prose-diagnostics.ts` client module resolving through `createTransport`, a native in-process backend + web-stub, a new response schema in `lib/api/schemas.ts`, and the matching `next.config.mjs` `turbopack.resolveAlias` entry.
@@ -40,7 +40,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** 1, 2, 3
 **Estimate:** 3
 **Notes:** Follow `native-mentions-backend.ts`'s exact seam (`createNativeRunner`, `resolveProjectRoot`) rather than inventing a new one.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: FR-8 transport — on-demand located-detail
 **What:** Add a second new route/transport pair of the same shape as Task 4, computing located repeated-phrase detail (exact phrases + character positions) on demand from the resource's persisted plain text (via Task 3's exported/extracted `loadPersistedPlainText`, per FR-5 — never the client's live editing buffer), with no persistence of the result anywhere.
@@ -49,7 +49,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** 3, 4
 **Estimate:** 5
 **Notes:** Highest-uncertainty task in this list — FR-5's "never drift from what the persisted index was computed against" guarantee is only as good as Task 3's `loadPersistedPlainText` export actually being the one function both paths call; do not let this task fall back to a convenience re-read (e.g. `loadResourceContent` alone, skipping the revision-snapshot fallback) that could disagree with the persisted index on an edge case.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: FR-1 UI — read-only diagnostics summary section in the sidebar
 **What:** Add a `ProseDiagnosticsSection` component patterned on `ImageMetadataSection`/`AudioMetadataSection` (read-only `CollapsibleSection` + `ReadOnlyField`, "No metadata available"-style empty state, NOT `WordCountGoalSection`'s edit/persist pattern), consuming Task 4's transport with a discriminated `loading | error | ready` state; render it in `MetadataSidebar.tsx` gated on `editableResource.type === "text"`, including a "show detail" action (Task 7's trigger).
@@ -58,7 +58,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** 4
 **Estimate:** 3
 **Notes:** Working-copy section title/copy strings (FR-1's Non-goals) are not yet user-confirmed, mirroring Features 60/61's unconfirmed-copy handling — write tests against the exact strings used, but flag here that they may change on a later confirmation pass.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: FR-1/FR-5 UI — located-detail dialog
 **What:** Add a `ProseDiagnosticsDetailDialog` component patterned on `WritingLogDetailsDialog.tsx` exactly (`Dialog`/`DialogContent`/`DialogFooter`, fetch-on-open-only `useEffect`, discriminated `loading | error | ready` state), consuming Task 5's transport, showing located repeated phrases and their positions; wire Task 6's "show detail" button to open it.
@@ -67,7 +67,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** 5, 6
 **Estimate:** 3
 **Notes:** none known beyond what Task 6 already flagged for working-copy strings.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Locked/keyless fail-closed coverage for both transports
 **What:** Add or confirm test coverage that a locked or keyless project fails closed (via `isLockedAccessError`) for both the persisted-metrics read (Task 4) and the on-demand detail read (Task 5), rather than degrading to a fabricated zero/empty result — read the tests already written in Tasks 1/3/4/5 first and only add what is genuinely missing.
@@ -76,7 +76,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** 4, 5
 **Estimate:** 2
 **Notes:** Expected to mostly be "already covered by Task 1/4/5's own tests, cite them" rather than genuinely new work — if reading finds a real gap, fix it here rather than assuming coverage exists.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Wiring-level test through AppShell/MetadataSidebar with a page-shaped project
 **What:** Add an integration-level test mounting `AppShell` (or `MetadataSidebar` with a page-shaped project/resource object matching `app/(app)/page.tsx`'s actual construction, not a hand-fed fixture that already has whatever field is needed) proving the diagnostics summary section actually receives what it needs through the real open/create path — the lesson from Features 59 Task 16 / 60 Task 9 / 61 Task 8, where unit tests alone missed real defects because they handed components a project/resource shape that already had the field, unlike what the page actually builds.
@@ -85,7 +85,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** 6, 7
 **Estimate:** 3
 **Notes:** Do not shorten this to a prop-level test — that is exactly the failure mode this task exists to avoid, per the cited precedents.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Storybook stories + a11y tests for both new UI pieces
 **What:** Add stories and axe a11y tests for `ProseDiagnosticsSection` (empty/loading/error/ready states) and `ProseDiagnosticsDetailDialog` (loading/error/ready states), opting in to `a11y: { test: "error" }`.
@@ -94,7 +94,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** 6, 7
 **Estimate:** 2
 **Notes:** Story-test execution must happen outside the sandbox; do not attempt it inside this session's Bash sandbox and file it as a defect if it fails only there.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Documentation
 **What:** Document the feature for users and maintainers, and update `CLAUDE.md`'s glossary/Code Map with entries for the new diagnostics index and the two new transports, alongside the existing mention-index/writing-log entries.
@@ -103,7 +103,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** 9, 10
 **Estimate:** 2
 **Notes:** Mirror Feature 60 Task 7 / Feature 61 Task 10's approach to locating the right existing doc pages before adding a new one.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Final gate
 **What:** Run full verification against a freshly re-measured baseline.
@@ -112,7 +112,7 @@ Code read before writing this list (facts, not guesses): `frontend/src/lib/model
 **Depends on:** 8, 11
 **Estimate:** 2
 **Notes:** Re-measure baselines fresh at task start rather than trusting numbers recorded in a prior feature's tasks.md (Feature 60/61's own recorded pattern).
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 12
