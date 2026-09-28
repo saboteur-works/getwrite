@@ -97,8 +97,19 @@ export interface TipTapEditorProps {
    *
    * @param content - Current editor content serialized as HTML.
    * @param doc - Current TipTap document serialized as JSON.
+   * @param isStructuralOnly - True when every transaction behind this change
+   *   was structural normalization (this file's own initial paragraph-leading
+   *   stamp, or `@tiptap/extension-unique-id` back-filling a missing `id`),
+   *   never a keystroke. The consumer still gets the call — its own view of
+   *   the document should stay in sync regardless — but should not treat it
+   *   as autosave-worthy or as "the writer made an edit". Omitted (falsy) for
+   *   every real edit, including a markdown-source commit.
    */
-  onChange?: (content: string, doc: TipTapDocument) => void;
+  onChange?: (
+    content: string,
+    doc: TipTapDocument,
+    isStructuralOnly?: boolean,
+  ) => void;
   /** Optional DOM id applied to the `EditorContent` element. */
   id?: string;
   /** When true, disables editing interactions. */
@@ -228,36 +239,6 @@ export default function TipTapEditor({
   // the string returned by editor.getHTML().
   const lastEmittedDocRef = useRef<unknown>(null);
 
-  // Set in `onBeforeCreate` (before the view or any extension plugin
-  // exists) and cleared at the end of this hook's own `onCreate`, so every
-  // structural, non-user-authored transaction that fires during the
-  // editor's first mount is recognised in `onUpdate` and skipped — not just
-  // this hook's own `selectAll().setParagraphLeading(...)` stamp, but also
-  // the `UniqueID` extension's (`@tiptap/extension-unique-id`, configured in
-  // `editorExtensions.ts`) own independent `onCreate`, which back-fills a
-  // missing `id` attribute on every configured node type via a direct
-  // `view.dispatch(tr)` call. That extension-level `onCreate` runs BEFORE
-  // this hook's own `onCreate` option callback — TipTap registers every
-  // extension's `onCreate` as a `'create'` event listener during extension
-  // manager setup, which happens earlier in the `Editor` constructor than
-  // the editor's own `options.onCreate` is registered, and listeners fire
-  // in registration order — so setting this flag inside `onCreate` itself
-  // (as a first attempt at this fix did) was too late to catch it: it still
-  // reached the debounced autosave. `onBeforeCreate` fires before the view
-  // — and therefore before any extension's `onCreate` — even exists.
-  //
-  // Mirrors how `loadDocumentIntoEditor` already keeps a resource/revision
-  // *switch* from reaching autosave (note_68cf31b0), extended to cover the
-  // editor's very first mount. Before this fix (both attempts), opening a
-  // brand-new resource — whose seed document has no explicit node attrs at
-  // all — wrote an unsolicited revision (and writing-log entry) for a
-  // resource the writer had only opened, no edit made. Verified live
-  // against a running dev server, not just reasoned about: the first
-  // version of this fix (suppressing only inside `onCreate`) was confirmed,
-  // by network trace, to NOT stop the stray `PATCH /api/resource/revision`;
-  // this version was (POS task_0417e6f6 / note_ad3047e2, note_6a0a5389).
-  const suppressNextUpdateRef = useRef(false);
-
   // Editing mode for the current resource. "rich" shows the TipTap editor;
   // "source" shows raw GFM in a textarea. Conversion happens only at the
   // toggle boundary (non-goal: per-keystroke sync). The editor instance stays
@@ -352,21 +333,53 @@ export default function TipTapEditor({
       editable: !readonly,
       /**
        * Emits both HTML and JSON representations for parent persistence flows.
+       *
+       * Always calls `onChange` — the consumer's own view of the document
+       * (`EditView`'s `content`/`tipTapDoc` state) must stay in sync with
+       * what's actually in the editor regardless of what triggered the
+       * update, and in practice (this Storybook environment, at least)
+       * something else depends on that happening even for the very first,
+       * non-user-authored update: see `isStructuralOnly` below. What
+       * `isStructuralOnly` lets the consumer skip is autosave specifically,
+       * not the sync.
+       *
+       * `isStructuralOnly` is true when every transaction behind this update
+       * (the primary one, plus any `appendedTransactions` a plugin's
+       * `appendTransaction` hook added) is marked `addToHistory: false`. In
+       * this codebase that meta is set only by two things, neither of them a
+       * user edit: this hook's own `onCreate` normalization chain below, and
+       * `@tiptap/extension-unique-id` (configured in `editorExtensions.ts`),
+       * which back-fills a missing `id` attribute — on first mount via its
+       * own `onCreate`, and on an ongoing basis via `appendTransaction` —
+       * through a direct `view.dispatch(tr)` call independent of anything in
+       * this file. A real keystroke's own transaction is never marked this
+       * way, so `isStructuralOnly` is always false for one even when
+       * UniqueID also appends an `addToHistory: false` transaction alongside
+       * it (e.g. assigning a new paragraph its id).
+       *
+       * Two earlier versions of this fix instead skipped `onChange` itself
+       * for a structural-only update (a ref flag set in `onBeforeCreate`,
+       * then this same transaction-metadata check) — both verified live to
+       * stop the stray autosave, but both also broke the
+       * `WithCanonicalRevision`/`WithNonCanonicalRevision` Storybook stories
+       * outright (content never loaded, no console error): `EditView`'s
+       * `useRevisionContent` hook has no real backend to read from there, so
+       * its `hasReadFailed` flag is genuinely true, and the *only* thing
+       * that ever gave it a non-null `tipTapDoc` — averting its "error"
+       * state — was `EditView.handleChange` (this component's `onChange`)
+       * firing at least once, which an unconditionally-skipped `onChange`
+       * never did. Passing `isStructuralOnly` through instead, and moving
+       * the autosave-vs-sync split into `handleChange` itself, keeps that
+       * sync intact.
        */
-      onUpdate: ({ editor }) => {
+      onUpdate: ({ editor, transaction, appendedTransactions }) => {
         const doc = editor.getJSON() as TipTapDocument;
         lastEmittedDocRef.current = doc;
-        if (suppressNextUpdateRef.current) {
-          // `onCreate`'s own normalization transaction, not a user edit —
-          // keep `lastEmittedDocRef` current (so the content-sync effect
-          // still recognises this as the editor's own content) but skip
-          // `onChange`, which is what reaches the canonical autosave.
-          suppressNextUpdateRef.current = false;
-          emitNodeTypes(editor);
-          return;
-        }
+        const isStructuralOnly = [transaction, ...appendedTransactions].every(
+          (tr) => tr.getMeta("addToHistory") === false,
+        );
         const html = editor.getHTML();
-        if (onChange) onChange(html, doc);
+        if (onChange) onChange(html, doc, isStructuralOnly);
         // Content edits can change a node's type (e.g. a heading downgraded to
         // body), even without the selection moving.
         emitNodeTypes(editor);
@@ -378,19 +391,9 @@ export default function TipTapEditor({
         emitNodeTypes(editor);
       },
       /**
-       * Fires before the view (and every extension's own plugins/`onCreate`)
-       * exist — see `suppressNextUpdateRef` above for why the flag must be
-       * set this early rather than at the top of `onCreate` below.
-       */
-      onBeforeCreate: () => {
-        suppressNextUpdateRef.current = true;
-      },
-      /**
        * Migrates legacy math string representations to node-based format,
-       * and stamps every paragraph with an explicit leading value (see
-       * `suppressNextUpdateRef` above for why the resulting `onUpdate`, if
-       * any, must not reach autosave — the flag itself is set in
-       * `onBeforeCreate`, not here).
+       * and stamps every paragraph with an explicit leading value. Marked
+       * `addToHistory: false` — see `onUpdate` above for why.
        */
       onCreate: ({ editor }) => {
         migrateMathStrings(editor);
@@ -401,10 +404,6 @@ export default function TipTapEditor({
           .setParagraphLeading("1.5")
           .setTextSelection(0) // collapse cursor to start, or wherever you want
           .run();
-        // Defensive reset: if neither call above produced a transaction (so
-        // `onUpdate` never fired to clear it), the flag must not leak into
-        // the writer's next real edit.
-        suppressNextUpdateRef.current = false;
         // Populate the initial node-type indicator for the starting cursor.
         emitNodeTypes(editor);
       },
