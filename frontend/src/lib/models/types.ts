@@ -381,7 +381,7 @@ export interface Revision {
 }
 
 /** Origin of a bulk word addition in the writing log (Feature 59). */
-export type WritingLogSource = "docx" | "scrivener";
+export type WritingLogSource = "docx" | "scrivener" | "plaintext";
 
 /** Writing-log word entry; `net` always equals `added - deleted`. */
 interface WritingLogWordEntry {
