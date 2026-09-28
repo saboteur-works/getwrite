@@ -96,13 +96,24 @@ export function buildFieldPickerFields(
       !isBuiltin && group.folderId ? `${group.label} only` : undefined;
 
     for (const field of group.fields) {
+      // The builtin "status" field (userMetadata.status) is a `select` type
+      // with no `options` of its own in DEFAULT_METADATA_SCHEMA — its values
+      // come from the project's own config.statuses, not from the schema —
+      // so without this override the Value picker always got an empty
+      // `options` array and rendered only "select…" (POS task_ee247eec).
+      // Mirrors the "statuses" intrinsic override below, which does the same
+      // for the separate resource.statuses multiselect field.
+      const options =
+        field.key === "status" && projectStatuses && projectStatuses.length > 0
+          ? projectStatuses
+          : field.options;
       fields.push({
         key: field.key,
         label: field.label,
         type: field.type,
         source: isBuiltin ? "builtin" : "project",
         folderScope,
-        options: field.options,
+        options,
         deprecated: field.deprecated,
         refFolder: field.refFolder,
         includeSubfolders: field.includeSubfolders,

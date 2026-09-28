@@ -153,4 +153,31 @@ describe("buildFieldPickerFields — intrinsic options", () => {
     const statusesField = FIELDS.find((f) => f.key === "statuses");
     expect(statusesField?.options).toBeUndefined();
   });
+
+  it("injects project statuses into the builtin Status field's options (POS task_ee247eec)", () => {
+    // DEFAULT_METADATA_SCHEMA's builtin "status" field (userMetadata.status,
+    // `select` type) declares no options of its own — its values come from
+    // config.statuses, not the schema — so without this override the Value
+    // picker's dropdown had nothing to offer but "select…".
+    const withStatuses = buildFieldPickerFields(undefined, [
+      "Outline",
+      "Draft",
+      "Revised",
+      "Polished",
+    ]);
+    const statusField = withStatuses.find((f) => f.key === "status");
+    expect(statusField?.source).toBe("builtin");
+    expect(statusField?.type).toBe("select");
+    expect(statusField?.options).toEqual([
+      "Outline",
+      "Draft",
+      "Revised",
+      "Polished",
+    ]);
+  });
+
+  it("leaves the builtin Status field without options when none are configured", () => {
+    const statusField = FIELDS.find((f) => f.key === "status");
+    expect(statusField?.options).toBeUndefined();
+  });
 });
