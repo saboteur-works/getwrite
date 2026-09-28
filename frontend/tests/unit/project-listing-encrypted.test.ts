@@ -142,6 +142,21 @@ describe("listProjectsCore — workspace unlocked", () => {
     );
   });
 
+  it("carries a rootPath once unlocked, so the Start page can open it (POS task_c0eb55b2)", async () => {
+    const entries = await listProjects();
+    const sealed = entries.find(
+      (entry) => (entry.project as { id: string }).id === SEALED_ID,
+    );
+
+    // StartPage.tsx's "Open Project" button is gated on `project.rootPath`
+    // and fails client-side with no network call when it's missing — this
+    // regression left every unlocked encrypted project unopenable from the
+    // Start page.
+    expect((sealed?.project as { rootPath?: string }).rootPath).toBe(
+      `${WORKSPACE}/${SEALED_ID}`,
+    );
+  });
+
   it("still lists unencrypted projects alongside it", async () => {
     const entries = await listProjects();
     expect(entries).toHaveLength(2);

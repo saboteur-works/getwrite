@@ -249,6 +249,16 @@ async function listEncryptedProject(
       id,
       name: nameIndex[id] ?? (await readNameFromManifest(projectRoot, keyring)),
       createdAt: encryptedAt,
+      // Unlike the locked branch above, this entry is safe to carry the root
+      // path: it is unlocked, so the writer can already open it, and the path
+      // is deterministically `<projectsDir>/<id>` anyway — no new information
+      // beyond the id already present. Omitting it left `rootPath` undefined
+      // on every unlocked-encrypted project entry, so the Start page's "Open
+      // Project" button (StartPage.tsx, gated on `project.rootPath`) failed
+      // client-side with "Project path not found" before any network call —
+      // reproducible for any unlocked encrypted project, not only after a
+      // reload (POS task_c0eb55b2).
+      rootPath: projectRoot,
     },
     resources: [],
     folders: [],
