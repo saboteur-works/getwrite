@@ -550,3 +550,39 @@ export const SetDailyWordGoalResponseSchema = z.object({
 export const SetWordCountGoalResponseSchema = z.object({
   wordCountGoal: z.number().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// ProseDiagnosticsResponseSchema — Feature 62 (prose diagnostics), Task 4.
+// Matches `diagnostics-index.ts`'s `DiagnosticsRecord` shape, minus
+// `heuristicVersion` (an internal staleness marker the transport response
+// has no use for): `{ dialogueRatio: number; averageSentenceLength: number;
+// topRepeatedWords: { word: string; count: number }[] }`.
+// ---------------------------------------------------------------------------
+
+const ProseDiagnosticsRepeatedWordSchema = z.object({
+  word: z.string(),
+  count: z.number(),
+});
+
+export const ProseDiagnosticsResponseSchema = z.object({
+  dialogueRatio: z.number(),
+  averageSentenceLength: z.number(),
+  topRepeatedWords: z.array(ProseDiagnosticsRepeatedWordSchema),
+});
+
+// ---------------------------------------------------------------------------
+// ProseDiagnosticsDetailResponseSchema — Feature 62 (prose diagnostics),
+// Task 5. Matches `prose-diagnostics.ts`'s `LocatedRepeatedWord` shape:
+// `{ locatedRepeatedWords: { word: string; count: number; offsets:
+// number[] }[] }`.
+// ---------------------------------------------------------------------------
+
+const LocatedRepeatedWordSchema = z.object({
+  word: z.string(),
+  count: z.number(),
+  offsets: z.array(z.number()),
+});
+
+export const ProseDiagnosticsDetailResponseSchema = z.object({
+  locatedRepeatedWords: z.array(LocatedRepeatedWordSchema),
+});

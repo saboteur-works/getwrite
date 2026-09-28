@@ -1123,3 +1123,82 @@ describe("MetadataSidebar — Word count goal section (Task 5)", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Prose diagnostics section (Feature 62, Task 6)
+// ---------------------------------------------------------------------------
+
+vi.mock("../src/lib/api/prose-diagnostics", () => ({
+  getProseDiagnosticsOrThrow: vi
+    .fn()
+    .mockResolvedValue({
+      dialogueRatio: 0,
+      averageSentenceLength: 0,
+      topRepeatedWords: [],
+    }),
+}));
+
+describe("MetadataSidebar — Prose diagnostics section (Task 6)", () => {
+  it("renders the Prose diagnostics section for a text resource", () => {
+    const res = createTextResource({ name: "Chapter One", plainText: "" });
+    const testStore = makeStore();
+    testStore.dispatch(setProject({ id: "p", rootPath: "/test" }));
+    testStore.dispatch(setSelectedProjectId("p"));
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /prose diagnostics/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render the Prose diagnostics section for an image resource", () => {
+    const res = createImageResource({ name: "Cover" });
+    const testStore = makeStore();
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /prose diagnostics/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not render the Prose diagnostics section for an audio resource", () => {
+    const res = createAudioResource({ name: "Interview" });
+    const testStore = makeStore();
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /prose diagnostics/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not render the Prose diagnostics section when nothing is selected (folder / empty selection)", () => {
+    const testStore = makeStore();
+    render(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /prose diagnostics/i }),
+    ).not.toBeInTheDocument();
+  });
+});

@@ -30,6 +30,7 @@ import EntityMentionsSection from "./EntityMentionsSection";
 import EntityCompileSection from "./EntityCompileSection";
 import EntityMentionsProvider from "./EntityMentionsContext";
 import EntityRelationshipsRefreshProvider from "./EntityRelationshipsRefreshContext";
+import ProseDiagnosticsSection from "./ProseDiagnosticsSection";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
@@ -505,6 +506,9 @@ export default function MetadataSidebar({
             )}
             {editableResource.type === "audio" && (
               <AudioMetadataSection resource={editableResource} />
+            )}
+            {editableResource.type === "text" && (
+              <ProseDiagnosticsSection resource={editableResource} />
             )}
             {schema.groups.map((group) => {
               if (

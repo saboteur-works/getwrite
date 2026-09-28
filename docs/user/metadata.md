@@ -34,6 +34,20 @@ Beyond these, you can add your own **custom fields** of any type — text, numbe
 
 Image and audio resources carry the same editable fields and tags as text documents, with a read-only technical section (image dimensions and EXIF data, or audio format and duration) shown above them.
 
+## Prose diagnostics
+
+Text resources also carry a read-only **Prose diagnostics** section in the sidebar, showing three cheap, automatic observations about the document's prose — computed with no AI or network call:
+
+- **Dialogue ratio** — roughly how much of the text is quoted speech (text inside `"…"` or `"…"`), as a percentage of the whole.
+- **Average sentence length** — the average number of words per sentence.
+- **Top repeated words** — the words that occur most often in the document (at least 3 times), most-frequent first, with common words like "the" and "and" excluded.
+
+Select **Show detail** to open a window listing exactly where each repeated word occurs (its position in the document), computed fresh each time you open it and never saved anywhere.
+
+These numbers are a starting point for a second look at your prose, not a verdict — they are never shown in red or as an error, and they don't flag anything as wrong. Sentence and dialogue detection has known blind spots: for example, an abbreviation like "Mr." is currently detected as ending a sentence, which can make average sentence length read shorter than the sentence actually is. A more careful detector is a possible future improvement.
+
+The wording of this section and its detail window is still working copy — it has not yet been finalized with product review.
+
 ## Tags
 
 Tags are project-scoped labels you can assign to any resource. Assign or remove them from the **Tags** section of the Metadata sidebar; create, rename, and delete tags from the project settings UI. Because tag assignments are tracked across the whole project, manage tags through the app rather than editing files by hand.

@@ -717,6 +717,39 @@ export const WritingLogDayFileSchema = z.object({
   entries: z.array(WritingLogEntrySchema),
 });
 
+/** One repeated-word tally entry within a `DiagnosticsRecord` (Feature 62). */
+const DiagnosticsRepeatedWordSchema = z
+  .object({ word: z.string(), count: z.number().int().nonnegative() })
+  .strict();
+
+/**
+ * One resource's computed prose diagnostics (Feature 62), keyed by
+ * `resourceId` in `DiagnosticsIndexSchema`. `heuristicVersion` identifies
+ * which heuristic revision produced the record, so a future heuristic change
+ * can distinguish stale records from current ones.
+ */
+export const DiagnosticsRecordSchema = z
+  .object({
+    dialogueRatio: z.number().min(0).max(1),
+    averageSentenceLength: z.number().nonnegative(),
+    topRepeatedWords: z.array(DiagnosticsRepeatedWordSchema),
+    heuristicVersion: z.number().int().nonnegative(),
+  })
+  .strict();
+
+/**
+ * Contents of `meta/index/diagnostics.json`, keyed by `resourceId`.
+ *
+ * Unlike `mention-index.ts`'s `loadMentionIndex` (a plain `JSON.parse` cast
+ * with no schema validation), this index's load path validates the parsed
+ * file against this schema before returning it — new ground for this
+ * codebase's index modules, not an oversight in the earlier one.
+ */
+export const DiagnosticsIndexSchema = z.record(
+  z.string(),
+  DiagnosticsRecordSchema,
+);
+
 /**
  * Default export for compatibility with modules expecting grouped schema access.
  */
