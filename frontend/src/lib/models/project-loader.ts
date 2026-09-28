@@ -4,6 +4,7 @@ import type { Project } from "./types";
 import { readSidecar } from "./sidecar";
 import { readFolderTree } from "./folder-utils";
 import { migrateProjectOnLoad } from "./metadata-schema";
+import { countWords } from "../word-count";
 
 /**
  * True for the "this path does not exist" error both the real `fs` adapter and
@@ -103,12 +104,20 @@ export async function loadProjectFromDisk(
                 "utf-8",
               )
             : "";
-        const wordCount =
-          type === "text"
-            ? plaintext.trim() === ""
-              ? 0
-              : plaintext.trim().split(/\s+/).length
-            : undefined;
+        // Same algorithm as everywhere else that counts words (creation,
+        // canonical save, query/smart-folder evaluation): `countWords()`
+        // filters out whitespace-delimited tokens with no word character
+        // (e.g. a bare "#" or "-" from an unconverted markdown-style
+        // template). This function previously used its own naive
+        // `.split(/\s+/).length`, which counted those tokens as words — so a
+        // newly created, never-edited project's resource list (returned by
+        // opening the project, `POST /api/project`) showed a *larger* total
+        // than the same resources' sidecar-trusted count on the Start page
+        // (`GET /api/projects`) and than what a "Word Count" smart-folder
+        // predicate actually evaluated against (`query-evaluate-core.ts`,
+        // which already used `countWords()`) — three call sites disagreeing
+        // on the same content (POS task_7f1afd5d).
+        const wordCount = type === "text" ? countWords(plaintext) : undefined;
         return {
           ...sidecar,
           plaintext,
