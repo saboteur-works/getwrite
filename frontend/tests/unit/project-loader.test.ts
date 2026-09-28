@@ -235,6 +235,73 @@ describe("loadProjectFromDisk", () => {
     }
   });
 
+  it("counts words the same way sidecar creation does, ignoring punctuation-only tokens (POS task_7f1afd5d)", async () => {
+    // The novel project type's own default-resource templates are exactly
+    // this shape — a raw, unconverted "# Heading" line — which is what
+    // originally surfaced this: a bare "#" or "-" token is not a word by
+    // `countWords()`'s definition (used at creation and by smart-folder
+    // evaluation), but `loadProjectFromDisk`'s previous naive
+    // `.split(/\s+/).length` counted it as one, so opening a project showed
+    // a larger total than the Start page listing or a "Word Count" smart
+    // folder predicate agreed on for the identical, unedited content.
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "gw-loader-wc-"));
+    try {
+      const spec = {
+        id: "test-loader-wordcount",
+        name: "Loader WordCount Test",
+        folders: [{ name: "Workspace", special: true }],
+        defaultResources: [
+          {
+            name: "Scene 1",
+            type: "text" as const,
+            folder: "Workspace",
+            template: "# Chapter 1\n\n",
+          },
+          {
+            name: "Character Profile",
+            type: "text" as const,
+            folder: "Workspace",
+            template: "# Character Name\n\n- Description\n- Significance\n",
+          },
+        ],
+      };
+      const { resources: createdResources } = await createAndAssertProject(
+        spec,
+        { projectRoot: tmp, name: "WordCount Project" },
+      );
+
+      await flushIndexer();
+
+      const loaded = await loadProjectFromDisk(tmp);
+
+      const scene = loaded.resources.find((r) => r.name === "Scene 1");
+      const profile = loaded.resources.find(
+        (r) => r.name === "Character Profile",
+      );
+      // "#" is not a word: "Chapter" and "1" only.
+      expect(scene?.wordCount).toBe(2);
+      // "#" and both "-" bullets are not words: "Character", "Name",
+      // "Description", "Significance" only.
+      expect(profile?.wordCount).toBe(4);
+
+      // And it must agree with what creation itself persisted to the
+      // sidecar — the two are not allowed to diverge for identical,
+      // unedited content.
+      const createdScene = createdResources.find((r) => r.name === "Scene 1");
+      const createdProfile = createdResources.find(
+        (r) => r.name === "Character Profile",
+      );
+      expect(scene?.wordCount).toBe(
+        (createdScene as { wordCount?: number } | undefined)?.wordCount,
+      );
+      expect(profile?.wordCount).toBe(
+        (createdProfile as { wordCount?: number } | undefined)?.wordCount,
+      );
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
   it("loads a legacy project whose spec used a Workspace and `special` folders (FR8)", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "gw-loader-legacy-"));
     try {
