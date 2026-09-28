@@ -228,6 +228,36 @@ export default function TipTapEditor({
   // the string returned by editor.getHTML().
   const lastEmittedDocRef = useRef<unknown>(null);
 
+  // Set in `onBeforeCreate` (before the view or any extension plugin
+  // exists) and cleared at the end of this hook's own `onCreate`, so every
+  // structural, non-user-authored transaction that fires during the
+  // editor's first mount is recognised in `onUpdate` and skipped — not just
+  // this hook's own `selectAll().setParagraphLeading(...)` stamp, but also
+  // the `UniqueID` extension's (`@tiptap/extension-unique-id`, configured in
+  // `editorExtensions.ts`) own independent `onCreate`, which back-fills a
+  // missing `id` attribute on every configured node type via a direct
+  // `view.dispatch(tr)` call. That extension-level `onCreate` runs BEFORE
+  // this hook's own `onCreate` option callback — TipTap registers every
+  // extension's `onCreate` as a `'create'` event listener during extension
+  // manager setup, which happens earlier in the `Editor` constructor than
+  // the editor's own `options.onCreate` is registered, and listeners fire
+  // in registration order — so setting this flag inside `onCreate` itself
+  // (as a first attempt at this fix did) was too late to catch it: it still
+  // reached the debounced autosave. `onBeforeCreate` fires before the view
+  // — and therefore before any extension's `onCreate` — even exists.
+  //
+  // Mirrors how `loadDocumentIntoEditor` already keeps a resource/revision
+  // *switch* from reaching autosave (note_68cf31b0), extended to cover the
+  // editor's very first mount. Before this fix (both attempts), opening a
+  // brand-new resource — whose seed document has no explicit node attrs at
+  // all — wrote an unsolicited revision (and writing-log entry) for a
+  // resource the writer had only opened, no edit made. Verified live
+  // against a running dev server, not just reasoned about: the first
+  // version of this fix (suppressing only inside `onCreate`) was confirmed,
+  // by network trace, to NOT stop the stray `PATCH /api/resource/revision`;
+  // this version was (POS task_0417e6f6 / note_ad3047e2, note_6a0a5389).
+  const suppressNextUpdateRef = useRef(false);
+
   // Editing mode for the current resource. "rich" shows the TipTap editor;
   // "source" shows raw GFM in a textarea. Conversion happens only at the
   // toggle boundary (non-goal: per-keystroke sync). The editor instance stays
@@ -324,9 +354,18 @@ export default function TipTapEditor({
        * Emits both HTML and JSON representations for parent persistence flows.
        */
       onUpdate: ({ editor }) => {
-        const html = editor.getHTML();
         const doc = editor.getJSON() as TipTapDocument;
         lastEmittedDocRef.current = doc;
+        if (suppressNextUpdateRef.current) {
+          // `onCreate`'s own normalization transaction, not a user edit —
+          // keep `lastEmittedDocRef` current (so the content-sync effect
+          // still recognises this as the editor's own content) but skip
+          // `onChange`, which is what reaches the canonical autosave.
+          suppressNextUpdateRef.current = false;
+          emitNodeTypes(editor);
+          return;
+        }
+        const html = editor.getHTML();
         if (onChange) onChange(html, doc);
         // Content edits can change a node's type (e.g. a heading downgraded to
         // body), even without the selection moving.
@@ -339,16 +378,33 @@ export default function TipTapEditor({
         emitNodeTypes(editor);
       },
       /**
-       * Migrates legacy math string representations to node-based format.
+       * Fires before the view (and every extension's own plugins/`onCreate`)
+       * exist — see `suppressNextUpdateRef` above for why the flag must be
+       * set this early rather than at the top of `onCreate` below.
+       */
+      onBeforeCreate: () => {
+        suppressNextUpdateRef.current = true;
+      },
+      /**
+       * Migrates legacy math string representations to node-based format,
+       * and stamps every paragraph with an explicit leading value (see
+       * `suppressNextUpdateRef` above for why the resulting `onUpdate`, if
+       * any, must not reach autosave — the flag itself is set in
+       * `onBeforeCreate`, not here).
        */
       onCreate: ({ editor }) => {
         migrateMathStrings(editor);
         editor
           .chain()
+          .setMeta("addToHistory", false)
           .selectAll()
           .setParagraphLeading("1.5")
           .setTextSelection(0) // collapse cursor to start, or wherever you want
           .run();
+        // Defensive reset: if neither call above produced a transaction (so
+        // `onUpdate` never fired to clear it), the flag must not leak into
+        // the writer's next real edit.
+        suppressNextUpdateRef.current = false;
         // Populate the initial node-type indicator for the starting cursor.
         emitNodeTypes(editor);
       },
