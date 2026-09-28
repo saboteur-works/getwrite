@@ -122,9 +122,20 @@ export default function EditView({
     onSnapshotCreated: handleSnapshotCreated,
   });
 
-  const handleChange = (next: string, doc: TipTapDocument) => {
+  const handleChange = (
+    next: string,
+    doc: TipTapDocument,
+    isStructuralOnly?: boolean,
+  ) => {
     setContent(next);
     setTipTapDoc(doc);
+    // A structural-only update (TipTapEditor's own first-mount
+    // normalization, e.g. `@tiptap/extension-unique-id` back-filling a
+    // missing `id`) is not a writer edit — the view's own document state
+    // above still needs to stay in sync with it, but it must not count as
+    // "the writer made an edit" (autosave, the non-canonical warning) any
+    // more than loading a resource does (POS task_0417e6f6 / note_ad3047e2).
+    if (isStructuralOnly) return;
     if (isViewingNonCanonical) {
       setHasEditsAfterRevisionSwitch(true);
     }
