@@ -97,7 +97,11 @@ interface SelectedProjectState {
   /** Optional project-level metadata from `project.json`. */
   metadata?: Record<string, MetadataValue>;
   /** Subset of project config needed by the editor shell (e.g. word count goal). */
-  config?: { wordCountGoal?: number; dailyWordGoal?: number };
+  config?: {
+    wordCountGoal?: number;
+    dailyWordGoal?: number;
+    defaultRevisionName?: string;
+  };
 }
 
 /**
@@ -269,6 +273,7 @@ export default function Home(): JSX.Element {
       config: {
         wordCountGoal: projectFiles.project.config?.wordCountGoal,
         dailyWordGoal: projectFiles.project.config?.dailyWordGoal,
+        defaultRevisionName: projectFiles.project.config?.defaultRevisionName,
       },
     });
     toastService.success("Project created", projectFiles.project.name);
@@ -319,6 +324,7 @@ export default function Home(): JSX.Element {
       config: {
         wordCountGoal: p.project.config?.wordCountGoal,
         dailyWordGoal: p.project.config?.dailyWordGoal,
+        defaultRevisionName: p.project.config?.defaultRevisionName,
       },
     });
   };
