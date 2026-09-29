@@ -723,16 +723,97 @@ this task.
 
 ---
 
+### Task 22: Advanced filters toggle moves below the Status/word-count row (owner styling refinement)
+**What:** Purely visual/structural refinement to `OrganizerFilterBar.tsx`,
+requested by the owner after reviewing Task 21's shipped horizontal wrapping
+layout: pull the "Advanced filters" toggle (and its own nested content) out
+of the same flex-wrap row as the Status and Minimum/Maximum words controls,
+and place it as its own block-level element beneath that entire row, so it
+always starts on a new line under whatever combination of top-level FR-13
+controls is present — rather than flowing inline with them and only wrapping
+when it happens to run out of horizontal room. Owner's request, verbatim:
+"The advanced filters button should be beneath the status, min/max inputs
+(and anything else in that block)." No behavior, state, prop, or
+accessible-name change.
+
+Grounding (verified against current source before writing this task): inside
+the top-level expanded filter area
+(`isFilterAreaOpen && (<div className="flex flex-wrap items-center gap-3 mt-2">...)`),
+there are currently three sibling flex-item `<div>`s in one row: (1) the
+Status control wrapper, (2) the Minimum/Maximum words control wrapper, and
+(3) the "Advanced filters" toggle wrapper (containing the toggle button
+itself plus, when `isAdvancedFiltersOpen`, its own nested
+`flex flex-wrap items-center gap-3 mt-2` row of resource-ref controls, per
+Task 21). Because all three are flex items in the same `flex-wrap` row, the
+toggle currently sits inline to the right of Status/Minimum/Maximum words on
+the same line, or wraps onto a new line only incidentally when space runs
+out.
+**Files:** `frontend/components/WorkArea/Views/OrganizerView/OrganizerFilterBar.tsx`
+(no other file changes required)
+**Done when:**
+- The single top-level expanded-area `<div className="flex flex-wrap items-center
+  gap-3 mt-2">` is restructured into two sibling block-level `<div>`s directly
+  inside the outer `isFilterAreaOpen && (...)` wrapper: the first holding the
+  Status control wrapper and the Minimum/Maximum words control wrapper (and
+  any other current or future top-level, always-visible FR-13 control) in a
+  `flex flex-wrap items-center gap-3` row; the second holding the "Advanced
+  filters" toggle and its nested content entirely on its own, given a
+  `mt-2`-or-equivalent top margin so it visually reads as its own row
+  beneath the first, always starting on a new line regardless of how many
+  FR-13 controls are present or how wide the viewport is.
+- The "Advanced filters" toggle's own internal behavior — the chevron
+  swap from Task 20 and its own nested `flex flex-wrap items-center gap-3`
+  row of resource-ref controls from Task 21 — is unchanged; this task only
+  changes where that whole toggle+content block sits relative to the
+  Status/word-count row, not its own internals.
+- FR-13 ("Status and word-count MUST always be directly visible within the
+  top-level expanded area, not behind any further collapse") is explicitly
+  re-checked and confirmed still satisfied: moving "Advanced filters" below
+  Status/word-count does not place either control behind any collapse — it
+  only repositions the Advanced-filters toggle itself relative to them. This
+  check is written down as a check (re-read against the rendered/expected
+  DOM), not assumed.
+- No change to `aria-label`, `aria-expanded`, any accessible name, or any
+  other DOM attribute already asserted by existing tests, beyond the
+  restructured wrapper `<div>`s and their classNames — confirmed by
+  re-reading the diff against this constraint before considering the task
+  done.
+- No change to `organizerFilters.ts` or `OrganizerView.tsx` — this task is
+  scoped entirely to `OrganizerFilterBar.tsx`'s JSX/className. If satisfying
+  the above turns out to require touching either file, stop and report why
+  rather than proceeding.
+- `frontend/tests/organizerView.test.tsx` and
+  `frontend/tests/a11y/organizerFilterBar.a11y.test.tsx` are checked again
+  for any assertion on exact DOM structure/ordering or an exact className
+  string before assuming no update is needed — tests that query by
+  role/label/text are expected to pass unmodified, but a test asserting the
+  relative DOM order between the Advanced-filters toggle and the
+  Status/word-count controls, if one exists, is updated to match the new
+  intentional order (Advanced filters after, not beside, Status/word-count).
+- `pnpm --filter getwrite-frontend typecheck` passes.
+- `pnpm --filter getwrite-frontend lint` passes.
+- `pnpm --filter getwrite-frontend test:ci -- organizer` passes in full,
+  including `organizerView`, `organizerFilters`, and
+  `organizerFilterBar.a11y` — the a11y test's collapse-state axe checks
+  (fully collapsed, top-level expanded only, both expanded) report zero
+  violations after the restructuring.
+**Depends on:** Task 21
+**Estimate:** 2
+**Done:** [ ]
+
+---
+
 ## Summary
 
-- Total tasks: 21
-- Total estimated effort: 49 story points (28 from the original Tasks 1–11,
+- Total tasks: 22
+- Total estimated effort: 51 story points (28 from the original Tasks 1–11,
   17 from Tasks 12–19 added for the 2026-09-29 amendment, 2 from Task 20's
   owner-requested styling refinement, 2 from Task 21's follow-up
+  owner-requested styling refinement, 2 from Task 22's further follow-up
   owner-requested styling refinement)
 - Critical path: Task 1 → Task 2 → Task 3 → Task 5 → Task 6 → Task 8 →
   Task 9 → Task 12 → Task 13 → Task 14 → Task 17 → Task 19 → Task 20 →
-  Task 21
+  Task 21 → Task 22
   (Task 5 is the longest single task on the path in the original set at 5
   points and the main source of schedule risk there; Task 4, Task 7, and
   Task 10 can run in parallel with each other/Task 9 once their own
@@ -743,7 +824,8 @@ this task.
   the original set's; Task 14 is the load-bearing dependency the rest of
   Tasks 15–18 build on, and Task 19's sweep needs everything finished
   first. Task 21 directly reverses Task 20's layout decision and so must
-  follow it.)
+  follow it. Task 22 restructures the top-level row Task 21 wraps, and so
+  must follow Task 21.)
 - Risks:
   - Task 5 (resource-ref filter controls) carries the most uncertainty: it
     introduces new derived state (distinct values scoped to the *unfiltered*
