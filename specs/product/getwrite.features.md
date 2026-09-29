@@ -2078,7 +2078,7 @@ built or merged) nor "Not started" (the work is done) — it is retired as
 a completed measurement, its finding now carried by FR-49's own text.
 Feature 62 may now proceed to full design using this finding.
 
-### Feature 64: Plain-text file import — Not started
+### Feature 64: Plain-text file import — Shipped
 
 **Value:** A writer with plain-text (`.txt`) source material can bring it into GetWrite the same way they already can with Word documents and Scrivener projects, instead of hand-copying content in through the editor.
 **Vertical slice:** A new plain-text import path, since none exists today — `frontend/app/api/resource/upload/route.ts` and `frontend/src/lib/models/media-validation.ts` currently accept only image and audio, nothing text-shaped; conversion of plain-text source content into GetWrite's resource/TipTap representation; imported content logged to the daily writing log (Feature 59) as one additions entry tagged with a `source` field on the import day, mirroring exactly how the existing DOCX and Scrivener importers already log one additions entry per import under the new project's id; tests.
@@ -2226,10 +2226,10 @@ Feature 62 may now proceed to full design using this finding.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 59, 60, 61, 62 (30 and 28 are the only pair left with an unmet hard dependency;
+  57, 59, 60, 61, 62, 64 (30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 59, 60, 61, 62, 24, 27, 28, 29, 30, 32, 44, 46, 47, 51, 52, 53. Everything
+- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 51, 52, 53. Everything
   else in this list has shipped (Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped
   separately as Feature 49; Feature 48's own deferred remainder is tracked
