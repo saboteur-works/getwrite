@@ -181,7 +181,7 @@ export default function OrganizerFilterBar({
         Filters
       </button>
       {isFilterAreaOpen && (
-        <div className="flex flex-col gap-3 mt-2">
+        <div className="flex flex-wrap items-center gap-3 mt-2">
           <div className="flex items-center gap-3">
             <label
               htmlFor="organizer-status-filter"
@@ -281,7 +281,7 @@ export default function OrganizerFilterBar({
              * active project's metadata schema.
              */}
             {isAdvancedFiltersOpen && (
-              <div className="flex flex-col gap-3 mt-2">
+              <div className="flex flex-wrap items-center gap-3 mt-2">
                 {refFields.map((field) => {
                   const controlId = `organizer-ref-filter-${field.key}`;
                   const selectedRefValue =
