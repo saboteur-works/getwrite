@@ -104,6 +104,56 @@ today and there is no evidence of an incoming controlled caller).
 11. FR-11: Filtering MUST NOT trigger a network request; it MUST operate on
     resource data already present in the Redux store. [US-1][US-2][US-3]
 
+### Amendment (2026-09-29)
+
+The requirements below, numbered starting at FR-12, were added after the
+owner reviewed the first implementation (the original eleven, all shipped)
+and requested a UI restructuring: the filter bar should be collapsible as a
+whole, with the resource-reference filters added earlier further tucked
+behind a second, nested collapsible section so they don't add visual clutter
+for writers who only use Status/word-count. These new requirements are
+additive to the original set — none of the original eleven are changed,
+renumbered, or superseded — which is why the numbering picks up after the
+original set rather than being interleaved with it.
+
+12. FR-12: The Organizer view MUST provide a single top-level toggle control
+    that shows or hides the entire filter area — all filter controls (Status,
+    word-count, and resource-reference) together with their per-filter and
+    clear-all controls (FR-8). The filter area's default state MUST be
+    collapsed: filters are hidden until the writer explicitly opens them.
+    [US-1][US-2][US-3][US-4]
+13. FR-13: When the top-level filter area is expanded, the Status filter
+    (FR-1/FR-2) and the word-count filter (FR-3/FR-4) MUST always be directly
+    visible within it — these two MUST NOT be placed behind any further
+    (nested) collapse. [US-1][US-2]
+14. FR-14: A second, nested collapsible section MUST be provided beneath the
+    Status and word-count filters, inside the (already-expanded) top-level
+    filter area, containing the resource-reference (`resource-ref` /
+    `multi-resource-ref`) filter controls added by FR-5/FR-6 (e.g. a "Point of
+    View" filter). This nested section's default state MUST be collapsed,
+    independent of the top-level filter area's own open/closed state — i.e.
+    even when the top-level area is expanded, the nested section starts
+    closed. Rationale: not all writers use these deeper metadata filters, so
+    they should not add visual clutter for writers who only use
+    Status/word-count. [US-3]
+15. FR-15: Both collapse states — the top-level filter area (FR-12) and the
+    nested deeper-metadata section (FR-14) — MUST persist as the writer
+    navigates between folders within the same session. This is UI chrome
+    (whether a section is open), not filter *values*, and is explicitly NOT
+    subject to FR-10's reset-on-folder-navigation rule, which governs active
+    filter values (e.g. a selected status or word-count range) only. Neither
+    collapse state is required to persist across a page reload or new
+    session — session-only persistence is sufficient; persisting either state
+    beyond the session (e.g. via `localStorage`) is a possible future
+    refinement, not a requirement of this spec. [US-1][US-2][US-3][US-4]
+16. FR-16: Both toggle controls (FR-12's top-level toggle and FR-14's nested
+    toggle) MUST be accessible: each MUST be a native `<button>` or
+    equivalent keyboard-operable control, MUST expose its open/closed state
+    via `aria-expanded`, and MUST be labeled so a screen-reader user
+    understands what it controls (e.g. "Filters" for the top-level toggle and
+    "Advanced filters" for the nested toggle, or similar — exact copy is an
+    implementation detail and not prescribed here). [US-1][US-2][US-3][US-4]
+
 ## Open questions
 
 - OQ-1: **RESOLVED** (from evidence, confirmed). Should Organizer filtering
