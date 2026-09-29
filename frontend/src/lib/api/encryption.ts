@@ -15,6 +15,12 @@
  * pair is Task 21's job.
  */
 
+import {
+  EncryptionErrorResponseSchema,
+  EncryptionStatusSchema,
+} from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
+
 /** Workspace lock state, as the UI renders it. */
 export interface EncryptionStatus {
   /** Whether this deployment may use encryption at all (FR23). */
@@ -41,12 +47,31 @@ async function request(init?: RequestInit): Promise<EncryptionStatus> {
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as {
-      error?: string;
-    };
-    throw new Error(body.error ?? "Encryption request failed.");
+    const json: unknown = await response.json().catch(() => ({}));
+    const parsedError = EncryptionErrorResponseSchema.safeParse(json);
+    if (!parsedError.success) {
+      reportTransportValidationFailure(
+        "encryption.request:error",
+        parsedError.error.issues,
+      );
+      throw new Error("Encryption request failed.");
+    }
+    throw new Error(parsedError.data.error ?? "Encryption request failed.");
   }
-  return (await response.json()) as EncryptionStatus;
+
+  const json: unknown = await response.json();
+  const parsed = EncryptionStatusSchema.safeParse(json);
+  if (!parsed.success) {
+    reportTransportValidationFailure(
+      "encryption.request:success",
+      parsed.error.issues,
+    );
+    throw new Error("Encryption request failed: malformed response");
+  }
+  // Preserve fields the schema doesn't declare (e.g. the export action's
+  // `exportedId`) rather than stripping them — only the known fields are
+  // validated/normalized from `parsed.data`.
+  return { ...(json as Record<string, unknown>), ...parsed.data };
 }
 
 /**

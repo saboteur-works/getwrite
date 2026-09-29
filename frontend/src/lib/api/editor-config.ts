@@ -1,6 +1,8 @@
 import type { EditorBodyConfig } from "../models/types";
 import type { EditorHeadingMap } from "../editor-heading-settings";
 import { createTransport } from "../../store/transport/create-transport";
+import { EditorConfigApiResponseSchema } from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 interface EditorConfigResponse {
   editorConfig?: { headings?: EditorHeadingMap; body?: EditorBodyConfig };
@@ -59,6 +61,15 @@ export const httpEditorConfigTransport: EditorConfigTransport = {
     const body = (await response
       .json()
       .catch(() => null)) as EditorConfigResponse | null;
+    if (body !== null) {
+      const parsed = EditorConfigApiResponseSchema.safeParse(body);
+      if (!parsed.success) {
+        reportTransportValidationFailure(
+          "editor-config.saveHeadings",
+          parsed.error.issues,
+        );
+      }
+    }
     if (!response.ok) {
       throw new Error(body?.error ?? "Failed to save heading settings.");
     }
@@ -74,6 +85,15 @@ export const httpEditorConfigTransport: EditorConfigTransport = {
     const responseBody = (await response
       .json()
       .catch(() => null)) as EditorConfigResponse | null;
+    if (responseBody !== null) {
+      const parsed = EditorConfigApiResponseSchema.safeParse(responseBody);
+      if (!parsed.success) {
+        reportTransportValidationFailure(
+          "editor-config.saveBody",
+          parsed.error.issues,
+        );
+      }
+    }
     if (!response.ok) {
       throw new Error(responseBody?.error ?? "Failed to save body settings.");
     }

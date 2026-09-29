@@ -81,7 +81,7 @@ const ApiEditorBodySchema = z.object({
   paragraphSpacing: z.string().optional(),
 });
 
-const ApiEditorConfigSchema = z.object({
+export const ApiEditorConfigSchema = z.object({
   headings: z
     .object({
       h1: ApiEditorHeadingSchema.optional(),
@@ -585,4 +585,56 @@ const LocatedRepeatedWordSchema = z.object({
 
 export const ProseDiagnosticsDetailResponseSchema = z.object({
   locatedRepeatedWords: z.array(LocatedRepeatedWordSchema),
+});
+
+// ---------------------------------------------------------------------------
+// EncryptionStatusSchema / EncryptionErrorResponseSchema — Feature 52
+// (transport response validation, `encryption.ts`). `EncryptionStatusSchema`
+// matches `EncryptionStatus` (`./encryption.ts`) field-for-field: `{
+// isAvailable: boolean; hasKeyring: boolean; isUnlocked: boolean;
+// encryptedProjectIds: string[] }`. `EncryptionErrorResponseSchema` matches
+// the `{ error?: string }` shape read from a non-2xx response body at
+// `./encryption.ts:44`; it is deliberately minimal/optional so a
+// malformed or empty error body never registers as a second validation
+// failure layered on top of the original non-2xx response.
+// ---------------------------------------------------------------------------
+
+export const EncryptionStatusSchema = z.object({
+  isAvailable: z.boolean(),
+  hasKeyring: z.boolean(),
+  isUnlocked: z.boolean(),
+  encryptedProjectIds: z.array(z.string()),
+});
+
+export const EncryptionErrorResponseSchema = z.object({
+  error: z.string().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// EditorConfigApiResponseSchema — Feature 53 (transport response validation,
+// `editor-config.ts`). Matches `EditorConfigResponse` (`./editor-config.ts`)
+// field-for-field: `{ editorConfig?: { headings?: EditorHeadingMap; body?:
+// EditorBodyConfig }; error?: string }`. Deliberately fully optional — both
+// `saveHeadings` and `saveBody` can legitimately return an error-only body
+// (`{ error: "..." }`, no `editorConfig`) on a non-2xx response, which must
+// not register as a validation failure.
+// ---------------------------------------------------------------------------
+
+export const EditorConfigApiResponseSchema = z.object({
+  editorConfig: ApiEditorConfigSchema.optional(),
+  error: z.string().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// RevisionSettingsApiResponseSchema — Task 6 (transport response validation,
+// `preferences.ts`). Matches `saveRevisionSettings`'s inline response type
+// (`./preferences.ts`) field-for-field: `{ defaultRevisionName?: string;
+// error?: string }`. Deliberately fully optional — a legitimate error-only
+// body (`{ error: "..." }`, no `defaultRevisionName`) on a non-2xx response,
+// or even an empty `{}` body, must not register as a validation failure.
+// ---------------------------------------------------------------------------
+
+export const RevisionSettingsApiResponseSchema = z.object({
+  defaultRevisionName: z.string().optional(),
+  error: z.string().optional(),
 });
