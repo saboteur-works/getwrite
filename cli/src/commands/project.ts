@@ -4,8 +4,11 @@ import {
   detectDocxSource,
   DocxDestinationNotEmptyError,
   importDocxProject,
+  importPlainTextProject,
   importScrivenerProject,
   NoDocxFilesFoundError,
+  NoTxtFilesFoundError,
+  PlainTextDestinationNotEmptyError,
   runForTenant,
   UnknownProjectTypeError,
   UnsupportedScrivenerProjectError,
@@ -192,6 +195,44 @@ export default function registerProject(program: Command): void {
           return;
         }
         console.error("Failed to import DOCX project:", err);
+        process.exit(2);
+      }
+    });
+
+  cmd
+    .command("import-plaintext <source> [projectRoot]")
+    .description(
+      "Import a plain-text (.txt) file or a folder of .txt files into a new getwrite project",
+    )
+    .option("-n, --name <name>", "Optional destination project name")
+    .action(async (source: string, projectRoot = ".", options) => {
+      try {
+        const result = await runForTenant(projectRoot, () =>
+          importPlainTextProject({
+            sourcePath: source,
+            projectRoot,
+            name: options?.name,
+          }),
+        );
+
+        console.log(`Imported plain-text project to: ${result.projectRoot}`);
+        console.log(
+          `Folders: ${result.folderCount}, Resources: ${result.resourceCount}`,
+        );
+        console.log(
+          `Report written to: ${result.projectRoot}/plaintext-import-report.txt`,
+        );
+        process.exit(0);
+      } catch (err) {
+        if (
+          err instanceof PlainTextDestinationNotEmptyError ||
+          err instanceof NoTxtFilesFoundError
+        ) {
+          console.error(err.message);
+          process.exit(2);
+          return;
+        }
+        console.error("Failed to import plain-text project:", err);
         process.exit(2);
       }
     });

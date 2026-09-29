@@ -1,0 +1,8 @@
+﻿Chapter One
+
+This is the first paragraph of the story. It has a soft wrap
+right here, joining two lines into one paragraph.
+
+This is a second, separate paragraph with no internal wrap.
+
+And a third paragraph to round things out.

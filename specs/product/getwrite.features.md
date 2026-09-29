@@ -1996,7 +1996,7 @@ cap (OQ-40). Documented downside: total revision storage per resource is
 unbounded, since protected revisions never count against the cap and are
 never pruned. Its feature spec is `specs/features/protect-revision.md`.
 
-### Feature 59: Daily writing log and daily goal — Not started
+### Feature 59: Daily writing log and daily goal — Shipped
 
 **Value:** A writer on deadline can see, per project per day, how many words they added, deleted and netted, and compare today's figures against a daily goal they set, so progress is measured in writing done rather than total length.
 **Vertical slice:** A new append-only daily-log store validated in `schemas.ts` (fields include a `source` marking import entries), persisted through the storage adapter and failing closed when locked; a save-path hook at the debounced canonical save that computes additions, deletions and net by before/after comparison, with its own read of the previous content (`snapshotBeforeDestructiveWrite` cannot distinguish unreadable from non-destructive) and a visible failure signal, per `docs/standards/failure-visibility.md`, when the previous content is unreadable; one additions entry per docx or Scrivener import on the import day under the new project's id; a daily-goal setting and a today-versus-goal display, not indicated in red; a transport for reading the log and setting the goal, resolved through `createTransport` with a native backend, a web-stub and HTTP response-body validation (the FR-50 constraint for this feature's transport); tests.
@@ -2006,7 +2006,7 @@ never pruned. Its feature spec is `specs/features/protect-revision.md`.
 **Branch suggestion:** feat/daily-writing-log
 **Notes:** Ships first of the FR-46 to FR-49 slices (OQ-42, resolved). History before the log ships cannot be backfilled. The log stays local (Observability constraint) and is handled per the encrypted-project constraint. Decided in the parent spec, not reopened: OQ-43, OQ-46, OQ-47, OQ-48, OQ-49. Plain-text file import stays deferred and is not part of this feature. FR-50 is owned by this feature (Gate 2, 2026-09-26): it adds the first transport of Features 59-62. The daily goal is a new optional `dailyWordGoal` in project config; flag the `schemas.ts` change in tasks so it does not collide with Feature 61. Imports show as a separate line and only non-import words are compared to the goal. Scope addition at Gate 3 (2026-09-26): the footer display must be expandable, beyond this feature's original list. Amended at Gate 6 by the user (2026-09-26), superseding that part: the footer keeps its "Today's writing" button and collapsed figure but no longer expands inline; the button opens a closeable writing-details overlay, intended as the later home for Feature 60 and 62 diagnostics (not built here). OQ-15 to OQ-19 were resolved at Gate 6 by the user ("Take your recs"), 2026-09-26: a blocking, read-only modal on `UI/Dialog` titled "Today's writing", goal set only in Project Settings, collapsed figure kept inline in the footer. Details are in `specs/features/daily-writing-log.md`.
 
-### Feature 60: Project status roll-up — Not started
+### Feature 60: Project status roll-up — Shipped
 
 **Value:** A writer on deadline can see, for a project, how many resources and how many words sit at each status, so they can tell how much of the project is at each stage of completion.
 **Vertical slice:** A read-only derivation from existing data (word count and status, which status representation is counted is left to the feature spec; see FR-46's 2026-09-26 correction) persisting nothing new; derived client-side from already-loaded Redux state, with no transport, route, native backend, web-stub or response schema added (OQ-8); a roll-up view or section showing resource count and words per status together, likely in the Data view; tests.
@@ -2016,7 +2016,7 @@ never pruned. Its feature spec is `specs/features/protect-revision.md`.
 **Branch suggestion:** feat/status-rollup
 **Notes:** Follows the FR-48 pass (OQ-42). Decided in the parent spec: both resource count and words per status (OQ-41). Sidecar `wordCount` is skipped for legacy plain-text revisions, so those resources may under-report; the feature spec should decide how that is shown. Corrected 2026-09-26 (re-measured by the lead on main at 35c9af9c; earlier text measured at 24ade246, before Feature 59): there are two status representations (`userMetadata.status`, a single string; `resource.statuses`, an array with no UI writer found, unconfirmed) and the feature spec must decide which is counted. Also for the feature spec: resources with no status, and status values absent from `config.statuses`. Independent of Feature 59. FR-50 (owned by Feature 59) applies only if a transport is later added: the feature spec resolved at Gate 3 (2026-09-26, OQ-8) that the roll-up is derived client-side from already-loaded state, so this feature adds no transport.
 
-### Feature 61: In-app word-count goals (project and resource) — Not started
+### Feature 61: In-app word-count goals (project and resource) — Shipped
 
 **Value:** A writer on deadline can set, change and clear a project word-count goal and an optional per-resource goal from inside the app, instead of editing `project.json` by hand, and track progress against them.
 **Vertical slice:** A new optional per-resource goal field on the sidecar validated in `schemas.ts`; write paths for the existing project `wordCountGoal` (`ProjectConfig`) and the new resource goal; a transport for both resolved through `createTransport` with a native backend, a web-stub and HTTP response-body validation (FR-50 constraint for this feature's transport); a goals control and progress display where the existing `WordCountProgressBar` and Data view already render project progress, not indicated in red; tests.
@@ -2026,7 +2026,7 @@ never pruned. Its feature spec is `specs/features/protect-revision.md`.
 **Branch suggestion:** feat/word-count-goals
 **Notes:** Follows the FR-48 pass (OQ-42). The project `wordCountGoal` already exists and is read today; only the write path and control are new. This is a total-length goal, distinct from Feature 59's daily goal. Must follow FR-50 (owned by Feature 59) for its own transport.
 
-### Feature 62: Prose diagnostics — Not started
+### Feature 62: Prose diagnostics — Shipped
 
 **Value:** A writer on deadline can see cheap prose observations for each resource (dialogue ratio, average sentence length, top repeated words) and request located detail such as repeated phrases with positions, with no AI or network dependency.
 **Vertical slice:** Scalar metrics computed by the existing indexer and persisted in a diagnostics index validated in `schemas.ts`, carrying a `heuristicVersion` and rebuilt lazily on mismatch, persisted through the storage adapter and failing closed when locked via `isLockedAccessError` per the mention-index precedent; on-demand located detail computed and not persisted; a transport resolved through `createTransport` with a native backend, a web-stub and HTTP response-body validation (FR-50 constraint for this feature's transport); a presentation of flags as observations, not errors, and not in red; tests.
@@ -2077,6 +2077,16 @@ this document:** this entry closes as neither "Shipped" (nothing was
 built or merged) nor "Not started" (the work is done) — it is retired as
 a completed measurement, its finding now carried by FR-49's own text.
 Feature 62 may now proceed to full design using this finding.
+
+### Feature 64: Plain-text file import — Not started
+
+**Value:** A writer with plain-text (`.txt`) source material can bring it into GetWrite the same way they already can with Word documents and Scrivener projects, instead of hand-copying content in through the editor.
+**Vertical slice:** A new plain-text import path, since none exists today — `frontend/app/api/resource/upload/route.ts` and `frontend/src/lib/models/media-validation.ts` currently accept only image and audio, nothing text-shaped; conversion of plain-text source content into GetWrite's resource/TipTap representation; imported content logged to the daily writing log (Feature 59) as one additions entry tagged with a `source` field on the import day, mirroring exactly how the existing DOCX and Scrivener importers already log one additions entry per import under the new project's id; tests.
+**Requirements covered:** None of its own — already claimed elsewhere, by the daily writing log feature this feature's import entries would log into (see Notes).
+**User stories:** None of its own — same reason (see Notes).
+**Depends on:** Feature 59, Feature 31, Feature 45
+**Branch suggestion:** feat/plain-text-import
+**Notes:** Named in the parent product spec's "Out of Scope (Deferred)" section and in the resolution of that spec's open question on this topic (its FR-48 and US-21 name this feature): plain-text file import does not exist today, and it is a later addition to the import file types — those requirement/story numbers no longer imply an existing plain-text path, they name this feature's eventual scope, and stay recorded as owned by Feature 59 above (the daily writing log) in this document's own "Requirements covered"/"User stories" fields rather than claimed again here, to satisfy this document's one-owner-per-requirement rule. Unresolved, left for the feature spec's own Open Questions (not decided here): whether this feature imports into a brand-new project only, mirroring the DOCX and Scrivener importers' precedent architecture, or can also add content into an already-existing project's resource tree — raised by POS note `note_c73e8b26`.
 
 ---
 
@@ -2139,7 +2149,7 @@ Feature 62 may now proceed to full design using this finding.
 
 ## Summary
 
-- Total features: 63
+- Total features: 64
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped

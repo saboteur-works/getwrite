@@ -30,6 +30,16 @@ const FIXTURE_DOCX_FOLDER_PATH = path.resolve(
   "../../frontend/tests/fixtures/docx/folder-source",
 );
 
+const FIXTURE_PLAINTEXT_PATH = path.resolve(
+  __dirname,
+  "../../frontend/tests/fixtures/plaintext/single-document.txt",
+);
+
+const FIXTURE_PLAINTEXT_FOLDER_PATH = path.resolve(
+  __dirname,
+  "../../frontend/tests/fixtures/plaintext/folder-source",
+);
+
 describe("getwrite-cli project:create", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let logSpy: ReturnType<typeof vi.spyOn>;
@@ -466,6 +476,195 @@ describe("getwrite-cli project:import-docx", () => {
         message.includes("already exists and is not empty"),
     ) as [string];
     expect(refusalMessage).not.toContain("Scrivener");
+
+    const entries = await fs.readdir(destRoot);
+    expect(entries).toEqual(["pre-existing-file.txt"]);
+  });
+});
+
+describe("getwrite-cli project:import-plaintext", () => {
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let tmpDirs: string[];
+
+  beforeEach(() => {
+    tmpDirs = [];
+    exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(((code?: number) => undefined) as any);
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  afterEach(async () => {
+    exitSpy.mockRestore();
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+    await Promise.all(
+      tmpDirs.map((dir) =>
+        fs.rm(dir, { recursive: true, force: true, maxRetries: 3 }),
+      ),
+    );
+  });
+
+  async function makeTmpDestDir(prefix: string): Promise<string> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+    tmpDirs.push(dir);
+    return dir;
+  }
+
+  /**
+   * Reads every `meta/writing-log/*.json` day file under `projectRoot` and
+   * returns all entries across them combined, mirroring how few day files a
+   * single import can span (at most one, in practice, since the run itself
+   * is fast) without hardcoding today's UTC date into the assertion.
+   */
+  async function readAllWritingLogEntries(
+    projectRoot: string,
+  ): Promise<Array<Record<string, unknown>>> {
+    const dayFilesDir = path.join(projectRoot, "meta", "writing-log");
+    const dayFileNames = await fs.readdir(dayFilesDir);
+    const entries: Array<Record<string, unknown>> = [];
+    for (const dayFileName of dayFileNames) {
+      const raw = await fs.readFile(
+        path.join(dayFilesDir, dayFileName),
+        "utf8",
+      );
+      const parsed = JSON.parse(raw) as {
+        entries: Array<Record<string, unknown>>;
+      };
+      entries.push(...parsed.entries);
+    }
+    return entries;
+  }
+
+  it("imports a single .txt file into a new destination project via the real CLI entry point and exits 0", async () => {
+    const destRoot = await makeTmpDestDir("gw-import-plaintext-file-ok-");
+    const projectRoot = path.join(destRoot, "dest-project");
+
+    const argv = [
+      "node",
+      "getwrite-cli",
+      "project",
+      "import-plaintext",
+      FIXTURE_PLAINTEXT_PATH,
+      projectRoot,
+      "--name",
+      "My Import",
+    ];
+
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Imported plain-text project to"),
+    );
+
+    // project.json exists and is readable/valid.
+    const projectJsonRaw = await fs.readFile(
+      path.join(projectRoot, "project.json"),
+      "utf8",
+    );
+    const projectJson = JSON.parse(projectJsonRaw) as Record<string, unknown>;
+    expect(projectJson.id).toBeDefined();
+    expect(projectJson.name).toBe("My Import");
+
+    // The expected number of resource files/sidecars exist: a single-file
+    // source creates exactly one resource.
+    const resourceDirs = await fs.readdir(path.join(projectRoot, "resources"));
+    expect(resourceDirs).toHaveLength(1);
+    const metaFiles = (await fs.readdir(path.join(projectRoot, "meta"))).filter(
+      (name) => name.startsWith("resource-") && name.endsWith(".meta.json"),
+    );
+    expect(metaFiles).toHaveLength(1);
+
+    // plaintext-import-report.txt exists at the project root.
+    await expect(
+      fs.access(path.join(projectRoot, "plaintext-import-report.txt")),
+    ).resolves.toBeUndefined();
+
+    // A writing-log day file contains one entry tagged source: "plaintext".
+    const writingLogEntries = await readAllWritingLogEntries(projectRoot);
+    expect(writingLogEntries).toHaveLength(1);
+    expect(writingLogEntries[0]).toMatchObject({ source: "plaintext" });
+  });
+
+  it("imports a folder of .txt files into a new destination project via the real CLI entry point and exits 0", async () => {
+    const destRoot = await makeTmpDestDir("gw-import-plaintext-folder-ok-");
+    const projectRoot = path.join(destRoot, "dest-project");
+
+    const argv = [
+      "node",
+      "getwrite-cli",
+      "project",
+      "import-plaintext",
+      FIXTURE_PLAINTEXT_FOLDER_PATH,
+      projectRoot,
+      "--name",
+      "My Import",
+    ];
+
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Imported plain-text project to"),
+    );
+
+    const projectJsonRaw = await fs.readFile(
+      path.join(projectRoot, "project.json"),
+      "utf8",
+    );
+    const projectJson = JSON.parse(projectJsonRaw) as Record<string, unknown>;
+    expect(projectJson.id).toBeDefined();
+
+    // The folder-source fixture has 4 .txt files (Chapter 1, Chapter 2,
+    // Chapter 10, nested-subfolder/Nested Chapter) and 1 non-empty subfolder
+    // (nested-subfolder); notes.md, .hidden-file.txt, and .hidden-folder/ are
+    // all skipped.
+    const resourceDirs = await fs.readdir(path.join(projectRoot, "resources"));
+    expect(resourceDirs).toHaveLength(4);
+    const metaFiles = (await fs.readdir(path.join(projectRoot, "meta"))).filter(
+      (name) => name.startsWith("resource-") && name.endsWith(".meta.json"),
+    );
+    expect(metaFiles).toHaveLength(4);
+
+    const folderFiles = await fs.readdir(path.join(projectRoot, "folders"));
+    expect(folderFiles.length).toBeGreaterThanOrEqual(1);
+
+    await expect(
+      fs.access(path.join(projectRoot, "plaintext-import-report.txt")),
+    ).resolves.toBeUndefined();
+
+    const writingLogEntries = await readAllWritingLogEntries(projectRoot);
+    expect(writingLogEntries).toHaveLength(1);
+    expect(writingLogEntries[0]).toMatchObject({ source: "plaintext" });
+  });
+
+  it("refuses a non-empty pre-existing destination up front, writing nothing new to it (FR-5)", async () => {
+    const destRoot = await makeTmpDestDir("gw-import-plaintext-nonempty-");
+    await fs.writeFile(
+      path.join(destRoot, "pre-existing-file.txt"),
+      "already here",
+      "utf8",
+    );
+
+    const argv = [
+      "node",
+      "getwrite-cli",
+      "project",
+      "import-plaintext",
+      FIXTURE_PLAINTEXT_PATH,
+      destRoot,
+    ];
+
+    await main(argv as unknown as string[]);
+
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("already exists and is not empty"),
+    );
 
     const entries = await fs.readdir(destRoot);
     expect(entries).toEqual(["pre-existing-file.txt"]);
