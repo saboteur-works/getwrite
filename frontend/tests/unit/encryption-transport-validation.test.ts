@@ -16,7 +16,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchEncryptionStatus } from "../../src/lib/api/encryption";
+import {
+  exportPlaintextCopyRequest,
+  fetchEncryptionStatus,
+} from "../../src/lib/api/encryption";
 import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
@@ -86,6 +89,25 @@ describe("encryption request() success path", () => {
     }
 
     consoleWarnSpy.mockRestore();
+  });
+
+  it("does not strip `exportedId`, a field EncryptionStatusSchema doesn't declare, from the export action's response", async () => {
+    const exportResponse = {
+      isAvailable: true,
+      hasKeyring: true,
+      isUnlocked: true,
+      encryptedProjectIds: ["project-1"],
+      exportedId: "project-2-plaintext-copy",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse(exportResponse)),
+    );
+
+    const result = await exportPlaintextCopyRequest("project-1");
+
+    expect(result.exportedId).toBe("project-2-plaintext-copy");
+    expect(reportTransportValidationFailure).not.toHaveBeenCalled();
   });
 });
 

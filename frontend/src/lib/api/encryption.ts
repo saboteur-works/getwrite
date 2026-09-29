@@ -68,7 +68,10 @@ async function request(init?: RequestInit): Promise<EncryptionStatus> {
     );
     throw new Error("Encryption request failed: malformed response");
   }
-  return parsed.data;
+  // Preserve fields the schema doesn't declare (e.g. the export action's
+  // `exportedId`) rather than stripping them — only the known fields are
+  // validated/normalized from `parsed.data`.
+  return { ...(json as Record<string, unknown>), ...parsed.data };
 }
 
 /**
