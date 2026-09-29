@@ -1548,33 +1548,38 @@ requirement on, not a functional requirement.
 **User stories:** None
 **Depends on:** Feature 48
 **Branch suggestion:** feat/transport-validation-status-only-reject
-**Notes:** Not started. Verified against the tree (2026-09-17):
-`compile.ts` and `export.ts`'s JSON-returning methods throw via a shared
+**Notes:** Shipped. Merged to `main` on 2026-09-22 as merge commit
+`cac7d861` ("Merge pull request #213 from
+saboteur-works/feat/transport-validation-status-only-reject"). Verified
+against the tree (2026-09-17): `compile.ts` and `export.ts`'s
+JSON-returning methods throw via a shared
 `postCompileRequest`/`postExportRequest` helper on `!response.ok` (status
 code only, no body parse for the error message) and then cast the success
 body unchecked; `resources.ts:313`'s `patchRevisionContent` follows the
 identical status-only-reject, unchecked-success-cast mechanism, which is
 why it is grouped here rather than with Feature 50's degrade sites or
 Feature 52's separate-error-body reject site. **Flagged decision for this
-feature's own gate — not decided here:** `patchRevisionContent` currently
-casts its success body as `{ updatedAt?: string }` and substitutes
-`new Date().toISOString()` when the field is absent, so a schema-validation
-guard applying Feature 48's "each site keeps its existing contract" rule
-literally would preserve that fallback and make validation a no-op at this
-specific site — a malformed 200 body would still silently produce a
-client-clock timestamp instead of being rejected. Measured facts bearing on
-that decision, not a claim it is a live defect: the server's
-`updateRevisionInPlace` (`frontend/src/lib/models/revision-core.ts:267`)
-declares its return type as `Revision & { updatedAt: string }`, so the
-field is present on the real server path today and this fallback is
-defensive, not currently firing — it is latent, not observed to fail. Its
-single caller is `frontend/components/WorkArea/useCanonicalAutosave.ts:75`,
-which dispatches the value into the Redux store as the resource's
-`updatedAt`; were the fallback ever to fire, the resource tree and Timeline
-would show client clock time rather than the persisted timestamp, with the
-content itself safely saved regardless. This feature's own spec must
-decide whether to change this site's contract (e.g. remove the fallback and
-throw instead) rather than validate around it unchanged.
+feature's own gate — resolved by the shipped implementation:**
+`patchRevisionContent` previously cast its success body as
+`{ updatedAt?: string }` and substituted `new Date().toISOString()` when
+the field was absent, which would have made schema validation a no-op at
+this specific site under a literal reading of Feature 48's "each site
+keeps its existing contract" rule — a malformed 200 body would have
+silently produced a client-clock timestamp instead of being rejected. The
+shipped implementation changed this site's contract instead of validating
+around it unchanged: `patchRevisionContent` no longer fabricates a
+timestamp via `data.updatedAt ?? new Date().toISOString()`. It now
+validates the response, reports a validation failure through
+`reportTransportValidationFailure`, and resolves `{ updatedAt: undefined }`
+rather than throwing when the body is malformed, since the underlying save
+has already succeeded server-side by the time the body is parsed. Its
+single caller, `frontend/components/WorkArea/useCanonicalAutosave.ts`'s
+`saveCanonicalRevisionNow`, already guards on the field's presence
+(`result?.updatedAt`) before dispatching it into the Redux store as the
+resource's `updatedAt`, so an `undefined` result is skipped rather than
+substituted with a client-clock value — the resource tree and Timeline
+simply keep their prior timestamp until the next successful save, with the
+content itself safely saved regardless.
 
 ### Feature 52: Transport response-body validation — separate error-body parse (encryption.ts) — Shipped
 
