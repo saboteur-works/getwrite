@@ -81,7 +81,7 @@ const ApiEditorBodySchema = z.object({
   paragraphSpacing: z.string().optional(),
 });
 
-const ApiEditorConfigSchema = z.object({
+export const ApiEditorConfigSchema = z.object({
   headings: z
     .object({
       h1: ApiEditorHeadingSchema.optional(),
@@ -607,5 +607,20 @@ export const EncryptionStatusSchema = z.object({
 });
 
 export const EncryptionErrorResponseSchema = z.object({
+  error: z.string().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// EditorConfigApiResponseSchema — Feature 53 (transport response validation,
+// `editor-config.ts`). Matches `EditorConfigResponse` (`./editor-config.ts`)
+// field-for-field: `{ editorConfig?: { headings?: EditorHeadingMap; body?:
+// EditorBodyConfig }; error?: string }`. Deliberately fully optional — both
+// `saveHeadings` and `saveBody` can legitimately return an error-only body
+// (`{ error: "..." }`, no `editorConfig`) on a non-2xx response, which must
+// not register as a validation failure.
+// ---------------------------------------------------------------------------
+
+export const EditorConfigApiResponseSchema = z.object({
+  editorConfig: ApiEditorConfigSchema.optional(),
   error: z.string().optional(),
 });
