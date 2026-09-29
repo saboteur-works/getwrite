@@ -82,7 +82,7 @@ Writing is only part of the process. GetWrite includes several views that help y
 
 ### Organizer view
 
-The Organizer lays out a folder's contents as cards — text previews, image thumbnails, and inline audio players — in the same order as your resource tree. Flip cards to show their notes instead of their contents. It's a natural way to plan and rearrange at the scene or chapter level. (Filtering Organizer cards by metadata is planned but not yet available; to narrow by metadata today, use a saved query or smart folder.)
+The Organizer lays out a folder's contents as cards — text previews, image thumbnails, and inline audio players — in the same order as your resource tree. Flip cards to show their notes instead of their contents. It's a natural way to plan and rearrange at the scene or chapter level. Filter the visible cards by status, word count, or any resource-reference field your project defines (such as POV character) — filters combine, and clear individually or all at once.
 
 → [Organizer View](views/organizer.md)
 

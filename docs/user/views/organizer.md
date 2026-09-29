@@ -18,7 +18,13 @@ Each card can show a line of context beneath its title. Choose what that body is
 
 ## Filtering
 
-Filter the cards by [metadata](../metadata.md) using the controls at the top of the view — for example, show only scenes with a given status or point-of-view character. Filtering lets you focus a busy folder down to just the cards that matter right now.
+Filter the cards using the controls at the top of the view:
+
+- **Status** — a dropdown populated from the project's configured statuses, plus a "No status" option.
+- **Word count** — a free-form minimum/maximum range. Only text resources have a word count, so this filter hides every other resource type while it's active.
+- **Resource-reference fields** — one dropdown per `resource-ref`/`multi-resource-ref` metadata field the project defines (for example, POV character), populated from the values actually present among the current folder's cards.
+
+Active filters combine — a card must match all of them to stay visible. Each filter has its own clear control, plus a "Clear all filters" button once any filter is active. When filters exclude every card, the grid shows "No cards match the current filters." instead of the empty-folder message. Filter selections are per-folder: they reset whenever you navigate to a different folder.
 
 ## When it appears
 
