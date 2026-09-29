@@ -195,9 +195,9 @@ force-enables the timeline date fields at the feature-config write seam, so
 the view can never be on without its data. Organizer's only in-view control
 is a show/hide-bodies toggle — though what a card body renders (nothing, a
 text excerpt, or any metadata field) is a per-project setting that ships.
-Card *filtering* by Status, word count, or reference fields is entirely
-unbuilt and is broken out separately as Feature 24 (Not started), not folded
-into this entry's Shipped status.
+Card *filtering* by Status, word count, or reference fields is broken out
+separately as Feature 24 (Shipped), not folded into this entry's Shipped
+status.
 
 ### Feature 12: Compile to a single manuscript — Shipped
 **Value:** A novelist produces one ordered, deliverable manuscript file
@@ -368,7 +368,7 @@ excludes it behind a fail-closed, server-side gate
 (`crypto/encryption-availability.ts`) because the model layer does not yet
 run client-side there.
 
-### Feature 24: Organizer view — card filtering — Not started
+### Feature 24: Organizer view — card filtering — Shipped
 **Value:** A plain-file writer filters the Organizer's card view by the
 facets that matter to them, instead of only being able to hide/show bodies.
 **Vertical slice:** Filter-state model in Organizer view, filter UI
@@ -378,10 +378,32 @@ resource-reference fields.
 **User stories:** US-7
 **Depends on:** Feature 11
 **Branch suggestion:** feat/organizer-filters
-**Notes:** Not started. Organizer ships no card filtering of any kind
-today; its only in-view control is a show/hide-bodies toggle. (Configuring
-what a card body renders is a separate setting that already ships — see
-Feature 11.) Real candidate for the next `/saboteur-ship` selection gate.
+**Notes:** Shipped. `specs/features/organizer-card-filtering.md` and its
+`tasks.md` are the authoritative record of the shipped scope, merged to
+`main` in PR #249 (merge commit `f1254f76`). Organizer's card view now
+supports filtering by Status, word count, and the project's resource-
+reference fields, AND-combined when more than one is set; each filter has
+its own clear control plus a clear-all; a filter that narrows the visible
+set to zero cards shows a distinct empty-state message rather than the
+plain "no resources" one; filter values reset on folder navigation (the
+filter *is* scoped per view, not per folder, but its values don't persist
+across a navigation); and the whole thing is client-side state over
+already-loaded data, adding no new transport, route, or native backend.
+Post-review, the same branch went through a UI iteration beyond the
+original vertical slice: the filter area became collapsible — a top-level
+"Filters" toggle plus a nested "Advanced filters" disclosure scoping the
+resource-reference controls — with both toggles' collapse state persisting
+across folder navigation (distinct from the filter *values*, which do
+reset on navigation, per above); and the layout itself went through
+several rounds of owner-driven refinement (vertical stack → horizontal
+wrap → moving Advanced filters below the Status/word-count row), recorded
+as sequential tasks in `tasks.md`. One known gap shipped as-is by owner
+decision: the "No status" filter option is unreachable in any project with
+at least one configured status, because the filter predicate mirrors
+`OrganizerCard`'s own existing display-resolution fallback exactly rather
+than introducing a different rule for filtering. Tracked separately as POS
+`task_8152c7e7`, pending a future design pass on how statuses are
+configured/resolved — not addressed by this feature.
 
 ### Feature 25: Signed, warning-free desktop installers — Partial
 **Value:** A plain-file writer installs the desktop build on macOS or
@@ -2209,9 +2231,10 @@ Feature 62 may now proceed to full design using this finding.
   parent feature. 26 (Trash UI) has shipped (merged 2026-09-14 as
   `2f180cd5`), depending only on the already-shipped Feature 1; a set of
   post-merge follow-up refinements is tracked separately (see Feature 26's
-  own Notes). Of the remaining pre-existing work: 24 (Organizer filters),
-  25 (signed installers), and 27 (search across
-  revisions) are independently startable now. 28 (hosted multi-device
+  own Notes). 24 (Organizer filters) has since shipped too (merged in PR
+  #249 as `f1254f76`), depending only on the already-shipped Feature 11. Of
+  the remaining pre-existing work: 25 (signed installers) and 27 (search
+  across revisions) are independently startable now. 28 (hosted multi-device
   access) must land before 30 (its conflict-resolution model, which depends
   on it). 29 (durable search backend) is contingent on demonstrated need
   rather than sequenced by dependency. 31 (Scrivener CLI importer) has
@@ -2274,8 +2297,9 @@ Feature 62 may now proceed to full design using this finding.
   57, 58, 59, 60, 61, 62, 64 (30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47. Everything
-  else in this list has shipped (Feature 26 shipped on
+- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything
+  else in this list has shipped (Feature 24 shipped, merged in PR #249 as
+  `f1254f76` — see its own entry's Notes; Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped
   separately as Feature 49; Feature 48's own deferred remainder is tracked
   separately as Features 50-53, all of which have since shipped — 50 and
