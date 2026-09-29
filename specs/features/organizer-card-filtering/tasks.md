@@ -653,14 +653,86 @@ from the same package and import statement.
 
 ---
 
+### Task 21: Horizontal, wrapping filter layout replacing Task 20's vertical stack (owner styling refinement)
+**What:** Purely visual refinement to `OrganizerFilterBar.tsx`, requested by
+the owner after reviewing Task 20's shipped vertical-stacking change: replace
+the full vertical stack with a horizontal, flex-wrapping layout — filter
+controls flow left-to-right and only wrap onto a new line when they run out
+of horizontal space, rather than either (a) staying in one unbreakable
+horizontal row that could overflow the visible workspace (the pre-Task-20
+behavior) or (b) always occupying one row each regardless of available width
+(Task 20's behavior). Owner's request, verbatim: "The filters in each
+collapsible can be horizontal, but should wrap when they hit the right side
+of the workspace." No behavior, state, prop, or accessible-name change.
+
+Grounding (verified against current source before writing this task): Task
+20 changed both expanded content areas' outer wrapper from
+`flex items-center gap-3 mt-2` to `flex flex-col gap-3 mt-2`, and wrapped
+each individual filter control (label + input/select + clear button) in its
+own inner `flex items-center gap-3` row `div`, so every control currently
+occupies its own full-width row top to bottom. The chevron icons Task 20
+added to the "Filters"/"Advanced filters" toggle buttons are unaffected by
+this task.
+**Files:** `frontend/components/WorkArea/Views/OrganizerView/OrganizerFilterBar.tsx`
+(no other file changes required)
+**Done when:**
+- Both expanded content areas' outer wrapper — the top-level area
+  (`isFilterAreaOpen && (...)`) and the nested "Advanced filters" area
+  (`isAdvancedFiltersOpen && (...)`) — change from `flex flex-col gap-3 mt-2`
+  to a horizontal, wrapping layout: `flex flex-wrap items-center gap-3 mt-2`
+  or equivalent, so filter controls flow left-to-right and wrap to a new line
+  only when they don't fit the available width.
+- Each individual filter control's own inner wrapper (the per-control
+  `flex items-center gap-3` row `div` Task 20 added around each
+  label/input-or-select/clear-button group) is reviewed against the new
+  `flex-wrap` outer container: keeping each control's own inner wrapper as a
+  single flex item is almost certainly still correct/necessary here, so a
+  control's label, input/select, and clear button wrap together as one unit
+  rather than splitting apart mid-control when a wrap boundary falls inside
+  it. The implementor verifies this visually (or via the a11y/integration
+  test's rendered DOM) — a control's label/input/clear-button must never
+  separate across a wrap boundary.
+- The chevron icons added in Task 20 are unaffected — this task only touches
+  the outer/inner flex layout of the expanded content areas, not the toggle
+  buttons themselves.
+- No change to `aria-label`, `aria-expanded`, any accessible name, or any
+  other DOM attribute already asserted by existing tests, beyond the layout
+  classNames — confirmed by re-reading the diff against this constraint
+  before considering the task done.
+- No change to `organizerFilters.ts` or `OrganizerView.tsx` — this task is
+  scoped entirely to `OrganizerFilterBar.tsx`'s JSX/className. If satisfying
+  the above turns out to require touching either file, stop and report why
+  rather than proceeding.
+- `frontend/tests/organizerView.test.tsx` and
+  `frontend/tests/a11y/organizerFilterBar.a11y.test.tsx` are checked again
+  for any assertion on an exact className string before assuming no update
+  is needed — Task 20 already confirmed neither test asserted on className
+  at that point, but Task 20 may have added new assertions since, so this is
+  re-verified rather than assumed. Tests that query by role/label/text
+  rather than className are expected to pass unmodified.
+- `pnpm --filter getwrite-frontend typecheck` passes.
+- `pnpm --filter getwrite-frontend lint` passes.
+- `pnpm --filter getwrite-frontend test:ci -- organizer` passes in full,
+  including `organizerView`, `organizerFilters`, and
+  `organizerFilterBar.a11y` — the a11y test's collapse-state axe checks
+  (fully collapsed, top-level expanded only, both expanded) report zero
+  violations after the layout change.
+**Depends on:** Task 20
+**Estimate:** 2
+**Done:** [ ]
+
+---
+
 ## Summary
 
-- Total tasks: 20
-- Total estimated effort: 47 story points (28 from the original Tasks 1–11,
+- Total tasks: 21
+- Total estimated effort: 49 story points (28 from the original Tasks 1–11,
   17 from Tasks 12–19 added for the 2026-09-29 amendment, 2 from Task 20's
+  owner-requested styling refinement, 2 from Task 21's follow-up
   owner-requested styling refinement)
 - Critical path: Task 1 → Task 2 → Task 3 → Task 5 → Task 6 → Task 8 →
-  Task 9 → Task 12 → Task 13 → Task 14 → Task 17 → Task 19
+  Task 9 → Task 12 → Task 13 → Task 14 → Task 17 → Task 19 → Task 20 →
+  Task 21
   (Task 5 is the longest single task on the path in the original set at 5
   points and the main source of schedule risk there; Task 4, Task 7, and
   Task 10 can run in parallel with each other/Task 9 once their own
@@ -670,7 +742,8 @@ from the same package and import statement.
   Task 9's story, keeping the amendment's story/a11y work sequenced after
   the original set's; Task 14 is the load-bearing dependency the rest of
   Tasks 15–18 build on, and Task 19's sweep needs everything finished
-  first.)
+  first. Task 21 directly reverses Task 20's layout decision and so must
+  follow it.)
 - Risks:
   - Task 5 (resource-ref filter controls) carries the most uncertainty: it
     introduces new derived state (distinct values scoped to the *unfiltered*
