@@ -585,11 +585,80 @@ them)
 
 ---
 
+### Task 20: Disclosure chevrons + vertical stacking for the filter toggles (owner styling refinement)
+**What:** Purely visual refinement to `OrganizerFilterBar.tsx`, requested by
+the owner after reviewing the shipped Tasks 12–19 collapsible filter bar:
+add a disclosure chevron next to each toggle button, and change both
+expanded content areas from a horizontal row layout to a vertical stacked
+layout. No behavior, state, prop, or accessible-name change.
+
+Grounding (verified against current source before writing this task):
+`OrganizerFilterBar.tsx` currently renders both toggle buttons ("Filters"
+and "Advanced filters") as plain text with no icon, each already wired to
+`aria-expanded={isFilterAreaOpen}` / `aria-expanded={isAdvancedFiltersOpen}`
+respectively (Task 16). The top-level expanded content area
+(`isFilterAreaOpen && (...)`) and the nested expanded content area
+(`isAdvancedFiltersOpen && (...)`) each currently use
+`className="flex items-center gap-3 mt-2"` — a horizontal row placing every
+label/control/clear-button side by side. `lucide-react` is already a direct
+dependency, already imported in this file (`import { X } from "lucide-react"`,
+used for the per-filter clear buttons) — `ChevronRight`/`ChevronDown` come
+from the same package and import statement.
+**Files:** `frontend/components/WorkArea/Views/OrganizerView/OrganizerFilterBar.tsx`
+(no other file changes required)
+**Done when:**
+- `ChevronRight`/`ChevronDown` are added to the existing `lucide-react`
+  import in this file (no new dependency).
+- The "Filters" toggle button renders `ChevronDown` when `isFilterAreaOpen`
+  is `true` and `ChevronRight` when `false`, positioned beside the "Filters"
+  label text, inside the same `<button>` (so it stays part of the button's
+  accessible name/click target, not a separate sibling element).
+- The "Advanced filters" toggle button renders the same chevron pair driven
+  by `isAdvancedFiltersOpen`, following the identical pattern.
+- Both expanded content areas — the top-level area currently
+  `className="flex items-center gap-3 mt-2"` and the nested "Advanced
+  filters" area currently the same class — change to a vertical stacked
+  layout (`flex flex-col gap-3` or equivalent), so each filter control's
+  label + input/select + clear button occupies its own row, top to bottom,
+  rather than sharing one horizontal row. A control's own internal
+  label/input/clear-button grouping may keep a short inline `flex
+  items-center gap-*` wrapper of its own if useful for that row's internal
+  alignment — the requirement is that rows stack vertically, not that every
+  `flex` usage in the file is removed.
+- No change to `aria-label`, `aria-expanded`, any accessible name, or any
+  other DOM attribute already asserted by existing tests, beyond the layout
+  classNames and the two new chevron icons — confirmed by re-reading the
+  diff against this constraint before considering the task done.
+- No change to `organizerFilters.ts` or `OrganizerView.tsx` — this task is
+  scoped entirely to `OrganizerFilterBar.tsx`'s JSX/className. If satisfying
+  the above turns out to require touching either file, stop and report why
+  rather than proceeding.
+- `frontend/tests/organizerView.test.tsx` and
+  `frontend/tests/a11y/organizerFilterBar.a11y.test.tsx` are checked for any
+  assertion on an exact className string (e.g. `toHaveClass("flex
+  items-center gap-3")`) before assuming no update is needed; if such an
+  assertion exists, it is updated to match the new layout classes. Tests
+  that query by role/label/text rather than className are expected to pass
+  unmodified.
+- `pnpm --filter getwrite-frontend typecheck` passes.
+- `pnpm --filter getwrite-frontend lint` passes.
+- `pnpm --filter getwrite-frontend test:ci -- organizer` passes in full,
+  including `organizerView`, `organizerFilters`, and
+  `organizerFilterBar.a11y` — the a11y test's three collapse-state axe
+  checks (fully collapsed, top-level expanded only, both expanded — from
+  Task 16) report zero violations after the layout change.
+**Depends on:** Task 19
+**Estimate:** 2
+**Done:** [ ]
+
+---
+
 ## Summary
 
-- Total tasks: 19
-- Total estimated effort: 45 story points (28 from the original Tasks 1–11,
-  17 from Tasks 12–19 added for the 2026-09-29 amendment)
+- Total tasks: 20
+- Total estimated effort: 47 story points (28 from the original Tasks 1–11,
+  17 from Tasks 12–19 added for the 2026-09-29 amendment, 2 from Task 20's
+  owner-requested styling refinement)
 - Critical path: Task 1 → Task 2 → Task 3 → Task 5 → Task 6 → Task 8 →
   Task 9 → Task 12 → Task 13 → Task 14 → Task 17 → Task 19
   (Task 5 is the longest single task on the path in the original set at 5
