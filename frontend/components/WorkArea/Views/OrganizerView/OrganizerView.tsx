@@ -21,6 +21,11 @@ import {
   DEFAULT_CARD_EXCERPT_LENGTH,
 } from "./cardBody";
 import { fetchResourceExcerpts } from "../../../../src/lib/api/resource-excerpts";
+import {
+  organizerFilterReducer,
+  initialOrganizerFilterState,
+  filterChildren,
+} from "./organizerFilters";
 
 export interface OrganizerViewProps {
   /** Whether to show the body/content of each resource */
@@ -97,6 +102,26 @@ export default function OrganizerView({
 
   const allChildren: AnyResource[] = [...childFolders, ...childResources];
 
+  const [filterState, dispatchFilter] = React.useReducer(
+    organizerFilterReducer,
+    initialOrganizerFilterState,
+  );
+
+  // Reset filters whenever the selected folder changes, so a filter set on
+  // one folder never silently narrows a different folder's contents (FR-10).
+  React.useEffect(() => {
+    dispatchFilter({ type: "reset" });
+  }, [selectedFolder?.id]);
+
+  // No ref-filter fields wired in yet (Task 5); an empty list keeps
+  // `filterChildren` a no-op on `refFilters`, which is always empty for now.
+  const visibleChildren = filterChildren(
+    allChildren,
+    filterState,
+    [],
+    defaultStatus,
+  );
+
   // Only text resources have content.txt to excerpt. Keyed as a stable string
   // so the effect re-runs only when the visible set actually changes.
   const cardBodySource = cardBodyConfig?.source;
@@ -160,7 +185,7 @@ export default function OrganizerView({
         <p className="text-sm text-gw-secondary">This folder is empty.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {allChildren.map((child) => (
+          {visibleChildren.map((child) => (
             <OrganizerCard
               key={child.id}
               resource={child}
