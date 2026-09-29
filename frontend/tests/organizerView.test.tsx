@@ -207,6 +207,8 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
     expect(screen.getByText("Final Multi Scene")).toBeTruthy();
     expect(screen.getByText("Cover Image")).toBeTruthy();
 
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
     fireEvent.change(screen.getByLabelText("Filter by status"), {
       target: { value: "Draft" },
     });
@@ -256,6 +258,8 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
       </Provider>,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
     fireEvent.change(screen.getByLabelText("Filter by status"), {
       target: { value: NO_STATUS_FILTER_VALUE },
     });
@@ -272,6 +276,8 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
         <OrganizerView showBody={false} />
       </Provider>,
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     fireEvent.change(screen.getByLabelText("Minimum words"), {
       target: { value: "4" },
@@ -297,6 +303,9 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
         <OrganizerView showBody={false} />
       </Provider>,
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Advanced filters" }));
 
     const characterSelect = screen.getByLabelText(
       "Filter by Character",
@@ -347,6 +356,9 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
       </Provider>,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Advanced filters" }));
+
     fireEvent.change(screen.getByLabelText("Filter by status"), {
       target: { value: "Draft" },
     });
@@ -375,6 +387,8 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
         <OrganizerView showBody={false} />
       </Provider>,
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     fireEvent.change(screen.getByLabelText("Filter by status"), {
       target: { value: "Draft" },
@@ -416,6 +430,9 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
       </Provider>,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Advanced filters" }));
+
     fireEvent.change(screen.getByLabelText("Filter by status"), {
       target: { value: "Draft" },
     });
@@ -444,6 +461,8 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
         <OrganizerView showBody={false} />
       </Provider>,
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     fireEvent.change(screen.getByLabelText("Filter by status"), {
       target: { value: "Draft" },
@@ -547,6 +566,8 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
     fireEvent.change(screen.getByLabelText("Filter by status"), {
       target: { value: "Draft" },
     });
@@ -558,6 +579,109 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
     // it triggers no new fetch.
     await Promise.resolve();
     expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("OrganizerView filter area collapse behavior (FR-12 through FR-14)", () => {
+  it("collapses the filter area by default, with no filter control reachable before the Filters toggle is activated (FR-12)", () => {
+    const { store } = makeFilterableStore();
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    const filtersToggle = screen.getByRole("button", { name: "Filters" });
+    expect(filtersToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByLabelText("Filter by status")).toBeNull();
+    expect(screen.queryByLabelText("Minimum words")).toBeNull();
+    expect(screen.queryByLabelText("Maximum words")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Advanced filters" }),
+    ).toBeNull();
+  });
+
+  it("shows the Status select and word-count inputs immediately once expanded, with no further interaction needed (FR-13)", () => {
+    const { store } = makeFilterableStore();
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    expect(screen.getByLabelText("Filter by status")).toBeTruthy();
+    expect(screen.getByLabelText("Minimum words")).toBeTruthy();
+    expect(screen.getByLabelText("Maximum words")).toBeTruthy();
+  });
+
+  it("keeps the resource-ref controls hidden after expanding only the top-level area, revealing them only once Advanced filters is also activated (FR-14)", () => {
+    const { store } = makeFilterableStore();
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    // Top-level area alone: Status/word-count are visible, but the nested
+    // resource-ref controls are not.
+    expect(screen.getByLabelText("Filter by status")).toBeTruthy();
+    expect(screen.queryByLabelText("Filter by Character")).toBeNull();
+    expect(screen.queryByLabelText("Filter by Linked Scenes")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Advanced filters" }));
+
+    expect(screen.getByLabelText("Filter by Character")).toBeTruthy();
+    expect(screen.getByLabelText("Filter by Linked Scenes")).toBeTruthy();
+  });
+
+  it("hides everything, including the nested section's own contents, when the top-level area is collapsed again regardless of the nested section's own open/closed state", () => {
+    const { store } = makeFilterableStore();
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Advanced filters" }));
+
+    expect(screen.getByLabelText("Filter by status")).toBeTruthy();
+    expect(screen.getByLabelText("Filter by Character")).toBeTruthy();
+
+    // Collapse the top-level area without touching the nested Advanced
+    // filters toggle first — its own aria-expanded state stays "true".
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    expect(
+      screen
+        .getByRole("button", { name: "Filters" })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
+    expect(screen.queryByLabelText("Filter by status")).toBeNull();
+    expect(screen.queryByLabelText("Minimum words")).toBeNull();
+    expect(screen.queryByLabelText("Maximum words")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Advanced filters" }),
+    ).toBeNull();
+    expect(screen.queryByLabelText("Filter by Character")).toBeNull();
+    expect(screen.queryByLabelText("Filter by Linked Scenes")).toBeNull();
+
+    // Re-expanding the top-level area alone (Advanced filters was never
+    // explicitly re-collapsed) shows the nested section's contents again,
+    // confirming the nested toggle's own open state was preserved beneath
+    // the top-level collapse rather than reset by it.
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    expect(screen.getByLabelText("Filter by status")).toBeTruthy();
+    expect(screen.getByLabelText("Filter by Character")).toBeTruthy();
   });
 });
 
