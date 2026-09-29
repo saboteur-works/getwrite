@@ -624,3 +624,17 @@ export const EditorConfigApiResponseSchema = z.object({
   editorConfig: ApiEditorConfigSchema.optional(),
   error: z.string().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// RevisionSettingsApiResponseSchema — Task 6 (transport response validation,
+// `preferences.ts`). Matches `saveRevisionSettings`'s inline response type
+// (`./preferences.ts`) field-for-field: `{ defaultRevisionName?: string;
+// error?: string }`. Deliberately fully optional — a legitimate error-only
+// body (`{ error: "..." }`, no `defaultRevisionName`) on a non-2xx response,
+// or even an empty `{}` body, must not register as a validation failure.
+// ---------------------------------------------------------------------------
+
+export const RevisionSettingsApiResponseSchema = z.object({
+  defaultRevisionName: z.string().optional(),
+  error: z.string().optional(),
+});

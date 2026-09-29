@@ -1,5 +1,7 @@
 import type { ColorMode } from "../user-preferences";
 import { createTransport } from "../../store/transport/create-transport";
+import { RevisionSettingsApiResponseSchema } from "./schemas";
+import { reportTransportValidationFailure } from "./transport-validation";
 
 // ---------------------------------------------------------------------------
 // Transport collapse (ADR-021 Phase 2, Task 4)
@@ -64,6 +66,15 @@ export const httpPreferencesTransport: PreferencesTransport = {
       defaultRevisionName?: string;
       error?: string;
     } | null;
+    if (body !== null) {
+      const parsed = RevisionSettingsApiResponseSchema.safeParse(body);
+      if (!parsed.success) {
+        reportTransportValidationFailure(
+          "preferences.saveRevisionSettings",
+          parsed.error.issues,
+        );
+      }
+    }
     if (!response.ok) {
       throw new Error(body?.error ?? "Failed to save default revision name.");
     }
