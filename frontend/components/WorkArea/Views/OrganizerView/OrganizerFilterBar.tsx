@@ -181,86 +181,99 @@ export default function OrganizerFilterBar({
         Filters
       </button>
       {isFilterAreaOpen && (
-        <div className="flex flex-wrap items-center gap-3 mt-2">
-          <div className="flex items-center gap-3">
-            <label
-              htmlFor="organizer-status-filter"
-              className="text-xs text-gw-secondary"
-            >
-              Status
-            </label>
-            <select
-              id="organizer-status-filter"
-              aria-label="Filter by status"
-              value={selectValue}
-              onChange={handleStatusChange}
-              className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
-            >
-              <option value={ALL_STATUSES_VALUE}>All statuses</option>
-              {statuses.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-              <option value={NO_STATUS_FILTER_VALUE}>No status</option>
-            </select>
-            {isStatusActive && (
-              <button
-                type="button"
-                aria-label="Clear status filter"
-                onClick={handleClearStatus}
-                className="text-gw-secondary hover:text-gw-primary"
+        <>
+          <div className="flex flex-wrap items-center gap-3 mt-2">
+            <div className="flex items-center gap-3">
+              <label
+                htmlFor="organizer-status-filter"
+                className="text-xs text-gw-secondary"
               >
-                <X size={14} />
-              </button>
+                Status
+              </label>
+              <select
+                id="organizer-status-filter"
+                aria-label="Filter by status"
+                value={selectValue}
+                onChange={handleStatusChange}
+                className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+              >
+                <option value={ALL_STATUSES_VALUE}>All statuses</option>
+                {statuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+                <option value={NO_STATUS_FILTER_VALUE}>No status</option>
+              </select>
+              {isStatusActive && (
+                <button
+                  type="button"
+                  aria-label="Clear status filter"
+                  onClick={handleClearStatus}
+                  className="text-gw-secondary hover:text-gw-primary"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label
+                htmlFor="organizer-word-count-min-filter"
+                className="text-xs text-gw-secondary"
+              >
+                Minimum words
+              </label>
+              <input
+                id="organizer-word-count-min-filter"
+                aria-label="Minimum words"
+                type="number"
+                min={0}
+                value={filterState.wordCountMin ?? ""}
+                onChange={handleMinChange}
+                className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+              />
+
+              <label
+                htmlFor="organizer-word-count-max-filter"
+                className="text-xs text-gw-secondary"
+              >
+                Maximum words
+              </label>
+              <input
+                id="organizer-word-count-max-filter"
+                aria-label="Maximum words"
+                type="number"
+                min={0}
+                value={filterState.wordCountMax ?? ""}
+                onChange={handleMaxChange}
+                className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+              />
+              {isWordCountActive && (
+                <button
+                  type="button"
+                  aria-label="Clear word count filter"
+                  onClick={handleClearWordCount}
+                  className="text-gw-secondary hover:text-gw-primary"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {isAnyFilterActive && (
+              <Button
+                variant="secondary"
+                size="xs"
+                aria-label="Clear all filters"
+                onClick={handleClearAll}
+              >
+                Clear all filters
+              </Button>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <label
-              htmlFor="organizer-word-count-min-filter"
-              className="text-xs text-gw-secondary"
-            >
-              Minimum words
-            </label>
-            <input
-              id="organizer-word-count-min-filter"
-              aria-label="Minimum words"
-              type="number"
-              min={0}
-              value={filterState.wordCountMin ?? ""}
-              onChange={handleMinChange}
-              className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
-            />
-
-            <label
-              htmlFor="organizer-word-count-max-filter"
-              className="text-xs text-gw-secondary"
-            >
-              Maximum words
-            </label>
-            <input
-              id="organizer-word-count-max-filter"
-              aria-label="Maximum words"
-              type="number"
-              min={0}
-              value={filterState.wordCountMax ?? ""}
-              onChange={handleMaxChange}
-              className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
-            />
-            {isWordCountActive && (
-              <button
-                type="button"
-                aria-label="Clear word count filter"
-                onClick={handleClearWordCount}
-                className="text-gw-secondary hover:text-gw-primary"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          <div>
+          <div className="mt-2">
             <button
               type="button"
               aria-expanded={isAdvancedFiltersOpen}
@@ -328,18 +341,7 @@ export default function OrganizerFilterBar({
               </div>
             )}
           </div>
-
-          {isAnyFilterActive && (
-            <Button
-              variant="secondary"
-              size="xs"
-              aria-label="Clear all filters"
-              onClick={handleClearAll}
-            >
-              Clear all filters
-            </Button>
-          )}
-        </div>
+        </>
       )}
     </div>
   );
