@@ -1,5 +1,6 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { userEvent, within } from "storybook/test";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import OrganizerView from "../../components/WorkArea/Views/OrganizerView/OrganizerView";
@@ -181,12 +182,40 @@ const filtersStore = configureStore({
   },
 });
 
+// Filter bar renders fully collapsed by default (FR-12): `isFilterAreaOpen`
+// starts `false` in OrganizerFilterBar's own state, so no interaction is
+// needed here to demonstrate that default — this story exercises it as-is.
 export const WithFilters: Story = {
   render: () => (
     <Provider store={filtersStore}>
       <OrganizerView showBody={true} />
     </Provider>
   ),
+};
+
+// Drives the filter bar to its fully expanded state — top-level "Filters"
+// area open plus the nested "Advanced filters" section open (FR-13, FR-14)
+// — via a play function that clicks both toggles in turn, since neither is
+// reachable through an OrganizerView prop (see Task 18). This is what makes
+// every control, including the FR-5 resource-ref controls nested under
+// Advanced filters, reachable from Storybook without manual interaction.
+export const WithFiltersExpanded: Story = {
+  render: () => (
+    <Provider store={filtersStore}>
+      <OrganizerView showBody={true} />
+    </Provider>
+  ),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    const filtersToggle = await canvas.findByRole("button", {
+      name: "Filters",
+    });
+    await userEvent.click(filtersToggle);
+    const advancedToggle = await canvas.findByRole("button", {
+      name: "Advanced filters",
+    });
+    await userEvent.click(advancedToggle);
+  },
 };
 
 export const Interactive: Story = {
