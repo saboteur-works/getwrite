@@ -586,3 +586,26 @@ const LocatedRepeatedWordSchema = z.object({
 export const ProseDiagnosticsDetailResponseSchema = z.object({
   locatedRepeatedWords: z.array(LocatedRepeatedWordSchema),
 });
+
+// ---------------------------------------------------------------------------
+// EncryptionStatusSchema / EncryptionErrorResponseSchema — Feature 52
+// (transport response validation, `encryption.ts`). `EncryptionStatusSchema`
+// matches `EncryptionStatus` (`./encryption.ts`) field-for-field: `{
+// isAvailable: boolean; hasKeyring: boolean; isUnlocked: boolean;
+// encryptedProjectIds: string[] }`. `EncryptionErrorResponseSchema` matches
+// the `{ error?: string }` shape read from a non-2xx response body at
+// `./encryption.ts:44`; it is deliberately minimal/optional so a
+// malformed or empty error body never registers as a second validation
+// failure layered on top of the original non-2xx response.
+// ---------------------------------------------------------------------------
+
+export const EncryptionStatusSchema = z.object({
+  isAvailable: z.boolean(),
+  hasKeyring: z.boolean(),
+  isUnlocked: z.boolean(),
+  encryptedProjectIds: z.array(z.string()),
+});
+
+export const EncryptionErrorResponseSchema = z.object({
+  error: z.string().optional(),
+});
