@@ -44,6 +44,10 @@ describe("a11y: OrganizerFilterBar", () => {
         statuses={statuses}
         refFields={refFields}
         refFieldValues={refFieldValues}
+        isFilterAreaOpen={false}
+        setIsFilterAreaOpen={vi.fn()}
+        isAdvancedFiltersOpen={false}
+        setIsAdvancedFiltersOpen={vi.fn()}
       />,
     );
     await runAxe(container);
@@ -57,6 +61,10 @@ describe("a11y: OrganizerFilterBar", () => {
         statuses={statuses}
         refFields={refFields}
         refFieldValues={refFieldValues}
+        isFilterAreaOpen={false}
+        setIsFilterAreaOpen={vi.fn()}
+        isAdvancedFiltersOpen={false}
+        setIsAdvancedFiltersOpen={vi.fn()}
       />,
     );
     await runAxe(container);
@@ -70,6 +78,10 @@ describe("a11y: OrganizerFilterBar", () => {
         statuses={statuses}
         refFields={refFields}
         refFieldValues={refFieldValues}
+        isFilterAreaOpen={false}
+        setIsFilterAreaOpen={vi.fn()}
+        isAdvancedFiltersOpen={false}
+        setIsAdvancedFiltersOpen={vi.fn()}
       />,
     );
 
@@ -109,6 +121,10 @@ describe("a11y: OrganizerFilterBar", () => {
         statuses={statuses}
         refFields={refFields}
         refFieldValues={refFieldValues}
+        isFilterAreaOpen={false}
+        setIsFilterAreaOpen={vi.fn()}
+        isAdvancedFiltersOpen={false}
+        setIsAdvancedFiltersOpen={vi.fn()}
       />,
     );
 

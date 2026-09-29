@@ -101,6 +101,15 @@ export default function OrganizerView({
   // folder children only (store resources don't carry their content).
   const [excerpts, setExcerpts] = React.useState<Record<string, string>>({});
 
+  // Collapse state for the filter bar itself (FR-12) and, nested within it,
+  // the advanced-filters disclosure (FR-14). Deliberately session-only local
+  // state — kept out of `organizerFilters.ts`'s reducer/`OrganizerFilterState`
+  // so it is never reset by the filter-values reset effect below, and never
+  // persisted alongside the filter values it collapses/expands.
+  const [isFilterAreaOpen, setIsFilterAreaOpen] = React.useState(false);
+  const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] =
+    React.useState(false);
+
   const handleToggle = React.useCallback(() => {
     setIsShowingBody((prev) => {
       const isNextShowing = !prev;
@@ -259,6 +268,10 @@ export default function OrganizerView({
           statuses={statuses}
           refFields={refFields}
           refFieldValues={refFieldValues}
+          isFilterAreaOpen={isFilterAreaOpen}
+          setIsFilterAreaOpen={setIsFilterAreaOpen}
+          isAdvancedFiltersOpen={isAdvancedFiltersOpen}
+          setIsAdvancedFiltersOpen={setIsAdvancedFiltersOpen}
         />
       )}
 

@@ -56,6 +56,25 @@ export interface OrganizerFilterBarProps {
    * field's control options.
    */
   refFieldValues: Record<string, string[]>;
+  /**
+   * Whether the filter area itself is expanded (FR-12). Session-only state
+   * owned by `OrganizerView`, deliberately kept separate from
+   * `OrganizerFilterState`/`organizerFilters.ts`'s reducer so it is never
+   * reset alongside filter values. Not yet consumed by any rendering here —
+   * wiring only, pending Task 13.
+   */
+  isFilterAreaOpen: boolean;
+  /** Setter for {@link isFilterAreaOpen}. */
+  setIsFilterAreaOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  /**
+   * Whether the advanced-filters disclosure nested within the filter area is
+   * expanded (FR-14). Session-only state owned by `OrganizerView`, same
+   * rationale as {@link isFilterAreaOpen}. Not yet consumed by any rendering
+   * here — wiring only, pending Task 14.
+   */
+  isAdvancedFiltersOpen: boolean;
+  /** Setter for {@link isAdvancedFiltersOpen}. */
+  setIsAdvancedFiltersOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 /**
@@ -70,6 +89,10 @@ export default function OrganizerFilterBar({
   statuses,
   refFields,
   refFieldValues,
+  isFilterAreaOpen: _isFilterAreaOpen,
+  setIsFilterAreaOpen: _setIsFilterAreaOpen,
+  isAdvancedFiltersOpen: _isAdvancedFiltersOpen,
+  setIsAdvancedFiltersOpen: _setIsAdvancedFiltersOpen,
 }: OrganizerFilterBarProps): JSX.Element {
   const selectValue = filterState.status ?? ALL_STATUSES_VALUE;
 
