@@ -1,4 +1,5 @@
 import React from "react";
+import type { MetadataField } from "../../../../src/lib/models/types";
 import {
   NO_STATUS_FILTER_VALUE,
   type OrganizerFilterAction,
@@ -9,9 +10,10 @@ import {
  * @module OrganizerFilterBar
  * Filter bar rendered above the Organizer view's card grid (see
  * `specs/features/organizer-card-filtering.md`). Holds the Status filter
- * control (FR-1, FR-2) and the free-form min/max word-count range filter
- * (FR-3, FR-4); a later task adds resource-ref controls to the same bar.
- * Purely presentational — all filter-state transitions are dispatched via
+ * control (FR-1, FR-2), the free-form min/max word-count range filter
+ * (FR-3, FR-4), and one dropdown per `resource-ref`/`multi-resource-ref`
+ * metadata field defined on the active project (FR-5, FR-6). Purely
+ * presentational — all filter-state transitions are dispatched via
  * `OrganizerFilterAction`s and evaluated by `organizerFilters.ts`'s
  * `filterChildren`.
  */
@@ -28,6 +30,9 @@ function parseWordCountInput(value: string): number | undefined {
 /** Sentinel `<select>` option value representing "no status filter active". */
 const ALL_STATUSES_VALUE = "";
 
+/** Sentinel `<select>` option value representing "no ref filter active" for a given field. */
+const ALL_REF_VALUES_VALUE = "";
+
 /** Props accepted by {@link OrganizerFilterBar}. */
 export interface OrganizerFilterBarProps {
   /** Current Organizer filter selections. */
@@ -36,6 +41,18 @@ export interface OrganizerFilterBarProps {
   dispatchFilter: React.Dispatch<OrganizerFilterAction>;
   /** The active project's configured statuses (`config.statuses`), in order. */
   statuses: string[];
+  /**
+   * Every `resource-ref`/`multi-resource-ref` field defined anywhere in the
+   * active project's metadata schema (FR-5). One filter control is rendered
+   * per field; an empty array renders none.
+   */
+  refFields: MetadataField[];
+  /**
+   * Distinct referenced-resource names present among the current folder's
+   * direct children, keyed by `refFields[].key` (FR-5). Populates each
+   * field's control options.
+   */
+  refFieldValues: Record<string, string[]>;
 }
 
 /**
@@ -48,6 +65,8 @@ export default function OrganizerFilterBar({
   filterState,
   dispatchFilter,
   statuses,
+  refFields,
+  refFieldValues,
 }: OrganizerFilterBarProps): JSX.Element {
   const selectValue = filterState.status ?? ALL_STATUSES_VALUE;
 
@@ -72,6 +91,18 @@ export default function OrganizerFilterBar({
       type: "set-word-count-range",
       min: filterState.wordCountMin,
       max: parseWordCountInput(e.target.value),
+    });
+  };
+
+  const handleRefFilterChange = (
+    fieldKey: string,
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    const value = e.target.value;
+    dispatchFilter({
+      type: "set-ref-filter",
+      fieldKey,
+      value: value === ALL_REF_VALUES_VALUE ? undefined : value,
     });
   };
 
@@ -130,6 +161,33 @@ export default function OrganizerFilterBar({
         onChange={handleMaxChange}
         className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
       />
+
+      {refFields.map((field) => {
+        const controlId = `organizer-ref-filter-${field.key}`;
+        const selectedRefValue =
+          filterState.refFilters[field.key] ?? ALL_REF_VALUES_VALUE;
+        return (
+          <React.Fragment key={field.key}>
+            <label htmlFor={controlId} className="text-xs text-gw-secondary">
+              {field.label}
+            </label>
+            <select
+              id={controlId}
+              aria-label={`Filter by ${field.label}`}
+              value={selectedRefValue}
+              onChange={(e) => handleRefFilterChange(field.key, e)}
+              className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+            >
+              <option value={ALL_REF_VALUES_VALUE}>All {field.label}</option>
+              {(refFieldValues[field.key] ?? []).map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 }

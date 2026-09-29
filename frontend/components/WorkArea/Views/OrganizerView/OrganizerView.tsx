@@ -1,5 +1,10 @@
 import React from "react";
-import type { AnyResource, Folder } from "../../../../src/lib/models/types";
+import type {
+  AnyResource,
+  Folder,
+  MetadataField,
+  ResourceRef,
+} from "../../../../src/lib/models/types";
 import OrganizerCard from "./OrganizerCard";
 import OrganizerFilterBar from "./OrganizerFilterBar";
 import useAppSelector, { useAppDispatch } from "../../../../src/store/hooks";
@@ -12,6 +17,7 @@ import {
   selectActiveProjectStatuses,
   selectActiveProjectOrganizerCardBody,
   selectActiveProjectDirectoryId,
+  selectActiveProjectMetadataSchema,
   selectNotesEnabled,
 } from "../../../../src/store/projectsSlice";
 import { Eye, EyeClosed } from "lucide-react";
@@ -27,6 +33,19 @@ import {
   initialOrganizerFilterState,
   filterChildren,
 } from "./organizerFilters";
+
+/** Narrows a `MetadataValue` entry to a `ResourceRef`'s `name`, if it is one. */
+function asResourceRefName(value: unknown): string | undefined {
+  if (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "name" in (value as Record<string, unknown>)
+  ) {
+    return (value as ResourceRef).name;
+  }
+  return undefined;
+}
 
 export interface OrganizerViewProps {
   /** Whether to show the body/content of each resource */
@@ -68,6 +87,10 @@ export default function OrganizerView({
   // Notes flag only drives the back-compat default when no config is set.
   const cardBodyConfig = useAppSelector(selectActiveProjectOrganizerCardBody);
   const isNotesEnabled = useAppSelector(selectNotesEnabled);
+  const metadataSchema = useAppSelector(
+    (s) => selectActiveProjectMetadataSchema(s),
+    shallowEqual,
+  );
   // Directory basename, not `project.id` (project.json's independently
   // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
   // comment in `projectsSlice.ts`.
@@ -117,12 +140,50 @@ export default function OrganizerView({
     dispatchFilter({ type: "reset" });
   }, [selectedFolder?.id]);
 
-  // No ref-filter fields wired in yet (Task 5); an empty list keeps
-  // `filterChildren` a no-op on `refFilters`, which is always empty for now.
+  // FR-5: every resource-ref/multi-resource-ref field defined anywhere in
+  // the active project's metadata schema, across all groups.
+  const refFields: MetadataField[] = React.useMemo(
+    () =>
+      metadataSchema.groups
+        .flatMap((group) => group.fields)
+        .filter(
+          (field) =>
+            field.type === "resource-ref" ||
+            field.type === "multi-resource-ref",
+        ),
+    [metadataSchema],
+  );
+
+  // FR-5: distinct values (by referenced resource name) present among the
+  // *unfiltered* set of the currently selected folder's direct children, one
+  // list per ref field. Deliberately derived from `allChildren`, not
+  // `visibleChildren`, so narrowing one filter never shrinks another
+  // filter's own option list out from under the writer.
+  const refFieldValues: Record<string, string[]> = React.useMemo(() => {
+    const result: Record<string, string[]> = {};
+    for (const field of refFields) {
+      const distinct = new Set<string>();
+      for (const child of allChildren) {
+        const rawValue = child.userMetadata?.[field.key];
+        const refs: unknown[] = Array.isArray(rawValue) ? rawValue : [rawValue];
+        for (const entry of refs) {
+          const name = asResourceRefName(entry);
+          if (name !== undefined) {
+            distinct.add(name);
+          }
+        }
+      }
+      result[field.key] = Array.from(distinct).sort((a, b) =>
+        a.localeCompare(b),
+      );
+    }
+    return result;
+  }, [refFields, allChildren]);
+
   const visibleChildren = filterChildren(
     allChildren,
     filterState,
-    [],
+    refFields,
     defaultStatus,
   );
 
@@ -196,6 +257,8 @@ export default function OrganizerView({
           filterState={filterState}
           dispatchFilter={dispatchFilter}
           statuses={statuses}
+          refFields={refFields}
+          refFieldValues={refFieldValues}
         />
       )}
 
