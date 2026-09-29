@@ -1576,7 +1576,7 @@ content itself safely saved regardless. This feature's own spec must
 decide whether to change this site's contract (e.g. remove the fallback and
 throw instead) rather than validate around it unchanged.
 
-### Feature 52: Transport response-body validation — separate error-body parse (encryption.ts) — Not started
+### Feature 52: Transport response-body validation — separate error-body parse (encryption.ts) — Shipped
 
 **Value:** A writer reading the workspace's encryption lock state and
 receiving a malformed response body — on either the error or the success
@@ -1598,18 +1598,33 @@ requirement on, not a functional requirement.
 **User stories:** None
 **Depends on:** Feature 48
 **Branch suggestion:** feat/transport-validation-separate-error-body
-**Notes:** Not started. Verified against the tree (2026-09-17):
-`encryption.ts:49` is the only site in this 21-site remainder with two
-independent `response.json()` calls, one per outcome, rather than one
-parse consulted for both — distinct from Feature 51's status-only-reject
-sites (no error body read at all) and from Feature 53's dual-purpose-body
-sites (one parse serving both outcomes). Given its own entry on mechanism
-grounds, per the owner's Gate 2 decision to regroup by transport mechanism
-rather than by severity — this document's earlier draft had instead placed
-`encryption.ts` with `compile.ts`/`export.ts` on a substantial-content/
-security-relevant severity judgment, which the owner's decision replaces.
+**Notes:** Shipped. Implemented together with Feature 53 in one combined
+pass via `specs/features/transport-validation-remaining-sites.md` and its
+`tasks.md`, merged to `main` on 2026-09-29 as merge commit `6f7ac3f5`
+("Merge pull request #248 from
+saboteur-works/feat/transport-validation-remaining-sites"). Landed a new
+`EncryptionStatusSchema` (authored from scratch — no existing runtime schema
+for `EncryptionStatus` existed to reuse) plus an error-body schema in
+`frontend/src/lib/api/schemas.ts`, validating both of `encryption.ts`'s
+`request()` helper's two independently-parsed bodies — the error-path parse
+and the success-path parse — each reporting through
+`reportTransportValidationFailure` on a validation failure while preserving
+the helper's existing throw-with-fallback-message (error path) and
+reject-on-malformed-body (success path) contracts unchanged;
+`exportPlaintextCopyRequest`'s own `as`-cast return type stayed out of
+scope, per the spec's FR-2. Verified against the tree at spec-write time
+(2026-09-17): `encryption.ts:49` was the only site in this 21-site
+remainder with two independent `response.json()` calls, one per outcome,
+rather than one parse consulted for both — distinct from Feature 51's
+status-only-reject sites (no error body read at all) and from Feature 53's
+dual-purpose-body sites (one parse serving both outcomes). Given its own
+entry on mechanism grounds, per the owner's Gate 2 decision to regroup by
+transport mechanism rather than by severity — this document's earlier draft
+had instead placed `encryption.ts` with `compile.ts`/`export.ts` on a
+substantial-content/security-relevant severity judgment, which the owner's
+decision replaces.
 
-### Feature 53: Transport response-body validation — one body serving both error and success (editor-config.ts, preferences.ts) — Not started
+### Feature 53: Transport response-body validation — one body serving both error and success (editor-config.ts, preferences.ts) — Shipped
 
 **Value:** A writer whose editor-heading/body settings save, or whose
 default-revision-name preference save, gets a response the UI cannot parse
@@ -1641,7 +1656,28 @@ requirement on, not a functional requirement.
 **User stories:** None
 **Depends on:** Feature 48
 **Branch suggestion:** feat/transport-validation-dual-purpose-bodies
-**Notes:** Not started. `editor-config.ts` is the module OQ-33 flags as
+**Notes:** Shipped. Implemented together with Feature 52 in one combined
+pass via `specs/features/transport-validation-remaining-sites.md` and its
+`tasks.md`, merged to `main` on 2026-09-29 as merge commit `6f7ac3f5`
+("Merge pull request #248 from
+saboteur-works/feat/transport-validation-remaining-sites"). The feature
+spec's own design question (below) was resolved as one fully-optional
+lenient schema per shape, not a discriminated union: `editor-config.ts`'s
+`saveHeadings`/`saveBody` share one new schema
+(`z.object({ editorConfig: ApiEditorConfigSchema.optional(), error:
+z.string().optional() })`, reusing the existing `ApiEditorConfigSchema`),
+and `preferences.ts`'s `saveRevisionSettings` gets its own analogous
+schema (`z.object({ defaultRevisionName: z.string().optional(), error:
+z.string().optional() })`) — both added to
+`frontend/src/lib/api/schemas.ts` and validated at each site, reporting
+through `reportTransportValidationFailure` on failure while preserving
+each site's existing throw-`body?.error`-or-fallback contract unchanged.
+A follow-up commit on the same branch
+(`ecf02445`, "fix(encryption): preserve unvalidated fields on request()'s
+success path") corrected a regression the lenient schema introduced at
+Feature 52's `encryption.ts` site, and `a9ea0bd9` reconciled this
+document's coverage claims for both features against the shipped result.
+`editor-config.ts` is the module OQ-33 flags as
 "never assigned to any tier"; verified against the tree (2026-09-17) that
 its two sites do share the dual-purpose error/success body pattern the
 parent spec describes. That same verification found `preferences.ts`'s one
@@ -1650,13 +1686,14 @@ not called out in OQ-33 itself — so this entry groups the two modules
 together by shape rather than treating `editor-config.ts` as sole owner of
 that problem. `preferences.ts`'s other method, `savePreferences`, is
 fire-and-forget (no response body read at all) and contributes none of
-this module's one counted site. **Open design question for this feature's
-own spec, not decided here:** all three bodies here are already typed
-all-optional today (`EditorConfigResponse | null` and the preferences
-inline type both make every field optional), so a fully-optional lenient
-schema would validate very little beyond confirming the body parsed as an
-object — it would mostly add the reporting seam rather than catch a
-malformed field. A discriminated union would validate more, but first
+this module's one counted site. **Open design question this feature's
+spec settled at implementation time:** all three bodies here were already
+typed all-optional today (`EditorConfigResponse | null` and the
+preferences inline type both make every field optional), so a
+fully-optional lenient schema validates very little beyond confirming the
+body parsed as an object — it mostly adds the reporting seam rather than
+catching a malformed field. A discriminated union would have validated
+more, but first
 requires deciding what distinguishes an error body from a success body at
 each site — a candidate discriminant is presence of `error` vs. presence of
 `editorConfig` (or the module's analogous success field) /
@@ -2210,9 +2247,12 @@ Feature 62 may now proceed to full design using this finding.
   covers the 3 one-body-serves-both-outcomes sites across 2 modules
   (`editor-config.ts`, `preferences.ts`). Each still depends only on the
   already-shipped Feature 48 for its shared validation mechanism, not on
-  one another, and can be built in any order or in parallel; Feature 50 has
-  since shipped, leaving 51, 52, and 53 as remaining work each needing its
-  own future pass through the pipeline. 54, 55, 56, and 57 (the
+  one another, and can be built in any order or in parallel; all four —
+  50, 51, 52, and 53 — have since shipped (52 and 53 together, in one
+  combined implementation pass via
+  `specs/features/transport-validation-remaining-sites.md`, merged in PR
+  #248/merge commit `6f7ac3f5`), completing Feature 48's deferred
+  transport-boundary-validation remainder in full. 54, 55, 56, and 57 (the
   locked-access survey's breakdown, added 2026-09-17 per the parent spec's
   locked-access constraint and its OQ-36/OQ-37) each depend only on the
   already-shipped Feature 23 and not on one another; 54 and 55 were sized as
@@ -2229,11 +2269,13 @@ Feature 62 may now proceed to full design using this finding.
   57, 58, 59, 60, 61, 62, 64 (30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 52, 53. Everything
+- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47. Everything
   else in this list has shipped (Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped
   separately as Feature 49; Feature 48's own deferred remainder is tracked
-  separately as Features 50-53, of which 50 and 51 have since shipped; the
+  separately as Features 50-53, all of which have since shipped — 50 and
+  51 each their own pass, 52 and 53 together in one combined pass (PR
+  #248/merge commit `6f7ac3f5`) — completing that initiative in full; the
   locked-access gap was tracked as Features 54-57, of which 54 and 56 have
   since shipped, 55 was superseded by 54 and will not be built, and 57
   closed as a completed measurement).
