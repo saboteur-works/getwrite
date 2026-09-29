@@ -1519,7 +1519,7 @@ and `resource-excerpts.ts:59` — 12 sites across 7 modules in total.
 with Feature 51 instead, since it does not share this group's
 degrade-on-failure mechanism.
 
-### Feature 51: Transport response-body validation — status-only reject, unchecked success cast — Not started
+### Feature 51: Transport response-body validation — status-only reject, unchecked success cast — Shipped
 
 **Value:** A writer compiling or exporting a manuscript, or saving a
 revision's content, and receiving a malformed 200 response body gets that
@@ -2229,11 +2229,11 @@ Feature 62 may now proceed to full design using this finding.
   57, 58, 59, 60, 61, 62, 64 (30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 51, 52, 53. Everything
+- Not yet built: 24, 27, 28, 29, 30, 32, 44, 46, 47, 52, 53. Everything
   else in this list has shipped (Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped
   separately as Feature 49; Feature 48's own deferred remainder is tracked
-  separately as Features 50-53, of which 50 has since shipped; the
+  separately as Features 50-53, of which 50 and 51 have since shipped; the
   locked-access gap was tracked as Features 54-57, of which 54 and 56 have
   since shipped, 55 was superseded by 54 and will not be built, and 57
   closed as a completed measurement).
