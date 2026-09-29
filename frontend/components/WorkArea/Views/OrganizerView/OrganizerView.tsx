@@ -126,6 +126,16 @@ export default function OrganizerView({
     defaultStatus,
   );
 
+  // FR-9: whether any filter is currently active, used to distinguish a
+  // genuinely empty folder from one filtered down to zero visible cards.
+  const isAnyFilterActive =
+    filterState.status !== undefined ||
+    filterState.wordCountMin !== undefined ||
+    filterState.wordCountMax !== undefined ||
+    Object.values(filterState.refFilters).some(
+      (value) => value !== undefined && value !== "",
+    );
+
   // Only text resources have content.txt to excerpt. Keyed as a stable string
   // so the effect re-runs only when the visible set actually changes.
   const cardBodySource = cardBodyConfig?.source;
@@ -195,6 +205,10 @@ export default function OrganizerView({
         </p>
       ) : allChildren.length === 0 ? (
         <p className="text-sm text-gw-secondary">This folder is empty.</p>
+      ) : isAnyFilterActive && visibleChildren.length === 0 ? (
+        <p className="text-sm text-gw-secondary">
+          No cards match the current filters.
+        </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {visibleChildren.map((child) => (
