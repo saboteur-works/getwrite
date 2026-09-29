@@ -68,9 +68,9 @@ export interface OrganizerFilterBarProps {
   /**
    * Whether the advanced-filters disclosure nested within the filter area is
    * expanded (FR-14). Session-only state owned by `OrganizerView`, same
-   * rationale as {@link isFilterAreaOpen}. Not yet consumed by any rendering
-   * here — wiring pending Task 14, which will nest the resource-ref controls
-   * behind it.
+   * rationale as {@link isFilterAreaOpen}. Gates the resource-ref filter
+   * controls (`refFields.map(...)`), which render only when this and
+   * {@link isFilterAreaOpen} are both `true`.
    */
   isAdvancedFiltersOpen: boolean;
   /** Setter for {@link isAdvancedFiltersOpen}. */
@@ -91,8 +91,8 @@ export default function OrganizerFilterBar({
   refFieldValues,
   isFilterAreaOpen,
   setIsFilterAreaOpen,
-  isAdvancedFiltersOpen: _isAdvancedFiltersOpen,
-  setIsAdvancedFiltersOpen: _setIsAdvancedFiltersOpen,
+  isAdvancedFiltersOpen,
+  setIsAdvancedFiltersOpen,
 }: OrganizerFilterBarProps): JSX.Element {
   const selectValue = filterState.status ?? ALL_STATUSES_VALUE;
 
@@ -159,6 +159,10 @@ export default function OrganizerFilterBar({
 
   const handleToggleFilterArea = () => {
     setIsFilterAreaOpen((open) => !open);
+  };
+
+  const handleToggleAdvancedFilters = () => {
+    setIsAdvancedFiltersOpen((open) => !open);
   };
 
   return (
@@ -247,49 +251,69 @@ export default function OrganizerFilterBar({
             </button>
           )}
 
-          {refFields.map((field) => {
-            const controlId = `organizer-ref-filter-${field.key}`;
-            const selectedRefValue =
-              filterState.refFilters[field.key] ?? ALL_REF_VALUES_VALUE;
-            const isRefFieldActive =
-              filterState.refFilters[field.key] !== undefined;
-            return (
-              <React.Fragment key={field.key}>
-                <label
-                  htmlFor={controlId}
-                  className="text-xs text-gw-secondary"
-                >
-                  {field.label}
-                </label>
-                <select
-                  id={controlId}
-                  aria-label={`Filter by ${field.label}`}
-                  value={selectedRefValue}
-                  onChange={(e) => handleRefFilterChange(field.key, e)}
-                  className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
-                >
-                  <option value={ALL_REF_VALUES_VALUE}>
-                    All {field.label}
-                  </option>
-                  {(refFieldValues[field.key] ?? []).map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-                {isRefFieldActive && (
-                  <button
-                    type="button"
-                    aria-label={`Clear ${field.label} filter`}
-                    onClick={() => handleClearRefFilter(field.key)}
-                    className="text-gw-secondary hover:text-gw-primary"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </React.Fragment>
-            );
-          })}
+          <div>
+            <button
+              type="button"
+              aria-expanded={isAdvancedFiltersOpen}
+              onClick={handleToggleAdvancedFilters}
+              className="text-xs text-gw-secondary"
+            >
+              Advanced filters
+            </button>
+            {/*
+             * Rendered even when refFields is empty (FR-14 leaves this
+             * unprescribed) — the toggle stays a stable, predictable
+             * control rather than appearing/disappearing based on the
+             * active project's metadata schema.
+             */}
+            {isAdvancedFiltersOpen && (
+              <div className="flex items-center gap-3 mt-2">
+                {refFields.map((field) => {
+                  const controlId = `organizer-ref-filter-${field.key}`;
+                  const selectedRefValue =
+                    filterState.refFilters[field.key] ?? ALL_REF_VALUES_VALUE;
+                  const isRefFieldActive =
+                    filterState.refFilters[field.key] !== undefined;
+                  return (
+                    <React.Fragment key={field.key}>
+                      <label
+                        htmlFor={controlId}
+                        className="text-xs text-gw-secondary"
+                      >
+                        {field.label}
+                      </label>
+                      <select
+                        id={controlId}
+                        aria-label={`Filter by ${field.label}`}
+                        value={selectedRefValue}
+                        onChange={(e) => handleRefFilterChange(field.key, e)}
+                        className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+                      >
+                        <option value={ALL_REF_VALUES_VALUE}>
+                          All {field.label}
+                        </option>
+                        {(refFieldValues[field.key] ?? []).map((value) => (
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                      {isRefFieldActive && (
+                        <button
+                          type="button"
+                          aria-label={`Clear ${field.label} filter`}
+                          onClick={() => handleClearRefFilter(field.key)}
+                          className="text-gw-secondary hover:text-gw-primary"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {isAnyFilterActive && (
             <Button

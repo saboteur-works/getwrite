@@ -80,7 +80,7 @@ describe("a11y: OrganizerFilterBar", () => {
         refFieldValues={refFieldValues}
         isFilterAreaOpen={true}
         setIsFilterAreaOpen={vi.fn()}
-        isAdvancedFiltersOpen={false}
+        isAdvancedFiltersOpen={true}
         setIsAdvancedFiltersOpen={vi.fn()}
       />,
     );
@@ -123,7 +123,7 @@ describe("a11y: OrganizerFilterBar", () => {
         refFieldValues={refFieldValues}
         isFilterAreaOpen={true}
         setIsFilterAreaOpen={vi.fn()}
-        isAdvancedFiltersOpen={false}
+        isAdvancedFiltersOpen={true}
         setIsAdvancedFiltersOpen={vi.fn()}
       />,
     );
