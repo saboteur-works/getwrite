@@ -139,6 +139,10 @@ lost work.
   hold in memory. [Shipped]
 - US-8: As a plain-file writer, I want to install a signed desktop build
   so that I can trust and use the app day to day. [In Progress]
+- US-23: As a plain-file writer, I want to filter Organizer's card grid by
+  Status, by word count, and by the resource-reference fields my project
+  defines so that I can narrow a folder's cards to what matters without
+  leaving the view. [Shipped]
 
 **Working writers on deadline**
 - US-9: As a writer on deadline, I want to autosave into a single canonical
@@ -527,7 +531,7 @@ lost work.
   common case); no card filtering of any kind exists today. Organizer's only
   in-view control is a show/hide-bodies toggle — though what a card body
   renders (nothing, a text excerpt of configurable length, or any metadata
-  field) is a separate per-project setting that already ships. [US-7]
+  field) is a separate per-project setting that already ships. [US-23]
 - FR-27: Desktop builds MUST be signed and installable without an OS
   security warning on macOS and Windows. [US-8]
 
