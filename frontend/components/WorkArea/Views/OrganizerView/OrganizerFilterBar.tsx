@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { ChevronDown, ChevronRight, X } from "lucide-react";
 import type { MetadataField } from "../../../../src/lib/models/types";
 import Button from "../../../common/UI/Button";
 import {
@@ -171,93 +171,107 @@ export default function OrganizerFilterBar({
         type="button"
         aria-expanded={isFilterAreaOpen}
         onClick={handleToggleFilterArea}
-        className="text-xs text-gw-secondary"
+        className="flex items-center gap-1 text-xs text-gw-secondary"
       >
+        {isFilterAreaOpen ? (
+          <ChevronDown size={14} />
+        ) : (
+          <ChevronRight size={14} />
+        )}
         Filters
       </button>
       {isFilterAreaOpen && (
-        <div className="flex items-center gap-3 mt-2">
-          <label
-            htmlFor="organizer-status-filter"
-            className="text-xs text-gw-secondary"
-          >
-            Status
-          </label>
-          <select
-            id="organizer-status-filter"
-            aria-label="Filter by status"
-            value={selectValue}
-            onChange={handleStatusChange}
-            className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
-          >
-            <option value={ALL_STATUSES_VALUE}>All statuses</option>
-            {statuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-            <option value={NO_STATUS_FILTER_VALUE}>No status</option>
-          </select>
-          {isStatusActive && (
-            <button
-              type="button"
-              aria-label="Clear status filter"
-              onClick={handleClearStatus}
-              className="text-gw-secondary hover:text-gw-primary"
+        <div className="flex flex-col gap-3 mt-2">
+          <div className="flex items-center gap-3">
+            <label
+              htmlFor="organizer-status-filter"
+              className="text-xs text-gw-secondary"
             >
-              <X size={14} />
-            </button>
-          )}
-
-          <label
-            htmlFor="organizer-word-count-min-filter"
-            className="text-xs text-gw-secondary"
-          >
-            Minimum words
-          </label>
-          <input
-            id="organizer-word-count-min-filter"
-            aria-label="Minimum words"
-            type="number"
-            min={0}
-            value={filterState.wordCountMin ?? ""}
-            onChange={handleMinChange}
-            className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
-          />
-
-          <label
-            htmlFor="organizer-word-count-max-filter"
-            className="text-xs text-gw-secondary"
-          >
-            Maximum words
-          </label>
-          <input
-            id="organizer-word-count-max-filter"
-            aria-label="Maximum words"
-            type="number"
-            min={0}
-            value={filterState.wordCountMax ?? ""}
-            onChange={handleMaxChange}
-            className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
-          />
-          {isWordCountActive && (
-            <button
-              type="button"
-              aria-label="Clear word count filter"
-              onClick={handleClearWordCount}
-              className="text-gw-secondary hover:text-gw-primary"
+              Status
+            </label>
+            <select
+              id="organizer-status-filter"
+              aria-label="Filter by status"
+              value={selectValue}
+              onChange={handleStatusChange}
+              className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
             >
-              <X size={14} />
-            </button>
-          )}
+              <option value={ALL_STATUSES_VALUE}>All statuses</option>
+              {statuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+              <option value={NO_STATUS_FILTER_VALUE}>No status</option>
+            </select>
+            {isStatusActive && (
+              <button
+                type="button"
+                aria-label="Clear status filter"
+                onClick={handleClearStatus}
+                className="text-gw-secondary hover:text-gw-primary"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label
+              htmlFor="organizer-word-count-min-filter"
+              className="text-xs text-gw-secondary"
+            >
+              Minimum words
+            </label>
+            <input
+              id="organizer-word-count-min-filter"
+              aria-label="Minimum words"
+              type="number"
+              min={0}
+              value={filterState.wordCountMin ?? ""}
+              onChange={handleMinChange}
+              className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+            />
+
+            <label
+              htmlFor="organizer-word-count-max-filter"
+              className="text-xs text-gw-secondary"
+            >
+              Maximum words
+            </label>
+            <input
+              id="organizer-word-count-max-filter"
+              aria-label="Maximum words"
+              type="number"
+              min={0}
+              value={filterState.wordCountMax ?? ""}
+              onChange={handleMaxChange}
+              className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+            />
+            {isWordCountActive && (
+              <button
+                type="button"
+                aria-label="Clear word count filter"
+                onClick={handleClearWordCount}
+                className="text-gw-secondary hover:text-gw-primary"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
 
           <div>
             <button
               type="button"
               aria-expanded={isAdvancedFiltersOpen}
               onClick={handleToggleAdvancedFilters}
-              className="text-xs text-gw-secondary"
+              className="flex items-center gap-1 text-xs text-gw-secondary"
             >
+              {isAdvancedFiltersOpen ? (
+                <ChevronDown size={14} />
+              ) : (
+                <ChevronRight size={14} />
+              )}
               Advanced filters
             </button>
             {/*
@@ -267,7 +281,7 @@ export default function OrganizerFilterBar({
              * active project's metadata schema.
              */}
             {isAdvancedFiltersOpen && (
-              <div className="flex items-center gap-3 mt-2">
+              <div className="flex flex-col gap-3 mt-2">
                 {refFields.map((field) => {
                   const controlId = `organizer-ref-filter-${field.key}`;
                   const selectedRefValue =
@@ -275,7 +289,7 @@ export default function OrganizerFilterBar({
                   const isRefFieldActive =
                     filterState.refFilters[field.key] !== undefined;
                   return (
-                    <React.Fragment key={field.key}>
+                    <div key={field.key} className="flex items-center gap-3">
                       <label
                         htmlFor={controlId}
                         className="text-xs text-gw-secondary"
@@ -308,7 +322,7 @@ export default function OrganizerFilterBar({
                           <X size={14} />
                         </button>
                       )}
-                    </React.Fragment>
+                    </div>
                   );
                 })}
               </div>
