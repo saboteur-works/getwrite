@@ -60,8 +60,7 @@ export interface OrganizerFilterBarProps {
    * Whether the filter area itself is expanded (FR-12). Session-only state
    * owned by `OrganizerView`, deliberately kept separate from
    * `OrganizerFilterState`/`organizerFilters.ts`'s reducer so it is never
-   * reset alongside filter values. Not yet consumed by any rendering here —
-   * wiring only, pending Task 13.
+   * reset alongside filter values.
    */
   isFilterAreaOpen: boolean;
   /** Setter for {@link isFilterAreaOpen}. */
@@ -70,7 +69,8 @@ export interface OrganizerFilterBarProps {
    * Whether the advanced-filters disclosure nested within the filter area is
    * expanded (FR-14). Session-only state owned by `OrganizerView`, same
    * rationale as {@link isFilterAreaOpen}. Not yet consumed by any rendering
-   * here — wiring only, pending Task 14.
+   * here — wiring pending Task 14, which will nest the resource-ref controls
+   * behind it.
    */
   isAdvancedFiltersOpen: boolean;
   /** Setter for {@link isAdvancedFiltersOpen}. */
@@ -89,8 +89,8 @@ export default function OrganizerFilterBar({
   statuses,
   refFields,
   refFieldValues,
-  isFilterAreaOpen: _isFilterAreaOpen,
-  setIsFilterAreaOpen: _setIsFilterAreaOpen,
+  isFilterAreaOpen,
+  setIsFilterAreaOpen,
   isAdvancedFiltersOpen: _isAdvancedFiltersOpen,
   setIsAdvancedFiltersOpen: _setIsAdvancedFiltersOpen,
 }: OrganizerFilterBarProps): JSX.Element {
@@ -157,130 +157,151 @@ export default function OrganizerFilterBar({
     isWordCountActive ||
     Object.values(filterState.refFilters).some((value) => value !== undefined);
 
+  const handleToggleFilterArea = () => {
+    setIsFilterAreaOpen((open) => !open);
+  };
+
   return (
-    <div className="flex items-center gap-3 mb-4">
-      <label
-        htmlFor="organizer-status-filter"
+    <div className="mb-4">
+      <button
+        type="button"
+        aria-expanded={isFilterAreaOpen}
+        onClick={handleToggleFilterArea}
         className="text-xs text-gw-secondary"
       >
-        Status
-      </label>
-      <select
-        id="organizer-status-filter"
-        aria-label="Filter by status"
-        value={selectValue}
-        onChange={handleStatusChange}
-        className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
-      >
-        <option value={ALL_STATUSES_VALUE}>All statuses</option>
-        {statuses.map((status) => (
-          <option key={status} value={status}>
-            {status}
-          </option>
-        ))}
-        <option value={NO_STATUS_FILTER_VALUE}>No status</option>
-      </select>
-      {isStatusActive && (
-        <button
-          type="button"
-          aria-label="Clear status filter"
-          onClick={handleClearStatus}
-          className="text-gw-secondary hover:text-gw-primary"
-        >
-          <X size={14} />
-        </button>
-      )}
-
-      <label
-        htmlFor="organizer-word-count-min-filter"
-        className="text-xs text-gw-secondary"
-      >
-        Minimum words
-      </label>
-      <input
-        id="organizer-word-count-min-filter"
-        aria-label="Minimum words"
-        type="number"
-        min={0}
-        value={filterState.wordCountMin ?? ""}
-        onChange={handleMinChange}
-        className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
-      />
-
-      <label
-        htmlFor="organizer-word-count-max-filter"
-        className="text-xs text-gw-secondary"
-      >
-        Maximum words
-      </label>
-      <input
-        id="organizer-word-count-max-filter"
-        aria-label="Maximum words"
-        type="number"
-        min={0}
-        value={filterState.wordCountMax ?? ""}
-        onChange={handleMaxChange}
-        className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
-      />
-      {isWordCountActive && (
-        <button
-          type="button"
-          aria-label="Clear word count filter"
-          onClick={handleClearWordCount}
-          className="text-gw-secondary hover:text-gw-primary"
-        >
-          <X size={14} />
-        </button>
-      )}
-
-      {refFields.map((field) => {
-        const controlId = `organizer-ref-filter-${field.key}`;
-        const selectedRefValue =
-          filterState.refFilters[field.key] ?? ALL_REF_VALUES_VALUE;
-        const isRefFieldActive =
-          filterState.refFilters[field.key] !== undefined;
-        return (
-          <React.Fragment key={field.key}>
-            <label htmlFor={controlId} className="text-xs text-gw-secondary">
-              {field.label}
-            </label>
-            <select
-              id={controlId}
-              aria-label={`Filter by ${field.label}`}
-              value={selectedRefValue}
-              onChange={(e) => handleRefFilterChange(field.key, e)}
-              className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+        Filters
+      </button>
+      {isFilterAreaOpen && (
+        <div className="flex items-center gap-3 mt-2">
+          <label
+            htmlFor="organizer-status-filter"
+            className="text-xs text-gw-secondary"
+          >
+            Status
+          </label>
+          <select
+            id="organizer-status-filter"
+            aria-label="Filter by status"
+            value={selectValue}
+            onChange={handleStatusChange}
+            className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+          >
+            <option value={ALL_STATUSES_VALUE}>All statuses</option>
+            {statuses.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+            <option value={NO_STATUS_FILTER_VALUE}>No status</option>
+          </select>
+          {isStatusActive && (
+            <button
+              type="button"
+              aria-label="Clear status filter"
+              onClick={handleClearStatus}
+              className="text-gw-secondary hover:text-gw-primary"
             >
-              <option value={ALL_REF_VALUES_VALUE}>All {field.label}</option>
-              {(refFieldValues[field.key] ?? []).map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-            {isRefFieldActive && (
-              <button
-                type="button"
-                aria-label={`Clear ${field.label} filter`}
-                onClick={() => handleClearRefFilter(field.key)}
-                className="text-gw-secondary hover:text-gw-primary"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </React.Fragment>
-        );
-      })}
+              <X size={14} />
+            </button>
+          )}
 
-      {isAnyFilterActive && (
-        <Button
-          variant="secondary"
-          size="xs"
-          aria-label="Clear all filters"
-          onClick={handleClearAll}
-        >
-          Clear all filters
-        </Button>
+          <label
+            htmlFor="organizer-word-count-min-filter"
+            className="text-xs text-gw-secondary"
+          >
+            Minimum words
+          </label>
+          <input
+            id="organizer-word-count-min-filter"
+            aria-label="Minimum words"
+            type="number"
+            min={0}
+            value={filterState.wordCountMin ?? ""}
+            onChange={handleMinChange}
+            className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+          />
+
+          <label
+            htmlFor="organizer-word-count-max-filter"
+            className="text-xs text-gw-secondary"
+          >
+            Maximum words
+          </label>
+          <input
+            id="organizer-word-count-max-filter"
+            aria-label="Maximum words"
+            type="number"
+            min={0}
+            value={filterState.wordCountMax ?? ""}
+            onChange={handleMaxChange}
+            className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+          />
+          {isWordCountActive && (
+            <button
+              type="button"
+              aria-label="Clear word count filter"
+              onClick={handleClearWordCount}
+              className="text-gw-secondary hover:text-gw-primary"
+            >
+              <X size={14} />
+            </button>
+          )}
+
+          {refFields.map((field) => {
+            const controlId = `organizer-ref-filter-${field.key}`;
+            const selectedRefValue =
+              filterState.refFilters[field.key] ?? ALL_REF_VALUES_VALUE;
+            const isRefFieldActive =
+              filterState.refFilters[field.key] !== undefined;
+            return (
+              <React.Fragment key={field.key}>
+                <label
+                  htmlFor={controlId}
+                  className="text-xs text-gw-secondary"
+                >
+                  {field.label}
+                </label>
+                <select
+                  id={controlId}
+                  aria-label={`Filter by ${field.label}`}
+                  value={selectedRefValue}
+                  onChange={(e) => handleRefFilterChange(field.key, e)}
+                  className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+                >
+                  <option value={ALL_REF_VALUES_VALUE}>
+                    All {field.label}
+                  </option>
+                  {(refFieldValues[field.key] ?? []).map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+                {isRefFieldActive && (
+                  <button
+                    type="button"
+                    aria-label={`Clear ${field.label} filter`}
+                    onClick={() => handleClearRefFilter(field.key)}
+                    className="text-gw-secondary hover:text-gw-primary"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </React.Fragment>
+            );
+          })}
+
+          {isAnyFilterActive && (
+            <Button
+              variant="secondary"
+              size="xs"
+              aria-label="Clear all filters"
+              onClick={handleClearAll}
+            >
+              Clear all filters
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );
