@@ -6,14 +6,6 @@ Horizons reflect priority and readiness, not committed dates. This document cove
 
 ---
 
-## Now — In Progress
-
-### Authoring & Editor
-
-- **Organizer view filters** — Filtering of Organizer cards by status, character, location, and word count. _Status: not started. Verified against code 2026-08-24 — `OrganizerView.tsx` has no filter state or filter UI; its only control is a show/hide-bodies toggle. This entry previously claimed status and folder filtering shipped; that was inaccurate._ → [user/features.md](user/features.md)
-
----
-
 ## Later — Planned
 
 ### Templates & Scaffolding
@@ -48,6 +40,7 @@ Horizons reflect priority and readiness, not committed dates. This document cove
 
 A curated snapshot of recent highlights — not an exhaustive changelog.
 
+- **Organizer view card filtering** — Filter the Organizer's card grid by status, word count (text resources only), and one control per `resource-ref`/`multi-resource-ref` metadata field the project defines (e.g. POV character); all active filters combine with AND, each has its own clear control plus a "Clear all filters" action, and the filter state resets on folder navigation. Client-side only, no new network requests. → [views/organizer.md](user/views/organizer.md)
 - **Trash recovery UI** — A project-wide Trash tab to browse, restore, and permanently purge soft-deleted resources and folders, individually or in a batch (with an "Empty trash" action), including cascade delete/restore of a folder's whole subtree and automatic re-linking of references on restore. The native (Android) transport is now a real in-process implementation, not yet exercised on a physical device. → [revisions.md](user/revisions.md)
 - **End-to-end encryption** — Per-project opt-in encryption on desktop and native Android: a workspace keyring with a lock/unlock session, sealed file bodies, crash-safe resumable conversion in both directions, and a plaintext export escape hatch. Deliberately excluded from the hosted deployment by a fail-closed server-side gate. → [ADRs/adr-022-end-to-end-encryption-via-storage-adapter-decorator.md](architecture/ADRs/adr-022-end-to-end-encryption-via-storage-adapter-decorator.md)
 - **Native Android app (in-process)** — The whole data layer collapses in-process on native with no HTTP round-trip, over a real Capacitor filesystem bridge. Shipped as code; packaging and distribution are not done (see Later). → [ADRs/adr-021-native-android-via-capacitor-in-process.md](architecture/ADRs/adr-021-native-android-via-capacitor-in-process.md)
