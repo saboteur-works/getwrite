@@ -464,6 +464,62 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
     expect(screen.getByText("Folder B Resource")).toBeTruthy();
   });
 
+  it("persists both collapse states across a folder change while filter values reset (FR-15)", () => {
+    const { store, rDraftAlice } = makeFilterableStore();
+    const otherResource = createTextResource({
+      name: "Folder B Resource",
+      plainText: "just one",
+      folderId: FOLDER_B_ID,
+    });
+    store.dispatch(setResources([rDraftAlice, otherResource] as any));
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    // Expand the top-level filter area and the nested Advanced filters
+    // section, then set a filter value.
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Advanced filters" }));
+    fireEvent.change(screen.getByLabelText("Filter by status"), {
+      target: { value: "Draft" },
+    });
+
+    const filtersToggle = screen.getByRole("button", { name: "Filters" });
+    const advancedToggle = screen.getByRole("button", {
+      name: "Advanced filters",
+    });
+    expect(filtersToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(advancedToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      (screen.getByLabelText("Filter by status") as HTMLSelectElement).value,
+    ).toBe("Draft");
+
+    act(() => {
+      store.dispatch(setSelectedResourceId(FOLDER_B_ID));
+    });
+
+    // Collapse state (UI chrome) is unaffected by the folder change (FR-15),
+    // in direct contrast to FR-10's filter-value reset, which still fires on
+    // the very same navigation event.
+    expect(
+      screen
+        .getByRole("button", { name: "Filters" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(
+      screen
+        .getByRole("button", { name: "Advanced filters" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(
+      (screen.getByLabelText("Filter by status") as HTMLSelectElement).value,
+    ).toBe("");
+    expect(screen.getByText("Folder B Resource")).toBeTruthy();
+  });
+
   it("triggers no additional fetchResourceExcerpts call when a filter changes (FR-11)", async () => {
     const mockFetch = vi.mocked(fetchResourceExcerpts);
     mockFetch.mockClear();
