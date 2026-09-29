@@ -1,6 +1,7 @@
 import React from "react";
 import type { AnyResource, Folder } from "../../../../src/lib/models/types";
 import OrganizerCard from "./OrganizerCard";
+import OrganizerFilterBar from "./OrganizerFilterBar";
 import useAppSelector, { useAppDispatch } from "../../../../src/store/hooks";
 import {
   selectFolders,
@@ -58,8 +59,11 @@ export default function OrganizerView({
   const selectedResourceId = useAppSelector(
     (s) => s.resources.selectedResourceId,
   );
-  const defaultStatus =
-    useAppSelector((s) => selectActiveProjectStatuses(s))[0] ?? "";
+  const statuses = useAppSelector(
+    (s) => selectActiveProjectStatuses(s),
+    shallowEqual,
+  );
+  const defaultStatus = statuses[0] ?? "";
   // Card body source is project-configured (field / text-excerpt / none); the
   // Notes flag only drives the back-compat default when no config is set.
   const cardBodyConfig = useAppSelector(selectActiveProjectOrganizerCardBody);
@@ -176,6 +180,14 @@ export default function OrganizerView({
           {isShowingBody ? "Hide bodies" : "Show bodies"}
         </Button>
       </div>
+
+      {selectedFolder && allChildren.length > 0 && (
+        <OrganizerFilterBar
+          filterState={filterState}
+          dispatchFilter={dispatchFilter}
+          statuses={statuses}
+        />
+      )}
 
       {!selectedFolder ? (
         <p className="text-sm text-gw-secondary">
