@@ -1,5 +1,7 @@
 import React from "react";
+import { X } from "lucide-react";
 import type { MetadataField } from "../../../../src/lib/models/types";
+import Button from "../../../common/UI/Button";
 import {
   NO_STATUS_FILTER_VALUE,
   type OrganizerFilterAction,
@@ -11,9 +13,10 @@ import {
  * Filter bar rendered above the Organizer view's card grid (see
  * `specs/features/organizer-card-filtering.md`). Holds the Status filter
  * control (FR-1, FR-2), the free-form min/max word-count range filter
- * (FR-3, FR-4), and one dropdown per `resource-ref`/`multi-resource-ref`
- * metadata field defined on the active project (FR-5, FR-6). Purely
- * presentational — all filter-state transitions are dispatched via
+ * (FR-3, FR-4), one dropdown per `resource-ref`/`multi-resource-ref`
+ * metadata field defined on the active project (FR-5, FR-6), and a
+ * per-filter clear control plus a "Clear all filters" control (FR-8).
+ * Purely presentational — all filter-state transitions are dispatched via
  * `OrganizerFilterAction`s and evaluated by `organizerFilters.ts`'s
  * `filterChildren`.
  */
@@ -106,6 +109,31 @@ export default function OrganizerFilterBar({
     });
   };
 
+  const handleClearStatus = () => {
+    dispatchFilter({ type: "clear-one", key: "status" });
+  };
+
+  const handleClearWordCount = () => {
+    dispatchFilter({ type: "clear-one", key: "wordCount" });
+  };
+
+  const handleClearRefFilter = (fieldKey: string) => {
+    dispatchFilter({ type: "clear-one", key: { refFieldKey: fieldKey } });
+  };
+
+  const handleClearAll = () => {
+    dispatchFilter({ type: "clear-all" });
+  };
+
+  const isStatusActive = filterState.status !== undefined;
+  const isWordCountActive =
+    filterState.wordCountMin !== undefined ||
+    filterState.wordCountMax !== undefined;
+  const isAnyFilterActive =
+    isStatusActive ||
+    isWordCountActive ||
+    Object.values(filterState.refFilters).some((value) => value !== undefined);
+
   return (
     <div className="flex items-center gap-3 mb-4">
       <label
@@ -129,6 +157,16 @@ export default function OrganizerFilterBar({
         ))}
         <option value={NO_STATUS_FILTER_VALUE}>No status</option>
       </select>
+      {isStatusActive && (
+        <button
+          type="button"
+          aria-label="Clear status filter"
+          onClick={handleClearStatus}
+          className="text-gw-secondary hover:text-gw-primary"
+        >
+          <X size={14} />
+        </button>
+      )}
 
       <label
         htmlFor="organizer-word-count-min-filter"
@@ -161,11 +199,23 @@ export default function OrganizerFilterBar({
         onChange={handleMaxChange}
         className="w-24 p-2 border border-gw-border bg-gw-chrome2 px-3 py-1.5 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
       />
+      {isWordCountActive && (
+        <button
+          type="button"
+          aria-label="Clear word count filter"
+          onClick={handleClearWordCount}
+          className="text-gw-secondary hover:text-gw-primary"
+        >
+          <X size={14} />
+        </button>
+      )}
 
       {refFields.map((field) => {
         const controlId = `organizer-ref-filter-${field.key}`;
         const selectedRefValue =
           filterState.refFilters[field.key] ?? ALL_REF_VALUES_VALUE;
+        const isRefFieldActive =
+          filterState.refFilters[field.key] !== undefined;
         return (
           <React.Fragment key={field.key}>
             <label htmlFor={controlId} className="text-xs text-gw-secondary">
@@ -185,9 +235,30 @@ export default function OrganizerFilterBar({
                 </option>
               ))}
             </select>
+            {isRefFieldActive && (
+              <button
+                type="button"
+                aria-label={`Clear ${field.label} filter`}
+                onClick={() => handleClearRefFilter(field.key)}
+                className="text-gw-secondary hover:text-gw-primary"
+              >
+                <X size={14} />
+              </button>
+            )}
           </React.Fragment>
         );
       })}
+
+      {isAnyFilterActive && (
+        <Button
+          variant="secondary"
+          size="xs"
+          aria-label="Clear all filters"
+          onClick={handleClearAll}
+        >
+          Clear all filters
+        </Button>
+      )}
     </div>
   );
 }
