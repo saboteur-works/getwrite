@@ -134,7 +134,7 @@ export default function OrganizerCard({
                 <button
                   type="button"
                   onClick={onSelect}
-                  className="hover:bg-gw-chrome2 rounded transition-colors duration-150"
+                  className="text-gw-secondary hover:text-gw-primary transition-colors duration-150"
                 >
                   {title}
                 </button>
