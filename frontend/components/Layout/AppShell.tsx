@@ -99,7 +99,9 @@ import {
   selectResource,
   selectResources,
   selectFolders,
+  selectSuppressNextViewAutoSwitch,
   setSelectedResourceId,
+  setSuppressNextViewAutoSwitch,
   updateResource,
   updateFolder,
 } from "../../src/store/resourcesSlice";
@@ -269,9 +271,13 @@ export default function AppShell({
   const combined = React.useMemo(() => {
     return [...(resources ?? []), ...(folders ?? [])];
   }, [resources, folders]);
+  const dispatch = useAppDispatch();
   const selectedResource = useAppSelector(
     (state) => selectResource(state.resources),
     shallowEqual,
+  );
+  const shouldSuppressNextViewAutoSwitch = useAppSelector((s) =>
+    selectSuppressNextViewAutoSwitch(s.resources),
   );
   const liveResources = useAppSelector((s) => selectResources(s.resources));
   const liveFolders = useAppSelector((s) => selectFolders(s.resources));
@@ -336,6 +342,18 @@ export default function AppShell({
   );
 
   useEffect(() => {
+    // FR-3/FR-4 (specs/features/organizer-card-icons-and-open.md): a
+    // one-shot suppression flag, set by `OrganizerCard`'s title-click
+    // `onSelect` handler immediately before `setSelectedResourceId`, skips
+    // this run's `setView` calls entirely so clicking a card's title selects
+    // the resource without switching the active work-area view. The flag is
+    // read and cleared here, once per run this effect already fires for —
+    // deliberately not added to the dependency array below, since doing so
+    // would cause a redundant extra run when the flag clears.
+    if (shouldSuppressNextViewAutoSwitch) {
+      dispatch(setSuppressNextViewAutoSwitch(false));
+      return;
+    }
     if (selectedResource?.type === "text") {
       setView((current) => (current === "organizer" ? "edit" : current));
       setActiveSmartFolderId(null);
@@ -360,6 +378,7 @@ export default function AppShell({
       setActiveSmartFolderId(null);
       setIsQueryBuilderOpen(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedResource?.id, selectedResource?.type]);
 
   // When the Timeline view is turned off, never strand the user on the (now
@@ -620,7 +639,6 @@ export default function AppShell({
       _prevProjectId.current = project?.id;
     }
   }, [project?.id]);
-  const dispatch = useAppDispatch();
 
   useEffect(() => {
     if (project?.id) {

@@ -56,7 +56,12 @@ function makeRevisionStore(
           },
         },
       },
-      resources: { selectedResourceId: "res-1", resources, folders: [] },
+      resources: {
+        selectedResourceId: "res-1",
+        resources,
+        folders: [],
+        suppressNextViewAutoSwitch: false,
+      },
       revisions: {
         resourceId: "res-1",
         requestedResourceId: null,

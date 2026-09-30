@@ -54,6 +54,7 @@ const selectedFolderStore = configureStore({
       selectedResourceId: "org-folder",
       resources: childResources,
       folders: [selectedFolder],
+      suppressNextViewAutoSwitch: false,
     },
   },
 });
@@ -178,6 +179,7 @@ const filtersStore = configureStore({
       selectedResourceId: "filters-folder",
       resources: filtersChildResources as AnyResource[],
       folders: [filtersFolder],
+      suppressNextViewAutoSwitch: false,
     },
   },
 });

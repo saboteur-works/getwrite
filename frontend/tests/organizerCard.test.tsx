@@ -1,8 +1,13 @@
 import React from "react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import OrganizerCard from "../components/WorkArea/Views/OrganizerView/OrganizerCard";
-import { createTextResource } from "../src/lib/models/resource";
+import {
+  createTextResource,
+  createImageResource,
+  createAudioResource,
+  createFolderResource,
+} from "../src/lib/models/resource";
 
 describe("OrganizerCard", () => {
   it("renders title, type, date, body and metadata when showBody is true", () => {
@@ -56,5 +61,144 @@ describe("OrganizerCard", () => {
 
     expect(screen.getByText("No Body")).toBeTruthy();
     expect(screen.queryByText(/No notes available/i)).toBeNull();
+  });
+
+  describe("per-type icon (FR-1, FR-2)", () => {
+    it("renders the text-resource icon and no other kind's icon", () => {
+      const res = createTextResource({ name: "Text Resource" });
+      const { container } = render(<OrganizerCard resource={res} />);
+
+      expect(container.querySelector(".lucide-file-text")).toBeTruthy();
+      expect(container.querySelector(".lucide-image")).toBeNull();
+      expect(container.querySelector(".lucide-music")).toBeNull();
+      expect(container.querySelector(".lucide-folder")).toBeNull();
+    });
+
+    it("renders the image-resource icon and no other kind's icon", () => {
+      const res = createImageResource({ name: "Image Resource" });
+      const { container } = render(<OrganizerCard resource={res} />);
+
+      expect(container.querySelector(".lucide-image")).toBeTruthy();
+      expect(container.querySelector(".lucide-file-text")).toBeNull();
+      expect(container.querySelector(".lucide-music")).toBeNull();
+      expect(container.querySelector(".lucide-folder")).toBeNull();
+    });
+
+    it("renders the audio-resource icon and no other kind's icon", () => {
+      const res = createAudioResource({ name: "Audio Resource" });
+      const { container } = render(<OrganizerCard resource={res} />);
+
+      expect(container.querySelector(".lucide-music")).toBeTruthy();
+      expect(container.querySelector(".lucide-file-text")).toBeNull();
+      expect(container.querySelector(".lucide-image")).toBeNull();
+      expect(container.querySelector(".lucide-folder")).toBeNull();
+    });
+
+    it("renders the folder icon and no other kind's icon", () => {
+      const res = createFolderResource({ name: "Folder Resource" });
+      const { container } = render(<OrganizerCard resource={res} />);
+
+      expect(container.querySelector(".lucide-folder")).toBeTruthy();
+      expect(container.querySelector(".lucide-file-text")).toBeNull();
+      expect(container.querySelector(".lucide-image")).toBeNull();
+      expect(container.querySelector(".lucide-music")).toBeNull();
+    });
+  });
+
+  describe("clickable title (FR-3, FR-5, FR-6)", () => {
+    it("is queryable as a real button by its accessible name when onSelect is provided (no onOpen)", () => {
+      const res = createTextResource({ name: "Clickable Title" });
+      render(<OrganizerCard resource={res} onSelect={() => {}} />);
+
+      expect(
+        screen.getByRole("button", { name: "Clickable Title" }),
+      ).toBeTruthy();
+    });
+
+    it("calls onSelect from the title button and the distinct onOpen prop from the footer Open button (FR-3, FR-6)", () => {
+      const onSelect = vi.fn();
+      const onOpen = vi.fn();
+      const res = createTextResource({ name: "Split Handlers" });
+      render(
+        <OrganizerCard resource={res} onSelect={onSelect} onOpen={onOpen} />,
+      );
+
+      screen.getByRole("button", { name: "Split Handlers" }).click();
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      expect(onOpen).not.toHaveBeenCalled();
+
+      screen.getByRole("button", { name: "Open" }).click();
+      expect(onOpen).toHaveBeenCalledTimes(1);
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("selected-state styling (Task 16, FR-8)", () => {
+    it("applies the resource-tree-item--selected class to the outer card when isSelected is true", () => {
+      const res = createTextResource({ name: "Selected Card" });
+      const { container } = render(
+        <OrganizerCard resource={res} isSelected={true} />,
+      );
+
+      const article = container.querySelector("article");
+      expect(article?.className).toContain("resource-tree-item--selected");
+    });
+
+    it("omits the resource-tree-item--selected class when isSelected is false or not provided", () => {
+      const resFalse = createTextResource({ name: "Explicitly Unselected" });
+      const { container: containerFalse } = render(
+        <OrganizerCard resource={resFalse} isSelected={false} />,
+      );
+      expect(containerFalse.querySelector("article")?.className).not.toContain(
+        "resource-tree-item--selected",
+      );
+
+      const resDefault = createTextResource({ name: "Default Unselected" });
+      const { container: containerDefault } = render(
+        <OrganizerCard resource={resDefault} />,
+      );
+      expect(
+        containerDefault.querySelector("article")?.className,
+      ).not.toContain("resource-tree-item--selected");
+    });
+  });
+
+  describe("selected-state inline style (Task 19, FR-8 CSS-layer fix)", () => {
+    it("applies the border-left and background-color inline style when isSelected is true", () => {
+      const res = createTextResource({ name: "Selected Card Style" });
+      const { container } = render(
+        <OrganizerCard resource={res} isSelected={true} />,
+      );
+
+      const article = container.querySelector("article") as HTMLElement;
+      expect(article.style.borderLeft).toBe(
+        "2px solid var(--color-gw-red-border)",
+      );
+      expect(article.style.backgroundColor).toBe("var(--color-gw-chrome2)");
+    });
+
+    it("applies no inline border-left/background-color style when isSelected is false or omitted", () => {
+      const resFalse = createTextResource({ name: "Unselected Card Style" });
+      const { container: containerFalse } = render(
+        <OrganizerCard resource={resFalse} isSelected={false} />,
+      );
+      const articleFalse = containerFalse.querySelector(
+        "article",
+      ) as HTMLElement;
+      expect(articleFalse.style.borderLeft).toBe("");
+      expect(articleFalse.style.backgroundColor).toBe("");
+
+      const resDefault = createTextResource({
+        name: "Default Unselected Card Style",
+      });
+      const { container: containerDefault } = render(
+        <OrganizerCard resource={resDefault} />,
+      );
+      const articleDefault = containerDefault.querySelector(
+        "article",
+      ) as HTMLElement;
+      expect(articleDefault.style.borderLeft).toBe("");
+      expect(articleDefault.style.backgroundColor).toBe("");
+    });
   });
 });

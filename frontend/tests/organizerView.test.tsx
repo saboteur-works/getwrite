@@ -12,9 +12,11 @@ import OrganizerView from "../components/WorkArea/Views/OrganizerView/OrganizerV
 import {
   createTextResource,
   createImageResource,
+  createAudioResource,
 } from "../src/lib/models/resource";
 import { makeStore } from "../src/store/store";
 import {
+  selectSuppressNextViewAutoSwitch,
   setFolders,
   setResources,
   setSelectedResourceId,
@@ -884,6 +886,127 @@ describe("OrganizerView", () => {
     expect(screen.getByText("A private authoring note.")).toBeTruthy();
   });
 
+  it("selects the clicked card's resource via setSelectedResourceId, with no view-switching prop or callback wired in (FR-4)", () => {
+    const subFolder = makeFolder(FOLDER_B_ID, "Subfolder", FOLDER_ID);
+    const textResource = createTextResource({
+      name: "Text Card",
+      folderId: FOLDER_ID,
+    });
+    const imageResource = createImageResource({
+      name: "Image Card",
+      folderId: FOLDER_ID,
+    });
+    const audioResource = createAudioResource({
+      name: "Audio Card",
+      folderId: FOLDER_ID,
+    });
+
+    const testStore = makeStore();
+    testStore.dispatch(
+      setFolders([makeFolder(FOLDER_ID, "Folder A"), subFolder] as any),
+    );
+    testStore.dispatch(
+      setResources([textResource, imageResource, audioResource] as any),
+    );
+    testStore.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    const { unmount } = render(
+      <Provider store={testStore}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    // Clicking a card's title selects that resource (the shared onOpen
+    // handler dispatches setSelectedResourceId, Task 2). `OrganizerView`
+    // takes no `view`/`onViewChange` prop, so there is nothing here that
+    // could switch the active work-area view — this test asserts only the
+    // resource-selection side effect. Selecting a non-folder resource no
+    // longer navigates the view away from Folder A (Task 14, FR-7:
+    // `browsingFolderId` only syncs from a folder-resolving selection), so
+    // this tree is explicitly unmounted before the next render rather than
+    // relying on the grid having emptied on its own.
+    screen.getByRole("button", { name: "Text Card" }).click();
+    expect(testStore.getState().resources.selectedResourceId).toBe(
+      textResource.id,
+    );
+    unmount();
+
+    // Clicking a folder card's title navigates into that folder, staying
+    // within Folder A's mounted tree (the selection is itself a folder id).
+    const subFolderChild = createTextResource({
+      name: "Subfolder Child",
+      folderId: FOLDER_B_ID,
+    });
+    const subfolderStore = makeStore();
+    subfolderStore.dispatch(
+      setFolders([makeFolder(FOLDER_ID, "Folder A"), subFolder] as any),
+    );
+    subfolderStore.dispatch(
+      setResources([
+        textResource,
+        imageResource,
+        audioResource,
+        subFolderChild,
+      ] as any),
+    );
+    subfolderStore.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    render(
+      <Provider store={subfolderStore}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Subfolder" }));
+    expect(subfolderStore.getState().resources.selectedResourceId).toBe(
+      subFolder.id,
+    );
+
+    // The sync effect fires for this genuine folder-to-folder navigation
+    // (Task 14): the grid now shows the destination folder's own children
+    // and the heading updates to its name, while Folder A's own children
+    // are no longer shown.
+    expect(screen.getByText("Subfolder")).toBeTruthy();
+    expect(screen.getByText("Subfolder Child")).toBeTruthy();
+    expect(screen.queryByText("Text Card")).toBeNull();
+    expect(screen.queryByText("Image Card")).toBeNull();
+    expect(screen.queryByText("Audio Card")).toBeNull();
+  });
+
+  it("dispatches the suppression flag alongside setSelectedResourceId when a card's title is clicked (FR-3)", () => {
+    const textResource = createTextResource({
+      name: "Text Card",
+      folderId: FOLDER_ID,
+    });
+
+    const testStore = makeStore();
+    testStore.dispatch(setFolders([makeFolder(FOLDER_ID, "Folder A")] as any));
+    testStore.dispatch(setResources([textResource] as any));
+    testStore.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    render(
+      <Provider store={testStore}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    // Before the click: no suppression, folder still selected.
+    expect(
+      selectSuppressNextViewAutoSwitch(testStore.getState().resources),
+    ).toBe(false);
+
+    screen.getByRole("button", { name: "Text Card" }).click();
+
+    // Immediately after the click — nothing in `OrganizerView` clears this
+    // flag; only `AppShell.tsx`'s effect does, and it isn't rendered here.
+    expect(testStore.getState().resources.selectedResourceId).toBe(
+      textResource.id,
+    );
+    expect(
+      selectSuppressNextViewAutoSwitch(testStore.getState().resources),
+    ).toBe(true);
+  });
+
   it("calls onToggleBody when toggle button is clicked", () => {
     const folders = [makeFolder(FOLDER_ID, "Folder A")];
 
@@ -903,5 +1026,55 @@ describe("OrganizerView", () => {
     });
     fireEvent.click(button);
     expect(onToggle).toHaveBeenCalled();
+  });
+});
+
+describe("OrganizerView folder browsing survives an in-folder title click (Task 16, FR-7)", () => {
+  it("keeps every one of the folder's children in the grid, and the heading showing the folder's own name, after clicking one child's title rather than the folder's (FR-7 regression)", () => {
+    const resourceA = createTextResource({
+      name: "Resource A",
+      folderId: FOLDER_ID,
+    });
+    const resourceB = createImageResource({
+      name: "Resource B",
+      folderId: FOLDER_ID,
+    });
+
+    const testStore = makeStore();
+    testStore.dispatch(setFolders([makeFolder(FOLDER_ID, "Folder A")] as any));
+    testStore.dispatch(setResources([resourceA, resourceB] as any));
+    testStore.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    render(
+      <Provider store={testStore}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    // Both children visible before the title click.
+    expect(screen.getByText("Resource A")).toBeTruthy();
+    expect(screen.getByText("Resource B")).toBeTruthy();
+
+    // Click one card's title, selecting that resource (not the folder).
+    screen.getByRole("button", { name: "Resource A" }).click();
+    expect(testStore.getState().resources.selectedResourceId).toBe(
+      resourceA.id,
+    );
+
+    // The grid must still show every one of Folder A's children — including
+    // the other, unselected resource — rather than falling back to the
+    // "Select a folder to view its contents." empty state. This is the
+    // direct reproduction of the live-testing bug: a selection that does not
+    // resolve to a folder must never clear what the Organizer is browsing.
+    expect(screen.getByText("Resource A")).toBeTruthy();
+    expect(screen.getByText("Resource B")).toBeTruthy();
+    expect(
+      screen.queryByText("Select a folder to view its contents."),
+    ).toBeNull();
+
+    // `selectedFolder` did not become null: the heading still renders the
+    // browsed folder's own name rather than falling back to "Organizer".
+    expect(screen.getByText("Folder A")).toBeTruthy();
+    expect(screen.queryByText("Organizer")).toBeNull();
   });
 });

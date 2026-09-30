@@ -12,6 +12,7 @@ import {
   selectFolders,
   selectResources,
   setSelectedResourceId,
+  setSuppressNextViewAutoSwitch,
 } from "../../../../src/store/resourcesSlice";
 import {
   selectActiveProjectStatuses,
@@ -121,8 +122,22 @@ export default function OrganizerView({
   const getEffectiveFolderParentId = (folder: Folder) =>
     folder.parentId ?? folder.folderId ?? null;
 
-  const selectedFolder =
-    folders.find((f) => f.id === selectedResourceId) ?? null;
+  // The folder currently being browsed in the Organizer grid (FR-7). This is
+  // deliberately separate from the globally-selected resource: it only ever
+  // syncs from `selectedResourceId` when that id resolves to an actual
+  // folder, so selecting a non-folder resource elsewhere in the app does not
+  // change what the Organizer is browsing.
+  const [browsingFolderId, setBrowsingFolderId] = React.useState<string | null>(
+    null,
+  );
+
+  React.useEffect(() => {
+    if (folders.some((f) => f.id === selectedResourceId)) {
+      setBrowsingFolderId(selectedResourceId);
+    }
+  }, [selectedResourceId, folders]);
+
+  const selectedFolder = folders.find((f) => f.id === browsingFolderId) ?? null;
 
   const childFolders = selectedFolder
     ? folders
@@ -242,6 +257,11 @@ export default function OrganizerView({
 
   const handleOpen = (id: string) => dispatch(setSelectedResourceId(id));
 
+  const handleSelect = (id: string) => {
+    dispatch(setSuppressNextViewAutoSwitch(true));
+    dispatch(setSelectedResourceId(id));
+  };
+
   return (
     <div className={`p-4 overflow-y-scroll h-[calc(100vh-12rem)] ${className}`}>
       <div className="flex items-center justify-between mb-4">
@@ -297,7 +317,9 @@ export default function OrganizerView({
                 textExcerpt: excerpts[child.id],
               })}
               defaultStatus={defaultStatus}
+              isSelected={child.id === selectedResourceId}
               onOpen={() => handleOpen(child.id)}
+              onSelect={() => handleSelect(child.id)}
             />
           ))}
         </div>

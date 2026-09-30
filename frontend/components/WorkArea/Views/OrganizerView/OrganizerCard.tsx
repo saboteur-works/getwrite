@@ -3,6 +3,12 @@ import type {
   TextResource,
 } from "../../../../src/lib/models/types";
 import Card from "../../../common/UI/Card/Card";
+import {
+  FileTextIcon,
+  AudioIcon,
+  ImageIcon,
+  FolderIcon,
+} from "../../../ResourceTree/ResourceTreeIcons";
 
 /**
  * @module OrganizerCard
@@ -37,8 +43,43 @@ export interface OrganizerCardProps {
   body?: string;
   /** Called when the user clicks the Open button on the card. */
   onOpen?: () => void;
+  /**
+   * Called when the user clicks the card's title, selecting the resource
+   * without leaving the current view.
+   */
+  onSelect?: () => void;
   /** Fallback status shown when the resource has no status set. Defaults to the first project status. */
   defaultStatus?: string;
+  /**
+   * Whether this card's resource is the current globally-selected resource;
+   * applies the established selected-row highlight when true.
+   *
+   * @defaultValue false
+   */
+  isSelected?: boolean;
+}
+
+/**
+ * Selects the icon component to render for a given resource type.
+ *
+ * @param type - The resource's `type` discriminant.
+ * @returns The matching icon component from `ResourceTreeIcons`.
+ */
+function getResourceTypeIcon(type: AnyResource["type"]): typeof FileTextIcon {
+  switch (type) {
+    case "text":
+      return FileTextIcon;
+    case "image":
+      return ImageIcon;
+    case "audio":
+      return AudioIcon;
+    case "folder":
+      return FolderIcon;
+    default: {
+      const _exhaustiveCheck: never = type;
+      return _exhaustiveCheck;
+    }
+  }
 }
 
 /**
@@ -57,7 +98,9 @@ export default function OrganizerCard({
   showBody = true,
   body,
   onOpen,
+  onSelect,
   defaultStatus = "",
+  isSelected = false,
 }: OrganizerCardProps): JSX.Element {
   /** Best-effort display title fallback chain. */
   const title = (resource as any).title ?? resource.name ?? "Untitled";
@@ -65,18 +108,40 @@ export default function OrganizerCard({
   const updated = resource.updatedAt ?? resource.createdAt ?? "";
   /** Normalized status value shown in the metadata footer. */
   const status = (resource.userMetadata?.status as string) || defaultStatus;
+  /** Icon component matching this resource's type. */
+  const TypeIcon = getResourceTypeIcon(resource.type);
 
   return (
     <Card
       as="article"
-      className="h-48 border"
+      className={`h-48 border${isSelected ? " resource-tree-item--selected" : ""}`}
+      style={
+        isSelected
+          ? {
+              borderLeft: "2px solid var(--color-gw-red-border)",
+              backgroundColor: "var(--color-gw-chrome2)",
+            }
+          : undefined
+      }
       aria-labelledby={`res-${resource.id}-title`}
     >
       <header className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1">
-          <h3 id={`res-${resource.id}-title`} className="text-sm font-medium">
-            {title}
-          </h3>
+          <div className="flex items-center gap-1.5">
+            <TypeIcon className="w-4 h-4 text-gw-secondary" />
+            <h3 id={`res-${resource.id}-title`} className="text-sm font-medium">
+              {onSelect && (
+                <button
+                  type="button"
+                  onClick={onSelect}
+                  className="text-gw-secondary hover:text-gw-primary transition-colors duration-150"
+                >
+                  {title}
+                </button>
+              )}
+              {!onSelect && title}
+            </h3>
+          </div>
           <div className="text-xs mt-1 text-gw-secondary">
             {resource.type} file
           </div>

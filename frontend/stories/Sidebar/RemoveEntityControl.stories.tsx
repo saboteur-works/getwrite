@@ -123,6 +123,7 @@ function buildStore() {
         selectedResourceId: SELECTED_ENTITY_ID,
         resources: [selectedEntity],
         folders: [],
+        suppressNextViewAutoSwitch: false,
       },
     },
   });
