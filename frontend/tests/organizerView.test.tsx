@@ -12,6 +12,7 @@ import OrganizerView from "../components/WorkArea/Views/OrganizerView/OrganizerV
 import {
   createTextResource,
   createImageResource,
+  createAudioResource,
 } from "../src/lib/models/resource";
 import { makeStore } from "../src/store/store";
 import {
@@ -882,6 +883,72 @@ describe("OrganizerView", () => {
     );
 
     expect(screen.getByText("A private authoring note.")).toBeTruthy();
+  });
+
+  it("selects the clicked card's resource via setSelectedResourceId, with no view-switching prop or callback wired in (FR-4)", () => {
+    const subFolder = makeFolder(FOLDER_B_ID, "Subfolder", FOLDER_ID);
+    const textResource = createTextResource({
+      name: "Text Card",
+      folderId: FOLDER_ID,
+    });
+    const imageResource = createImageResource({
+      name: "Image Card",
+      folderId: FOLDER_ID,
+    });
+    const audioResource = createAudioResource({
+      name: "Audio Card",
+      folderId: FOLDER_ID,
+    });
+
+    const testStore = makeStore();
+    testStore.dispatch(
+      setFolders([makeFolder(FOLDER_ID, "Folder A"), subFolder] as any),
+    );
+    testStore.dispatch(
+      setResources([textResource, imageResource, audioResource] as any),
+    );
+    testStore.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    render(
+      <Provider store={testStore}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    // Clicking a card's title selects that resource (the shared onOpen
+    // handler dispatches setSelectedResourceId, Task 2). `OrganizerView`
+    // takes no `view`/`onViewChange` prop, so there is nothing here that
+    // could switch the active work-area view — this test asserts only the
+    // resource-selection side effect. Selecting a non-folder resource
+    // navigates the view away from Folder A (it no longer matches any
+    // folder id), so each kind is asserted via its own render rather than
+    // chained clicks against the same mounted tree.
+    screen.getByRole("button", { name: "Text Card" }).click();
+    expect(testStore.getState().resources.selectedResourceId).toBe(
+      textResource.id,
+    );
+
+    // Clicking a folder card's title navigates into that folder, staying
+    // within Folder A's mounted tree (the selection is itself a folder id).
+    const subfolderStore = makeStore();
+    subfolderStore.dispatch(
+      setFolders([makeFolder(FOLDER_ID, "Folder A"), subFolder] as any),
+    );
+    subfolderStore.dispatch(
+      setResources([textResource, imageResource, audioResource] as any),
+    );
+    subfolderStore.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    render(
+      <Provider store={subfolderStore}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    screen.getByRole("button", { name: "Subfolder" }).click();
+    expect(subfolderStore.getState().resources.selectedResourceId).toBe(
+      subFolder.id,
+    );
   });
 
   it("calls onToggleBody when toggle button is clicked", () => {
