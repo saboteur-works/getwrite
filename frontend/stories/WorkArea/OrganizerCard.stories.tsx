@@ -25,11 +25,17 @@ export const Default: Story = {
     showBody: true,
     body: "A short body preview, sourced from the project's configured card-body source (a metadata field or a text excerpt).",
     onOpen: action("onOpen"),
+    onSelect: action("onSelect"),
   },
 };
 
 export const Compact: Story = {
-  args: { resource: sample, showBody: false, onOpen: action("onOpen") },
+  args: {
+    resource: sample,
+    showBody: false,
+    onOpen: action("onOpen"),
+    onSelect: action("onSelect"),
+  },
 };
 
 // One card per resource kind, so every per-type icon added alongside the
@@ -55,18 +61,22 @@ export const AllResourceKinds: Story = {
       <OrganizerCard
         resource={textKindResource}
         onOpen={action("onOpen:text")}
+        onSelect={action("onSelect:text")}
       />
       <OrganizerCard
         resource={imageKindResource}
         onOpen={action("onOpen:image")}
+        onSelect={action("onSelect:image")}
       />
       <OrganizerCard
         resource={audioKindResource}
         onOpen={action("onOpen:audio")}
+        onSelect={action("onSelect:audio")}
       />
       <OrganizerCard
         resource={folderKindResource}
         onOpen={action("onOpen:folder")}
+        onSelect={action("onSelect:folder")}
       />
     </div>
   ),

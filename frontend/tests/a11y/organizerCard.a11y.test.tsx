@@ -17,23 +17,29 @@ import { runAxe } from "./helpers/axe";
  */
 
 describe("a11y: OrganizerCard clickable title", () => {
-  it("showBody=true, onOpen set: zero axe violations", async () => {
+  it("showBody=true, onSelect + onOpen set: zero axe violations", async () => {
     const res = createTextResource({ name: "Test Resource" });
     const { container } = render(
       <OrganizerCard
         resource={res}
         showBody={true}
         body="Placeholder content"
+        onSelect={vi.fn()}
         onOpen={vi.fn()}
       />,
     );
     await runAxe(container);
   });
 
-  it("showBody=false, onOpen set: zero axe violations", async () => {
+  it("showBody=false, onSelect + onOpen set: zero axe violations", async () => {
     const res = createTextResource({ name: "Test Resource" });
     const { container } = render(
-      <OrganizerCard resource={res} showBody={false} onOpen={vi.fn()} />,
+      <OrganizerCard
+        resource={res}
+        showBody={false}
+        onSelect={vi.fn()}
+        onOpen={vi.fn()}
+      />,
     );
     await runAxe(container);
   });
@@ -41,7 +47,7 @@ describe("a11y: OrganizerCard clickable title", () => {
   it('the title element is a real, natively-keyboard-operable <button> (no role="button" widget)', () => {
     const res = createTextResource({ name: "Test Resource" });
     const { container } = render(
-      <OrganizerCard resource={res} showBody={true} onOpen={vi.fn()} />,
+      <OrganizerCard resource={res} showBody={true} onSelect={vi.fn()} />,
     );
 
     const titleButton = screen.getByRole("button", { name: "Test Resource" });
@@ -54,23 +60,25 @@ describe("a11y: OrganizerCard clickable title", () => {
 
   it("the title button has an accessible name equal to the resource's title", () => {
     const res = createTextResource({ name: "Test Resource" });
-    render(<OrganizerCard resource={res} showBody={true} onOpen={vi.fn()} />);
+    render(<OrganizerCard resource={res} showBody={true} onSelect={vi.fn()} />);
 
     expect(
       screen.getByRole("button", { name: "Test Resource" }),
     ).toBeInTheDocument();
   });
 
-  it("the title button is keyboard-operable: focus + Enter invokes onOpen", async () => {
-    const onOpen = vi.fn();
+  it("the title button is keyboard-operable: focus + Enter invokes onSelect", async () => {
+    const onSelect = vi.fn();
     const user = userEvent.setup();
     const res = createTextResource({ name: "Test Resource" });
-    render(<OrganizerCard resource={res} showBody={true} onOpen={onOpen} />);
+    render(
+      <OrganizerCard resource={res} showBody={true} onSelect={onSelect} />,
+    );
 
     const titleButton = screen.getByRole("button", { name: "Test Resource" });
     titleButton.focus();
     expect(titleButton).toHaveFocus();
     await user.keyboard("{Enter}");
-    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 });
