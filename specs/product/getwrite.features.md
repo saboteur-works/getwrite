@@ -2201,6 +2201,38 @@ Organizer view" effort per the owner's own framing — further Organizer
 enhancements are expected as later, separate features, not folded into
 this one's scope.
 
+### Feature 66: Organizer view — drag-and-drop card reordering — Not started
+
+**Value:** A plain-file writer reorders cards in the Organizer view's card
+grid directly by dragging, instead of having no way to change card order
+short of leaving the view.
+**Vertical slice:** Drag-and-drop card reordering in `OrganizerView`'s card
+grid, built on the `@dnd-kit` library, including keyboard-operable
+reordering (not mouse/touch-only) so the interaction meets this repo's
+WCAG 2.1 AA target; persistence of the resulting order.
+**Requirements covered:** None of its own.
+**User stories:** None.
+**Depends on:** Feature 65
+**Branch suggestion:** feat/organizer-card-drag-reorder
+**Notes:** Not started. This is the second increment of the same
+open-ended "enhance the Organizer view" effort Feature 65 began — Feature
+65's own Notes flagged further Organizer enhancements as later, separate
+features, and this is one of them. `@dnd-kit` was chosen this session over
+`react-beautiful-dnd`/`@hello-pangea/dnd`, `react-dnd`, Pragmatic
+drag-and-drop, and `react-sortablejs` after a short library survey: it is
+designed for React 19, is headless (no DOM manipulation outside React), and
+has built-in keyboard accessibility — relevant since this repo targets WCAG
+2.1 AA and already has precedent for keyboard+touch parity in the entity
+relationship graph's node-dragging feature (see this document's Feature 39
+entry family and `docs/standards/accessibility.md`). No existing functional
+requirement in `specs/product/getwrite.md` covers Organizer card reordering,
+so this feature owns none of its own (per "Requirements covered"/"User
+stories" above), matching Feature 65's precedent. Unresolved, left for the
+feature spec's own Open Questions (not decided here): where the resulting
+card order is persisted (e.g. `orderIndex` on the resource/folder tree vs.
+a view-local ordering) and how it interacts with the existing tree-position
+ordering other views (e.g. compile) already rely on.
+
 ---
 
 ## Coverage check
@@ -2262,7 +2294,7 @@ this one's scope.
 
 ## Summary
 
-- Total features: 65
+- Total features: 66
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -2343,10 +2375,10 @@ this one's scope.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 58, 59, 60, 61, 62, 64, 65 (30 and 28 are the only pair left with an unmet hard dependency;
+  57, 58, 59, 60, 61, 62, 64, 65, 66 (30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything
+- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47, 66. Everything
   else in this list has shipped (Feature 24 shipped, merged in PR #249 as
   `f1254f76` — see its own entry's Notes; Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped
