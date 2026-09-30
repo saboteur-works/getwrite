@@ -276,7 +276,7 @@ export default function AppShell({
     (state) => selectResource(state.resources),
     shallowEqual,
   );
-  const suppressNextViewAutoSwitch = useAppSelector((s) =>
+  const shouldSuppressNextViewAutoSwitch = useAppSelector((s) =>
     selectSuppressNextViewAutoSwitch(s.resources),
   );
   const liveResources = useAppSelector((s) => selectResources(s.resources));
@@ -350,7 +350,7 @@ export default function AppShell({
     // read and cleared here, once per run this effect already fires for —
     // deliberately not added to the dependency array below, since doing so
     // would cause a redundant extra run when the flag clears.
-    if (suppressNextViewAutoSwitch) {
+    if (shouldSuppressNextViewAutoSwitch) {
       dispatch(setSuppressNextViewAutoSwitch(false));
       return;
     }
