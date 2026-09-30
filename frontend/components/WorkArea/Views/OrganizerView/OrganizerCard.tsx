@@ -3,6 +3,12 @@ import type {
   TextResource,
 } from "../../../../src/lib/models/types";
 import Card from "../../../common/UI/Card/Card";
+import {
+  FileTextIcon,
+  AudioIcon,
+  ImageIcon,
+  FolderIcon,
+} from "../../../ResourceTree/ResourceTreeIcons";
 
 /**
  * @module OrganizerCard
@@ -42,6 +48,29 @@ export interface OrganizerCardProps {
 }
 
 /**
+ * Selects the icon component to render for a given resource type.
+ *
+ * @param type - The resource's `type` discriminant.
+ * @returns The matching icon component from `ResourceTreeIcons`.
+ */
+function getResourceTypeIcon(type: AnyResource["type"]): typeof FileTextIcon {
+  switch (type) {
+    case "text":
+      return FileTextIcon;
+    case "image":
+      return ImageIcon;
+    case "audio":
+      return AudioIcon;
+    case "folder":
+      return FolderIcon;
+    default: {
+      const _exhaustiveCheck: never = type;
+      return _exhaustiveCheck;
+    }
+  }
+}
+
+/**
  * Presentational resource card used by organizer layouts.
  *
  * @param props - Component props.
@@ -65,6 +94,8 @@ export default function OrganizerCard({
   const updated = resource.updatedAt ?? resource.createdAt ?? "";
   /** Normalized status value shown in the metadata footer. */
   const status = (resource.userMetadata?.status as string) || defaultStatus;
+  /** Icon component matching this resource's type. */
+  const TypeIcon = getResourceTypeIcon(resource.type);
 
   return (
     <Card
@@ -74,9 +105,12 @@ export default function OrganizerCard({
     >
       <header className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1">
-          <h3 id={`res-${resource.id}-title`} className="text-sm font-medium">
-            {title}
-          </h3>
+          <div className="flex items-center gap-1.5">
+            <TypeIcon className="w-4 h-4 text-gw-secondary" />
+            <h3 id={`res-${resource.id}-title`} className="text-sm font-medium">
+              {title}
+            </h3>
+          </div>
           <div className="text-xs mt-1 text-gw-secondary">
             {resource.type} file
           </div>
