@@ -122,8 +122,22 @@ export default function OrganizerView({
   const getEffectiveFolderParentId = (folder: Folder) =>
     folder.parentId ?? folder.folderId ?? null;
 
-  const selectedFolder =
-    folders.find((f) => f.id === selectedResourceId) ?? null;
+  // The folder currently being browsed in the Organizer grid (FR-7). This is
+  // deliberately separate from the globally-selected resource: it only ever
+  // syncs from `selectedResourceId` when that id resolves to an actual
+  // folder, so selecting a non-folder resource elsewhere in the app does not
+  // change what the Organizer is browsing.
+  const [browsingFolderId, setBrowsingFolderId] = React.useState<string | null>(
+    null,
+  );
+
+  React.useEffect(() => {
+    if (folders.some((f) => f.id === selectedResourceId)) {
+      setBrowsingFolderId(selectedResourceId);
+    }
+  }, [selectedResourceId, folders]);
+
+  const selectedFolder = folders.find((f) => f.id === browsingFolderId) ?? null;
 
   const childFolders = selectedFolder
     ? folders

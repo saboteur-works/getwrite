@@ -910,7 +910,7 @@ describe("OrganizerView", () => {
     );
     testStore.dispatch(setSelectedResourceId(FOLDER_ID));
 
-    render(
+    const { unmount } = render(
       <Provider store={testStore}>
         <OrganizerView showBody={false} />
       </Provider>,
@@ -920,14 +920,16 @@ describe("OrganizerView", () => {
     // handler dispatches setSelectedResourceId, Task 2). `OrganizerView`
     // takes no `view`/`onViewChange` prop, so there is nothing here that
     // could switch the active work-area view — this test asserts only the
-    // resource-selection side effect. Selecting a non-folder resource
-    // navigates the view away from Folder A (it no longer matches any
-    // folder id), so each kind is asserted via its own render rather than
-    // chained clicks against the same mounted tree.
+    // resource-selection side effect. Selecting a non-folder resource no
+    // longer navigates the view away from Folder A (Task 14, FR-7:
+    // `browsingFolderId` only syncs from a folder-resolving selection), so
+    // this tree is explicitly unmounted before the next render rather than
+    // relying on the grid having emptied on its own.
     screen.getByRole("button", { name: "Text Card" }).click();
     expect(testStore.getState().resources.selectedResourceId).toBe(
       textResource.id,
     );
+    unmount();
 
     // Clicking a folder card's title navigates into that folder, staying
     // within Folder A's mounted tree (the selection is itself a folder id).
