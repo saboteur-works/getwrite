@@ -34,6 +34,21 @@ vi.mock("../src/lib/api/resource-excerpts", () => ({
 }));
 import { fetchResourceExcerpts } from "../src/lib/api/resource-excerpts";
 
+// Task 6: mocks the underlying HTTP transport function `persistReorder`
+// (`resourcesSlice.ts`'s thunk) ultimately calls, so tests can assert the
+// reorder actually reaches the transport layer with the expected payload
+// without making a real network call. `reorderResources` resolves to the
+// same module regardless of which relative path imports it (this file's
+// `../src/lib/api/resources` and `resourcesSlice.ts`'s `../lib/api/
+// resources` both resolve to `frontend/src/lib/api/resources.ts`), so
+// mocking it here also governs what `persistReorder` awaits.
+vi.mock("../src/lib/api/resources", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../src/lib/api/resources")>();
+  return { ...actual, reorderResources: vi.fn().mockResolvedValue(undefined) };
+});
+import { reorderResources } from "../src/lib/api/resources";
+
 // Task 4 (drag-and-drop reordering): captures the `onDragEnd` handler
 // `OrganizerView` passes to `@dnd-kit/core`'s real `DndContext` (a thin
 // wrapper composing the real component, not a stand-in — so `SortableContext`
@@ -1135,6 +1150,217 @@ describe("OrganizerView drag-and-drop reordering (Task 4)", () => {
         orderIndex: r.orderIndex,
       }));
     expect(orderAfter).toEqual(orderBefore);
+  });
+});
+
+describe("OrganizerView drag-and-drop reorder persistence and grid re-render (Task 6, FR-1 through FR-5)", () => {
+  /**
+   * Builds a store with a project path set (so `persistReorder`'s
+   * `!currentProject || !projectDirectoryId` guard in
+   * `useOrganizerCardReorder.ts` doesn't short-circuit before dispatching)
+   * and one folder ("Folder A") containing a mix of one subfolder and three
+   * text resources as direct children.
+   */
+  function makeReorderableStore() {
+    const subFolder = makeFolder(FOLDER_B_ID, "SubFolder", FOLDER_ID);
+    const resourceA = createTextResource({
+      name: "R1",
+      folderId: FOLDER_ID,
+      orderIndex: 0,
+    });
+    const resourceB = createTextResource({
+      name: "R2",
+      folderId: FOLDER_ID,
+      orderIndex: 1,
+    });
+    const resourceC = createTextResource({
+      name: "R3",
+      folderId: FOLDER_ID,
+      orderIndex: 2,
+    });
+
+    const store = makeStore();
+    store.dispatch(
+      setProject({
+        id: PROJECT_ID,
+        name: "Proj",
+        rootPath: "/projects/p1",
+        folders: [],
+        resources: [],
+      } as any),
+    );
+    store.dispatch(setSelectedProjectId(PROJECT_ID));
+    store.dispatch(
+      setFolders([makeFolder(FOLDER_ID, "Folder A"), subFolder] as any),
+    );
+    store.dispatch(setResources([resourceA, resourceB, resourceC] as any));
+    store.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    return { store, subFolder, resourceA, resourceB, resourceC };
+  }
+
+  /** Reads the rendered card titles in document order, via each card's `<h3>`. */
+  function readCardTitlesInOrder(container: HTMLElement): string[] {
+    return Array.from(container.querySelectorAll("h3")).map(
+      (h3) => h3.textContent ?? "",
+    );
+  }
+
+  it("re-renders the grid in the new order immediately after a pointer-driven reorder, among a mix of folder and text-resource siblings (FR-1)", () => {
+    const { store, resourceA, resourceC, subFolder } = makeReorderableStore();
+
+    const { container } = render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    // Before: folders render before resources; among resources, insertion
+    // order (R1, R2, R3).
+    expect(readCardTitlesInOrder(container)).toEqual([
+      "SubFolder",
+      "R1",
+      "R2",
+      "R3",
+    ]);
+
+    expect(capturedOnDragEnd).toBeDefined();
+
+    // Drag R1 onto R3's position: moves it to the last slot among resources.
+    act(() => {
+      capturedOnDragEnd!({
+        active: { id: resourceA.id },
+        over: { id: resourceC.id },
+      });
+    });
+
+    expect(readCardTitlesInOrder(container)).toEqual([
+      "SubFolder",
+      "R2",
+      "R3",
+      "R1",
+    ]);
+    // The unrelated folder sibling is still present, unaffected by the
+    // resource-only move.
+    expect(
+      store
+        .getState()
+        .resources.folders.some((f: { id: string }) => f.id === subFolder.id),
+    ).toBe(true);
+  });
+
+  it("dispatches the reorder to the resources transport with a payload reflecting the new order (FR-1, FR-2)", async () => {
+    const mockReorder = vi.mocked(reorderResources);
+    mockReorder.mockClear();
+
+    const { store, resourceA, resourceC } = makeReorderableStore();
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    expect(capturedOnDragEnd).toBeDefined();
+
+    act(() => {
+      capturedOnDragEnd!({
+        active: { id: resourceA.id },
+        over: { id: resourceC.id },
+      });
+    });
+
+    await waitFor(() => expect(mockReorder).toHaveBeenCalledTimes(1));
+
+    const [projectId, payload, projectRoot] = mockReorder.mock.calls[0];
+    expect(projectId).toBe("p1");
+    expect(projectRoot).toBe("/projects/p1");
+    // R1 moved to the last resource slot: resourceOrder reflects R2, R3, R1
+    // in that order, each carrying its newly assigned `orderIndex`.
+    expect(
+      (payload.resourceOrder as { id: string; orderIndex: number }[]).map(
+        (r) => r.id,
+      ),
+    ).toEqual([
+      store
+        .getState()
+        .resources.resources.find((r: { name: string }) => r.name === "R2")!.id,
+      store
+        .getState()
+        .resources.resources.find((r: { name: string }) => r.name === "R3")!.id,
+      resourceA.id,
+    ]);
+  });
+
+  it("disables drag handles and leaves the grid unreordered when a filter is active (FR-5)", () => {
+    const { store, rDraftAlice, rNoStatusBob } = makeFilterableStore();
+
+    const { container } = render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.change(screen.getByLabelText("Filter by status"), {
+      target: { value: "Draft" },
+    });
+
+    // Every remaining visible card's drag handle is disabled: no listeners
+    // forwarded (`aria-roledescription` never applied) and `aria-disabled`.
+    const handles = screen.getAllByRole("button", { name: "Drag to reorder" });
+    expect(handles.length).toBeGreaterThan(0);
+    for (const handle of handles) {
+      expect(handle.getAttribute("aria-disabled")).toBe("true");
+      expect(handle.tabIndex).toBe(-1);
+    }
+
+    const titlesBefore = readCardTitlesInOrder(container);
+
+    act(() => {
+      capturedOnDragEnd!({
+        active: { id: rDraftAlice.id },
+        over: { id: rNoStatusBob.id },
+      });
+    });
+
+    expect(readCardTitlesInOrder(container)).toEqual(titlesBefore);
+  });
+
+  it("leaves the filter-computed visible set unchanged — same cards, only reordered — after a real reorder (FR-4)", () => {
+    const { store, resourceA, resourceC } = makeReorderableStore();
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    const idsBefore = new Set(
+      store.getState().resources.resources.map((r: { id: string }) => r.id),
+    );
+    const foldersBefore = new Set(
+      store.getState().resources.folders.map((f: { id: string }) => f.id),
+    );
+
+    act(() => {
+      capturedOnDragEnd!({
+        active: { id: resourceA.id },
+        over: { id: resourceC.id },
+      });
+    });
+
+    const idsAfter = new Set(
+      store.getState().resources.resources.map((r: { id: string }) => r.id),
+    );
+    const foldersAfter = new Set(
+      store.getState().resources.folders.map((f: { id: string }) => f.id),
+    );
+
+    // The same set of resources/folders is still present — the reorder never
+    // adds, removes, or otherwise narrows what's visible.
+    expect(idsAfter).toEqual(idsBefore);
+    expect(foldersAfter).toEqual(foldersBefore);
   });
 });
 
