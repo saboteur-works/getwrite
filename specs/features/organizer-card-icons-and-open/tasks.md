@@ -663,7 +663,7 @@ derive `selectedFolder` from `browsingFolderId` instead of
 - `pnpm --filter getwrite-frontend typecheck` passes.
 **Depends on:** none (independent of Tasks 1-13, which are already merged)
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -708,7 +708,7 @@ prop `OrganizerView.tsx` needs to determine this per card.
 - `pnpm --filter getwrite-frontend typecheck` passes.
 **Depends on:** Task 14
 **Estimate:** 2
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -765,7 +765,7 @@ tree and folder cards) still updates the grid correctly.
   all pass in full, including all pre-existing tests in each file.
 **Depends on:** Task 14, Task 15
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -791,7 +791,7 @@ existing `OrganizerCard.stories.tsx` export or needs a new one, and add it.
   same test run broke).
 **Depends on:** Task 15
 **Estimate:** 1
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
@@ -817,7 +817,7 @@ needs them)
   that `next build` isn't broken by the changes) succeeds.
 **Depends on:** Task 14, Task 15, Task 16, Task 17
 **Estimate:** 1
-**Done:** [ ]
+**Done:** [x]
 
 ---
 
