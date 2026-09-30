@@ -108,7 +108,16 @@ export default function OrganizerCard({
           <div className="flex items-center gap-1.5">
             <TypeIcon className="w-4 h-4 text-gw-secondary" />
             <h3 id={`res-${resource.id}-title`} className="text-sm font-medium">
-              {title}
+              {onOpen && (
+                <button
+                  type="button"
+                  onClick={onOpen}
+                  className="hover:bg-gw-chrome2 rounded transition-colors duration-150"
+                >
+                  {title}
+                </button>
+              )}
+              {!onOpen && title}
             </h3>
           </div>
           <div className="text-xs mt-1 text-gw-secondary">
