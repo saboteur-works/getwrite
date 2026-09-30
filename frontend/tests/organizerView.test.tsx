@@ -16,6 +16,7 @@ import {
 } from "../src/lib/models/resource";
 import { makeStore } from "../src/store/store";
 import {
+  selectSuppressNextViewAutoSwitch,
   setFolders,
   setResources,
   setSelectedResourceId,
@@ -949,6 +950,40 @@ describe("OrganizerView", () => {
     expect(subfolderStore.getState().resources.selectedResourceId).toBe(
       subFolder.id,
     );
+  });
+
+  it("dispatches the suppression flag alongside setSelectedResourceId when a card's title is clicked (FR-3)", () => {
+    const textResource = createTextResource({
+      name: "Text Card",
+      folderId: FOLDER_ID,
+    });
+
+    const testStore = makeStore();
+    testStore.dispatch(setFolders([makeFolder(FOLDER_ID, "Folder A")] as any));
+    testStore.dispatch(setResources([textResource] as any));
+    testStore.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    render(
+      <Provider store={testStore}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    // Before the click: no suppression, folder still selected.
+    expect(
+      selectSuppressNextViewAutoSwitch(testStore.getState().resources),
+    ).toBe(false);
+
+    screen.getByRole("button", { name: "Text Card" }).click();
+
+    // Immediately after the click — nothing in `OrganizerView` clears this
+    // flag; only `AppShell.tsx`'s effect does, and it isn't rendered here.
+    expect(testStore.getState().resources.selectedResourceId).toBe(
+      textResource.id,
+    );
+    expect(
+      selectSuppressNextViewAutoSwitch(testStore.getState().resources),
+    ).toBe(true);
   });
 
   it("calls onToggleBody when toggle button is clicked", () => {

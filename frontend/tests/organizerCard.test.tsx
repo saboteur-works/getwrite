@@ -106,25 +106,30 @@ describe("OrganizerCard", () => {
   });
 
   describe("clickable title (FR-3, FR-5, FR-6)", () => {
-    it("is queryable as a real button by its accessible name", () => {
+    it("is queryable as a real button by its accessible name when onSelect is provided (no onOpen)", () => {
       const res = createTextResource({ name: "Clickable Title" });
-      render(<OrganizerCard resource={res} onOpen={() => {}} />);
+      render(<OrganizerCard resource={res} onSelect={() => {}} />);
 
       expect(
         screen.getByRole("button", { name: "Clickable Title" }),
       ).toBeTruthy();
     });
 
-    it("calls the same onOpen prop from both the title button and the footer Open button", () => {
+    it("calls onSelect from the title button and the distinct onOpen prop from the footer Open button (FR-3, FR-6)", () => {
+      const onSelect = vi.fn();
       const onOpen = vi.fn();
-      const res = createTextResource({ name: "Shared Handler" });
-      render(<OrganizerCard resource={res} onOpen={onOpen} />);
+      const res = createTextResource({ name: "Split Handlers" });
+      render(
+        <OrganizerCard resource={res} onSelect={onSelect} onOpen={onOpen} />,
+      );
 
-      screen.getByRole("button", { name: "Shared Handler" }).click();
-      expect(onOpen).toHaveBeenCalledTimes(1);
+      screen.getByRole("button", { name: "Split Handlers" }).click();
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      expect(onOpen).not.toHaveBeenCalled();
 
       screen.getByRole("button", { name: "Open" }).click();
-      expect(onOpen).toHaveBeenCalledTimes(2);
+      expect(onOpen).toHaveBeenCalledTimes(1);
+      expect(onSelect).toHaveBeenCalledTimes(1);
     });
   });
 });
