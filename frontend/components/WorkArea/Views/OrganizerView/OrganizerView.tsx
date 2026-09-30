@@ -12,6 +12,7 @@ import {
   selectFolders,
   selectResources,
   setSelectedResourceId,
+  setSuppressNextViewAutoSwitch,
 } from "../../../../src/store/resourcesSlice";
 import {
   selectActiveProjectStatuses,
@@ -241,6 +242,11 @@ export default function OrganizerView({
   }, [isShowingBody, cardBodySource, excerptLength, projectId, textIdsKey]);
 
   const handleOpen = (id: string) => dispatch(setSelectedResourceId(id));
+
+  const handleSelect = (id: string) => {
+    dispatch(setSuppressNextViewAutoSwitch(true));
+    dispatch(setSelectedResourceId(id));
+  };
 
   return (
     <div className={`p-4 overflow-y-scroll h-[calc(100vh-12rem)] ${className}`}>
