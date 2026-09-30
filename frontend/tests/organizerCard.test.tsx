@@ -162,4 +162,43 @@ describe("OrganizerCard", () => {
       ).not.toContain("resource-tree-item--selected");
     });
   });
+
+  describe("selected-state inline style (Task 19, FR-8 CSS-layer fix)", () => {
+    it("applies the border-left and background-color inline style when isSelected is true", () => {
+      const res = createTextResource({ name: "Selected Card Style" });
+      const { container } = render(
+        <OrganizerCard resource={res} isSelected={true} />,
+      );
+
+      const article = container.querySelector("article") as HTMLElement;
+      expect(article.style.borderLeft).toBe(
+        "2px solid var(--color-gw-red-border)",
+      );
+      expect(article.style.backgroundColor).toBe("var(--color-gw-chrome2)");
+    });
+
+    it("applies no inline border-left/background-color style when isSelected is false or omitted", () => {
+      const resFalse = createTextResource({ name: "Unselected Card Style" });
+      const { container: containerFalse } = render(
+        <OrganizerCard resource={resFalse} isSelected={false} />,
+      );
+      const articleFalse = containerFalse.querySelector(
+        "article",
+      ) as HTMLElement;
+      expect(articleFalse.style.borderLeft).toBe("");
+      expect(articleFalse.style.backgroundColor).toBe("");
+
+      const resDefault = createTextResource({
+        name: "Default Unselected Card Style",
+      });
+      const { container: containerDefault } = render(
+        <OrganizerCard resource={resDefault} />,
+      );
+      const articleDefault = containerDefault.querySelector(
+        "article",
+      ) as HTMLElement;
+      expect(articleDefault.style.borderLeft).toBe("");
+      expect(articleDefault.style.backgroundColor).toBe("");
+    });
+  });
 });

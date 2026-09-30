@@ -115,6 +115,14 @@ export default function OrganizerCard({
     <Card
       as="article"
       className={`h-48 border${isSelected ? " resource-tree-item--selected" : ""}`}
+      style={
+        isSelected
+          ? {
+              borderLeft: "2px solid var(--color-gw-red-border)",
+              backgroundColor: "var(--color-gw-chrome2)",
+            }
+          : undefined
+      }
       aria-labelledby={`res-${resource.id}-title`}
     >
       <header className="flex items-start justify-between gap-3 mb-3">
