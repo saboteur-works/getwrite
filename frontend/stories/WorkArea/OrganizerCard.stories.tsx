@@ -38,6 +38,21 @@ export const Compact: Story = {
   },
 };
 
+// Demonstrates the selected-card highlight (FR-8): `isSelected` appends the
+// shared `resource-tree-item--selected` highlight class to the card. Default
+// and Compact above both omit `isSelected`, so they remain the unhighlighted
+// comparison.
+export const Selected: Story = {
+  args: {
+    resource: sample,
+    showBody: true,
+    body: "A short body preview, sourced from the project's configured card-body source (a metadata field or a text excerpt).",
+    isSelected: true,
+    onOpen: action("onOpen"),
+    onSelect: action("onSelect"),
+  },
+};
+
 // One card per resource kind, so every per-type icon added alongside the
 // clickable title (FR-1, FR-2, FR-3, FR-5) is visible from Storybook without
 // manual interaction.
