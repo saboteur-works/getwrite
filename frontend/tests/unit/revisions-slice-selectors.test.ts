@@ -53,6 +53,7 @@ function createRootState(overrides?: {
       selectedResourceId: overrides?.selectedResourceId ?? "resource-1",
       resources: [],
       folders: [],
+      suppressNextViewAutoSwitch: false,
     },
     revisions: {
       resourceId: "resource-1",

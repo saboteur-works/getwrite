@@ -63,6 +63,7 @@ function makeStore() {
         selectedResourceId: null,
         resources: [IMAGE_RESOURCE],
         folders: [],
+        suppressNextViewAutoSwitch: false,
       },
     },
   });

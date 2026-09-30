@@ -17,12 +17,23 @@ interface ResourcesState {
   selectedResourceId: string | null;
   resources: AnyResource[];
   folders: Folder[];
+  /**
+   * Transient, one-shot suppression flag (FR-3, FR-4, OQ-4,
+   * `specs/features/organizer-card-icons-and-open.md`). Set immediately
+   * before `setSelectedResourceId` by `OrganizerCard`'s title-click
+   * `onSelect` handler so `AppShell.tsx`'s global auto-switch-to-edit-view
+   * `useEffect` can skip its `setView` calls for that one trigger. The
+   * effect reads this flag once and clears it, so the next ordinary
+   * selection change behaves exactly as it does today.
+   */
+  suppressNextViewAutoSwitch: boolean;
 }
 
 const initialState: ResourcesState = {
   selectedResourceId: null,
   resources: [],
   folders: [],
+  suppressNextViewAutoSwitch: false,
 };
 
 export const persistReorder = createAsyncThunk(
@@ -92,6 +103,17 @@ const resourcesSlice = createSlice({
     },
     setSelectedResourceId(state, action: PayloadAction<string | null>) {
       state.selectedResourceId = action.payload;
+      return state;
+    },
+    /**
+     * Sets the one-shot `suppressNextViewAutoSwitch` flag (FR-3, FR-4,
+     * OQ-4). Dispatched by `OrganizerCard`'s title-click `onSelect` handler
+     * immediately before `setSelectedResourceId`, in the same event-handler
+     * tick, so `AppShell.tsx`'s global auto-switch-to-edit-view effect can
+     * skip its `setView` calls for that specific selection change.
+     */
+    setSuppressNextViewAutoSwitch(state, action: PayloadAction<boolean>) {
+      state.suppressNextViewAutoSwitch = action.payload;
       return state;
     },
     addResource(state, action: PayloadAction<AnyResource>) {
@@ -198,6 +220,7 @@ const resourcesSlice = createSlice({
 export const {
   setResources,
   setSelectedResourceId,
+  setSuppressNextViewAutoSwitch,
   updateResource,
   updateFolder,
   addResource,
@@ -235,3 +258,11 @@ export const selectFoldersAndResources = createSelector(
   [selectFolders, selectResources],
   (folders, resources) => [...folders, ...resources],
 );
+
+/**
+ * Select the one-shot `suppressNextViewAutoSwitch` flag (FR-3, FR-4, OQ-4).
+ * Intended to be read once by `AppShell.tsx`'s auto-switch-to-edit-view
+ * effect and immediately cleared afterward.
+ */
+export const selectSuppressNextViewAutoSwitch = (state: ResourcesState) =>
+  state.suppressNextViewAutoSwitch;

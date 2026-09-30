@@ -39,7 +39,12 @@ function makeStore(resources: AnyResource[], folders: Folder[] = []) {
           } as StoredProject,
         },
       },
-      resources: { selectedResourceId: null, resources, folders },
+      resources: {
+        selectedResourceId: null,
+        resources,
+        folders,
+        suppressNextViewAutoSwitch: false,
+      },
     },
   });
 }

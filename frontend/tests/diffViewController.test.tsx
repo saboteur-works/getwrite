@@ -95,6 +95,7 @@ function makeStore(initialCanonicalRevisionId: string) {
         selectedResourceId: RESOURCE_ID,
         resources: [SEED_RESOURCE],
         folders: SEED_FOLDERS,
+        suppressNextViewAutoSwitch: false,
       },
       revisions: {
         resourceId: RESOURCE_ID,

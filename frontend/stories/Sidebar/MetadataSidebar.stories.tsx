@@ -73,6 +73,7 @@ export const Interactive: Story = {
           selectedResourceId: resource.id,
           resources: [resource],
           folders: [],
+          suppressNextViewAutoSwitch: false,
         },
         revisions: {
           resourceId: null,
@@ -169,6 +170,7 @@ function makeStoreWithResource(resource: AnyResource) {
         selectedResourceId: resource.id,
         resources: [resource],
         folders: [],
+        suppressNextViewAutoSwitch: false,
       },
       revisions: {
         resourceId: null,

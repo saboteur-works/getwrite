@@ -47,6 +47,7 @@ function makeStore(selectedResourceId: string | null = RESOURCE_ID) {
           },
         ],
         folders: [],
+        suppressNextViewAutoSwitch: false,
       },
       revisions: {
         resourceId: null,

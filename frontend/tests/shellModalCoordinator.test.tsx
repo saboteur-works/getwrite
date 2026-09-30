@@ -35,7 +35,12 @@ function makeStore() {
           } as StoredProject,
         },
       },
-      resources: { selectedResourceId: null, resources: [], folders: [] },
+      resources: {
+        selectedResourceId: null,
+        resources: [],
+        folders: [],
+        suppressNextViewAutoSwitch: false,
+      },
       revisions: {
         resourceId: null,
         requestedResourceId: null,

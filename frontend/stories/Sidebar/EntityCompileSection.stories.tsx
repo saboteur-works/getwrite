@@ -84,6 +84,7 @@ function buildStore(associated: AnyResource[]) {
         selectedResourceId: SELECTED_ENTITY_ID,
         resources,
         folders: [],
+        suppressNextViewAutoSwitch: false,
       },
     },
   });

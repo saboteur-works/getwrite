@@ -96,6 +96,7 @@ function buildStore(aliasTable: EntityAliasTable) {
         selectedResourceId: SELECTED_ENTITY_ID,
         resources: [selectedEntity],
         folders: [],
+        suppressNextViewAutoSwitch: false,
       },
       entityAliasTable: {
         projectId: PROJECT_ID,
