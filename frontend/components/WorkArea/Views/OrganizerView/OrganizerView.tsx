@@ -317,6 +317,7 @@ export default function OrganizerView({
                 textExcerpt: excerpts[child.id],
               })}
               defaultStatus={defaultStatus}
+              isSelected={child.id === selectedResourceId}
               onOpen={() => handleOpen(child.id)}
               onSelect={() => handleSelect(child.id)}
             />

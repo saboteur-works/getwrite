@@ -50,6 +50,13 @@ export interface OrganizerCardProps {
   onSelect?: () => void;
   /** Fallback status shown when the resource has no status set. Defaults to the first project status. */
   defaultStatus?: string;
+  /**
+   * Whether this card's resource is the current globally-selected resource;
+   * applies the established selected-row highlight when true.
+   *
+   * @defaultValue false
+   */
+  isSelected?: boolean;
 }
 
 /**
@@ -93,6 +100,7 @@ export default function OrganizerCard({
   onOpen,
   onSelect,
   defaultStatus = "",
+  isSelected = false,
 }: OrganizerCardProps): JSX.Element {
   /** Best-effort display title fallback chain. */
   const title = (resource as any).title ?? resource.name ?? "Untitled";
@@ -106,7 +114,7 @@ export default function OrganizerCard({
   return (
     <Card
       as="article"
-      className="h-48 border"
+      className={`h-48 border${isSelected ? " resource-tree-item--selected" : ""}`}
       aria-labelledby={`res-${resource.id}-title`}
     >
       <header className="flex items-start justify-between gap-3 mb-3">
