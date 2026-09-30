@@ -552,39 +552,322 @@ needs them)
 
 ---
 
+## Task group: FR-7/FR-8 correction (`browsingFolderId` + selected-card styling)
+
+Added 2026-09-30. This is a THIRD, distinct correction — separate from the
+FR-3/FR-4 correction group above (Tasks 7-13) — found by a second round of
+live testing performed *after* Tasks 7-13's fix was verified working. It
+implements Amendment 2's FR-7 and FR-8: `OrganizerView` gains its own
+local `browsingFolderId` state (decoupled from `selectedResourceId`) so the
+card grid stays pinned to the folder the writer was browsing when the title
+click selects a non-folder resource, and `OrganizerCard` gains a visible
+selected-state treatment for whichever resource is currently the global
+selection.
+
+Grounding notes (verified against source before writing tasks below):
+
+- `OrganizerView.tsx` currently derives `selectedFolder` directly:
+  `const selectedFolder = folders.find((f) => f.id === selectedResourceId) ??
+  null;` (line 125-126). `childFolders`, `childResources`, and `allChildren`
+  are all derived from `selectedFolder`, so redirecting `selectedFolder`'s
+  own source is the only change needed to fix the grid — no other line in
+  the file depends on `selectedResourceId` for grid contents.
+- `OrganizerView.tsx` already reads `selectedResourceId` via
+  `useAppSelector((s) => s.resources.selectedResourceId)` (line 79-81) — this
+  read is kept (still needed to pass down as the globally-selected id for
+  FR-8's highlight), it is `selectedFolder`'s *source* that changes from
+  `selectedResourceId` to a new local `browsingFolderId` state.
+- `OrganizerCard.tsx` currently has no prop naming the globally-selected
+  resource and no selected-state styling on its outer `Card`
+  (`className="h-48 border"`, line 109). `Card` (`frontend/components/common/
+  UI/Card/Card.tsx`) forwards `className` through `cn(cardVariants(...),
+  className)`, so appending selected-state classes conditionally needs no
+  new `Card` variant.
+- The established selected-row convention lives in
+  `frontend/styles/getwrite-utilities.css` (lines 809-812) as the global CSS
+  class `.resource-tree-item--selected` (`border-left: var(--color-gw-red-
+  border) solid 2px; background-color: var(--color-gw-chrome2);`), applied
+  by `ResourceTree.tsx` (line 360) as a plain conditional className
+  concatenation — `` `resource-tree-item ${item.isSelected() ?
+  "resource-tree-item--selected" : ""}` `` — alongside its own
+  `resource-tree-item` base class. `OrganizerCard`'s own base classes
+  (`cardVariants`'s `border-[0.5px] border-gw-border` plus the literal
+  `"h-48 border"`) are unrelated to `resource-tree-item`, so FR-8 is
+  satisfied by conditionally appending the existing global
+  `resource-tree-item--selected` class itself (reusing the class, not just
+  copying its two declarations into a new Tailwind utility string) to
+  `OrganizerCard`'s `Card` `className` — the most direct form of "reuse" and
+  the one that keeps a single source of truth for the convention's exact
+  values.
+- `organizerView.test.tsx` already covers (via the FR-3/FR-4 correction
+  group's Task 11 work) that clicking a folder card's title navigates into
+  that folder (`screen.getByRole("button", { name: "Subfolder" }).click()`
+  → `selectedResourceId` becomes the subfolder's id) and that clicking a
+  text card's title selects it without a `view` to assert on in this file.
+  Neither existing test currently asserts on the *grid's own visible
+  contents* after a title click — Task 16 below adds that assertion, since
+  it is the one FR-7 directly protects against regressing.
+- `appShellOrganizerTitleClickViewSuppression.test.tsx` (from the FR-3/FR-4
+  correction) is the existing integration test rendering `AppShell` +
+  `OrganizerView` together and asserting on the active `view` state — it is
+  the natural home for a full click-through regression test that also
+  checks the grid stays visible, since `OrganizerView.tsx` alone has no
+  `view` state of its own.
+- No selector for "the currently browsed folder id" exists yet in
+  `resourcesSlice.ts` — `browsingFolderId` is `OrganizerView.tsx`'s own
+  component-local `React.useState`, not new Redux state, since nothing
+  outside `OrganizerView` needs to read or persist it (unlike
+  `suppressNextViewAutoSwitch`, which `AppShell.tsx` — a different component
+  — must read).
+
+---
+
+### Task 14: `OrganizerView.tsx`'s `browsingFolderId` local state + sync effect (FR-7)
+
+**What:** Introduce local `browsingFolderId` state, initialized to `null`,
+synced from `selectedResourceId` only when it resolves to an actual folder;
+derive `selectedFolder` from `browsingFolderId` instead of
+`selectedResourceId` directly.
+**Files:** `frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx`
+**Done when:**
+- A new `const [browsingFolderId, setBrowsingFolderId] =
+  React.useState<string | null>(null);` is added, initialized to `null`
+  per FR-7/OQ-6 (matching `resourcesSlice.ts`'s own `selectedResourceId:
+  null` initialization precedent — no project-load path pre-populates
+  either to a project root or first top-level folder).
+- A new `React.useEffect` runs whenever `selectedResourceId` (or `folders`)
+  changes, checks whether `selectedResourceId` resolves to an entry in
+  `folders` (i.e. `folders.some((f) => f.id === selectedResourceId)`), and
+  calls `setBrowsingFolderId(selectedResourceId)` only in that case — it
+  MUST NOT call `setBrowsingFolderId` when `selectedResourceId` resolves to
+  a non-folder resource or to nothing at all, per FR-7's explicit
+  constraint ("It MUST NOT update when `selectedResourceId` changes to a
+  non-folder resource").
+- `const selectedFolder = folders.find((f) => f.id === selectedResourceId) ??
+  null;` (current line 125-126) is changed to derive from
+  `browsingFolderId` instead: `const selectedFolder = folders.find((f) =>
+  f.id === browsingFolderId) ?? null;`. `childFolders`, `childResources`,
+  and `allChildren` are unchanged — they already derive from
+  `selectedFolder`, not `selectedResourceId`, directly.
+- The existing `selectedResourceId` selector read (line 79-81) is left in
+  place unchanged — it is still needed (Task 15) to pass the
+  globally-selected id down to `OrganizerCard` for the selected-card
+  highlight; only `selectedFolder`'s derivation source changes.
+- The existing `React.useEffect` that resets filters on `selectedFolder?.id`
+  change (line 149-151, FR-10) is left unchanged — it already keys off
+  `selectedFolder?.id`, which now changes only on a genuine folder
+  navigation (browsing-folder change), not on every non-folder selection,
+  which is the FR-10-preserving outcome, not a regression: filters no
+  longer reset on a same-folder title click, which is correct because the
+  folder itself didn't change.
+- `pnpm --filter getwrite-frontend typecheck` passes.
+**Depends on:** none (independent of Tasks 1-13, which are already merged)
+**Estimate:** 3
+**Done:** [ ]
+
+---
+
+### Task 15: `OrganizerCard.tsx`'s selected-state styling + `OrganizerView.tsx`'s supporting prop (FR-8)
+
+**What:** Add a visible selected-state treatment to `OrganizerCard`'s outer
+`Card` when the rendered resource is the current global selection, reusing
+the existing `resource-tree-item--selected` CSS class; pass down whatever
+prop `OrganizerView.tsx` needs to determine this per card.
+**Files:**
+- `frontend/components/WorkArea/Views/OrganizerView/OrganizerCard.tsx`
+- `frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx`
+**Done when:**
+- `OrganizerCardProps` gains a new boolean prop, e.g. `isSelected?: boolean`
+  (defaulting to `false` when omitted), documented distinctly from
+  `resource`/`onSelect`/`onOpen` (e.g. "Whether this card's resource is the
+  current globally-selected resource; applies the established
+  selected-row highlight when true.") — passing a pre-computed boolean
+  rather than the raw `selectedResourceId` keeps `OrganizerCard` from
+  needing to know about global selection state itself, consistent with it
+  otherwise being a presentational component driven entirely by props.
+- `OrganizerCard`'s outer `Card`'s `className` becomes conditional, e.g.
+  `` className={`h-48 border${isSelected ? " resource-tree-item--selected" :
+  ""}`} `` — reusing the existing global `resource-tree-item--selected`
+  class verbatim (defined in `getwrite-utilities.css` lines 809-812) rather
+  than restating its `border-left`/`background-color` values as new
+  Tailwind utility classes, per FR-8 and this codebase's "red is reserved
+  for position/canonical-state indicators" rule (a selection indicator is
+  exactly such a position indicator).
+- In `OrganizerView.tsx`, each `<OrganizerCard ... />` invocation gains
+  `isSelected={child.id === selectedResourceId}` — comparing against the
+  existing `selectedResourceId` selector read (unchanged by Task 14), not
+  `browsingFolderId`, since FR-8 highlights the *globally* selected
+  resource, which may or may not be among the currently-displayed children
+  (in the common case, since Task 14 keeps the grid pinned to the browsed
+  folder even when a child of that folder is selected).
+- When no resource among `visibleChildren` matches `selectedResourceId`
+  (e.g. the selection is the browsed folder itself, or something outside
+  this folder entirely), no card renders the highlight — confirmed by
+  `isSelected` evaluating `false` for every card in that case, requiring no
+  special-case branch.
+- `pnpm --filter getwrite-frontend typecheck` passes.
+**Depends on:** Task 14
+**Estimate:** 2
+**Done:** [ ]
+
+---
+
+### Task 16: Test coverage for the FR-7 regression, the FR-8 highlight, and folder-navigation parity (FR-7, FR-8)
+
+**What:** Add the core regression test reproducing the live-testing bug
+(grid going blank on a same-folder title click), a test for the selected-
+card highlight, and a test confirming ordinary folder navigation (sidebar
+tree and folder cards) still updates the grid correctly.
+**Files:**
+- `frontend/tests/organizerView.test.tsx`
+- `frontend/tests/organizerCard.test.tsx`
+- `frontend/tests/appShellOrganizerTitleClickViewSuppression.test.tsx`
+**Done when:**
+- `organizerView.test.tsx`: a new test renders `OrganizerView` with a
+  folder containing at least two resources (e.g. two text resources, or a
+  text and an image resource), selects the folder
+  (`setSelectedResourceId(FOLDER_ID)`), confirms all children are visible
+  in the grid, clicks one card's title (selecting that resource, not the
+  folder), and asserts the grid still shows every one of the folder's
+  children — including the other, unselected resource(s) — rather than
+  falling back to the "Select a folder to view its contents." empty state.
+  This is the direct reproduction of Amendment 2's bug and the most
+  important new test in this task (FR-7).
+- `organizerView.test.tsx`: a new or extended test confirms that after the
+  title-click from the test above, `browsingFolderId`'s effect is
+  observable indirectly — the folder's own name still renders as the `<h2>`
+  heading (`selectedFolder ? selectedFolder.name : "Organizer"`), proving
+  `selectedFolder` did not become `null`.
+- `organizerView.test.tsx`: a new or extended test confirms that clicking a
+  *folder* card's title (already covered by the existing "navigates into
+  that folder" test from the FR-3/FR-4 correction group) still correctly
+  updates the grid to the new folder's own children afterward — extending
+  that existing assertion rather than duplicating it, to confirm FR-7's
+  sync effect does fire for a genuine folder-to-folder navigation.
+- `organizerCard.test.tsx`: a new test renders `OrganizerCard` with
+  `isSelected={true}` and asserts the outer `Card` element carries the
+  `resource-tree-item--selected` class (e.g. via
+  `container.querySelector("article")?.className` or an equivalent stable
+  query); a sibling test with `isSelected={false}` (or omitted) asserts the
+  class is absent — both assertions confirming FR-8 observably, not just
+  by code inspection.
+- `appShellOrganizerTitleClickViewSuppression.test.tsx`: a new or extended
+  test drives the full `AppShell` + `OrganizerView` integration — selects a
+  folder with at least two children, clicks one child's title, and asserts
+  (a) the active view remains `"organizer"` (already covered, left
+  unchanged) AND (b) the other, unselected child's card is still present
+  in the rendered grid (the FR-7 regression, exercised at the same
+  integration level the original live-testing bug was found at, not just
+  `OrganizerView` in isolation).
+- `pnpm --filter getwrite-frontend test:ci -- organizerView` and
+  `pnpm --filter getwrite-frontend test:ci -- organizerCard` and
+  `pnpm --filter getwrite-frontend test:ci -- appShellOrganizerTitleClickViewSuppression`
+  all pass in full, including all pre-existing tests in each file.
+**Depends on:** Task 14, Task 15
+**Estimate:** 5
+**Done:** [ ]
+
+---
+
+### Task 17: Storybook story update for the selected-card highlight (FR-8)
+
+**What:** Check whether the selected-card styling fits naturally into an
+existing `OrganizerCard.stories.tsx` export or needs a new one, and add it.
+**Files:** `frontend/stories/WorkArea/OrganizerCard.stories.tsx`
+**Done when:**
+- `OrganizerCard.stories.tsx` is opened and checked against its current
+  exports (`Default`, `Compact`, `AllResourceKinds`, and any per-kind
+  exports added by the earlier Task 5/Task 12 work) to decide the least
+  duplicative placement — either a new named export (e.g. `Selected`)
+  passing `isSelected: true` alongside the existing `onOpen`/`onSelect`
+  action loggers, or, if it demonstrates more clearly, one card within the
+  existing `AllResourceKinds` render rendered with `isSelected` so the
+  highlighted and unhighlighted states are visible side by side — pick
+  whichever this file's existing structure makes the more natural fit, but
+  add at least one render demonstrating `isSelected={true}` either way.
+- The story renders without runtime errors under `pnpm storybook`.
+- `pnpm --filter getwrite-frontend test:ci -- organizerCard` passes (this
+  story file is not itself test-executed, but this confirms nothing in the
+  same test run broke).
+**Depends on:** Task 15
+**Estimate:** 1
+**Done:** [ ]
+
+---
+
+### Task 18: Final verification sweep — supersedes Task 6 and Task 13 as the last gate (FR-7, FR-8)
+
+**What:** Run the full standard verification suite now that Tasks 14-17
+have landed. This is the THIRD time such a sweep runs in this feature's
+task list — after Task 6 (original group) and Task 13 (FR-3/FR-4
+correction group) — and this one supersedes both as the final gate before
+the feature as a whole (icons, click-to-open, view-switch suppression, and
+the FR-7/FR-8 folder-browsing/selected-card correction) is considered done.
+Task 6 and Task 13 are left in place, unmodified, as historical record of
+verification at their respective points in the feature's history; neither
+is re-run standalone — this task's run is the one that gates completion.
+**Files:** none (verification only; fixes land in whichever file above
+needs them)
+**Done when:**
+- `pnpm --filter getwrite-frontend typecheck` passes with zero errors.
+- `pnpm --filter getwrite-frontend lint` passes with zero errors.
+- `pnpm --filter getwrite-frontend test:ci` passes in full (not a filtered
+  subset).
+- `pnpm --filter getwrite-frontend build` (or at minimum a targeted check
+  that `next build` isn't broken by the changes) succeeds.
+**Depends on:** Task 14, Task 15, Task 16, Task 17
+**Estimate:** 1
+**Done:** [ ]
+
+---
+
 ## Summary
 
-- Total tasks: 13
-- Total estimated effort: 27 story points (12 original + 15 added: 1 + 3 +
-  2 + 1 + 5 + 2 + 1). Tasks 1-6 are the original group (Task 2's `onOpen`
-  reuse approach is superseded by Tasks 7-13 below — see the "Task group:
-  FR-3/FR-4 correction" section and the note inserted directly after Task
-  2's own entry, which identifies exactly which of Task 2's original
-  assertions no longer hold; Task 2 itself is left in place, unmodified, as
-  historical record). Tasks 7-13 are the added correction group.
+- Total tasks: 18
+- Total estimated effort: 39 story points (12 original + 15 FR-3/FR-4
+  correction + 12 FR-7/FR-8 correction: 3 + 2 + 5 + 1 + 1). Tasks 1-6 are the
+  original group (Task 2's `onOpen` reuse approach is superseded by Tasks
+  7-13 — see the "Task group: FR-3/FR-4 correction" section and the note
+  inserted directly after Task 2's own entry). Tasks 7-13 are the FR-3/FR-4
+  correction group. Tasks 14-18 are the FR-7/FR-8 correction group, added
+  2026-09-30 for Amendment 2 — none of Tasks 1-13 are modified by this
+  addition.
 - Critical path: Task 1 → Task 2 → Task 3 → Task 6 for the original group;
-  Task 7 → Task 8 → Task 9 → Task 10 → Task 11 → Task 13 for the correction
-  group (Task 12 depends only on Task 10 and can run in parallel with Task
-  11, but does not shorten the path; Task 13 needs Tasks 7-12 all
-  finished). Task 9 depends only on Task 7 and could run in parallel with
-  Task 8, but Task 10 needs Task 9's `onSelect` wiring and Task 11's
-  cross-component view-state assertions need Task 8's `AppShell.tsx`
-  change, so the practical critical path still runs through Task 7-8-9-10
-  in sequence before Task 11.
+  Task 7 → Task 8 → Task 9 → Task 10 → Task 11 → Task 13 for the FR-3/FR-4
+  correction group; Task 14 → Task 15 → Task 16 → Task 18 for the FR-7/FR-8
+  correction group (Task 17 depends only on Task 15 and can run in parallel
+  with Task 16, but does not shorten the path; Task 18 needs Tasks 14-17
+  all finished).
 - Risks:
-  - Low-to-moderate for the correction group — Task 8's change touches a
-    shared, multi-caller `useEffect` in `AppShell.tsx` that six other
-    components besides Organizer rely on; the main risk is accidentally
-    widening the suppression check to affect one of those six unrelated
-    callers, which Task 8's done-when conditions and Task 11's regression
-    test are both written specifically to catch.
-  - The one-shot nature of the new flag (Task 7) is a new pattern with no
-    precedent elsewhere in this codebase (confirmed by the spec's OQ-4
-    investigation) — Task 11's dedicated regression test exists
-    specifically because this is the one part of the correction group with
-    no existing test pattern to copy.
+  - Low-to-moderate for the FR-7/FR-8 correction group — Task 14's sync
+    effect is a new local-state pattern (no existing "local state mirrors
+    global state conditionally" precedent elsewhere in `OrganizerView.tsx`
+    or its siblings); the main risk is the effect's dependency array or
+    its folder-membership check being subtly wrong in a way that only
+    shows up on a specific navigation sequence (e.g. selecting a folder,
+    then a resource in it, then a different resource in the same folder) —
+    Task 16's regression test is written specifically against the exact
+    sequence Amendment 2's live testing found broken, but does not
+    exhaustively cover every possible sequence.
+  - Low for Task 15 — reusing the existing global
+    `resource-tree-item--selected` class is the same low-risk pattern
+    `SmartFolders.tsx`'s own `resource-tree-button--selected` analog and
+    `ResourceTree.tsx` already use; the only real risk is a Tailwind/CSS
+    class-ordering conflict with `Card`'s own `cardVariants` base classes,
+    which Task 16's class-presence assertion is written to catch.
+  - Low-to-moderate for the FR-3/FR-4 correction group — Task 8's change
+    touches a shared, multi-caller `useEffect` in `AppShell.tsx` that six
+    other components besides Organizer rely on; the main risk is
+    accidentally widening the suppression check to affect one of those six
+    unrelated callers, which Task 8's done-when conditions and Task 11's
+    regression test are both written specifically to catch.
+  - The one-shot nature of the suppression flag (Task 7) is a new pattern
+    with no precedent elsewhere in this codebase (confirmed by the spec's
+    OQ-4 investigation) — Task 11's dedicated regression test exists
+    specifically because this is the one part of that correction group
+    with no existing test pattern to copy.
   - Low overall for the original group — unchanged from the original risk
-    assessment below.
+    assessment.
   - Task 4 creates a brand-new a11y test file rather than extending one,
     since no existing `frontend/tests/a11y/` file already covers
     `OrganizerCard`; this is expected and mirrors how
