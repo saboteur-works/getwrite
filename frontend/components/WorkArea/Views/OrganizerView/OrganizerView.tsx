@@ -41,6 +41,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  type Announcements,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -95,6 +96,15 @@ function SortableOrganizerCard({
       dragDisabledReason={disabled ? disabledReason : undefined}
     />
   );
+}
+
+/**
+ * Best-effort display title fallback chain for a resource, mirroring
+ * `OrganizerCard.tsx`'s own `title` derivation exactly, so a drag-end
+ * announcement (FR-8) names the same title the card itself renders.
+ */
+function resolveCardTitle(resource: AnyResource): string {
+  return (resource as { title?: string }).title ?? resource.name ?? "Untitled";
 }
 
 /** Narrows a `MetadataValue` entry to a `ResourceRef`'s `name`, if it is one. */
@@ -369,6 +379,39 @@ export default function OrganizerView({
     reorderChildren(newOrder);
   };
 
+  // FR-8: announces a completed keyboard (or pointer) reorder to assistive
+  // technology, mirroring `handleDragEnd`'s own no-op conditions exactly so
+  // no announcement fires for a disabled-by-filter, no-drop-target, or
+  // dropped-without-moving drag. The announcement text is derived entirely
+  // from data already in scope here (`allChildren`/`allChildIds`) — no new
+  // fetch or store read is introduced for it. `onDragStart`/`onDragOver`/
+  // `onDragCancel` are required by `@dnd-kit/core`'s `Announcements` type
+  // but produce no announcement of their own — FR-8 only requires one on a
+  // completed reorder.
+  const announcements: Announcements = {
+    onDragStart: () => undefined,
+    onDragOver: () => undefined,
+    onDragCancel: () => undefined,
+    onDragEnd({ active, over }) {
+      if (isAnyFilterActive) return undefined;
+      if (!over || active.id === over.id) return undefined;
+
+      const oldIndex = allChildIds.indexOf(String(active.id));
+      const newIndex = allChildIds.indexOf(String(over.id));
+      if (oldIndex === -1 || newIndex === -1) return undefined;
+
+      const newOrder = arrayMove(allChildIds, oldIndex, newIndex);
+      const movedChild = allChildren.find(
+        (child) => child.id === String(active.id),
+      );
+      if (!movedChild) return undefined;
+
+      const title = resolveCardTitle(movedChild);
+      const position = newOrder.indexOf(String(active.id)) + 1;
+      return `${title} moved to position ${position} of ${newOrder.length}`;
+    },
+  };
+
   return (
     <div className={`p-4 overflow-y-scroll h-[calc(100vh-12rem)] ${className}`}>
       <div className="flex items-center justify-between mb-4">
@@ -413,7 +456,11 @@ export default function OrganizerView({
           No cards match the current filters.
         </p>
       ) : (
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          onDragEnd={handleDragEnd}
+          accessibility={{ announcements }}
+        >
           <SortableContext items={allChildIds} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {visibleChildren.map((child) => (

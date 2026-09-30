@@ -39,14 +39,28 @@ import { fetchResourceExcerpts } from "../src/lib/api/resource-excerpts";
 // wrapper composing the real component, not a stand-in — so `SortableContext`
 // and `useSortable` still see a genuine DnD-kit context provider) so tests
 // can invoke it directly with synthetic events rather than driving a full
-// pointer/keyboard drag gesture, which is Task 6's scope.
+// pointer/keyboard drag gesture, which is Task 6's scope. Task 5 (FR-8) adds
+// a second captured value, the `accessibility.announcements` object, for the
+// same reason: it lets tests invoke `announcements.onDragEnd` directly with
+// a constructed event.
 let capturedOnDragEnd: ((event: unknown) => void) | undefined;
+let capturedAnnouncements:
+  | { onDragEnd?: (event: unknown) => string | undefined }
+  | undefined;
 vi.mock("@dnd-kit/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@dnd-kit/core")>();
   return {
     ...actual,
     DndContext: (props: Record<string, unknown>) => {
       capturedOnDragEnd = props.onDragEnd as (event: unknown) => void;
+      const accessibility = props.accessibility as
+        | {
+            announcements?: {
+              onDragEnd?: (event: unknown) => string | undefined;
+            };
+          }
+        | undefined;
+      capturedAnnouncements = accessibility?.announcements;
       return React.createElement(actual.DndContext, props as any);
     },
   };
@@ -1121,6 +1135,77 @@ describe("OrganizerView drag-and-drop reordering (Task 4)", () => {
         orderIndex: r.orderIndex,
       }));
     expect(orderAfter).toEqual(orderBefore);
+  });
+});
+
+describe("OrganizerView drag-and-drop reorder announcements (Task 5, FR-8)", () => {
+  it("announces the moved card's new title and position for a real, non-no-op move", () => {
+    const resourceA = createTextResource({ name: "R1", folderId: FOLDER_ID });
+    const resourceB = createTextResource({ name: "R2", folderId: FOLDER_ID });
+    const resourceC = createTextResource({ name: "R3", folderId: FOLDER_ID });
+
+    const testStore = makeStore();
+    testStore.dispatch(setFolders([makeFolder(FOLDER_ID, "Folder A")] as any));
+    testStore.dispatch(setResources([resourceA, resourceB, resourceC] as any));
+    testStore.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    render(
+      <Provider store={testStore}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    expect(capturedAnnouncements?.onDragEnd).toBeDefined();
+
+    // R1 dropped onto R3's position moves it to the last slot (position 3 of 3).
+    const announcement = capturedAnnouncements!.onDragEnd!({
+      active: { id: resourceA.id },
+      over: { id: resourceC.id },
+    });
+
+    expect(announcement).toBeTruthy();
+    expect(announcement).toContain("R1");
+    expect(announcement).toContain("3");
+  });
+
+  it("produces no announcement for a no-op drag — filtered, no drop target, or dropped without moving", () => {
+    const { store, rDraftAlice, rNoStatusBob } = makeFilterableStore();
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    expect(capturedAnnouncements?.onDragEnd).toBeDefined();
+
+    // Filter active: dragging is disabled entirely.
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.change(screen.getByLabelText("Filter by status"), {
+      target: { value: "Draft" },
+    });
+    expect(
+      capturedAnnouncements!.onDragEnd!({
+        active: { id: rDraftAlice.id },
+        over: { id: rNoStatusBob.id },
+      }),
+    ).toBeUndefined();
+
+    // No drop target.
+    expect(
+      capturedAnnouncements!.onDragEnd!({
+        active: { id: rDraftAlice.id },
+        over: null,
+      }),
+    ).toBeUndefined();
+
+    // Dropped on itself — no movement.
+    expect(
+      capturedAnnouncements!.onDragEnd!({
+        active: { id: rDraftAlice.id },
+        over: { id: rDraftAlice.id },
+      }),
+    ).toBeUndefined();
   });
 });
 
