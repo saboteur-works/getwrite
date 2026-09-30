@@ -304,6 +304,7 @@ export default function OrganizerView({
               })}
               defaultStatus={defaultStatus}
               onOpen={() => handleOpen(child.id)}
+              onSelect={() => handleSelect(child.id)}
             />
           ))}
         </div>

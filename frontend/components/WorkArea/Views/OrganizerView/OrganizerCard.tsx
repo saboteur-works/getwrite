@@ -43,6 +43,11 @@ export interface OrganizerCardProps {
   body?: string;
   /** Called when the user clicks the Open button on the card. */
   onOpen?: () => void;
+  /**
+   * Called when the user clicks the card's title, selecting the resource
+   * without leaving the current view.
+   */
+  onSelect?: () => void;
   /** Fallback status shown when the resource has no status set. Defaults to the first project status. */
   defaultStatus?: string;
 }
@@ -86,6 +91,7 @@ export default function OrganizerCard({
   showBody = true,
   body,
   onOpen,
+  onSelect,
   defaultStatus = "",
 }: OrganizerCardProps): JSX.Element {
   /** Best-effort display title fallback chain. */
@@ -108,16 +114,16 @@ export default function OrganizerCard({
           <div className="flex items-center gap-1.5">
             <TypeIcon className="w-4 h-4 text-gw-secondary" />
             <h3 id={`res-${resource.id}-title`} className="text-sm font-medium">
-              {onOpen && (
+              {onSelect && (
                 <button
                   type="button"
-                  onClick={onOpen}
+                  onClick={onSelect}
                   className="hover:bg-gw-chrome2 rounded transition-colors duration-150"
                 >
                   {title}
                 </button>
               )}
-              {!onOpen && title}
+              {!onSelect && title}
             </h3>
           </div>
           <div className="text-xs mt-1 text-gw-secondary">
