@@ -5,7 +5,7 @@ import type {
   MetadataField,
   ResourceRef,
 } from "../../../../src/lib/models/types";
-import OrganizerCard from "./OrganizerCard";
+import OrganizerCard, { type OrganizerCardProps } from "./OrganizerCard";
 import OrganizerFilterBar from "./OrganizerFilterBar";
 import useAppSelector, { useAppDispatch } from "../../../../src/store/hooks";
 import {
@@ -34,6 +34,68 @@ import {
   initialOrganizerFilterState,
   filterChildren,
 } from "./organizerFilters";
+import { useOrganizerCardReorder } from "./useOrganizerCardReorder";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+/** Copy shown as the drag handle's disabled-reason hint while a filter is active (FR-6). */
+const DRAG_DISABLED_WHILE_FILTERED_REASON = "Clear filters to reorder cards";
+
+/**
+ * Wraps a single `OrganizerCard` with `@dnd-kit/sortable`'s `useSortable`,
+ * translating its returned ref/attributes/listeners/transform into the
+ * card's own Task-2 drag props. Kept as a small local component (rather than
+ * inlined in the `.map(...)` below) since `useSortable` is a hook and must be
+ * called once per rendered card.
+ */
+function SortableOrganizerCard({
+  childId,
+  disabled,
+  disabledReason,
+  ...cardProps
+}: { childId: string; disabled: boolean; disabledReason?: string } & Omit<
+  OrganizerCardProps,
+  | "dragHandleRef"
+  | "dragHandleAttributes"
+  | "dragHandleListeners"
+  | "dragStyle"
+  | "isDragDisabled"
+  | "dragDisabledReason"
+>): JSX.Element {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: childId, disabled });
+
+  const dragStyle: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <OrganizerCard
+      {...cardProps}
+      dragHandleRef={setNodeRef}
+      dragHandleAttributes={attributes}
+      dragHandleListeners={listeners}
+      dragStyle={dragStyle}
+      isDragDisabled={disabled}
+      dragDisabledReason={disabled ? disabledReason : undefined}
+    />
+  );
+}
 
 /** Narrows a `MetadataValue` entry to a `ResourceRef`'s `name`, if it is one. */
 function asResourceRefName(value: unknown): string | undefined {
@@ -96,6 +158,12 @@ export default function OrganizerView({
   // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
   // comment in `projectsSlice.ts`.
   const projectId = useAppSelector(selectActiveProjectDirectoryId);
+  // Mirrors `ResourceTree.tsx`'s own `currentProject` selection — the
+  // `{ id, rootPath }` shape `useOrganizerCardReorder`'s `persistReorder`
+  // dispatch needs, distinct from the directory-basename `projectId` above.
+  const currentProject = useAppSelector(
+    (s) => s.projects.projects[s.projects.selectedProjectId ?? ""] ?? null,
+  );
 
   const [isShowingBody, setIsShowingBody] = React.useState(showBody);
   // Text content for `text-excerpt` cards, fetched on demand for the visible
@@ -262,6 +330,45 @@ export default function OrganizerView({
     dispatch(setSelectedResourceId(id));
   };
 
+  // Task 3's reorder function, scoped to the currently browsed folder. Called
+  // unconditionally (not just when `selectedFolder` exists) per the rules of
+  // hooks; `browsedFolderId` falls back to `""` when nothing is browsed, at
+  // which point `allChildren` is also empty and the returned function is
+  // simply never invoked.
+  const reorderChildren = useOrganizerCardReorder({
+    dispatch,
+    currentProject,
+    projectDirectoryId: projectId,
+    browsedFolderId: selectedFolder?.id ?? "",
+    allChildren,
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const allChildIds = allChildren.map((child) => child.id);
+
+  // FR-4: this handler touches only the reorder path — it never dispatches
+  // `dispatchFilter` or otherwise reads/writes `filterState`/
+  // `visibleChildren`.
+  const handleDragEnd = (event: DragEndEvent) => {
+    if (isAnyFilterActive) return;
+
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = allChildIds.indexOf(String(active.id));
+    const newIndex = allChildIds.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const newOrder = arrayMove(allChildIds, oldIndex, newIndex);
+    reorderChildren(newOrder);
+  };
+
   return (
     <div className={`p-4 overflow-y-scroll h-[calc(100vh-12rem)] ${className}`}>
       <div className="flex items-center justify-between mb-4">
@@ -306,23 +413,30 @@ export default function OrganizerView({
           No cards match the current filters.
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {visibleChildren.map((child) => (
-            <OrganizerCard
-              key={child.id}
-              resource={child}
-              showBody={isShowingBody}
-              body={resolveOrganizerCardBody(child, cardBodyConfig, {
-                notesEnabled: isNotesEnabled,
-                textExcerpt: excerpts[child.id],
-              })}
-              defaultStatus={defaultStatus}
-              isSelected={child.id === selectedResourceId}
-              onOpen={() => handleOpen(child.id)}
-              onSelect={() => handleSelect(child.id)}
-            />
-          ))}
-        </div>
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <SortableContext items={allChildIds} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {visibleChildren.map((child) => (
+                <SortableOrganizerCard
+                  key={child.id}
+                  childId={child.id}
+                  resource={child}
+                  showBody={isShowingBody}
+                  body={resolveOrganizerCardBody(child, cardBodyConfig, {
+                    notesEnabled: isNotesEnabled,
+                    textExcerpt: excerpts[child.id],
+                  })}
+                  defaultStatus={defaultStatus}
+                  isSelected={child.id === selectedResourceId}
+                  onOpen={() => handleOpen(child.id)}
+                  onSelect={() => handleSelect(child.id)}
+                  disabled={isAnyFilterActive}
+                  disabledReason={DRAG_DISABLED_WHILE_FILTERED_REASON}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );

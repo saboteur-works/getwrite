@@ -34,6 +34,24 @@ vi.mock("../src/lib/api/resource-excerpts", () => ({
 }));
 import { fetchResourceExcerpts } from "../src/lib/api/resource-excerpts";
 
+// Task 4 (drag-and-drop reordering): captures the `onDragEnd` handler
+// `OrganizerView` passes to `@dnd-kit/core`'s real `DndContext` (a thin
+// wrapper composing the real component, not a stand-in — so `SortableContext`
+// and `useSortable` still see a genuine DnD-kit context provider) so tests
+// can invoke it directly with synthetic events rather than driving a full
+// pointer/keyboard drag gesture, which is Task 6's scope.
+let capturedOnDragEnd: ((event: unknown) => void) | undefined;
+vi.mock("@dnd-kit/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@dnd-kit/core")>();
+  return {
+    ...actual,
+    DndContext: (props: Record<string, unknown>) => {
+      capturedOnDragEnd = props.onDragEnd as (event: unknown) => void;
+      return React.createElement(actual.DndContext, props as any);
+    },
+  };
+});
+
 const FOLDER_ID = "11111111-1111-4111-8111-111111111111";
 const PROJECT_ID = "22222222-2222-4222-8222-222222222222";
 const FOLDER_B_ID = "33333333-3333-4333-8333-333333333333";
@@ -1026,6 +1044,83 @@ describe("OrganizerView", () => {
     });
     fireEvent.click(button);
     expect(onToggle).toHaveBeenCalled();
+  });
+});
+
+describe("OrganizerView drag-and-drop reordering (Task 4)", () => {
+  it("renders the populated grid without runtime errors now that DndContext/SortableContext wrap it", () => {
+    const resourceA = createTextResource({ name: "R1", folderId: FOLDER_ID });
+    const resourceB = createTextResource({ name: "R2", folderId: FOLDER_ID });
+
+    const testStore = makeStore();
+    testStore.dispatch(setFolders([makeFolder(FOLDER_ID, "Folder A")] as any));
+    testStore.dispatch(setResources([resourceA, resourceB] as any));
+    testStore.dispatch(setSelectedResourceId(FOLDER_ID));
+
+    expect(() =>
+      render(
+        <Provider store={testStore}>
+          <OrganizerView showBody={false} />
+        </Provider>,
+      ),
+    ).not.toThrow();
+
+    expect(screen.getByText("R1")).toBeTruthy();
+    expect(screen.getByText("R2")).toBeTruthy();
+  });
+
+  it("onDragEnd is a no-op — and does not crash or reorder — when a filter is active, when there is no drop target, or when the item did not move", () => {
+    const { store, rDraftAlice, rNoStatusBob } = makeFilterableStore();
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    const orderBefore = store
+      .getState()
+      .resources.resources.map((r: { id: string; orderIndex: number }) => ({
+        id: r.id,
+        orderIndex: r.orderIndex,
+      }));
+
+    expect(capturedOnDragEnd).toBeDefined();
+
+    // Filter active: dragging is disabled entirely, so the handler must
+    // still be safely callable and must not reorder anything.
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.change(screen.getByLabelText("Filter by status"), {
+      target: { value: "Draft" },
+    });
+
+    expect(() =>
+      capturedOnDragEnd!({
+        active: { id: rDraftAlice.id },
+        over: { id: rNoStatusBob.id },
+      }),
+    ).not.toThrow();
+
+    // No drop target.
+    expect(() =>
+      capturedOnDragEnd!({ active: { id: rDraftAlice.id }, over: null }),
+    ).not.toThrow();
+
+    // Dropped on itself — no movement.
+    expect(() =>
+      capturedOnDragEnd!({
+        active: { id: rDraftAlice.id },
+        over: { id: rDraftAlice.id },
+      }),
+    ).not.toThrow();
+
+    const orderAfter = store
+      .getState()
+      .resources.resources.map((r: { id: string; orderIndex: number }) => ({
+        id: r.id,
+        orderIndex: r.orderIndex,
+      }));
+    expect(orderAfter).toEqual(orderBefore);
   });
 });
 
