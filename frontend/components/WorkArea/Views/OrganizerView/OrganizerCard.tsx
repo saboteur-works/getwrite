@@ -1,3 +1,4 @@
+import type { HTMLAttributes, CSSProperties } from "react";
 import type {
   AnyResource,
   TextResource,
@@ -9,6 +10,7 @@ import {
   ImageIcon,
   FolderIcon,
 } from "../../../ResourceTree/ResourceTreeIcons";
+import { GripVertical } from "lucide-react";
 
 /**
  * @module OrganizerCard
@@ -57,6 +59,47 @@ export interface OrganizerCardProps {
    * @defaultValue false
    */
   isSelected?: boolean;
+  /**
+   * Ref callback for the card's dedicated drag handle element, typically a
+   * caller's `@dnd-kit/sortable` `useSortable().setNodeRef` (or a wrapper
+   * around it). The card never imports `@dnd-kit` itself; this prop exists
+   * purely to let a drag-and-drop-aware caller attach its own ref to the
+   * handle without the card knowing what library produced it.
+   */
+  dragHandleRef?: (element: HTMLElement | null) => void;
+  /**
+   * DOM attributes to spread onto the drag handle, typically a caller's
+   * `@dnd-kit/sortable` `useSortable().attributes`. Ignored while
+   * {@link isDragDisabled} is true.
+   */
+  dragHandleAttributes?: HTMLAttributes<HTMLElement>;
+  /**
+   * Event listeners to spread onto the drag handle, typically a caller's
+   * `@dnd-kit/sortable` `useSortable().listeners`. Ignored while
+   * {@link isDragDisabled} is true.
+   */
+  dragHandleListeners?: Record<string, unknown>;
+  /**
+   * Inline style applied to the outer card for the in-progress drag
+   * transform, typically derived from a caller's `@dnd-kit/sortable`
+   * `useSortable().transform`/`transition` via `CSS.Transform.toString`.
+   * Composed with (never replaces) the existing `isSelected` inline style.
+   */
+  dragStyle?: CSSProperties;
+  /**
+   * When true, the drag handle renders visibly disabled, drops out of tab
+   * order, and does not receive {@link dragHandleAttributes} or
+   * {@link dragHandleListeners}.
+   *
+   * @defaultValue false
+   */
+  isDragDisabled?: boolean;
+  /**
+   * Human-readable reason shown when {@link isDragDisabled} is true, exposed
+   * as the handle's `title` attribute and as visually-associated hint text
+   * via `aria-describedby`.
+   */
+  dragDisabledReason?: string;
 }
 
 /**
@@ -101,6 +144,12 @@ export default function OrganizerCard({
   onSelect,
   defaultStatus = "",
   isSelected = false,
+  dragHandleRef,
+  dragHandleAttributes,
+  dragHandleListeners,
+  dragStyle,
+  isDragDisabled = false,
+  dragDisabledReason,
 }: OrganizerCardProps): JSX.Element {
   /** Best-effort display title fallback chain. */
   const title = (resource as any).title ?? resource.name ?? "Untitled";
@@ -110,24 +159,59 @@ export default function OrganizerCard({
   const status = (resource.userMetadata?.status as string) || defaultStatus;
   /** Icon component matching this resource's type. */
   const TypeIcon = getResourceTypeIcon(resource.type);
+  /** `id` of the disabled-reason hint element, referenced by the handle's `aria-describedby`. */
+  const dragHintId = `res-${resource.id}-drag-hint`;
+  /**
+   * Composed inline style for the outer card: the existing selected-state
+   * highlight plus, when supplied, the caller's in-progress drag transform.
+   * Both can be active at once.
+   */
+  const composedStyle: CSSProperties | undefined =
+    isSelected || dragStyle
+      ? {
+          ...(isSelected
+            ? {
+                borderLeft: "2px solid var(--color-gw-red-border)",
+                backgroundColor: "var(--color-gw-chrome2)",
+              }
+            : undefined),
+          ...dragStyle,
+        }
+      : undefined;
 
   return (
     <Card
       as="article"
       className={`h-48 border${isSelected ? " resource-tree-item--selected" : ""}`}
-      style={
-        isSelected
-          ? {
-              borderLeft: "2px solid var(--color-gw-red-border)",
-              backgroundColor: "var(--color-gw-chrome2)",
-            }
-          : undefined
-      }
+      style={composedStyle}
       aria-labelledby={`res-${resource.id}-title`}
     >
       <header className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              ref={dragHandleRef}
+              className={`flex items-center justify-center p-0.5 -m-0.5 rounded text-gw-secondary hover:text-gw-primary transition-colors duration-150${
+                isDragDisabled
+                  ? " opacity-40 cursor-not-allowed"
+                  : " cursor-grab"
+              }`}
+              aria-disabled={isDragDisabled ? "true" : undefined}
+              tabIndex={isDragDisabled ? -1 : 0}
+              title={dragDisabledReason}
+              aria-describedby={dragDisabledReason ? dragHintId : undefined}
+              aria-label="Drag to reorder"
+              {...(isDragDisabled ? {} : dragHandleAttributes)}
+              {...(isDragDisabled ? {} : dragHandleListeners)}
+            >
+              <GripVertical className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+            {dragDisabledReason && (
+              <span id={dragHintId} className="sr-only">
+                {dragDisabledReason}
+              </span>
+            )}
             <TypeIcon className="w-4 h-4 text-gw-secondary" />
             <h3 id={`res-${resource.id}-title`} className="text-sm font-medium">
               {onSelect && (

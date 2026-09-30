@@ -163,6 +163,80 @@ describe("OrganizerCard", () => {
     });
   });
 
+  describe("drag handle (Task 2, FR-1, FR-2, FR-5, OQ-3)", () => {
+    it("renders the grip drag handle receiving drag attributes/listeners when enabled", () => {
+      const onDragStart = vi.fn();
+      const res = createTextResource({ name: "Draggable Card" });
+      const { container } = render(
+        <OrganizerCard
+          resource={res}
+          dragHandleAttributes={{ "aria-roledescription": "sortable" }}
+          dragHandleListeners={{ onPointerDown: onDragStart }}
+        />,
+      );
+
+      expect(container.querySelector(".lucide-grip-vertical")).toBeTruthy();
+      const handle = screen.getByRole("button", { name: "Drag to reorder" });
+      expect(handle.getAttribute("aria-roledescription")).toBe("sortable");
+      expect(handle.getAttribute("aria-disabled")).toBeNull();
+      expect(handle.tabIndex).toBe(0);
+
+      handle.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      expect(onDragStart).toHaveBeenCalledTimes(1);
+    });
+
+    it("renders the handle visibly disabled and withholds drag attributes/listeners when isDragDisabled is true", () => {
+      const onDragStart = vi.fn();
+      const res = createTextResource({ name: "Locked Card" });
+      render(
+        <OrganizerCard
+          resource={res}
+          isDragDisabled
+          dragDisabledReason="Reordering is unavailable while filtered"
+          dragHandleAttributes={{ "aria-roledescription": "sortable" }}
+          dragHandleListeners={{ onPointerDown: onDragStart }}
+        />,
+      );
+
+      const handle = screen.getByRole("button", { name: "Drag to reorder" });
+      expect(handle.getAttribute("aria-disabled")).toBe("true");
+      expect(handle.tabIndex).toBe(-1);
+      expect(handle.getAttribute("aria-roledescription")).toBeNull();
+      expect(handle.getAttribute("title")).toBe(
+        "Reordering is unavailable while filtered",
+      );
+      const describedBy = handle.getAttribute("aria-describedby");
+      expect(describedBy).toBeTruthy();
+      expect(document.getElementById(describedBy as string)?.textContent).toBe(
+        "Reordering is unavailable while filtered",
+      );
+
+      handle.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      expect(onDragStart).not.toHaveBeenCalled();
+    });
+
+    it("does not give the title button or Open button drag attributes/listeners", () => {
+      const onDragStart = vi.fn();
+      const res = createTextResource({ name: "Split Handle Card" });
+      render(
+        <OrganizerCard
+          resource={res}
+          onSelect={() => {}}
+          onOpen={() => {}}
+          dragHandleAttributes={{ "aria-roledescription": "sortable" }}
+          dragHandleListeners={{ onPointerDown: onDragStart }}
+        />,
+      );
+
+      const titleButton = screen.getByRole("button", {
+        name: "Split Handle Card",
+      });
+      const openButton = screen.getByRole("button", { name: "Open" });
+      expect(titleButton.getAttribute("aria-roledescription")).toBeNull();
+      expect(openButton.getAttribute("aria-roledescription")).toBeNull();
+    });
+  });
+
   describe("selected-state inline style (Task 19, FR-8 CSS-layer fix)", () => {
     it("applies the border-left and background-color inline style when isSelected is true", () => {
       const res = createTextResource({ name: "Selected Card Style" });
