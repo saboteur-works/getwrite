@@ -2152,7 +2152,7 @@ Feature 62 may now proceed to full design using this finding.
 **Branch suggestion:** feat/plain-text-import
 **Notes:** Named in the parent product spec's "Out of Scope (Deferred)" section and in the resolution of that spec's open question on this topic (its FR-48 and US-21 name this feature): plain-text file import does not exist today, and it is a later addition to the import file types — those requirement/story numbers no longer imply an existing plain-text path, they name this feature's eventual scope, and stay recorded as owned by Feature 59 above (the daily writing log) in this document's own "Requirements covered"/"User stories" fields rather than claimed again here, to satisfy this document's one-owner-per-requirement rule. Unresolved, left for the feature spec's own Open Questions (not decided here): whether this feature imports into a brand-new project only, mirroring the DOCX and Scrivener importers' precedent architecture, or can also add content into an already-existing project's resource tree — raised by POS note `note_c73e8b26`.
 
-### Feature 65: Organizer view — card type icons and click-to-open
+### Feature 65: Organizer view — card type icons and click-to-open — Shipped
 
 **Value:** A plain-file writer recognizes a card's resource kind (Text,
 Audio, Image, or Folder) at a glance instead of reading its "<type> file"
@@ -2168,22 +2168,38 @@ view, alongside the card's existing "Open" button (unchanged).
 **User stories:** None.
 **Depends on:** Feature 11
 **Branch suggestion:** feat/organizer-card-icons-and-open
-**Notes:** Not started. No existing functional requirement in
+**Notes:** Shipped. `specs/features/organizer-card-icons-and-open.md` and
+its `tasks.md` are the authoritative record of the shipped scope, merged
+to `main` in PR #250 (merge commit `309658a6`). `OrganizerCard` now shows
+a per-type icon (Text/Audio/Image/Folder) reusing the existing sidebar
+resource-tree icon set, and a card's title is clickable via a new
+`onSelect` prop — distinct from the existing "Open" button's `onOpen`,
+which keeps its original switch-to-Edit behavior unchanged — so clicking
+the title selects the resource while staying in Organizer view. A
+selected card now also shows a visual highlight, reusing the app's
+existing selected-row convention. No existing functional requirement in
 `specs/product/getwrite.md` covers Organizer card iconography or a
 name-click-to-select interaction — the six-view requirement and Feature
 24's card-filtering requirement are the nearest neighbors, but neither
-names this. No existing user story fits either; a new one may eventually
-be warranted (mirroring how the card-filtering feature's own requirement
-and story were paired) but is not forced here. Read fresh against
-`frontend/components/WorkArea/Views/OrganizerView/OrganizerCard.tsx`: the
-card today renders no type icon at all — only a plain text line ("{type}
-file") beneath the title — and has exactly one interactive element, an
-`onOpen`-bound "Open" button in the footer; the title itself (`<h3>`) is
-plain text with no click handler, so there is no existing click-to-open
-path of any kind to build on. This is explicitly the first increment of an
-open-ended "enhance the Organizer view" effort per the owner's own framing
-— further Organizer enhancements are expected as later, separate features,
-not folded into this one's scope.
+names this, so this feature owns none of its own (per "Requirements
+covered"/"User stories" above). The implementation went through three
+rounds of live-verification corrections after the initial pass — not
+process failures, but genuine bugs only live testing caught: (a) the
+title click initially inherited a pre-existing `AppShell.tsx` global
+effect that auto-switched away from Organizer view on text-resource
+selection, fixed with a one-shot Redux suppression flag scoped only to
+the title-click path; (b) fixing that exposed a second issue where
+Organizer's card grid went blank after a non-folder selection, since it
+derived "which folder to show" from the same global selection field,
+fixed by giving `OrganizerView` its own local `browsingFolderId` state;
+(c) the selected-card highlight was wired correctly but never rendered
+due to a CSS cascade-layer conflict — the reused `@layer components`
+class was structurally outranked by the `Card` component's own Tailwind
+`@layer utilities` classes — fixed via inline style instead of the class.
+This is explicitly the first increment of an open-ended "enhance the
+Organizer view" effort per the owner's own framing — further Organizer
+enhancements are expected as later, separate features, not folded into
+this one's scope.
 
 ---
 
@@ -2330,7 +2346,7 @@ not folded into this one's scope.
   57, 58, 59, 60, 61, 62, 64, 65 (30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47, 65. Everything
+- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything
   else in this list has shipped (Feature 24 shipped, merged in PR #249 as
   `f1254f76` — see its own entry's Notes; Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped
@@ -2340,7 +2356,8 @@ not folded into this one's scope.
   #248/merge commit `6f7ac3f5`) — completing that initiative in full; the
   locked-access gap was tracked as Features 54-57, of which 54 and 56 have
   since shipped, 55 was superseded by 54 and will not be built, and 57
-  closed as a completed measurement).
+  closed as a completed measurement; Feature 65 shipped, merged in PR
+  #250 as `309658a6` — see its own entry's Notes).
 - Risks: Feature 30 is undesigned — its Vertical slice describes a
   resolution policy still to be chosen, so its task breakdown will need a
   design decision before implementation tasks can be written. Feature 28 is
