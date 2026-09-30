@@ -821,24 +821,138 @@ needs them)
 
 ---
 
+## Task group: FR-8 CSS-layer fix (selected-card highlight has no visual effect)
+
+Added 2026-09-30. Found during live verification of Task 15's already-
+implemented and committed work — a fourth, distinct correction, separate
+from the FR-3/FR-4 group (Tasks 7-13) and the FR-7/FR-8 group (Tasks 14-18).
+Task 15 is not reopened; this group adds one new task instead.
+
+Grounding notes (verified directly against source, and live via browser
+devtools `getComputedStyle` on 2026-09-30):
+
+- Task 15 applies `resource-tree-item--selected` to `OrganizerCard`'s outer
+  `Card` when `isSelected` is true (`OrganizerCard.tsx`, current
+  `className={`h-48 border${isSelected ? " resource-tree-item--selected" :
+  ""}`}`). The class IS present in the rendered DOM's `className` — verified
+  directly — but has no visual effect: computed styles show
+  `border-left-width: 1px` (the default gray border, not the class's `2px`)
+  and the default background, not `var(--color-gw-chrome2)`.
+- `Card.tsx`'s `cardVariants` (`cva("border-[0.5px] border-gw-border", { ...
+  chrome: "bg-gw-chrome", chrome2: "bg-gw-chrome2" ... })`) is a set of
+  Tailwind-generated classes, which Tailwind itself places in its own
+  `@layer utilities`. `resource-tree-item--selected` is defined inside
+  `getwrite-utilities.css`'s own `@layer components` block. Under CSS
+  cascade-layer semantics, a later-declared layer always wins over an
+  earlier one regardless of selector specificity or source order —
+  `getwrite-utilities.css`'s own docblock confirms the declared layer order
+  (theme tokens, then `@layer components`, then implicitly Tailwind's
+  `@layer utilities`) — so `Card`'s own utility-layer border/background
+  classes structurally outrank the component-layer `resource-tree-item--
+  selected` class on this element, regardless of which className string
+  comes later in `cn(...)`'s output.
+- This is why the same class works correctly on `ResourceTree.tsx`'s row
+  (no competing Tailwind border/background utility on that element) but not
+  on `OrganizerCard`, which routes through `Card` and therefore always
+  carries `cardVariants`'s own utility-layer `border-[0.5px] border-gw-border`
+  plus a `chrome`/`chrome2` background utility.
+- The fix must win regardless of layer order, so it cannot be another
+  `@layer components` or Tailwind utility class — inline `style` (highest
+  specificity of all, immune to `@layer` ordering) is the reliable
+  mechanism, applied conditionally on `isSelected` and using the same CSS
+  custom properties (`var(--color-gw-red-border)`, `var(--color-gw-chrome2)`)
+  the original class used, so the visual values stay identical and tied to
+  the one design-token source of truth.
+- Only `border-left`/`background-color` need overriding — `Card`'s own
+  `border-[0.5px]` sets border-width/style on all four sides; a naive
+  `border` shorthand in the inline style would clobber the top/right/bottom
+  border-width back to browser default instead of leaving `Card`'s 0.5px
+  border on those three sides.
+
+---
+
+### Task 19: Fix the selected-card highlight via inline `style` (FR-8 CSS-layer fix)
+
+**What:** Make `OrganizerCard`'s `isSelected` highlight actually render by
+applying the selected-state border-left and background-color via inline
+`style` on the outer `Card`, since the existing `resource-tree-item--
+selected` class is structurally outranked by `Card`'s own Tailwind
+utility-layer classes (confirmed above, via `getComputedStyle`). Keep the
+CSS class for any test/selector purposes, but the visual effect must come
+from `style`.
+**Files:** `frontend/components/WorkArea/Views/OrganizerView/OrganizerCard.tsx`
+**Done when:**
+- The outer `Card` in `OrganizerCard.tsx` gets a conditional inline `style`
+  prop, e.g. `style={isSelected ? { borderLeft: "2px solid var(--color-gw-
+  red-border)", backgroundColor: "var(--color-gw-chrome2)" } : undefined}`
+  — using the same two CSS custom properties the original
+  `resource-tree-item--selected` class used, not new hardcoded color
+  values, so the visual result stays tied to the design-token source of
+  truth.
+- Only `border-left` and `background-color` are set by the inline style —
+  no `border` shorthand and no `border-width`/`border-style`/`border-color`
+  (non-left) property is included, so `Card`'s own `border-[0.5px]
+  border-gw-border` continues to render unmodified on the top, right, and
+  bottom sides when `isSelected` is true.
+- The `className`-based `resource-tree-item--selected` addition from Task
+  15 is left in place (harmless, and useful for any test or selector that
+  keys off the class rather than computed style) — this task does not
+  remove it, only adds the inline style alongside it.
+- A test (new or added to `organizerCard.test.tsx`) renders `OrganizerCard`
+  with `isSelected={true}` in a real DOM (jsdom/RTL) and asserts via
+  `getComputedStyle` (or an equivalent RTL assertion reading the resolved
+  `style` — e.g. asserting the element's `style.borderLeft` /
+  `style.backgroundColor` inline properties directly, which is the
+  jsdom-equivalent of resolving the CSS-custom-property values without
+  requiring a real browser layout engine) that `border-left-width`
+  resolves to `2px` (or the pixel value `var(--color-gw-red-border)`'s
+  token resolves to) and that `background-color` is set and distinct from
+  the unselected default — not merely that the `resource-tree-item--
+  selected` className string is present, since Task 15's existing test
+  already asserted the className and did not catch this bug.
+- A sibling test with `isSelected={false}` (or omitted) asserts no inline
+  `border-left`/`background-color` style is applied (the element falls
+  back to `Card`'s own default border/background), confirming the two
+  states are observably different by computed style, not just by class
+  presence.
+- `pnpm --filter getwrite-frontend typecheck` passes.
+- `pnpm --filter getwrite-frontend lint` passes.
+- `pnpm --filter getwrite-frontend test:ci -- organizer` passes in full,
+  including all pre-existing tests in `organizerCard.test.tsx` and
+  `organizerView.test.tsx`.
+**Depends on:** Task 15
+**Estimate:** 2
+**Done:** [ ]
+
+---
+
 ## Summary
 
-- Total tasks: 18
-- Total estimated effort: 39 story points (12 original + 15 FR-3/FR-4
-  correction + 12 FR-7/FR-8 correction: 3 + 2 + 5 + 1 + 1). Tasks 1-6 are the
-  original group (Task 2's `onOpen` reuse approach is superseded by Tasks
-  7-13 — see the "Task group: FR-3/FR-4 correction" section and the note
-  inserted directly after Task 2's own entry). Tasks 7-13 are the FR-3/FR-4
-  correction group. Tasks 14-18 are the FR-7/FR-8 correction group, added
-  2026-09-30 for Amendment 2 — none of Tasks 1-13 are modified by this
-  addition.
+- Total tasks: 19
+- Total estimated effort: 41 story points (12 original + 15 FR-3/FR-4
+  correction + 12 FR-7/FR-8 correction + 2 FR-8 CSS-layer fix: 3 + 2 + 5 + 1
+  + 1 + 2). Tasks 1-6 are the original group (Task 2's `onOpen` reuse
+  approach is superseded by Tasks 7-13 — see the "Task group: FR-3/FR-4
+  correction" section and the note inserted directly after Task 2's own
+  entry). Tasks 7-13 are the FR-3/FR-4 correction group. Tasks 14-18 are the
+  FR-7/FR-8 correction group, added 2026-09-30 for Amendment 2. Task 19 is a
+  fourth, distinct correction — also added 2026-09-30 — fixing a CSS-layer
+  bug found during live verification of Task 15's already-committed work;
+  none of Tasks 1-18 are modified by this addition.
 - Critical path: Task 1 → Task 2 → Task 3 → Task 6 for the original group;
   Task 7 → Task 8 → Task 9 → Task 10 → Task 11 → Task 13 for the FR-3/FR-4
   correction group; Task 14 → Task 15 → Task 16 → Task 18 for the FR-7/FR-8
   correction group (Task 17 depends only on Task 15 and can run in parallel
   with Task 16, but does not shorten the path; Task 18 needs Tasks 14-17
-  all finished).
+  all finished); Task 19 depends only on Task 15 and is the new final step
+  for the selected-card highlight specifically.
 - Risks:
+  - Low for Task 19 — inline `style` is immune to `@layer` ordering by
+    construction (highest specificity), so the main residual risk is a
+    future refactor re-introducing a competing Tailwind utility class with
+    even higher specificity (e.g. an `!important` utility), which no test
+    here guards against; the computed-style test this task adds is the
+    safeguard against a regression back to the className-only approach.
   - Low-to-moderate for the FR-7/FR-8 correction group — Task 14's sync
     effect is a new local-state pattern (no existing "local state mirrors
     global state conditionally" precedent elsewhere in `OrganizerView.tsx`
