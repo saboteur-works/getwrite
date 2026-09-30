@@ -1327,6 +1327,37 @@ describe("OrganizerView drag-and-drop reorder persistence and grid re-render (Ta
     expect(readCardTitlesInOrder(container)).toEqual(titlesBefore);
   });
 
+  it("still selects a card via its title click while a filter is active, even though that card's drag handle is disabled (FR-5 + Feature 65 regression)", () => {
+    const { store, rDraftAlice } = makeFilterableStore();
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.change(screen.getByLabelText("Filter by status"), {
+      target: { value: "Draft" },
+    });
+
+    // Every remaining card's drag handle is disabled under the active
+    // filter (FR-5), but a card's title click still selects it (Feature 65)
+    // — the two behaviors are independent.
+    const handles = screen.getAllByRole("button", { name: "Drag to reorder" });
+    expect(handles.length).toBeGreaterThan(0);
+    for (const handle of handles) {
+      expect(handle.getAttribute("aria-disabled")).toBe("true");
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Draft Alice Scene" }));
+
+    expect(store.getState().resources.selectedResourceId).toBe(rDraftAlice.id);
+    expect(selectSuppressNextViewAutoSwitch(store.getState().resources)).toBe(
+      true,
+    );
+  });
+
   it("leaves the filter-computed visible set unchanged — same cards, only reordered — after a real reorder (FR-4)", () => {
     const { store, resourceA, resourceC } = makeReorderableStore();
 
