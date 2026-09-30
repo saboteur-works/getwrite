@@ -26,6 +26,10 @@ Filter the cards using the controls at the top of the view:
 
 Active filters combine — a card must match all of them to stay visible. Each filter has its own clear control, plus a "Clear all filters" button once any filter is active. When filters exclude every card, the grid shows "No cards match the current filters." instead of the empty-folder message. Filter selections are per-folder: they reset whenever you navigate to a different folder.
 
+## Reordering cards
+
+Drag a card by its grip handle to move it to a new position among its siblings — the same order used by the [resource tree](../resource-tree.md), so reordering here also reorders the tree. The handle also works from the keyboard: focus it, pick up the card, move it earlier or later, and confirm, with a screen-reader announcement on completion. Reordering is disabled whenever a filter is active, since a drag can only reposition a card within the full, unfiltered sibling order; the handle shows why when it's disabled.
+
 ## When it appears
 
 Folders that mix content types (text and images together, say) open in the Organizer automatically, since cards are the natural way to show a mixed set.
