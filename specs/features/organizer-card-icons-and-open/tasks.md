@@ -926,27 +926,124 @@ from `style`.
 
 ---
 
+## Task group: title-button styling refinement (post-ship owner feedback)
+
+Added 2026-09-30. Found during owner review of the already-shipped
+title-click feature (Tasks 1-19, all merged) — not a functional bug, a
+styling refinement the owner requested after using it. Task 19 is not
+reopened; this group adds one new task instead, scoped entirely to the
+title button's `className` in `OrganizerCard.tsx`.
+
+Grounding notes (verified directly against source before writing the task
+below):
+
+- `OrganizerCard.tsx`'s title `<button>` (added by Task 10, styled by FR-5)
+  currently has `className="hover:bg-gw-chrome2 rounded transition-colors
+  duration-150"` — a background-tint hover effect, no explicit text color,
+  so it inherits the ambient default, which resolves to `--color-gw-primary`
+  (`frontend/styles/getwrite-theme.css`: `#f5f4f0`, "Primary UI text") — the
+  brightest text tone in this codebase's palette.
+- `--color-gw-secondary` (same file) is mapped to `--color-fg-tertiary`,
+  documented "Muted labels, metadata" — the existing muted/darker text-color
+  token already used elsewhere in this same file (the type icon beside the
+  title and the `"{resource.type} file"` line both already use
+  `text-gw-secondary`, per Task 1's grounding notes above).
+- Owner's request, verbatim: "Remove the background color change from the
+  title and instead have the default color of the text be darker and
+  brighter when hovered." This maps directly to: drop
+  `hover:bg-gw-chrome2`/`rounded`, add `text-gw-secondary` as the default
+  text color and `hover:text-gw-primary` as the hover text color — reusing
+  both already-established tokens, consistent with how every other color
+  decision in this feature reused existing design tokens (Task 1's icon
+  color, Task 15/19's selected-card highlight colors).
+
+---
+
+### Task 20: Replace title button's background-hover with text-color hover (owner-requested styling refinement)
+
+**What:** Change the title `<button>`'s `className` in `OrganizerCard.tsx`
+from a background-tint hover effect to a text-color-only default/hover
+pair, per the owner's explicit post-ship feedback.
+**Files:** `frontend/components/WorkArea/Views/OrganizerView/OrganizerCard.tsx`
+**Done when:**
+- The title button's `className` changes from `"hover:bg-gw-chrome2 rounded
+  transition-colors duration-150"` to `"text-gw-secondary hover:text-gw-
+  primary transition-colors duration-150"` — `hover:bg-gw-chrome2` and
+  `rounded` are both removed (no background-tint hover, no rounded corners,
+  since there is no longer a background shape to round); `text-gw-secondary`
+  is added as the button's default text color; `hover:text-gw-primary` is
+  added as its hover text color; `transition-colors duration-150` is kept
+  unchanged so the color change animates smoothly, matching the removed
+  background transition's own timing.
+- No new color value is introduced — both `text-gw-secondary` and
+  `hover:text-gw-primary` reuse the same two tokens already defined in
+  `frontend/styles/getwrite-theme.css` and already used elsewhere in this
+  same file (the type icon, the `"{resource.type} file"` line).
+- This is purely a visual/`className` change: no prop, state, behavior, or
+  accessible-name change. The button's `onClick={onSelect}`, its wrapping
+  `<h3>`, its `aria-*`/`id` attributes, and the footer "Open" button are all
+  left byte-identical. `OrganizerView.tsx`, `resourcesSlice.ts`, and
+  `AppShell.tsx` are not touched by this task.
+- `frontend/tests/organizerCard.test.tsx` and `frontend/tests/a11y/
+  organizerCard.a11y.test.tsx` are checked for any assertion on the title
+  button's `className` (e.g. a check for `hover:bg-gw-chrome2` specifically)
+  before assuming neither has one — Task 19's own tests assert on `style`/
+  class presence for the SELECTED-card highlight, which is a separate
+  concern (the `resource-tree-item--selected` class and inline `style` on
+  the outer `Card`, not the title button's own className) and should be
+  unaffected, but this must be verified, not assumed, and any such
+  assertion found is updated to match the new className rather than left to
+  fail.
+- The existing a11y test's zero-axe-violations checks still pass — a
+  text-color-only change is not expected to affect contrast in a way that
+  fails, but as a final sanity check, visually confirm (e.g. via Storybook
+  or the running app) that `text-gw-secondary`'s default resolves to
+  AA-compliant contrast against the card's background, since `CLAUDE.md`
+  notes `fg-tertiary`/`fg-inv-tertiary` (which `--color-gw-secondary` maps
+  to) are specifically "AA-contrast secondary text" tokens already vetted
+  for this.
+- `pnpm --filter getwrite-frontend typecheck` passes.
+- `pnpm --filter getwrite-frontend lint` passes.
+- `pnpm --filter getwrite-frontend test:ci -- organizer` passes in full,
+  including all pre-existing tests in `organizerCard.test.tsx`,
+  `organizerCard.a11y.test.tsx`, and `organizerView.test.tsx`.
+**Depends on:** Task 19
+**Estimate:** 1
+**Done:** [ ]
+
+---
+
 ## Summary
 
-- Total tasks: 19
-- Total estimated effort: 41 story points (12 original + 15 FR-3/FR-4
-  correction + 12 FR-7/FR-8 correction + 2 FR-8 CSS-layer fix: 3 + 2 + 5 + 1
-  + 1 + 2). Tasks 1-6 are the original group (Task 2's `onOpen` reuse
-  approach is superseded by Tasks 7-13 — see the "Task group: FR-3/FR-4
-  correction" section and the note inserted directly after Task 2's own
-  entry). Tasks 7-13 are the FR-3/FR-4 correction group. Tasks 14-18 are the
-  FR-7/FR-8 correction group, added 2026-09-30 for Amendment 2. Task 19 is a
-  fourth, distinct correction — also added 2026-09-30 — fixing a CSS-layer
-  bug found during live verification of Task 15's already-committed work;
-  none of Tasks 1-18 are modified by this addition.
+- Total tasks: 20
+- Total estimated effort: 42 story points (12 original + 15 FR-3/FR-4
+  correction + 12 FR-7/FR-8 correction + 2 FR-8 CSS-layer fix + 1 title-
+  button styling refinement: 3 + 2 + 5 + 1 + 1 + 2 + 1). Tasks 1-6 are the
+  original group (Task 2's `onOpen` reuse approach is superseded by Tasks
+  7-13 — see the "Task group: FR-3/FR-4 correction" section and the note
+  inserted directly after Task 2's own entry). Tasks 7-13 are the FR-3/FR-4
+  correction group. Tasks 14-18 are the FR-7/FR-8 correction group, added
+  2026-09-30 for Amendment 2. Task 19 is a fourth, distinct correction —
+  also added 2026-09-30 — fixing a CSS-layer bug found during live
+  verification of Task 15's already-committed work. Task 20 is a fifth,
+  distinct addition — also added 2026-09-30 — a purely cosmetic styling
+  refinement requested by the owner after reviewing the already-shipped
+  title-click feature; none of Tasks 1-19 are modified by this addition.
 - Critical path: Task 1 → Task 2 → Task 3 → Task 6 for the original group;
   Task 7 → Task 8 → Task 9 → Task 10 → Task 11 → Task 13 for the FR-3/FR-4
   correction group; Task 14 → Task 15 → Task 16 → Task 18 for the FR-7/FR-8
   correction group (Task 17 depends only on Task 15 and can run in parallel
   with Task 16, but does not shorten the path; Task 18 needs Tasks 14-17
-  all finished); Task 19 depends only on Task 15 and is the new final step
-  for the selected-card highlight specifically.
+  all finished); Task 19 depends only on Task 15 and is the final step for
+  the selected-card highlight specifically; Task 20 depends only on Task 19
+  and is now the last step in the task list overall.
 - Risks:
+  - Minimal for Task 20 — a `className`-only change on a single element,
+    reusing two already-vetted, already-used-elsewhere-in-this-file color
+    tokens; the only residual risk is an un-noticed pre-existing test
+    asserting on the old `hover:bg-gw-chrome2` string, which the task's
+    done-when conditions explicitly require checking for rather than
+    assuming absent.
   - Low for Task 19 — inline `style` is immune to `@layer` ordering by
     construction (highest specificity), so the main residual risk is a
     future refactor re-introducing a competing Tailwind utility class with
