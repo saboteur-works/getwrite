@@ -2152,6 +2152,39 @@ Feature 62 may now proceed to full design using this finding.
 **Branch suggestion:** feat/plain-text-import
 **Notes:** Named in the parent product spec's "Out of Scope (Deferred)" section and in the resolution of that spec's open question on this topic (its FR-48 and US-21 name this feature): plain-text file import does not exist today, and it is a later addition to the import file types — those requirement/story numbers no longer imply an existing plain-text path, they name this feature's eventual scope, and stay recorded as owned by Feature 59 above (the daily writing log) in this document's own "Requirements covered"/"User stories" fields rather than claimed again here, to satisfy this document's one-owner-per-requirement rule. Unresolved, left for the feature spec's own Open Questions (not decided here): whether this feature imports into a brand-new project only, mirroring the DOCX and Scrivener importers' precedent architecture, or can also add content into an already-existing project's resource tree — raised by POS note `note_c73e8b26`.
 
+### Feature 65: Organizer view — card type icons and click-to-open
+
+**Value:** A plain-file writer recognizes a card's resource kind (Text,
+Audio, Image, or Folder) at a glance instead of reading its "<type> file"
+text line, and opens a resource faster by clicking its name rather than
+locating the separate "Open" button — staying in Organizer view after the
+click rather than being switched to Edit view.
+**Vertical slice:** A type-icon element on `OrganizerCard` selecting one of
+four icons (Text/Audio/Image/Folder) from the rendered resource's `type`
+field; a click handler on the card's title/name that dispatches the
+existing resource-selection action without changing the active work-area
+view, alongside the card's existing "Open" button (unchanged).
+**Requirements covered:** None of its own.
+**User stories:** None.
+**Depends on:** Feature 11
+**Branch suggestion:** feat/organizer-card-icons-and-open
+**Notes:** Not started. No existing functional requirement in
+`specs/product/getwrite.md` covers Organizer card iconography or a
+name-click-to-select interaction — the six-view requirement and Feature
+24's card-filtering requirement are the nearest neighbors, but neither
+names this. No existing user story fits either; a new one may eventually
+be warranted (mirroring how the card-filtering feature's own requirement
+and story were paired) but is not forced here. Read fresh against
+`frontend/components/WorkArea/Views/OrganizerView/OrganizerCard.tsx`: the
+card today renders no type icon at all — only a plain text line ("{type}
+file") beneath the title — and has exactly one interactive element, an
+`onOpen`-bound "Open" button in the footer; the title itself (`<h3>`) is
+plain text with no click handler, so there is no existing click-to-open
+path of any kind to build on. This is explicitly the first increment of an
+open-ended "enhance the Organizer view" effort per the owner's own framing
+— further Organizer enhancements are expected as later, separate features,
+not folded into this one's scope.
+
 ---
 
 ## Coverage check
@@ -2213,7 +2246,7 @@ Feature 62 may now proceed to full design using this finding.
 
 ## Summary
 
-- Total features: 64
+- Total features: 65
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -2294,10 +2327,10 @@ Feature 62 may now proceed to full design using this finding.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 58, 59, 60, 61, 62, 64 (30 and 28 are the only pair left with an unmet hard dependency;
+  57, 58, 59, 60, 61, 62, 64, 65 (30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything
+- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47, 65. Everything
   else in this list has shipped (Feature 24 shipped, merged in PR #249 as
   `f1254f76` — see its own entry's Notes; Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped
