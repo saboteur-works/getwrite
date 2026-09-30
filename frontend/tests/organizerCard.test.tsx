@@ -132,4 +132,34 @@ describe("OrganizerCard", () => {
       expect(onSelect).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("selected-state styling (Task 16, FR-8)", () => {
+    it("applies the resource-tree-item--selected class to the outer card when isSelected is true", () => {
+      const res = createTextResource({ name: "Selected Card" });
+      const { container } = render(
+        <OrganizerCard resource={res} isSelected={true} />,
+      );
+
+      const article = container.querySelector("article");
+      expect(article?.className).toContain("resource-tree-item--selected");
+    });
+
+    it("omits the resource-tree-item--selected class when isSelected is false or not provided", () => {
+      const resFalse = createTextResource({ name: "Explicitly Unselected" });
+      const { container: containerFalse } = render(
+        <OrganizerCard resource={resFalse} isSelected={false} />,
+      );
+      expect(containerFalse.querySelector("article")?.className).not.toContain(
+        "resource-tree-item--selected",
+      );
+
+      const resDefault = createTextResource({ name: "Default Unselected" });
+      const { container: containerDefault } = render(
+        <OrganizerCard resource={resDefault} />,
+      );
+      expect(
+        containerDefault.querySelector("article")?.className,
+      ).not.toContain("resource-tree-item--selected");
+    });
+  });
 });

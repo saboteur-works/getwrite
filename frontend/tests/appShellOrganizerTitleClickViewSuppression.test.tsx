@@ -126,6 +126,11 @@ describe("AppShell — OrganizerCard title click suppresses the auto-switch view
       "false",
     );
 
+    // FR-7 regression, exercised at the AppShell integration level: the
+    // grid still shows the other, unselected child's card rather than
+    // falling back to the "Select a folder..." empty state.
+    expect(screen.getByRole("button", { name: "Text Card B" })).toBeTruthy();
+
     // Regression (one-shot): a second, ordinary selection that does NOT go
     // through the title-click suppression path (mirroring how
     // `ResourceTree.tsx`/`SearchBar.tsx` dispatch `setSelectedResourceId`
