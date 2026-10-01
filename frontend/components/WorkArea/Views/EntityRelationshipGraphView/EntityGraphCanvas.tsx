@@ -23,6 +23,11 @@ import {
 import { chooseTooltipPlacement } from "./edgeTooltipPlacement";
 import Button from "../../../common/UI/Button";
 import EntityGraphSettingsPanel from "./EntityGraphSettingsPanel";
+import {
+  getEntityGraphPositions,
+  saveEntityGraphPosition,
+} from "../../../../src/lib/api/entity-graph-positions";
+import { isPositionInvalidated } from "../../../../src/lib/models/entity-graph-position-invalidation";
 import "./entityGraphTooltipOverlay.css";
 
 const DEFAULT_WIDTH = 800;
@@ -87,16 +92,32 @@ export interface EntityGraphCanvasProps {
    */
   onNodeActivated?: (entityId: string) => void;
   /**
-   * Server-validated id of the active project (directory basename), used only
-   * to render the connection-type/hop-radius settings panel (Feature 68, Task
-   * 10) — never passed on to layout or rendering. When omitted, no settings
-   * toggle is rendered (e.g. in a test or Storybook context with no real
-   * project). NOTE: as of this task, `EntityRelationshipGraphView.tsx` does
-   * not yet pass this prop down to `EntityGraphCanvas` — that wiring is a
-   * follow-up integration step for whichever task next touches that file
-   * (see Task 10's handback report).
+   * Server-validated id of the active project (directory basename). Used to
+   * render the connection-type/hop-radius settings panel (Feature 68, Task
+   * 10) and, as of Task 13, to read/write Task 12's persisted node-position
+   * transport — never passed on to `computeGraphLayout` itself. When
+   * omitted, no settings toggle is rendered and no position fetch/save is
+   * ever attempted (e.g. in a test or Storybook context with no real
+   * project) — the component behaves exactly as it did before Task 13. As of
+   * Task 13, `EntityRelationshipGraphView.tsx` passes this prop down (it
+   * previously did not — see that task's handback report for the gap this
+   * closed).
    */
   projectId?: string;
+  /**
+   * The project's currently active entity-graph connection-type list,
+   * filtered to known keys (Feature 68, Task 13, FR-9/FR-11). Used only to
+   * (a) snapshot onto a newly drag-saved position record
+   * (`connectionTypesSnapshot`) and (b) decide whether an already-persisted
+   * position has been invalidated by a change to this list since it was
+   * saved (`isPositionInvalidated`) — never consulted for edge filtering,
+   * which is `EntityRelationshipGraphView.tsx`'s own concern. Defaults to an
+   * empty list when omitted, matching "no connection types known" rather
+   * than guessing a default. Compared by content (a joined-string key), not
+   * array identity, so a caller that re-creates this array on every render
+   * does not retrigger the position fetch below.
+   */
+  activeConnectionTypes?: string[];
 }
 
 /**
@@ -675,6 +696,7 @@ export default function EntityGraphCanvas({
   className = "",
   onNodeActivated,
   projectId,
+  activeConnectionTypes = [],
 }: EntityGraphCanvasProps): JSX.Element {
   const { positionedNodes, positionedEdges } = React.useMemo(
     () => computeGraphLayout(nodes, edges, width, height),
@@ -729,6 +751,76 @@ export default function EntityGraphCanvas({
   const [nodePositionOverrides, setNodePositionOverrides] = React.useState<
     Map<string, { x: number; y: number }>
   >(() => new Map());
+
+  // Content-keyed, not identity-keyed (Task 13): a caller that re-derives
+  // `activeConnectionTypes` as a brand-new array on every render (as
+  // `EntityRelationshipGraphView.tsx` does via its own `useMemo`) must not
+  // retrigger the position-seeding effect below on every one of those
+  // renders — only when the actual set of active types changes. None of the
+  // five known connection-type keys contains a comma, so this join is a safe,
+  // lossless content key.
+  const activeConnectionTypesKey = activeConnectionTypes.join(",");
+
+  // Mirrors `scaleRef`/`panRef`'s precedent below: read by the long-lived
+  // pointer-event effect (registered once, re-subscribed only on
+  // `[width, height]`), which would otherwise see a stale closure over
+  // `projectId`/`activeConnectionTypesKey`/`nodePositionOverrides` at the
+  // moment a drag ends (Task 13, FR-13).
+  const projectIdRef = React.useRef(projectId);
+  projectIdRef.current = projectId;
+  const activeConnectionTypesKeyRef = React.useRef(activeConnectionTypesKey);
+  activeConnectionTypesKeyRef.current = activeConnectionTypesKey;
+  const nodePositionOverridesRef = React.useRef(nodePositionOverrides);
+  nodePositionOverridesRef.current = nodePositionOverrides;
+
+  // Seeds `nodePositionOverrides` from any persisted, non-invalidated
+  // position record at mount (Task 13, FR-9/FR-11), instead of leaving every
+  // session starting from an empty override map. Skipped entirely when
+  // `projectId` is omitted — the exact backward-compatibility requirement
+  // Task 10 already established for the settings panel. Never clobbers an
+  // entityId that already has an override (a live or already-restored drag
+  // position) — relevant because this effect can re-run later if
+  // `activeConnectionTypesKey` changes (e.g. once `EntityRelationshipGraphView`'s
+  // own asynchronous settings fetch resolves after an initial default-value
+  // render), and a late reconciliation must not stomp on a position the
+  // writer has since moved in this same session.
+  React.useEffect(() => {
+    if (!projectId) return;
+    const activeTypes =
+      activeConnectionTypesKey.length > 0
+        ? activeConnectionTypesKey.split(",")
+        : [];
+    let isCancelled = false;
+    void getEntityGraphPositions(projectId)
+      .then((records) => {
+        if (isCancelled) return;
+        setNodePositionOverrides((prev) => {
+          let hasSeededAny = false;
+          const next = new Map(prev);
+          for (const record of records) {
+            if (next.has(record.entityId)) continue;
+            if (isPositionInvalidated(record, activeTypes)) continue;
+            next.set(record.entityId, { x: record.x, y: record.y });
+            hasSeededAny = true;
+          }
+          return hasSeededAny ? next : prev;
+        });
+      })
+      .catch((err: unknown) => {
+        // Failure-visibility floor (docs/standards/failure-visibility.md): a
+        // failed read must not silently render as "no positions saved yet"
+        // — reported here, then falls back to the fresh `computeGraphLayout`
+        // positions every node already renders at by default, rather than
+        // blocking rendering.
+        console.error(
+          "Failed to load persisted entity graph node positions.",
+          err,
+        );
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [projectId, activeConnectionTypesKey]);
 
   // Drag state lives in a ref, not React state, since a move handler needs to
   // read it on every pointer move without forcing a re-render per pixel; the
@@ -916,6 +1008,46 @@ export default function EntityGraphCanvas({
       justDraggedPastThresholdRef.current =
         event.type === "pointerup" && nodeDrag.exceededThreshold;
       nodeDragRef.current = null;
+
+      // Persists the released position once a real drag gesture (not a
+      // plain click) ends (Task 13, FR-13), via Task 12's transport. Reads
+      // `projectId`/`activeConnectionTypesKey`/the final resolved position
+      // from refs rather than closed-over state/props, since this handler is
+      // registered once inside a long-lived effect (deps: `[width, height]`)
+      // and would otherwise see stale values from whatever render first
+      // mounted it.
+      const projectIdForSave = projectIdRef.current;
+      if (
+        event.type === "pointerup" &&
+        nodeDrag.exceededThreshold &&
+        projectIdForSave
+      ) {
+        const finalPosition = nodePositionOverridesRef.current.get(
+          nodeDrag.entityId,
+        );
+        if (finalPosition) {
+          const connectionTypesSnapshot =
+            activeConnectionTypesKeyRef.current.length > 0
+              ? activeConnectionTypesKeyRef.current.split(",")
+              : [];
+          void saveEntityGraphPosition(
+            projectIdForSave,
+            nodeDrag.entityId,
+            finalPosition.x,
+            finalPosition.y,
+            connectionTypesSnapshot,
+          ).catch((err: unknown) => {
+            // Failure-visibility floor: a failed save must not pretend the
+            // drag never happened (the live override already applied stays
+            // in place — see no rollback below), but it must not block
+            // rendering or throw out of this handler either.
+            console.error(
+              "Failed to save the entity graph node position.",
+              err,
+            );
+          });
+        }
+      }
     };
 
     window.addEventListener("mousemove", handleMouseMove);

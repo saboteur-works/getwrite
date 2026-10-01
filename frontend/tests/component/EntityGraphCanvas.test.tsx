@@ -6,8 +6,14 @@
  * kind (FR-6's colour constraint, this task's own no-conflict scope).
  */
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import * as d3Force from "d3-force";
 import {
   chooseTooltipPlacement,
@@ -26,6 +32,19 @@ vi.mock("d3-force", async (importOriginal) => {
   const actual = await importOriginal<typeof import("d3-force")>();
   return { ...actual, forceSimulation: vi.fn(actual.forceSimulation) };
 });
+// Task 13: the canvas's own position-persistence reads/writes, mocked so no
+// test here ever hits a real `fetch`. `vi.restoreAllMocks()` (the existing
+// `afterEach` below) does not reset a plain `vi.fn()` created inside a
+// `vi.mock()` factory's call history — only `vi.spyOn()` spies — so these are
+// explicitly `.mockReset()` in `beforeEach` to avoid cross-test leakage.
+vi.mock("../../src/lib/api/entity-graph-positions", () => ({
+  getEntityGraphPositions: vi.fn(),
+  saveEntityGraphPosition: vi.fn(),
+}));
+import {
+  getEntityGraphPositions,
+  saveEntityGraphPosition,
+} from "../../src/lib/api/entity-graph-positions";
 import type {
   EntityGraphEdge,
   EntityGraphNode,
@@ -59,6 +78,22 @@ const EDGES: EntityGraphEdge[] = [
 ];
 
 const RESERVED_RED_HEX = "#d44040";
+
+const mockedGetEntityGraphPositions = vi.mocked(getEntityGraphPositions);
+const mockedSaveEntityGraphPosition = vi.mocked(saveEntityGraphPosition);
+
+beforeEach(() => {
+  mockedGetEntityGraphPositions.mockReset();
+  mockedGetEntityGraphPositions.mockResolvedValue([]);
+  mockedSaveEntityGraphPosition.mockReset();
+  mockedSaveEntityGraphPosition.mockResolvedValue({
+    entityId: "e-1",
+    x: 0,
+    y: 0,
+    connectionTypesSnapshot: [],
+    savedAt: "2026-01-01T00:00:00.000Z",
+  });
+});
 
 afterEach(() => {
   cleanup();
@@ -1844,6 +1879,266 @@ describe("EntityGraphCanvas", () => {
         expect(style.toLowerCase()).not.toContain(RESERVED_RED_HEX);
         expect(style.toLowerCase()).not.toContain("--color-gw-red");
       }
+    });
+  });
+
+  describe("position persistence (Feature 68, Task 13, FR-9/FR-10/FR-11/FR-13)", () => {
+    const PROJECT_ID = "proj-entity-graph";
+    const dragPastThreshold = (
+      target: HTMLElement,
+      startX: number,
+      startY: number,
+      dx: number,
+      dy: number,
+    ) => {
+      fireEvent.pointerDown(target, { clientX: startX, clientY: startY });
+      fireEvent.pointerMove(window, {
+        clientX: startX + dx,
+        clientY: startY + dy,
+      });
+      fireEvent.pointerUp(window);
+    };
+
+    it("never fetches or saves positions when projectId is omitted", async () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      dragPastThreshold(target, 100, 100, 30, 20);
+
+      expect(mockedGetEntityGraphPositions).not.toHaveBeenCalled();
+      expect(mockedSaveEntityGraphPosition).not.toHaveBeenCalled();
+    });
+
+    it("seeds a node's rendered position from a valid persisted record at mount, instead of computeGraphLayout's fresh layout", async () => {
+      mockedGetEntityGraphPositions.mockResolvedValue([
+        {
+          entityId: "e-1",
+          x: 999,
+          y: 888,
+          connectionTypesSnapshot: ["authored"],
+          savedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ]);
+
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored"]}
+        />,
+      );
+
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalledWith(PROJECT_ID),
+      );
+
+      const target = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+        )!;
+      await waitFor(() => {
+        const transform = parseNodeTransform(target);
+        expect(transform.x).toBeCloseTo(999);
+        expect(transform.y).toBeCloseTo(888);
+      });
+    });
+
+    it("ignores an invalidated persisted record (active connection types changed since save), rendering the fresh layout position instead", async () => {
+      const { positionedNodes } = computeGraphLayout(NODES, EDGES);
+      const freshE1 = positionedNodes.find((n) => n.entityId === "e-1")!;
+      mockedGetEntityGraphPositions.mockResolvedValue([
+        {
+          entityId: "e-1",
+          x: 999,
+          y: 888,
+          connectionTypesSnapshot: ["authored"],
+          savedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ]);
+
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored", "cooccurrence"]}
+        />,
+      );
+
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalledWith(PROJECT_ID),
+      );
+
+      const target = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+        )!;
+      const transform = parseNodeTransform(target);
+      expect(transform.x).toBeCloseTo(freshE1.x);
+      expect(transform.y).toBeCloseTo(freshE1.y);
+      expect(transform.x).not.toBeCloseTo(999);
+    });
+
+    it("writes exactly one position record via saveEntityGraphPosition's transport once a drag gesture ends", async () => {
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored", "cooccurrence"]}
+        />,
+      );
+
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalled(),
+      );
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      dragPastThreshold(target, 100, 100, 30, 20);
+      const transform = parseNodeTransform(target);
+
+      await waitFor(() =>
+        expect(mockedSaveEntityGraphPosition).toHaveBeenCalledTimes(1),
+      );
+      const [calledProjectId, calledEntityId, calledX, calledY, snapshot] =
+        mockedSaveEntityGraphPosition.mock.calls[0];
+      expect(calledProjectId).toBe(PROJECT_ID);
+      expect(calledEntityId).toBe("e-1");
+      expect(calledX).toBeCloseTo(transform.x);
+      expect(calledY).toBeCloseTo(transform.y);
+      expect(snapshot).toEqual(["authored", "cooccurrence"]);
+    });
+
+    it("does not call saveEntityGraphPosition for a gesture that stays under the click/drag threshold", async () => {
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored"]}
+        />,
+      );
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalled(),
+      );
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 101, clientY: 101 });
+      fireEvent.pointerUp(window);
+      fireEvent.click(target);
+
+      expect(mockedSaveEntityGraphPosition).not.toHaveBeenCalled();
+    });
+
+    it("reproduces a dragged position across a simulated reload (remount with the same persisted data)", async () => {
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored"]}
+        />,
+      );
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalled(),
+      );
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      dragPastThreshold(target, 100, 100, 40, 25);
+      const draggedTransform = parseNodeTransform(target);
+
+      await waitFor(() =>
+        expect(mockedSaveEntityGraphPosition).toHaveBeenCalledTimes(1),
+      );
+
+      // Simulate the reload: a fresh mount, with the persisted store now
+      // containing the position the drag above just "saved".
+      mockedGetEntityGraphPositions.mockResolvedValue([
+        {
+          entityId: "e-1",
+          x: draggedTransform.x,
+          y: draggedTransform.y,
+          connectionTypesSnapshot: ["authored"],
+          savedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ]);
+      cleanup();
+
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored"]}
+        />,
+      );
+
+      const reloadedTarget = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+        )!;
+      await waitFor(() => {
+        const reloadedTransform = parseNodeTransform(reloadedTarget);
+        expect(reloadedTransform.x).toBeCloseTo(draggedTransform.x);
+        expect(reloadedTransform.y).toBeCloseTo(draggedTransform.y);
+      });
+    });
+
+    it("does not crash and falls back to the fresh layout position when the position fetch fails", async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      mockedGetEntityGraphPositions.mockRejectedValue(
+        new Error("network down"),
+      );
+
+      expect(() =>
+        render(
+          <EntityGraphCanvas
+            nodes={NODES}
+            edges={EDGES}
+            projectId={PROJECT_ID}
+            activeConnectionTypes={["authored"]}
+          />,
+        ),
+      ).not.toThrow();
+
+      await waitFor(() => expect(consoleErrorSpy).toHaveBeenCalled());
+      expect(screen.getAllByTestId("entity-graph-node")).toHaveLength(
+        NODES.length,
+      );
+    });
+
+    it("does not crash when the position save fails, and reports it", async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      mockedSaveEntityGraphPosition.mockRejectedValue(new Error("save failed"));
+
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored"]}
+        />,
+      );
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalled(),
+      );
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      expect(() => dragPastThreshold(target, 100, 100, 30, 20)).not.toThrow();
+
+      await waitFor(() =>
+        expect(mockedSaveEntityGraphPosition).toHaveBeenCalledTimes(1),
+      );
+      await waitFor(() => expect(consoleErrorSpy).toHaveBeenCalled());
     });
   });
 });
