@@ -689,46 +689,39 @@ describe("EditorContextMenu", () => {
     // ... rather than whatever `editor.state.selection` happens to be when
     // the item is actually activated."
     //
-    // Measured (not assumed): today this assertion currently fails. The
-    // component's Task 3 effect
+    // Fixed: the component's Task 3 effect
     // (`editor.on("selectionUpdate", syncSelection)` /
-    // `editor.on("transaction", syncSelection)`) stays subscribed for the
-    // menu's entire open lifetime, not just up to the moment the
+    // `editor.on("transaction", syncSelection)`) used to stay subscribed for
+    // the menu's entire open lifetime, not just up to the moment the
     // `contextmenu` event fires — so any later live selection change
-    // re-fires `syncSelection` and overwrites the `captured` state the
+    // re-fired `syncSelection` and overwrote the `captured` state the
     // `contextmenu` handler had frozen, contradicting the doc comment's own
-    // stated guarantee. `it.fails` below records that measured, current
-    // behavior precisely (a failing assertion of the intended contract) so
-    // the suite stays green while the gap stays visible, rather than
-    // silently passing a weaker assertion or omitting this case. See this
-    // task's final report for the precise finding filed for the
-    // orchestrator to triage; `EditorContextMenu.tsx` is deliberately left
-    // unmodified by this test-only task.
-    it.fails(
-      "[KNOWN GAP — see task report] Copy still acts on the range captured at contextmenu time even after a later, unrelated live selection change",
-      async () => {
-        const { editor } = renderWithContent();
-        act(() => {
-          editor.commands.setTextSelection({ from: 1, to: 5 }); // "Some"
-        });
+    // stated guarantee. `syncSelection` now consults an `isMenuOpenRef` set
+    // via the Radix `ContextMenu`'s `onOpenChange` and no-ops while the menu
+    // is open, so the captured snapshot survives for the menu's whole open
+    // lifetime as intended.
+    it("Copy still acts on the range captured at contextmenu time even after a later, unrelated live selection change", async () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 }); // "Some"
+      });
 
-        openMenu(screen.getByTestId("prosemirror"));
-        act(() => vi.runAllTimers());
+      openMenu(screen.getByTestId("prosemirror"));
+      act(() => vi.runAllTimers());
 
-        // The live selection moves on to a different range while the menu
-        // is still open, before Copy is activated.
-        act(() => {
-          editor.commands.setTextSelection({ from: 6, to: 14 }); // "document"
-        });
+      // The live selection moves on to a different range while the menu
+      // is still open, before Copy is activated.
+      act(() => {
+        editor.commands.setTextSelection({ from: 6, to: 14 }); // "document"
+      });
 
-        await act(async () => {
-          fireEvent.click(screen.getByText("Copy"));
-        });
+      await act(async () => {
+        fireEvent.click(screen.getByText("Copy"));
+      });
 
-        // Intended contract: still the range captured at contextmenu time
-        // ("Some"), not the live selection at click time ("document").
-        expect(clipboardWriteText).toHaveBeenCalledWith("Some");
-      },
-    );
+      // Intended contract: still the range captured at contextmenu time
+      // ("Some"), not the live selection at click time ("document").
+      expect(clipboardWriteText).toHaveBeenCalledWith("Some");
+    });
   });
 });

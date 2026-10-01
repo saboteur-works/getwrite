@@ -182,8 +182,21 @@ export default function EditorContextMenu({
     captureEditorSelection(editor),
   );
 
+  // Tracks whether the Radix menu is currently open. `syncSelection` below
+  // consults this (via a ref, not state, so the effect doesn't need to
+  // resubscribe on every open/close) to stop live selection changes from
+  // overwriting the snapshot the `contextmenu` handler froze while the menu
+  // is open — the whole point of capturing it in the first place (see this
+  // file's Task 4 doc comment). Once the menu closes, `syncSelection` goes
+  // back to tracking the live selection as before, which is what keeps the
+  // Radix trigger's `disabled` (NodeSelection) gating correct between opens.
+  const isMenuOpenRef = React.useRef(false);
+
   React.useEffect(() => {
-    const syncSelection = () => setCaptured(captureEditorSelection(editor));
+    const syncSelection = () => {
+      if (isMenuOpenRef.current) return;
+      setCaptured(captureEditorSelection(editor));
+    };
     syncSelection();
     editor.on("selectionUpdate", syncSelection);
     editor.on("transaction", syncSelection);
@@ -196,6 +209,10 @@ export default function EditorContextMenu({
   const handleContextMenu = React.useCallback(() => {
     setCaptured(captureEditorSelection(editor));
   }, [editor]);
+
+  const handleOpenChange = React.useCallback((open: boolean) => {
+    isMenuOpenRef.current = open;
+  }, []);
 
   const handleCopy = React.useCallback(() => {
     const { from, to } = captured;
@@ -261,7 +278,7 @@ export default function EditorContextMenu({
   }, [editor, captured]);
 
   return (
-    <ContextMenu>
+    <ContextMenu onOpenChange={handleOpenChange}>
       <ContextMenuTrigger asChild disabled={captured.isNodeSelection}>
         <span onContextMenu={handleContextMenu} style={{ display: "contents" }}>
           {children}
