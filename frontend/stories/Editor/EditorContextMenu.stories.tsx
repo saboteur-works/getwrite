@@ -60,6 +60,7 @@ function EditorContextMenuDemo({
 const meta: Meta<typeof EditorContextMenu> = {
   title: "Editor/EditorContextMenu",
   component: EditorContextMenu,
+  parameters: { a11y: { test: "error" } },
 };
 
 export default meta;
